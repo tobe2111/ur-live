@@ -86,10 +86,13 @@ export async function handleLiveStreamSSE(
   const stream = new ReadableStream({
     async start(controller) {
 
+      // 연결 즉시 keep-alive ping 전송 (idle timeout 방지)
+      controller.enqueue(encoder.encode(': ping\n\n'))
+
       // 초기 데이터 전송
       try {
         const liveStream = await env.DB.prepare(`
-          SELECT 
+          SELECT
             id,
             title,
             status,
@@ -179,6 +182,9 @@ export async function handleChatSSE(
 
   const stream = new ReadableStream({
     async start(controller) {
+
+      // 연결 즉시 keep-alive ping 전송 (idle timeout 방지)
+      controller.enqueue(encoder.encode(': ping\n\n'))
 
       // 최근 메시지 전송
       try {
@@ -282,6 +288,9 @@ export async function handleOrderNotificationSSE(
   const stream = new ReadableStream({
     async start(controller) {
 
+      // 연결 즉시 keep-alive ping 전송 (idle timeout 방지)
+      controller.enqueue(encoder.encode(': ping\n\n'))
+
       // 최근 주문 조회
       try {
         const orders = await env.DB.prepare(`
@@ -361,15 +370,24 @@ export async function handleStockAlertSSE(
 ): Promise<Response> {
   const encoder = new TextEncoder()
   let intervalId: ReturnType<typeof setInterval> | undefined
+  let pingIntervalId: ReturnType<typeof setInterval> | undefined
 
   const stream = new ReadableStream({
     async start(controller) {
+
+      // 연결 즉시 keep-alive ping 전송 (idle timeout 방지)
+      controller.enqueue(encoder.encode(': ping\n\n'))
+
+      // 15초마다 별도 keep-alive ping (60초 데이터 인터벌 사이 연결 유지)
+      pingIntervalId = setInterval(() => {
+        controller.enqueue(encoder.encode(': ping\n\n'))
+      }, 15000)
 
       // 재고 부족 상품 체크 (60초마다)
       intervalId = setInterval(async () => {
         try {
           const lowStockProducts = await env.DB.prepare(`
-            SELECT 
+            SELECT
               id,
               name,
               stock,
@@ -388,19 +406,19 @@ export async function handleStockAlertSSE(
             }
             const data = JSON.stringify(message)
             controller.enqueue(encoder.encode(`data: ${data}\n\n`))
-          } else {
-            // Keep-alive
-            controller.enqueue(encoder.encode(': ping\n\n'))
           }
         } catch (error) {
           console.error('[SSE Stock] Polling failed:', error)
         }
       }, 60000) // 60초
     },
-    
+
     cancel() {
       if (intervalId) {
         clearInterval(intervalId)
+      }
+      if (pingIntervalId) {
+        clearInterval(pingIntervalId)
       }
     }
   })
