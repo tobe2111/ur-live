@@ -83,6 +83,32 @@ async function requireAgency(c: any, next: any) {
   return next()
 }
 
+// ── POST /register (공개) ─────────────────────────────────────
+app.post('/register', cors(), async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { name, contact_name, email, password, phone } = await c.req.json<{
+    name: string; contact_name: string; email: string; password: string; phone?: string
+  }>()
+
+  if (!name || !contact_name || !email || !password) {
+    return c.json({ success: false, error: '에이전시명, 담당자명, 이메일, 비밀번호는 필수입니다.' }, 400)
+  }
+  if (password.length < 8) {
+    return c.json({ success: false, error: '비밀번호는 8자 이상이어야 합니다.' }, 400)
+  }
+
+  const existing = await c.env.DB.prepare('SELECT id FROM agencies WHERE email = ?').bind(email).first()
+  if (existing) return c.json({ success: false, error: '이미 사용 중인 이메일입니다.' }, 409)
+
+  const hash = await hashPassword(password)
+  await c.env.DB.prepare(`
+    INSERT INTO agencies (name, contact_name, email, password_hash, phone, status)
+    VALUES (?, ?, ?, ?, ?, 'pending')
+  `).bind(name, contact_name, email, hash, phone || null).run()
+
+  return c.json({ success: true, message: '가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.' }, 201)
+})
+
 // ── POST /login ───────────────────────────────────────────────
 app.post('/login', cors(), async (c) => {
   await ensureAgencyTables(c.env.DB)
@@ -94,9 +120,11 @@ app.post('/login', cors(), async (c) => {
   ).bind(email).first<{ id: number; name: string; contact_name: string; email: string; password_hash: string; status: string }>()
 
   if (!agency) return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401)
+  if (agency.status === 'pending') return c.json({ success: false, error: '관리자 승인 대기 중입니다. 승인 후 로그인이 가능합니다.' }, 403)
+  if (agency.status === 'rejected') return c.json({ success: false, error: '가입이 거절된 계정입니다. 관리자에게 문의해주세요.' }, 403)
   if (agency.status !== 'active') return c.json({ success: false, error: '비활성화된 계정입니다.' }, 403)
 
-  const valid = await verifyPassword(password, agency.password_hash)
+  const { valid } = await verifyPassword(password, agency.password_hash)
   if (!valid) return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401)
 
   const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email)

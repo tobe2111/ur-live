@@ -115,6 +115,7 @@ const AgencySellersPage = lazy(() => import('./pages/AgencySellersPage'))
 const AgencyOrdersPage = lazy(() => import('./pages/AgencyOrdersPage'))
 const AgencyStreamsPage = lazy(() => import('./pages/AgencyStreamsPage'))
 const AgencyStatsPage = lazy(() => import('./pages/AgencyStatsPage'))
+const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
@@ -579,6 +580,7 @@ function AppContent() {
 
             {/* Agency 대시보드 */}
             <Route path="/agency/login" element={<AgencyLoginPage />} />
+            <Route path="/agency/register" element={<AgencyRegisterPage />} />
             <Route path="/agency" element={<AgencyPage />} />
             <Route path="/agency/sellers" element={<AgencySellersPage />} />
             <Route path="/agency/orders" element={<AgencyOrdersPage />} />
