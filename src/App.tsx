@@ -115,6 +115,10 @@ const AgencySellersPage = lazy(() => import('./pages/AgencySellersPage'))
 const AgencyOrdersPage = lazy(() => import('./pages/AgencyOrdersPage'))
 const AgencyStreamsPage = lazy(() => import('./pages/AgencyStreamsPage'))
 const AgencyStatsPage = lazy(() => import('./pages/AgencyStatsPage'))
+const AgencySettlementsPage = lazy(() => import('./pages/AgencySettlementsPage'))
+const AgencyRankingPage = lazy(() => import('./pages/AgencyRankingPage'))
+const AgencySchedulePage = lazy(() => import('./pages/AgencySchedulePage'))
+const AgencyReturnsPage = lazy(() => import('./pages/AgencyReturnsPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
@@ -586,6 +590,10 @@ function AppContent() {
             <Route path="/agency/orders" element={<AgencyOrdersPage />} />
             <Route path="/agency/streams" element={<AgencyStreamsPage />} />
             <Route path="/agency/stats" element={<AgencyStatsPage />} />
+            <Route path="/agency/settlements" element={<AgencySettlementsPage />} />
+            <Route path="/agency/ranking" element={<AgencyRankingPage />} />
+            <Route path="/agency/schedule" element={<AgencySchedulePage />} />
+            <Route path="/agency/returns" element={<AgencyReturnsPage />} />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<CartPage />} />

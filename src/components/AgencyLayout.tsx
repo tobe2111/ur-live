@@ -18,12 +18,16 @@ const NAV_GROUPS = [
       { path: '/agency/sellers', label: '셀러 관리',  icon: Users, exact: false },
       { path: '/agency/orders',  label: '주문 현황',  icon: ShoppingBag, exact: false },
       { path: '/agency/streams', label: '라이브 현황', icon: Play, exact: false },
+      { path: '/agency/schedule', label: '방송 스케줄', icon: Play, exact: false },
+      { path: '/agency/returns', label: '반품/CS', icon: ShoppingBag, exact: false },
     ],
   },
   {
     label: '분석',
     items: [
       { path: '/agency/stats', label: '통계 분석', icon: BarChart2, exact: false },
+      { path: '/agency/ranking', label: '셀러 랭킹', icon: BarChart2, exact: false },
+      { path: '/agency/settlements', label: '정산 관리', icon: BarChart2, exact: false },
     ],
   },
 ]

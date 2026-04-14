@@ -355,4 +355,169 @@ app.get('/streams', async (c) => {
   return c.json({ success: true, data: streams.results })
 })
 
+// ── GET /settlements — 소속 셀러 정산 통합 ──────────────────────
+app.get('/settlements', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT o.id, o.order_number, o.total_amount, o.seller_id,
+             s.name AS seller_name, s.business_name,
+             COALESCE(s.commission_rate, 5) AS commission_rate,
+             COALESCE(o.settlement_status, 'pending') AS settlement_status,
+             o.created_at
+      FROM orders o
+      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+      LEFT JOIN sellers s ON s.id = o.seller_id
+      WHERE ag.agency_id = ? AND o.status IN ('delivered', 'DONE')
+      ORDER BY o.created_at DESC LIMIT 100
+    `).bind(agencyId).all()
+
+    const summary = {
+      total: results?.length || 0,
+      pending: results?.filter((r: any) => r.settlement_status === 'pending').length || 0,
+      confirmed: results?.filter((r: any) => r.settlement_status === 'confirmed').length || 0,
+      completed: results?.filter((r: any) => r.settlement_status === 'completed').length || 0,
+      total_amount: results?.reduce((s: number, r: any) => s + (r.total_amount || 0), 0) || 0,
+    }
+
+    return c.json({ success: true, data: results, summary })
+  } catch (err: any) {
+    return c.json({ success: true, data: [], summary: { total: 0, pending: 0, confirmed: 0, completed: 0, total_amount: 0 } })
+  }
+})
+
+// ── GET /sellers/:id/products — 셀러 상품 조회 (대행 관리) ─────────
+app.get('/sellers/:id/products', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+  const sellerId = Number(c.req.param('id'))
+
+  const belongs = await c.env.DB.prepare(
+    'SELECT id FROM agency_sellers WHERE agency_id = ? AND seller_id = ?'
+  ).bind(agencyId, sellerId).first()
+  if (!belongs) return c.json({ success: false, error: '접근 권한이 없습니다.' }, 403)
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT id, name, price, original_price, stock, image_url, category, is_active, sold_count, created_at
+    FROM products WHERE seller_id = ? ORDER BY created_at DESC
+  `).bind(sellerId).all()
+
+  return c.json({ success: true, data: results })
+})
+
+// ── GET /sellers/:id/inventory — 셀러 재고 현황 ──────────────────
+app.get('/sellers/:id/inventory', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+  const sellerId = Number(c.req.param('id'))
+
+  const belongs = await c.env.DB.prepare(
+    'SELECT id FROM agency_sellers WHERE agency_id = ? AND seller_id = ?'
+  ).bind(agencyId, sellerId).first()
+  if (!belongs) return c.json({ success: false, error: '접근 권한이 없습니다.' }, 403)
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT id, name, COALESCE(stock, stock_quantity, 0) AS stock, price, image_url, is_active
+    FROM products WHERE seller_id = ? AND is_active = 1
+    ORDER BY stock ASC
+  `).bind(sellerId).all()
+
+  return c.json({ success: true, data: results })
+})
+
+// ── GET /ranking — 셀러 성과 랭킹 ───────────────────────────────
+app.get('/ranking', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+  const metric = c.req.query('metric') || 'revenue' // revenue, orders, reviews, followers
+
+  try {
+    let orderBy = 'total_revenue DESC'
+    if (metric === 'orders') orderBy = 'total_orders DESC'
+
+    const { results } = await c.env.DB.prepare(`
+      SELECT s.id, s.name, s.business_name, s.profile_image,
+        (SELECT COUNT(*) FROM orders o WHERE o.seller_id = s.id AND o.payment_status = 'approved') AS total_orders,
+        (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.seller_id = s.id AND o.payment_status = 'approved') AS total_revenue,
+        (SELECT COUNT(*) FROM product_reviews r JOIN products p ON r.product_id = p.id WHERE p.seller_id = s.id) AS total_reviews,
+        (SELECT COUNT(*) FROM seller_follows f WHERE f.seller_id = s.id) AS total_followers,
+        (SELECT COALESCE(AVG(r.rating), 0) FROM product_reviews r JOIN products p ON r.product_id = p.id WHERE p.seller_id = s.id) AS avg_rating
+      FROM sellers s
+      INNER JOIN agency_sellers ag ON ag.seller_id = s.id
+      WHERE ag.agency_id = ?
+      ORDER BY ${orderBy}
+    `).bind(agencyId).all()
+
+    return c.json({ success: true, data: results })
+  } catch {
+    return c.json({ success: true, data: [] })
+  }
+})
+
+// ── GET /schedule — 소속 셀러 방송 스케줄 캘린더 ──────────────────
+app.get('/schedule', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT ls.id, ls.title, ls.status, ls.scheduled_at, ls.youtube_video_id,
+             ls.seller_id, s.name AS seller_name
+      FROM live_streams ls
+      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
+      LEFT JOIN sellers s ON s.id = ls.seller_id
+      WHERE ag.agency_id = ? AND ls.status IN ('scheduled', 'live')
+      ORDER BY ls.scheduled_at ASC
+    `).bind(agencyId).all()
+
+    return c.json({ success: true, data: results })
+  } catch {
+    return c.json({ success: true, data: [] })
+  }
+})
+
+// ── GET /returns — 소속 셀러 반품/CS 통합 ────────────────────────
+app.get('/returns', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT r.id, r.order_number, r.status, r.reason, r.refund_amount,
+             r.seller_id, s.name AS seller_name, r.created_at
+      FROM returns r
+      INNER JOIN agency_sellers ag ON ag.seller_id = r.seller_id
+      LEFT JOIN sellers s ON s.id = r.seller_id
+      WHERE ag.agency_id = ?
+      ORDER BY r.created_at DESC LIMIT 50
+    `).bind(agencyId).all()
+
+    return c.json({ success: true, data: results })
+  } catch {
+    return c.json({ success: true, data: [] })
+  }
+})
+
+// ── PUT /profile — 에이전시 프로필 수정 ──────────────────────────
+app.put('/profile', async (c) => {
+  const { id } = c.get('agency') as { id: number }
+  const body = await c.req.json<{ name?: string; contact_name?: string; phone?: string }>()
+
+  const updates: string[] = []
+  const params: unknown[] = []
+  if (body.name) { updates.push('name = ?'); params.push(body.name) }
+  if (body.contact_name) { updates.push('contact_name = ?'); params.push(body.contact_name) }
+  if (body.phone) { updates.push('phone = ?'); params.push(body.phone) }
+
+  if (updates.length > 0) {
+    updates.push("updated_at = datetime('now')")
+    params.push(id)
+    await c.env.DB.prepare(`UPDATE agencies SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run()
+  }
+
+  return c.json({ success: true })
+})
+
 export { app as agencyRoutes }
