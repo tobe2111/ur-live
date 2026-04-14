@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle, Share2, ShoppingBag, ChevronLeft, Volume2, VolumeX, Play } from 'lucide-react'
+import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
@@ -181,6 +182,7 @@ export default function ShortsPage() {
 
   return (
     <div className="fixed inset-0 bg-black">
+      <SEO title="쇼츠 - 유어딜" description="유어딜 쇼츠에서 인기 상품 숏폼 영상을 감상하세요." url="/shorts" />
       {/* 상단 헤더 */}
       <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-safe pb-2">
         <button onClick={() => navigate(-1)} className="p-2">

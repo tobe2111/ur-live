@@ -1,11 +1,13 @@
 import { ArrowLeft, Package, Truck, RefreshCw, CreditCard, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 
 export default function RefundPolicyPage() {
   const navigate = useNavigate()
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO title="환불정책 - 유어딜" description="유어딜 환불 및 반품 정책을 안내합니다." url="/refund-policy" />
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-5 py-4 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-gray-900">

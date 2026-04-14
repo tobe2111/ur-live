@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowLeft, ChevronDown, ChevronUp, Search, MessageCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 
 interface FAQ {
   id: number
@@ -90,6 +91,7 @@ export default function FAQPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO title="자주 묻는 질문 - 유어딜" description="유어딜 이용에 대한 자주 묻는 질문과 답변을 확인하세요." url="/faq" />
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3 mb-4">
