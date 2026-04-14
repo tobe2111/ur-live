@@ -319,4 +319,70 @@ kakaoSocialRoutes.post('/test/calendar', async (c) => {
   }
 });
 
+// ── POST /test/friends — 친구 목록 조회 테스트 (서버 경유) ──
+kakaoSocialRoutes.post('/test/friends', async (c) => {
+  const { access_token } = await c.req.json<{ access_token: string }>();
+  if (!access_token) return c.json({ success: false, error: '토큰 필요' }, 400);
+
+  try {
+    const res = await fetch('https://kapi.kakao.com/v1/api/talk/friends', {
+      headers: { 'Authorization': `Bearer ${access_token}` },
+    });
+    const data: any = await res.json();
+
+    if (data.elements) {
+      return c.json({ success: true, count: data.elements.length, friends: data.elements.slice(0, 5) });
+    }
+    return c.json({ success: false, error: data.msg || JSON.stringify(data) });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+// ── POST /test/friend-message — 친구에게 메시지 전송 테스트 (서버 경유) ──
+kakaoSocialRoutes.post('/test/friend-message', async (c) => {
+  const { access_token } = await c.req.json<{ access_token: string }>();
+  if (!access_token) return c.json({ success: false, error: '토큰 필요' }, 400);
+
+  try {
+    // 1. 친구 목록 조회
+    const friendsRes = await fetch('https://kapi.kakao.com/v1/api/talk/friends', {
+      headers: { 'Authorization': `Bearer ${access_token}` },
+    });
+    const friendsData: any = await friendsRes.json();
+
+    if (!friendsData.elements || friendsData.elements.length === 0) {
+      return c.json({ success: false, error: '친구가 없습니다 (앱에 가입한 친구가 필요합니다)' });
+    }
+
+    const friend = friendsData.elements[0];
+
+    // 2. 친구에게 메시지 전송
+    const templateObject = JSON.stringify({
+      object_type: 'feed',
+      content: {
+        title: '🔴 유어딜 라이브 커머스',
+        description: '친구에게 보내는 테스트 메시지입니다.',
+        image_url: 'https://live.ur-team.com/og-image.png',
+        link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' },
+      },
+      buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' } }],
+    });
+
+    const msgRes = await fetch('https://kapi.kakao.com/v1/api/talk/friends/message/default/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `receiver_uuids=${encodeURIComponent(JSON.stringify([friend.uuid]))}&template_object=${encodeURIComponent(templateObject)}`,
+    });
+    const msgData: any = await msgRes.json();
+
+    if (msgData.successful_receiver_uuids && msgData.successful_receiver_uuids.length > 0) {
+      return c.json({ success: true, detail: `${friend.profile_nickname}님에게 메시지 전송 성공!` });
+    }
+    return c.json({ success: false, error: msgData.msg || JSON.stringify(msgData) });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
 export { kakaoSocialRoutes };

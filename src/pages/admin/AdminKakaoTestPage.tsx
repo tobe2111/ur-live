@@ -76,7 +76,57 @@ export default function AdminKakaoTestPage() {
   async function runAllTests() {
     setResults([])
     await testMessage()
+    await testFriendList()
+    await testFriendMessage()
     await testCalendar()
+  }
+
+  // Step 4: 친구 목록 가져오기
+  async function testFriendList() {
+    if (!accessToken) { toast.error('먼저 토큰을 입력해주세요'); return }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/kakao-social/test/friends', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: accessToken }),
+      })
+      const data: any = await res.json()
+
+      if (data.success) {
+        setResults(prev => [...prev, { step: '친구 목록 조회', success: true, detail: `친구 ${data.count}명 조회 성공!` }])
+        toast.success(`친구 ${data.count}명 조회!`)
+      } else {
+        setResults(prev => [...prev, { step: '친구 목록 조회', success: false, detail: data.error || JSON.stringify(data) }])
+        toast.error(`실패: ${data.error}`)
+      }
+    } catch (err: any) {
+      setResults(prev => [...prev, { step: '친구 목록 조회', success: false, detail: err.message }])
+    } finally { setLoading(false) }
+  }
+
+  // Step 5: 친구에게 메시지 전송
+  async function testFriendMessage() {
+    if (!accessToken) { toast.error('먼저 토큰을 입력해주세요'); return }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/kakao-social/test/friend-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: accessToken }),
+      })
+      const data: any = await res.json()
+
+      if (data.success) {
+        setResults(prev => [...prev, { step: '친구에게 메시지', success: true, detail: data.detail || '친구에게 메시지 전송 성공!' }])
+        toast.success('친구 메시지 전송 성공!')
+      } else {
+        setResults(prev => [...prev, { step: '친구에게 메시지', success: false, detail: data.error || JSON.stringify(data) }])
+        toast.error(`실패: ${data.error}`)
+      }
+    } catch (err: any) {
+      setResults(prev => [...prev, { step: '친구에게 메시지', success: false, detail: err.message }])
+    } finally { setLoading(false) }
   }
 
   return (
@@ -167,10 +217,42 @@ export default function AdminKakaoTestPage() {
           </button>
         </div>
 
-        {/* Step 3: 캘린더 테스트 */}
+        {/* Step 3: 친구 목록 테스트 */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold flex items-center justify-center">3</span>
+            <span className="w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center">3</span>
+            <h2 className="text-sm font-bold text-gray-900">친구 목록 조회</h2>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">카카오톡 서비스 내 친구 목록을 가져옵니다.</p>
+          <button
+            onClick={testFriendList}
+            disabled={!accessToken || loading}
+            className="w-full py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold disabled:opacity-40 active:scale-[0.97]"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '친구 목록 조회'}
+          </button>
+        </div>
+
+        {/* Step 4: 친구에게 메시지 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">4</span>
+            <h2 className="text-sm font-bold text-gray-900">친구에게 메시지 전송</h2>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">친구 목록에서 첫 번째 친구에게 테스트 메시지를 보냅니다.</p>
+          <button
+            onClick={testFriendMessage}
+            disabled={!accessToken || loading}
+            className="w-full py-2.5 bg-orange-600 text-white rounded-xl text-sm font-bold disabled:opacity-40 active:scale-[0.97]"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '친구에게 메시지 전송'}
+          </button>
+        </div>
+
+        {/* Step 5: 캘린더 테스트 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold flex items-center justify-center">5</span>
             <h2 className="text-sm font-bold text-gray-900">카카오 캘린더 테스트</h2>
           </div>
           <p className="text-xs text-gray-500 mb-3">캘린더에 일정 생성/조회/삭제를 테스트합니다.</p>
@@ -189,7 +271,7 @@ export default function AdminKakaoTestPage() {
           disabled={!accessToken || loading}
           className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-bold text-sm mb-6 disabled:opacity-40 active:scale-[0.97]"
         >
-          🚀 전체 테스트 실행 (메시지 + 캘린더)
+          🚀 전체 테스트 실행 (5단계)
         </button>
 
         {/* 결과 */}
