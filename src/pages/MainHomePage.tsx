@@ -6,6 +6,7 @@ import axios from 'axios'
 import HeroBanner from '@/components/main/HeroBanner'
 import SiteFooter from '@/components/main/SiteFooter'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
+import PushNotificationBanner from '@/components/PushNotificationBanner'
 import SEO, { organizationJsonLd } from '@/components/SEO'
 
 // ── Types ──
@@ -609,6 +610,7 @@ export default function MainHomePage() {
       )}
 
       <SiteFooter />
+      <PushNotificationBanner />
     </div>
   )
 }
