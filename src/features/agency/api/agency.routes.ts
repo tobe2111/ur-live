@@ -581,4 +581,123 @@ app.put('/notifications/read-all', async (c) => {
   return c.json({ success: true })
 })
 
+// ── POST /sellers/:id/products — 셀러 대신 상품 등록 ──────────────
+app.post('/sellers/:id/products', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+  const sellerId = Number(c.req.param('id'))
+
+  const belongs = await c.env.DB.prepare('SELECT id FROM agency_sellers WHERE agency_id = ? AND seller_id = ?')
+    .bind(agencyId, sellerId).first()
+  if (!belongs) return c.json({ success: false, error: '소속 셀러가 아닙니다.' }, 403)
+
+  const body = await c.req.json<{
+    name: string; description?: string; price: number; original_price?: number;
+    stock?: number; image_url?: string; category?: string;
+  }>()
+
+  if (!body.name || !body.price) return c.json({ success: false, error: '상품명과 가격은 필수입니다.' }, 400)
+
+  const result = await c.env.DB.prepare(`
+    INSERT INTO products (seller_id, name, description, price, original_price, stock, image_url, category, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+  `).bind(sellerId, body.name, body.description || null, body.price, body.original_price || body.price,
+    body.stock || 100, body.image_url || null, body.category || 'general').run()
+
+  return c.json({ success: true, data: { id: result.meta.last_row_id } }, 201)
+})
+
+// ── PUT /sellers/:id/products/:productId — 셀러 대신 상품 수정 ────
+app.put('/sellers/:id/products/:productId', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+  const sellerId = Number(c.req.param('id'))
+  const productId = Number(c.req.param('productId'))
+
+  const belongs = await c.env.DB.prepare('SELECT id FROM agency_sellers WHERE agency_id = ? AND seller_id = ?')
+    .bind(agencyId, sellerId).first()
+  if (!belongs) return c.json({ success: false, error: '소속 셀러가 아닙니다.' }, 403)
+
+  const product = await c.env.DB.prepare('SELECT id FROM products WHERE id = ? AND seller_id = ?')
+    .bind(productId, sellerId).first()
+  if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다.' }, 404)
+
+  const body = await c.req.json<{
+    name?: string; description?: string; price?: number; original_price?: number;
+    stock?: number; image_url?: string; is_active?: boolean;
+  }>()
+
+  const updates: string[] = ["updated_at = datetime('now')"]
+  const params: unknown[] = []
+  if (body.name) { updates.push('name = ?'); params.push(body.name) }
+  if (body.description !== undefined) { updates.push('description = ?'); params.push(body.description) }
+  if (body.price) { updates.push('price = ?'); params.push(body.price) }
+  if (body.original_price) { updates.push('original_price = ?'); params.push(body.original_price) }
+  if (body.stock !== undefined) { updates.push('stock = ?'); params.push(body.stock) }
+  if (body.image_url !== undefined) { updates.push('image_url = ?'); params.push(body.image_url) }
+  if (body.is_active !== undefined) { updates.push('is_active = ?'); params.push(body.is_active ? 1 : 0) }
+
+  params.push(productId)
+  await c.env.DB.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run()
+
+  return c.json({ success: true })
+})
+
+// ── POST /sellers/:id/streams — 셀러 대신 방송 예약 ───────────────
+app.post('/sellers/:id/streams', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+  const sellerId = Number(c.req.param('id'))
+
+  const belongs = await c.env.DB.prepare('SELECT id FROM agency_sellers WHERE agency_id = ? AND seller_id = ?')
+    .bind(agencyId, sellerId).first()
+  if (!belongs) return c.json({ success: false, error: '소속 셀러가 아닙니다.' }, 403)
+
+  const { title, description, scheduled_at } = await c.req.json<{
+    title: string; description?: string; scheduled_at?: string;
+  }>()
+
+  if (!title) return c.json({ success: false, error: '방송 제목은 필수입니다.' }, 400)
+
+  const result = await c.env.DB.prepare(`
+    INSERT INTO live_streams (seller_id, title, description, status, scheduled_at, created_at, updated_at)
+    VALUES (?, ?, ?, 'scheduled', ?, datetime('now'), datetime('now'))
+  `).bind(sellerId, title, description || null, scheduled_at || null).run()
+
+  return c.json({ success: true, data: { id: result.meta.last_row_id } }, 201)
+})
+
+// ── POST /invite-seller — 셀러 초대 (에이전시가 셀러 계정 생성) ─────
+app.post('/invite-seller', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+
+  const { name, email, password, business_name, phone } = await c.req.json<{
+    name: string; email: string; password: string; business_name?: string; phone?: string;
+  }>()
+
+  if (!name || !email || !password) return c.json({ success: false, error: '이름, 이메일, 비밀번호는 필수입니다.' }, 400)
+
+  // 이미 존재하는 이메일 확인
+  const existing = await c.env.DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first()
+  if (existing) return c.json({ success: false, error: '이미 사용 중인 이메일입니다.' }, 409)
+
+  const { hashPassword: hashPw } = await import('@/lib/password')
+  const hash = await hashPw(password)
+
+  // 셀러 계정 생성 (승인 상태)
+  const result = await c.env.DB.prepare(`
+    INSERT INTO sellers (username, name, email, password_hash, business_name, phone, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'approved', datetime('now'), datetime('now'))
+  `).bind(email.split('@')[0], name, email, hash, business_name || null, phone || null).run()
+
+  const sellerId = result.meta.last_row_id
+
+  // 에이전시에 소속
+  await c.env.DB.prepare('INSERT OR IGNORE INTO agency_sellers (agency_id, seller_id) VALUES (?, ?)')
+    .bind(agencyId, sellerId).run()
+
+  return c.json({ success: true, data: { seller_id: sellerId }, message: `${name} 셀러가 생성되어 에이전시에 소속되었습니다.` }, 201)
+})
+
 export { app as agencyRoutes }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import {
-  LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X
+  LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X, Settings
 } from 'lucide-react'
 
 const NAV_GROUPS = [
@@ -28,6 +28,12 @@ const NAV_GROUPS = [
       { path: '/agency/stats', label: '통계 분석', icon: BarChart2, exact: false },
       { path: '/agency/ranking', label: '셀러 랭킹', icon: BarChart2, exact: false },
       { path: '/agency/settlements', label: '정산 관리', icon: BarChart2, exact: false },
+    ],
+  },
+  {
+    label: '설정',
+    items: [
+      { path: '/agency/profile', label: '프로필 설정', icon: Settings, exact: false },
     ],
   },
 ]
