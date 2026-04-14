@@ -41,11 +41,15 @@ async function ensureAgencyTables(DB: D1Database) {
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       phone TEXT,
+      commission_rate REAL DEFAULT 2.0,
       status TEXT DEFAULT 'active',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run().catch(() => {})
+
+  // commission_rate 컬럼 보장
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(() => {})
 
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agency_sellers (
@@ -343,28 +347,33 @@ app.get('/streams', async (c) => {
   const { id: agencyId } = c.get('agency') as { id: number }
 
   const streams = await c.env.DB.prepare(`
-    SELECT ls.id, ls.title, ls.status, ls.viewer_count, ls.started_at, ls.seller_id,
+    SELECT ls.id, ls.title, ls.status, ls.viewer_count, ls.scheduled_at, ls.created_at, ls.seller_id,
            s.business_name AS seller_business_name, s.name AS seller_name
     FROM live_streams ls
     INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
     LEFT JOIN sellers s ON s.id = ls.seller_id
     WHERE ag.agency_id = ?
-    ORDER BY ls.started_at DESC LIMIT 50
+    ORDER BY ls.created_at DESC LIMIT 50
   `).bind(agencyId).all()
 
   return c.json({ success: true, data: streams.results })
 })
 
-// ── GET /settlements — 소속 셀러 정산 통합 ──────────────────────
+// ── GET /settlements — 소속 셀러 정산 통합 (에이전시 수수료 포함) ──
 app.get('/settlements', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
 
   try {
+    // 에이전시 수수료율 조회
+    const agency = await c.env.DB.prepare('SELECT commission_rate FROM agencies WHERE id = ?')
+      .bind(agencyId).first<{ commission_rate: number }>()
+    const agencyRate = agency?.commission_rate ?? 2.0
+
     const { results } = await c.env.DB.prepare(`
       SELECT o.id, o.order_number, o.total_amount, o.seller_id,
              s.name AS seller_name, s.business_name,
-             COALESCE(s.commission_rate, 5) AS commission_rate,
+             COALESCE(s.commission_rate, 5) AS seller_commission_rate,
              COALESCE(o.settlement_status, 'pending') AS settlement_status,
              o.created_at
       FROM orders o
@@ -374,17 +383,30 @@ app.get('/settlements', async (c) => {
       ORDER BY o.created_at DESC LIMIT 100
     `).bind(agencyId).all()
 
+    // 에이전시 수수료 계산
+    const enriched = (results || []).map((r: any) => ({
+      ...r,
+      agency_commission_rate: agencyRate,
+      total_commission_rate: (r.seller_commission_rate || 5) + agencyRate,
+      agency_commission: Math.round((r.total_amount || 0) * agencyRate / 100),
+      seller_amount: Math.round((r.total_amount || 0) * (100 - (r.seller_commission_rate || 5) - agencyRate) / 100),
+    }))
+
+    const totalAgencyCommission = enriched.reduce((s: number, r: any) => s + (r.agency_commission || 0), 0)
+
     const summary = {
-      total: results?.length || 0,
-      pending: results?.filter((r: any) => r.settlement_status === 'pending').length || 0,
-      confirmed: results?.filter((r: any) => r.settlement_status === 'confirmed').length || 0,
-      completed: results?.filter((r: any) => r.settlement_status === 'completed').length || 0,
-      total_amount: results?.reduce((s: number, r: any) => s + (r.total_amount || 0), 0) || 0,
+      total: enriched.length,
+      pending: enriched.filter((r: any) => r.settlement_status === 'pending').length,
+      confirmed: enriched.filter((r: any) => r.settlement_status === 'confirmed').length,
+      completed: enriched.filter((r: any) => r.settlement_status === 'completed').length,
+      total_amount: enriched.reduce((s: number, r: any) => s + (r.total_amount || 0), 0),
+      agency_commission_rate: agencyRate,
+      total_agency_commission: totalAgencyCommission,
     }
 
-    return c.json({ success: true, data: results, summary })
-  } catch (err: any) {
-    return c.json({ success: true, data: [], summary: { total: 0, pending: 0, confirmed: 0, completed: 0, total_amount: 0 } })
+    return c.json({ success: true, data: enriched, summary })
+  } catch {
+    return c.json({ success: true, data: [], summary: { total: 0, pending: 0, confirmed: 0, completed: 0, total_amount: 0, agency_commission_rate: 2, total_agency_commission: 0 } })
   }
 })
 
@@ -517,6 +539,45 @@ app.put('/profile', async (c) => {
     await c.env.DB.prepare(`UPDATE agencies SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run()
   }
 
+  return c.json({ success: true })
+})
+
+// ── GET /notifications — 에이전시 알림 ────────────────────────────
+app.get('/notifications', async (c) => {
+  const { id: agencyId } = c.get('agency') as { id: number }
+
+  try {
+    await c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS agency_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agency_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run().catch(() => {})
+
+    const { results } = await c.env.DB.prepare(
+      'SELECT * FROM agency_notifications WHERE agency_id = ? ORDER BY created_at DESC LIMIT 30'
+    ).bind(agencyId).all()
+
+    const unread = await c.env.DB.prepare(
+      'SELECT COUNT(*) as cnt FROM agency_notifications WHERE agency_id = ? AND is_read = 0'
+    ).bind(agencyId).first<{ cnt: number }>()
+
+    return c.json({ success: true, data: results, unread_count: unread?.cnt || 0 })
+  } catch {
+    return c.json({ success: true, data: [], unread_count: 0 })
+  }
+})
+
+// ── PUT /notifications/read-all ──────────────────────────────────
+app.put('/notifications/read-all', async (c) => {
+  const { id: agencyId } = c.get('agency') as { id: number }
+  await c.env.DB.prepare('UPDATE agency_notifications SET is_read = 1 WHERE agency_id = ?').bind(agencyId).run().catch(() => {})
   return c.json({ success: true })
 })
 

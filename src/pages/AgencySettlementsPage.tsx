@@ -34,7 +34,10 @@ export default function AgencySettlementsPage() {
             </div>
           ))}
         </div>
-        <p className="text-sm text-gray-500 mb-4">총 정산 대상 금액: {(summary.total_amount || 0).toLocaleString()}원</p>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+          <p className="text-sm font-bold text-blue-800">에이전시 수수료율: {summary.agency_commission_rate || 2}%</p>
+          <p className="text-xs text-blue-600 mt-1">총 정산 대상: {(summary.total_amount || 0).toLocaleString()}원 · 에이전시 수수료: {(summary.total_agency_commission || 0).toLocaleString()}원</p>
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>

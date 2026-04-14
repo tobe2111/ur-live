@@ -47,6 +47,7 @@ app.get('/', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const rows = await c.env.DB.prepare(`
     SELECT a.id, a.name, a.contact_name, a.email, a.phone, a.status, a.created_at,
+           COALESCE(a.commission_rate, 2.0) AS commission_rate,
            COUNT(ag.seller_id) AS seller_count
     FROM agencies a
     LEFT JOIN agency_sellers ag ON ag.agency_id = a.id
@@ -82,8 +83,8 @@ app.post('/', async (c) => {
 app.patch('/:id', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const id = Number(c.req.param('id'))
-  const { name, contact_name, phone, status, password } = await c.req.json<{
-    name?: string; contact_name?: string; phone?: string; status?: string; password?: string
+  const { name, contact_name, phone, status, password, commission_rate } = await c.req.json<{
+    name?: string; contact_name?: string; phone?: string; status?: string; password?: string; commission_rate?: number
   }>()
 
   const existing = await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(id).first()
@@ -96,15 +97,19 @@ app.patch('/:id', async (c) => {
     ).bind(hash, id).run()
   }
 
+  // commission_rate 컬럼 보장
+  await c.env.DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(() => {})
+
   await c.env.DB.prepare(`
     UPDATE agencies SET
       name = COALESCE(?, name),
       contact_name = COALESCE(?, contact_name),
       phone = COALESCE(?, phone),
       status = COALESCE(?, status),
+      commission_rate = COALESCE(?, commission_rate),
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).bind(name ?? null, contact_name ?? null, phone ?? null, status ?? null, id).run()
+  `).bind(name ?? null, contact_name ?? null, phone ?? null, status ?? null, commission_rate ?? null, id).run()
 
   return c.json({ success: true })
 })

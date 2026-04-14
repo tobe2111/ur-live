@@ -86,6 +86,17 @@ export async function notifyFollowers(DB: D1Database, sellerId: number, type: st
   } catch {}
 }
 
+// ─── 에이전시 알림 ───────────────────────────────────────────────
+export async function notifyAgencyForSeller(DB: D1Database, sellerId: number, type: string, title: string, message?: string, link?: string) {
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS agency_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run().catch(() => {})
+    const agency = await DB.prepare('SELECT agency_id FROM agency_sellers WHERE seller_id = ?').bind(sellerId).first<{ agency_id: number }>()
+    if (!agency) return
+    await DB.prepare('INSERT INTO agency_notifications (agency_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)')
+      .bind(agency.agency_id, type, title, message ?? null, link ?? null).run()
+  } catch {}
+}
+
 // ─── 카카오톡 메시지 (소비자, 구독자 대상, 시스템 자동) ─────────────────
 // 방송 시작 시 kakao_access_token 보유 구독자에게 무료 메시지 발송
 // ※ 본앱 talk_message 권한 승인 + IP 문제 해결 후 동작
