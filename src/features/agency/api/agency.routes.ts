@@ -28,7 +28,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants'
 type AgencyVars = { agency: { id: number; email: string } }
 type AgencyCtx = Context<{ Bindings: Env; Variables: AgencyVars }>
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
 
 // ── 테이블 자동 생성 ──────────────────────────────────────────
@@ -68,7 +68,7 @@ async function signAgencyToken(secret: string, agencyId: number, email: string) 
 
 async function verifyAgencyToken(secret: string, token: string): Promise<{ id: number; email: string } | null> {
   try {
-    const payload = await verify(token, secret) as Record<string, unknown>
+    const payload = await verify(token, secret, 'HS256') as Record<string, unknown>
     if (payload.type !== 'agency' || !payload.sub) return null
     return { id: Number(payload.sub), email: String(payload.email) }
   } catch {

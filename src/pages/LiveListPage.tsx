@@ -27,7 +27,7 @@ export default function LiveListPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'all' | 'live' | 'scheduled' | 'replay'>('all')
 
-  useEffect(() => { document.title = 'Live - YourDeal' }, [])
+  useEffect(() => { document.title = '라이브 - 유어딜' }, [])
 
   useEffect(() => {
     Promise.allSettled([
@@ -49,7 +49,7 @@ export default function LiveListPage() {
 
   return (
     <div className="min-h-screen bg-[#020202]">
-      <SEO title="Live" description="Yourdeal live streams and replays" url="/live" />
+      <SEO title="라이브" description="유어딜 라이브 방송과 다시보기" url="/live" />
 
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur-md border-b border-[#1A1A1A]">
@@ -57,7 +57,7 @@ export default function LiveListPage() {
           <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-white/10">
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
-          <h1 className="text-[17px] font-bold text-white">Live</h1>
+          <h1 className="text-[17px] font-bold text-white">라이브</h1>
           <button onClick={() => navigate('/notifications')} className="p-1.5 rounded-full hover:bg-white/10">
             <Bell className="w-5 h-5 text-gray-400" />
           </button>
@@ -66,10 +66,10 @@ export default function LiveListPage() {
         {/* Tabs */}
         <div className="flex gap-2 px-4 pb-3">
           {[
-            { key: 'all' as const, label: 'All', count: totalCount },
-            { key: 'live' as const, label: 'Live', count: liveStreams.length },
-            { key: 'scheduled' as const, label: 'Coming', count: scheduledStreams.length },
-            { key: 'replay' as const, label: 'Replay', count: endedStreams.length },
+            { key: 'all' as const, label: '전체', count: totalCount },
+            { key: 'live' as const, label: '실시간', count: liveStreams.length },
+            { key: 'scheduled' as const, label: '예정', count: scheduledStreams.length },
+            { key: 'replay' as const, label: '다시보기', count: endedStreams.length },
           ].map(t => (
             <button
               key={t.key}
@@ -96,8 +96,8 @@ export default function LiveListPage() {
           <div className="w-16 h-16 rounded-full bg-[#121212] flex items-center justify-center mb-4">
             <Radio className="w-7 h-7 text-gray-600" />
           </div>
-          <p className="text-base font-bold text-white mb-1">No live right now</p>
-          <p className="text-sm text-gray-500">Check back soon</p>
+          <p className="text-base font-bold text-white mb-1">진행 중인 라이브가 없습니다</p>
+          <p className="text-sm text-gray-500">곧 새로운 라이브가 시작됩니다</p>
         </div>
       ) : (
         <div className="px-4 py-4 space-y-6 pb-24">
@@ -107,7 +107,7 @@ export default function LiveListPage() {
             <section>
               <div className="flex items-center gap-2 mb-3">
                 <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
-                <h2 className="text-sm font-bold text-white">NOW</h2>
+                <h2 className="text-sm font-bold text-white">지금 방송 중</h2>
                 <span className="text-xs text-red-400 font-bold">{liveStreams.length}</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -123,7 +123,7 @@ export default function LiveListPage() {
             <section>
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="h-4 w-4 text-blue-400" />
-                <h2 className="text-sm font-bold text-white">COMING SOON</h2>
+                <h2 className="text-sm font-bold text-white">방송 예정</h2>
                 <span className="text-xs text-blue-400 font-bold">{scheduledStreams.length}</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -144,7 +144,7 @@ export default function LiveListPage() {
             <section>
               <div className="flex items-center gap-2 mb-3">
                 <Play className="h-4 w-4 text-gray-500" />
-                <h2 className="text-sm font-bold text-white">REPLAY</h2>
+                <h2 className="text-sm font-bold text-white">다시보기</h2>
                 <span className="text-xs text-gray-500 font-bold">{endedStreams.length}</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -189,13 +189,13 @@ function StreamCard({ stream, type, onClick, getThumb }: {
         )}
         {type === 'scheduled' && (
           <div className="absolute top-2 left-2 bg-blue-500 px-2 py-0.5 rounded-md">
-            <span className="text-[10px] font-bold text-white">SOON</span>
+            <span className="text-[10px] font-bold text-white">예정</span>
           </div>
         )}
         {type === 'ended' && (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur px-2 py-0.5 rounded-md">
             <Play className="h-2.5 w-2.5 text-white fill-white" />
-            <span className="text-[10px] font-bold text-white">REPLAY</span>
+            <span className="text-[10px] font-bold text-white">다시보기</span>
           </div>
         )}
 

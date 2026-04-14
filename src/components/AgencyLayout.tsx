@@ -15,15 +15,15 @@ const NAV_GROUPS = [
   {
     label: '관리',
     items: [
-      { path: '/agency/sellers', label: '셀러 관리',  icon: Users },
-      { path: '/agency/orders',  label: '주문 현황',  icon: ShoppingBag },
-      { path: '/agency/streams', label: '라이브 현황', icon: Play },
+      { path: '/agency/sellers', label: '셀러 관리',  icon: Users, exact: false },
+      { path: '/agency/orders',  label: '주문 현황',  icon: ShoppingBag, exact: false },
+      { path: '/agency/streams', label: '라이브 현황', icon: Play, exact: false },
     ],
   },
   {
     label: '분석',
     items: [
-      { path: '/agency/stats', label: '통계 분석', icon: BarChart2 },
+      { path: '/agency/stats', label: '통계 분석', icon: BarChart2, exact: false },
     ],
   },
 ]
