@@ -116,7 +116,7 @@ export default function BlogDetailPage() {
 
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
-        <div className="max-w-3xl mx-auto flex items-center justify-between px-4 py-3">
+        <div className="max-w-4xl mx-auto flex items-center justify-between px-6 py-3">
           <button onClick={() => navigate('/blog')} className="p-2 rounded-full hover:bg-gray-100">
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
@@ -128,7 +128,7 @@ export default function BlogDetailPage() {
       </div>
 
       {/* Article */}
-      <article className="max-w-3xl mx-auto px-5 py-8">
+      <article className="max-w-4xl mx-auto px-6 py-10">
         {/* 태그 */}
         {tags.length > 0 && (
           <div className="flex gap-1.5 mb-4">
