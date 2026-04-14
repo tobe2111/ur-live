@@ -2,28 +2,25 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { logout as authLogout } from '@/utils/auth'
 import { Badge } from '@/components/ui/badge'
 import MobileFooter from '@/components/MobileFooter'
 import { CartTab } from '@/components/mypage/CartTab'
 import { OrdersTab, getTrackingUrl } from '@/components/mypage/OrdersTab'
-import { ProfileTab } from '@/components/mypage/ProfileTab'
 import {
   ArrowLeft,
   Package,
   ShoppingCart,
-  User,
   X,
   AlertCircle,
   Truck,
   ChevronRight
 } from 'lucide-react'
-import { getUserIdSync, getUserNameSync, getUserEmail, isLoggedInSync, requireLogin } from '@/utils/auth'
+import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order, OrderItem } from '@/types/order'
 import type { CartItem } from '@/types/cart'
 import { formatKST } from '@/utils/date'
 
-type TabType = 'cart' | 'orders' | 'profile'
+type TabType = 'cart' | 'orders'
 
 export default function MyOrdersPage() {
   const navigate = useNavigate()
@@ -49,8 +46,6 @@ export default function MyOrdersPage() {
 
   // Check login status (통합 인증 사용)
   const userId = getUserIdSync()
-  const userName = getUserNameSync() || '게스트'
-  const userEmail = getUserEmail() || ''
 
   // ✅ BUG #25 FIX: A ref-based flag prevents concurrent loadData() calls.
   // Previously, switching tabs AND triggering handleUpdateQuantity/handleRemoveItem
@@ -201,12 +196,6 @@ export default function MyOrdersPage() {
     }
   }
 
-  function handleLogout() {
-    if (confirm('로그아웃 하시겠습니까?')) {
-      authLogout()
-      navigate('/login')
-    }
-  }
 
   return (
     <div className="bg-[#fbfbfd]">
@@ -265,22 +254,6 @@ export default function MyOrdersPage() {
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007aff]"></div>
               )}
             </button>
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`
-                flex-1 py-3 px-4 text-[15px] font-medium transition-all relative
-                ${activeTab === 'profile' 
-                  ? 'text-[#007aff]' 
-                  : 'text-[#6e6e73] hover:text-[#1d1d1f]'
-                }
-              `}
-            >
-              <User className="h-4 w-4 inline mr-2" />
-              프로필
-              {activeTab === 'profile' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007aff]"></div>
-              )}
-            </button>
           </div>
         </div>
       </div>
@@ -314,14 +287,6 @@ export default function MyOrdersPage() {
               />
             )}
             
-            {activeTab === 'profile' && (
-              <ProfileTab 
-                userName={userName}
-                userEmail={userEmail}
-                userProfileImage={null}
-                onLogout={handleLogout}
-              />
-            )}
           </>
         )}
       </main>
