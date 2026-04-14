@@ -341,23 +341,28 @@ kakaoSocialRoutes.post('/test/friends', async (c) => {
 
 // ── POST /test/friend-message — 친구에게 메시지 전송 테스트 (서버 경유) ──
 kakaoSocialRoutes.post('/test/friend-message', async (c) => {
-  const { access_token } = await c.req.json<{ access_token: string }>();
+  const { access_token, friend_uuid } = await c.req.json<{ access_token: string; friend_uuid?: string }>();
   if (!access_token) return c.json({ success: false, error: '토큰 필요' }, 400);
 
   try {
-    // 1. 친구 목록 조회
-    const friendsRes = await fetch('https://kapi.kakao.com/v1/api/talk/friends', {
-      headers: { 'Authorization': `Bearer ${access_token}` },
-    });
-    const friendsData: any = await friendsRes.json();
+    let uuid = friend_uuid;
+    let friendName = '친구';
 
-    if (!friendsData.elements || friendsData.elements.length === 0) {
-      return c.json({ success: false, error: '친구가 없습니다 (앱에 가입한 친구가 필요합니다)' });
+    if (!uuid) {
+      // friend_uuid가 없으면 친구 목록 조회
+      const friendsRes = await fetch('https://kapi.kakao.com/v1/api/talk/friends', {
+        headers: { 'Authorization': `Bearer ${access_token}` },
+      });
+      const friendsData: any = await friendsRes.json();
+
+      if (!friendsData.elements || friendsData.elements.length === 0) {
+        return c.json({ success: false, error: '친구가 없습니다 (앱에 가입한 친구가 필요합니다)' });
+      }
+      uuid = friendsData.elements[0].uuid;
+      friendName = friendsData.elements[0].profile_nickname || '친구';
     }
 
-    const friend = friendsData.elements[0];
-
-    // 2. 친구에게 메시지 전송
+    // 친구에게 메시지 전송
     const templateObject = JSON.stringify({
       object_type: 'feed',
       content: {
@@ -372,12 +377,12 @@ kakaoSocialRoutes.post('/test/friend-message', async (c) => {
     const msgRes = await fetch('https://kapi.kakao.com/v1/api/talk/friends/message/default/send', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `receiver_uuids=${encodeURIComponent(JSON.stringify([friend.uuid]))}&template_object=${encodeURIComponent(templateObject)}`,
+      body: `receiver_uuids=${encodeURIComponent(JSON.stringify([uuid]))}&template_object=${encodeURIComponent(templateObject)}`,
     });
     const msgData: any = await msgRes.json();
 
     if (msgData.successful_receiver_uuids && msgData.successful_receiver_uuids.length > 0) {
-      return c.json({ success: true, detail: `${friend.profile_nickname}님에게 메시지 전송 성공!` });
+      return c.json({ success: true, detail: `${friendName}님에게 메시지 전송 성공!` });
     }
     return c.json({ success: false, error: msgData.msg || JSON.stringify(msgData) });
   } catch (err: any) {
