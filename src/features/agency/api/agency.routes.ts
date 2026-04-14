@@ -5,12 +5,14 @@
  *
  * Auth:
  *   POST /api/agency/login
+ *   POST /api/agency/register
  *
  * Protected (requires agency JWT):
  *   GET  /api/agency/profile
  *   GET  /api/agency/sellers            - 소속 셀러 목록
  *   GET  /api/agency/sellers/:id/stats  - 특정 셀러 통계
  *   GET  /api/agency/stats              - 전체 집계 통계
+ *   GET  /api/agency/stats/batch        - 셀러별 일괄 통계
  *   GET  /api/agency/orders             - 소속 셀러 주문 목록
  *   GET  /api/agency/streams            - 소속 셀러 라이브 현황
  */
@@ -18,14 +20,18 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { sign, verify } from 'hono/jwt'
+import type { Context, Next } from 'hono'
 import { verifyPassword, hashPassword } from '@/lib/password'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 
+type AgencyVars = { agency: { id: number; email: string } }
+type AgencyCtx = Context<{ Bindings: Env; Variables: AgencyVars }>
+
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
 
-// ── 테이블 자동 생성 + 시드 ────────────────────────────────────
+// ── 테이블 자동 생성 ──────────────────────────────────────────
 async function ensureAgencyTables(DB: D1Database) {
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agencies (
@@ -49,15 +55,6 @@ async function ensureAgencyTables(DB: D1Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(agency_id, seller_id)
     )
-  `).run().catch(() => {})
-
-  // 기본 관리자 에이전시 계정 자동 생성 (없을 때만)
-  // password: 358533aa!! (PBKDF2-SHA256)
-  await DB.prepare(`
-    INSERT OR IGNORE INTO agencies (name, contact_name, email, password_hash, phone, status)
-    VALUES ('유어딜 본사', '정지원', 'tobe2111@naver.com',
-      'Hp10HtQcreH8k3VM66eVng==$vd4rPNOmPnF2evLhKdMo8nuiMNbL2xJZIL91mId6aOo=',
-      '010-0000-0000', 'active')
   `).run().catch(() => {})
 }
 
@@ -85,7 +82,7 @@ function getToken(authHeader: string | undefined) {
 }
 
 // ── 미들웨어: agency 인증 ──────────────────────────────────────
-async function requireAgency(c: any, next: any) {
+const requireAgency = async (c: AgencyCtx, next: Next) => {
   const payload = await verifyAgencyToken(c.env.JWT_SECRET, getToken(c.req.header('Authorization')) ?? '')
   if (!payload) return c.json({ success: false, error: '인증이 필요합니다.' }, 401)
   c.set('agency', payload)
@@ -145,7 +142,7 @@ app.post('/login', cors(), async (c) => {
 })
 
 // ── 이하 인증 필요 ────────────────────────────────────────────
-app.use('*', requireAgency)
+app.use('*', requireAgency as any)
 
 // ── GET /profile ──────────────────────────────────────────────
 app.get('/profile', async (c) => {
@@ -259,6 +256,48 @@ app.get('/stats', async (c) => {
       active_streams: activeStreams?.cnt ?? 0,
     },
   })
+})
+
+// ── GET /stats/batch — 셀러별 일괄 통계 (N+1 방지) ─────────────
+app.get('/stats/batch', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+
+  const period = c.req.query('period') || '30d'
+  const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
+  const since = new Date(Date.now() - days * 86400_000).toISOString()
+
+  const [orderStats, streamStats] = await Promise.all([
+    c.env.DB.prepare(`
+      SELECT
+        o.seller_id,
+        COUNT(*) AS order_count,
+        COALESCE(SUM(o.total_amount), 0) AS revenue,
+        COALESCE(SUM(o.seller_amount), 0) AS net_revenue
+      FROM orders o
+      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+      WHERE ag.agency_id = ? AND o.payment_status = 'approved' AND o.created_at >= ?
+      GROUP BY o.seller_id
+    `).bind(agencyId, since).all<{ seller_id: number; order_count: number; revenue: number; net_revenue: number }>(),
+    c.env.DB.prepare(`
+      SELECT
+        ls.seller_id,
+        COUNT(*) AS stream_count,
+        COALESCE(SUM(ls.viewer_count), 0) AS total_viewers
+      FROM live_streams ls
+      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
+      WHERE ag.agency_id = ? AND ls.created_at >= ?
+      GROUP BY ls.seller_id
+    `).bind(agencyId, since).all<{ seller_id: number; stream_count: number; total_viewers: number }>(),
+  ])
+
+  const orders: Record<number, { order_count: number; revenue: number; net_revenue: number }> = {}
+  for (const r of orderStats.results) orders[r.seller_id] = r
+
+  const streams: Record<number, { stream_count: number; total_viewers: number }> = {}
+  for (const r of streamStats.results) streams[r.seller_id] = r
+
+  return c.json({ success: true, data: { orders, streams, period } })
 })
 
 // ── GET /orders ───────────────────────────────────────────────

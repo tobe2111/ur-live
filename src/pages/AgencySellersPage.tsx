@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Search, TrendingUp, ShoppingBag, Play } from 'lucide-react'
 
 interface Seller {
@@ -52,7 +53,7 @@ export default function AgencySellersPage() {
     if (!token) { navigate('/agency/login', { replace: true }); return }
     api.get('/api/agency/sellers', { headers })
       .then(r => setSellers(r.data.data || []))
-      .catch(() => navigate('/agency/login', { replace: true }))
+      .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
       .finally(() => setLoading(false))
   }, [token])
 

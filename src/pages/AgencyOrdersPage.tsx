@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Order {
@@ -60,7 +61,7 @@ export default function AgencyOrdersPage() {
     if (filterSeller) params.set('seller_id', filterSeller)
     api.get(`/api/agency/orders?${params}`, { headers })
       .then(r => { setOrders(r.data.data || []); setTotal(r.data.meta?.total || 0) })
-      .catch(() => navigate('/agency/login', { replace: true }))
+      .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
       .finally(() => setLoading(false))
   }, [token, page, filterSeller])
 

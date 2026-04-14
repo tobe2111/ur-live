@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Play, Users, Clock, Radio } from 'lucide-react'
 
 interface Stream {
@@ -43,7 +44,7 @@ export default function AgencyStreamsPage() {
     if (!token) { navigate('/agency/login', { replace: true }); return }
     api.get('/api/agency/streams', { headers })
       .then(r => setStreams(r.data.data || []))
-      .catch(() => navigate('/agency/login', { replace: true }))
+      .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
       .finally(() => setLoading(false))
   }, [token])
 
