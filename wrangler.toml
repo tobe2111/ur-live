@@ -53,7 +53,7 @@ new_classes = ["LiveStreamDurableObject"]
 # ============================================================
 [vars]
 # ENVIRONMENT is set via Cloudflare Dashboard
-TOSS_CLIENT_KEY = "test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN"
+TOSS_CLIENT_KEY = "live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY"
 FRONTEND_URL = "http://localhost:5173"
 SCRAPER_URL = "http://localhost:3456"
 # REGION is set via Cloudflare Dashboard

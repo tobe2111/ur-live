@@ -7,7 +7,7 @@ import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { Youtube, Loader2, CheckCircle, Clock, XCircle, Users } from 'lucide-react'
 
-const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
+const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY'
 
 interface GrowthPackage {
   subscribers: number
