@@ -43,6 +43,7 @@ import { productsRoutes as featureProductsRoutes } from '../features/products/ap
 import { pushRoutes } from '../features/push/api/push.routes';
 import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
 import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes';
+import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
 import { sellerStreamsRoutes } from '../features/seller/api/seller-streams.routes';
 import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
@@ -337,6 +338,7 @@ app.route('/api/sellers', sellersRouter);
 // Feature seller management
 app.route('/api/seller', sellerManagementRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
+app.route('/api/seller/analytics', sellerAnalyticsRoutes);
 app.route('/api/seller/streams', sellerStreamsRoutes);
 
 // ============================================================
@@ -394,6 +396,9 @@ app.route('/api/banners', bannerRoutes);
 // adminApp has: CORS + IP whitelist + requireAdmin() + audit log
 // ============================================================
 adminApp.route('/agencies', adminAgencyRoutes);
+// Admin tools (chart, sellers, banners, notices, settlements, reports, settings)
+import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
+adminApp.route('/tools', adminToolsRoutes);
 adminApp.route('/', adminManagementRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/cafe24', cafe24Routes);

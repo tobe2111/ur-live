@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
   Users, ShoppingBag, DollarSign, Play,
-  TrendingUp, ArrowUpRight, CheckCircle, XCircle, Clock
+  TrendingUp, ArrowUpRight, CheckCircle, XCircle, Clock, Download, Bell
 } from 'lucide-react'
 
 interface Stats {
@@ -37,6 +37,30 @@ interface Order {
   created_at: string
   shipping_name: string
   seller_business_name: string
+}
+
+function NotificationList() {
+  const [notifs, setNotifs] = useState<any[]>([])
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  useEffect(() => {
+    api.get('/api/agency/notifications', { headers })
+      .then(r => { if (r.data.success) setNotifs((r.data.data || []).slice(0, 5)) })
+      .catch(() => {})
+  }, [])
+  if (notifs.length === 0) return <p className="text-xs text-gray-400">새로운 알림이 없습니다</p>
+  return (
+    <div className="space-y-1.5">
+      {notifs.map((n, i) => (
+        <div key={i} className="flex items-start gap-2 text-xs">
+          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 shrink-0" />
+          <div>
+            <p className="text-gray-700 font-medium">{n.title}</p>
+            <p className="text-gray-400">{new Date(n.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function StatCard({ label, value, icon: Icon, color, sub }: {
@@ -149,6 +173,32 @@ export default function AgencyPage() {
           color="bg-rose-500"
           sub="현재 방송"
         />
+      </div>
+
+      {/* Quick Actions: 리포트 다운로드 + 알림 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-bold text-gray-900">매출 리포트 다운로드</p>
+            <p className="text-xs text-gray-500 mt-0.5">셀러별 매출/수수료 CSV 파일</p>
+          </div>
+          <div className="flex gap-2">
+            {[7, 30, 90].map(d => (
+              <a key={d} href={`/api/agency/report/csv?period=${d}`}
+                onClick={e => { e.preventDefault(); window.open(`/api/agency/report/csv?period=${d}`, '_blank') }}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">
+                <Download className="w-3 h-3 inline mr-1" />{d}일
+              </a>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-gray-900">최근 알림</p>
+            <Bell className="w-4 h-4 text-gray-400" />
+          </div>
+          <NotificationList />
+        </div>
       </div>
 
       {/* Sellers + Orders */}

@@ -74,6 +74,9 @@ const SellerDonationsPage = lazy(() => import('./pages/SellerDonationsPage'))
 const SellerShortsPage = lazy(() => import('./pages/SellerShortsPage'))
 const SellerLiveBroadcastPage = lazy(() => import('./pages/SellerLiveBroadcastPage'))
 const SellerLiveAnalyticsPage = lazy(() => import('./pages/SellerLiveAnalyticsPage'))
+const SellerAnalyticsPage = lazy(() => import('./pages/SellerAnalyticsPage'))
+const SellerReviewsPage = lazy(() => import('./pages/SellerReviewsPage'))
+const SellerCouponsPage = lazy(() => import('./pages/SellerCouponsPage'))
 const SellerSupplyPage = lazy(() => import('./pages/SellerSupplyPage'))
 const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
 
@@ -104,6 +107,10 @@ const AdminSampleRequestsPage = lazy(() => import('./pages/admin/AdminSampleRequ
 const AdminAdScraperPage = lazy(() => import('./pages/admin/AdminAdScraperPage'))
 const AdminBlogPage = lazy(() => import('./pages/AdminBlogPage'))
 const AdminAgencyPage = lazy(() => import('./pages/AdminAgencyPage'))
+const AdminSellerApprovalPage = lazy(() => import('./pages/AdminSellerApprovalPage'))
+const AdminSettlementsBulkPage = lazy(() => import('./pages/AdminSettlementsBulkPage'))
+const AdminNoticesPage = lazy(() => import('./pages/AdminNoticesPage'))
+const AdminPlatformSettingsPage = lazy(() => import('./pages/AdminPlatformSettingsPage'))
 const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
 const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
 const AdminReplayPage = lazy(() => import('./pages/AdminReplayPage'))
@@ -121,6 +128,9 @@ const AgencySchedulePage = lazy(() => import('./pages/AgencySchedulePage'))
 const AgencyReturnsPage = lazy(() => import('./pages/AgencyReturnsPage'))
 const AgencyProductsPage = lazy(() => import('./pages/AgencyProductsPage'))
 const AgencyProfilePage = lazy(() => import('./pages/AgencyProfilePage'))
+const AgencyNoticesPage = lazy(() => import('./pages/AgencyNoticesPage'))
+const AgencyComparePage = lazy(() => import('./pages/AgencyComparePage'))
+const AgencyTargetsPage = lazy(() => import('./pages/AgencyTargetsPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
@@ -393,6 +403,21 @@ function AppContent() {
                 <SellerInventoryPage />
               </ProtectedRoute>
             } />
+            <Route path="/seller/analytics" element={
+              <ProtectedRoute requireSeller>
+                <SellerAnalyticsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/reviews" element={
+              <ProtectedRoute requireSeller>
+                <SellerReviewsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/coupons" element={
+              <ProtectedRoute requireSeller>
+                <SellerCouponsPage />
+              </ProtectedRoute>
+            } />
             <Route path="/seller/products/new" element={
               <ProtectedRoute requireSeller>
                 <SellerProductNewPage />
@@ -569,6 +594,18 @@ function AppContent() {
                 <ErrorBoundary><AdminReplayPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
+            <Route path="/admin/seller-approval" element={
+              <ProtectedRoute requireAdmin><AdminSellerApprovalPage /></ProtectedRoute>
+            } />
+            <Route path="/admin/settlements-bulk" element={
+              <ProtectedRoute requireAdmin><AdminSettlementsBulkPage /></ProtectedRoute>
+            } />
+            <Route path="/admin/notices" element={
+              <ProtectedRoute requireAdmin><AdminNoticesPage /></ProtectedRoute>
+            } />
+            <Route path="/admin/platform-settings" element={
+              <ProtectedRoute requireAdmin><AdminPlatformSettingsPage /></ProtectedRoute>
+            } />
             <Route path="/admin/kakao-test" element={
               <ProtectedRoute requireAdmin>
                 <AdminKakaoTestPage />
@@ -599,6 +636,9 @@ function AppContent() {
             <Route path="/agency/schedule" element={<AgencySchedulePage />} />
             <Route path="/agency/returns" element={<AgencyReturnsPage />} />
             <Route path="/agency/sellers/:sellerId/products" element={<AgencyProductsPage />} />
+            <Route path="/agency/notices" element={<AgencyNoticesPage />} />
+            <Route path="/agency/compare" element={<AgencyComparePage />} />
+            <Route path="/agency/targets" element={<AgencyTargetsPage />} />
             <Route path="/agency/profile" element={<AgencyProfilePage />} />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}

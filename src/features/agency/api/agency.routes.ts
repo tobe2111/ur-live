@@ -700,4 +700,184 @@ app.post('/invite-seller', async (c) => {
   return c.json({ success: true, data: { seller_id: sellerId }, message: `${name} 셀러가 생성되어 에이전시에 소속되었습니다.` }, 201)
 })
 
+// ── GET /api/agency/report/csv — 매출 리포트 CSV 다운로드 ──
+app.get('/report/csv', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const period = c.req.query('period') || '30'
+  const days = parseInt(period)
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT s.name AS seller_name, s.email,
+      COUNT(DISTINCT o.id) AS order_count,
+      COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END), 0) AS revenue,
+      COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END) * 0.07, 0) AS commission
+    FROM agency_sellers ag
+    JOIN sellers s ON ag.seller_id = s.id
+    LEFT JOIN orders o ON o.seller_id = s.id AND o.created_at > datetime('now', '-' || ? || ' days')
+    WHERE ag.agency_id = ?
+    GROUP BY s.id, s.name, s.email
+    ORDER BY revenue DESC
+  `).bind(days, agencyId).all()
+
+  const rows = results || []
+  const csv = [
+    '셀러명,이메일,주문수,매출(원),수수료(원)',
+    ...rows.map((r: any) => `${r.seller_name},${r.email},${r.order_count},${r.revenue},${Math.round(r.commission)}`)
+  ].join('\n')
+
+  return new Response('\uFEFF' + csv, {
+    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="agency-report-${days}d.csv"` },
+  })
+})
+
+// ── POST /api/agency/notices — 셀러 공지사항 발송 ──
+app.post('/notices', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const { title, message } = await c.req.json<{ title: string; message: string }>()
+  if (!title || !message) return c.json({ success: false, error: '제목과 내용을 입력해주세요' }, 400)
+
+  const { results: sellers } = await c.env.DB.prepare(
+    'SELECT seller_id FROM agency_sellers WHERE agency_id = ?'
+  ).bind(agencyId).all<{ seller_id: number }>()
+
+  if (!sellers?.length) return c.json({ success: false, error: '소속 셀러가 없습니다' })
+
+  const stmts = sellers.map(s =>
+    c.env.DB.prepare(`
+      INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, created_at)
+      VALUES ('seller', ?, 'agency_notice', ?, ?, datetime('now'))
+    `).bind(String(s.seller_id), title, message)
+  )
+  for (let i = 0; i < stmts.length; i += 50) {
+    await c.env.DB.batch(stmts.slice(i, i + 50))
+  }
+
+  return c.json({ success: true, message: `${sellers.length}명의 셀러에게 공지를 발송했습니다.` })
+})
+
+// ── GET /api/agency/notices — 공지 이력 ──
+app.get('/notices', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const { results } = await c.env.DB.prepare(`
+    SELECT DISTINCT dn.title, dn.message, dn.created_at
+    FROM dashboard_notifications dn
+    JOIN agency_sellers ag ON dn.recipient_id = CAST(ag.seller_id AS TEXT)
+    WHERE ag.agency_id = ? AND dn.type = 'agency_notice'
+    GROUP BY dn.title, dn.message, dn.created_at
+    ORDER BY dn.created_at DESC
+    LIMIT 50
+  `).bind(agencyId).all()
+
+  return c.json({ success: true, data: results || [] })
+})
+
+// ── GET/PUT /api/agency/targets — 셀러 매출 목표 ──
+app.get('/targets', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  try {
+    await c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS agency_seller_targets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agency_id INTEGER NOT NULL,
+        seller_id INTEGER NOT NULL,
+        month TEXT NOT NULL,
+        target_amount INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(agency_id, seller_id, month)
+      )
+    `).run()
+  } catch {}
+
+  const month = c.req.query('month') || new Date().toISOString().slice(0, 7)
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT s.id AS seller_id, s.name AS seller_name,
+      COALESCE(t.target_amount, 0) AS target_amount,
+      COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED')
+        AND strftime('%Y-%m', o.created_at) = ? THEN o.total_amount END), 0) AS current_amount
+    FROM agency_sellers ag
+    JOIN sellers s ON ag.seller_id = s.id
+    LEFT JOIN agency_seller_targets t ON t.seller_id = s.id AND t.agency_id = ? AND t.month = ?
+    LEFT JOIN orders o ON o.seller_id = s.id
+    WHERE ag.agency_id = ?
+    GROUP BY s.id, s.name, t.target_amount
+    ORDER BY s.name
+  `).bind(month, agencyId, month, agencyId).all()
+
+  return c.json({ success: true, data: results || [], month })
+})
+
+app.put('/targets', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const { seller_id, month, target_amount } = await c.req.json<{ seller_id: number; month: string; target_amount: number }>()
+  if (!seller_id || !month) return c.json({ success: false, error: '셀러와 월을 선택해주세요' }, 400)
+
+  try {
+    await c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS agency_seller_targets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, seller_id INTEGER NOT NULL,
+        month TEXT NOT NULL, target_amount INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(agency_id, seller_id, month)
+      )
+    `).run()
+  } catch {}
+
+  await c.env.DB.prepare(`
+    INSERT INTO agency_seller_targets (agency_id, seller_id, month, target_amount)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(agency_id, seller_id, month) DO UPDATE SET target_amount = excluded.target_amount
+  `).bind(agencyId, seller_id, month, target_amount || 0).run()
+
+  return c.json({ success: true })
+})
+
+// ── GET /api/agency/settlements/csv — 정산 CSV 다운로드 ──
+app.get('/settlements/csv', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const { results } = await c.env.DB.prepare(`
+    SELECT s.name AS seller_name, s.email,
+      COUNT(DISTINCT o.id) AS settled_orders,
+      COALESCE(SUM(o.total_amount), 0) AS total_amount,
+      COALESCE(SUM(o.total_amount * 0.05), 0) AS seller_commission,
+      COALESCE(SUM(o.total_amount * 0.02), 0) AS agency_commission
+    FROM agency_sellers ag
+    JOIN sellers s ON ag.seller_id = s.id
+    LEFT JOIN orders o ON o.seller_id = s.id AND COALESCE(o.settlement_status, '') = 'settled'
+    WHERE ag.agency_id = ?
+    GROUP BY s.id ORDER BY total_amount DESC
+  `).bind(agencyId).all()
+
+  const rows = results || []
+  const csv = [
+    '셀러명,이메일,정산건수,총매출(원),셀러수수료5%(원),에이전시수수료2%(원)',
+    ...rows.map((r: any) => `${r.seller_name},${r.email},${r.settled_orders},${r.total_amount},${Math.round(r.seller_commission)},${Math.round(r.agency_commission)}`)
+  ].join('\n')
+
+  return new Response('\uFEFF' + csv, {
+    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="agency-settlements.csv"' },
+  })
+})
+
+// ── GET /api/agency/sellers/compare — 셀러 성과 비교 ──
+app.get('/sellers/compare', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const period = c.req.query('period') || '30'
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT s.id, s.name,
+      COUNT(DISTINCT o.id) AS order_count,
+      COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END), 0) AS revenue,
+      COUNT(DISTINCT CASE WHEN ls.status = 'live' THEN ls.id END) AS live_count,
+      COUNT(DISTINCT CASE WHEN ls.status = 'ended' THEN ls.id END) AS ended_streams
+    FROM agency_sellers ag
+    JOIN sellers s ON ag.seller_id = s.id
+    LEFT JOIN orders o ON o.seller_id = s.id AND o.created_at > datetime('now', '-' || ? || ' days')
+    LEFT JOIN live_streams ls ON ls.seller_id = s.id AND ls.created_at > datetime('now', '-' || ? || ' days')
+    WHERE ag.agency_id = ?
+    GROUP BY s.id, s.name ORDER BY revenue DESC
+  `).bind(period, period, agencyId).all()
+
+  return c.json({ success: true, data: results || [] })
+})
+
 export { app as agencyRoutes }
