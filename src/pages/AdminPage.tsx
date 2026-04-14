@@ -351,6 +351,12 @@ export default function AdminPage() {
         ))}
       </div>
 
+      {/* ── 매출 차트 + 활동 피드 ── */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <AdminRevenueChart />
+        <AdminActivityFeed />
+      </div>
+
       {/* ── 판매자 통계 카드 ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
@@ -675,5 +681,68 @@ export default function AdminPage() {
         </div>
       )}
     </AdminLayout>
+  )
+}
+
+function AdminRevenueChart() {
+  const [data, setData] = useState<any[]>([])
+  const [days, setDays] = useState(14)
+  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+  useEffect(() => {
+    api.get(`/api/admin/tools/chart/revenue?days=${days}`, h)
+      .then(r => { if (r.data.success) setData(r.data.data || []) }).catch(() => {})
+  }, [days])
+  const max = Math.max(...data.map(d => d.revenue), 1)
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-gray-900">매출 추이</h3>
+        <div className="flex gap-1">
+          {[7, 14, 30].map(d => (
+            <button key={d} onClick={() => setDays(d)}
+              className={`px-2 py-1 rounded text-xs font-medium ${days === d ? 'bg-blue-100 text-blue-700' : 'text-gray-500'}`}>{d}일</button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-1">
+        {data.slice(-10).map(d => (
+          <div key={d.date} className="flex items-center gap-2 text-xs">
+            <span className="w-12 text-gray-400 shrink-0">{d.date.slice(5)}</span>
+            <div className="flex-1 bg-gray-100 rounded-full h-3">
+              <div className="bg-emerald-500 h-3 rounded-full" style={{ width: `${(d.revenue / max) * 100}%` }} />
+            </div>
+            <span className="w-16 text-right text-gray-700">{(d.revenue / 10000).toFixed(0)}만</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AdminActivityFeed() {
+  const [orders, setOrders] = useState<any[]>([])
+  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+  useEffect(() => {
+    api.get('/api/admin/orders?page=1&limit=8', h)
+      .then(r => { if (r.data.success) setOrders(r.data.data?.orders || r.data.data || []) }).catch(() => {})
+  }, [])
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4">
+      <h3 className="text-sm font-bold text-gray-900 mb-3">최근 활동</h3>
+      {orders.length === 0 ? <p className="text-xs text-gray-400">활동이 없습니다</p> : (
+        <div className="space-y-2">
+          {orders.slice(0, 8).map((o: any, i: number) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+              <span className="text-gray-700 flex-1 truncate">
+                {o.status === 'PAID' || o.status === 'DONE' ? '💰 주문' : o.status === 'SHIPPING' ? '📦 배송' : o.status === 'CANCELLED' ? '❌ 취소' : '📝 ' + o.status}
+                {' '}{o.order_number} · {Number(o.total_amount || 0).toLocaleString()}원
+              </span>
+              <span className="text-gray-400 shrink-0">{o.created_at ? new Date(o.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

@@ -28,7 +28,7 @@ const SORT_LABELS: Record<SortOption, string> = {
   discount: '할인율순',
 }
 
-const ITEMS_PER_PAGE = 6
+const ITEMS_PER_PAGE = 12
 
 export default function BrowsePage() {
   const navigate = useNavigate()
@@ -40,7 +40,10 @@ export default function BrowsePage() {
     (searchParams.get('sort') as SortOption) || 'popular'
   )
   const [showSortDropdown, setShowSortDropdown] = useState(false)
-  const [page, setPage] = useState(1)
+  const [showCount, setShowCount] = useState(ITEMS_PER_PAGE)
+  const [priceRange, setPriceRange] = useState<'all' | 'under10' | 'under30' | 'under50' | 'over50'>('all')
+  const [freeShipOnly, setFreeShipOnly] = useState(false)
+  const [showFilter, setShowFilter] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -62,7 +65,15 @@ export default function BrowsePage() {
   }, [showSortDropdown])
 
   const sorted = useMemo(() => {
-    const result = [...products]
+    let result = [...products]
+    // 가격 필터
+    if (priceRange === 'under10') result = result.filter(p => (p.current_price || p.price) < 10000)
+    else if (priceRange === 'under30') result = result.filter(p => (p.current_price || p.price) < 30000)
+    else if (priceRange === 'under50') result = result.filter(p => (p.current_price || p.price) < 50000)
+    else if (priceRange === 'over50') result = result.filter(p => (p.current_price || p.price) >= 50000)
+    // 무료배송 필터 (5만원 이상)
+    if (freeShipOnly) result = result.filter(p => (p.current_price || p.price) >= 50000)
+    // 정렬
     switch (sortBy) {
       case 'popular': result.sort((a, b) => (b.sold_count || 0) - (a.sold_count || 0)); break
       case 'price_asc': result.sort((a, b) => (a.current_price || a.price) - (b.current_price || b.price)); break
@@ -70,10 +81,10 @@ export default function BrowsePage() {
       case 'discount': result.sort((a, b) => b.discount_rate - a.discount_rate); break
     }
     return result
-  }, [products, sortBy])
+  }, [products, sortBy, priceRange, freeShipOnly])
 
-  const totalPages = Math.ceil(sorted.length / ITEMS_PER_PAGE)
-  const paged = sorted.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+  const displayed = sorted.slice(0, showCount)
+  const hasMore = showCount < sorted.length
 
   return (
     <div className="bg-white min-h-screen">
@@ -108,9 +119,15 @@ export default function BrowsePage() {
           <p className="text-center text-white text-sm font-bold tracking-wide">매일 달라지는 초특가 상품</p>
         </div>
 
-        {/* 정렬 */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-xs text-gray-500">{sorted.length}개 상품</span>
+        {/* 필터 + 정렬 */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowFilter(v => !v)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${showFilter ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200'}`}>
+              <SlidersHorizontal className="w-3 h-3" /> 필터
+            </button>
+            <span className="text-xs text-gray-500">{sorted.length}개</span>
+          </div>
           <div className="relative" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setShowSortDropdown(v => !v)}
@@ -137,6 +154,32 @@ export default function BrowsePage() {
           </div>
         </div>
 
+        {/* 필터 패널 */}
+        {showFilter && (
+          <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-3">
+            <div>
+              <p className="text-xs font-medium text-gray-700 mb-1.5">가격대</p>
+              <div className="flex flex-wrap gap-1.5">
+                {([['all','전체'],['under10','1만원 미만'],['under30','3만원 미만'],['under50','5만원 미만'],['over50','5만원 이상']] as const).map(([v, l]) => (
+                  <button key={v} onClick={() => { setPriceRange(v); setShowCount(ITEMS_PER_PAGE) }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${priceRange === v ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>{l}</button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => { setFreeShipOnly(!freeShipOnly); setShowCount(ITEMS_PER_PAGE) }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+                <Truck className="w-3 h-3" /> 무료배송만
+              </button>
+              {(priceRange !== 'all' || freeShipOnly) && (
+                <button onClick={() => { setPriceRange('all'); setFreeShipOnly(false) }} className="text-xs text-red-500 font-medium flex items-center gap-0.5">
+                  <X className="w-3 h-3" /> 초기화
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 상품 그리드 (3열) */}
         {loading ? (
           <div className="grid grid-cols-3 gap-x-3 gap-y-6">
@@ -155,7 +198,7 @@ export default function BrowsePage() {
         ) : (
           <>
             <div className="grid grid-cols-3 gap-x-3 gap-y-6">
-              {paged.map(product => {
+              {displayed.map(product => {
                 const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
                 const displayPrice = product.current_price || product.price
 
@@ -209,25 +252,12 @@ export default function BrowsePage() {
               })}
             </div>
 
-            {/* 페이지네이션 */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-8 pb-4">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-full disabled:opacity-30"
-                >
-                  <ChevronLeft className="w-4 h-4 text-gray-600" />
-                </button>
-                <span className="text-sm text-gray-700 font-medium">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-full disabled:opacity-30"
-                >
-                  <ChevronRight className="w-4 h-4 text-gray-600" />
+            {/* 더보기 */}
+            {hasMore && (
+              <div className="flex justify-center mt-6 pb-4">
+                <button onClick={() => setShowCount(c => c + ITEMS_PER_PAGE)}
+                  className="px-8 py-3 border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  더보기 ({sorted.length - showCount}개 남음)
                 </button>
               </div>
             )}

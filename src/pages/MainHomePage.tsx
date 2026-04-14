@@ -608,7 +608,42 @@ export default function MainHomePage() {
         </div>
       )}
 
+      {/* 최근 본 상품 */}
+      <RecentlyViewed />
+
       <SiteFooter />
+    </div>
+  )
+}
+
+function RecentlyViewed() {
+  const navigate = useNavigate()
+  const [items, setItems] = useState<any[]>([])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('recently_viewed') || '[]'
+      setItems(JSON.parse(raw).slice(0, 10))
+    } catch {}
+  }, [])
+
+  if (items.length === 0) return null
+
+  return (
+    <div className="px-4 py-6">
+      <h2 className="text-lg font-bold text-white mb-3">최근 본 상품</h2>
+      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+        {items.map((p: any) => (
+          <div key={p.id} onClick={() => navigate(`/products/${p.id}`)}
+            className="shrink-0 w-28 cursor-pointer">
+            <div className="aspect-square bg-[#1A1A1A] rounded-xl overflow-hidden">
+              {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" />}
+            </div>
+            <p className="text-xs text-gray-300 mt-1.5 truncate">{p.name}</p>
+            <p className="text-xs font-bold text-white">{p.price?.toLocaleString()}원</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
