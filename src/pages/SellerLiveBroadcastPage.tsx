@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { formatKSTDate } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import {
-  Youtube, Loader2, ExternalLink, Radio,
+  Youtube, Loader2, ExternalLink, Radio, Play,
   VideoIcon, CheckCircle2, AlertCircle, Copy,
   Smartphone, ArrowLeft, Gavel, Zap,
   Globe, EyeOff, Lock
@@ -321,7 +321,7 @@ export default function SellerLiveBroadcastPage() {
             scheduledTime={scheduledTime} setScheduledTime={setScheduledTime}
             sellableProducts={sellableProducts}
             selectedProducts={selectedProducts}
-            toggleProduct={id => setSelectedProducts(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
+            toggleProduct={(id: number) => setSelectedProducts(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
             method={method} setMethod={setMethod}
             creating={creating} onCreate={createBroadcast}
             navigate={navigate}
@@ -346,7 +346,7 @@ export default function SellerLiveBroadcastPage() {
           <StepLive
             stream={currentStream}
             products={sellableProducts}
-            onChangeProduct={productId => setCurrentStream(s => s ? { ...s, current_product_id: productId } : s)}
+            onChangeProduct={(productId: number) => setCurrentStream(s => s ? { ...s, current_product_id: productId } : s)}
             onEndStream={endStream}
           />
         )}
@@ -355,7 +355,7 @@ export default function SellerLiveBroadcastPage() {
         {step === 'info' && (
           <StreamList
             streams={streams}
-            onManage={(stream) => {
+            onManage={(stream: any) => {
               setCurrentStream(stream)
               setStep(stream.status === 'live' ? 'live' : 'setup')
             }}
@@ -378,9 +378,10 @@ function StepInfo({ title, setTitle, description, setDescription, privacy, setPr
     { key: 'private', icon: Lock, label: '비공개', desc: '나만 보기' },
   ]
   const methodOptions = [
-    { key: 'youtube', icon: Youtube, label: 'YouTube Studio', desc: '웹 브라우저', active: 'border-red-400 bg-red-50', iconActive: 'text-red-600' },
-    { key: 'obs', icon: VideoIcon, label: 'OBS Studio', desc: 'PC 방송', active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600' },
-    { key: 'prism', icon: Smartphone, label: '네이버 프리즘', desc: '모바일', active: 'border-green-400 bg-green-50', iconActive: 'text-green-600' },
+    { key: 'quick' as const, icon: Play, label: '바로 방송', desc: '원클릭 시작 (추천)', active: 'border-pink-400 bg-pink-50', iconActive: 'text-pink-600' },
+    { key: 'youtube' as const, icon: Youtube, label: 'YouTube Studio', desc: '웹 브라우저', active: 'border-red-400 bg-red-50', iconActive: 'text-red-600' },
+    { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: 'PC 방송', active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600' },
+    { key: 'prism' as const, icon: Smartphone, label: '네이버 프리즘', desc: '모바일', active: 'border-green-400 bg-green-50', iconActive: 'text-green-600' },
   ]
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
@@ -507,6 +508,38 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
           연결 대기 중
         </div>
       </div>
+
+      {method === 'quick' && (
+        <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+              <Play className="w-4 h-4 text-pink-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">바로 방송 시작</p>
+              <p className="text-xs text-gray-500">제목과 상품을 설정하면 YouTube 방송이 자동 생성됩니다</p>
+            </div>
+          </div>
+          {['위에서 방송 제목과 상품을 설정하세요', '"방송 생성" 클릭 → YouTube 방송이 자동 생성됩니다', 'YouTube Studio가 열리면 "라이브 시작"만 누르세요', '유어딜이 자동으로 감지하고 시청자에게 알림을 보냅니다 ✓'].map((s, i) => (
+            <div key={i} className="flex items-start gap-2 text-sm text-gray-700">
+              <span className="w-5 h-5 rounded-full bg-pink-100 text-pink-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+              {s}
+            </div>
+          ))}
+          <Button onClick={() => {
+            onGoLive()
+            const vid = stream.youtube_video_id || stream.youtube_broadcast_id
+            if (vid) {
+              window.open(`https://studio.youtube.com/video/${vid}/livestreaming`, '_blank')
+            } else {
+              toast.info('먼저 방송을 생성해주세요')
+            }
+          }} className="w-full bg-pink-600 hover:bg-pink-700 text-white mt-2">
+            <Play className="w-4 h-4 mr-2" /> 방송 생성 & YouTube Studio 열기
+          </Button>
+          <p className="text-[10px] text-gray-400 text-center">YouTube API가 방송을 자동 생성합니다. 별도 설정이 필요 없습니다.</p>
+        </div>
+      )}
 
       {method === 'youtube' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
