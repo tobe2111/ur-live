@@ -12,13 +12,14 @@ export default function AdminKakaoTestPage() {
   const [accessToken, setAccessToken] = useState(localStorage.getItem('kakao_test_token') || '')
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<{ step: string; success: boolean; detail: string }[]>([])
+  const [friendUuid, setFriendUuid] = useState<string | null>(null)
 
   // Step 1: 카카오 로그인 (테스트앱 키 + 메시지 scope)
   // talk_calendar는 "이용 중 동의"이므로 scope에서 제외 (자동 포함됨)
   function startKakaoLogin() {
     const state = encodeURIComponent(window.location.pathname)
-    // scope 없이 먼저 시도 (동의항목이 이미 설정되어 있으므로)
-    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${TEST_REST_API_KEY}&redirect_uri=${encodeURIComponent(TEST_REDIRECT_URI)}&response_type=code&state=${state}`
+    const scope = 'talk_message,talk_calendar,friends'
+    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${TEST_REST_API_KEY}&redirect_uri=${encodeURIComponent(TEST_REDIRECT_URI)}&response_type=code&state=${state}&scope=${scope}`
     window.location.href = url
   }
 
@@ -94,6 +95,7 @@ export default function AdminKakaoTestPage() {
       const data: any = await res.json()
 
       if (data.success) {
+        if (data.friends?.[0]?.uuid) setFriendUuid(data.friends[0].uuid)
         setResults(prev => [...prev, { step: '친구 목록 조회', success: true, detail: `친구 ${data.count}명 조회 성공!` }])
         toast.success(`친구 ${data.count}명 조회!`)
       } else {
@@ -108,12 +110,13 @@ export default function AdminKakaoTestPage() {
   // Step 5: 친구에게 메시지 전송
   async function testFriendMessage() {
     if (!accessToken) { toast.error('먼저 토큰을 입력해주세요'); return }
+    if (!friendUuid) { toast.error('먼저 친구 목록을 조회해주세요'); return }
     setLoading(true)
     try {
       const res = await fetch('/api/kakao-social/test/friend-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ access_token: accessToken }),
+        body: JSON.stringify({ access_token: accessToken, friend_uuid: friendUuid }),
       })
       const data: any = await res.json()
 
