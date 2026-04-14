@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { isKorea } from '@/shared/config/region'
+import SEO from '@/components/SEO'
 
 export default function PrivacyPolicyPage() {
   const navigate = useNavigate()
@@ -9,6 +10,7 @@ export default function PrivacyPolicyPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO title="개인정보처리방침 - 유어딜" description="유어딜 개인정보처리방침입니다." url="/privacy" />
       <div className="max-w-3xl mx-auto px-5 py-8">
         {/* 헤더 */}
         <div className="mb-8 border-b border-gray-200 pb-6">

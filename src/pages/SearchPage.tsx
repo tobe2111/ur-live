@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { useSearch } from '@/hooks/useSearch'
 import SearchHeader from '@/components/search/SearchHeader'
@@ -100,6 +101,7 @@ export default function SearchPage() {
 
   return (
     <div className="bg-[#f5f5f7]">
+      <SEO title={query ? `${query} 검색결과 - 유어딜` : '검색 - 유어딜'} description="유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요." url="/search" />
       {/* Header */}
       <SearchHeader
         query={query}

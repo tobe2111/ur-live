@@ -442,32 +442,55 @@ export default function MyOrdersPage() {
                       })()}
                     </span>
                   </div>
-                  {selectedOrder.tracking_number && (
-                    <div className="pt-2 border-t border-[#d2d2d7]">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Truck className="h-4 w-4 text-[#007aff]" />
-                          <div className="text-[13px]">
-                            {selectedOrder.courier && (
-                              <span className="text-[#6e6e73]">{selectedOrder.courier} · </span>
-                            )}
-                            <span className="font-medium text-[#1d1d1f]">{selectedOrder.tracking_number}</span>
-                          </div>
+                  {/* 배송 상태 타임라인 */}
+                  {selectedOrder.tracking_number && (() => {
+                    const status = selectedOrder.status?.toUpperCase()
+                    const steps = [
+                      { label: '결제완료', done: true },
+                      { label: '상품준비', done: ['SHIPPING', 'DELIVERED', 'DONE'].some(s => status?.includes(s)) || !!selectedOrder.tracking_number },
+                      { label: '배송중', done: ['SHIPPING'].some(s => status?.includes(s)) || status === 'DELIVERED' },
+                      { label: '배송완료', done: status === 'DELIVERED' },
+                    ]
+                    return (
+                      <div className="pt-3 border-t border-[#d2d2d7]">
+                        <div className="flex items-center justify-between mb-3">
+                          {steps.map((step, si) => (
+                            <div key={si} className="flex items-center flex-1">
+                              <div className="flex flex-col items-center">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-[#007aff] text-white' : 'bg-[#e5e5ea] text-[#8e8e93]'}`}>
+                                  {step.done ? '✓' : si + 1}
+                                </div>
+                                <span className={`text-[10px] mt-1 ${step.done ? 'text-[#007aff] font-medium' : 'text-[#8e8e93]'}`}>{step.label}</span>
+                              </div>
+                              {si < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${steps[si + 1].done ? 'bg-[#007aff]' : 'bg-[#e5e5ea]'}`} />}
+                            </div>
+                          ))}
                         </div>
-                        {getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number) && (
-                          <a
-                            href={getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
-                          >
-                            배송조회
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </a>
-                        )}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Truck className="h-4 w-4 text-[#007aff]" />
+                            <div className="text-[13px]">
+                              {selectedOrder.courier && (
+                                <span className="text-[#6e6e73]">{selectedOrder.courier} · </span>
+                              )}
+                              <span className="font-medium text-[#1d1d1f]">{selectedOrder.tracking_number}</span>
+                            </div>
+                          </div>
+                          {getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number) && (
+                            <a
+                              href={getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
+                            >
+                              배송조회
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )
+                  })()}
                 </div>
               </div>
 

@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { isKorea } from '@/shared/config/region'
+import SEO from '@/components/SEO'
 
 export default function TermsOfServicePage() {
   const navigate = useNavigate()
@@ -9,6 +10,7 @@ export default function TermsOfServicePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO title="이용약관 - 유어딜" description="유어딜 서비스 이용약관입니다." url="/terms" />
       <div className="max-w-4xl mx-auto p-6">
         {/* 헤더 */}
         <div className="mb-6">

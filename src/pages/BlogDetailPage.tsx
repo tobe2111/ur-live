@@ -44,6 +44,14 @@ export default function BlogDetailPage() {
 
   const tags: string[] = (() => { try { return JSON.parse(post.tags) } catch { return [] } })()
 
+  function escapeHtml(text: string) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  }
+
+  function boldify(text: string) {
+    return escapeHtml(text).replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
+  }
+
   // 마크다운 → HTML 간단 변환
   function renderContent(content: string) {
     return content
@@ -91,7 +99,7 @@ export default function BlogDetailPage() {
               {items.map((item, j) => (
                 <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 leading-relaxed">
                   <span className="text-pink-500 mt-1 shrink-0">•</span>
-                  <span dangerouslySetInnerHTML={{ __html: item.replace('- ', '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                  <span dangerouslySetInnerHTML={{ __html: boldify(item.replace('- ', '')) }} />
                 </li>
               ))}
             </ul>
@@ -104,7 +112,7 @@ export default function BlogDetailPage() {
         // 일반 단락
         return (
           <p key={i} className="text-[15px] text-gray-700 leading-[1.8] my-3"
-            dangerouslySetInnerHTML={{ __html: trimmed.replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>') }} />
+            dangerouslySetInnerHTML={{ __html: boldify(trimmed) }} />
         )
       })
       .filter(Boolean)

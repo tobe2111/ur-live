@@ -14,6 +14,7 @@ import type { Product, ProductOption } from '@/hooks/useProduct'
 import { MobileHeader } from '@/components/product/mobile-header'
 import { ProductHeader } from '@/components/product/product-header'
 import SEO, { productJsonLd } from '@/components/SEO'
+import KakaoShareButton from '@/components/KakaoShareButton'
 import { ProductInfoGrid } from '@/components/product/ProductInfoGrid'
 import { ProductNoticeSection } from '@/components/product/ProductNoticeSection'
 import { ReturnPolicySection } from '@/components/product/ReturnPolicySection'
@@ -570,6 +571,17 @@ export default function ProductDetailPage() {
         <AccordionSection title={`리뷰`} defaultOpen={true}>
           <ProductReviews productId={product.id} />
         </AccordionSection>
+
+        {/* 카카오톡 공유 */}
+        <div className="px-5 py-4">
+          <KakaoShareButton
+            title={product.name}
+            description={`${displayPrice.toLocaleString()}원 ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
+            imageUrl={product.image_url || undefined}
+            link={`/products/${product.id}`}
+            buttonText="상품 보러가기"
+          />
+        </div>
 
         {/* 교환 및 반품 */}
         <AccordionSection title="교환 및 반품 안내">
