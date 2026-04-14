@@ -82,7 +82,7 @@ export default function AdminBlogPage() {
     try {
       setLoading(true)
       const res = await api.get('/api/admin/blog')
-      if (res.data.success) setPosts(res.data.data)
+      if (res.data.success) setPosts(res.data.data || [])
     } catch { toast.error('블로그 목록 로드 실패') }
     finally { setLoading(false) }
   }
@@ -91,12 +91,12 @@ export default function AdminBlogPage() {
     if (post) {
       setForm({
         id: post.id,
-        slug: post.slug,
-        title: post.title,
-        summary: post.summary,
-        content: post.content,
-        tagsInput: parseTags(post.tags).join(', '),
-        author: post.author,
+        slug: post.slug || '',
+        title: post.title || '',
+        summary: post.summary || '',
+        content: post.content || '',
+        tagsInput: parseTags(post.tags || '[]').join(', '),
+        author: post.author || '유어딜 팀',
         thumbnail_url: post.thumbnail_url || '',
         is_published: post.is_published === 1,
       })
@@ -171,7 +171,7 @@ export default function AdminBlogPage() {
 
   // ── 목록 뷰 ────────────────────────────────────────────────
   if (view === 'list') return (
-    <AdminLayout>
+    <AdminLayout title="블로그 관리">
       <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -245,7 +245,7 @@ export default function AdminBlogPage() {
 
   // ── 에디터 뷰 ───────────────────────────────────────────────
   return (
-    <AdminLayout>
+    <AdminLayout title="블로그 관리">
       <div className="max-w-3xl mx-auto py-8 px-4 space-y-5">
         {/* 헤더 */}
         <div className="flex items-center justify-between">
