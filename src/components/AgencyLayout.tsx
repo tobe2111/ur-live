@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import {
-  LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X, Settings
+  LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X, Settings, Bell, Target, Calendar, Download
 } from 'lucide-react'
 
 const NAV_GROUPS = [
@@ -18,7 +18,8 @@ const NAV_GROUPS = [
       { path: '/agency/sellers', label: '셀러 관리',  icon: Users, exact: false },
       { path: '/agency/orders',  label: '주문 현황',  icon: ShoppingBag, exact: false },
       { path: '/agency/streams', label: '라이브 현황', icon: Play, exact: false },
-      { path: '/agency/schedule', label: '방송 스케줄', icon: Play, exact: false },
+      { path: '/agency/schedule', label: '방송 캘린더', icon: Calendar, exact: false },
+      { path: '/agency/notices', label: '셀러 공지', icon: Bell, exact: false },
       { path: '/agency/returns', label: '반품/CS', icon: ShoppingBag, exact: false },
     ],
   },
@@ -27,6 +28,7 @@ const NAV_GROUPS = [
     items: [
       { path: '/agency/stats', label: '통계 분석', icon: BarChart2, exact: false },
       { path: '/agency/ranking', label: '셀러 랭킹', icon: BarChart2, exact: false },
+      { path: '/agency/targets', label: '매출 목표', icon: Target, exact: false },
       { path: '/agency/settlements', label: '정산 관리', icon: BarChart2, exact: false },
     ],
   },

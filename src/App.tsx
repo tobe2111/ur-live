@@ -121,6 +121,8 @@ const AgencySchedulePage = lazy(() => import('./pages/AgencySchedulePage'))
 const AgencyReturnsPage = lazy(() => import('./pages/AgencyReturnsPage'))
 const AgencyProductsPage = lazy(() => import('./pages/AgencyProductsPage'))
 const AgencyProfilePage = lazy(() => import('./pages/AgencyProfilePage'))
+const AgencyNoticesPage = lazy(() => import('./pages/AgencyNoticesPage'))
+const AgencyTargetsPage = lazy(() => import('./pages/AgencyTargetsPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
@@ -599,6 +601,8 @@ function AppContent() {
             <Route path="/agency/schedule" element={<AgencySchedulePage />} />
             <Route path="/agency/returns" element={<AgencyReturnsPage />} />
             <Route path="/agency/sellers/:sellerId/products" element={<AgencyProductsPage />} />
+            <Route path="/agency/notices" element={<AgencyNoticesPage />} />
+            <Route path="/agency/targets" element={<AgencyTargetsPage />} />
             <Route path="/agency/profile" element={<AgencyProfilePage />} />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
