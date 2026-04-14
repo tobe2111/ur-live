@@ -175,6 +175,14 @@ export default function AgencyPage() {
         />
       </div>
 
+      {/* 빠른 실행 */}
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => navigate('/agency/sellers')} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">+ 셀러 초대</button>
+        <button onClick={() => navigate('/agency/notices')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">공지 발송</button>
+        <button onClick={() => navigate('/agency/compare')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">셀러 비교</button>
+        <button onClick={() => navigate('/agency/targets')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">매출 목표</button>
+      </div>
+
       {/* Quick Actions: 리포트 다운로드 + 알림 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">

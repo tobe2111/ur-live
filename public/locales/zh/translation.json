@@ -136,23 +136,82 @@
     "loginWithKakao": "Kakao登录",
     "loginWithGoogle": "Google登录",
     "loginWithEmail": "邮箱登录",
-    "tagline": "直播购物新体验"
+    "tagline": "直播购物新体验",
+    "alreadyHaveAccount": "已有账号？",
+    "createAccount": "创建账号",
+    "emailPlaceholder": "邮箱地址",
+    "emailRequired": "请输入邮箱",
+    "forgotPassword": "忘记密码",
+    "googleLoginError": "Google登录错误",
+    "hidePassword": "隐藏密码",
+    "invalidCredentials": "认证信息不正确",
+    "kakaoLoginError": "Kakao登录错误",
+    "kakaoQuickStart": "Kakao快速开始",
+    "kakaoSdkNotReady": "Kakao SDK准备中",
+    "loginError": "登录错误",
+    "loginSuccess": "登录成功",
+    "logoutSuccess": "退出成功",
+    "name": "姓名",
+    "noAccount": "没有账号？",
+    "passwordConfirm": "确认密码",
+    "passwordMismatch": "密码不一致",
+    "passwordPlaceholder": "密码",
+    "passwordRequired": "请输入密码",
+    "phone": "Phone Number",
+    "resetPassword": "Reset Password",
+    "resetPasswordButton": "Send Reset Link",
+    "resetPasswordDesc": "Enter your registered email and\nwe'll send you a password reset link.",
+    "resetPasswordSuccess": "Password reset email sent",
+    "showPassword": "显示密码",
+    "signupSuccess": "注册成功"
   },
   "payment": {
     "checkout": "结算",
     "totalAmount": "总金额",
     "paymentSuccess": "支付成功",
-    "paymentFailed": "支付失败"
+    "paymentFailed": "支付失败",
+    "agreeToTerms": "I agree to proceed with payment",
+    "freeShipping": "Free Shipping",
+    "initError": "Failed to initialize payment",
+    "loading": "Loading payment information...",
+    "orderDate": "Order Date",
+    "orderNumber": "Order Number",
+    "pay": "Pay",
+    "paymentAmount": "Payment Amount",
+    "paymentMethod": "Payment Method",
+    "processing": "Processing...",
+    "processingPayment": "Processing payment...",
+    "renderError": "Failed to render payment UI",
+    "requestError": "Payment request failed",
+    "shippingAddress": "Shipping Address",
+    "shippingFee": "Shipping Fee",
+    "stripeSetupRequired": "Stripe backend setup required",
+    "viewOrder": "View Order Details",
+    "widgetNotReady": "Payment widget is not ready"
   },
   "cart": {
     "title": "购物车",
-    "empty": "购物车为空"
+    "empty": "购物车为空",
+    "continueShop": "Continue Shopping",
+    "goToCheckout": "Proceed to Checkout",
+    "itemAdded": "Item added to cart",
+    "itemRemoved": "Item removed from cart",
+    "price": "Price",
+    "quantity": "Quantity",
+    "removeItem": "Remove Item",
+    "total": "Total"
   },
   "product": {
     "addToCart": "加入购物车",
     "buyNow": "立即购买",
     "outOfStock": "已售罄",
-    "inStock": "有货"
+    "inStock": "有货",
+    "productDetail": "Product Details",
+    "quantity": "Quantity",
+    "relatedProducts": "Related Products",
+    "reviews": "Reviews",
+    "selectOption": "Select Option",
+    "seller": "Seller"
   },
   "seller": {
     "dashboard": "仪表盘",
@@ -1014,7 +1073,14 @@
     "stockHistoryAdjust": "调整",
     "stockHistoryReturn": "退货",
     "groupBuy": "团购",
-    "mealVoucher": "餐券·团购"
+    "mealVoucher": "餐券·团购",
+    "addProduct": "Add Product",
+    "deleteProduct": "Delete Product",
+    "editProduct": "Edit Product",
+    "productDescription": "Product Description",
+    "productName": "Product Name",
+    "productPrice": "Price",
+    "productStock": "Stock"
   },
   "nav": {
     "home": "首页",
@@ -1022,6 +1088,8 @@
     "cart": "购物车",
     "myPage": "我的",
     "live": "直播",
-    "search": "搜索"
+    "search": "搜索",
+    "admin": "Admin",
+    "seller": "Seller"
   }
 }

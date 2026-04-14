@@ -36,6 +36,7 @@ const NAV_GROUPS = [
   {
     label: '설정',
     items: [
+      { path: '/agency/contracts', label: '계약 관리', icon: Calendar, exact: false },
       { path: '/agency/profile', label: '프로필 설정', icon: Settings, exact: false },
     ],
   },

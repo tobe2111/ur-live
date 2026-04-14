@@ -136,23 +136,82 @@
     "loginWithKakao": "Kakaoでログイン",
     "loginWithGoogle": "Googleでログイン",
     "loginWithEmail": "メールでログイン",
-    "tagline": "ライブショッピングの新体験"
+    "tagline": "ライブショッピングの新体験",
+    "alreadyHaveAccount": "既にアカウントをお持ちですか？",
+    "createAccount": "アカウント作成",
+    "emailPlaceholder": "メールアドレス",
+    "emailRequired": "メールアドレスを入力してください",
+    "forgotPassword": "パスワードを忘れた方",
+    "googleLoginError": "Googleログインエラー",
+    "hidePassword": "パスワードを隠す",
+    "invalidCredentials": "認証情報が正しくありません",
+    "kakaoLoginError": "カカオログインエラー",
+    "kakaoQuickStart": "カカオで簡単スタート",
+    "kakaoSdkNotReady": "カカオSDK準備中",
+    "loginError": "ログインエラー",
+    "loginSuccess": "ログイン成功",
+    "logoutSuccess": "ログアウト完了",
+    "name": "名前",
+    "noAccount": "アカウントをお持ちでないですか？",
+    "passwordConfirm": "パスワード確認",
+    "passwordMismatch": "パスワードが一致しません",
+    "passwordPlaceholder": "パスワード",
+    "passwordRequired": "パスワードを入力してください",
+    "phone": "Phone Number",
+    "resetPassword": "Reset Password",
+    "resetPasswordButton": "Send Reset Link",
+    "resetPasswordDesc": "Enter your registered email and\nwe'll send you a password reset link.",
+    "resetPasswordSuccess": "Password reset email sent",
+    "showPassword": "パスワードを表示",
+    "signupSuccess": "会員登録成功"
   },
   "payment": {
     "checkout": "決済する",
     "totalAmount": "合計金額",
     "paymentSuccess": "決済が完了しました",
-    "paymentFailed": "決済に失敗しました"
+    "paymentFailed": "決済に失敗しました",
+    "agreeToTerms": "I agree to proceed with payment",
+    "freeShipping": "Free Shipping",
+    "initError": "Failed to initialize payment",
+    "loading": "Loading payment information...",
+    "orderDate": "Order Date",
+    "orderNumber": "Order Number",
+    "pay": "Pay",
+    "paymentAmount": "Payment Amount",
+    "paymentMethod": "Payment Method",
+    "processing": "Processing...",
+    "processingPayment": "Processing payment...",
+    "renderError": "Failed to render payment UI",
+    "requestError": "Payment request failed",
+    "shippingAddress": "Shipping Address",
+    "shippingFee": "Shipping Fee",
+    "stripeSetupRequired": "Stripe backend setup required",
+    "viewOrder": "View Order Details",
+    "widgetNotReady": "Payment widget is not ready"
   },
   "cart": {
     "title": "カート",
-    "empty": "カートは空です"
+    "empty": "カートは空です",
+    "continueShop": "Continue Shopping",
+    "goToCheckout": "Proceed to Checkout",
+    "itemAdded": "Item added to cart",
+    "itemRemoved": "Item removed from cart",
+    "price": "Price",
+    "quantity": "Quantity",
+    "removeItem": "Remove Item",
+    "total": "Total"
   },
   "product": {
     "addToCart": "カートに追加",
     "buyNow": "今すぐ購入",
     "outOfStock": "品切れ",
-    "inStock": "在庫あり"
+    "inStock": "在庫あり",
+    "productDetail": "Product Details",
+    "quantity": "Quantity",
+    "relatedProducts": "Related Products",
+    "reviews": "Reviews",
+    "selectOption": "Select Option",
+    "seller": "Seller"
   },
   "seller": {
     "dashboard": "ダッシュボード",
@@ -1014,7 +1073,14 @@
     "stockHistoryAdjust": "調整",
     "stockHistoryReturn": "返品",
     "groupBuy": "共同購入",
-    "mealVoucher": "食事券・共同購入"
+    "mealVoucher": "食事券・共同購入",
+    "addProduct": "Add Product",
+    "deleteProduct": "Delete Product",
+    "editProduct": "Edit Product",
+    "productDescription": "Product Description",
+    "productName": "Product Name",
+    "productPrice": "Price",
+    "productStock": "Stock"
   },
   "nav": {
     "home": "ホーム",
@@ -1022,6 +1088,8 @@
     "cart": "カート",
     "myPage": "マイページ",
     "live": "ライブ",
-    "search": "検索"
+    "search": "検索",
+    "admin": "Admin",
+    "seller": "Seller"
   }
 }

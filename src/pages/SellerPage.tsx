@@ -45,6 +45,8 @@ interface DashboardStats {
   avgOrderValue: number
   totalProducts?: number
   totalStreams?: number
+  lowStockCount?: number
+  pendingSettlement?: number
 }
 
 interface DailyStats {
@@ -196,6 +198,8 @@ export default function SellerPage() {
           cancelledOrders: d.summary?.cancelled_orders || 0,
           completedOrders: d.summary?.completed_orders || 0,
           avgOrderValue:   d.summary?.avg_order_value  || 0,
+          lowStockCount:   d.summary?.low_stock_count  || 0,
+          pendingSettlement: d.summary?.pending_settlement || 0,
         })
         setDailyStats(d.daily || [])
         setTopProducts(d.topProducts || [])
@@ -321,6 +325,30 @@ export default function SellerPage() {
               </div>
             ))}
           </div>
+
+          {/* ── 할 일 목록 ── */}
+          {(stats.pendingOrders > 0 || (stats.lowStockCount ?? 0) > 0 || (stats.pendingSettlement ?? 0) > 0) && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <h3 className="text-sm font-bold text-amber-800 mb-2">📋 처리할 항목</h3>
+              <div className="flex flex-wrap gap-2">
+                {stats.pendingOrders > 0 && (
+                  <Link to="/seller/orders" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-amber-700 border border-amber-200 hover:bg-amber-100">
+                    <ShoppingBag className="w-3.5 h-3.5" /> 미처리 주문 {stats.pendingOrders}건
+                  </Link>
+                )}
+                {(stats.lowStockCount ?? 0) > 0 && (
+                  <Link to="/seller/inventory" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-orange-700 border border-orange-200 hover:bg-orange-100">
+                    <AlertTriangle className="w-3.5 h-3.5" /> 재고 부족 {stats.lowStockCount}건
+                  </Link>
+                )}
+                {(stats.pendingSettlement ?? 0) > 0 && (
+                  <Link to="/seller/settlements" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-green-700 border border-green-200 hover:bg-green-100">
+                    <CreditCard className="w-3.5 h-3.5" /> 정산 가능 {stats.pendingSettlement}건
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Main grid ── */}
           <div className="grid lg:grid-cols-3 gap-5">

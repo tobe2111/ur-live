@@ -241,6 +241,17 @@ export default function ProductDetailPage() {
     }
   }, [id])
 
+  // 최근 본 상품 저장
+  useEffect(() => {
+    if (!product) return
+    try {
+      const raw = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
+      const filtered = raw.filter((p: any) => p.id !== product.id)
+      filtered.unshift({ id: product.id, name: product.name, price: product.price, image: product.image_url })
+      localStorage.setItem('recently_viewed', JSON.stringify(filtered.slice(0, 20)))
+    } catch {}
+  }, [product])
+
   useEffect(() => {
     if (product) {
       document.title = product.name + ' - 유어딜'

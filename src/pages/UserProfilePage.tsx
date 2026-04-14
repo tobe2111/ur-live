@@ -219,6 +219,13 @@ export default function UserProfilePage() {
       {/* 광고 시청으로 딜 받기 */}
       <RewardAdCard />
 
+      {/* 바로가기 */}
+      <div className="px-5 py-3 flex gap-2">
+        <button onClick={() => navigate('/my-orders')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">📦 주문내역</button>
+        <button onClick={() => navigate('/wishlist')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">❤️ 위시리스트</button>
+        <button onClick={() => navigate('/mypage/addresses')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">📍 배송지</button>
+      </div>
+
       {/* Menu List Section */}
       <MenuList />
 

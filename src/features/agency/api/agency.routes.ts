@@ -880,4 +880,60 @@ app.get('/sellers/compare', async (c: AgencyCtx) => {
   return c.json({ success: true, data: results || [] })
 })
 
+// ── 셀러 계약 관리 ──
+app.get('/contracts', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  try { await c.env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS agency_contracts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, seller_id INTEGER NOT NULL,
+      start_date TEXT NOT NULL, end_date TEXT NOT NULL, terms TEXT,
+      status TEXT DEFAULT 'active', created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(agency_id, seller_id)
+    )`).run() } catch {}
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT ac.*, s.name AS seller_name, s.email AS seller_email
+    FROM agency_contracts ac JOIN sellers s ON ac.seller_id = s.id
+    WHERE ac.agency_id = ? ORDER BY ac.end_date ASC
+  `).bind(agencyId).all()
+
+  return c.json({ success: true, data: results || [] })
+})
+
+app.post('/contracts', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const { seller_id, start_date, end_date, terms } = await c.req.json<any>()
+  if (!seller_id || !start_date || !end_date) return c.json({ success: false, error: '필수 항목을 입력해주세요' }, 400)
+
+  try { await c.env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS agency_contracts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, seller_id INTEGER NOT NULL,
+      start_date TEXT NOT NULL, end_date TEXT NOT NULL, terms TEXT,
+      status TEXT DEFAULT 'active', created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(agency_id, seller_id)
+    )`).run() } catch {}
+
+  await c.env.DB.prepare(`
+    INSERT INTO agency_contracts (agency_id, seller_id, start_date, end_date, terms)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(agency_id, seller_id) DO UPDATE SET start_date = excluded.start_date, end_date = excluded.end_date, terms = excluded.terms, status = 'active'
+  `).bind(agencyId, seller_id, start_date, end_date, terms || null).run()
+
+  return c.json({ success: true, message: '계약이 등록되었습니다' })
+})
+
+app.put('/contracts/:id', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const id = c.req.param('id')
+  const body = await c.req.json<any>()
+  const sets: string[] = []; const vals: any[] = []
+  if (body.end_date) { sets.push('end_date = ?'); vals.push(body.end_date) }
+  if (body.terms !== undefined) { sets.push('terms = ?'); vals.push(body.terms) }
+  if (body.status) { sets.push('status = ?'); vals.push(body.status) }
+  if (!sets.length) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400)
+  vals.push(id, agencyId)
+  await c.env.DB.prepare(`UPDATE agency_contracts SET ${sets.join(', ')} WHERE id = ? AND agency_id = ?`).bind(...vals).run()
+  return c.json({ success: true })
+})
+
 export { app as agencyRoutes }
