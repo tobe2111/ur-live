@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity, Ticket
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity, Ticket, Star, BarChart2
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import DashboardNotificationBell from './DashboardNotificationBell'
@@ -30,11 +30,14 @@ const NAV_GROUPS = [
       { path: '/seller/group-buy', labelKey: 'seller.mealVoucher', icon: Ticket },
       { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag },
       { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3 },
+      { path: '/seller/reviews', labelKey: 'seller.reviews', icon: Star },
+      { path: '/seller/coupons', labelKey: 'seller.coupons', icon: Ticket },
     ],
   },
   {
     label: '수익',
     items: [
+      { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2 },
       { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign },
       { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart },
     ],

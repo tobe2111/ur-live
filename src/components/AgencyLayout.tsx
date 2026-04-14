@@ -28,6 +28,7 @@ const NAV_GROUPS = [
     items: [
       { path: '/agency/stats', label: '통계 분석', icon: BarChart2, exact: false },
       { path: '/agency/ranking', label: '셀러 랭킹', icon: BarChart2, exact: false },
+      { path: '/agency/compare', label: '셀러 비교', icon: BarChart2, exact: false },
       { path: '/agency/targets', label: '매출 목표', icon: Target, exact: false },
       { path: '/agency/settlements', label: '정산 관리', icon: BarChart2, exact: false },
     ],
