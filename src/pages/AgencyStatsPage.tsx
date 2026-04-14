@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { TrendingUp, ShoppingBag, Play, Users } from 'lucide-react'
 
 interface Seller {
@@ -38,21 +39,26 @@ export default function AgencyStatsPage() {
     if (!token) { navigate('/agency/login', { replace: true }); return }
     api.get('/api/agency/sellers', { headers })
       .then(r => setSellers(r.data.data || []))
-      .catch(() => navigate('/agency/login', { replace: true }))
+      .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
   }, [token])
 
   useEffect(() => {
     if (!sellers.length) { setLoading(false); return }
     setLoading(true)
-    Promise.all(
-      sellers.map(s =>
-        api.get(`/api/agency/sellers/${s.id}/stats?period=${period}`, { headers })
-          .then(r => ({ seller: s, ...r.data.data }))
-          .catch(() => ({ seller: s, orders: null, streams: null, period }))
-      )
-    ).then(results => {
-      setStats(results as SellerStat[])
-    }).finally(() => setLoading(false))
+    api.get(`/api/agency/stats/batch?period=${period}`, { headers })
+      .then(r => {
+        const { orders: orderMap, streams: streamMap } = r.data.data as {
+          orders: Record<number, { order_count: number; revenue: number; net_revenue: number }>
+          streams: Record<number, { stream_count: number; total_viewers: number }>
+        }
+        setStats(sellers.map(s => ({
+          seller: s,
+          orders: orderMap[s.id] ?? null,
+          streams: streamMap[s.id] ?? null,
+        })))
+      })
+      .catch(() => setStats(sellers.map(s => ({ seller: s, orders: null, streams: null }))))
+      .finally(() => setLoading(false))
   }, [sellers, period])
 
   const sorted = [...stats].sort((a, b) => {

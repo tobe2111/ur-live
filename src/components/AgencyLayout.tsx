@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import api from '@/lib/api'
 import {
   LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X
 } from 'lucide-react'
@@ -37,8 +38,21 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [agencyName, setAgencyName] = useState(localStorage.getItem('agency_name') || '에이전시')
 
-  const agencyName = localStorage.getItem('agency_name') || '에이전시'
+  useEffect(() => {
+    const token = localStorage.getItem('agency_token')
+    if (!token) return
+    api.get('/api/agency/profile', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        const name = r.data?.data?.name
+        if (name) {
+          setAgencyName(name)
+          localStorage.setItem('agency_name', name)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   function logout() {
     ['agency_token', 'agency_id', 'agency_name', 'agency_email'].forEach(k => localStorage.removeItem(k))
