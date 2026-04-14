@@ -37,7 +37,7 @@ export function ProfileTab({ userName, userEmail, userProfileImage, onLogout }: 
   return (
     <div className="space-y-6">
       {/* Profile Card */}
-      <div className="apple-card p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-center gap-4 mb-6">
           <img
             src={userProfileImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName)}
@@ -79,7 +79,7 @@ export function ProfileTab({ userName, userEmail, userProfileImage, onLogout }: 
       </div>
 
       {/* Actions */}
-      <div className="apple-card overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <button 
           onClick={onLogout}
           className="w-full flex items-center gap-3 p-4 hover:bg-[#f5f5f7] transition-colors text-[#ff3b30]"

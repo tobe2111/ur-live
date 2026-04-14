@@ -218,7 +218,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
 
       {/* 주문 목록 */}
       {filteredOrders.length === 0 ? (
-        <div className="apple-card p-12 text-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
           <div className="w-24 h-24 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-6">
             <Package className="h-12 w-12 text-[#6e6e73]" />
           </div>
@@ -231,7 +231,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
       ) : (
         <div className="space-y-4">
           {filteredOrders.map(order => (
-            <div key={order.id} className="apple-card p-6">
+            <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               {/* 주문번호 + 상태 배지 */}
               <div className="flex items-start justify-between mb-3">
                 <div>
@@ -280,9 +280,16 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                   <span className="text-[14px] font-medium text-[#1d1d1f]">{order.shipping_name ?? '-'}</span>
                 </div>
                 <p className="text-[14px] text-[#6e6e73] ml-6">
-                  [{order.shipping_postal_code ?? ''}] {order.shipping_address ?? ''}
+                  {(() => {
+                    const addr = order.shipping_address
+                    if (typeof addr === 'object' && addr !== null) {
+                      const a = addr as any
+                      return `[${a.postal_code || ''}] ${a.address1 || ''} ${a.address2 || ''}`
+                    }
+                    return `[${order.shipping_postal_code || ''}] ${addr || ''}`
+                  })()}
                 </p>
-                {order.shipping_address_detail && (
+                {order.shipping_address_detail && typeof order.shipping_address_detail === 'string' && (
                   <p className="text-[14px] text-[#6e6e73] ml-6">{order.shipping_address_detail}</p>
                 )}
 
