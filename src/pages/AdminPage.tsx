@@ -721,10 +721,24 @@ function AdminRevenueChart() {
 
 function AdminActivityFeed() {
   const [orders, setOrders] = useState<any[]>([])
+  const [lastCount, setLastCount] = useState(0)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
-  useEffect(() => {
+  const fetchOrders = () => {
     api.get('/api/admin/orders?page=1&limit=8', h)
-      .then(r => { if (r.data.success) setOrders(r.data.data?.orders || r.data.data || []) }).catch(() => {})
+      .then(r => {
+        const list = r.data.data?.orders || r.data.data || []
+        if (list.length > lastCount && lastCount > 0) {
+          // 새 주문 알림
+          try { new Audio('/static/notification.mp3').play().catch(() => {}) } catch {}
+        }
+        setLastCount(list.length)
+        if (r.data.success) setOrders(list)
+      }).catch(() => {})
+  }
+  useEffect(() => {
+    fetchOrders()
+    const interval = setInterval(fetchOrders, 30000) // 30초 자동 갱신
+    return () => clearInterval(interval)
   }, [])
   return (
     <div className="bg-white rounded-xl shadow-sm p-4">

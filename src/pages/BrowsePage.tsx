@@ -105,13 +105,34 @@ export default function BrowsePage() {
         </div>
       </div>
 
+      {/* 카테고리 탭 */}
+      <div className="bg-white border-b border-gray-100 overflow-x-auto scrollbar-hide">
+        <div className="flex px-4 gap-1 py-2">
+          {[
+            { key: 'all', label: '전체', emoji: '🔥' },
+            { key: 'fashion', label: '패션', emoji: '👗' },
+            { key: 'beauty', label: '뷰티', emoji: '💄' },
+            { key: 'food', label: '식품', emoji: '🍜' },
+            { key: 'living', label: '리빙', emoji: '🏠' },
+            { key: 'digital', label: '디지털', emoji: '📱' },
+            { key: 'meal_voucher', label: '식사권', emoji: '🎫' },
+          ].map(c => (
+            <button key={c.key}
+              onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
+              className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap ${
+                category === c.key || (c.key === 'all' && category === 'all')
+                  ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
+              }`}>
+              {c.emoji} {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="px-4 py-5">
         {/* 섹션 헤더 */}
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-extrabold text-gray-900">오늘의 핫딜</h1>
-          <button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-full">
-            <ChevronRight className="w-4 h-4 text-gray-600" />
-          </button>
+          <h1 className="text-xl font-extrabold text-gray-900">{category === 'all' ? '오늘의 핫딜' : `${({'fashion':'패션','beauty':'뷰티','food':'식품','living':'리빙','digital':'디지털','meal_voucher':'식사권'} as any)[category] || category}`}</h1>
         </div>
 
         {/* 배너 */}
