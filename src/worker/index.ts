@@ -393,6 +393,7 @@ app.route('/api/banners', bannerRoutes);
 // Admin routes — all handled by adminApp (separate auth chain)
 // adminApp has: CORS + IP whitelist + requireAdmin() + audit log
 // ============================================================
+adminApp.route('/agencies', adminAgencyRoutes);
 adminApp.route('/', adminManagementRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/cafe24', cafe24Routes);
@@ -500,7 +501,7 @@ app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 app.route('/api/agency', agencyRoutes);
-adminApp.route('/agencies', adminAgencyRoutes);
+// adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
