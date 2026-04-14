@@ -18,7 +18,7 @@ export async function handleScheduled(env: Env) {
         AND updated_at < datetime('now', '-30 minutes')
     `).run();
     results.stale_streams_ended = meta.changes ?? 0;
-  } catch {}
+  } catch (e) { console.error('[Cron] stale_streams error:', e) }
 
   // ── 2. 미결제 주문: 24시간 후 자동 취소 + 재고 복구 ──
   try {
@@ -47,7 +47,7 @@ export async function handleScheduled(env: Env) {
       `).run();
       results.pending_orders_cancelled = meta.changes ?? 0;
     }
-  } catch {}
+  } catch (e) { console.error('[Cron] pending_orders error:', e) }
 
   // ── 3. 공동구매: 마감 지난 상품 자동 만료 ──
   try {
@@ -60,7 +60,7 @@ export async function handleScheduled(env: Env) {
         AND group_buy_deadline < datetime('now')
     `).run();
     results.group_buys_expired = meta.changes ?? 0;
-  } catch {}
+  } catch (e) { console.error('[Cron] group_buys error:', e) }
 
   // ── 4. 바우처: 만료일 지난 바우처 자동 만료 ──
   try {
@@ -72,7 +72,7 @@ export async function handleScheduled(env: Env) {
         AND expires_at < datetime('now')
     `).run();
     results.vouchers_expired = meta.changes ?? 0;
-  } catch {}
+  } catch (e) { console.error('[Cron] vouchers error:', e) }
 
   // ── 5. 경매: 시간 초과 자동 종료 ──
   try {
@@ -83,7 +83,7 @@ export async function handleScheduled(env: Env) {
         AND ends_at < datetime('now')
     `).run();
     results.auctions_ended = meta.changes ?? 0;
-  } catch {}
+  } catch (e) { console.error('[Cron] auctions error:', e) }
 
   // ── 6. 타임딜: 만료 자동 종료 ──
   try {
@@ -100,7 +100,7 @@ export async function handleScheduled(env: Env) {
         AND claimed_count >= max_claims
     `).run();
     results.timedeals_ended = (ended.changes ?? 0) + (soldout.changes ?? 0);
-  } catch {}
+  } catch (e) { console.error('[Cron] timedeals error:', e) }
 
   // ── 7. 친구 초대 공동구매: 48시간 만료 ──
   try {
@@ -111,7 +111,7 @@ export async function handleScheduled(env: Env) {
         AND expires_at < datetime('now')
     `).run();
     results.referrals_expired = meta.changes ?? 0;
-  } catch {}
+  } catch (e) { console.error('[Cron] referrals error:', e) }
 
   // ── 8. 알림 정리: 90일 이상 된 알림 삭제 ──
   try {
@@ -123,7 +123,7 @@ export async function handleScheduled(env: Env) {
       DELETE FROM dashboard_notifications
       WHERE created_at < datetime('now', '-90 days')
     `).run();
-  } catch {}
+  } catch (e) { console.error('[Cron] notifications_cleanup error:', e) }
 
   // ── 9. 만료된 리프레시 토큰 정리 ──
   try {
@@ -131,7 +131,7 @@ export async function handleScheduled(env: Env) {
       DELETE FROM refresh_tokens
       WHERE expires_at < datetime('now')
     `).run();
-  } catch {}
+  } catch (e) { console.error('[Cron] token_cleanup error:', e) }
 
   // ── 10. 자동 구매확정: 배송 14일 경과 ──
   try {
@@ -143,7 +143,7 @@ export async function handleScheduled(env: Env) {
         AND shipped_at < datetime('now', '-14 days')
     `).run();
     results.auto_confirmed = meta.changes ?? 0;
-  } catch {}
+  } catch (e) { console.error('[Cron] auto_confirm error:', e) }
 
   // ── 11. 예정 방송 30분 전 알림 발송 ──
   try {
@@ -194,7 +194,7 @@ export async function handleScheduled(env: Env) {
       }
       results.pre_notifications_sent = upcomingStreams.length;
     }
-  } catch {}
+  } catch (e) { console.error('[Cron] pre_notifications error:', e) }
 
   // ── 12. 셀러 재고 품절 임박 알림 (5개 이하) ──
   try {
@@ -218,7 +218,7 @@ export async function handleScheduled(env: Env) {
       }
       results.low_stock_alerts = lowStock.length;
     }
-  } catch {}
+  } catch (e) { console.error('[Cron] low_stock error:', e) }
 
   // ── 13. 쿠폰 만료 임박 알림 (D-1, 소비자) ──
   try {
@@ -251,7 +251,7 @@ export async function handleScheduled(env: Env) {
         }
       }
     }
-  } catch {}
+  } catch (e) { console.error('[Cron] coupon_expiry error:', e) }
 
   // ── 14. 공동구매 달성 알림 (셀러 + 참여자) ──
   try {
@@ -273,7 +273,7 @@ export async function handleScheduled(env: Env) {
       }
       results.group_buy_achieved = achievedGroups.length;
     }
-  } catch {}
+  } catch (e) { console.error('[Cron] group_buy_achieved error:', e) }
 
   console.log('[Cron] Scheduled cleanup:', JSON.stringify(results));
   return results;
