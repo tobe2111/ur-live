@@ -124,6 +124,8 @@ const AgencyProfilePage = lazy(() => import('./pages/AgencyProfilePage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const BlogListPage = lazy(() => import('./pages/BlogListPage'))
+const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
 
@@ -685,6 +687,10 @@ function AppContent() {
             <Route path="/restaurant-map" element={<RestaurantMapPage />} />
 
             {/* Terms Pages */}
+            {/* 블로그 */}
+            <Route path="/blog" element={<BlogListPage />} />
+            <Route path="/blog/:slug" element={<BlogDetailPage />} />
+
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/refund" element={<RefundPolicyPage />} />
