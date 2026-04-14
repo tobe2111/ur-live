@@ -150,7 +150,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
+        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 h-14 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
               className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"
@@ -163,7 +163,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
           {headerRight && <div className="flex items-center gap-2">{headerRight}</div>}
         </header>
 
-        <main className="flex-1 overflow-y-auto p-5 space-y-5">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
           {children}
         </main>
       </div>
