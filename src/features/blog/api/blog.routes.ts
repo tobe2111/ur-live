@@ -32,6 +32,15 @@ async function ensureBlogTable(DB: D1Database) {
 // ── 공개: 발행된 글 목록 ──────────────────────────────────────
 app.get('/public', async (c) => {
   await ensureBlogTable(c.env.DB)
+  // 자동 시드: 글이 없으면 기본 콘텐츠 생성
+  const count = await c.env.DB.prepare('SELECT COUNT(*) as cnt FROM blog_posts').first<{ cnt: number }>()
+  if (!count || count.cnt === 0) {
+    try {
+      const seedUrl = new URL(c.req.url)
+      seedUrl.pathname = '/api/admin/blog/seed'
+      await fetch(seedUrl.toString(), { method: 'POST' }).catch(() => {})
+    } catch {}
+  }
   const page = Number(c.req.query('page') || 1)
   const limit = Number(c.req.query('limit') || 9)
   const tag = c.req.query('tag')

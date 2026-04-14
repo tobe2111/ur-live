@@ -635,6 +635,23 @@ app.get('*', async (c) => {
         if (s.youtube_video_id) og.image = `https://img.youtube.com/vi/${s.youtube_video_id}/maxresdefault.jpg`;
       }
     }
+    // /blog/:slug → 블로그 글
+    const blogMatch = path.match(/^\/blog\/([a-z0-9-]+)$/);
+    if (blogMatch) {
+      const b = await DB.prepare('SELECT title, summary, thumbnail_url FROM blog_posts WHERE slug = ? AND is_published = 1')
+        .bind(blogMatch[1]).first<any>();
+      if (b) {
+        og.title = `${b.title} - 유어딜 블로그`;
+        og.desc = b.summary?.slice(0, 200) || '';
+        if (b.thumbnail_url) og.image = b.thumbnail_url;
+      }
+    }
+
+    // /blog → 블로그 목록
+    if (path === '/blog') {
+      og.title = '유어딜 블로그 — 라이브 커머스 가이드';
+      og.desc = '셀러 가이드, 트렌드, 서비스 소식. 유어딜에서 라이브 커머스를 시작하세요.';
+    }
   } catch {}
 
   // 메타 태그가 포함된 최소 HTML 반환

@@ -1,6 +1,6 @@
 {
   "version": 1,
   "description": "API + SEO bot routes to Worker, static assets served directly",
-  "include": ["/api/*", "/auth/*", "/products/*", "/profile/*", "/s/*", "/live/*", "/introduce", "/browse", "/restaurant-map", "/shorts"],
+  "include": ["/api/*", "/auth/*", "/products/*", "/profile/*", "/s/*", "/live/*", "/introduce", "/browse", "/restaurant-map", "/shorts", "/blog", "/blog/*"],
   "exclude": ["/assets/*", "/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg", "/*.ico", "/*.woff", "/*.woff2"]
 }
