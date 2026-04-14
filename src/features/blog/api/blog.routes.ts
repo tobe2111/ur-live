@@ -32,14 +32,10 @@ async function ensureBlogTable(DB: D1Database) {
 // ── 공개: 발행된 글 목록 ──────────────────────────────────────
 app.get('/public', async (c) => {
   await ensureBlogTable(c.env.DB)
-  // 자동 시드: 글이 없으면 기본 콘텐츠 생성
+  // 자동 시드: 글이 없으면 기본 콘텐츠 직접 생성
   const count = await c.env.DB.prepare('SELECT COUNT(*) as cnt FROM blog_posts').first<{ cnt: number }>()
   if (!count || count.cnt === 0) {
-    try {
-      const seedUrl = new URL(c.req.url)
-      seedUrl.pathname = '/api/admin/blog/seed'
-      await fetch(seedUrl.toString(), { method: 'POST' }).catch(() => {})
-    } catch {}
+    await seedBlogPosts(c.env.DB)
   }
   const page = Number(c.req.query('page') || 1)
   const limit = Number(c.req.query('limit') || 9)
@@ -169,11 +165,10 @@ app.delete('/:id', async (c) => {
 })
 
 // ── 블로그 시드 (초기 콘텐츠 자동 생성) ─────────────────────────
-app.post('/seed', async (c) => {
-  await ensureBlogTable(c.env.DB)
-
-  const existing = await c.env.DB.prepare('SELECT COUNT(*) as cnt FROM blog_posts').first<{ cnt: number }>()
-  if (existing && existing.cnt > 0) return c.json({ success: true, message: 'already seeded' })
+// ── 블로그 시드 함수 (재사용) ────────────────────────────────────
+async function seedBlogPosts(DB: D1Database) {
+  const existing = await DB.prepare('SELECT COUNT(*) as cnt FROM blog_posts').first<{ cnt: number }>()
+  if (existing && existing.cnt > 0) return
 
   const posts = [
     {
@@ -470,14 +465,18 @@ app.post('/seed', async (c) => {
 
   for (const post of posts) {
     try {
-      await c.env.DB.prepare(`
+      await DB.prepare(`
         INSERT OR IGNORE INTO blog_posts (slug, title, summary, content, tags, author, is_published, published_at)
         VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, datetime('now'))
       `).bind(post.slug, post.title, post.summary, post.content, post.tags).run()
     } catch {}
   }
+}
 
-  return c.json({ success: true, message: `${posts.length}개 블로그 글 생성 완료` })
+app.post('/seed', async (c) => {
+  await ensureBlogTable(c.env.DB)
+  await seedBlogPosts(c.env.DB)
+  return c.json({ success: true, message: '블로그 글 생성 완료' })
 })
 
 export { app as blogRoutes }
