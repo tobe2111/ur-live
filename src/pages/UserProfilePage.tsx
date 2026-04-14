@@ -48,7 +48,7 @@ function TeamPointsCard() {
           <div>
             <p className="text-[11px] text-gray-500 font-medium">내 딜 잔액</p>
             <p className="text-lg font-bold text-white">
-              {loading ? '...' : `${balance.toLocaleString()}딜`}
+              {loading ? <span className="inline-block w-16 h-5 bg-gray-700 rounded animate-pulse" /> : `${balance.toLocaleString()}딜`}
             </p>
           </div>
         </div>

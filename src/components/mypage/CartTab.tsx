@@ -24,7 +24,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
   if (cartItems.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="apple-card p-12 text-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
           <div className="w-24 h-24 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-6">
             <ShoppingCart className="h-12 w-12 text-[#6e6e73]" />
           </div>
@@ -45,7 +45,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
   return (
     <div className="space-y-6">
       {/* Cart Items */}
-      <div className="apple-card divide-y divide-[#e5e5ea]">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-[#e5e5ea]">
         {cartItems.map(item => (
           <div key={item.id} className="p-4 sm:p-6 flex gap-4">
             <div className="flex-1 min-w-0">
@@ -94,7 +94,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
       </div>
 
       {/* Cart Summary */}
-      <div className="apple-card p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="space-y-4 pb-6 border-b border-[#e5e5ea]">
           <div className="flex justify-between">
             <span className="text-[15px] text-[#6e6e73]">상품 금액</span>

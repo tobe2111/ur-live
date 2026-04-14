@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { toast } from '@/hooks/useToast'
+import { isLoggedInSync, getUserIdSync } from '@/utils/auth'
 import WishlistButton from '../components/WishlistButton'
 
 interface WishlistItem {
@@ -29,20 +30,18 @@ const WishlistPage: React.FC = () => {
   const [userId, setUserId] = useState<number | null>(null)
 
   useEffect(() => {
-    // 사용자 ID 가져오기
-    const userSession = localStorage.getItem('user_session_token')
-    const storedUserId = localStorage.getItem('user_id')
-    
-    if (!userSession || !storedUserId) {
-      // 로그인 필요
+    if (!isLoggedInSync()) {
       toast.info('로그인이 필요합니다.')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
     }
 
-    setUserId(parseInt(storedUserId))
-    loadWishlists(parseInt(storedUserId))
+    const uid = getUserIdSync()
+    if (uid) {
+      setUserId(parseInt(uid))
+      loadWishlists(parseInt(uid))
+    }
   }, [navigate])
 
   // 위시리스트 로드
