@@ -831,4 +831,53 @@ app.put('/targets', async (c: AgencyCtx) => {
   return c.json({ success: true })
 })
 
+// ── GET /api/agency/settlements/csv — 정산 CSV 다운로드 ──
+app.get('/settlements/csv', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const { results } = await c.env.DB.prepare(`
+    SELECT s.name AS seller_name, s.email,
+      COUNT(DISTINCT o.id) AS settled_orders,
+      COALESCE(SUM(o.total_amount), 0) AS total_amount,
+      COALESCE(SUM(o.total_amount * 0.05), 0) AS seller_commission,
+      COALESCE(SUM(o.total_amount * 0.02), 0) AS agency_commission
+    FROM agency_sellers ag
+    JOIN sellers s ON ag.seller_id = s.id
+    LEFT JOIN orders o ON o.seller_id = s.id AND COALESCE(o.settlement_status, '') = 'settled'
+    WHERE ag.agency_id = ?
+    GROUP BY s.id ORDER BY total_amount DESC
+  `).bind(agencyId).all()
+
+  const rows = results || []
+  const csv = [
+    '셀러명,이메일,정산건수,총매출(원),셀러수수료5%(원),에이전시수수료2%(원)',
+    ...rows.map((r: any) => `${r.seller_name},${r.email},${r.settled_orders},${r.total_amount},${Math.round(r.seller_commission)},${Math.round(r.agency_commission)}`)
+  ].join('\n')
+
+  return new Response('\uFEFF' + csv, {
+    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="agency-settlements.csv"' },
+  })
+})
+
+// ── GET /api/agency/sellers/compare — 셀러 성과 비교 ──
+app.get('/sellers/compare', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const period = c.req.query('period') || '30'
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT s.id, s.name,
+      COUNT(DISTINCT o.id) AS order_count,
+      COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END), 0) AS revenue,
+      COUNT(DISTINCT CASE WHEN ls.status = 'live' THEN ls.id END) AS live_count,
+      COUNT(DISTINCT CASE WHEN ls.status = 'ended' THEN ls.id END) AS ended_streams
+    FROM agency_sellers ag
+    JOIN sellers s ON ag.seller_id = s.id
+    LEFT JOIN orders o ON o.seller_id = s.id AND o.created_at > datetime('now', '-' || ? || ' days')
+    LEFT JOIN live_streams ls ON ls.seller_id = s.id AND ls.created_at > datetime('now', '-' || ? || ' days')
+    WHERE ag.agency_id = ?
+    GROUP BY s.id, s.name ORDER BY revenue DESC
+  `).bind(period, period, agencyId).all()
+
+  return c.json({ success: true, data: results || [] })
+})
+
 export { app as agencyRoutes }
