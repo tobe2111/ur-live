@@ -66,6 +66,7 @@ export default function SEO({
 export function productJsonLd(product: {
   name: string; price: number; image?: string; description?: string
   url: string; seller?: string; rating?: number; reviewCount?: number
+  originalPrice?: number; stock?: number; sku?: string | number
 }) {
   return {
     '@context': 'https://schema.org',
@@ -74,17 +75,25 @@ export function productJsonLd(product: {
     image: product.image || DEFAULT_IMAGE,
     description: product.description || '',
     url: `${BASE_URL}${product.url}`,
+    sku: product.sku ? String(product.sku) : undefined,
+    brand: { '@type': 'Brand', name: product.seller || '유어딜' },
     offers: {
       '@type': 'Offer',
       price: product.price,
       priceCurrency: 'KRW',
-      availability: 'https://schema.org/InStock',
+      availability: (product.stock ?? 1) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      itemCondition: 'https://schema.org/NewCondition',
       seller: product.seller ? { '@type': 'Organization', name: product.seller } : undefined,
+      ...(product.originalPrice && product.originalPrice > product.price ? {
+        priceValidUntil: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+      } : {}),
     },
     ...(product.rating ? {
       aggregateRating: {
         '@type': 'AggregateRating',
         ratingValue: product.rating,
+        bestRating: 5,
+        worstRating: 1,
         reviewCount: product.reviewCount || 0,
       },
     } : {}),
