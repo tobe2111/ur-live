@@ -122,7 +122,7 @@ broadcastNotifyRoutes.get('/subscribers/:streamId', async (c) => {
 });
 
 // POST /send/:streamId — 방송 시작 알림 발송 (내부 호출용)
-broadcastNotifyRoutes.post('/send/:streamId', async (c) => {
+broadcastNotifyRoutes.post('/send/:streamId', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 

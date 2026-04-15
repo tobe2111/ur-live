@@ -603,7 +603,7 @@ app.post('/live/:id/start', async (c) => {
       // Already live (auto-started by OBS/Prism RTMP) — just sync DB
       await c.env.DB.prepare(`
         UPDATE live_streams
-        SET status = 'live', started_at = COALESCE(started_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+        SET status = 'live', updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(streamId).run()
 
@@ -621,7 +621,7 @@ app.post('/live/:id/start', async (c) => {
     // Update database
     await c.env.DB.prepare(`
       UPDATE live_streams
-      SET status = 'live', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      SET status = 'live', updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(streamId).run()
 
@@ -679,7 +679,7 @@ app.get('/live/:id/status', async (c) => {
     if (ytStatus === 'live' && stream.status === 'scheduled') {
       await c.env.DB.prepare(`
         UPDATE live_streams
-        SET status = 'live', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        SET status = 'live', updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(streamId).run()
 

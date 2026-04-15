@@ -78,7 +78,7 @@ sellerAnalyticsRoutes.get('/products/performance', requireAuth(), async (c) => {
     LEFT JOIN order_items oi ON oi.product_id = p.id
     LEFT JOIN orders o ON o.id = oi.order_id AND o.status NOT IN ('CANCELLED','FAILED','REFUNDED')
     LEFT JOIN reviews r ON r.product_id = p.id
-    WHERE p.seller_id = ? AND COALESCE(p.status, 'ACTIVE') != 'DELETED'
+    WHERE p.seller_id = ? AND COALESCE(p.is_active, 1) = 1
     GROUP BY p.id ORDER BY revenue DESC
   `).bind(sellerId).all()
 
