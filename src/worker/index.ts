@@ -220,8 +220,8 @@ app.get('/api/docs', swaggerUI({ url: '/api/openapi.json' }));
 // Debug & Utilities
 // ============================================================
 
-// Debug endpoint to check bindings
-app.get('/api/debug/bindings', (c) => {
+// Debug endpoint to check bindings (admin only)
+app.get('/api/debug/bindings', requireAdmin(), (c) => {
   const env = c.env as Env;
   return c.json({
     hasDB: !!env.DB,
@@ -234,7 +234,7 @@ app.get('/api/debug/bindings', (c) => {
 });
 
 // KV usage monitoring (admin only)
-app.get('/api/debug/kv-usage', async (c) => {
+app.get('/api/debug/kv-usage', requireAdmin(), async (c) => {
   const env = c.env as Env;
   try {
     // SESSION_KV의 활성 세션 키 수를 집계 (KV list 사용)
