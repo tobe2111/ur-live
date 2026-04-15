@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function BroadcastNotifyButton({ streamId, compact = false }: Props) {
+  const navigate = useNavigate()
   const [calLoading, setCalLoading] = useState(false)
   const [subscribed, setSubscribed] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -17,7 +19,12 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
 
   const handleSubscribe = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!userId) { toast.error('로그인이 필요합니다'); return }
+    if (!userId) {
+      toast.error('로그인이 필요합니다')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      navigate('/login')
+      return
+    }
     setLoading(true)
     try {
       if (subscribed) {
@@ -40,21 +47,34 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
 
   const handleAddCalendar = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!userId) { toast.error('로그인이 필요합니다'); return }
+    if (!userId) {
+      toast.error('로그인이 필요합니다')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      navigate('/login')
+      return
+    }
     setCalLoading(true)
     try {
       if (kr) {
         const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
         if (res.data.success) {
           toast.success('카카오 캘린더에 등록되었습니다!')
+        } else if (res.data.error?.includes('카카오 연동')) {
+          toast.error('카카오 캘린더 권한이 필요합니다. 로그아웃 후 다시 로그인해주세요.')
         } else {
-          openGoogleCalendar()
+          window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
+          toast.success('캘린더 파일을 다운로드합니다')
         }
       } else {
         openGoogleCalendar()
       }
     } catch {
-      openGoogleCalendar()
+      if (kr) {
+        window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
+        toast.success('캘린더 파일을 다운로드합니다')
+      } else {
+        openGoogleCalendar()
+      }
     } finally {
       setCalLoading(false)
     }

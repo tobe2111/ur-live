@@ -298,7 +298,7 @@ export default function ProductDetailPage() {
     if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
-      setTimeout(() => navigate('/login'), 1000)
+      navigate('/login')
       return
     }
     if (!id || wishlistLoading) return
@@ -326,7 +326,7 @@ export default function ProductDetailPage() {
     if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
-      setTimeout(() => navigate('/login'), 1000)
+      navigate('/login')
       return
     }
 
@@ -341,7 +341,7 @@ export default function ProductDetailPage() {
       localStorage.setItem('hasCartItems', 'true')
       
       // ✅ 장바구니 페이지로 이동
-      setTimeout(() => navigate('/cart'), 1000)
+      navigate('/cart')
     } catch (err: any) {
       if (import.meta.env.DEV) {
         console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
@@ -355,7 +355,7 @@ export default function ProductDetailPage() {
     if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
-      setTimeout(() => navigate('/login'), 1000)
+      navigate('/login')
       return
     }
 

@@ -115,7 +115,7 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
         time_zone: 'Asia/Seoul',
       },
       description: `유어딜 라이브 방송\n${stream.title}\n\n시청하기: https://live.ur-team.com/live/${stream.id}`,
-      reminders: [30], // 30분 전 알림
+      reminders: [5], // 5분 전 알림
       color: 'RED',
     };
 
