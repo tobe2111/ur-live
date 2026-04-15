@@ -44,7 +44,10 @@ scraperProxy.all('/*', async (c) => {
   }
 
   // ── Proxy ──────────────────────────────────────────────────────────────
-  const scraperUrl = (c.env as any).SCRAPER_URL || DEFAULT_SCRAPER_URL;
+  const scraperUrl = (c.env as any).SCRAPER_URL;
+  if (!scraperUrl) {
+    return c.json({ error: '스크래퍼 서버가 설정되지 않았습니다 (SCRAPER_URL 환경변수 필요)' }, 503);
+  }
 
   // /api/scraper/api/status → scraperUrl + /api/status
   const subPath = c.req.path.replace(/^\/api\/scraper/, '');

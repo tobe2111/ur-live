@@ -210,7 +210,7 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
     if (items.results.length > 0) {
       for (const item of items.results) {
         await db.prepare(
-          'UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?'
+          'UPDATE products SET stock = stock + ? WHERE id = ?'
         ).bind(item.quantity, item.product_id).run();
       }
       await db.prepare('UPDATE order_items SET status = ? WHERE order_id = ?')
