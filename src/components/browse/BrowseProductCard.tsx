@@ -56,6 +56,7 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
     const userId = localStorage.getItem('userId')
     if (!userId) {
       alert('로그인이 필요합니다.')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
     }

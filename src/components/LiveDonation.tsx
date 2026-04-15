@@ -62,6 +62,8 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
   const handleDonate = useCallback(async () => {
     if (!userId) {
       toast.error('로그인이 필요합니다.')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      window.location.href = '/login'
       return
     }
 

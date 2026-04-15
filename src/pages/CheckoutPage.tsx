@@ -306,6 +306,8 @@ export default function CheckoutPage() {
   const handleSaveNewAddress = async () => {
     if (!userId) {
       toast.info('로그인이 필요합니다.')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      navigate('/login')
       return
     }
 

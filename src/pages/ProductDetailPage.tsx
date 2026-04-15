@@ -298,7 +298,7 @@ export default function ProductDetailPage() {
     if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
-      setTimeout(() => navigate('/login'), 1000)
+      navigate('/login')
       return
     }
     if (!id || wishlistLoading) return
@@ -326,7 +326,7 @@ export default function ProductDetailPage() {
     if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
-      setTimeout(() => navigate('/login'), 1000)
+      navigate('/login')
       return
     }
 
@@ -355,7 +355,7 @@ export default function ProductDetailPage() {
     if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
-      setTimeout(() => navigate('/login'), 1000)
+      navigate('/login')
       return
     }
 
