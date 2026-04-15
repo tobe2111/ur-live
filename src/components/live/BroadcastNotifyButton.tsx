@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function BroadcastNotifyButton({ streamId, compact = false }: Props) {
+  const navigate = useNavigate()
   const [calLoading, setCalLoading] = useState(false)
   const [subscribed, setSubscribed] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -17,7 +19,12 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
 
   const handleSubscribe = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!userId) { toast.error('로그인이 필요합니다'); return }
+    if (!userId) {
+      toast.error('로그인이 필요합니다')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      navigate('/login')
+      return
+    }
     setLoading(true)
     try {
       if (subscribed) {
@@ -40,7 +47,12 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
 
   const handleAddCalendar = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!userId) { toast.error('로그인이 필요합니다'); return }
+    if (!userId) {
+      toast.error('로그인이 필요합니다')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      navigate('/login')
+      return
+    }
     setCalLoading(true)
     try {
       if (kr) {
