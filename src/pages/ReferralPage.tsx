@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
 import { nativeShare } from '@/lib/native'
+import KakaoShareButton from '@/components/KakaoShareButton'
 
 interface ReferralGroup {
   id: number; product_id: number; invite_code: string; creator_name: string
@@ -226,13 +227,13 @@ export default function ReferralPage() {
       {!isExpired && !isAchieved && (
         <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-4 safe-area-bottom">
           <div className="flex gap-2 max-w-md mx-auto">
-            <button
-              onClick={handleShare}
-              className="flex items-center justify-center gap-1.5 px-5 py-3.5 bg-gray-100 rounded-xl text-gray-700 font-bold text-sm shrink-0"
-            >
-              <Copy className="w-4 h-4" />
-              초대하기
-            </button>
+            <KakaoShareButton
+              title={`${group?.product?.name || '상품'} 공동구매`}
+              description={`${group?.target_count}명 모이면 ${group?.discount_percent}% 추가 할인! 함께 사요`}
+              link={`/referral/${code}`}
+              buttonText="공동구매 참여하기"
+              className="flex items-center justify-center gap-1.5 px-5 py-3.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl font-bold text-sm shrink-0"
+            />
             <button
               onClick={handleJoin}
               disabled={joining}

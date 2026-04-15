@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
 import axios from 'axios'
+import KakaoShareButton from '@/components/KakaoShareButton'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
@@ -464,18 +465,13 @@ function ScheduledOverlay({ stream, onGoHome }: { stream: Stream; onGoHome: () =
         )}
 
         <div className="flex gap-3 mt-2">
-          <button
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({ title: stream.title, url: window.location.href })
-              } else {
-                navigator.clipboard?.writeText(window.location.href)
-              }
-            }}
-            className="px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-full text-sm font-medium transition-colors"
-          >
-            공유하기
-          </button>
+          <KakaoShareButton
+            title={stream.title}
+            description={stream.seller_name ? `${stream.seller_name}의 라이브 방송` : '유어딜 라이브'}
+            link={`/live/${stream.id}`}
+            className="px-6 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-full text-sm font-bold"
+            compact={false}
+          />
           <button
             onClick={onGoHome}
             className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white/80 rounded-full text-sm font-medium transition-colors"
@@ -1331,22 +1327,14 @@ function ReelCard({
               >
                 <MessageCircle className="h-5 w-5 text-white/90" />
               </button>
-              <button
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
-                aria-label="Share"
-                onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({ title: safeProduct.name, url: window.location.href })
-                  } else {
-                    navigator.clipboard?.writeText(window.location.href)
-                    setNotificationText('링크가 복사되었습니다!')
-                    setShowNotification(true)
-                    setTimeout(() => setShowNotification(false), 2000)
-                  }
-                }}
-              >
-                <Share2 className="h-5 w-5 text-white/90" />
-              </button>
+              <KakaoShareButton
+                title={stream?.title || '유어딜 라이브'}
+                description={safeProduct?.name || '라이브 방송 중'}
+                imageUrl={safeProduct?.image_url}
+                link={`/live/${stream?.id}`}
+                compact
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEE500] backdrop-blur-sm transition-all active:scale-90"
+              />
 
               {/* 후원하기 버튼 (딜 포인트) */}
               {!isSeller && stream?.id && (
