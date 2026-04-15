@@ -41,13 +41,22 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     setCalLoading(true)
     try {
       const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
-      if (res.data.success) toast.success('카카오 캘린더에 등록되었습니다!')
-      else toast.error(res.data.error || '캘린더 등록 실패')
+      if (res.data.success) {
+        toast.success('카카오 캘린더에 등록되었습니다!')
+      } else {
+        // 카카오 실패 시 ICS 파일 다운로드 (구글/애플 호환)
+        downloadICS()
+      }
     } catch {
-      toast.error('카카오 캘린더 연동이 아직 준비 중입니다')
+      downloadICS()
     } finally {
       setCalLoading(false)
     }
+  }
+
+  const downloadICS = () => {
+    window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
+    toast.success('캘린더 파일을 다운로드합니다')
   }
 
   if (compact) {
