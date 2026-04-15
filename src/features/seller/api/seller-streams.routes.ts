@@ -346,10 +346,15 @@ sellerStreamsRoutes.put('/:id', async (c) => {
         c.executionCtx?.waitUntil?.(
           (async () => {
             try {
-              const { sendKakaoMessageToSubscribers } = await import('@/lib/notifications');
+              const { sendKakaoMessageToSubscribers, sendKakaoToFollowers } = await import('@/lib/notifications');
               const stream = await db.prepare('SELECT title FROM live_streams WHERE id = ?').bind(streamId).first<{ title: string }>();
               const seller = await db.prepare('SELECT name FROM sellers WHERE id = ?').bind(sellerId).first<{ name: string }>();
-              await sendKakaoMessageToSubscribers(db, Number(streamId), stream?.title || '', seller?.name || '셀러');
+              const sellerName = seller?.name || '셀러';
+              const streamTitle = stream?.title || '';
+              // 구독자에게 카카오 메시지
+              await sendKakaoMessageToSubscribers(db, Number(streamId), streamTitle, sellerName);
+              // 팔로워에게도 카카오 메시지
+              await sendKakaoToFollowers(db, Number(sellerId), `🔴 ${sellerName} 라이브 시작!`, streamTitle, `/live/${streamId}`, '시청하기');
             } catch {}
           })()
         );

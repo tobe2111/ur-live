@@ -528,14 +528,13 @@ sellerOrdersRoutes.post('/products', async (c) => {
        FROM products WHERE id = ?`
     ).bind(result.meta.last_row_id).first<Record<string, unknown>>();
 
-    // 팔로워에게 새 상품 알림
+    // 팔로워에게 새 상품 알림 (인앱 + 카카오)
     if (newProduct) {
-      const { notifyFollowers } = await import('@/lib/notifications');
-      notifyFollowers(db, Number(sellerId), 'new_product',
-        `🛍️ 새 상품 등록!`,
-        `${(newProduct as any).name}`,
-        `/products/${(newProduct as any).id}`
-      ).catch(() => {});
+      const { notifyFollowers, sendKakaoToFollowers } = await import('@/lib/notifications');
+      const productName = (newProduct as any).name;
+      const productId = (newProduct as any).id;
+      notifyFollowers(db, Number(sellerId), 'new_product', `🛍️ 새 상품 등록!`, productName, `/products/${productId}`).catch(() => {});
+      sendKakaoToFollowers(db, Number(sellerId), `🛍️ 새 상품이 등록되었어요!`, productName, `/products/${productId}`, '상품 보기').catch(() => {});
     }
 
     return c.json({ success: true, data: newProduct }, 201);

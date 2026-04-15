@@ -136,3 +136,35 @@ export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: nu
     return sent;
   } catch { return 0; }
 }
+
+// ─── 팔로워에게 카카오 메시지 (방송 시작 시) ─────────────────
+export async function sendKakaoToFollowers(DB: D1Database, sellerId: number, title: string, description: string, link: string, buttonText: string) {
+  try {
+    const { results: followers } = await DB.prepare(`
+      SELECT u.kakao_access_token
+      FROM social_follows sf
+      JOIN users u ON CAST(sf.user_id AS TEXT) = CAST(u.id AS TEXT)
+      WHERE sf.seller_id = ? AND u.kakao_access_token IS NOT NULL
+    `).bind(sellerId).all<{ kakao_access_token: string }>();
+
+    if (!followers?.length) return 0;
+    const fullUrl = `https://live.ur-team.com${link}`
+    let sent = 0;
+    for (const f of followers.slice(0, 100)) { // 일일 100건 제한
+      try {
+        const templateObject = JSON.stringify({
+          object_type: 'feed',
+          content: { title, description, image_url: 'https://live.ur-team.com/og-image.png', link: { web_url: fullUrl, mobile_web_url: fullUrl } },
+          buttons: [{ title: buttonText, link: { web_url: fullUrl, mobile_web_url: fullUrl } }],
+        });
+        await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${f.kakao_access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `template_object=${encodeURIComponent(templateObject)}`,
+        });
+        sent++;
+      } catch {}
+    }
+    return sent;
+  } catch { return 0; }
+}
