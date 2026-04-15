@@ -7,6 +7,7 @@ import HeroBanner from '@/components/main/HeroBanner'
 import SiteFooter from '@/components/main/SiteFooter'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
 import SEO, { organizationJsonLd } from '@/components/SEO'
+import SharePrompt from '@/components/SharePrompt'
 
 // ── Types ──
 interface LiveStream {
@@ -611,8 +612,38 @@ export default function MainHomePage() {
       {/* 최근 본 상품 */}
       <RecentlyViewed />
 
+      {/* 신규 가입자 친구 초대 유도 */}
+      <InvitePrompt />
+
       <SiteFooter />
     </div>
+  )
+}
+
+function InvitePrompt() {
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const userId = localStorage.getItem('user_id')
+    if (!userId) return
+    if (localStorage.getItem('invite_prompt_shown') === '1') return
+    const recent = localStorage.getItem('recently_viewed')
+    if (!recent || JSON.parse(recent).length <= 1) {
+      setTimeout(() => setShow(true), 3000)
+      localStorage.setItem('invite_prompt_shown', '1')
+    }
+  }, [])
+  if (!show) return null
+  return (
+    <SharePrompt
+      title="친구를 초대해보세요! 🎉"
+      message="친구에게 유어딜을 소개하면 함께 혜택을 받을 수 있어요"
+      shareTitle="유어딜 - 라이브 커머스"
+      shareDescription="라이브 방송으로 만나는 최저가 특가 상품! 지금 가입하세요"
+      shareLink="/"
+      shareButtonText="유어딜 보러가기"
+      reward="친구 초대 시 500딜 적립!"
+      onClose={() => setShow(false)}
+    />
   )
 }
 

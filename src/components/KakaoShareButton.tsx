@@ -89,11 +89,23 @@ export default function KakaoShareButton({ title, description, imageUrl, link, b
   }
 
   return (
-    <button
-      onClick={handleShare}
-      className={className || "w-full flex items-center justify-center gap-2 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold active:scale-[0.97]"}
-    >
-      {kr ? '💬 카카오톡 공유하기' : '🔗 Share'}
-    </button>
+    <div className="space-y-2">
+      <button
+        onClick={handleShare}
+        className={className || "w-full flex items-center justify-center gap-2 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold active:scale-[0.97]"}
+      >
+        {kr ? '💬 카카오톡 공유하기' : '🔗 Share'}
+      </button>
+      {!kr && (
+        <div className="flex gap-2">
+          <a href={`https://wa.me/?text=${encodeURIComponent(`${title} ${fullUrl}`)}`} target="_blank" rel="noopener"
+            className="flex-1 py-2 bg-[#25D366] text-white rounded-xl text-xs font-bold text-center">WhatsApp</a>
+          <a href={`https://line.me/R/share?text=${encodeURIComponent(`${title} ${fullUrl}`)}`} target="_blank" rel="noopener"
+            className="flex-1 py-2 bg-[#00B900] text-white rounded-xl text-xs font-bold text-center">LINE</a>
+          <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(fullUrl)}`} target="_blank" rel="noopener"
+            className="flex-1 py-2 bg-black text-white rounded-xl text-xs font-bold text-center">X</a>
+        </div>
+      )}
+    </div>
   )
 }
