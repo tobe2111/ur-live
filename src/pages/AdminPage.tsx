@@ -331,34 +331,34 @@ export default function AdminPage() {
       )}
 
       {/* ── 실시간 통계 카드 ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
           { label: '오늘 매출', value: fmtPrice(dashboardStats.todaySales), sub: '실시간', icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: '오늘 주문', value: `${(dashboardStats.todayOrders || 0).toLocaleString()}건`, sub: '실시간', icon: <Package className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: '현재 방문자', value: `${(dashboardStats.currentVisitors || 0).toLocaleString()}명`, sub: '최근 5분', icon: <Eye className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
           { label: '라이브 방송', value: `${(dashboardStats.liveStreams || 0).toLocaleString()}개`, sub: '진행 중', icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50' },
         ].map(card => (
-          <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-500">{card.label}</span>
-              <div className={`w-8 h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
+          <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
                 {card.icon}
               </div>
             </div>
-            <p className="text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
-            <p className="text-xs text-gray-400">{card.sub}</p>
+            <p className="text-lg sm:text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
+            <p className="text-[10px] sm:text-xs text-gray-400">{card.sub}</p>
           </div>
         ))}
       </div>
 
       {/* ── 매출 차트 + 활동 피드 ── */}
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid lg:grid-cols-2 gap-3 sm:gap-4">
         <AdminRevenueChart />
         <AdminActivityFeed />
       </div>
 
       {/* ── 판매자 통계 카드 ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
           { label: '총 판매자', value: stats.totalSellers, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: '승인된 판매자', value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },

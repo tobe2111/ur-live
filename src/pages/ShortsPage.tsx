@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle, Share2, ShoppingBag, ChevronLeft, Volume2, VolumeX, Play } from 'lucide-react'
+import KakaoShareButton from '@/components/KakaoShareButton'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -244,20 +245,14 @@ export default function ShortsPage() {
                 <Heart className="w-7 h-7 text-white" />
                 <span className="text-[10px] text-white mt-1">{item.like_count || 0}</span>
               </button>
-              {/* 공유 */}
-              <button
-                onClick={() => {
-                  const url = typeof item.id === 'number'
-                    ? `${window.location.origin}/shorts/${item.id}`
-                    : `${window.location.origin}/live/${item.live_stream_id}`
-                  if (navigator.share) navigator.share({ title: item.title, url })
-                  else { navigator.clipboard?.writeText(url); toast.success('링크 복사됨') }
-                }}
+              {/* 카카오 공유 */}
+              <KakaoShareButton
+                title={item.title}
+                description={item.seller_name ? `${item.seller_name}의 영상` : '유어딜 쇼츠'}
+                link={typeof item.id === 'number' ? `/shorts/${item.id}` : `/live/${item.live_stream_id}`}
+                compact
                 className="flex flex-col items-center"
-              >
-                <Share2 className="w-6 h-6 text-white" />
-                <span className="text-[10px] text-white mt-1">공유</span>
-              </button>
+              />
             </div>
 
             {/* 하단 정보 */}

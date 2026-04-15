@@ -290,7 +290,7 @@ export default function SellerPage() {
     <SellerLayout title={t('seller.dashboard')} headerRight={headerRight} pendingOrders={stats.pendingOrders}>
 
           {/* ── Stats row ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             {[
               {
                 label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
@@ -313,15 +313,15 @@ export default function SellerPage() {
                 icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50'
               },
             ].map(card => (
-              <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-medium text-gray-500">{card.label}</span>
-                  <div className={`w-8 h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
+              <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
                     {card.icon}
                   </div>
                 </div>
-                <p className="text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
-                {card.sub && <p className="text-xs text-gray-400">{card.sub}</p>}
+                <p className="text-lg sm:text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
+                {card.sub && <p className="text-[10px] sm:text-xs text-gray-400">{card.sub}</p>}
               </div>
             ))}
           </div>
@@ -351,7 +351,7 @@ export default function SellerPage() {
           )}
 
           {/* ── Main grid ── */}
-          <div className="grid lg:grid-cols-3 gap-5">
+          <div className="grid lg:grid-cols-3 gap-3 sm:gap-5">
 
             {/* ── Real-time orders (col-span-2) ── */}
             <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
@@ -481,7 +481,7 @@ export default function SellerPage() {
               {/* 알림 */}
               <div>
                 <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('seller.alerts')}</h2>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                   <Link
                     to={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
                     className="bg-pink-50 rounded-xl p-3 text-center hover:bg-pink-100 transition-colors block"
@@ -582,7 +582,7 @@ export default function SellerPage() {
 
           {/* ── Chart ── */}
           {dailyStats.length > 0 && (
-            <div className="grid lg:grid-cols-3 gap-5">
+            <div className="grid lg:grid-cols-3 gap-3 sm:gap-5">
               {/* Sales chart */}
               <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-5">
                 <div className="flex items-center justify-between mb-4">

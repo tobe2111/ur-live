@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, Share2, Tag } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
+import KakaoShareButton from '@/components/KakaoShareButton'
 
 interface BlogPost {
   id: number; slug: string; title: string; summary: string; content: string
@@ -176,6 +177,9 @@ export default function BlogDetailPage() {
           <div className="flex gap-3 justify-center">
             <Link to="/" className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold">쇼핑하기</Link>
             <Link to="/seller/register" className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold">셀러 시작</Link>
+          </div>
+          <div className="mt-3">
+            <KakaoShareButton title={post.title} description={post.summary} link={`/blog/${post.slug}`} buttonText="글 읽기" />
           </div>
         </div>
       </article>

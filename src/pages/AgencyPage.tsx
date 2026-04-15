@@ -67,15 +67,15 @@ function StatCard({ label, value, icon: Icon, color, sub }: {
   label: string; value: string; icon: any; color: string; sub?: string
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+          <p className="text-[10px] sm:text-xs font-medium text-gray-500 mb-0.5 sm:mb-1">{label}</p>
+          <p className="text-lg sm:text-2xl font-bold text-gray-900">{value}</p>
+          {sub && <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">{sub}</p>}
         </div>
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-          <Icon className="w-5 h-5 text-white" />
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center ${color}`}>
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
         </div>
       </div>
     </div>
@@ -137,7 +137,7 @@ export default function AgencyPage() {
   return (
     <AgencyLayout title="대시보드">
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
         <StatCard
           label="소속 셀러"
           value={String(stats?.sellers ?? 0)}
@@ -210,7 +210,7 @@ export default function AgencyPage() {
       </div>
 
       {/* Sellers + Orders */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-5">
         {/* Sellers */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">

@@ -15,6 +15,7 @@ import { MobileHeader } from '@/components/product/mobile-header'
 import { ProductHeader } from '@/components/product/product-header'
 import SEO, { productJsonLd } from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
+import SharePrompt from '@/components/SharePrompt'
 import { ProductInfoGrid } from '@/components/product/ProductInfoGrid'
 import { ProductNoticeSection } from '@/components/product/ProductNoticeSection'
 import { ReturnPolicySection } from '@/components/product/ReturnPolicySection'
@@ -31,6 +32,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
   const [rating, setRating] = useState(5)
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [showSharePrompt, setShowSharePrompt] = useState(false)
 
   if (!open) {
     return (
@@ -69,7 +71,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               if (res.data.success) {
                 setOpen(false); setContent(''); setRating(5)
                 onSubmitted()
-                if (res.data.reward) alert('리뷰가 등록되었습니다! 🎁 딜 포인트가 지급되었습니다.')
+                if (res.data.reward) setShowSharePrompt(true)
               } else {
                 alert(res.data.error || '리뷰 작성 실패')
               }
@@ -82,6 +84,17 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
           {submitting ? '등록 중...' : '리뷰 등록'}
         </button>
       </div>
+      {showSharePrompt && (
+        <SharePrompt
+          title="리뷰가 등록되었습니다! 🎁"
+          message="딜 포인트가 지급되었어요. 이 상품을 친구에게 추천해보세요!"
+          shareTitle="이 상품 추천해요!"
+          shareDescription="유어딜에서 좋은 상품을 발견했어요"
+          shareLink={`/products/${productId}`}
+          shareButtonText="상품 보러가기"
+          onClose={() => setShowSharePrompt(false)}
+        />
+      )}
     </div>
   )
 }
