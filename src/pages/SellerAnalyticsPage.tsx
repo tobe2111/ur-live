@@ -58,16 +58,16 @@ export default function SellerAnalyticsPage() {
                       <p className="text-xl font-bold text-gray-900">{(data as any[]).reduce((s: number, d: any) => s + d.orders, 0)}건</p>
                     </div>
                   </div>
-                  <div className="space-y-1">
+                  <div className="flex items-end gap-1 overflow-x-auto scrollbar-hide" style={{ minHeight: 160 }}>
                     {(data as any[]).slice(-14).map((d: any) => {
                       const max = Math.max(...(data as any[]).map((x: any) => x.revenue)) || 1
                       return (
-                        <div key={d.date} className="flex items-center gap-2 text-xs">
-                          <span className="w-16 text-gray-500 shrink-0">{d.date.slice(5)}</span>
-                          <div className="flex-1 bg-gray-100 rounded-full h-4">
-                            <div className="bg-blue-500 h-4 rounded-full" style={{ width: `${(d.revenue / max) * 100}%` }} />
+                        <div key={d.date} className="flex flex-col items-center flex-1 min-w-[28px]">
+                          <span className="text-[9px] text-gray-500 mb-1">{(d.revenue / 10000).toFixed(0)}만</span>
+                          <div className="w-full bg-gray-100 rounded-t" style={{ height: `${Math.max(4, (d.revenue / max) * 120)}px` }}>
+                            <div className="w-full h-full bg-blue-500 rounded-t" />
                           </div>
-                          <span className="w-20 text-right text-gray-700 font-medium">{d.revenue.toLocaleString()}</span>
+                          <span className="text-[9px] text-gray-400 mt-1">{d.date.slice(5)}</span>
                         </div>
                       )
                     })}

@@ -355,7 +355,7 @@ sellerOrdersRoutes.get('/products', async (c) => {
       LEFT JOIN order_items oi ON p.id = oi.product_id
       LEFT JOIN orders o ON oi.order_id = o.id
       WHERE p.seller_id = ?
-        AND COALESCE(p.status, 'ACTIVE') != 'DELETED'
+        AND COALESCE(p.is_active, 1) = 1
         AND COALESCE(p.is_supply_product, 0) = 0
     `;
     const params: unknown[] = [sellerId];
@@ -370,7 +370,7 @@ sellerOrdersRoutes.get('/products', async (c) => {
 
     const products = await db.prepare(query).bind(...params).all();
 
-    let countQuery = `SELECT COUNT(*) as total FROM products WHERE seller_id = ? AND COALESCE(status, 'ACTIVE') != 'DELETED'`;
+    let countQuery = `SELECT COUNT(*) as total FROM products WHERE seller_id = ? AND COALESCE(is_active, 1) = 1`;
     const countParams: unknown[] = [sellerId];
     if (search) {
       countQuery += ` AND (name LIKE ? OR description LIKE ?)`;
@@ -631,7 +631,7 @@ sellerOrdersRoutes.delete('/products/:id', async (c) => {
 
     // soft delete (status = DELETED)
     const result = await db.prepare(
-      `UPDATE products SET status = 'DELETED', updated_at = datetime('now') WHERE id = ? AND seller_id = ?`
+      `UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ? AND seller_id = ?`
     ).bind(productId, sellerId).run();
 
     if (!result.meta.changes) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);

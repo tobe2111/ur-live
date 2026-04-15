@@ -78,7 +78,7 @@ sellerAnalyticsRoutes.get('/products/performance', requireAuth(), async (c) => {
     LEFT JOIN order_items oi ON oi.product_id = p.id
     LEFT JOIN orders o ON o.id = oi.order_id AND o.status NOT IN ('CANCELLED','FAILED','REFUNDED')
     LEFT JOIN reviews r ON r.product_id = p.id
-    WHERE p.seller_id = ? AND COALESCE(p.status, 'ACTIVE') != 'DELETED'
+    WHERE p.seller_id = ? AND COALESCE(p.is_active, 1) = 1
     GROUP BY p.id ORDER BY revenue DESC
   `).bind(sellerId).all()
 
@@ -178,4 +178,28 @@ sellerAnalyticsRoutes.delete('/coupons/:id', requireAuth(), async (c) => {
   const id = c.req.param('id')
   await c.env.DB.prepare('UPDATE coupons SET is_active = 0 WHERE id = ? AND seller_id = ?').bind(id, sellerId).run()
   return c.json({ success: true })
+})
+
+// ── 상품 복제 ──
+sellerAnalyticsRoutes.post('/products/:id/duplicate', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+  const id = c.req.param('id')
+
+  const product = await c.env.DB.prepare(
+    'SELECT name, description, price, original_price, stock, image_url, category, product_type FROM products WHERE id = ? AND seller_id = ?'
+  ).bind(id, sellerId).first<any>()
+
+  if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+
+  const result = await c.env.DB.prepare(`
+    INSERT INTO products (seller_id, name, description, price, original_price, stock, image_url, category, product_type, status, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 1, datetime('now'), datetime('now'))
+  `).bind(
+    sellerId, `${product.name} (복사)`, product.description, product.price,
+    product.original_price, product.stock || 0, product.image_url,
+    product.category, product.product_type
+  ).run()
+
+  return c.json({ success: true, data: { id: result.meta.last_row_id }, message: '상품이 복제되었습니다' })
 })

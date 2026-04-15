@@ -462,6 +462,11 @@ export default function ProductDetailPage() {
           description: product.description,
           url: `/products/${product.id}`,
           seller: (product as any).seller_name,
+          originalPrice: product.original_price,
+          stock: (product as any).stock,
+          sku: product.id,
+          rating: reviewSummary?.avg_rating,
+          reviewCount: reviewSummary?.total_count,
         })}
       />
       {/* Mobile Header */}

@@ -9,6 +9,7 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { rateLimit } from '../middleware/rate-limit';
 import type { Env } from '../types/env';
 import { QueryBuilder } from '../repositories/query-builder';
 import { authMiddleware, createJwt, type AuthVariables } from '../middleware/auth.middleware';
@@ -33,7 +34,7 @@ const loginSchema = z.object({
 });
 
 // POST /api/auth/register
-authRouter.post('/register', async (c) => {
+authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 3600 }), async (c) => {
   try {
     const body = await c.req.json();
     const parsed = registerSchema.safeParse(body);
@@ -95,7 +96,7 @@ authRouter.post('/register', async (c) => {
 });
 
 // POST /api/auth/login
-authRouter.post('/login', async (c) => {
+authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }), async (c) => {
   try {
     const body = await c.req.json();
     const parsed = loginSchema.safeParse(body);

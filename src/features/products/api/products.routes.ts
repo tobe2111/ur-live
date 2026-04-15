@@ -17,6 +17,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 
@@ -185,7 +186,7 @@ productsRoutes.get('/:id', cors(), async (c) => {
  * POST /api/products
  * 상품 생성 (판매자 전용)
  */
-productsRoutes.post('/', cors(), async (c) => {
+productsRoutes.post('/', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
   
   try {
@@ -220,7 +221,7 @@ productsRoutes.post('/', cors(), async (c) => {
  * PUT /api/products/:id
  * 상품 수정 (판매자 전용)
  */
-productsRoutes.put('/:id', cors(), async (c) => {
+productsRoutes.put('/:id', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
   
   try {
@@ -263,7 +264,7 @@ productsRoutes.put('/:id', cors(), async (c) => {
  * DELETE /api/products/:id
  * 상품 삭제 (판매자 전용)
  */
-productsRoutes.delete('/:id', cors(), async (c) => {
+productsRoutes.delete('/:id', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
   
   try {

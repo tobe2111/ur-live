@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import { verifyPassword } from '@/lib/password';
 import type { AuthResponse } from '../types';
 import {
@@ -58,7 +59,7 @@ export const sellerRoutes = new Hono<{ Bindings: Bindings }>();
  * - token: JWT access token
  * - seller: 셀러 정보
  */
-sellerRoutes.post('/login', cors(), async (c) => {
+sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }), async (c) => {
   const { DB, JWT_SECRET } = c.env;
   
   try {

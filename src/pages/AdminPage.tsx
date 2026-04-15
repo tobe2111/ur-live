@@ -704,14 +704,14 @@ function AdminRevenueChart() {
           ))}
         </div>
       </div>
-      <div className="space-y-1">
-        {data.slice(-10).map(d => (
-          <div key={d.date} className="flex items-center gap-2 text-xs">
-            <span className="w-12 text-gray-400 shrink-0">{d.date.slice(5)}</span>
-            <div className="flex-1 bg-gray-100 rounded-full h-3">
-              <div className="bg-emerald-500 h-3 rounded-full" style={{ width: `${(d.revenue / max) * 100}%` }} />
+      <div className="flex items-end gap-1 overflow-x-auto scrollbar-hide" style={{ minHeight: 160 }}>
+        {data.slice(-14).map(d => (
+          <div key={d.date} className="flex flex-col items-center flex-1 min-w-[28px]">
+            <span className="text-[9px] text-gray-500 mb-1">{(d.revenue / 10000).toFixed(0)}만</span>
+            <div className="w-full bg-gray-100 rounded-t" style={{ height: `${Math.max(4, (d.revenue / max) * 120)}px` }}>
+              <div className="w-full h-full bg-emerald-500 rounded-t" />
             </div>
-            <span className="w-16 text-right text-gray-700">{(d.revenue / 10000).toFixed(0)}만</span>
+            <span className="text-[9px] text-gray-400 mt-1">{d.date.slice(5)}</span>
           </div>
         ))}
       </div>

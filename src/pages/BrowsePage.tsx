@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { formatPrice } from '@/utils/currency'
 
 interface Product {
   id: number
@@ -249,7 +250,7 @@ export default function BrowsePage() {
                       </p>
                       {product.original_price && product.original_price > displayPrice && (
                         <p className="text-[11px] text-gray-400 line-through mt-1">
-                          {product.original_price.toLocaleString()}원
+                          {formatPrice(product.original_price)}
                         </p>
                       )}
                       <div className="flex items-baseline gap-1 mt-0.5">
@@ -257,7 +258,7 @@ export default function BrowsePage() {
                           <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
                         )}
                         <span className="text-[13px] font-extrabold text-gray-900">
-                          {displayPrice.toLocaleString()}원
+                          {formatPrice(displayPrice)}
                         </span>
                       </div>
                       {(product.sold_count ?? 0) > 0 && (

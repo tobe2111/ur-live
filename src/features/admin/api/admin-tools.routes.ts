@@ -26,6 +26,31 @@ adminToolsRoutes.get('/chart/revenue', async (c) => {
   return c.json({ success: true, data: results || [] })
 })
 
+// ── 매출 리포트 CSV ──
+adminToolsRoutes.get('/report/csv', async (c) => {
+  const days = Number(c.req.query('days') || 30)
+  const { results } = await c.env.DB.prepare(`
+    SELECT date(o.created_at) AS date, s.name AS seller_name,
+      COUNT(*) AS order_count,
+      COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END), 0) AS revenue
+    FROM orders o
+    LEFT JOIN sellers s ON o.seller_id = s.id
+    WHERE o.created_at > datetime('now', '-' || ? || ' days')
+    GROUP BY date(o.created_at), s.name
+    ORDER BY date DESC, revenue DESC
+  `).bind(days).all()
+
+  const rows = results || []
+  const csv = [
+    '날짜,셀러,주문수,매출(원)',
+    ...rows.map((r: any) => `${r.date},${r.seller_name || '미지정'},${r.order_count},${r.revenue}`)
+  ].join('\n')
+
+  return new Response('\uFEFF' + csv, {
+    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="admin-report-${days}d.csv"` },
+  })
+})
+
 // ── 셀러 승인 대기 목록 ──
 adminToolsRoutes.get('/sellers/pending', async (c) => {
   const { results } = await c.env.DB.prepare(`
