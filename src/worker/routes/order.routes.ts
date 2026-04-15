@@ -8,6 +8,7 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { rateLimit } from '../middleware/rate-limit';
 import type { Env } from '../types/env';
 import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
@@ -67,7 +68,7 @@ const createOrderSchema = z.object({
 });
 
 // POST /api/orders
-ordersRouter.post('/', async (c) => {
+ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 60 }), async (c) => {
   try {
     const firebaseUid = String(c.get('user').id);
     const userId = await getUserDbId(c.env.DB, firebaseUid);

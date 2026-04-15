@@ -20,6 +20,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { sign, verify } from 'hono/jwt'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Context, Next } from 'hono'
 import { verifyPassword, hashPassword } from '@/lib/password'
 import type { Env } from '@/worker/types/env'
@@ -120,7 +121,7 @@ app.post('/register', cors(), async (c) => {
 })
 
 // ── POST /login ───────────────────────────────────────────────
-app.post('/login', cors(), async (c) => {
+app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSec: 300 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { email, password } = await c.req.json<{ email: string; password: string }>()
   if (!email || !password) return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400)
