@@ -95,7 +95,7 @@ productsRoutes.get('/', cors(), async (c) => {
     
     const pagination = {
       page: c.req.query('page') ? Number(c.req.query('page')) : 1,
-      limit: c.req.query('limit') ? Number(c.req.query('limit')) : 20,
+      limit: Math.min(c.req.query('limit') ? Number(c.req.query('limit')) : 20, 100),
     };
     
     const service = new ProductService(DB);
