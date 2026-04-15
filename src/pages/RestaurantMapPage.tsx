@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Search, Ticket, Phone, ExternalLink, X, ChevronUp, C
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
+import { isKorea } from '@/shared/config/region'
 
 interface Restaurant {
   id: number; name: string; restaurant_name: string; restaurant_address: string
@@ -44,8 +45,15 @@ export default function RestaurantMapPage() {
   const [listExpanded, setListExpanded] = useState(false)
   const [mapView, setMapView] = useState(true)
 
-  // 카카오맵 SDK 로드
+  const kr = isKorea()
+
+  // 지도 SDK 로드 (한국: 카카오맵 / 글로벌: 목록만)
   useEffect(() => {
+    if (!kr) {
+      setSdkLoaded(false)
+      setMapView(false) // 글로벌은 목록 뷰만
+      return
+    }
     if (window.kakao?.maps) {
       setSdkLoaded(true)
       return
@@ -58,7 +66,7 @@ export default function RestaurantMapPage() {
     script.onerror = () => {
       console.error('카카오맵 SDK 로드 실패 — 목록 모드로 전환')
       setSdkLoaded(false)
-      setMapView(false) // 지도 실패 시 자동으로 목록 뷰
+      setMapView(false)
     }
     document.head.appendChild(script)
   }, [])

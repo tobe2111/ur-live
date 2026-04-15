@@ -341,6 +341,10 @@ app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller/analytics', sellerAnalyticsRoutes);
 app.route('/api/seller/streams', sellerStreamsRoutes);
 
+// Email notifications (global)
+import { emailRoutes } from '../features/notifications/api/email.routes';
+app.route('/api/email', emailRoutes);
+
 // ============================================================
 // Order & Payment Routes
 // ============================================================
