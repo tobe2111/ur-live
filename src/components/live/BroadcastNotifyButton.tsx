@@ -48,13 +48,20 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
         if (res.data.success) {
           toast.success('카카오 캘린더에 등록되었습니다!')
         } else {
-          openGoogleCalendar()
+          // 카카오 실패 → ICS 다운로드
+          window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
+          toast.success('캘린더 파일을 다운로드합니다')
         }
       } else {
         openGoogleCalendar()
       }
     } catch {
-      openGoogleCalendar()
+      if (kr) {
+        window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
+        toast.success('캘린더 파일을 다운로드합니다')
+      } else {
+        openGoogleCalendar()
+      }
     } finally {
       setCalLoading(false)
     }
