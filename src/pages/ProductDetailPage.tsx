@@ -341,7 +341,7 @@ export default function ProductDetailPage() {
       localStorage.setItem('hasCartItems', 'true')
       
       // ✅ 장바구니 페이지로 이동
-      setTimeout(() => navigate('/cart'), 1000)
+      navigate('/cart')
     } catch (err: any) {
       if (import.meta.env.DEV) {
         console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)

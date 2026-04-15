@@ -81,8 +81,8 @@ export function CheckoutPage() {
    */
   const onSubmit = async (formData: ShippingFormData) => {
     if (!accessToken) {
-      setError('로그인이 필요합니다.');
-      setTimeout(() => navigate('/login'), 1500);
+      localStorage.setItem('loginReturnUrl', window.location.pathname);
+      navigate('/login');
       return;
     }
     
