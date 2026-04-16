@@ -893,6 +893,31 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
           </button>
         </div>
       )}
+
+      {showGroupBuy && (
+        <div className="bg-pink-50 border border-pink-200 rounded-xl p-3 space-y-2">
+          <p className="text-xs font-bold text-pink-700">라이브 공구 설정</p>
+          <p className="text-[10px] text-pink-600">목표 인원이 모이면 할인이 적용됩니다</p>
+          <select value={groupBuyForm.product_id} onChange={e => setGroupBuyForm(f => ({ ...f, product_id: Number(e.target.value) }))}
+            className="w-full px-2.5 py-2 border border-pink-200 rounded-lg text-xs bg-white">
+            <option value={0}>상품 선택</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}원)</option>)}
+          </select>
+          <div className="grid grid-cols-3 gap-2">
+            {([['target_participants', '목표 인원'], ['bonus_discount_percent', '할인율(%)'], ['duration_minutes', '시간(분)']] as const).map(([key, label]) => (
+              <div key={key}>
+                <label className="text-[10px] text-pink-600">{label}</label>
+                <input type="number" value={groupBuyForm[key]} onChange={e => setGroupBuyForm(f => ({ ...f, [key]: Number(e.target.value) }))}
+                  className="w-full px-2 py-1.5 border border-pink-200 rounded-lg text-xs bg-white" />
+              </div>
+            ))}
+          </div>
+          <button onClick={createGroupBuy} disabled={submitting || !groupBuyForm.product_id}
+            className="w-full py-2 bg-pink-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
+            {submitting ? '생성 중...' : '라이브 공구 시작'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
