@@ -73,6 +73,7 @@ export default function KakaoCallbackPage() {
           localStorage.setItem('user_type', 'user')
           localStorage.setItem('user_name', user.name)
           localStorage.setItem('user_id', String(user.id))
+          localStorage.setItem('lastLoginUid', String(user.id))
           if (user.email) localStorage.setItem('user_email', user.email)
           if (user.profile_image) {
             localStorage.setItem('user_profile_image', user.profile_image)
@@ -117,6 +118,7 @@ export default function KakaoCallbackPage() {
           localStorage.setItem('user_type', 'user')
           localStorage.setItem('user_name', user.name)
           localStorage.setItem('user_id', String(user.id))
+          localStorage.setItem('lastLoginUid', userCredential.user.uid)
           if (user.email) localStorage.setItem('user_email', user.email)
           if (user.profile_image) {
             localStorage.setItem('user_profile_image', user.profile_image)
