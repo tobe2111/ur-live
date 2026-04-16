@@ -8,6 +8,13 @@
     <meta name="theme-color" content="#020202" />
     <title>유어딜 - 라이브 커머스</title>
 
+    <!-- DNS prefetch + preconnect: 주요 외부 리소스 도메인 -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <link rel="dns-prefetch" href="https://www.youtube.com" />
+    <link rel="dns-prefetch" href="https://img.youtube.com" />
+
     <!-- Pretendard 웹폰트 -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 
@@ -28,8 +35,8 @@
     <meta property="og:image" content="https://live.ur-team.com/logo.png" />
     <meta name="twitter:card" content="summary_large_image" />
 
-    <!-- Kakao SDK -->
-    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"
+    <!-- Kakao SDK (defer: 초기 렌더 차단 방지) -->
+    <script defer src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"
             crossorigin="anonymous"></script>
 
     <!-- Google tag (gtag.js) -->
