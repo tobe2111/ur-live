@@ -16,6 +16,7 @@ const SETTINGS_FIELDS = [
   { key: 'review_reward_text', label: '텍스트 리뷰 포인트', default: '50' },
   { key: 'review_reward_image', label: '사진 리뷰 포인트', default: '100' },
   { key: 'review_reward_video', label: '영상 리뷰 포인트', default: '200' },
+  { key: 'affiliate_commission_rate', label: '제휴 마케팅 수수료율 (%)', default: '2' },
 ]
 
 export default function AdminPlatformSettingsPage() {

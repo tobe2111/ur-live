@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
 import axios from 'axios'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -1547,6 +1547,15 @@ function ReelCard({
 export default function LivePageV2() {
   const { streamId } = useParams<{ streamId: string }>()
   const navigate = useNavigate()
+  const [sp] = useSearchParams()
+  useEffect(() => {
+    const ref = sp.get('ref')
+    if (ref) {
+      localStorage.setItem('affiliate_ref', ref)
+      localStorage.setItem('affiliate_ref_expires', String(Date.now() + 86400000))
+      document.cookie = `affiliate_ref=${ref}; path=/; max-age=86400; SameSite=Lax`
+    }
+  }, [sp])
   const [activeIndex, setActiveIndex] = useState(0)
   const [reels, setReels] = useState<ReelData[]>([])
   const [loading, setLoading] = useState(true)

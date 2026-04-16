@@ -408,7 +408,14 @@ export default function CheckoutPage() {
         shipping_phone: isMealVoucher ? '' : selectedAddress!.phone,
         shipping_fee: groupShippingFee,
         idempotency_key: `${orderId}_${group.seller_id}`,
-        referrer_id: localStorage.getItem('affiliate_ref') || undefined,
+        referrer_id: (() => {
+          const ref = localStorage.getItem('affiliate_ref')
+          const expires = localStorage.getItem('affiliate_ref_expires')
+          if (ref && expires && Date.now() < Number(expires)) return ref
+          // 쿠키 폴백
+          const cookie = document.cookie.match(/affiliate_ref=([^;]+)/)
+          return cookie?.[1] || undefined
+        })(),
       })
 
       if (!response.data.success) {

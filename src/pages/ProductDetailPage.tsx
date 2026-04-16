@@ -227,10 +227,15 @@ export default function ProductDetailPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  // 추천 링크 ref 파라미터 저장
+  // 추천 링크 ref 파라미터 저장 (24시간 유효)
   useEffect(() => {
     const ref = searchParams.get('ref')
-    if (ref) localStorage.setItem('affiliate_ref', ref)
+    if (ref) {
+      localStorage.setItem('affiliate_ref', ref)
+      localStorage.setItem('affiliate_ref_expires', String(Date.now() + 24 * 60 * 60 * 1000))
+      // 쿠키로도 저장 (다른 탭/세션에서도 유지)
+      document.cookie = `affiliate_ref=${ref}; path=/; max-age=86400; SameSite=Lax`
+    }
   }, [searchParams])
   
   // ✅ Region 기반 Store 선택
