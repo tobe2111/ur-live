@@ -288,6 +288,13 @@ function AppContent() {
       return
     }
 
+    // ✅ 세션 쿠키 유저도 Firebase 불필요 → 즉시 ready
+    if (!hasIncomingToken && localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')) {
+      useAuthKR.getState().setAuthReady(true)
+      useAuthWorld.getState().setAuthReady(true)
+      return
+    }
+
     // ✅ firebase_token이 있으면 processFirebaseToken이 인증을 처리하므로
     // initializeAuth()를 호출하지 않음 (onAuthStateChanged(null) → 깜빡임 방지)
     if (hasIncomingToken) {
