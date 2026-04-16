@@ -12,6 +12,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { executeRun, queryFirst } from '@/worker/utils/database';
 
 const timedealRoutes = new Hono<{ Bindings: Env }>();
 
@@ -35,13 +36,24 @@ async function ensureTables(DB: D1Database) {
         max_claims INTEGER NOT NULL DEFAULT 10,
         claimed_count INTEGER NOT NULL DEFAULT 0,
         duration_seconds INTEGER NOT NULL DEFAULT 30,
-        status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ended', 'sold_out')),
+        is_group_buy INTEGER DEFAULT 0,
+        target_participants INTEGER,
+        bonus_discount_percent INTEGER DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ended', 'sold_out', 'achieved')),
         triggered_at DATETIME DEFAULT (datetime('now')),
         expires_at DATETIME NOT NULL,
         created_at DATETIME DEFAULT (datetime('now'))
       )
     `).run();
   } catch {}
+  // 마이그레이션: 기존 테이블에 공동구매 컬럼 추가
+  for (const sql of [
+    "ALTER TABLE time_deals ADD COLUMN is_group_buy INTEGER DEFAULT 0",
+    "ALTER TABLE time_deals ADD COLUMN target_participants INTEGER",
+    "ALTER TABLE time_deals ADD COLUMN bonus_discount_percent INTEGER DEFAULT 0",
+  ]) {
+    try { await DB.prepare(sql).run(); } catch {}
+  }
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS time_deal_claims (
@@ -55,7 +67,7 @@ async function ensureTables(DB: D1Database) {
   } catch {}
 }
 
-// POST /api/timedeal/create — 셀러가 타임딜 트리거
+// POST /api/timedeal/create — 셀러가 타임딜 / 라이브 공동구매 트리거
 timedealRoutes.post('/create', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
@@ -63,50 +75,133 @@ timedealRoutes.post('/create', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const { stream_id, product_id, discount_percent, max_claims, duration_seconds } = await c.req.json<{
-    stream_id: number; product_id: number; discount_percent: number;
-    max_claims?: number; duration_seconds?: number;
+  const {
+    stream_id,
+    product_id,
+    discount_percent,
+    max_claims,
+    duration_seconds,
+    is_group_buy,
+    target_participants,
+    bonus_discount_percent,
+  } = await c.req.json<{
+    stream_id: number;
+    product_id: number;
+    discount_percent: number;
+    max_claims?: number;
+    duration_seconds?: number;
+    is_group_buy?: boolean | number;
+    target_participants?: number;
+    bonus_discount_percent?: number;
   }>();
 
   if (!stream_id || !product_id || !discount_percent) return c.json({ success: false, error: '필수 항목 누락' }, 400);
 
-  const product = await DB.prepare('SELECT name, price, seller_id FROM products WHERE id = ?').bind(product_id).first<any>();
+  const product = await queryFirst<{ name: string; price: number; seller_id: number }>(
+    DB,
+    'SELECT name, price, seller_id FROM products WHERE id = ?',
+    [product_id],
+  );
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
 
   const dur = duration_seconds || 30;
   const expiresAt = new Date(Date.now() + dur * 1000).toISOString();
   const dealPrice = Math.round(product.price * (100 - discount_percent) / 100);
 
-  const result = await DB.prepare(`
-    INSERT INTO time_deals (stream_id, seller_id, product_id, product_name, original_price, deal_price, discount_percent, max_claims, duration_seconds, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(stream_id, product.seller_id, product_id, product.name, product.price, dealPrice, discount_percent, max_claims || 10, dur, expiresAt).run();
+  // 공동구매 모드인 경우 target_participants 필수
+  const groupBuyFlag = is_group_buy ? 1 : 0;
+  if (groupBuyFlag && (!target_participants || target_participants < 1)) {
+    return c.json({ success: false, error: '공동구매는 목표 참여자 수가 필요합니다' }, 400);
+  }
 
-  return c.json({ success: true, data: { id: result.meta.last_row_id, deal_price: dealPrice, expires_at: expiresAt } }, 201);
+  const result = await executeRun(
+    DB,
+    `INSERT INTO time_deals (
+        stream_id, seller_id, product_id, product_name, original_price, deal_price,
+        discount_percent, max_claims, duration_seconds,
+        is_group_buy, target_participants, bonus_discount_percent, expires_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      stream_id,
+      product.seller_id,
+      product_id,
+      product.name,
+      product.price,
+      dealPrice,
+      discount_percent,
+      max_claims || 10,
+      dur,
+      groupBuyFlag,
+      groupBuyFlag ? target_participants : null,
+      bonus_discount_percent || 0,
+      expiresAt,
+    ],
+  );
+
+  return c.json(
+    {
+      success: true,
+      data: {
+        id: result.meta.last_row_id,
+        deal_price: dealPrice,
+        expires_at: expiresAt,
+        is_group_buy: !!groupBuyFlag,
+        target_participants: groupBuyFlag ? target_participants : null,
+        bonus_discount_percent: bonus_discount_percent || 0,
+      },
+    },
+    201,
+  );
 });
 
-// GET /api/timedeal/stream/:streamId — 현재 활성 타임딜
+// GET /api/timedeal/stream/:streamId — 현재 활성 타임딜 + 공동구매 진행 정보
 timedealRoutes.get('/stream/:streamId', async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
   const streamId = c.req.param('streamId');
-  const deal = await DB.prepare(
-    "SELECT * FROM time_deals WHERE stream_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1"
-  ).bind(streamId).first<any>();
+  const deal = await queryFirst<any>(
+    DB,
+    "SELECT * FROM time_deals WHERE stream_id = ? AND status IN ('active', 'achieved') ORDER BY id DESC LIMIT 1",
+    [streamId],
+  );
 
   if (!deal) return c.json({ success: true, data: null });
 
-  if (new Date(deal.expires_at) < new Date() || deal.claimed_count >= deal.max_claims) {
+  // 시간 만료 / 수량 소진 시 상태 업데이트 (achieved 상태는 유지)
+  if (deal.status === 'active' && (new Date(deal.expires_at) < new Date() || deal.claimed_count >= deal.max_claims)) {
     const newStatus = deal.claimed_count >= deal.max_claims ? 'sold_out' : 'ended';
-    await DB.prepare("UPDATE time_deals SET status = ? WHERE id = ?").bind(newStatus, deal.id).run();
+    await executeRun(DB, "UPDATE time_deals SET status = ? WHERE id = ?", [newStatus, deal.id]);
     deal.status = newStatus;
   }
 
-  return c.json({ success: true, data: deal });
+  // 공동구매 진행 정보 계산
+  const isGroupBuy = !!deal.is_group_buy;
+  const target = deal.target_participants || 0;
+  const current = deal.claimed_count || 0;
+  const targetReached = isGroupBuy && target > 0 && current >= target;
+  const bonus = deal.bonus_discount_percent || 0;
+  const effectiveDiscount = targetReached ? deal.discount_percent + bonus : deal.discount_percent;
+  const effectivePrice = Math.round(deal.original_price * (100 - effectiveDiscount) / 100);
+
+  const groupBuyInfo = isGroupBuy
+    ? {
+        is_group_buy: true,
+        target_participants: target,
+        current_participants: current,
+        progress_percent: target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0,
+        target_reached: targetReached,
+        bonus_discount_percent: bonus,
+        effective_discount_percent: effectiveDiscount,
+        effective_price: effectivePrice,
+        remaining: Math.max(0, target - current),
+      }
+    : { is_group_buy: false };
+
+  return c.json({ success: true, data: { ...deal, ...groupBuyInfo } });
 });
 
-// POST /api/timedeal/:id/claim — 타임딜 클레임
+// POST /api/timedeal/:id/claim — 타임딜 / 공동구매 클레임
 timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
@@ -115,27 +210,56 @@ timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
   await ensureTables(DB);
 
   const dealId = Number(c.req.param('id'));
-  const deal = await DB.prepare("SELECT * FROM time_deals WHERE id = ? AND status = 'active'").bind(dealId).first<any>();
+  const deal = await queryFirst<any>(
+    DB,
+    "SELECT * FROM time_deals WHERE id = ? AND status IN ('active', 'achieved')",
+    [dealId],
+  );
 
   if (!deal) return c.json({ success: false, error: '타임딜이 종료되었습니다' }, 404);
   if (new Date(deal.expires_at) < new Date()) {
-    await DB.prepare("UPDATE time_deals SET status = 'ended' WHERE id = ?").bind(dealId).run();
+    // 공동구매 목표 달성 상태는 유지 (이미 achieved면 만료되어도 남김)
+    if (deal.status === 'active') {
+      await executeRun(DB, "UPDATE time_deals SET status = 'ended' WHERE id = ?", [dealId]);
+    }
     return c.json({ success: false, error: '시간이 초과되었습니다' }, 400);
   }
   if (deal.claimed_count >= deal.max_claims) {
-    await DB.prepare("UPDATE time_deals SET status = 'sold_out' WHERE id = ?").bind(dealId).run();
+    await executeRun(DB, "UPDATE time_deals SET status = 'sold_out' WHERE id = ?", [dealId]);
     return c.json({ success: false, error: '수량이 소진되었습니다' }, 400);
   }
 
   // 중복 체크
-  const existing = await DB.prepare('SELECT id FROM time_deal_claims WHERE deal_id = ? AND user_id = ?')
-    .bind(dealId, user.id).first();
+  const existing = await queryFirst(
+    DB,
+    'SELECT id FROM time_deal_claims WHERE deal_id = ? AND user_id = ?',
+    [dealId, user.id],
+  );
   if (existing) return c.json({ success: false, error: '이미 참여하셨습니다' }, 409);
 
-  await DB.prepare('INSERT INTO time_deal_claims (deal_id, user_id) VALUES (?, ?)').bind(dealId, user.id).run();
-  await DB.prepare('UPDATE time_deals SET claimed_count = claimed_count + 1 WHERE id = ?').bind(dealId).run();
+  await executeRun(DB, 'INSERT INTO time_deal_claims (deal_id, user_id) VALUES (?, ?)', [dealId, user.id]);
+  await executeRun(DB, 'UPDATE time_deals SET claimed_count = claimed_count + 1 WHERE id = ?', [dealId]);
 
-  // 장바구니에 타임딜 가격으로 자동 추가
+  // 공동구매: 목표 달성 여부 평가 → status='achieved' 및 효과 할인율 계산
+  const newCount = (deal.claimed_count || 0) + 1;
+  const isGroupBuy = !!deal.is_group_buy;
+  const target = deal.target_participants || 0;
+  const justAchieved =
+    isGroupBuy &&
+    target > 0 &&
+    newCount >= target &&
+    deal.status !== 'achieved';
+
+  if (justAchieved) {
+    await executeRun(DB, "UPDATE time_deals SET status = 'achieved' WHERE id = ?", [dealId]);
+  }
+
+  const targetReached = isGroupBuy && target > 0 && newCount >= target;
+  const bonus = deal.bonus_discount_percent || 0;
+  const effectiveDiscount = targetReached ? deal.discount_percent + bonus : deal.discount_percent;
+  const effectivePrice = Math.round(deal.original_price * (100 - effectiveDiscount) / 100);
+
+  // 장바구니에 실제 적용 가격으로 자동 추가
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS cart_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, product_id INTEGER NOT NULL,
@@ -143,13 +267,30 @@ timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, product_id, option_value)
     )`).run().catch(() => {});
 
-    await DB.prepare(`
-      INSERT OR REPLACE INTO cart_items (user_id, product_id, quantity, price_snapshot, created_at)
-      VALUES (?, ?, 1, ?, datetime('now'))
-    `).bind(user.id, deal.product_id, deal.deal_price).run();
+    await executeRun(
+      DB,
+      `INSERT OR REPLACE INTO cart_items (user_id, product_id, quantity, price_snapshot, created_at)
+       VALUES (?, ?, 1, ?, datetime('now'))`,
+      [user.id, deal.product_id, effectivePrice],
+    );
   } catch {}
 
-  return c.json({ success: true, data: { deal_price: deal.deal_price, product_id: deal.product_id, added_to_cart: true } });
+  return c.json({
+    success: true,
+    data: {
+      deal_price: effectivePrice,
+      original_deal_price: deal.deal_price,
+      product_id: deal.product_id,
+      added_to_cart: true,
+      is_group_buy: isGroupBuy,
+      current_participants: newCount,
+      target_participants: isGroupBuy ? target : null,
+      target_reached: targetReached,
+      just_achieved: justAchieved,
+      effective_discount_percent: effectiveDiscount,
+      bonus_discount_percent: bonus,
+    },
+  });
 });
 
 // GET /api/timedeal/:id

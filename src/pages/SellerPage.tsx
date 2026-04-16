@@ -478,6 +478,24 @@ export default function SellerPage() {
                 </div>
               </div>
 
+              {/* 빠른 액션 */}
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">빠른 액션</h2>
+                <Link
+                  to="/seller/group-buy/new"
+                  className="flex items-center justify-between p-4 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Users className="w-5 h-5" />
+                    <div>
+                      <p className="text-sm font-bold">공동구매 만들기</p>
+                      <p className="text-xs text-gray-300 mt-0.5">티어 기반 할인 상품 등록</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              </div>
+
               {/* 알림 */}
               <div>
                 <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('seller.alerts')}</h2>
