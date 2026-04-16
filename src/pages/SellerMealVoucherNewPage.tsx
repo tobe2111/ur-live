@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Phone, Calendar, Users, Tag, Image as ImageIcon, Utensils, Search, ExternalLink, CheckCircle } from 'lucide-react'
 import api from '@/lib/api'
+import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -266,56 +267,31 @@ export default function SellerMealVoucherNewPage() {
             </div>
 
             <div className="space-y-4">
-              {/* 카카오 매장 검색 */}
-              <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-                <label className="block text-sm font-bold text-orange-800 mb-2">🔍 카카오맵에서 매장 찾기</label>
-                <p className="text-[11px] text-orange-600 mb-3">매장 이름이나 카카오맵 링크를 붙여넣으면 자동으로 정보가 입력됩니다</p>
-                <div className="flex gap-2">
-                  <input
-                    value={placeQuery}
-                    onChange={e => setPlaceQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), searchPlace(placeQuery))}
-                    placeholder="매장 이름 또는 카카오맵 링크 붙여넣기"
-                    className="flex-1 px-3 py-2.5 border border-orange-200 rounded-lg text-sm text-gray-900 bg-white focus:border-orange-400 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => searchPlace(placeQuery)}
-                    disabled={searchingPlace || !placeQuery.trim()}
-                    className="px-4 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-bold shrink-0 active:scale-95 disabled:opacity-50"
-                  >
-                    {searchingPlace ? '검색 중...' : '검색'}
-                  </button>
+              {/* 카카오맵 매장 검색 (지도 시각화) */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900">🗺️ 카카오맵에서 매장 찾기</label>
+                    <p className="text-[11px] text-gray-500 mt-0.5">지도에서 직접 찾거나 검색해서 마커를 클릭하세요</p>
+                  </div>
+                  {placeSelected && (
+                    <div className="flex items-center gap-1 text-xs text-green-600 shrink-0">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      선택됨
+                    </div>
+                  )}
                 </div>
-
-                {/* 검색 결과 */}
-                {placeResults.length > 0 && (
-                  <div className="mt-2 border border-orange-200 rounded-lg overflow-hidden bg-white">
-                    {placeResults.map((p: any, i: number) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => selectPlace(p)}
-                        className="w-full flex items-start gap-3 px-3 py-3 text-left hover:bg-orange-50 border-b border-orange-100 last:border-0"
-                      >
-                        <MapPin className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{p.place_name}</p>
-                          <p className="text-[11px] text-gray-500 mt-0.5">{p.road_address_name || p.address_name}</p>
-                          {p.phone && <p className="text-[11px] text-gray-400 mt-0.5">{p.phone}</p>}
-                          <p className="text-[10px] text-orange-500 mt-0.5">{p.category_name}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {placeSelected && (
-                  <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    매장 정보가 자동 입력되었습니다
-                  </div>
-                )}
+                <KakaoMapPicker
+                  kakaoRestKey={KAKAO_REST_KEY}
+                  kakaoJsKey={(import.meta as any).env?.VITE_KAKAO_JAVASCRIPT_KEY || KAKAO_REST_KEY}
+                  selectedPlace={placeSelected && form.restaurant_lat ? {
+                    name: form.restaurant_name,
+                    address: form.restaurant_address,
+                    lat: form.restaurant_lat,
+                    lng: form.restaurant_lng,
+                  } : null}
+                  onSelect={(p: KakaoPlace) => selectPlace(p)}
+                />
               </div>
 
               {/* 자동 입력된 정보 (수정 가능) */}
