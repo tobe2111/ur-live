@@ -683,7 +683,7 @@ export default function CheckoutPage() {
                     className="px-4 py-3 bg-gray-900 text-white rounded-lg text-xs font-bold shrink-0">전액사용</button>
                 </div>
                 {dealToUse > 0 && (
-                  <div className="mt-3 p-3 bg-pink-50 rounded-lg border border-pink-100">
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="flex items-center justify-between text-[13px]">
                       <span className="text-gray-500">상품 금액</span>
                       <span className="text-gray-700">{totalBeforeDeal.toLocaleString()}원</span>
@@ -692,7 +692,7 @@ export default function CheckoutPage() {
                       <span className="text-pink-500 font-medium">딜 포인트 차감</span>
                       <span className="text-pink-500 font-bold">-{dealToUse.toLocaleString()}딜</span>
                     </div>
-                    <div className="border-t border-pink-200 mt-2 pt-2 flex items-center justify-between">
+                    <div className="border-t border-gray-200 mt-2 pt-2 flex items-center justify-between">
                       <span className="text-[13px] font-bold text-gray-900">카드 결제 금액</span>
                       <span className="text-[15px] font-bold text-gray-900">{Math.max(0, totalAmount).toLocaleString()}원</span>
                     </div>
