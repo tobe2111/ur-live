@@ -166,7 +166,7 @@ export default function ShortsPage() {
 
   if (loading && shorts.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-black flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
       </div>
     )
@@ -174,7 +174,7 @@ export default function ShortsPage() {
 
   if (shorts.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center text-white">
+      <div className="absolute inset-0 bg-black flex flex-col items-center justify-center text-white">
         <Play className="w-12 h-12 text-gray-500 mb-3" />
         <p className="text-lg font-bold">아직 쇼츠가 없습니다</p>
         <p className="text-sm text-gray-500 mt-1">셀러들의 쇼츠를 기다려주세요</p>
@@ -184,7 +184,7 @@ export default function ShortsPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black">
+    <div className="absolute inset-0 bg-black">
       <SEO title="쇼츠 - 유어딜" description="유어딜 쇼츠에서 인기 상품 숏폼 영상을 감상하세요." url="/shorts" />
       {/* 상단 헤더 */}
       <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-safe pb-2">
