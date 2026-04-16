@@ -96,7 +96,7 @@ export default function KakaoCallbackPage() {
           authStore.setAuthReady(true)
           // 세션 쿠키 로그인 플래그 (ProtectedRoute에서 확인)
           localStorage.setItem('session_login', 'true')
-        } else {
+        } else if (customToken) {
           // ── Legacy Firebase flow (fallback) ─────────────────────────────
           // 2. Firebase Custom Token으로 로그인
           // ⚠️ auth_processing 플래그: useMultiTabSync의 reload를 차단
@@ -144,6 +144,16 @@ export default function KakaoCallbackPage() {
 
           // 8. auth_processing 플래그 해제 (1초 후 — Zustand persist 완료 대기)
           setTimeout(() => sessionStorage.removeItem('auth_processing'), 1000)
+        } else {
+          // customToken도 없고 session_ready도 아닌 경우
+          // user 정보는 있으므로 localStorage로 세션 유지
+          localStorage.setItem('user_type', 'user')
+          localStorage.setItem('user_name', user.name)
+          localStorage.setItem('user_id', String(user.id))
+          localStorage.setItem('lastLoginUid', String(user.id))
+          localStorage.setItem('session_login', 'true')
+          const authStore = getAuthStore()
+          authStore.setAuthReady(true)
         }
         // 6. returnUrl 결정 (state > localStorage > '/')
         let returnUrl = '/'
