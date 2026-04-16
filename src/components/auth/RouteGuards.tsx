@@ -166,7 +166,9 @@ function UserProtectedRoute({
   }
 
   // 인증 확인 (isAuthReady 완료 또는 타임아웃 후에만 미인증 리다이렉트)
-  if ((isAuthReady || timedOut) && !currentUser) {
+  // 세션 쿠키 로그인은 Firebase user가 없으므로 localStorage로 확인
+  const isSessionLogin = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
+  if ((isAuthReady || timedOut) && !currentUser && !isSessionLogin) {
     if (DEBUG) console.log('[ProtectedRoute] ❌ User 미인증 → /login')
     // ✅ 무한루프 방지: auth 관련 파라미터 모두 제거
     const cleanParams = new URLSearchParams(location.search)

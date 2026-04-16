@@ -89,10 +89,13 @@ export default function KakaoCallbackPage() {
             ''
           )
 
-          // ProtectedRoute가 확인하는 스토어에도 user 설정
+          // ProtectedRoute용: isAuthReady만 설정 (setUser는 호출하지 않음)
+          // 세션 쿠키 유저는 Firebase user가 아니므로 setUser에 넣으면
+          // getIdToken() 호출 시 user가 null로 초기화되어 무한루프 발생
           const authStore = getAuthStore()
-          authStore.setUser({ uid: String(user.id), displayName: user.name, email: user.email } as any)
           authStore.setAuthReady(true)
+          // 세션 쿠키 로그인 플래그 (ProtectedRoute에서 확인)
+          localStorage.setItem('session_login', 'true')
         } else {
           // ── Legacy Firebase flow (fallback) ─────────────────────────────
           // 2. Firebase Custom Token으로 로그인

@@ -84,7 +84,8 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'hasCartItems',
       'tempCartItem',
       'loginReturnUrl',
-      'lastLoginUid'
+      'lastLoginUid',
+      'session_login'
     )
     // seller/admin 세션이 남아있으면 user_type 유지
     const hasSellerSession = !!localStorage.getItem('seller_token')
