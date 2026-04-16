@@ -244,7 +244,7 @@ export default function ProductDetailPage() {
   
   // ✅ Selector로 필요한 상태만 구독
   const user = isKorea() ? krUser : worldUser
-  const isLoggedIn = !!user
+  const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
   
   // 🔥 React Query로 데이터 fetching (자동 캐싱 + 재시도)
   const { data: product, isLoading, error } = useProduct(id)

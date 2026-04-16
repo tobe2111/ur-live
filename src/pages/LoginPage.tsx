@@ -64,7 +64,7 @@ export default function LoginPage() {
       : _rawReturnUrl
   }
   const returnUrl = returnUrlRef.current
-  const isLoggedIn = !!user
+  const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
 
   // ✅ 로그인 상태 확인 및 리다이렉트
   useEffect(() => {
