@@ -408,6 +408,7 @@ export default function CheckoutPage() {
         shipping_phone: isMealVoucher ? '' : selectedAddress!.phone,
         shipping_fee: groupShippingFee,
         idempotency_key: `${orderId}_${group.seller_id}`,
+        referrer_id: localStorage.getItem('affiliate_ref') || undefined,
       })
 
       if (!response.data.success) {

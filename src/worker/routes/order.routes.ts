@@ -271,6 +271,25 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       }).catch(() => { /* alimtalk not critical */ });
     }
 
+    // 제휴 마케팅 수수료 추적 (ref 파라미터)
+    const referrerId = body.referrer_id || body.ref
+    if (referrerId && referrerId !== String(userId)) {
+      c.executionCtx?.waitUntil?.(
+        fetch(`${c.req.url.split('/api/')[0]}/api/affiliate/track`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            referrer_id: referrerId,
+            order_id: order.id,
+            product_id: request.items?.[0]?.product_id,
+            product_name: (request.items?.[0] as any)?.product_name,
+            buyer_id: String(userId),
+            order_amount: order.total_amount,
+          }),
+        }).catch(() => {})
+      )
+    }
+
     return c.json({ success: true, data: order }, 201);
 
   } catch (err) {

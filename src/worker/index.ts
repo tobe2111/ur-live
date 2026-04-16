@@ -345,6 +345,10 @@ app.route('/api/seller/streams', sellerStreamsRoutes);
 import { emailRoutes } from '../features/notifications/api/email.routes';
 app.route('/api/email', emailRoutes);
 
+// Affiliate marketing
+import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
+app.route('/api/affiliate', affiliateRoutes);
+
 // ============================================================
 // Order & Payment Routes
 // ============================================================

@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { getUserId } from '@/utils/auth'
 // ✅ Zustand 직접 사용
@@ -225,6 +225,13 @@ function ProductReviews({ productId }: { productId: number | string }) {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  // 추천 링크 ref 파라미터 저장
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref) localStorage.setItem('affiliate_ref', ref)
+  }, [searchParams])
   
   // ✅ Region 기반 Store 선택
   const krUser = useAuthKR(state => state.user)
@@ -610,6 +617,19 @@ export default function ProductDetailPage() {
             link={`/products/${product.id}`}
             buttonText="상품 보러가기"
           />
+          {isLoggedIn && (
+            <button
+              onClick={() => {
+                const userId = getUserId()
+                const url = `https://live.ur-team.com/products/${product.id}?ref=${userId}`
+                navigator.clipboard.writeText(url)
+                showToast('추천 링크가 복사되었습니다! 공유하면 구매 시 2% 적립', 'success')
+              }}
+              className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-1.5"
+            >
+              🔗 추천 링크 복사 (구매 시 2% 적립)
+            </button>
+          )}
         </div>
 
         {/* 교환 및 반품 */}

@@ -149,6 +149,7 @@ const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const GDPRPage = lazy(() => import('./pages/GDPRPage'))
+const AffiliatePage = lazy(() => import('./pages/AffiliatePage'))
 const FAQPage = lazy(() => import('./pages/FAQPage'))
 
 // 🔧 Debug 페이지
@@ -737,6 +738,7 @@ function AppContent() {
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/gdpr" element={<GDPRPage />} />
+            <Route path="/user/affiliate" element={<AffiliatePage />} />
             <Route path="/refund" element={<RefundPolicyPage />} />
             <Route path="/faq" element={<FAQPage />} />
             {/* ✅ 마이페이지 메뉴에서 사용하는 긴 형식 경로 → 짧은 경로로 리다이렉트 */}
