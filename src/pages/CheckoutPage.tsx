@@ -662,10 +662,11 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              {/* 딜 포인트 (SSG MONEY 스타일) */}
+              {/* 딜 포인트 */}
               <div className="bg-white border-t border-gray-100 px-5 py-5 mb-2">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[15px] font-bold text-gray-900">딜 포인트 : {dealBalance.toLocaleString()}딜</h3>
+                  <h3 className="text-[15px] font-bold text-gray-900">딜 포인트</h3>
+                  <span className="text-[13px] text-gray-500">보유 <span className="font-bold text-pink-500">{dealBalance.toLocaleString()}</span>딜</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -675,16 +676,27 @@ export default function CheckoutPage() {
                       const v = Math.min(Math.max(0, Number(e.target.value)), Math.min(dealBalance, totalBeforeDeal))
                       setDealToUse(v)
                     }}
-                    placeholder="0원"
+                    placeholder="사용할 딜 입력"
                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium placeholder:text-gray-400"
                   />
                   <button onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
                     className="px-4 py-3 bg-gray-900 text-white rounded-lg text-xs font-bold shrink-0">전액사용</button>
                 </div>
                 {dealToUse > 0 && (
-                  <p className="mt-2 text-xs text-pink-500 font-medium">
-                    {dealToUse.toLocaleString()}딜 사용 → 카드 결제: {Math.max(0, totalAmount).toLocaleString()}원
-                  </p>
+                  <div className="mt-3 p-3 bg-pink-50 rounded-lg border border-pink-100">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="text-gray-500">상품 금액</span>
+                      <span className="text-gray-700">{totalBeforeDeal.toLocaleString()}원</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[13px] mt-1">
+                      <span className="text-pink-500 font-medium">딜 포인트 차감</span>
+                      <span className="text-pink-500 font-bold">-{dealToUse.toLocaleString()}딜</span>
+                    </div>
+                    <div className="border-t border-pink-200 mt-2 pt-2 flex items-center justify-between">
+                      <span className="text-[13px] font-bold text-gray-900">카드 결제 금액</span>
+                      <span className="text-[15px] font-bold text-gray-900">{Math.max(0, totalAmount).toLocaleString()}원</span>
+                    </div>
+                  </div>
                 )}
               </div>
 
