@@ -144,28 +144,49 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
 
     const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
+    const firebaseService = new FirebaseAuthService(c.env);
 
     const accessToken = await kakaoService.exchangeCode(code, redirectUri);
     const kakaoUser = await kakaoService.getUserInfo(accessToken);
     const user = await kakaoService.upsertUser(kakaoUser);
 
-    // 세션 쿠키 발급 (이것만으로 로그인 완료 — Firebase 불필요)
-    const sessionCookieHeader = await createSessionCookie(
-      user.id, user.name, user.email || '',
-      user.profile_image || undefined, c.env.JWT_SECRET,
-    );
+    // Firebase Custom Token (ProtectedRoute가 의존)
+    let customToken = '';
+    let firebaseUID = '';
+    try {
+      firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
+      customToken = await firebaseService.createCustomToken(firebaseUID, {
+        role: 'user', userId: user.id, userName: user.name,
+        email: user.email, kakaoId: kakaoUser.kakaoId,
+      });
+      await kakaoService.updateFirebaseUID(user.id, firebaseUID).catch(() => {});
+    } catch (e) {
+      console.error('[Kakao] Firebase token failed:', e);
+    }
 
-    // 카카오 access_token 저장 (캘린더/메시지 API용)
+    // 세션 쿠키
+    let sessionCookieHeader: string | undefined;
+    try {
+      sessionCookieHeader = await createSessionCookie(
+        user.id, user.name, user.email || '',
+        user.profile_image || undefined, c.env.JWT_SECRET,
+      );
+    } catch (e) {
+      console.error('[Kakao] Session cookie failed:', e);
+    }
+
+    // 카카오 access_token 저장
     try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run() } catch {}
     await DB.prepare("UPDATE users SET kakao_access_token = ? WHERE id = ?")
       .bind(accessToken, user.id).run().catch(() => {});
 
-    c.header('Set-Cookie', sessionCookieHeader);
+    if (sessionCookieHeader) c.header('Set-Cookie', sessionCookieHeader);
     return c.json({
       success: true,
       data: {
-        session_ready: true,
-        user: { id: user.id, name: user.name, email: user.email, profile_image: user.profile_image },
+        customToken: customToken || null,
+        session_ready: !!sessionCookieHeader,
+        user: { id: user.id, name: user.name, email: user.email, profile_image: user.profile_image, firebaseUID },
       },
     });
 

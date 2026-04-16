@@ -1,12 +1,11 @@
 /**
  * KakaoCallbackPage - 카카오 OAuth 콜백 처리
- *
- * 플로우: 카카오 인증 → 서버 세션 쿠키 발급 → localStorage 설정 → 완료
- * Firebase 불필요 (세션 쿠키로 인증)
+ * 세션 쿠키 우선, Firebase 폴백
  */
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { signInWithCustomToken } from '@/lib/firebase-auth'
 import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
@@ -17,6 +16,7 @@ export default function KakaoCallbackPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const processingRef = useRef(false)
+  const getAuthStore = () => isKorea() ? useAuthKR.getState() : useAuthWorld.getState()
 
   useEffect(() => {
     if (processingRef.current) return
@@ -27,31 +27,23 @@ export default function KakaoCallbackPage() {
       const error = searchParams.get('error')
       const state = searchParams.get('state')
 
-      if (error) {
+      if (error || !code) {
         toast.error('카카오 로그인에 실패했습니다.')
-        navigate('/login', { replace: true })
-        return
-      }
-      if (!code) {
-        toast.error('인증 코드가 없습니다.')
         navigate('/login', { replace: true })
         return
       }
 
       try {
-        // 1. 서버에 code 전송 → 세션 쿠키 발급
         const res = await api.post('/api/auth/kakao/callback', {
           code,
           redirect_uri: `${window.location.origin}/auth/kakao/sync/callback`,
         })
 
-        if (!res.data.success) {
-          throw new Error(res.data.error || '로그인에 실패했습니다.')
-        }
+        if (!res.data.success) throw new Error(res.data.error || '로그인 실패')
 
-        const { user } = res.data.data
+        const { customToken, session_ready, user } = res.data.data
 
-        // 2. localStorage 설정
+        // localStorage 공통 설정
         localStorage.setItem('user_type', 'user')
         localStorage.setItem('user_id', String(user.id))
         localStorage.setItem('user_name', user.name || '')
@@ -59,35 +51,46 @@ export default function KakaoCallbackPage() {
         localStorage.setItem('session_login', 'true')
         if (user.email) localStorage.setItem('user_email', user.email)
         if (user.profile_image) localStorage.setItem('user_profile_image', user.profile_image)
-        else localStorage.removeItem('user_profile_image')
 
-        // 3. Zustand 스토어 업데이트
-        const authStore = isKorea() ? useAuthKR.getState() : useAuthWorld.getState()
-        authStore.setAuthReady(true)
-        try {
-          const { useAuthStore } = await import('@/client/stores/auth.store')
-          useAuthStore.getState().setAuth(
-            { id: String(user.id), email: user.email || '', name: user.name, role: 'user' },
-            '', ''
-          )
-        } catch {}
+        // Firebase 로그인 (ProtectedRoute가 의존)
+        if (customToken) {
+          try {
+            sessionStorage.setItem('auth_processing', 'true')
+            const cred = await signInWithCustomToken(customToken)
+            sessionStorage.setItem('auth_processed_uid', cred.user.uid)
+            localStorage.setItem('lastLoginUid', cred.user.uid)
+            const authStore = getAuthStore()
+            authStore.setUser(cred.user)
+            authStore.setAuthReady(true)
+            const { useAuthStore } = await import('@/client/stores/auth.store')
+            const idToken = await cred.user.getIdToken(false)
+            useAuthStore.getState().setAuth(
+              { id: cred.user.uid, email: user.email || '', name: user.name, role: 'user' },
+              idToken, ''
+            )
+            setTimeout(() => sessionStorage.removeItem('auth_processing'), 1000)
+          } catch (e) {
+            console.error('[KakaoCallback] Firebase failed, using session cookie:', e)
+            getAuthStore().setAuthReady(true)
+          }
+        } else {
+          // Firebase 없이 세션 쿠키만
+          getAuthStore().setAuthReady(true)
+        }
 
-        // 4. 임시 장바구니 복원
+        // 장바구니 복원
         const tempCart = getTempCartItem()
         if (tempCart) {
           api.post('/api/cart', {
-            product_id: tempCart.productId,
-            quantity: tempCart.quantity,
-            price_snapshot: tempCart.priceSnapshot,
-            live_stream_id: tempCart.liveStreamId,
+            product_id: tempCart.productId, quantity: tempCart.quantity,
+            price_snapshot: tempCart.priceSnapshot, live_stream_id: tempCart.liveStreamId,
           }).catch(() => {}).finally(() => clearTempCartItem())
         }
 
-        // 5. returnUrl로 이동
+        // returnUrl 이동
         let returnUrl = '/'
-        if (state && state !== '/login' && state.startsWith('/')) {
-          returnUrl = decodeURIComponent(state)
-        } else {
+        if (state && state !== '/login' && state.startsWith('/')) returnUrl = decodeURIComponent(state)
+        else {
           const stored = localStorage.getItem('loginReturnUrl')
           if (stored && stored !== '/login') returnUrl = stored
         }

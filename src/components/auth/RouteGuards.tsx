@@ -158,11 +158,14 @@ function UserProtectedRoute({
   }
 
   // 아직 초기화 중 (타임아웃 전)
-  // ✅ 로그인 캐시(토큰 or localStorage 흔적)가 있으면 스피너 없이 바로 페이지 표시
   if (!isAuthReady && !timedOut) {
     if (hasTokenCache || hasPossibleSession) {
-      // optimistic rendering: 페이지 먼저 보여주고 백그라운드에서 인증 확인
       return <>{children}</>
+    }
+    // 로그인 흔적이 전혀 없으면 스피너 없이 즉시 리다이렉트
+    if (!hasTokenCache && !hasPossibleSession) {
+      const returnUrl = encodeURIComponent(location.pathname)
+      return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
     }
     if (DEBUG) console.log('[ProtectedRoute] ⏳ Firebase Auth 초기화 대기 중...')
     return (
