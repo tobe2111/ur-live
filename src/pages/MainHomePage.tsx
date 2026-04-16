@@ -197,6 +197,113 @@ function ScheduleDateTabs({ selectedDate, onSelect }: { selectedDate: Date | nul
   )
 }
 
+// ── 지금 뜨는 공동구매 섹션 (가로 스크롤 TOP 상품) ──
+function TrendingGroupBuySection() {
+  const navigate = useNavigate()
+  const [items, setItems] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/api/group-buy/products?status=active')
+      .then(r => {
+        if (r.data?.success) {
+          const list: Product[] = r.data.data || []
+          // 참여자 많은 순 → 상위 10개
+          const sorted = [...list].sort(
+            (a, b) => ((b.group_buy_current || 0) - (a.group_buy_current || 0))
+          ).slice(0, 10)
+          setItems(sorted)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return null
+  if (items.length === 0) return null
+
+  return (
+    <section className="px-4 pt-4 pb-2">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-[15px] font-bold text-white">🎁 지금 뜨는 공동구매</h2>
+          <p className="text-[11px] text-gray-500 mt-0.5">모일수록 저렴해지는 인기 상품</p>
+        </div>
+        <button
+          onClick={() => navigate('/group-buy')}
+          className="text-[12px] text-gray-500 flex items-center"
+        >
+          더 보기 <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+        {items.map(item => {
+          const target = item.group_buy_target || 0
+          const current = item.group_buy_current || 0
+          const achieved = target > 0 && current >= target
+          const progress = target > 0 ? Math.min(100, (current / target) * 100) : 0
+          const disc = item.original_price && item.original_price > item.price
+            ? Math.round((1 - item.price / item.original_price) * 100)
+            : 0
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => navigate(`/products/${item.id}`)}
+              className="shrink-0 w-36 text-left active:scale-[0.97] transition-transform"
+            >
+              <div className="relative aspect-square rounded-xl overflow-hidden bg-[#1A1A1A]">
+                {item.image_url ? (
+                  <img src={item.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-pink-900/30 to-rose-900/30" />
+                )}
+                {disc > 0 && (
+                  <span className="absolute top-1.5 left-1.5 bg-pink-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md">
+                    최대 -{disc}%
+                  </span>
+                )}
+                {achieved && (
+                  <span className="absolute top-1.5 right-1.5 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                    달성
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-2">
+                <p className="text-[11px] text-white font-medium line-clamp-1">{item.name}</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  {disc > 0 && (
+                    <span className="text-[12px] font-extrabold text-pink-400">{disc}%</span>
+                  )}
+                  <span className="text-[12px] font-extrabold text-white">
+                    {item.price?.toLocaleString()}원
+                  </span>
+                </div>
+
+                {target > 0 && (
+                  <div className="mt-1.5">
+                    <div className="w-full h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${achieved ? 'bg-emerald-500' : 'bg-pink-500'}`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <p className="text-[9px] text-gray-500 mt-0.5">
+                      {achieved ? '목표 달성!' : `${current}명 참여중`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 // ── 맛집 공동구매 섹션 (지역 필터 포함) ──
 function GroupBuySection() {
   const navigate = useNavigate()
@@ -559,6 +666,9 @@ export default function MainHomePage() {
           </div>
         </section>
       )}
+
+      {/* ── 지금 뜨는 공동구매 (가로 스크롤) ── */}
+      <TrendingGroupBuySection />
 
       {/* ── UR 특가 ── */}
       {/* ── 맛집 공동구매 섹션 ── */}

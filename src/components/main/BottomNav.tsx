@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn } from 'lucide-react'
+import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift } from 'lucide-react'
 
 export default function BottomNav() {
   const navigate = useNavigate()
@@ -22,6 +22,7 @@ export default function BottomNav() {
   ]
 
   const rightItems = [
+    { icon: Gift, label: '공구', path: '/group-buy' },
     { icon: ShoppingCart, label: '쇼핑', path: '/browse' },
     { icon: User, label: '마이', path: '/user/profile' },
   ]
