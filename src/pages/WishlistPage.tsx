@@ -4,6 +4,7 @@ import axios from 'axios'
 import { toast } from '@/hooks/useToast'
 import { isLoggedInSync, getUserIdSync } from '@/utils/auth'
 import WishlistButton from '../components/WishlistButton'
+import KakaoFriendMessage from '@/components/KakaoFriendMessage'
 
 interface WishlistItem {
   id: number
@@ -251,6 +252,15 @@ const WishlistPage: React.FC = () => {
                   >
                     {item.stock === 0 ? '품절' : '장바구니'}
                   </button>
+                  <KakaoFriendMessage
+                    title={`${item.product_name} 추천!`}
+                    description={`${Number(item.price).toLocaleString()}원`}
+                    link={`/products/${item.product_id}`}
+                    buttonText="상품 보기"
+                    compact
+                    triggerLabel="공유"
+                    triggerClassName="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium"
+                  />
                 </div>
               </div>
             ))}

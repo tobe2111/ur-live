@@ -16,6 +16,16 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 const kakaoSocialRoutes = new Hono<{ Bindings: Env }>();
 kakaoSocialRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
 
+// ── GET /token — 사용자의 카카오 access_token 반환 (브라우저에서 직접 API 호출용) ──
+kakaoSocialRoutes.get('/token', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+  const row = await c.env.DB.prepare('SELECT kakao_access_token FROM users WHERE id = ?')
+    .bind(user.id).first<{ kakao_access_token: string | null }>();
+  if (!row?.kakao_access_token) return c.json({ success: false, error: '카카오 연동이 필요합니다' }, 400);
+  return c.json({ success: true, data: { access_token: row.kakao_access_token } });
+});
+
 // ── POST /message/broadcast — 나에게 카카오톡 메시지 보내기 ──
 kakaoSocialRoutes.post('/message/broadcast', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
