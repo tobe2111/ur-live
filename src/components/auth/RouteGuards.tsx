@@ -297,8 +297,9 @@ function UserPublicRoute({
     )
   }
 
-  // 이미 로그인된 경우 리다이렉트
-  if (currentUser) {
+  // 이미 로그인된 경우 리다이렉트 (Firebase user 또는 세션 쿠키)
+  const isSessionLoginPublic = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
+  if (currentUser || isSessionLoginPublic) {
     // ✅ returnUrl 쿼리파라미터 우선 (state.from 제거 → 무한루프 원인 제거)
     const searchParams = new URLSearchParams(location.search)
     const returnUrl = searchParams.get('returnUrl')
