@@ -17,7 +17,9 @@ export function TeamPointsBadge({ streamId }: TeamPointsBadgeProps) {
     try {
       const res = await api.get(`/api/donations/stream/${streamId}`)
       if (res.data.success) {
-        const total = res.data.data?.total ?? res.data.data?.totalDonated ?? 0
+        const d = res.data.data
+        // data.total (직접) 또는 배열이면 합산
+        const total = d?.total ?? (Array.isArray(d) ? d.reduce((s: number, x: any) => s + (x.amount || 0), 0) : 0)
         setDonated(total)
       }
     } catch {
