@@ -947,7 +947,7 @@ export default function CheckoutPage() {
                     <p className="text-[15px] font-bold text-gray-900">{addr.recipient_name}</p>
                     <span className="text-[13px] text-gray-400">{addr.phone}</span>
                     {addr.is_default === 1 && (
-                      <span className="text-[11px] text-blue-600 font-medium">기본</span>
+                      <span className="text-[11px] text-gray-500 font-medium">기본 배송지</span>
                     )}
                     {isSelected && (
                       <svg className="w-4 h-4 text-gray-900 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
