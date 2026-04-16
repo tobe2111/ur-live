@@ -146,7 +146,8 @@ export default function CheckoutPage() {
     return total + group.shipping_fee
   }, 0)
 
-  const totalAmount = subtotal + totalShippingFee - couponDiscount
+  const totalBeforeDeal = subtotal + totalShippingFee - couponDiscount
+  const totalAmount = totalBeforeDeal - dealToUse
 
   useEffect(() => { document.title = '주문/결제 - 유어딜' }, [])
 
@@ -688,13 +689,13 @@ export default function CheckoutPage() {
                       type="number"
                       value={dealToUse || ''}
                       onChange={e => {
-                        const v = Math.min(Math.max(0, Number(e.target.value)), Math.min(dealBalance, totalAmount))
+                        const v = Math.min(Math.max(0, Number(e.target.value)), Math.min(dealBalance, totalBeforeDeal))
                         setDealToUse(v)
                       }}
                       placeholder="0"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-right"
                     />
-                    <button onClick={() => setDealToUse(Math.min(dealBalance, totalAmount))}
+                    <button onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
                       className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-xs font-bold shrink-0">전액</button>
                     <button onClick={() => setDealToUse(0)}
                       className="px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-xs font-bold shrink-0">취소</button>
@@ -708,7 +709,7 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {dealToUse >= totalAmount ? (
+              {dealToUse >= totalBeforeDeal ? (
                 /* 딜 전액 결제 */
                 <button
                   onClick={async () => {
@@ -752,7 +753,7 @@ export default function CheckoutPage() {
                     userId={userId || ''}
                     clientKey={clientKey}
                     cartItems={cartItems}
-                    totalAmount={subtotal - couponDiscount - dealToUse}
+                    totalAmount={Math.max(0, totalAmount)}
                     shippingFee={totalShippingFee}
                     onBeforePayment={handleBeforePayment}
                     onPaymentSuccess={(orderId, paymentKey, amount) => {
@@ -775,7 +776,7 @@ export default function CheckoutPage() {
                   <StripeCheckout
                     userId={userId || ''}
                     cartItems={cartItems}
-                    totalAmount={subtotal - couponDiscount - dealToUse}
+                    totalAmount={Math.max(0, totalAmount)}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentIntentId, amount) => {
                       navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
@@ -823,6 +824,14 @@ export default function CheckoutPage() {
                       </span>
                     </div>
                   )}
+                  {dealToUse > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[14px] text-gray-400">딜 포인트</span>
+                      <span className="text-[14px] font-medium text-pink-500">
+                        -{dealToUse.toLocaleString()}딜
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="my-5 h-px bg-[#333]" />
@@ -831,7 +840,7 @@ export default function CheckoutPage() {
                   <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
                   <div className="flex items-baseline gap-0.5">
                     <span className="text-[26px] font-bold tracking-tight text-gray-900">
-                      {totalAmount.toLocaleString()}
+                      {Math.max(0, totalAmount).toLocaleString()}
                     </span>
                     <span className="text-[15px] font-semibold text-gray-900">원</span>
                   </div>
@@ -883,6 +892,12 @@ export default function CheckoutPage() {
                   </span>
                 </div>
               )}
+              {dealToUse > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[14px] text-gray-400">딜 포인트</span>
+                  <span className="text-[14px] font-medium text-pink-500">-{dealToUse.toLocaleString()}딜</span>
+                </div>
+              )}
             </div>
 
             <div className="my-5 h-px bg-[#333]" />
@@ -891,7 +906,7 @@ export default function CheckoutPage() {
               <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
               <div className="flex items-baseline gap-0.5">
                 <span className="text-[26px] font-bold tracking-tight text-gray-900">
-                  {totalAmount.toLocaleString()}
+                  {Math.max(0, totalAmount).toLocaleString()}
                 </span>
                 <span className="text-[15px] font-semibold text-gray-900">원</span>
               </div>
