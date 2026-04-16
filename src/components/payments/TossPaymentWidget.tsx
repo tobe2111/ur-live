@@ -131,7 +131,7 @@ export function TossPaymentWidget({
         // 결제 수단 UI 렌더링
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: 'DEFAULT'
+          variantKey: 'widgetA'
         })
 
         // 이용약관 동의 UI 렌더링

@@ -47,7 +47,7 @@ export default function PointsChargePage() {
 
     const timer = setTimeout(async () => {
       try {
-        await widgets.renderPaymentMethods({ selector: '#charge-payment-method', variantKey: 'DEFAULT' })
+        await widgets.renderPaymentMethods({ selector: '#charge-payment-method', variantKey: 'widgetA' })
         await widgets.renderAgreement({ selector: '#charge-agreement', variantKey: 'AGREEMENT' })
         setProcessing(false)
       } catch (err: unknown) {

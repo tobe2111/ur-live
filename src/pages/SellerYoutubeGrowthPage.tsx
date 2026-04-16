@@ -60,7 +60,7 @@ export default function SellerYoutubeGrowthPage() {
 
     const timer = setTimeout(async () => {
       try {
-        await widgets.renderPaymentMethods({ selector: '#ytg-payment-method', variantKey: 'DEFAULT' })
+        await widgets.renderPaymentMethods({ selector: '#ytg-payment-method', variantKey: 'widgetA' })
         await widgets.renderAgreement({ selector: '#ytg-agreement', variantKey: 'AGREEMENT' })
         setProcessing(false)
       } catch (err: unknown) {

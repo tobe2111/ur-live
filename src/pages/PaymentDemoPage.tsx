@@ -71,7 +71,7 @@ export default function PaymentDemoPage() {
         // 결제 수단 렌더링 (variantKey 'DEFAULT' 사용)
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: 'DEFAULT'
+          variantKey: 'widgetA'
         })
         
         // 이용약관 렌더링
