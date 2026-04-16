@@ -158,29 +158,38 @@ function getDayLabel(date: Date): string {
 // ── 날짜 탭 바 컴포넌트 ──
 function ScheduleDateTabs({ selectedDate, onSelect }: { selectedDate: Date | null; onSelect: (d: Date | null) => void }) {
   const today = new Date()
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today); d.setDate(today.getDate() + i); return d
   })
-  const dayLabels = ['오늘', '내일', '모레', '월', '화', '수', '목', '금', '토', '일']
   const dayNames = ['일', '월', '화', '수', '목', '금', '토']
 
   return (
-    <div className="flex gap-1 px-4 overflow-x-auto no-scrollbar">
+    <div className="flex gap-1.5 px-4 overflow-x-auto no-scrollbar pb-1">
+      <button
+        onClick={() => onSelect(null)}
+        className={`flex flex-col items-center shrink-0 px-3 py-2 rounded-xl transition-all ${
+          !selectedDate ? 'bg-red-500 text-white' : 'text-gray-500'
+        }`}
+      >
+        <span className="text-[10px] font-medium">전체</span>
+        <span className={`text-[14px] font-bold ${!selectedDate ? 'text-white' : 'text-gray-300'}`}>ALL</span>
+      </button>
       {days.map((d, i) => {
-        const isSelected = selectedDate ? d.toDateString() === selectedDate.toDateString() : i === 0
-        const label = i === 0 ? '오늘' : i === 1 ? '내일' : i === 2 ? '모레' : dayNames[d.getDay()]
+        const isSelected = selectedDate ? d.toDateString() === selectedDate.toDateString() : false
+        const label = i === 0 ? '오늘' : i === 1 ? '내일' : dayNames[d.getDay()]
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6
         return (
           <button
             key={i}
-            onClick={() => onSelect(i === 0 && (!selectedDate || selectedDate.toDateString() === d.toDateString()) ? null : d)}
+            onClick={() => onSelect(d)}
             className={`flex flex-col items-center shrink-0 px-3 py-2 rounded-xl transition-all ${
               isSelected
                 ? 'bg-red-500 text-white'
-                : 'text-gray-500'
+                : isWeekend ? 'text-red-400' : 'text-gray-500'
             }`}
           >
             <span className="text-[10px] font-medium">{label}</span>
-            <span className={`text-[16px] font-bold ${isSelected ? 'text-white' : 'text-gray-300'}`}>{d.getDate()}</span>
+            <span className={`text-[14px] font-bold ${isSelected ? 'text-white' : 'text-gray-300'}`}>{d.getDate()}</span>
           </button>
         )
       })}
