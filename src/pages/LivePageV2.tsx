@@ -1174,8 +1174,6 @@ function ReelCard({
 
   return (
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
-      {/* PC: 영상+UI를 가운데 정렬 */}
-      <div className="relative h-full w-full max-w-[500px] mx-auto">
       {/* 🎉 상품 변경 Toast 알림 */}
       {productChangeToast && (
         <Toast
@@ -1539,7 +1537,6 @@ function ReelCard({
         </>
       )}
       {/* 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) */}
-      </div>{/* PC max-w container end */}
     </div>
   )
 }

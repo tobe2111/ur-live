@@ -460,74 +460,35 @@ html.native-app nav {
    Mobile App Layout - PC에서 모바일 앱처럼
    ============================================ */
 .mobile-app-container {
-  /* 고정 너비: 실제 모바일 너비 (iPhone 14 Pro Max: 393px) */
-  max-width: 393px;
+  max-width: 430px;
   width: 100%;
-  
-  /* 화면 정중앙 배치 */
   margin: 0 auto;
-  
-  /* 최소 높이: 화면 꽉 채우기 */
-  min-height: 100vh;
-  
-  /* 컨테이너 배경: 다크 */
+  min-height: 100dvh;
   background-color: #020202;
-  
-  /* 은은한 그림자: 입체감 */
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
-  
-  /* 상대 위치: 하단 탭바 기준 */
   position: relative;
-  
-  /* 오버플로우: 스크롤 가능 */
   overflow-x: hidden;
+
+  /* 핵심: fixed 자식 요소가 이 컨테이너 안에 갇힘 */
+  contain: layout style;
 }
 
-/* 모바일에서는 그림자 제거 & 전체 너비 */
-@media (max-width: 393px) {
-  .mobile-app-container {
-    box-shadow: none;
-    max-width: 100%;
-  }
-}
-
-/* 하단 탭바: 모바일 컨테이너 안에서만 고정 */
-.mobile-app-container nav[class*="fixed bottom"] {
-  /* PC에서: 393px 안에서만 고정 */
-  max-width: 393px;
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-}
-
-@media (max-width: 393px) {
-  .mobile-app-container nav[class*="fixed bottom"] {
-    /* 모바일에서: 전체 너비 */
-    max-width: 100%;
-    left: 0;
-    transform: none;
-  }
-}
-
-/* PC에서 fixed 요소들도 모바일 프레임 안에 제한 */
-@media (min-width: 394px) {
-  .mobile-app-container .fixed,
-  .mobile-app-container [class*="fixed"] {
-    max-width: 393px !important;
-    left: 50% !important;
-    right: auto !important;
-    transform: translateX(-50%) !important;
-  }
-  /* 모달 오버레이는 전체 화면 유지 */
-  .mobile-app-container .fixed.inset-0,
-  .mobile-app-container [class*="fixed inset-0"] {
-    max-width: 100% !important;
-    left: 0 !important;
-    transform: none !important;
-  }
-  /* body 배경색 */
+/* PC에서: 그림자 + 배경 */
+@media (min-width: 431px) {
   body {
-    background-color: #1a1a1a;
+    background-color: #111;
+  }
+  .mobile-app-container {
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+    border-left: 1px solid #2a2a2a;
+    border-right: 1px solid #2a2a2a;
+  }
+}
+
+/* 모바일에서: 전체 너비 */
+@media (max-width: 430px) {
+  .mobile-app-container {
+    max-width: 100%;
+    contain: none;
   }
 }
 
