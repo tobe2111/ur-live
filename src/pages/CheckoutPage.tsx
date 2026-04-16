@@ -502,21 +502,15 @@ export default function CheckoutPage() {
           {/* Left column */}
           <div className="flex flex-1 flex-col lg:rounded-3xl">{/* overflow-hidden 제거 */}
             {/* 배송지 정보 */}
-            <section className="bg-white px-5 py-6">
-              <div className="flex items-center justify-between relative">
-                <h2 className="text-[17px] font-bold text-gray-900">배송지</h2>
+            <section className="bg-white px-5 py-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[15px] font-bold text-gray-900">배송지</h2>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setShowAddressModal(true)
-                  }}
-                  className="flex items-center text-[14px] sm:text-[15px] lg:text-[16px] font-semibold text-blue-600 transition-all hover:text-blue-700 hover:underline active:scale-95 cursor-pointer px-3 py-2 -mr-2 touch-manipulation relative z-10"
-                  style={{ pointerEvents: 'auto' }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowAddressModal(true) }}
+                  className="text-[13px] font-medium text-blue-600 active:scale-95"
                 >
                   {selectedAddress ? '변경' : '선택'}
-                  <ChevronRight className="h-5 w-5 ml-0.5" />
                 </button>
               </div>
 
@@ -677,37 +671,31 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              {/* 딜 포인트 사용 (병합 결제) */}
-              {dealBalance > 0 && (
-                <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">딜 포인트 사용</span>
-                    <span className="text-xs text-gray-400">보유 {dealBalance.toLocaleString()}딜</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={dealToUse || ''}
-                      onChange={e => {
-                        const v = Math.min(Math.max(0, Number(e.target.value)), Math.min(dealBalance, totalBeforeDeal))
-                        setDealToUse(v)
-                      }}
-                      placeholder="0"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-right"
-                    />
-                    <button onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
-                      className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-xs font-bold shrink-0">전액</button>
-                    <button onClick={() => setDealToUse(0)}
-                      className="px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-xs font-bold shrink-0">취소</button>
-                  </div>
-                  {dealToUse > 0 && (
-                    <div className="mt-2 text-xs text-gray-500">
-                      딜 포인트: <strong className="text-pink-500">-{dealToUse.toLocaleString()}딜</strong>
-                      {totalAmount - dealToUse > 0 && <> · 카드 결제: <strong className="text-gray-900">{(totalAmount - dealToUse).toLocaleString()}원</strong></>}
-                    </div>
-                  )}
+              {/* 딜 포인트 (SSG MONEY 스타일) */}
+              <div className="bg-white border-t border-gray-100 px-5 py-5 mb-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[15px] font-bold text-gray-900">딜 포인트 : {dealBalance.toLocaleString()}딜</h3>
                 </div>
-              )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={dealToUse || ''}
+                    onChange={e => {
+                      const v = Math.min(Math.max(0, Number(e.target.value)), Math.min(dealBalance, totalBeforeDeal))
+                      setDealToUse(v)
+                    }}
+                    placeholder="0원"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm text-right font-medium"
+                  />
+                  <button onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
+                    className="px-4 py-3 bg-gray-900 text-white rounded-lg text-xs font-bold shrink-0">전액사용</button>
+                </div>
+                {dealToUse > 0 && (
+                  <p className="mt-2 text-xs text-pink-500 font-medium">
+                    {dealToUse.toLocaleString()}딜 사용 → 카드 결제: {Math.max(0, totalAmount).toLocaleString()}원
+                  </p>
+                )}
+              </div>
 
               {dealToUse >= totalBeforeDeal ? (
                 /* 딜 전액 결제 */
@@ -859,11 +847,11 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Mobile order summary */}
-        <div className="lg:hidden">
+        {/* 결제 예정금액 */}
+        <div>
           <div className="h-2 bg-gray-50" />
-          <section className="bg-white px-5 py-6">
-            <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>
+          <section className="bg-white px-5 py-5">
+            <h2 className="text-[15px] font-bold text-gray-900">결제 예정금액</h2>
 
             <div className="mt-5 flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
