@@ -615,7 +615,7 @@ export default function CheckoutPage() {
                   value={couponCode}
                   onChange={e => setCouponCode(e.target.value.toUpperCase())}
                   placeholder="쿠폰 코드 입력"
-                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none"
                 />
                 <button
                   onClick={async () => {
@@ -676,7 +676,7 @@ export default function CheckoutPage() {
                       setDealToUse(v)
                     }}
                     placeholder="0원"
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm text-right font-medium"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium placeholder:text-gray-400"
                   />
                   <button onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
                     className="px-4 py-3 bg-gray-900 text-white rounded-lg text-xs font-bold shrink-0">전액사용</button>
@@ -996,7 +996,7 @@ export default function CheckoutPage() {
               type="text"
               value={newAddress.recipient_name}
               onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="받으실 분의 이름을 입력하세요"
             />
           </div>
@@ -1009,7 +1009,7 @@ export default function CheckoutPage() {
               type="tel"
               value={newAddress.phone}
               onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="010-1234-5678"
             />
           </div>
@@ -1066,7 +1066,7 @@ export default function CheckoutPage() {
               type="text"
               value={newAddress.address_detail}
               onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="동/호수, 건물명 등 (선택)"
             />
           </div>
