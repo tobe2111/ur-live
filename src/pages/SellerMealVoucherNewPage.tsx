@@ -43,7 +43,8 @@ export default function SellerMealVoucherNewPage() {
   const token = getSellerToken()
   const headers = { Authorization: `Bearer ${token}` }
 
-  const KAKAO_REST_KEY = '975a2e7f97254b08f15dba4d177a2865'
+  const KAKAO_REST_KEY = (import.meta as any).env?.VITE_KAKAO_REST_API_KEY || ''
+  const KAKAO_JS_KEY = (import.meta as any).env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
 
   // 카카오맵 URL에서 place ID 추출
   function extractKakaoPlaceId(url: string): string | null {
@@ -283,7 +284,7 @@ export default function SellerMealVoucherNewPage() {
                 </div>
                 <KakaoMapPicker
                   kakaoRestKey={KAKAO_REST_KEY}
-                  kakaoJsKey={(import.meta as any).env?.VITE_KAKAO_JAVASCRIPT_KEY || KAKAO_REST_KEY}
+                  kakaoJsKey={KAKAO_JS_KEY}
                   selectedPlace={placeSelected && form.restaurant_lat ? {
                     name: form.restaurant_name,
                     address: form.restaurant_address,
