@@ -291,7 +291,7 @@ export default function AddressManagementPage() {
               type="text"
               value={formData.recipient_name}
               onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="받으실 분의 이름을 입력하세요"
             />
           </div>
@@ -304,7 +304,7 @@ export default function AddressManagementPage() {
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="010-1234-5678"
             />
           </div>
@@ -358,7 +358,7 @@ export default function AddressManagementPage() {
               type="text"
               value={formData.address_detail}
               onChange={(e) => setFormData({ ...formData, address_detail: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="동/호수, 건물명 등 (선택)"
             />
           </div>

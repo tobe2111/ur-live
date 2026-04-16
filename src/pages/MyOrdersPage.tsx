@@ -570,7 +570,7 @@ export default function MyOrdersPage() {
               <select
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="">취소 사유를 선택해주세요</option>
                 <option value="단순 변심">단순 변심</option>
@@ -611,7 +611,7 @@ export default function MyOrdersPage() {
                   onChange={(e) => setCancelAmount(e.target.value)}
                   placeholder="취소할 금액 입력 (원)"
                   min="1"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               )}
             </div>
