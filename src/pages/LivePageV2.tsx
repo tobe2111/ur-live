@@ -1333,7 +1333,7 @@ function ReelCard({
                 imageUrl={safeProduct?.image_url}
                 link={`/live/${stream?.id}`}
                 compact
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEE500] backdrop-blur-sm transition-all active:scale-90"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
               />
 
 
