@@ -65,28 +65,16 @@ export function ProtectedRoute({
   return <UserProtectedRoute location={location}>{children}</UserProtectedRoute>
 }
 
-/** localStorage 동기 체크: Firebase User 로그인 흔적이 있는지 확인 */
-function hasFirebaseUserSession(): boolean {
-  const userType = localStorage.getItem('user_type')
-  const lastLoginUid = localStorage.getItem('lastLoginUid')
-  if (userType === 'user' && !!lastLoginUid) return true
-  // firebase_token이 URL에 있으면 로그인 진행 중으로 간주 (즉시 리다이렉트 방지)
-  return !!new URLSearchParams(window.location.search).get('firebase_token')
-}
-
-/** localStorage에 유효한(만료 전) Firebase 토큰 캐시가 있는지 확인 */
-function hasValidTokenCache(): boolean {
-  try {
-    const cached = localStorage.getItem('firebase_token_cache')
-    if (!cached) return false
-    const { expiresAt } = JSON.parse(cached)
-    return typeof expiresAt === 'number' && Date.now() < expiresAt
-  } catch {
-    return false
-  }
-}
-
-/** Firebase User 전용 보호 라우트 */
+/**
+ * User 보호 라우트 — 단순 3단계 로직 (Firebase 의존성 최소화)
+ *
+ * 1단계: session login (user_type + user_id) → 즉시 통과
+ * 2단계: Firebase user 이미 있음 → 즉시 통과
+ * 3단계: 둘 다 없음 → /login 리다이렉트
+ *
+ * Firebase 초기화 대기는 lastLoginUid가 있을 때만 최대 3초.
+ * 세션 로그인 유저는 Firebase를 일절 대기하지 않음.
+ */
 function UserProtectedRoute({
   children,
   location,
@@ -94,103 +82,55 @@ function UserProtectedRoute({
   children: React.ReactNode
   location: ReturnType<typeof useLocation>
 }) {
-  // ✅ 동기 사전 체크: localStorage에 로그인 흔적이 없으면 즉시 리다이렉트 (스피너 없음)
-  const hasPossibleSession = hasFirebaseUserSession()
-
-  // ✅ 훅 규칙 준수: 두 스토어를 모두 구독하되, 렌더 시 region으로 선택
-  // isKorea()는 순수 함수(hostname 체크)이므로 렌더 중 호출 안전
-  const isAuthReadyKR = useAuthKR((state) => state.isAuthReady)
-  const isAuthReadyWorld = useAuthWorld((state) => state.isAuthReady)
-  const userKR = useAuthKR((state) => state.user)
-  const userWorld = useAuthWorld((state) => state.user)
-
+  // ── 훅 (반드시 최상단, 조건문 바깥) ──
   const kr = isKorea()
+  const userKR = useAuthKR((s) => s.user)
+  const userWorld = useAuthWorld((s) => s.user)
+  const isAuthReadyKR = useAuthKR((s) => s.isAuthReady)
+  const isAuthReadyWorld = useAuthWorld((s) => s.isAuthReady)
+  const firebaseUser = kr ? userKR : userWorld
   const isAuthReady = kr ? isAuthReadyKR : isAuthReadyWorld
-  const currentUser = kr ? userKR : userWorld
 
-  // ✅ 로그인 캐시 있으면 즉시 페이지 표시 (optimistic rendering)
-  // Firebase 인증은 백그라운드에서 확인, 실패 시 리다이렉트
-  const hasTokenCache = hasValidTokenCache()
-
-  // ✅ 타임아웃 안전장치: 최대 5초 대기 후 강제 진행
   const [timedOut, setTimedOut] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // ── 동기 체크 ──
+  const isSessionLogin = localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
+  const hasFirebaseTrace = !!localStorage.getItem('lastLoginUid')
+  const needsFirebaseWait = !isSessionLogin && !firebaseUser && hasFirebaseTrace && !isAuthReady
+
+  // 타임아웃: Firebase 대기가 필요한 경우에만 3초 제한
   useEffect(() => {
-    if (!hasPossibleSession) return
-    if (isAuthReady) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
+    if (!needsFirebaseWait) {
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
       return
     }
-    timerRef.current = setTimeout(() => {
-      console.warn('[ProtectedRoute] ⏰ Firebase Auth 타임아웃 (5s) - 강제 진행')
-      setTimedOut(true)
-    }, 5000)
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
-    }
-  }, [isAuthReady, hasPossibleSession])
+    timerRef.current = setTimeout(() => setTimedOut(true), 3000)
+    return () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null } }
+  }, [needsFirebaseWait])
 
-  // ✅ 로그인 유저: user_type + user_id 있으면 즉시 통과 (Firebase 대기 없음)
-  const isSessionLogin = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
+  // ── 1단계: 세션 로그인 (카카오 등) → Firebase 무관, 즉시 통과 ──
   if (isSessionLogin) {
-    if (DEBUG) console.log('[ProtectedRoute] ✅ 세션 쿠키 로그인 확인 → 즉시 통과')
+    if (DEBUG) console.log('[ProtectedRoute] ✅ 세션 로그인 → 즉시 통과')
     return <>{children}</>
   }
 
-  // ✅ 로그인 흔적 없음 → 즉시 리다이렉트 (Firebase 대기 없음, 스피너 없음)
-  // ✅ 단, Zustand store에 이미 user가 있으면 localStorage 동기화 전이어도 리다이렉트 하지 않음
-  if (!hasPossibleSession && !currentUser) {
-    if (DEBUG) console.log('[ProtectedRoute] ⚡ 비로그인 확인 (동기) → /login')
-    const cleanParams = new URLSearchParams(location.search)
-    cleanParams.delete('firebase_token')
-    cleanParams.delete('userName')
-    cleanParams.delete('profileImage')
-    const cleanSearch = cleanParams.toString() ? `?${cleanParams.toString()}` : ''
-    const returnUrl = encodeURIComponent(location.pathname + cleanSearch)
-    return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
+  // ── 2단계: Firebase user 이미 있음 → 즉시 통과 ──
+  if (firebaseUser) {
+    if (DEBUG) console.log('[ProtectedRoute] ✅ Firebase user → 통과')
+    return <>{children}</>
   }
 
-  // 아직 초기화 중 (타임아웃 전)
-  if (!isAuthReady && !timedOut) {
-    if (hasTokenCache || hasPossibleSession) {
-      return <>{children}</>
-    }
-    // 로그인 흔적이 전혀 없으면 스피너 없이 즉시 리다이렉트
-    if (!hasTokenCache && !hasPossibleSession) {
-      const returnUrl = encodeURIComponent(location.pathname)
-      return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
-    }
-    if (DEBUG) console.log('[ProtectedRoute] ⏳ Firebase Auth 초기화 대기 중...')
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    )
+  // ── 3단계: Firebase 초기화 대기 중 (흔적 있고, 아직 준비 안 됨) ──
+  if (needsFirebaseWait && !timedOut) {
+    if (DEBUG) console.log('[ProtectedRoute] ⏳ Firebase 대기 중 (최대 3초)...')
+    return <>{children}</>  // optimistic render
   }
 
-  // 인증 확인 (isAuthReady 완료 또는 타임아웃 후에만 미인증 리다이렉트)
-  // 세션 쿠키 로그인은 상단에서 이미 통과됨
-  if ((isAuthReady || timedOut) && !currentUser) {
-    if (DEBUG) console.log('[ProtectedRoute] ❌ User 미인증 → /login')
-    // ✅ 무한루프 방지: auth 관련 파라미터 모두 제거
-    const cleanParams = new URLSearchParams(location.search)
-    cleanParams.delete('firebase_token')
-    cleanParams.delete('userName')
-    cleanParams.delete('profileImage')
-    const cleanSearch = cleanParams.toString() ? `?${cleanParams.toString()}` : ''
-    const returnUrl = encodeURIComponent(location.pathname + cleanSearch)
-    return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
-  }
-
-  if (DEBUG) console.log('[ProtectedRoute] ✅ User 인증 성공')
-  return <>{children}</>
+  // ── 미인증 → 로그인 페이지 ──
+  if (DEBUG) console.log('[ProtectedRoute] ❌ 미인증 → /login')
+  const returnUrl = encodeURIComponent(location.pathname + location.search)
+  return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
 }
 
 // ============================================
@@ -251,72 +191,20 @@ function UserPublicRoute({
   redirectTo: string
   location: ReturnType<typeof useLocation>
 }) {
-  // ✅ 동기 사전 체크: localStorage에 로그인 흔적 없으면 즉시 렌더링 (스피너 없음)
-  const hasPossibleSession = hasFirebaseUserSession()
-
-  // ✅ 훅 규칙 준수: 두 스토어 모두 구독
-  const isAuthReadyKR = useAuthKR((state) => state.isAuthReady)
-  const isAuthReadyWorld = useAuthWorld((state) => state.isAuthReady)
-  const userKR = useAuthKR((state) => state.user)
-  const userWorld = useAuthWorld((state) => state.user)
-
+  // ── 훅 ──
   const kr = isKorea()
-  const isAuthReady = kr ? isAuthReadyKR : isAuthReadyWorld
-  const currentUser = kr ? userKR : userWorld
+  const firebaseUser = kr ? useAuthKR((s) => s.user) : useAuthWorld((s) => s.user)
 
-  // ✅ 타임아웃 안전장치: 최대 3초 (로그인 세션이 있을 때만)
-  const [timedOut, setTimedOut] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    // 로그인 흔적 없으면 타이머 불필요
-    if (!hasPossibleSession) return
-    if (isAuthReady) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
-      return
-    }
-    timerRef.current = setTimeout(() => {
-      console.warn('[PublicRoute] ⏰ Firebase Auth 타임아웃 (3s) - 강제 진행')
-      setTimedOut(true)
-    }, 3000)
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
-    }
-  }, [isAuthReady, hasPossibleSession])
-
-  // ✅ 로그인 흔적 없음 → 즉시 렌더링 (Firebase 대기 없음, 스피너 없음)
-  if (!hasPossibleSession) {
-    if (DEBUG) console.log('[PublicRoute] ⚡ 비로그인 확인 (동기) → 즉시 렌더링')
-    return <>{children}</>
-  }
-
-  // 초기화 중 (타임아웃 전)
-  if (!isAuthReady && !timedOut) {
-    if (DEBUG) console.log('[PublicRoute] ⏳ Firebase Auth 초기화 대기 중...')
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
-
-  // 이미 로그인된 경우 리다이렉트 (Firebase user 또는 세션 쿠키)
-  const isSessionLoginPublic = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
-  if (currentUser || isSessionLoginPublic) {
-    // ✅ returnUrl 쿼리파라미터 우선 (state.from 제거 → 무한루프 원인 제거)
+  // ── 이미 로그인됨 → 리다이렉트 ──
+  const isSessionLogin = localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
+  if (isSessionLogin || firebaseUser) {
     const searchParams = new URLSearchParams(location.search)
     const returnUrl = searchParams.get('returnUrl')
     const destination = returnUrl ? decodeURIComponent(returnUrl) : redirectTo
-    if (DEBUG) console.log('[PublicRoute] ✅ User 이미 로그인됨 →', destination)
+    if (DEBUG) console.log('[PublicRoute] ✅ 이미 로그인됨 →', destination)
     return <Navigate to={destination} replace />
   }
 
-  if (DEBUG) console.log('[PublicRoute] ✅ 미로그인 → 렌더링')
+  // ── 미로그인 → 즉시 렌더링 (스피너 없음) ──
   return <>{children}</>
 }
