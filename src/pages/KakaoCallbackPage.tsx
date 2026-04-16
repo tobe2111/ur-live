@@ -1,22 +1,20 @@
 /**
  * KakaoCallbackPage - 카카오 OAuth 콜백 처리
- * 세션 쿠키 우선, Firebase 폴백
+ *
+ * 한국: 백엔드 API 호출 → localStorage 설정 → 리다이렉트. Firebase 0.
+ * 글로벌: 백엔드 API 호출 → Firebase customToken → localStorage → 리다이렉트.
  */
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
-import { signInWithCustomToken } from '@/lib/firebase-auth'
-import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
+import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 
 export default function KakaoCallbackPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const processingRef = useRef(false)
-  const getAuthStore = () => isKorea() ? useAuthKR.getState() : useAuthWorld.getState()
 
   useEffect(() => {
     if (processingRef.current) return
@@ -41,46 +39,30 @@ export default function KakaoCallbackPage() {
 
         if (!res.data.success) throw new Error(res.data.error || '로그인 실패')
 
-        const { customToken, session_ready, user } = res.data.data
+        const { customToken, user } = res.data.data
 
-        // localStorage 공통 설정
+        // ── localStorage 설정 (공통) ──
         localStorage.setItem('user_type', 'user')
         localStorage.setItem('user_id', String(user.id))
         localStorage.setItem('user_name', user.name || '')
-        localStorage.setItem('lastLoginUid', String(user.id))
         localStorage.setItem('session_login', 'true')
         if (user.email) localStorage.setItem('user_email', user.email)
         if (user.profile_image) localStorage.setItem('user_profile_image', user.profile_image)
 
-        // 한국: Firebase 완전 건너뜀 (세션 쿠키만 사용)
-        // 글로벌: Firebase customToken 로그인 (Google/Apple 등 호환)
-        if (isKorea()) {
-          getAuthStore().setAuthReady(true)
-        } else if (customToken) {
+        // ── 글로벌 전용: Firebase customToken 로그인 ──
+        if (!isKorea() && customToken) {
           try {
-            sessionStorage.setItem('auth_processing', 'true')
+            const { signInWithCustomToken } = await import('@/lib/firebase-auth')
             const cred = await signInWithCustomToken(customToken)
-            sessionStorage.setItem('auth_processed_uid', cred.user.uid)
-            localStorage.setItem('lastLoginUid', cred.user.uid)
-            const authStore = getAuthStore()
-            authStore.setUser(cred.user)
-            authStore.setAuthReady(true)
-            const { useAuthStore } = await import('@/client/stores/auth.store')
-            const idToken = await cred.user.getIdToken(false)
-            useAuthStore.getState().setAuth(
-              { id: cred.user.uid, email: user.email || '', name: user.name, role: 'user' },
-              idToken, ''
-            )
-            setTimeout(() => sessionStorage.removeItem('auth_processing'), 1000)
+            const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
+            useAuthWorld.getState().setUser(cred.user)
+            useAuthWorld.getState().setAuthReady(true)
           } catch (e) {
-            console.error('[KakaoCallback] Firebase failed, using session cookie:', e)
-            getAuthStore().setAuthReady(true)
+            console.warn('[KakaoCallback] Firebase failed (세션 쿠키로 진행):', e)
           }
-        } else {
-          getAuthStore().setAuthReady(true)
         }
 
-        // 장바구니 복원
+        // ── 장바구니 복원 ──
         const tempCart = getTempCartItem()
         if (tempCart) {
           api.post('/api/cart', {
@@ -89,10 +71,11 @@ export default function KakaoCallbackPage() {
           }).catch(() => {}).finally(() => clearTempCartItem())
         }
 
-        // returnUrl 이동
+        // ── returnUrl 결정 & 이동 ──
         let returnUrl = '/'
-        if (state && state !== '/login' && state.startsWith('/')) returnUrl = decodeURIComponent(state)
-        else {
+        if (state && state !== '/login' && state.startsWith('/')) {
+          returnUrl = decodeURIComponent(state)
+        } else {
           const stored = localStorage.getItem('loginReturnUrl')
           if (stored && stored !== '/login') returnUrl = stored
         }
