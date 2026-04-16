@@ -177,50 +177,47 @@ function AppContent() {
   // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
   const authInitialized = useRef(false)
 
-  // ✅ 카카오 로그인 콜백 처리: URL 파라미터에서 유저 정보 읽어서 localStorage 설정
-  // 백엔드 GET /auth/kakao/sync/callback이 ?login=success&userId=...로 리다이렉트
-  useEffect(() => {
+  // ✅ 카카오 로그인 콜백: URL 파라미터 → localStorage (동기, 렌더 전 실행)
+  // useEffect가 아닌 useMemo로 첫 렌더 전에 처리해야 ProtectedRoute가 통과됨
+  const loginParamsProcessed = useRef(false)
+  if (!loginParamsProcessed.current) {
+    loginParamsProcessed.current = true
     const urlParams = new URLSearchParams(window.location.search)
 
-    // ── 한국: login=success 파라미터로 세션 완성 ──
     if (urlParams.get('login') === 'success' && urlParams.get('userId')) {
-      const userId = urlParams.get('userId')!
-      const userName = urlParams.get('userName') || ''
-      const userEmail = urlParams.get('userEmail') || ''
-      const profileImage = urlParams.get('profileImage') || ''
-
+      // ── 카카오 로그인 성공: localStorage 즉시 설정 ──
       localStorage.setItem('user_type', 'user')
-      localStorage.setItem('user_id', userId)
+      localStorage.setItem('user_id', urlParams.get('userId')!)
+      const userName = urlParams.get('userName')
+      const userEmail = urlParams.get('userEmail')
+      const profileImage = urlParams.get('profileImage')
       if (userName) localStorage.setItem('user_name', userName)
       if (userEmail) localStorage.setItem('user_email', userEmail)
       if (profileImage) localStorage.setItem('user_profile_image', profileImage.replace(/^http:\/\//, 'https://'))
 
-      // URL 정리
-      urlParams.delete('login')
-      urlParams.delete('userId')
-      urlParams.delete('userName')
-      urlParams.delete('userEmail')
-      urlParams.delete('profileImage')
+      // URL 정리 (auth 파라미터 제거)
+      urlParams.delete('login'); urlParams.delete('userId'); urlParams.delete('userName')
+      urlParams.delete('userEmail'); urlParams.delete('profileImage')
       const clean = urlParams.toString()
       window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
-      return
+    } else if (urlParams.has('firebase_token')) {
+      if (isKorea()) {
+        // 한국: firebase_token 무시, URL만 정리
+        urlParams.delete('firebase_token'); urlParams.delete('userName'); urlParams.delete('profileImage')
+        const clean = urlParams.toString()
+        window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
+      }
+      // 글로벌: firebase_token은 아래 useEffect에서 비동기 처리
     }
+  }
 
-    // ── 레거시/글로벌: firebase_token 파라미터 처리 ──
+  // ✅ 글로벌 전용: firebase_token 비동기 처리 (Firebase SDK 필요)
+  useEffect(() => {
+    if (isKorea()) return
+    const urlParams = new URLSearchParams(window.location.search)
     const firebaseToken = urlParams.get('firebase_token')
     if (!firebaseToken) return
 
-    if (isKorea()) {
-      // 한국: firebase_token 무시, URL만 정리
-      urlParams.delete('firebase_token')
-      urlParams.delete('userName')
-      urlParams.delete('profileImage')
-      const clean = urlParams.toString()
-      window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
-      return
-    }
-
-    // 글로벌: Firebase customToken 처리
     ;(async () => {
       try {
         const urlUserName = urlParams.get('userName') || ''
