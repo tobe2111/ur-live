@@ -1,72 +1,27 @@
-import { useEffect, useState, useRef } from 'react'
-import { useNavigate, useSearchParams, Navigate } from 'react-router-dom'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/shared/config/region'
-import { loginWithFirebaseToken, logout } from '@/features/auth/login-flow.service'
-import { getUserProfileImage } from '@/utils/auth'
-import { UserInfo } from '@/components/my-page/user-info'
-import { MenuList } from '@/components/my-page/menu-list'
-import { Footer } from '@/components/my-page/footer'
-import { RewardAdCard } from '@/components/my-page/reward-ad-card'
-import { ArrowLeft } from 'lucide-react'
-
 /**
- * 🧹 완전히 단순화된 UserProfilePage
- * - firebase_token 처리는 여기서만
- * - RouteGuard와 협력해 무한 루프 방지
+ * UserProfilePage - 마이페이지
+ * 세션 쿠키 기반 인증 (Firebase 불필요)
  */
-function ThemeToggle() {
-  const [theme, setTheme] = useState(localStorage.getItem('ur_theme') || 'dark')
-  const toggle = () => {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    localStorage.setItem('ur_theme', next)
-    const root = document.documentElement
-    if (next === 'light') { root.classList.add('light-theme'); root.classList.remove('dark-theme') }
-    else { root.classList.add('dark-theme'); root.classList.remove('light-theme') }
-  }
-  return (
-    <div className="px-5 py-3">
-      <div className="flex items-center justify-between bg-[var(--ur-card,#121212)] border border-[var(--ur-border,#2A2A2A)] rounded-2xl px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{theme === 'dark' ? '🌙' : '☀️'}</span>
-          <span className="text-sm font-medium" style={{ color: 'var(--ur-text, white)' }}>
-            {theme === 'dark' ? '다크 모드' : '라이트 모드'}
-          </span>
-        </div>
-        <button
-          onClick={toggle}
-          className={`relative w-12 h-6 rounded-full transition-colors ${theme === 'light' ? 'bg-blue-500' : 'bg-gray-600'}`}
-        >
-          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${theme === 'light' ? 'translate-x-6' : ''}`} />
-        </button>
-      </div>
-    </div>
-  )
-}
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { LogOut } from 'lucide-react'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import { MenuList } from '@/components/my-page/menu-list'
+import { logout as authLogout, getUserProfileImage } from '@/utils/auth'
 
 function TeamPointsCard() {
   const navigate = useNavigate()
   const [balance, setBalance] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  const fetchBalance = () => {
-    import('@/lib/api').then(({ default: api }) => {
-      api.get('/api/points/balance')
-        .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
-        .catch(() => {})
-        .finally(() => setLoading(false))
-    })
-  }
-
   useEffect(() => {
-    fetchBalance()
-    // 광고 리워드 등으로 잔액 변경 시 자동 갱신
-    const handler = () => fetchBalance()
-    window.addEventListener('pointsBalanceChanged', handler)
-    return () => window.removeEventListener('pointsBalanceChanged', handler)
+    api.get('/api/points/balance')
+      .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
+
   return (
     <div className="px-5 py-3">
       <div
@@ -90,175 +45,89 @@ function TeamPointsCard() {
   )
 }
 
+function ThemeToggle() {
+  const [theme, setTheme] = useState(localStorage.getItem('ur_theme') || 'dark')
+  const toggle = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('ur_theme', next)
+    const root = document.documentElement
+    if (next === 'light') { root.classList.add('light-theme'); root.classList.remove('dark-theme') }
+    else { root.classList.add('dark-theme'); root.classList.remove('light-theme') }
+  }
+  return (
+    <div className="px-5 py-3">
+      <div className="flex items-center justify-between bg-[#121212] border border-[#2A2A2A] rounded-2xl px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{theme === 'dark' ? '🌙' : '☀️'}</span>
+          <span className="text-sm font-medium text-white">{theme === 'dark' ? '다크 모드' : '라이트 모드'}</span>
+        </div>
+        <button onClick={toggle}
+          className={`relative w-12 h-6 rounded-full transition-colors ${theme === 'light' ? 'bg-blue-500' : 'bg-gray-600'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${theme === 'light' ? 'translate-x-6' : ''}`} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function UserProfilePage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  
-  // ✅ Zustand 스토어 사용 (지역별)
-  const authStore = isKorea() ? useAuthKR : useAuthWorld
-  const { user, isAuthReady } = authStore()
-  
-  const [userName, setUserName] = useState('')
-  const [profileImage, setProfileImage] = useState<string | undefined>(undefined)
-  const [isProcessingToken, setIsProcessingToken] = useState(false)
-  const hasProcessedToken = useRef(false)
+  const isLoggedIn = localStorage.getItem('session_login') === 'true' || localStorage.getItem('user_id')
+  const userName = localStorage.getItem('user_name') || '사용자'
+  const profileImage = localStorage.getItem('user_profile_image') || getUserProfileImage()
 
   useEffect(() => { document.title = '마이페이지 - 유어딜' }, [])
 
-  // ✅ firebase_token 한 번만 처리
-  // 의존성에서 searchParams, user 제거 → 무한 루프 방지
-  // searchParams는 마운트 시 읽고, user 변화는 hasProcessedToken으로 제어
-  useEffect(() => {
-    const firebaseToken = searchParams.get('firebase_token')
-    const userNameParam = searchParams.get('userName')
-    const profileImageParam = searchParams.get('profileImage')
-
-    // ✅ 이미 로그인되어 있고 URL에 파라미터가 있으면 즉시 정리
-    const currentUser = authStore.getState().user
-    if ((firebaseToken || userNameParam) && currentUser) {
-      if (userNameParam) localStorage.setItem('user_name', userNameParam)
-      if (profileImageParam) localStorage.setItem('user_profile_image', profileImageParam)
-      navigate('/user/profile', { replace: true })
-      return
-    }
-
-    // 조건: 토큰 있음 + 아직 안 처리 + 로그인 안 됨
-    if (firebaseToken && !hasProcessedToken.current && !currentUser) {
-      hasProcessedToken.current = true
-      setIsProcessingToken(true)
-
-      if (userNameParam) {
-        localStorage.setItem('user_name', userNameParam)
-      }
-      if (profileImageParam) {
-        localStorage.setItem('user_profile_image', profileImageParam)
-      }
-
-      loginWithFirebaseToken(firebaseToken)
-        .then(async () => {
-          try {
-            const { isKorea } = await import('@/shared/config/region')
-            const { useAuthKR } = await import('@/shared/stores/useAuthKR')
-            const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
-            const firebaseUser = (isKorea() ? useAuthKR : useAuthWorld).getState().user
-            if (firebaseUser && (!firebaseUser.displayName || !firebaseUser.photoURL)) {
-              const { updateProfile } = await import('firebase/auth')
-              await updateProfile(firebaseUser, {
-                ...(userNameParam && !firebaseUser.displayName ? { displayName: userNameParam } : {}),
-                ...(profileImageParam && !firebaseUser.photoURL ? { photoURL: profileImageParam } : {}),
-              })
-              if (isKorea()) {
-                useAuthKR.getState().setUser({ ...firebaseUser } as any)
-              } else {
-                useAuthWorld.getState().setUser({ ...firebaseUser } as any)
-              }
-            }
-          } catch (e) {
-            console.warn('[UserProfilePage] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
-          }
-
-          navigate('/user/profile', { replace: true })
-          setIsProcessingToken(false)
-        })
-        .catch((error) => {
-          console.error('[UserProfilePage] ❌ 토큰 처리 실패:', error)
-          hasProcessedToken.current = false
-          setIsProcessingToken(false)
-          navigate('/login', { replace: true })
-        })
-    }
-  }, [isAuthReady]) // ✅ isAuthReady만 의존: auth 준비 완료 시 1회 실행
-
-  // ✅ 사용자 이름 + 프로필 이미지 설정
-  useEffect(() => {
-    if (user) {
-      const name = user?.displayName || localStorage.getItem('user_name') || '사용자'
-      setUserName(name)
-      const image = user.photoURL || getUserProfileImage() || undefined
-      setProfileImage(image)
-      
-    }
-  }, [user])
-
-  // 세션 쿠키 로그인 유저는 Firebase user 없이도 프로필 표시
-  const isSessionUser = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
-
-  // ✅ 사용자 이름/프로필 설정 (세션 쿠키 유저용 보강)
-  useEffect(() => {
-    if (!userName && isSessionUser) {
-      setUserName(localStorage.getItem('user_name') || '사용자')
-      setProfileImage(localStorage.getItem('user_profile_image') || undefined)
-    }
-  }, [isSessionUser])
-
-  // 🔄 로딩 중 (세션 쿠키 유저는 즉시 통과)
-  if (!isSessionUser && (!isAuthReady || isProcessingToken)) {
+  if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-[#020202] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-400">
-            {isProcessingToken ? '로그인 처리 중...' : '로딩 중...'}
-          </p>
-        </div>
+      <div className="min-h-screen bg-[#020202] flex flex-col items-center justify-center px-5">
+        <p className="text-gray-400 mb-4">로그인이 필요합니다</p>
+        <button onClick={() => navigate('/login')}
+          className="px-6 py-3 bg-[#FEE500] text-[#3C1E1E] rounded-xl font-bold text-sm">
+          카카오 로그인
+        </button>
       </div>
     )
   }
 
-  // 🚫 로그인 안 됨
-  if (!user && !isSessionUser) {
-    const firebaseToken = searchParams.get('firebase_token')
-    
-    // firebase_token이 있거나 처리 중이면 대기 (리다이렉트 방지)
-    if (firebaseToken || isProcessingToken) {
-      return (
-        <div className="min-h-screen bg-[#020202] flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-            <p className="text-gray-400">로그인 처리 중...</p>
-          </div>
-        </div>
-      )
-    }
-    
-    // 토큰 없고 처리 중도 아니면 로그인 페이지로
-    return <Navigate to="/login" replace />
-  }
-
-  // ✅ 로그아웃 핸들러
-  const handleLogout = async () => {
-    try {
-      await logout()
-      navigate('/', { replace: true })
-    } catch (error) {
-      console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
+  const handleLogout = () => {
+    if (confirm('로그아웃 하시겠습니까?')) {
+      authLogout('user')
+      localStorage.removeItem('session_login')
+      navigate('/login', { replace: true })
     }
   }
 
   return (
-    <div className="bg-[#020202] flex flex-col min-h-screen">
-      {/* Header with Back Button */}
-      <div className="sticky top-0 z-50 bg-[#020202] border-b border-[#1A1A1A]">
-        <div className="flex items-center px-4 py-3">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/10 transition-colors"
-            aria-label="뒤로가기"
-          >
-            <ArrowLeft className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-[#020202]">
+      {/* 헤더 */}
+      <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
+        <div className="flex items-center justify-between px-5 py-3">
+          <button onClick={() => navigate(-1)} className="text-white">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <h1 className="flex-1 text-center text-[18px] font-bold text-white pr-10">마이페이지</h1>
+          <h1 className="text-white font-bold">마이페이지</h1>
+          <div className="w-6" />
         </div>
       </div>
 
-      {/* User Info Section */}
-      <UserInfo userName={userName} profileImage={profileImage} />
+      {/* 프로필 */}
+      <div className="px-5 py-5">
+        <div className="flex items-center gap-4">
+          <img
+            src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=56`}
+            alt="" className="w-14 h-14 rounded-full object-cover"
+          />
+          <div>
+            <p className="text-white text-lg font-bold">{userName}</p>
+            <p className="text-gray-500 text-xs">{localStorage.getItem('user_email') || ''}</p>
+          </div>
+        </div>
+      </div>
 
-      {/* 딜 포인트 잔액 */}
+      {/* 딜 포인트 */}
       <TeamPointsCard />
-
-      {/* 광고 시청으로 딜 받기 */}
-      <RewardAdCard />
 
       {/* 바로가기 */}
       <div className="px-5 py-3 flex gap-2">
@@ -270,36 +139,16 @@ export default function UserProfilePage() {
       {/* 테마 설정 */}
       <ThemeToggle />
 
-      {/* Menu List Section */}
+      {/* 메뉴 */}
       <MenuList />
 
-      {/* Logout Button Section */}
-      <div className="px-5 py-6 space-y-3">
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#2A2A2A] bg-[#121212] py-3.5 text-sm font-medium text-gray-400 transition-colors active:bg-white/5"
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          로그아웃
-        </button>
-
-        <button
-          onClick={() => navigate('/account/settings')}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#2A2A2A] bg-[#121212] py-3.5 text-sm font-medium text-gray-400 transition-colors active:bg-white/5"
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          계정 설정
+      {/* 로그아웃 */}
+      <div className="px-5 py-6">
+        <button onClick={handleLogout}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#2A2A2A] bg-[#121212] py-3.5 text-sm font-medium text-gray-400">
+          <LogOut className="w-4 h-4" /> 로그아웃
         </button>
       </div>
-
-      {/* Footer Section */}
-      <Footer />
-      
     </div>
   )
 }
