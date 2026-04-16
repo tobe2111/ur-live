@@ -73,7 +73,7 @@ function ThemeToggle() {
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
-  const isLoggedIn = localStorage.getItem('session_login') === 'true' || localStorage.getItem('user_id')
+  const isLoggedIn = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
   const userName = localStorage.getItem('user_name') || '사용자'
   const profileImage = localStorage.getItem('user_profile_image') || getUserProfileImage()
 

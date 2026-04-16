@@ -289,7 +289,7 @@ function AppContent() {
     }
 
     // ✅ 세션 쿠키 유저도 Firebase 불필요 → 즉시 ready
-    if (!hasIncomingToken && localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')) {
+    if (!hasIncomingToken && localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')) {
       useAuthKR.getState().setAuthReady(true)
       useAuthWorld.getState().setAuthReady(true)
       return

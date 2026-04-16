@@ -425,7 +425,7 @@ export default function CheckoutPage() {
   }
 
   // ✅ BUG #3 FIX: Auth-guard and loading checks rendered here (after all hooks)
-  const isSessionUser = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
+  const isSessionUser = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
   if (!isSessionUser && (!isAuthReady || authLoading)) {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">

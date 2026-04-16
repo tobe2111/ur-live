@@ -137,8 +137,8 @@ function UserProtectedRoute({
     }
   }, [isAuthReady, hasPossibleSession])
 
-  // ✅ 세션 쿠키 로그인 유저: Firebase 대기 없이 즉시 통과
-  const isSessionLogin = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
+  // ✅ 로그인 유저: user_type + user_id 있으면 즉시 통과 (Firebase 대기 없음)
+  const isSessionLogin = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
   if (isSessionLogin) {
     if (DEBUG) console.log('[ProtectedRoute] ✅ 세션 쿠키 로그인 확인 → 즉시 통과')
     return <>{children}</>
@@ -307,7 +307,7 @@ function UserPublicRoute({
   }
 
   // 이미 로그인된 경우 리다이렉트 (Firebase user 또는 세션 쿠키)
-  const isSessionLoginPublic = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
+  const isSessionLoginPublic = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
   if (currentUser || isSessionLoginPublic) {
     // ✅ returnUrl 쿼리파라미터 우선 (state.from 제거 → 무한루프 원인 제거)
     const searchParams = new URLSearchParams(location.search)
