@@ -91,11 +91,18 @@ kakaoRoutes.get('/sync/callback', async (c) => {
         console.error('[Kakao Sync] Session cookie creation failed:', e);
       }
 
+      // ✅ 세션 쿠키가 이미 설정됨 (위 Set-Cookie)
+      // firebase_token을 URL에 붙이지 않음 — 프론트에서 localStorage로 인증 처리
+      // 유저 정보를 안전하게 전달하기 위해 최소한의 파라미터만 사용
       const stateUrl = new URL(state, 'https://dummy.com');
-      stateUrl.searchParams.set('firebase_token', customToken);
+      stateUrl.searchParams.set('login', 'success');
+      stateUrl.searchParams.set('userId', String(user.id));
       stateUrl.searchParams.set('userName', user.name);
       if (user.profile_image) {
         stateUrl.searchParams.set('profileImage', user.profile_image);
+      }
+      if (user.email) {
+        stateUrl.searchParams.set('userEmail', user.email);
       }
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;

@@ -177,115 +177,80 @@ function AppContent() {
   // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
   const authInitialized = useRef(false)
 
-  // ✅ firebase_token URL 파라미터 처리 (글로벌 전용, 한국은 건너뜀)
+  // ✅ 카카오 로그인 콜백 처리: URL 파라미터에서 유저 정보 읽어서 localStorage 설정
+  // 백엔드 GET /auth/kakao/sync/callback이 ?login=success&userId=...로 리다이렉트
   useEffect(() => {
-    const processFirebaseToken = async () => {
-      // 한국: firebase_token 파라미터가 있어도 무시 (세션 쿠키만 사용)
-      if (isKorea()) {
-        // URL에 firebase_token이 남아있으면 정리만
-        const urlParams = new URLSearchParams(window.location.search)
-        if (urlParams.has('firebase_token')) {
-          urlParams.delete('firebase_token')
-          urlParams.delete('userName')
-          urlParams.delete('profileImage')
-          const clean = urlParams.toString()
-          window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
-        }
-        return
-      }
+    const urlParams = new URLSearchParams(window.location.search)
 
-      const urlParams = new URLSearchParams(window.location.search)
-      const firebaseToken = urlParams.get('firebase_token')
+    // ── 한국: login=success 파라미터로 세션 완성 ──
+    if (urlParams.get('login') === 'success' && urlParams.get('userId')) {
+      const userId = urlParams.get('userId')!
+      const userName = urlParams.get('userName') || ''
+      const userEmail = urlParams.get('userEmail') || ''
+      const profileImage = urlParams.get('profileImage') || ''
 
-      if (!firebaseToken) return
-      
+      localStorage.setItem('user_type', 'user')
+      localStorage.setItem('user_id', userId)
+      if (userName) localStorage.setItem('user_name', userName)
+      if (userEmail) localStorage.setItem('user_email', userEmail)
+      if (profileImage) localStorage.setItem('user_profile_image', profileImage.replace(/^http:\/\//, 'https://'))
+
+      // URL 정리
+      urlParams.delete('login')
+      urlParams.delete('userId')
+      urlParams.delete('userName')
+      urlParams.delete('userEmail')
+      urlParams.delete('profileImage')
+      const clean = urlParams.toString()
+      window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
+      return
+    }
+
+    // ── 레거시/글로벌: firebase_token 파라미터 처리 ──
+    const firebaseToken = urlParams.get('firebase_token')
+    if (!firebaseToken) return
+
+    if (isKorea()) {
+      // 한국: firebase_token 무시, URL만 정리
+      urlParams.delete('firebase_token')
+      urlParams.delete('userName')
+      urlParams.delete('profileImage')
+      const clean = urlParams.toString()
+      window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
+      return
+    }
+
+    // 글로벌: Firebase customToken 처리
+    ;(async () => {
       try {
-        // URL에서 사용자 정보 미리 읽기 (삭제 전에)
         const urlUserName = urlParams.get('userName') || ''
         const urlProfileImage = urlParams.get('profileImage') || ''
-
         const { signInWithCustomToken } = await import('@/lib/firebase-auth')
-        const userCredential = await signInWithCustomToken(firebaseToken)
-        const user = userCredential.user
-        // ID Token 갱신 및 claims 추출
-        const idToken = await user.getIdToken(true)
-        const tokenResult = await user.getIdTokenResult(true)
+        const cred = await signInWithCustomToken(firebaseToken)
+        const idToken = await cred.user.getIdToken(true)
+        const tokenResult = await cred.user.getIdTokenResult(true)
         const numericUserId = tokenResult.claims?.userId || tokenResult.claims?.user_id || 0
         const claimsUserName = (tokenResult.claims?.userName as string) || urlUserName
-        const rawProfileImage = (tokenResult.claims?.profileImage as string) || urlProfileImage
-        const claimsProfileImage = rawProfileImage.replace(/^http:\/\//, 'https://')
-        // ✅ user_name / profileImage localStorage 저장 (프로필 페이지 표시용)
-        if (claimsUserName) {
-          localStorage.setItem('user_name', claimsUserName)
-        }
-        if (claimsProfileImage) {
-          localStorage.setItem('user_profile_image', claimsProfileImage)
-        }
 
-        // ✅ Firebase displayName / photoURL 업데이트
-        if (!user.displayName && claimsUserName) {
-          try {
-            const { updateProfile } = await import('firebase/auth')
-            await updateProfile(user, {
-              displayName: claimsUserName,
-              ...(claimsProfileImage ? { photoURL: claimsProfileImage } : {}),
-            })
-          } catch (e) {
-            console.warn('[App] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
-          }
-        }
-
-        // ✅ localStorage를 먼저 업데이트 (hasFirebaseUserSession() race condition 방지)
         localStorage.setItem('user_type', 'user')
-        localStorage.setItem('lastLoginUid', user.uid)
-        localStorage.setItem('user_id', user.uid)
-        localStorage.setItem('user_email', user.email || '')
+        localStorage.setItem('user_id', cred.user.uid)
+        localStorage.setItem('lastLoginUid', cred.user.uid)
+        if (claimsUserName) localStorage.setItem('user_name', claimsUserName)
+        if (urlProfileImage) localStorage.setItem('user_profile_image', urlProfileImage.replace(/^http:\/\//, 'https://'))
         localStorage.setItem('numeric_user_id', String(numericUserId))
 
-        // ✅ useAuthKR에 Firebase User 즉시 설정 (onAuthStateChanged 지연 방지)
-        const { useAuthKR } = await import('@/shared/stores/useAuthKR')
-        useAuthKR.getState().setUser(user)
-        useAuthKR.getState().setAuthReady(true)  // ProtectedRoute 스피너 즉시 해제
-        sessionStorage.setItem('auth_processed_uid', user.uid)  // onAuthStateChanged 중복 방지
-        // ✅ useAuthStore에 토큰 저장
-        const { useAuthStore } = await import('@/client/stores/auth.store')
-        useAuthStore.getState().setAuth(
-          {
-            id: user.uid,
-            email: user.email || '',
-            name: claimsUserName || user.displayName || '',
-            role: 'user',
-          },
-          idToken,
-          ''
-        )
-        // URL 파라미터 제거 (auth 관련 전부)
-        urlParams.delete('firebase_token')
-        urlParams.delete('userName')
-        urlParams.delete('profileImage')
-        const newUrl = urlParams.toString()
-          ? `${window.location.pathname}?${urlParams.toString()}`
-          : window.location.pathname
-        window.history.replaceState({}, '', newUrl)
-      } catch (error) {
-        console.error('[App] ❌ Firebase Custom Token 로그인 실패:', error)
-
-        // URL 파라미터 제거
-        const urlParams2 = new URLSearchParams(window.location.search)
-        urlParams2.delete('firebase_token')
-        urlParams2.delete('userName')
-        urlParams2.delete('profileImage')
-        const newUrl = urlParams2.toString()
-          ? `${window.location.pathname}?${urlParams2.toString()}`
-          : window.location.pathname
-        window.history.replaceState({}, '', newUrl)
-
-        // ✅ 로그인 페이지로 리다이렉트 (무한 루프 방지)
-        window.location.href = '/login'
+        const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
+        useAuthWorld.getState().setUser(cred.user)
+        useAuthWorld.getState().setAuthReady(true)
+      } catch (err) {
+        console.error('[App] Firebase token login failed:', err)
+      } finally {
+        const p = new URLSearchParams(window.location.search)
+        p.delete('firebase_token'); p.delete('userName'); p.delete('profileImage')
+        const clean = p.toString()
+        window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
       }
-    }
-    
-    processFirebaseToken()
+    })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ✅ 핵심 수정: 단일 Auth 초기화 (중복 구독 완전 제거)
@@ -297,12 +262,8 @@ function AppContent() {
 
     const userType = localStorage.getItem('user_type')
 
-    // ✅ firebase_token이 URL에 있으면 Seller/Admin 빠른 처리 건너뜀
-    // (카카오 로그인 중이므로 processFirebaseToken이 user_type을 'user'로 덮어씀)
-    const hasIncomingToken = !!new URLSearchParams(window.location.search).get('firebase_token')
-
     // ✅ Seller/Admin은 Firebase 초기화 불필요 → isAuthReady를 즉시 true로
-    if (!hasIncomingToken && (userType === 'seller' || userType === 'admin')) {
+    if (userType === 'seller' || userType === 'admin') {
       useAuthKR.getState().setAuthReady(true)
       useAuthWorld.getState().setAuthReady(true)
       return
@@ -317,14 +278,13 @@ function AppContent() {
     }
 
     // ✅ 글로벌: 세션 쿠키 유저는 Firebase 불필요
-    if (!hasIncomingToken && localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')) {
+    if (localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')) {
       useAuthWorld.getState().setAuthReady(true)
       return
     }
 
-    // ✅ firebase_token이 있으면 processFirebaseToken이 인증을 처리하므로
-    // initializeAuth()를 호출하지 않음 (onAuthStateChanged(null) → 깜빡임 방지)
-    if (hasIncomingToken) {
+    // firebase_token이 URL에 있으면 위 useEffect가 처리하므로 init 불필요
+    if (new URLSearchParams(window.location.search).has('firebase_token')) {
       return
     }
 
