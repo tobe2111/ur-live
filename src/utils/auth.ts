@@ -448,12 +448,15 @@ export async function logout(type?: 'seller' | 'admin' | 'user' | null): Promise
     // Sentry 초기화 실패 시 무시
   }
   
-  // Firebase 로그아웃
+  // Firebase 로그아웃 (글로벌 전용 — 한국은 세션 쿠키만 사용)
   try {
-    const auth = await getFirebaseAuth()
-    auth.signOut()
+    const { isKorea } = await import('@/shared/config/region')
+    if (!isKorea()) {
+      const auth = await getFirebaseAuth()
+      auth.signOut()
+    }
   } catch (e) {
-    console.error('[Auth] Firebase signOut 실패:', e)
+    // Firebase 초기화 실패 시 무시
   }
   
 }
