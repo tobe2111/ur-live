@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
 import axios from 'axios'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -149,58 +149,95 @@ function KakaoTalkIcon({ className }: { className?: string }) {
 }
 
 // TopNav Component
-function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string } }) {
-  return (
-    <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 pt-safe pb-2">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 rounded-lg bg-red-500/90 backdrop-blur-sm px-2.5 py-1.5 shadow-lg shadow-red-500/30">
-          <span className="h-2 w-2 rounded-full bg-white animate-blink-live" />
-          <span className="text-xs font-extrabold tracking-wider text-white">LIVE</span>
-        </div>
-        <div className="flex items-center gap-1 rounded-lg bg-black/40 backdrop-blur-md px-2.5 py-1.5">
-          <Eye className="h-3.5 w-3.5 text-white/80" />
-          <span className="text-xs font-semibold text-white/90">
-            {formatViewers(viewers)}
-          </span>
-        </div>
-      </div>
+function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
+  viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string }
+  sellerName?: string; sellerAvatar?: string; sellerId?: number
+}) {
+  const [following, setFollowing] = useState(false)
+  const handleFollow = async () => {
+    if (!sellerId) return
+    try {
+      await api.post(`/api/social/follow/${sellerId}`)
+      setFollowing(f => !f)
+    } catch {}
+  }
+  useEffect(() => {
+    if (!sellerId) return
+    api.get(`/api/social/follow/${sellerId}`).then(r => {
+      if (r.data.success) setFollowing(r.data.data?.following || false)
+    }).catch(() => {})
+  }, [sellerId])
 
-      <div className="flex items-center gap-3 h-[34px]">
-        {sellerLinks?.youtube && (
-          <a
-            href={sellerLinks.youtube}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="YouTube"
-          >
-            <YouTubeIcon className="h-[18px] w-[18px] text-white" />
-          </a>
+  return (
+    <header className="absolute top-0 left-0 right-0 z-50 px-3 pt-safe pb-2">
+      {/* 1행: 뒤로가기 + 셀러 프로필 (하나의 pill) + SNS 링크 */}
+      <div className="flex items-center justify-between gap-2">
+        {/* 왼쪽: 뒤로가기 */}
+        <a href="/" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+          <ChevronLeft className="h-5 w-5 text-white/80" />
+        </a>
+
+        {/* 중앙: 셀러 프로필 pill */}
+        {sellerName && (
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 bg-black/40 backdrop-blur-md rounded-full pl-1 pr-1 py-1">
+            <img src={sellerAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&size=28&background=random`}
+              alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+            <span className="text-xs font-bold text-white/90 truncate">{sellerName}</span>
+            <button onClick={handleFollow}
+              className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${following ? 'bg-white/20 text-white/70' : 'bg-pink-500 text-white'}`}>
+              {following ? '팔로잉' : '팔로우'}
+            </button>
+          </div>
         )}
-        {sellerLinks?.instagram && (
-          <a
-            href={sellerLinks.instagram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="Instagram"
-          >
-            <InstagramIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
-        {sellerLinks?.kakao && (
-          <a
-            href={sellerLinks.kakao}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="KakaoTalk"
-          >
-            <KakaoTalkIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
+
+        {/* 오른쪽: LIVE 뱃지 + 시청자 수 + SNS */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 rounded-full bg-red-500/90 backdrop-blur-sm px-2 py-1 shadow-lg shadow-red-500/30">
+            <span className="h-1.5 w-1.5 rounded-full bg-white animate-blink-live" />
+            <span className="text-[10px] font-extrabold tracking-wider text-white">LIVE</span>
+          </div>
+          <div className="flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-md px-2 py-1">
+            <Eye className="h-3 w-3 text-white/80" />
+            <span className="text-[10px] font-semibold text-white/90">{formatViewers(viewers)}</span>
+          </div>
+          {sellerLinks?.youtube && <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" className="flex h-7 w-7 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm"><YouTubeIcon className="h-3.5 w-3.5 text-white/80" /></a>}
+          {sellerLinks?.instagram && <a href={sellerLinks.instagram} target="_blank" rel="noopener noreferrer" className="flex h-7 w-7 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm"><InstagramIcon className="h-3.5 w-3.5 text-white/80" /></a>}
+        </div>
       </div>
     </header>
+  )
+}
+
+// 하트 플로팅 애니메이션
+function HeartReaction() {
+  const [hearts, setHearts] = useState<{ id: number; x: number }[]>([])
+  let nextId = useRef(0)
+
+  const addHeart = () => {
+    const id = nextId.current++
+    const x = Math.random() * 30 - 15
+    setHearts(prev => [...prev.slice(-15), { id, x }])
+    setTimeout(() => setHearts(prev => prev.filter(h => h.id !== id)), 2000)
+  }
+
+  return (
+    <div className="relative">
+      {/* 플로팅 하트 */}
+      <div className="absolute bottom-12 right-0 w-16 h-40 pointer-events-none overflow-hidden">
+        {hearts.map(h => (
+          <div key={h.id} className="absolute bottom-0 animate-float-heart" style={{ left: `calc(50% + ${h.x}px)` }}>
+            <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={addHeart}
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-125"
+        aria-label="Like"
+      >
+        <Heart className="h-5 w-5 text-pink-400 fill-pink-400" />
+      </button>
+    </div>
   )
 }
 
@@ -271,11 +308,11 @@ function ProductListSheet({
   return (
     <>
       <div
-        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
+        className="absolute inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
         onClick={onClose}
       />
 
-      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
+      <div className="absolute inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
         <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/90 backdrop-blur-md border-b border-gray-100">
           <div className="h-1 w-10 rounded-full bg-gray-300" />
           <button
@@ -1174,14 +1211,14 @@ function ReelCard({
 
   return (
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
-      {/* 🎉 상품 변경 Toast 알림 */}
+      {/* 🎉 상품 변경 강조 배너 */}
       {productChangeToast && (
-        <Toast
-          message={productChangeToast}
-          type="info"
-          onClose={() => setProductChangeToast(null)}
-          duration={3000}
-        />
+        <div className="absolute inset-x-0 top-1/3 z-[100] flex justify-center pointer-events-none animate-bounce-in">
+          <div className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl shadow-pink-500/30 max-w-[85%]">
+            <p className="text-center text-sm font-bold">🔥 지금 이 상품!</p>
+            <p className="text-center text-xs opacity-90 mt-0.5">{productChangeToast}</p>
+          </div>
+        </div>
       )}
       
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
@@ -1277,9 +1314,9 @@ function ReelCard({
 
       {/* Product overlay */}
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
-        {/* Top bar: 딜 잔액 게이지 (LIVE 뱃지 아래에 위치) */}
+        {/* Top bar: 딜 잔액 게이지 (TopNav 아래에 위치) */}
         {!isSeller && (
-          <div className="pointer-events-auto absolute top-16 left-3 z-20">
+          <div className="pointer-events-auto absolute top-14 left-3 z-20">
             <TeamPointsBadge streamId={stream.id} />
           </div>
         )}
@@ -1292,7 +1329,7 @@ function ReelCard({
 
         {/* 라이브 경매 패널 */}
         {!isSeller && (
-          <div className="pointer-events-auto absolute top-28 left-3 right-14 z-20">
+          <div className="pointer-events-auto absolute top-24 left-3 right-14 z-20">
             <AuctionPanel streamId={stream.id} />
           </div>
         )}
@@ -1318,8 +1355,10 @@ function ReelCard({
               />
             </div>
 
-            {/* Chat + Donate + Share buttons - right side */}
+            {/* Chat + Heart + Donate + Share buttons - right side */}
             <div className="flex flex-col items-center gap-2.5 shrink-0 pb-1 mr-1">
+              {/* 하트 반응 */}
+              <HeartReaction />
               <button
                 onClick={() => setChatModalOpen(true)}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
@@ -1333,8 +1372,9 @@ function ReelCard({
                 imageUrl={safeProduct?.image_url}
                 link={`/live/${stream?.id}`}
                 compact
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEE500] backdrop-blur-sm transition-all active:scale-90"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
               />
+
 
               {/* 후원하기 버튼 (딜 포인트) */}
               {!isSeller && stream?.id && (
@@ -1383,23 +1423,23 @@ function ReelCard({
           )}
 
           {/* 하단 바: 현재 상품 + 장바구니 + 구매 */}
-          <div className="flex items-center gap-1.5 w-full rounded-2xl bg-black/40 backdrop-blur-xl px-3 py-2 border border-white/[0.08]">
+          <div className="flex items-center gap-2 w-full rounded-2xl bg-white px-3 py-2.5 shadow-lg">
 
             {/* Product info */}
             <div
               className="flex flex-col items-start min-w-0 flex-1 text-left animate-fade-in"
               key={currentProduct?.id || 'default'}
             >
-              <h3 className="text-[13px] font-bold text-white leading-tight truncate w-full drop-shadow-lg">
+              <h3 className="text-[13px] font-bold text-gray-900 leading-tight truncate w-full">
                 {safeProduct.name}
               </h3>
               <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-[14px] font-extrabold text-red-400 drop-shadow-md">
-                  ₩{(safeProduct.price || 0).toLocaleString()}
+                <span className="text-[15px] font-extrabold text-red-500">
+                  {(safeProduct.price || 0).toLocaleString()}원
                 </span>
                 {(safeProduct.originalPrice || safeProduct.original_price) && (
-                  <span className="text-[10px] text-white/40 line-through">
-                    ₩{(safeProduct.originalPrice || safeProduct.original_price || 0).toLocaleString()}
+                  <span className="text-[10px] text-gray-400 line-through">
+                    {(safeProduct.originalPrice || safeProduct.original_price || 0).toLocaleString()}원
                   </span>
                 )}
               </div>
@@ -1409,13 +1449,13 @@ function ReelCard({
             <button
               onClick={handleAddToCart}
               disabled={!product || addingToCart}
-              className={`flex items-center gap-1 shrink-0 rounded-lg bg-white/10 px-2 py-1.5 transition-all active:scale-95 ${
+              className={`flex items-center gap-1 shrink-0 rounded-lg bg-gray-900 px-2.5 py-2 transition-all active:scale-95 ${
                 !product || addingToCart ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               aria-label="Add to cart"
             >
-              <ShoppingBag className="h-3.5 w-3.5 text-white/80" />
-              <span className="text-[11px] font-bold text-white/90">
+              <ShoppingBag className="h-3.5 w-3.5 text-white" />
+              <span className="text-[11px] font-bold text-white">
                 {addingToCart ? '추가 중...' : '담기'}
               </span>
             </button>
@@ -1474,7 +1514,7 @@ function ReelCard({
 
       {/* Toast Notification */}
       {showNotification && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
           <div className="rounded-xl bg-black/90 backdrop-blur-md px-5 py-3 text-sm font-bold text-white shadow-2xl border border-white/10">
             {notificationText}
           </div>
@@ -1486,12 +1526,12 @@ function ReelCard({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
+            className="absolute inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
             onClick={() => setChatModalOpen(false)}
           />
 
           {/* Chat Input Sheet */}
-          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
+          <div className="absolute inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -1546,6 +1586,15 @@ function ReelCard({
 export default function LivePageV2() {
   const { streamId } = useParams<{ streamId: string }>()
   const navigate = useNavigate()
+  const [sp] = useSearchParams()
+  useEffect(() => {
+    const ref = sp.get('ref')
+    if (ref) {
+      localStorage.setItem('affiliate_ref', ref)
+      localStorage.setItem('affiliate_ref_expires', String(Date.now() + 86400000))
+      document.cookie = `affiliate_ref=${ref}; path=/; max-age=86400; SameSite=Lax`
+    }
+  }, [sp])
   const [activeIndex, setActiveIndex] = useState(0)
   const [reels, setReels] = useState<ReelData[]>([])
   const [loading, setLoading] = useState(true)
@@ -1793,7 +1842,7 @@ export default function LivePageV2() {
   // ✅ 로딩 중 표시
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             {/* Outer spinning ring */}
@@ -1813,7 +1862,7 @@ export default function LivePageV2() {
   // ✅ 데이터 없음 표시
   if (reels.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="text-white text-xl mb-2">진행 중인 라이브가 없습니다</div>
           <button
@@ -1831,7 +1880,7 @@ export default function LivePageV2() {
   const currentReel = reels[activeIndex]
   if (!currentReel || !currentReel.stream) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
@@ -1849,6 +1898,9 @@ export default function LivePageV2() {
     <main className="relative h-dvh overflow-hidden bg-black no-scrollbar" style={{ scrollbarWidth: 'none' }}>
       <TopNav
         viewers={viewerCount}
+        sellerName={reels[activeIndex]?.stream?.seller_name || reels[activeIndex]?.stream?.streamerName}
+        sellerAvatar={reels[activeIndex]?.stream?.streamerAvatar}
+        sellerId={reels[activeIndex]?.stream?.seller_id}
         sellerLinks={{
           youtube: reels[activeIndex]?.stream?.seller_youtube || undefined,
           instagram: reels[activeIndex]?.stream?.seller_instagram || undefined,
