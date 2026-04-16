@@ -81,7 +81,7 @@ export default function KakaoCallbackPage() {
             localStorage.removeItem('user_profile_image')
           }
 
-          // Zustand AuthStore 업데이트
+          // Zustand AuthStore 업데이트 (클라이언트 스토어)
           const { useAuthStore } = await import('@/client/stores/auth.store')
           useAuthStore.getState().setAuth(
             { id: String(user.id), email: user.email || '', name: user.name, role: 'user' },
@@ -89,8 +89,9 @@ export default function KakaoCallbackPage() {
             ''
           )
 
-          // Mark auth as ready
+          // ProtectedRoute가 확인하는 스토어에도 user 설정
           const authStore = getAuthStore()
+          authStore.setUser({ uid: String(user.id), displayName: user.name, email: user.email } as any)
           authStore.setAuthReady(true)
         } else {
           // ── Legacy Firebase flow (fallback) ─────────────────────────────
