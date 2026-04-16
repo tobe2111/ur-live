@@ -65,25 +65,17 @@ export default function SellerMealVoucherNewPage() {
       const placeId = extractKakaoPlaceId(query)
 
       if (placeId) {
-        // place ID로 키워드 검색 (카카오 REST API는 ID 직접 조회 미지원 → 이름으로 대체)
-        const res = await fetch(
-          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=1`,
-          { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-        )
-        const data: any = await res.json()
-        if (data.documents?.length) {
-          selectPlace(data.documents[0])
+        const res = await fetch(`/api/kakao/place/search?query=${encodeURIComponent(query)}&size=1`)
+        const json: any = await res.json()
+        if (json.data?.documents?.length) {
+          selectPlace(json.data.documents[0])
           return
         }
       }
 
-      // 일반 키워드 검색
-      const res = await fetch(
-        `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=FD6,CE7&size=5`,
-        { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-      )
-      const data: any = await res.json()
-      setPlaceResults(data.documents || [])
+      const res = await fetch(`/api/kakao/place/search?query=${encodeURIComponent(query)}&category_group_code=FD6,CE7&size=5`)
+      const json: any = await res.json()
+      setPlaceResults(json.data?.documents || [])
 
       if (!data.documents?.length) {
         toast.error('검색 결과가 없습니다. 매장 이름이나 주소를 정확히 입력해주세요.')
@@ -125,14 +117,11 @@ export default function SellerMealVoucherNewPage() {
         update('restaurant_address', addr)
         // 주소 → 좌표 변환
         try {
-          const res = await fetch(
-            `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}`,
-            { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-          )
+          const res = await fetch(`/api/kakao/place/address?query=${encodeURIComponent(addr)}`)
           const result: any = await res.json()
-          if (result.documents?.[0]) {
-            update('restaurant_lat', result.documents[0].y)
-            update('restaurant_lng', result.documents[0].x)
+          if (result.data?.documents?.[0]) {
+            update('restaurant_lat', result.data.documents[0].y)
+            update('restaurant_lng', result.data.documents[0].x)
           }
         } catch {}
       }
@@ -283,7 +272,6 @@ export default function SellerMealVoucherNewPage() {
                   )}
                 </div>
                 <KakaoMapPicker
-                  kakaoRestKey={KAKAO_REST_KEY}
                   kakaoJsKey={KAKAO_JS_KEY}
                   selectedPlace={placeSelected && form.restaurant_lat ? {
                     name: form.restaurant_name,

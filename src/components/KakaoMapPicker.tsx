@@ -19,15 +19,15 @@ export interface KakaoPlace {
 interface Props {
   onSelect: (place: KakaoPlace) => void
   selectedPlace?: { name: string; address: string; lat: string; lng: string } | null
-  kakaoRestKey: string
   kakaoJsKey: string
+  kakaoRestKey?: string
 }
 
 /**
  * 카카오맵 매장 검색 + 시각화 컴포넌트
  * 검색 결과를 지도 위에 마커로 표시, 마커 클릭 시 선택
  */
-export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoRestKey, kakaoJsKey }: Props) {
+export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: Props) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
@@ -116,11 +116,10 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoRestKey, 
     setLoading(true)
     try {
       const res = await fetch(
-        `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=FD6,CE7&size=15`,
-        { headers: { Authorization: `KakaoAK ${kakaoRestKey}` } }
+        `/api/kakao/place/search?query=${encodeURIComponent(query)}&category_group_code=FD6,CE7&size=15`
       )
-      const data: any = await res.json()
-      const docs: KakaoPlace[] = data.documents || []
+      const json: any = await res.json()
+      const docs: KakaoPlace[] = json.data?.documents || []
       setResults(docs)
 
       clearMarkers()
