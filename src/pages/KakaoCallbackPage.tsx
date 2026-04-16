@@ -52,8 +52,11 @@ export default function KakaoCallbackPage() {
         if (user.email) localStorage.setItem('user_email', user.email)
         if (user.profile_image) localStorage.setItem('user_profile_image', user.profile_image)
 
-        // Firebase 로그인 (ProtectedRoute가 의존)
-        if (customToken) {
+        // 한국: Firebase 완전 건너뜀 (세션 쿠키만 사용)
+        // 글로벌: Firebase customToken 로그인 (Google/Apple 등 호환)
+        if (isKorea()) {
+          getAuthStore().setAuthReady(true)
+        } else if (customToken) {
           try {
             sessionStorage.setItem('auth_processing', 'true')
             const cred = await signInWithCustomToken(customToken)
@@ -74,7 +77,6 @@ export default function KakaoCallbackPage() {
             getAuthStore().setAuthReady(true)
           }
         } else {
-          // Firebase 없이 세션 쿠키만
           getAuthStore().setAuthReady(true)
         }
 

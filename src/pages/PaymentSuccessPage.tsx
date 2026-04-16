@@ -51,26 +51,25 @@ export default function PaymentSuccessPage() {
   }, [paymentKey, orderId, amount])
 
   async function waitForFirebaseAndConfirm() {
-    try {
-      const { getFirebaseAuth } = await import('@/lib/firebase-auth')
-      const auth = await getFirebaseAuth()
-
-      // Firebase v10+: authStateReady() 사용 가능 시 우선 사용
-      if (typeof (auth as unknown as Record<string, unknown>).authStateReady === 'function') {
-        await (auth as unknown as { authStateReady: () => Promise<void> }).authStateReady()
-      } else {
-        // Fallback: onAuthStateChanged가 처음 발화할 때까지 대기
-        await new Promise<void>((resolve) => {
-          const timer = setTimeout(resolve, 8000) // 최대 8초 대기
-          const unsubscribe = auth.onAuthStateChanged(() => {
-            clearTimeout(timer)
-            unsubscribe()
-            resolve()
+    // 한국: Firebase 대기 불필요 (세션 쿠키 인증)
+    const { isKorea } = await import('@/config/region')
+    if (!isKorea()) {
+      try {
+        const { getFirebaseAuth } = await import('@/lib/firebase-auth')
+        const auth = await getFirebaseAuth()
+        if (typeof (auth as unknown as Record<string, unknown>).authStateReady === 'function') {
+          await (auth as unknown as { authStateReady: () => Promise<void> }).authStateReady()
+        } else {
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, 8000)
+            const unsubscribe = auth.onAuthStateChanged(() => {
+              clearTimeout(timer)
+              unsubscribe()
+              resolve()
+            })
           })
-        })
-      }
-    } catch (_) {
-      // Firebase 초기화 실패해도 진행 (localStorage fallback)
+        }
+      } catch (_) {}
     }
     confirmPayment()
   }

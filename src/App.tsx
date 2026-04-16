@@ -177,12 +177,26 @@ function AppContent() {
   // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
   const authInitialized = useRef(false)
 
-  // ✅ firebase_token URL 파라미터 처리 (최우선, 한 번만)
+  // ✅ firebase_token URL 파라미터 처리 (글로벌 전용, 한국은 건너뜀)
   useEffect(() => {
     const processFirebaseToken = async () => {
+      // 한국: firebase_token 파라미터가 있어도 무시 (세션 쿠키만 사용)
+      if (isKorea()) {
+        // URL에 firebase_token이 남아있으면 정리만
+        const urlParams = new URLSearchParams(window.location.search)
+        if (urlParams.has('firebase_token')) {
+          urlParams.delete('firebase_token')
+          urlParams.delete('userName')
+          urlParams.delete('profileImage')
+          const clean = urlParams.toString()
+          window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
+        }
+        return
+      }
+
       const urlParams = new URLSearchParams(window.location.search)
       const firebaseToken = urlParams.get('firebase_token')
-      
+
       if (!firebaseToken) return
       
       try {
