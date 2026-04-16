@@ -33,6 +33,7 @@ const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
+const KakaoConsentCallbackPage = lazy(() => import('./pages/KakaoConsentCallbackPage'))
 const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
 const LiveListPage = lazy(() => import('./pages/LiveListPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
@@ -614,6 +615,7 @@ function AppContent() {
                 <AdminKakaoTestPage />
               </ProtectedRoute>
             } />
+            <Route path="/auth/kakao/consent/callback" element={<KakaoConsentCallbackPage />} />
             <Route path="/admin/kakao-test/callback" element={<AdminKakaoTestCallbackPage />} />
             <Route path="/admin/coupons" element={
               <ProtectedRoute requireAdmin>
