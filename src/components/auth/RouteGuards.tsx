@@ -137,6 +137,13 @@ function UserProtectedRoute({
     }
   }, [isAuthReady, hasPossibleSession])
 
+  // ✅ 세션 쿠키 로그인 유저: Firebase 대기 없이 즉시 통과
+  const isSessionLogin = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
+  if (isSessionLogin) {
+    if (DEBUG) console.log('[ProtectedRoute] ✅ 세션 쿠키 로그인 확인 → 즉시 통과')
+    return <>{children}</>
+  }
+
   // ✅ 로그인 흔적 없음 → 즉시 리다이렉트 (Firebase 대기 없음, 스피너 없음)
   // ✅ 단, Zustand store에 이미 user가 있으면 localStorage 동기화 전이어도 리다이렉트 하지 않음
   if (!hasPossibleSession && !currentUser) {
@@ -166,9 +173,8 @@ function UserProtectedRoute({
   }
 
   // 인증 확인 (isAuthReady 완료 또는 타임아웃 후에만 미인증 리다이렉트)
-  // 세션 쿠키 로그인은 Firebase user가 없으므로 localStorage로 확인
-  const isSessionLogin = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
-  if ((isAuthReady || timedOut) && !currentUser && !isSessionLogin) {
+  // 세션 쿠키 로그인은 상단에서 이미 통과됨
+  if ((isAuthReady || timedOut) && !currentUser) {
     if (DEBUG) console.log('[ProtectedRoute] ❌ User 미인증 → /login')
     // ✅ 무한루프 방지: auth 관련 파라미터 모두 제거
     const cleanParams = new URLSearchParams(location.search)
