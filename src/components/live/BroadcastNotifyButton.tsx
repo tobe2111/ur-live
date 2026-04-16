@@ -48,11 +48,14 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
   const kr = isKorea()
 
   const requestCalendarConsent = () => {
-    // 현재 페이지를 저장하고 카카오 동의 페이지로 이동
     const kakaoKey = import.meta.env.VITE_KAKAO_REST_API_KEY
     const redirectUri = encodeURIComponent('https://live.ur-team.com/auth/kakao/sync/callback')
     const state = encodeURIComponent(window.location.pathname)
-    window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoKey}&redirect_uri=${redirectUri}&response_type=code&state=${state}&scope=talk_calendar`
+    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoKey}&redirect_uri=${redirectUri}&response_type=code&state=${state}&scope=talk_calendar`
+    // 팝업으로 동의 (웹: 팝업창, 앱: 인앱 브라우저)
+    const popup = window.open(url, 'kakao_consent', 'width=480,height=700,scrollbars=yes')
+    // 팝업이 차단되면 현재 창에서 이동
+    if (!popup) window.location.href = url
   }
 
   const handleAddCalendar = async (e: React.MouseEvent) => {
