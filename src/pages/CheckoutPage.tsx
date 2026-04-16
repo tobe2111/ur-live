@@ -447,6 +447,7 @@ export default function CheckoutPage() {
           const cookie = document.cookie.match(/affiliate_ref=([^;]+)/)
           return cookie?.[1] || undefined
         })(),
+        group_buy_discounts: groupBuyDiscounts,
       })
 
       if (!response.data.success) {
@@ -923,6 +924,12 @@ export default function CheckoutPage() {
                   <span className="text-[14px] font-medium text-red-500">
                     -{couponDiscount.toLocaleString()}원
                   </span>
+                </div>
+              )}
+              {totalGroupBuyDiscount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[14px] text-gray-400">🎁 공동구매 할인</span>
+                  <span className="text-[14px] font-medium text-gray-900">-{totalGroupBuyDiscount.toLocaleString()}원</span>
                 </div>
               )}
               {dealToUse > 0 && (
