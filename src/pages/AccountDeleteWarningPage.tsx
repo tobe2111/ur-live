@@ -316,7 +316,7 @@ export default function AccountDeleteWarningPage() {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder="회원탈퇴 (정확히 입력)"
-            className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 ${
+            className={`w-full px-4 py-3 border-2 rounded-lg text-gray-900 focus:outline-none focus:ring-2 ${
               confirmText === '회원탈퇴'
                 ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                 : 'border-gray-300 focus:border-purple-500 focus:ring-purple-200'

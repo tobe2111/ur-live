@@ -130,7 +130,7 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="홍길동"
               required
-              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
             />
           </div>
 
@@ -145,7 +145,7 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="example@email.com"
               required
-              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
             />
           </div>
 
@@ -162,7 +162,7 @@ export default function RegisterPage() {
                 placeholder="8자 이상 입력해주세요"
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
               />
               <button
                 type="button"
@@ -187,7 +187,7 @@ export default function RegisterPage() {
                 placeholder="비밀번호를 다시 입력해주세요"
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
               />
               <button
                 type="button"

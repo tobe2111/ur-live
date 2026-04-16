@@ -77,17 +77,17 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           <button
             onClick={() => onUpdateQuantity(item.id, -1)}
             disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
-            className="w-7 h-7 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-7 h-7 flex items-center justify-center border border-gray-300 rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Minus size={14} />
           </button>
-          <span className="w-10 text-center text-sm font-medium">
+          <span className="w-10 text-center text-sm font-medium text-gray-900">
             {item.quantity}
           </span>
           <button
             onClick={() => onUpdateQuantity(item.id, 1)}
             disabled={isUpdating || isOutOfStock || isAtStockLimit}
-            className="w-7 h-7 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-7 h-7 flex items-center justify-center border border-gray-300 rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={14} />
           </button>
