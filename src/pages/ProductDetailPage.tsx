@@ -600,21 +600,21 @@ export default function ProductDetailPage() {
           ]} />
         </AccordionSection>
 
-        {/* 안내 정보 */}
-        <AccordionSection title="안내 정보">
-          <ProductNoticeSection />
-        </AccordionSection>
-
-        {/* 친구 초대 공동구매 */}
-        <ReferralSection productId={product.id} />
-
-        {/* 상품 리뷰 */}
-        <AccordionSection title={`리뷰`} defaultOpen={true}>
-          <ProductReviews productId={product.id} />
-        </AccordionSection>
-
-        {/* 카카오톡 공유 */}
-        <div className="px-5 py-4">
+        {/* 공유 + 추천 링크 (가격 바로 아래) */}
+        <div className="px-5 py-3 space-y-2">
+          {isLoggedIn && (
+            <button
+              onClick={() => {
+                const userId = getUserId()
+                const url = `https://live.ur-team.com/products/${product.id}?ref=${userId}`
+                navigator.clipboard.writeText(url)
+                showToast('추천 링크가 복사되었습니다!', 'success')
+              }}
+              className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98]"
+            >
+              🔗 추천 링크 복사 (판매 당 2% 무한 적립)
+            </button>
+          )}
           <KakaoShareButton
             title={product.name}
             description={`${displayPrice.toLocaleString()}원 ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
@@ -622,20 +622,31 @@ export default function ProductDetailPage() {
             link={`/products/${product.id}`}
             buttonText="상품 보러가기"
           />
-          {isLoggedIn && (
-            <button
-              onClick={() => {
-                const userId = getUserId()
-                const url = `https://live.ur-team.com/products/${product.id}?ref=${userId}`
-                navigator.clipboard.writeText(url)
-                showToast('추천 링크가 복사되었습니다! 공유하면 구매 시 2% 적립', 'success')
-              }}
-              className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-1.5"
-            >
-              🔗 추천 링크 복사 (구매 시 2% 적립)
-            </button>
-          )}
         </div>
+
+        {/* 배송 안내 배너 */}
+        <div className="px-5 py-3">
+          <div className="bg-blue-50 rounded-xl px-4 py-3 flex items-center gap-3">
+            <span className="text-lg">🚚</span>
+            <div>
+              <p className="text-xs font-bold text-blue-700">무료배송</p>
+              <p className="text-[10px] text-blue-500">50,000원 이상 구매 시 · 주문 후 2~5일 배송</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 친구 초대 공동구매 */}
+        <ReferralSection productId={product.id} />
+
+        {/* 안내 정보 */}
+        <AccordionSection title="안내 정보">
+          <ProductNoticeSection />
+        </AccordionSection>
+
+        {/* 상품 리뷰 */}
+        <AccordionSection title={`리뷰`} defaultOpen={true}>
+          <ProductReviews productId={product.id} />
+        </AccordionSection>
 
         {/* 교환 및 반품 */}
         <AccordionSection title="교환 및 반품 안내">
