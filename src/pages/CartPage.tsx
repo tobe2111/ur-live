@@ -12,9 +12,7 @@ import { getCartItemPrice } from '@/types/cart'
 
 /** 로그인 여부를 localStorage로 동기 확인 (Firebase user 기준) */
 function isUserLoggedIn(): boolean {
-  const userType = localStorage.getItem('user_type')
-  const lastLoginUid = localStorage.getItem('lastLoginUid')
-  return userType === 'user' && !!lastLoginUid
+  return localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
 }
 
 interface ModalProps {
