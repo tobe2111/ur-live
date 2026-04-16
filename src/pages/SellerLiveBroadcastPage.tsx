@@ -129,6 +129,7 @@ export default function SellerLiveBroadcastPage() {
   // Step 1 폼
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [thumbnailUrl, setThumbnailUrl] = useState('')
   const [selectedProducts, setSelectedProducts] = useState<number[]>([])
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledDate, setScheduledDate] = useState('')
@@ -201,6 +202,7 @@ export default function SellerLiveBroadcastPage() {
 
       const res = await api.post('/api/seller/youtube/live/create', {
         title: title.trim(), description: description.trim(),
+        thumbnail_url: thumbnailUrl.trim() || undefined,
         product_ids: selectedProducts,
         scheduled_start_time: scheduledStartTime,
         privacy_status: privacy,
@@ -315,6 +317,7 @@ export default function SellerLiveBroadcastPage() {
           <StepInfo
             title={title} setTitle={setTitle}
             description={description} setDescription={setDescription}
+            thumbnailUrl={thumbnailUrl} setThumbnailUrl={setThumbnailUrl}
             privacy={privacy} setPrivacy={setPrivacy}
             isScheduled={isScheduled} setIsScheduled={setIsScheduled}
             scheduledDate={scheduledDate} setScheduledDate={setScheduledDate}
@@ -368,7 +371,7 @@ export default function SellerLiveBroadcastPage() {
 }
 
 // ── Step 1: 방송 정보 입력 ───────────────────────────────────────
-function StepInfo({ title, setTitle, description, setDescription, privacy, setPrivacy,
+function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, setThumbnailUrl, privacy, setPrivacy,
   isScheduled, setIsScheduled, scheduledDate, setScheduledDate, scheduledTime, setScheduledTime,
   sellableProducts, selectedProducts, toggleProduct, method, setMethod, creating, onCreate, navigate
 }: any) {
@@ -404,6 +407,18 @@ function StepInfo({ title, setTitle, description, setDescription, privacy, setPr
         <textarea value={description} onChange={(e: any) => setDescription(e.target.value)}
           placeholder="방송 내용을 간단히 소개해주세요" rows={2} maxLength={500}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" />
+      </div>
+
+      {/* 썸네일 */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">썸네일 이미지 <span className="text-xs text-gray-400 font-normal">(선택)</span></label>
+        <input value={thumbnailUrl} onChange={(e: any) => setThumbnailUrl(e.target.value)}
+          placeholder="이미지 URL (없으면 YouTube 썸네일 자동 사용)"
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        {thumbnailUrl && (
+          <img src={thumbnailUrl} alt="미리보기" className="mt-2 w-full max-w-[200px] rounded-lg object-cover"
+            onError={(e: any) => { e.target.style.display = 'none' }} />
+        )}
       </div>
 
       {/* 공개 설정 */}
