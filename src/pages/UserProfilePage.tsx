@@ -45,32 +45,6 @@ function TeamPointsCard() {
   )
 }
 
-function ThemeToggle() {
-  const [theme, setTheme] = useState(localStorage.getItem('ur_theme') || 'dark')
-  const toggle = () => {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    localStorage.setItem('ur_theme', next)
-    const root = document.documentElement
-    if (next === 'light') { root.classList.add('light-theme'); root.classList.remove('dark-theme') }
-    else { root.classList.add('dark-theme'); root.classList.remove('light-theme') }
-  }
-  return (
-    <div className="px-5 py-3">
-      <div className="flex items-center justify-between bg-[#121212] border border-[#2A2A2A] rounded-2xl px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{theme === 'dark' ? '🌙' : '☀️'}</span>
-          <span className="text-sm font-medium text-white">{theme === 'dark' ? '다크 모드' : '라이트 모드'}</span>
-        </div>
-        <button onClick={toggle}
-          className={`relative w-12 h-6 rounded-full transition-colors ${theme === 'light' ? 'bg-blue-500' : 'bg-gray-600'}`}>
-          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${theme === 'light' ? 'translate-x-6' : ''}`} />
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export default function UserProfilePage() {
   const navigate = useNavigate()
   const isLoggedIn = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
