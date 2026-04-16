@@ -10,7 +10,7 @@ import {
   Youtube, Loader2, ExternalLink, Radio, Play,
   VideoIcon, CheckCircle2, AlertCircle, Copy,
   Smartphone, ArrowLeft, Gavel, Zap,
-  Globe, EyeOff, Lock
+  Globe, EyeOff, Lock, Users
 } from 'lucide-react'
 import { isSellerAuthenticated } from '@/lib/seller-auth'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
@@ -778,8 +778,10 @@ function StreamList({ streams, onManage }: any) {
 function AuctionTimeDealControls({ streamId, products }: { streamId: number; products: Product[] }) {
   const [showAuction, setShowAuction] = useState(false)
   const [showTimeDeal, setShowTimeDeal] = useState(false)
+  const [showGroupBuy, setShowGroupBuy] = useState(false)
   const [auctionForm, setAuctionForm] = useState({ product_id: 0, title: '', start_price: 1000, min_increment: 1000, duration_seconds: 180 })
   const [dealForm, setDealForm] = useState({ product_id: 0, discount_percent: 30, max_claims: 10, duration_seconds: 30 })
+  const [groupBuyForm, setGroupBuyForm] = useState({ product_id: 0, target_participants: 20, bonus_discount_percent: 50, duration_minutes: 10 })
   const [submitting, setSubmitting] = useState(false)
   const token = localStorage.getItem('seller_token')
 
@@ -805,16 +807,40 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
     finally { setSubmitting(false) }
   }
 
+  async function createGroupBuy() {
+    if (!groupBuyForm.product_id) { toast.error('상품을 선택해주세요'); return }
+    setSubmitting(true)
+    try {
+      const res = await api.post('/api/timedeal/create', {
+        stream_id: streamId,
+        product_id: groupBuyForm.product_id,
+        discount_percent: 0,
+        max_claims: 100,
+        duration_seconds: groupBuyForm.duration_minutes * 60,
+        is_group_buy: true,
+        target_participants: groupBuyForm.target_participants,
+        bonus_discount_percent: groupBuyForm.bonus_discount_percent,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) { toast.success('🎁 라이브 공구가 시작되었습니다!'); setShowGroupBuy(false) }
+      else toast.error(res.data.error)
+    } catch (err: any) { toast.error(err?.response?.data?.error || '라이브 공구 생성 실패') }
+    finally { setSubmitting(false) }
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <button onClick={() => { setShowAuction(!showAuction); setShowTimeDeal(false) }}
+        <button onClick={() => { setShowAuction(!showAuction); setShowTimeDeal(false); setShowGroupBuy(false) }}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showAuction ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-          <Gavel className="w-3.5 h-3.5" /> 경매 시작
+          <Gavel className="w-3.5 h-3.5" /> 경매
         </button>
-        <button onClick={() => { setShowTimeDeal(!showTimeDeal); setShowAuction(false) }}
+        <button onClick={() => { setShowTimeDeal(!showTimeDeal); setShowAuction(false); setShowGroupBuy(false) }}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showTimeDeal ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 border border-red-200'}`}>
           <Zap className="w-3.5 h-3.5" /> 타임딜
+        </button>
+        <button onClick={() => { setShowGroupBuy(!showGroupBuy); setShowAuction(false); setShowTimeDeal(false) }}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showGroupBuy ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-600 border border-pink-200'}`}>
+          <Users className="w-3.5 h-3.5" /> 라이브 공구
         </button>
       </div>
 
