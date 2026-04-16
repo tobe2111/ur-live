@@ -73,8 +73,8 @@ export default function BottomNav() {
   return (
     <>
       {/* Nav bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard">
-        <div className="max-w-screen-sm mx-auto pointer-events-auto">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[9999] pointer-events-none hide-on-keyboard">
+        <div className="pointer-events-auto">
           <nav
             className="bg-[#020202] border-t border-[#0A0A0A]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -109,8 +109,8 @@ export default function BottomNav() {
           />
 
           {/* Sheet */}
-          <div className="fixed inset-x-0 bottom-0 z-[10001] animate-sheet-up">
-            <div className="max-w-screen-sm mx-auto">
+          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[10001] animate-sheet-up">
+            <div>
               <div
                 className="bg-[#121212] rounded-t-3xl"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}

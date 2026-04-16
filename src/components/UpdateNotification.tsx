@@ -16,7 +16,7 @@ export function UpdateNotification() {
   if (!needsUpdate || !showNotification) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-2xl animate-slide-up">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[9999] bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-2xl animate-slide-up">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">

@@ -225,7 +225,7 @@ export default function ReferralPage() {
 
       {/* 하단 고정 버튼 */}
       {!isExpired && !isAchieved && (
-        <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-4 safe-area-bottom">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 p-4 safe-area-bottom">
           <div className="flex gap-2 max-w-md mx-auto">
             <button
               onClick={handleJoin}
@@ -239,7 +239,7 @@ export default function ReferralPage() {
       )}
 
       {isAchieved && group.product && (
-        <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-4 safe-area-bottom">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 p-4 safe-area-bottom">
           <button
             onClick={() => navigate(`/products/${group.product!.id}`)}
             className="w-full max-w-md mx-auto flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-sm active:scale-[0.98]"
