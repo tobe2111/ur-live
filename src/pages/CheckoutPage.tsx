@@ -919,58 +919,48 @@ export default function CheckoutPage() {
         type="custom"
         maxWidth="lg"
       >
-        <div className="space-y-3">
+        <div className="space-y-2">
           {addresses.length === 0 ? (
             <div className="py-12 text-center">
-              <MapPin className="w-12 h-12 mx-auto text-gray-500 mb-3" />
+              <MapPin className="w-12 h-12 mx-auto text-gray-300 mb-3" />
               <p className="text-[15px] text-gray-500">등록된 배송지가 없습니다.</p>
               <p className="text-[13px] text-gray-400 mt-1">새 배송지를 추가해주세요.</p>
             </div>
           ) : (
-            addresses.map((addr) => (
-              <div
-                key={addr.id}
-                className={`border rounded-2xl p-4 cursor-pointer transition-all ${
-                  selectedAddress?.id === addr.id 
-                    ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setSelectedAddress(addr)
-                  setShowAddressModal(false)
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <p className="text-[15px] font-semibold text-gray-900">{addr.recipient_name}</p>
-                      {addr.is_default === 1 && (
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-600">
-                          기본
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[14px] text-gray-400 mb-1">{addr.phone}</p>
-                    <p className="text-[14px] text-gray-500 leading-relaxed">
-                      [{addr.postal_code}] {addr.address}
-                    </p>
-                    {addr.address_detail && (
-                      <p className="text-[14px] text-gray-500 leading-relaxed mt-0.5">
-                        {addr.address_detail}
-                      </p>
+            addresses.map((addr) => {
+              const isSelected = selectedAddress?.id === addr.id
+              return (
+                <div
+                  key={addr.id}
+                  className={`relative rounded-xl p-4 cursor-pointer transition-all active:scale-[0.99] ${
+                    isSelected
+                      ? 'bg-gray-50 ring-1 ring-gray-900'
+                      : 'bg-white border border-gray-100 hover:bg-gray-50'
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedAddress(addr)
+                    setShowAddressModal(false)
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <p className="text-[15px] font-bold text-gray-900">{addr.recipient_name}</p>
+                    <span className="text-[13px] text-gray-400">{addr.phone}</span>
+                    {addr.is_default === 1 && (
+                      <span className="text-[11px] text-blue-600 font-medium">기본</span>
+                    )}
+                    {isSelected && (
+                      <svg className="w-4 h-4 text-gray-900 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
                     )}
                   </div>
-                  {selectedAddress?.id === addr.id && (
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center mt-1">
-                      <svg className="w-3 h-3 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  )}
+                  <p className="text-[13px] text-gray-500 leading-relaxed">
+                    [{addr.postal_code}] {addr.address}{addr.address_detail ? ` ${addr.address_detail}` : ''}
+                  </p>
                 </div>
-              </div>
-            ))
+              )
+            })
           )}
 
           <button
@@ -980,10 +970,10 @@ export default function CheckoutPage() {
               setShowAddressModal(false)
               setTimeout(() => setShowNewAddressForm(true), 100)
             }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-4 text-[15px] font-semibold text-gray-400 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer touch-manipulation active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 py-3.5 text-[14px] font-medium text-gray-500 transition-all hover:bg-gray-50 cursor-pointer active:scale-[0.98]"
           >
-            <Plus className="w-5 h-5" />
-            <span>새 배송지 추가</span>
+            <Plus className="w-4 h-4" />
+            새 배송지 추가
           </button>
         </div>
       </CustomModal>
