@@ -169,7 +169,7 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
   }, [sellerId])
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 px-4 pt-safe pb-2">
+    <header className="absolute top-0 left-0 right-0 z-50 px-4 pt-safe pb-2">
       {/* 상단: 뒤로가기 + LIVE + 시청자 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -307,11 +307,11 @@ function ProductListSheet({
   return (
     <>
       <div
-        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
+        className="absolute inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
         onClick={onClose}
       />
 
-      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
+      <div className="absolute inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
         <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/90 backdrop-blur-md border-b border-gray-100">
           <div className="h-1 w-10 rounded-full bg-gray-300" />
           <button
@@ -1513,7 +1513,7 @@ function ReelCard({
 
       {/* Toast Notification */}
       {showNotification && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
           <div className="rounded-xl bg-black/90 backdrop-blur-md px-5 py-3 text-sm font-bold text-white shadow-2xl border border-white/10">
             {notificationText}
           </div>
@@ -1525,12 +1525,12 @@ function ReelCard({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
+            className="absolute inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
             onClick={() => setChatModalOpen(false)}
           />
 
           {/* Chat Input Sheet */}
-          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
+          <div className="absolute inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -1841,7 +1841,7 @@ export default function LivePageV2() {
   // ✅ 로딩 중 표시
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             {/* Outer spinning ring */}
@@ -1861,7 +1861,7 @@ export default function LivePageV2() {
   // ✅ 데이터 없음 표시
   if (reels.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="text-white text-xl mb-2">진행 중인 라이브가 없습니다</div>
           <button
@@ -1879,7 +1879,7 @@ export default function LivePageV2() {
   const currentReel = reels[activeIndex]
   if (!currentReel || !currentReel.stream) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
