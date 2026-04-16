@@ -480,18 +480,16 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f4f4f4]">
       {/* 헤더 */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="mx-auto max-w-md lg:max-w-5xl px-5 py-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/cart')}
-              className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-50 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <div className="mx-auto max-w-md px-4 py-3">
+          <div className="flex items-center justify-between">
+            <button onClick={() => navigate('/cart')} className="p-1">
+              <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
-            <h1 className="text-[18px] font-bold">주문/결제</h1>
+            <h1 className="text-[16px] font-bold text-gray-900">결제하기</h1>
+            <div className="w-7" />
           </div>
         </div>
       </div>
@@ -543,12 +541,12 @@ export default function CheckoutPage() {
             </section>
             
             {/* Divider */}
-            <div className="h-2 bg-gray-50" />
+            <div className="h-[6px] bg-gray-100" />
 
             {/* 주문 상품 정보 */}
             <section className="bg-white px-5 py-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-[17px] font-bold text-gray-900">주문 상품</h2>
+                <h2 className="text-[15px] font-bold text-gray-900">주문 상품</h2>
                 <span className="text-[13px] text-gray-400">
                   {cartItems.length}개
                 </span>
@@ -651,11 +649,11 @@ export default function CheckoutPage() {
             </section>
 
             {/* Divider */}
-            <div className="h-2 bg-gray-50" />
+            <div className="h-[6px] bg-gray-100" />
 
             {/* 결제 수단 선택 */}
             <section className="bg-white px-5 py-4">
-              <h2 className="text-[17px] font-bold text-gray-900 mb-3">결제 수단</h2>
+              <h2 className="text-[15px] font-bold text-gray-900 mb-3">결제 수단</h2>
 
               {/* 결제 방법 탭 */}
               <div className="flex gap-2 mb-4">
@@ -783,7 +781,7 @@ export default function CheckoutPage() {
           <div className="hidden">
             <div className="sticky top-20 rounded-3xl">{/* overflow-hidden 제거 */}
               <section className="bg-white px-5 py-6">
-                <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>
+                <h2 className="text-[15px] font-bold text-gray-900">결제 금액</h2>
 
                 <div className="mt-5 flex flex-col gap-3.5">
                   <div className="flex items-center justify-between">
@@ -849,7 +847,7 @@ export default function CheckoutPage() {
 
         {/* 결제 예정금액 */}
         <div>
-          <div className="h-2 bg-gray-50" />
+          <div className="h-[6px] bg-gray-100" />
           <section className="bg-white px-5 py-5">
             <h2 className="text-[15px] font-bold text-gray-900">결제 예정금액</h2>
 
