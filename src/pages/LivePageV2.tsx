@@ -149,58 +149,94 @@ function KakaoTalkIcon({ className }: { className?: string }) {
 }
 
 // TopNav Component
-function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string } }) {
-  return (
-    <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 pt-safe pb-2">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 rounded-lg bg-red-500/90 backdrop-blur-sm px-2.5 py-1.5 shadow-lg shadow-red-500/30">
-          <span className="h-2 w-2 rounded-full bg-white animate-blink-live" />
-          <span className="text-xs font-extrabold tracking-wider text-white">LIVE</span>
-        </div>
-        <div className="flex items-center gap-1 rounded-lg bg-black/40 backdrop-blur-md px-2.5 py-1.5">
-          <Eye className="h-3.5 w-3.5 text-white/80" />
-          <span className="text-xs font-semibold text-white/90">
-            {formatViewers(viewers)}
-          </span>
-        </div>
-      </div>
+function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
+  viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string }
+  sellerName?: string; sellerAvatar?: string; sellerId?: number
+}) {
+  const [following, setFollowing] = useState(false)
+  const handleFollow = async () => {
+    if (!sellerId) return
+    try {
+      await api.post(`/api/social/follow/${sellerId}`)
+      setFollowing(f => !f)
+    } catch {}
+  }
+  useEffect(() => {
+    if (!sellerId) return
+    api.get(`/api/social/follow/${sellerId}`).then(r => {
+      if (r.data.success) setFollowing(r.data.data?.following || false)
+    }).catch(() => {})
+  }, [sellerId])
 
-      <div className="flex items-center gap-3 h-[34px]">
-        {sellerLinks?.youtube && (
-          <a
-            href={sellerLinks.youtube}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="YouTube"
-          >
-            <YouTubeIcon className="h-[18px] w-[18px] text-white" />
+  return (
+    <header className="fixed top-0 inset-x-0 z-50 px-4 pt-safe pb-2">
+      {/* 상단: 뒤로가기 + LIVE + 시청자 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <a href="/" className="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+            <ChevronLeft className="h-5 w-5 text-white/80" />
           </a>
-        )}
-        {sellerLinks?.instagram && (
-          <a
-            href={sellerLinks.instagram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="Instagram"
-          >
-            <InstagramIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
-        {sellerLinks?.kakao && (
-          <a
-            href={sellerLinks.kakao}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="KakaoTalk"
-          >
-            <KakaoTalkIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
+          <div className="flex items-center gap-1.5 rounded-lg bg-red-500/90 backdrop-blur-sm px-2.5 py-1.5 shadow-lg shadow-red-500/30">
+            <span className="h-2 w-2 rounded-full bg-white animate-blink-live" />
+            <span className="text-xs font-extrabold tracking-wider text-white">LIVE</span>
+          </div>
+          <div className="flex items-center gap-1 rounded-lg bg-black/40 backdrop-blur-md px-2.5 py-1.5">
+            <Eye className="h-3.5 w-3.5 text-white/80" />
+            <span className="text-xs font-semibold text-white/90">{formatViewers(viewers)}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 h-[34px]">
+          {sellerLinks?.youtube && <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" className="opacity-50 hover:opacity-80"><YouTubeIcon className="h-[18px] w-[18px] text-white" /></a>}
+          {sellerLinks?.instagram && <a href={sellerLinks.instagram} target="_blank" rel="noopener noreferrer" className="opacity-50 hover:opacity-80"><InstagramIcon className="h-[18px] w-[18px] text-white" /></a>}
+        </div>
       </div>
+      {/* 셀러 프로필 */}
+      {sellerName && (
+        <div className="flex items-center gap-2 mt-2 bg-black/40 backdrop-blur-md rounded-full pl-1 pr-3 py-1 w-fit">
+          <img src={sellerAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&size=28&background=random`}
+            alt="" className="w-7 h-7 rounded-full object-cover" />
+          <span className="text-xs font-bold text-white/90">{sellerName}</span>
+          <button onClick={handleFollow}
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${following ? 'bg-white/20 text-white/70' : 'bg-pink-500 text-white'}`}>
+            {following ? '팔로잉' : '팔로우'}
+          </button>
+        </div>
+      )}
+
     </header>
+  )
+}
+
+// 하트 플로팅 애니메이션
+function HeartReaction() {
+  const [hearts, setHearts] = useState<{ id: number; x: number }[]>([])
+  let nextId = useRef(0)
+
+  const addHeart = () => {
+    const id = nextId.current++
+    const x = Math.random() * 30 - 15
+    setHearts(prev => [...prev.slice(-15), { id, x }])
+    setTimeout(() => setHearts(prev => prev.filter(h => h.id !== id)), 2000)
+  }
+
+  return (
+    <div className="relative">
+      {/* 플로팅 하트 */}
+      <div className="absolute bottom-12 right-0 w-16 h-40 pointer-events-none overflow-hidden">
+        {hearts.map(h => (
+          <div key={h.id} className="absolute bottom-0 animate-float-heart" style={{ left: `calc(50% + ${h.x}px)` }}>
+            <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={addHeart}
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-125"
+        aria-label="Like"
+      >
+        <Heart className="h-5 w-5 text-pink-400 fill-pink-400" />
+      </button>
+    </div>
   )
 }
 
@@ -1174,14 +1210,14 @@ function ReelCard({
 
   return (
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
-      {/* 🎉 상품 변경 Toast 알림 */}
+      {/* 🎉 상품 변경 강조 배너 */}
       {productChangeToast && (
-        <Toast
-          message={productChangeToast}
-          type="info"
-          onClose={() => setProductChangeToast(null)}
-          duration={3000}
-        />
+        <div className="absolute inset-x-0 top-1/3 z-[100] flex justify-center pointer-events-none animate-bounce-in">
+          <div className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl shadow-pink-500/30 max-w-[85%]">
+            <p className="text-center text-sm font-bold">🔥 지금 이 상품!</p>
+            <p className="text-center text-xs opacity-90 mt-0.5">{productChangeToast}</p>
+          </div>
+        </div>
       )}
       
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
@@ -1318,8 +1354,10 @@ function ReelCard({
               />
             </div>
 
-            {/* Chat + Donate + Share buttons - right side */}
+            {/* Chat + Heart + Donate + Share buttons - right side */}
             <div className="flex flex-col items-center gap-2.5 shrink-0 pb-1 mr-1">
+              {/* 하트 반응 */}
+              <HeartReaction />
               <button
                 onClick={() => setChatModalOpen(true)}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
@@ -1859,6 +1897,9 @@ export default function LivePageV2() {
     <main className="relative h-dvh overflow-hidden bg-black no-scrollbar" style={{ scrollbarWidth: 'none' }}>
       <TopNav
         viewers={viewerCount}
+        sellerName={reels[activeIndex]?.stream?.seller_name || reels[activeIndex]?.stream?.streamerName}
+        sellerAvatar={reels[activeIndex]?.stream?.streamerAvatar}
+        sellerId={reels[activeIndex]?.stream?.seller_id}
         sellerLinks={{
           youtube: reels[activeIndex]?.stream?.seller_youtube || undefined,
           instagram: reels[activeIndex]?.stream?.seller_instagram || undefined,
