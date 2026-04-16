@@ -116,6 +116,12 @@ const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
 const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
 const AdminReplayPage = lazy(() => import('./pages/AdminReplayPage'))
 const AdminCouponsPage = lazy(() => import('./pages/AdminCouponsPage'))
+const AdminAuditLogPage = lazy(() => import('./pages/AdminAuditLogPage'))
+const AdminRevenueAnalyticsPage = lazy(() => import('./pages/AdminRevenueAnalyticsPage'))
+const AdminAccountsPage = lazy(() => import('./pages/AdminAccountsPage'))
+const AdminLiveMonitorPage = lazy(() => import('./pages/AdminLiveMonitorPage'))
+const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'))
+const AdminReviewModerationPage = lazy(() => import('./pages/AdminReviewModerationPage'))
 // Agency 페이지들
 const AgencyLoginPage = lazy(() => import('./pages/AgencyLoginPage'))
 const AgencyPage = lazy(() => import('./pages/AgencyPage'))
@@ -632,6 +638,37 @@ function AppContent() {
             <Route path="/admin/agencies" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminAgencyPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/audit-log" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminAuditLogPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/revenue" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminRevenueAnalyticsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/accounts" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminAccountsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/live-monitor" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminLiveMonitorPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminUsersPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/review-moderation" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminReviewModerationPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
 

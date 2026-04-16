@@ -2350,3 +2350,881 @@ adminManagementRoutes.delete('/coupons/:id', cors(), async (c) => {
     return c.json({ success: true });
   } catch (err) { return c.json({ success: false, error: (err as Error).message }, 500); }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 1. Audit Log Viewer
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface AuditLogRow {
+  id: number;
+  admin_id: string;
+  admin_email: string;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  before_value: string | null;
+  after_value: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
+adminManagementRoutes.get('/audit-logs', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')));
+    const offset = (page - 1) * limit;
+    const adminId = c.req.query('admin_id');
+    const action = c.req.query('action');
+    const targetType = c.req.query('target_type');
+    const startDate = c.req.query('start_date');
+    const endDate = c.req.query('end_date');
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (adminId) { conditions.push('admin_id = ?'); params.push(adminId); }
+    if (action) { conditions.push('action = ?'); params.push(action); }
+    if (targetType) { conditions.push('target_type = ?'); params.push(targetType); }
+    if (startDate) { conditions.push('created_at >= ?'); params.push(startDate); }
+    if (endDate) { conditions.push('created_at <= ?'); params.push(endDate); }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const countRows = await executeQuery<CountRow>(DB,
+      `SELECT COUNT(*) as count FROM admin_audit_logs ${where}`, params
+    );
+    const total = countRows[0]?.count || 0;
+
+    const logs = await executeQuery<AuditLogRow>(DB,
+      `SELECT id, admin_id, admin_email, action, target_type, target_id,
+              before_value, after_value, ip, user_agent, created_at
+       FROM admin_audit_logs ${where}
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    return c.json({
+      success: true,
+      data: logs,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
+  } catch (err) {
+    console.error('[Admin] audit-logs error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 2. Revenue Analytics
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface RevenueRow {
+  date: string;
+  revenue: number;
+  order_count: number;
+}
+
+interface CategoryRevenueRow {
+  category: string;
+  revenue: number;
+  order_count: number;
+}
+
+interface TopSellerRow {
+  seller_id: number;
+  seller_name: string | null;
+  business_name: string | null;
+  revenue: number;
+  order_count: number;
+}
+
+interface TopProductRow {
+  product_id: number;
+  product_name: string;
+  sales_count: number;
+  revenue: number;
+  image_url: string | null;
+}
+
+adminManagementRoutes.get('/analytics/revenue', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const period = c.req.query('period') || '30d';
+
+    let days: number;
+    switch (period) {
+      case '7d': days = 7; break;
+      case '90d': days = 90; break;
+      case '1y': days = 365; break;
+      default: days = 30;
+    }
+
+    const dailyRevenue = await executeQuery<RevenueRow>(DB,
+      `SELECT DATE(created_at) as date,
+              SUM(total_amount) as revenue,
+              COUNT(*) as order_count
+       FROM orders
+       WHERE payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+         AND created_at >= datetime('now', '-' || ? || ' days')
+       GROUP BY DATE(created_at)
+       ORDER BY date ASC`,
+      [days]
+    );
+
+    const totalRows = await executeQuery<{ total_revenue: number; total_orders: number }>(DB,
+      `SELECT COALESCE(SUM(total_amount), 0) as total_revenue,
+              COUNT(*) as total_orders
+       FROM orders
+       WHERE payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+         AND created_at >= datetime('now', '-' || ? || ' days')`,
+      [days]
+    );
+
+    return c.json({
+      success: true,
+      data: {
+        daily: dailyRevenue,
+        totals: totalRows[0] || { total_revenue: 0, total_orders: 0 },
+        period
+      }
+    });
+  } catch (err) {
+    console.error('[Admin] analytics/revenue error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.get('/analytics/category', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+
+    const categories = await executeQuery<CategoryRevenueRow>(DB,
+      `SELECT COALESCE(p.category, 'uncategorized') as category,
+              SUM(oi.price * oi.quantity) as revenue,
+              COUNT(DISTINCT o.id) as order_count
+       FROM order_items oi
+       JOIN orders o ON o.id = oi.order_id
+       JOIN products p ON p.id = oi.product_id
+       WHERE o.payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+       GROUP BY p.category
+       ORDER BY revenue DESC`
+    );
+
+    return c.json({ success: true, data: categories });
+  } catch (err) {
+    console.error('[Admin] analytics/category error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.get('/analytics/top-sellers', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '10')));
+
+    const topSellers = await executeQuery<TopSellerRow>(DB,
+      `SELECT o.seller_id,
+              s.name as seller_name,
+              s.business_name,
+              SUM(o.total_amount) as revenue,
+              COUNT(*) as order_count
+       FROM orders o
+       LEFT JOIN sellers s ON s.id = o.seller_id
+       WHERE o.payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+         AND o.seller_id IS NOT NULL
+       GROUP BY o.seller_id
+       ORDER BY revenue DESC
+       LIMIT ?`,
+      [limit]
+    );
+
+    return c.json({ success: true, data: topSellers });
+  } catch (err) {
+    console.error('[Admin] analytics/top-sellers error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.get('/analytics/top-products', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '10')));
+
+    const topProducts = await executeQuery<TopProductRow>(DB,
+      `SELECT oi.product_id,
+              COALESCE(p.name, oi.product_name) as product_name,
+              SUM(oi.quantity) as sales_count,
+              SUM(oi.price * oi.quantity) as revenue,
+              p.image_url
+       FROM order_items oi
+       JOIN orders o ON o.id = oi.order_id
+       LEFT JOIN products p ON p.id = oi.product_id
+       WHERE o.payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+       GROUP BY oi.product_id
+       ORDER BY sales_count DESC
+       LIMIT ?`,
+      [limit]
+    );
+
+    return c.json({ success: true, data: topProducts });
+  } catch (err) {
+    console.error('[Admin] analytics/top-products error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 3. Admin Account Management
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import { hashPassword } from '@/lib/password';
+
+interface AdminRow {
+  id: number;
+  username: string | null;
+  email: string;
+  name: string | null;
+  role: string;
+  created_at: string;
+}
+
+adminManagementRoutes.get('/admins', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const admins = await executeQuery<AdminRow>(DB,
+      `SELECT id, username, email, name, role, created_at
+       FROM admins
+       ORDER BY created_at DESC`
+    );
+    return c.json({ success: true, data: admins });
+  } catch (err) {
+    console.error('[Admin] list admins error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.post('/admins', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const { email, password, name, role } = await c.req.json<{
+      email: string; password: string; name: string; role: string;
+    }>();
+
+    if (!email || !password || !name || !role) {
+      return c.json({ success: false, error: '필수 항목이 누락되었습니다 (email, password, name, role)' }, 400);
+    }
+    if (!['super_admin', 'admin', 'viewer'].includes(role)) {
+      return c.json({ success: false, error: '유효하지 않은 역할입니다. super_admin, admin, viewer 중 선택하세요' }, 400);
+    }
+
+    // Check for duplicate email
+    const existing = await executeQuery<{ id: number }>(DB,
+      `SELECT id FROM admins WHERE email = ?`, [email]
+    );
+    if (existing.length > 0) {
+      return c.json({ success: false, error: '이미 존재하는 이메일입니다' }, 409);
+    }
+
+    const passwordHash = await hashPassword(password);
+    await executeRun(DB,
+      `INSERT INTO admins (email, password_hash, name, role, created_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`,
+      [email, passwordHash, name, role]
+    );
+
+    await writeAuditLog(c, {
+      action: 'create_admin',
+      targetType: 'admin',
+      targetId: email,
+      after: { email, name, role }
+    });
+
+    return c.json({ success: true, message: '관리자가 생성되었습니다' });
+  } catch (err) {
+    console.error('[Admin] create admin error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.patch('/admins/:id', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const adminId = c.req.param('id');
+    const { name, role, email } = await c.req.json<{
+      name?: string; role?: string; email?: string;
+    }>();
+
+    const rows = await executeQuery<AdminRow>(DB,
+      `SELECT id, username, email, name, role, created_at FROM admins WHERE id = ?`, [adminId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+    }
+
+    const current = rows[0];
+
+    // Cannot change own role if super_admin (prevent lockout)
+    if (role && role !== current.role) {
+      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
+      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      if (String(currentAdminId) === String(adminId) && current.role === 'super_admin') {
+        return c.json({ success: false, error: 'super_admin은 자신의 역할을 변경할 수 없습니다' }, 403);
+      }
+      if (!['super_admin', 'admin', 'viewer'].includes(role)) {
+        return c.json({ success: false, error: '유효하지 않은 역할입니다' }, 400);
+      }
+    }
+
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+
+    if (name !== undefined) { updates.push('name = ?'); params.push(name); before.name = current.name; after.name = name; }
+    if (role !== undefined) { updates.push('role = ?'); params.push(role); before.role = current.role; after.role = role; }
+    if (email !== undefined) { updates.push('email = ?'); params.push(email); before.email = current.email; after.email = email; }
+
+    if (updates.length === 0) {
+      return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400);
+    }
+
+    params.push(adminId);
+    await executeRun(DB, `UPDATE admins SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    await writeAuditLog(c, {
+      action: 'update_admin',
+      targetType: 'admin',
+      targetId: adminId,
+      before, after
+    });
+
+    return c.json({ success: true, message: '관리자 정보가 업데이트되었습니다' });
+  } catch (err) {
+    console.error('[Admin] update admin error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.delete('/admins/:id', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const adminId = c.req.param('id');
+
+    // Cannot delete self
+    const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
+    const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+    if (String(currentAdminId) === String(adminId)) {
+      return c.json({ success: false, error: '자기 자신을 삭제할 수 없습니다' }, 403);
+    }
+
+    const rows = await executeQuery<AdminRow>(DB,
+      `SELECT id, username, email, name, role, created_at FROM admins WHERE id = ?`, [adminId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+    }
+
+    // Cannot delete last super_admin
+    if (rows[0].role === 'super_admin') {
+      const superAdminCount = await executeQuery<CountRow>(DB,
+        `SELECT COUNT(*) as count FROM admins WHERE role = 'super_admin'`
+      );
+      if ((superAdminCount[0]?.count || 0) <= 1) {
+        return c.json({ success: false, error: '마지막 super_admin은 삭제할 수 없습니다' }, 403);
+      }
+    }
+
+    await executeRun(DB, `DELETE FROM admins WHERE id = ?`, [adminId]);
+
+    await writeAuditLog(c, {
+      action: 'delete_admin',
+      targetType: 'admin',
+      targetId: adminId,
+      before: { email: rows[0].email, name: rows[0].name, role: rows[0].role }
+    });
+
+    return c.json({ success: true, message: '관리자가 삭제되었습니다' });
+  } catch (err) {
+    console.error('[Admin] delete admin error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.post('/admins/:id/reset-password', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const adminId = c.req.param('id');
+    const { newPassword } = await c.req.json<{ newPassword: string }>();
+
+    if (!newPassword || newPassword.length < 6) {
+      return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다' }, 400);
+    }
+
+    const rows = await executeQuery<{ id: number }>(DB,
+      `SELECT id FROM admins WHERE id = ?`, [adminId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await executeRun(DB, `UPDATE admins SET password_hash = ? WHERE id = ?`, [passwordHash, adminId]);
+
+    await writeAuditLog(c, {
+      action: 'reset_admin_password',
+      targetType: 'admin',
+      targetId: adminId,
+      after: { password_reset: true }
+    });
+
+    return c.json({ success: true, message: '비밀번호가 재설정되었습니다' });
+  } catch (err) {
+    console.error('[Admin] reset password error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 4. Review Moderation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface ReviewRow {
+  id: number;
+  product_id: number;
+  user_id: string;
+  user_name: string | null;
+  rating: number;
+  content: string | null;
+  image_urls: string | null;
+  is_visible: number;
+  created_at: string;
+  product_name?: string;
+}
+
+interface ReviewStatsRow {
+  total: number;
+  avg_rating: number;
+  hidden_count: number;
+  rating_1: number;
+  rating_2: number;
+  rating_3: number;
+  rating_4: number;
+  rating_5: number;
+}
+
+adminManagementRoutes.get('/reviews/list', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20')));
+    const offset = (page - 1) * limit;
+    const status = c.req.query('status') || 'all';
+    const productId = c.req.query('product_id');
+    const rating = c.req.query('rating');
+    const sort = c.req.query('sort') || 'newest';
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (status === 'visible') { conditions.push('r.is_visible = 1'); }
+    else if (status === 'hidden') { conditions.push('r.is_visible = 0'); }
+
+    if (productId) { conditions.push('r.product_id = ?'); params.push(productId); }
+    if (rating) { conditions.push('r.rating = ?'); params.push(parseInt(rating)); }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    let orderBy: string;
+    switch (sort) {
+      case 'oldest': orderBy = 'r.created_at ASC'; break;
+      case 'rating_high': orderBy = 'r.rating DESC, r.created_at DESC'; break;
+      case 'rating_low': orderBy = 'r.rating ASC, r.created_at DESC'; break;
+      default: orderBy = 'r.created_at DESC';
+    }
+
+    const countRows = await executeQuery<CountRow>(DB,
+      `SELECT COUNT(*) as count FROM reviews r ${where}`, params
+    );
+    const total = countRows[0]?.count || 0;
+
+    const reviews = await executeQuery<ReviewRow>(DB,
+      `SELECT r.id, r.product_id, r.user_id, r.user_name, r.rating, r.content,
+              r.image_urls, r.is_visible, r.created_at,
+              p.name as product_name
+       FROM reviews r
+       LEFT JOIN products p ON p.id = r.product_id
+       ${where}
+       ORDER BY ${orderBy}
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    return c.json({
+      success: true,
+      data: reviews,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
+  } catch (err) {
+    console.error('[Admin] reviews/list error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.patch('/reviews/:id/visibility', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const reviewId = c.req.param('id');
+    const { is_visible } = await c.req.json<{ is_visible: 0 | 1 }>();
+
+    if (![0, 1].includes(is_visible)) {
+      return c.json({ success: false, error: 'is_visible must be 0 or 1' }, 400);
+    }
+
+    const rows = await executeQuery<{ id: number; is_visible: number }>(DB,
+      `SELECT id, is_visible FROM reviews WHERE id = ?`, [reviewId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '리뷰를 찾을 수 없습니다' }, 404);
+    }
+
+    await executeRun(DB, `UPDATE reviews SET is_visible = ? WHERE id = ?`, [is_visible, reviewId]);
+
+    await writeAuditLog(c, {
+      action: is_visible ? 'show_review' : 'hide_review',
+      targetType: 'review',
+      targetId: reviewId,
+      before: { is_visible: rows[0].is_visible },
+      after: { is_visible }
+    });
+
+    return c.json({ success: true, message: is_visible ? '리뷰가 표시되었습니다' : '리뷰가 숨겨졌습니다' });
+  } catch (err) {
+    console.error('[Admin] review visibility error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.delete('/reviews/:id', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const reviewId = c.req.param('id');
+
+    const rows = await executeQuery<ReviewRow>(DB,
+      `SELECT id, product_id, user_id, user_name, rating, content, image_urls, is_visible, created_at
+       FROM reviews WHERE id = ?`, [reviewId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '리뷰를 찾을 수 없습니다' }, 404);
+    }
+
+    await executeRun(DB, `DELETE FROM reviews WHERE id = ?`, [reviewId]);
+
+    await writeAuditLog(c, {
+      action: 'delete_review',
+      targetType: 'review',
+      targetId: reviewId,
+      before: { product_id: rows[0].product_id, user_id: rows[0].user_id, rating: rows[0].rating, content: rows[0].content }
+    });
+
+    return c.json({ success: true, message: '리뷰가 삭제되었습니다' });
+  } catch (err) {
+    console.error('[Admin] delete review error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.get('/reviews/stats', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+
+    const stats = await executeQuery<ReviewStatsRow>(DB,
+      `SELECT
+        COUNT(*) as total,
+        COALESCE(AVG(rating), 0) as avg_rating,
+        SUM(CASE WHEN is_visible = 0 THEN 1 ELSE 0 END) as hidden_count,
+        SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as rating_1,
+        SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as rating_2,
+        SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as rating_3,
+        SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as rating_4,
+        SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as rating_5
+       FROM reviews`
+    );
+
+    return c.json({ success: true, data: stats[0] || { total: 0, avg_rating: 0, hidden_count: 0, rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0 } });
+  } catch (err) {
+    console.error('[Admin] reviews/stats error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 5. Live Stream Monitor
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface LiveStreamRow {
+  id: number;
+  seller_id: number;
+  seller_name: string | null;
+  title: string | null;
+  status: string;
+  youtube_video_id: string | null;
+  viewer_count: number;
+  current_product_id: number | null;
+  current_product_name: string | null;
+  created_at: string;
+}
+
+interface StreamHistoryRow {
+  id: number;
+  seller_id: number;
+  seller_name: string | null;
+  title: string | null;
+  status: string;
+  youtube_video_id: string | null;
+  viewer_count: number;
+  peak_viewers: number | null;
+  created_at: string;
+  ended_at: string | null;
+  duration_minutes: number | null;
+}
+
+adminManagementRoutes.get('/live-monitor', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+
+    const streams = await executeQuery<LiveStreamRow>(DB,
+      `SELECT ls.id, ls.seller_id,
+              s.name as seller_name,
+              ls.title, ls.status,
+              ls.youtube_video_id,
+              COALESCE(ls.viewer_count, 0) as viewer_count,
+              ls.current_product_id,
+              p.name as current_product_name,
+              ls.created_at
+       FROM live_streams ls
+       LEFT JOIN sellers s ON s.id = ls.seller_id
+       LEFT JOIN products p ON p.id = ls.current_product_id
+       WHERE ls.status = 'live'
+       ORDER BY ls.created_at DESC`
+    );
+
+    return c.json({ success: true, data: streams });
+  } catch (err) {
+    console.error('[Admin] live-monitor error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.patch('/live-monitor/:id/end', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const streamId = c.req.param('id');
+
+    const rows = await executeQuery<{ id: number; status: string; seller_id: number }>(DB,
+      `SELECT id, status, seller_id FROM live_streams WHERE id = ?`, [streamId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
+    }
+    if (rows[0].status === 'ended') {
+      return c.json({ success: false, error: '이미 종료된 스트림입니다' }, 400);
+    }
+
+    await executeRun(DB,
+      `UPDATE live_streams SET status = 'ended', ended_at = datetime('now') WHERE id = ?`,
+      [streamId]
+    );
+
+    await writeAuditLog(c, {
+      action: 'force_end_stream',
+      targetType: 'live_stream',
+      targetId: streamId,
+      before: { status: rows[0].status },
+      after: { status: 'ended' }
+    });
+
+    return c.json({ success: true, message: '스트림이 강제 종료되었습니다' });
+  } catch (err) {
+    console.error('[Admin] live-monitor end error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.get('/live-monitor/history', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const days = Math.min(90, Math.max(1, parseInt(c.req.query('days') || '7')));
+
+    const streams = await executeQuery<StreamHistoryRow>(DB,
+      `SELECT ls.id, ls.seller_id,
+              s.name as seller_name,
+              ls.title, ls.status,
+              ls.youtube_video_id,
+              COALESCE(ls.viewer_count, 0) as viewer_count,
+              ls.peak_viewers,
+              ls.created_at,
+              ls.ended_at,
+              CASE
+                WHEN ls.ended_at IS NOT NULL
+                THEN CAST((julianday(ls.ended_at) - julianday(ls.created_at)) * 24 * 60 AS INTEGER)
+                ELSE NULL
+              END as duration_minutes
+       FROM live_streams ls
+       LEFT JOIN sellers s ON s.id = ls.seller_id
+       WHERE ls.status = 'ended'
+         AND ls.created_at >= datetime('now', '-' || ? || ' days')
+       ORDER BY ls.created_at DESC`,
+      [days]
+    );
+
+    return c.json({ success: true, data: streams });
+  } catch (err) {
+    console.error('[Admin] live-monitor/history error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 6. User Management
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface UserRow {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  provider: string | null;
+  status: string | null;
+  created_at: string;
+  deal_balance: number | null;
+}
+
+interface UserDetailRow extends UserRow {
+  order_count: number;
+  total_spent: number;
+  review_count: number;
+}
+
+adminManagementRoutes.get('/users', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')));
+    const offset = (page - 1) * limit;
+    const search = c.req.query('search');
+    const status = c.req.query('status');
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (search) {
+      conditions.push('(u.name LIKE ? OR u.email LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    if (status) {
+      conditions.push('u.status = ?');
+      params.push(status);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const countRows = await executeQuery<CountRow>(DB,
+      `SELECT COUNT(*) as count FROM users u ${where}`, params
+    );
+    const total = countRows[0]?.count || 0;
+
+    const users = await executeQuery<UserRow>(DB,
+      `SELECT u.id, u.name, u.email, u.phone, u.provider, u.status,
+              u.created_at, u.deal_balance
+       FROM users u
+       ${where}
+       ORDER BY u.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    return c.json({
+      success: true,
+      data: users,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
+  } catch (err) {
+    console.error('[Admin] users list error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.patch('/users/:id/status', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const userId = c.req.param('id');
+    const { status } = await c.req.json<{ status: string }>();
+
+    if (!['active', 'suspended', 'banned'].includes(status)) {
+      return c.json({ success: false, error: '유효하지 않은 상태입니다. active, suspended, banned 중 선택하세요' }, 400);
+    }
+
+    const rows = await executeQuery<{ id: string; status: string }>(DB,
+      `SELECT id, status FROM users WHERE id = ?`, [userId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
+    }
+
+    await executeRun(DB, `UPDATE users SET status = ? WHERE id = ?`, [status, userId]);
+
+    await writeAuditLog(c, {
+      action: 'update_user_status',
+      targetType: 'user',
+      targetId: userId,
+      before: { status: rows[0].status },
+      after: { status }
+    });
+
+    return c.json({ success: true, message: '사용자 상태가 변경되었습니다', data: { id: userId, status } });
+  } catch (err) {
+    console.error('[Admin] user status error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.get('/users/:id', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const userId = c.req.param('id');
+
+    const users = await executeQuery<UserRow>(DB,
+      `SELECT id, name, email, phone, provider, status, created_at, deal_balance
+       FROM users WHERE id = ?`, [userId]
+    );
+    if (users.length === 0) {
+      return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
+    }
+
+    const orderStats = await executeQuery<{ order_count: number; total_spent: number }>(DB,
+      `SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_spent
+       FROM orders WHERE user_id = ? AND payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')`,
+      [userId]
+    );
+
+    const reviewStats = await executeQuery<CountRow>(DB,
+      `SELECT COUNT(*) as count FROM reviews WHERE user_id = ?`, [userId]
+    );
+
+    const user = users[0];
+    const detail: UserDetailRow = {
+      ...user,
+      order_count: orderStats[0]?.order_count || 0,
+      total_spent: orderStats[0]?.total_spent || 0,
+      review_count: reviewStats[0]?.count || 0
+    };
+
+    return c.json({ success: true, data: detail });
+  } catch (err) {
+    console.error('[Admin] user detail error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
