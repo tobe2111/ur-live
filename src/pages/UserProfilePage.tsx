@@ -82,7 +82,11 @@ export default function UserProfilePage() {
   if (!isLoggedIn) {
     localStorage.setItem('loginReturnUrl', '/user/profile')
     navigate('/login', { replace: true })
-    return null
+    return (
+      <div className="min-h-screen bg-[#020202] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
+      </div>
+    )
   }
 
   const handleLogout = () => {
@@ -130,8 +134,6 @@ export default function UserProfilePage() {
         <button onClick={() => navigate('/user/affiliate')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">💰 추천수익</button>
       </div>
 
-      {/* 테마 설정 */}
-      <ThemeToggle />
 
       {/* 메뉴 */}
       <MenuList />

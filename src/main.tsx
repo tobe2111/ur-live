@@ -2,9 +2,6 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
-// 테마 초기화
-const savedTheme = localStorage.getItem('ur_theme') || 'dark'
-document.documentElement.classList.add(savedTheme === 'light' ? 'light-theme' : 'dark-theme')
 import './i18n' // ✅ i18n 초기화
 import { initSentry } from './lib/sentry'
 import { logRegionInfo, isKorea } from '@/shared/config/region'
