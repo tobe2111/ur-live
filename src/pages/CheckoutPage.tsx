@@ -190,15 +190,8 @@ export default function CheckoutPage() {
       return
     }
 
-    // 🔥 Fix: Use Firebase UID directly if getUserId() returns null
-    let uid = getUserIdSync()
-    
-    // Fallback to Firebase UID if userId is not in localStorage
-    if (!uid && user) {
-      uid = user.uid
-      // Save Firebase UID as user_id for future use
-      localStorage.setItem('user_id', user.uid)
-    }
+    // localStorage에서 user_id 읽기 (세션 쿠키 유저 + Firebase 유저 모두 호환)
+    const uid = getUserIdSync()
 
     if (!uid) {
       captureError(new Error('CheckoutPage: userId 없음'), { context: 'CheckoutPage.loadData' })

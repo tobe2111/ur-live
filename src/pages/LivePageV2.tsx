@@ -1186,8 +1186,8 @@ function ReelCard({
       const rawUserName = localStorage.getItem('user_name') || '익명'
       const maskedChatName = maskUserName(rawUserName)
 
-      // 호환성: claims.userId (숫자 ID) 사용, 없으면 0 (Anonymous)
-      const numericUserId = parseInt(localStorage.getItem('numeric_user_id') || '0', 10) || 0;
+      // 숫자 ID: numeric_user_id → user_id 순서로 fallback
+      const numericUserId = parseInt(localStorage.getItem('numeric_user_id') || localStorage.getItem('user_id') || '0', 10) || 0;
 
       // 🔥 SSE 기반 메시지 전송 (닉네임 마스킹 적용: 정종문 → 정*문)
       await sendChatMessage(
