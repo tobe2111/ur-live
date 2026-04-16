@@ -19,6 +19,8 @@ const EXCLUDE_MOBILE_LAYOUT = [
   '/admin',      // 어드민 대시보드
   '/agency',     // 에이전시 대시보드
   '/embed',      // 임베드 라이브
+  '/live',       // 라이브 (전체 화면)
+  '/shorts',     // 쇼츠 (전체 화면)
 ]
 
 export default function FrameWrapper({ children }: FrameWrapperProps) {
