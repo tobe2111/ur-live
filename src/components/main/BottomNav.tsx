@@ -9,13 +9,8 @@ export default function BottomNav() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadProfile = () => {
-      setProfileImage(localStorage.getItem('user_profile_image'))
-    }
-    loadProfile()
-    window.addEventListener('storage', loadProfile)
-    return () => window.removeEventListener('storage', loadProfile)
-  }, [])
+    setProfileImage(localStorage.getItem('user_profile_image'))
+  }, [location.pathname])
 
   const userType = localStorage.getItem('user_type')
   const isLoggedIn = !!localStorage.getItem('access_token')
