@@ -24,8 +24,13 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
         const htmlEl = el as HTMLElement
         const style = window.getComputedStyle(htmlEl)
         if (style.position !== 'fixed') return
-        // inset-0 (모달 오버레이)는 건드리지 않음
+        // 모달 오버레이(inset-0)는 건드리지 않음
         if (htmlEl.classList.contains('inset-0') || style.inset === '0px') return
+        // 작은 요소(버튼 등)는 건드리지 않음 — 전체 너비 요소만 조정
+        const hasFullWidth = style.left === '0px' || style.right === '0px' ||
+          htmlEl.classList.contains('inset-x-0') ||
+          (htmlEl.offsetWidth > rect.width * 0.5)
+        if (!hasFullWidth) return
 
         htmlEl.style.left = `${rect.left}px`
         htmlEl.style.right = 'auto'
