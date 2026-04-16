@@ -425,7 +425,8 @@ export default function CheckoutPage() {
   }
 
   // ✅ BUG #3 FIX: Auth-guard and loading checks rendered here (after all hooks)
-  if (!isAuthReady || authLoading) {
+  const isSessionUser = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
+  if (!isSessionUser && (!isAuthReady || authLoading)) {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
@@ -436,7 +437,7 @@ export default function CheckoutPage() {
     )
   }
 
-  if (!user) {
+  if (!user && !isSessionUser) {
     // ProtectedRoute가 /login 으로 리다이렉트하므로 여기서는 null만 반환
     return null
   }

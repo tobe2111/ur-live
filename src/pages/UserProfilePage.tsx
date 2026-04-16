@@ -180,8 +180,19 @@ export default function UserProfilePage() {
     }
   }, [user])
 
-  // 🔄 로딩 중
-  if (!isAuthReady || isProcessingToken) {
+  // 세션 쿠키 로그인 유저는 Firebase user 없이도 프로필 표시
+  const isSessionUser = localStorage.getItem('session_login') === 'true' && localStorage.getItem('user_id')
+
+  // ✅ 사용자 이름/프로필 설정 (세션 쿠키 유저용 보강)
+  useEffect(() => {
+    if (!userName && isSessionUser) {
+      setUserName(localStorage.getItem('user_name') || '사용자')
+      setProfileImage(localStorage.getItem('user_profile_image') || undefined)
+    }
+  }, [isSessionUser])
+
+  // 🔄 로딩 중 (세션 쿠키 유저는 즉시 통과)
+  if (!isSessionUser && (!isAuthReady || isProcessingToken)) {
     return (
       <div className="min-h-screen bg-[#020202] flex items-center justify-center">
         <div className="text-center">
@@ -194,8 +205,8 @@ export default function UserProfilePage() {
     )
   }
 
-  // 🚫 로그인 안 됨 - firebase_token 처리 중이거나 토큰이 있으면 대기
-  if (!user) {
+  // 🚫 로그인 안 됨
+  if (!user && !isSessionUser) {
     const firebaseToken = searchParams.get('firebase_token')
     
     // firebase_token이 있거나 처리 중이면 대기 (리다이렉트 방지)
