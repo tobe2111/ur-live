@@ -561,11 +561,17 @@ html.native-app nav {
     background-color: #111;
   }
   .mobile-app-container {
-    /* 핵심: transform이 있으면 자식 fixed가 이 컨테이너 기준이 됨 (CSS 스펙) */
-    transform: translateZ(0);
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
     border-left: 1px solid #2a2a2a;
     border-right: 1px solid #2a2a2a;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
