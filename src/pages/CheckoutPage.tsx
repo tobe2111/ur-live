@@ -81,6 +81,7 @@ export default function CheckoutPage() {
   const [couponDiscount, setCouponDiscount] = useState(0)
   const [couponId, setCouponId] = useState<number | null>(null)
   const [dealBalance, setDealBalance] = useState(0)
+  const [dealToUse, setDealToUse] = useState(0)
   const [payingWithDeals, setPayingWithDeals] = useState(false)
 
   useEffect(() => {
@@ -673,97 +674,72 @@ export default function CheckoutPage() {
                 >
                   카드/간편결제
                 </button>
-                <button
-                  onClick={() => setPaymentMethod('deal')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
-                    paymentMethod === 'deal'
-                      ? 'border-pink-500 bg-gradient-to-r from-pink-500 to-red-500 text-white'
-                      : 'border-gray-200 bg-white text-gray-500'
-                  }`}
-                >
-                  딜로 결제
-                </button>
               </div>
 
-              {paymentMethod === 'deal' ? (
-                /* 딜 결제 */
-                <div>
-                  <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-400">보유 딜</span>
-                      <span className="text-lg font-bold text-gray-900">{dealBalance.toLocaleString()}딜</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">결제 필요</span>
-                      <span className={`text-lg font-bold ${dealBalance >= totalAmount ? 'text-green-400' : 'text-red-400'}`}>
-                        {totalAmount.toLocaleString()}딜
-                      </span>
-                    </div>
-                    {dealBalance < totalAmount && (
-                      <p className="text-xs text-red-400 mt-2">
-                        딜이 {(totalAmount - dealBalance).toLocaleString()}딜 부족합니다.
-                        <button onClick={() => navigate('/points/charge')} className="text-pink-400 font-bold ml-1 underline">충전하기</button>
-                      </p>
-                    )}
+              {/* 딜 포인트 사용 (병합 결제) */}
+              {dealBalance > 0 && (
+                <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">딜 포인트 사용</span>
+                    <span className="text-xs text-gray-400">보유 {dealBalance.toLocaleString()}딜</span>
                   </div>
-
-                  <button
-                    onClick={async () => {
-                      if (!selectedAddress) {
-                        toast.error('배송지를 선택해주세요')
-                        setShowAddressModal(true)
-                        return
-                      }
-                      if (dealBalance < totalAmount) {
-                        toast.error('딜이 부족합니다')
-                        return
-                      }
-
-                      setPayingWithDeals(true)
-                      try {
-                        const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-
-                        if (isDirectPurchase) {
-                          sessionStorage.setItem('directPurchase', 'true')
-                        }
-
-                        const res = await api.post('/api/points/pay', {
-                          order_number: orderNumber,
-                          total_amount: totalAmount,
-                          items: cartItems.map(item => ({
-                            product_id: String(item.product_id),
-                            product_name: item.product_name || '상품',
-                            quantity: item.quantity,
-                            price: item.price_snapshot ?? item.price ?? 0,
-                            seller_id: item.seller_id ? String(item.seller_id) : undefined,
-                            option_value: item.option_value,
-                          })),
-                          shipping: {
-                            name: selectedAddress.recipient_name,
-                            phone: selectedAddress.phone,
-                            postal_code: selectedAddress.postal_code,
-                            address1: selectedAddress.address,
-                            address2: selectedAddress.address_detail || '',
-                          },
-                        })
-
-                        if (res.data.success) {
-                          navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
-                        } else {
-                          toast.error(res.data.error || '결제에 실패했습니다')
-                        }
-                      } catch (err: any) {
-                        toast.error(err?.response?.data?.error || '딜 결제 중 오류가 발생했습니다')
-                      } finally {
-                        setPayingWithDeals(false)
-                      }
-                    }}
-                    disabled={dealBalance < totalAmount || payingWithDeals || !selectedAddress}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white text-base font-bold disabled:opacity-40 active:scale-[0.98] transition-all"
-                  >
-                    {payingWithDeals ? '결제 처리 중...' : `${totalAmount.toLocaleString()}딜로 결제하기`}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={dealToUse || ''}
+                      onChange={e => {
+                        const v = Math.min(Math.max(0, Number(e.target.value)), Math.min(dealBalance, totalAmount))
+                        setDealToUse(v)
+                      }}
+                      placeholder="0"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-right"
+                    />
+                    <button onClick={() => setDealToUse(Math.min(dealBalance, totalAmount))}
+                      className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-xs font-bold shrink-0">전액</button>
+                    <button onClick={() => setDealToUse(0)}
+                      className="px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-xs font-bold shrink-0">취소</button>
+                  </div>
+                  {dealToUse > 0 && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      딜 포인트: <strong className="text-pink-500">-{dealToUse.toLocaleString()}딜</strong>
+                      {totalAmount - dealToUse > 0 && <> · 카드 결제: <strong className="text-gray-900">{(totalAmount - dealToUse).toLocaleString()}원</strong></>}
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {dealToUse >= totalAmount ? (
+                /* 딜 전액 결제 */
+                <button
+                  onClick={async () => {
+                    if (!selectedAddress) { toast.error('배송지를 선택해주세요'); return }
+                    setPayingWithDeals(true)
+                    try {
+                      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+                      if (isDirectPurchase) sessionStorage.setItem('directPurchase', 'true')
+                      const res = await api.post('/api/points/pay', {
+                        order_number: orderNumber, total_amount: totalAmount,
+                        items: cartItems.map(item => ({
+                          product_id: String(item.product_id), product_name: item.product_name || '상품',
+                          quantity: item.quantity, price: item.price_snapshot ?? item.price ?? 0,
+                          seller_id: item.seller_id ? String(item.seller_id) : undefined,
+                        })),
+                        shipping: {
+                          name: selectedAddress.recipient_name, phone: selectedAddress.phone,
+                          postal_code: selectedAddress.postal_code, address1: selectedAddress.address,
+                          address2: selectedAddress.address_detail || '',
+                        },
+                      })
+                      if (res.data.success) navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
+                      else toast.error(res.data.error || '결제 실패')
+                    } catch (err: any) { toast.error(err?.response?.data?.error || '딜 결제 실패') }
+                    finally { setPayingWithDeals(false) }
+                  }}
+                  disabled={payingWithDeals || !selectedAddress}
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white text-base font-bold disabled:opacity-40"
+                >
+                  {payingWithDeals ? '처리 중...' : `${totalAmount.toLocaleString()}딜로 결제`}
+                </button>
               ) : isKorea() ? (
                 /* 한국: Toss Payments */
                 <Suspense fallback={
@@ -776,7 +752,7 @@ export default function CheckoutPage() {
                     userId={userId || ''}
                     clientKey={clientKey}
                     cartItems={cartItems}
-                    totalAmount={subtotal - couponDiscount}
+                    totalAmount={subtotal - couponDiscount - dealToUse}
                     shippingFee={totalShippingFee}
                     onBeforePayment={handleBeforePayment}
                     onPaymentSuccess={(orderId, paymentKey, amount) => {
@@ -799,7 +775,7 @@ export default function CheckoutPage() {
                   <StripeCheckout
                     userId={userId || ''}
                     cartItems={cartItems}
-                    totalAmount={subtotal - couponDiscount}
+                    totalAmount={subtotal - couponDiscount - dealToUse}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentIntentId, amount) => {
                       navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
