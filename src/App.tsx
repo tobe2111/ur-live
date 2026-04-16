@@ -320,7 +320,7 @@ function AppContent() {
     <>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
-          <div className={fullScreen ? 'min-h-dvh' : 'max-w-screen-sm mx-auto bg-white min-h-dvh'}>
+          <div className={fullScreen ? 'min-h-dvh' : 'max-w-[430px] mx-auto bg-white min-h-dvh'}>
           <div className="flex-1">
           <ScrollToTop />
           <Routes>

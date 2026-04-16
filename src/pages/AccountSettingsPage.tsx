@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  ChevronLeft, User, Mail, Phone, Lock, Bell, Shield, CreditCard,
-  MapPin, Globe, HelpCircle, ChevronRight, Edit, X, Eye, EyeOff, Check,
+  ChevronLeft, User, Mail, Phone, Bell, CreditCard,
+  MapPin, Globe, HelpCircle, ChevronRight, Edit, X,
 } from 'lucide-react';
 import { getUserIdSync, getUserNameSync, getUserEmail } from '@/utils/auth';
 import api from '@/lib/api';
@@ -16,10 +16,6 @@ export default function AccountSettingsPage() {
   const [editForm, setEditForm] = useState({ name: '', phone: '' });
   const [editLoading, setEditLoading] = useState(false);
 
-  const [pwModal, setPwModal] = useState(false);
-  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
-  const [pwLoading, setPwLoading] = useState(false);
-  const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
 
   const [notif, setNotif] = useState(() => {
     try {
@@ -57,22 +53,6 @@ export default function AccountSettingsPage() {
     } catch (e: any) {
       toast.error(e.response?.data?.error || '업데이트에 실패했습니다.');
     } finally { setEditLoading(false); }
-  }
-
-  async function changePassword() {
-    if (!pwForm.current || !pwForm.next || !pwForm.confirm) { toast.error('모든 항목을 입력해주세요.'); return; }
-    if (pwForm.next.length < 8) { toast.error('새 비밀번호는 8자 이상이어야 합니다.'); return; }
-    if (pwForm.next !== pwForm.confirm) { toast.error('새 비밀번호가 일치하지 않습니다.'); return; }
-    setPwLoading(true);
-    try {
-      const res = await api.post('/api/auth/change-password', { current_password: pwForm.current, new_password: pwForm.next });
-      if (res.data.success) {
-        setPwModal(false); setPwForm({ current: '', next: '', confirm: '' });
-        toast.success('비밀번호가 변경되었습니다.');
-      }
-    } catch (e: any) {
-      toast.error(e.response?.data?.error || '비밀번호 변경에 실패했습니다.');
-    } finally { setPwLoading(false); }
   }
 
   function toggleNotif(key: 'push' | 'email') {
@@ -119,11 +99,6 @@ export default function AccountSettingsPage() {
             ))}
           </div>
         </div>
-
-        <Section title="보안">
-          <Item icon={<Lock className="w-5 h-5" />} label="비밀번호 변경" onClick={() => setPwModal(true)} />
-          <Item icon={<Shield className="w-5 h-5" />} label="2단계 인증" onClick={() => toast.info('준비 중인 기능입니다.')} badge="준비중" />
-        </Section>
 
         <Section title="알림">
           <ToggleItem icon={<Bell className="w-5 h-5" />} label="푸시 알림" value={notif.push} onChange={() => toggleNotif('push')} />
@@ -206,50 +181,6 @@ export default function AccountSettingsPage() {
         </div>
       )}
 
-      {/* 비밀번호 변경 모달 */}
-      {pwModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">비밀번호 변경</h3>
-              <button onClick={() => { setPwModal(false); setPwForm({ current: '', next: '', confirm: '' }); }}><X className="w-5 h-5 text-gray-400" /></button>
-            </div>
-            <div className="space-y-4">
-              {([
-                { key: 'current' as const, label: '현재 비밀번호', showKey: 'current' as const },
-                { key: 'next' as const, label: '새 비밀번호 (8자 이상)', showKey: 'next' as const },
-                { key: 'confirm' as const, label: '새 비밀번호 확인', showKey: 'confirm' as const },
-              ]).map(({ key, label, showKey }) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-                  <div className="relative">
-                    <input type={showPw[showKey] ? 'text' : 'password'} value={pwForm[key]}
-                      onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))}
-                      className="w-full px-4 py-3 pr-11 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
-                    <button type="button" onClick={() => setShowPw(s => ({ ...s, [showKey]: !s[showKey] }))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                      {showPw[showKey] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                  {key === 'confirm' && pwForm.confirm && pwForm.next && (
-                    <p className={`text-xs mt-1 flex items-center gap-1 ${pwForm.next === pwForm.confirm ? 'text-green-600' : 'text-red-500'}`}>
-                      {pwForm.next === pwForm.confirm ? <><Check className="w-3 h-3" />일치합니다</> : '비밀번호가 일치하지 않습니다'}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => { setPwModal(false); setPwForm({ current: '', next: '', confirm: '' }); }}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors">취소</button>
-              <button onClick={changePassword} disabled={pwLoading}
-                className="flex-1 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50">
-                {pwLoading ? '변경 중...' : '변경'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
