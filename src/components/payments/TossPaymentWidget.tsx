@@ -59,12 +59,8 @@ export function TossPaymentWidget({
           .replace(/[^a-zA-Z0-9\-_=.@]/g, '')
           .substring(0, 44)
 
-        if (sanitizedUserId.length < 2) {
-          throw new Error('userId is too short after sanitization')
-        }
-
-        // customerKey: 비회원 결제가 아닌 경우 고객 식별 키 사용
-        const customerKey = `user_${sanitizedUserId}`
+        // customerKey: user_ prefix 포함하여 Toss 최소 길이(2자) 충족
+        const customerKey = `user_${sanitizedUserId}`.substring(0, 50)
 
         const tossPayments = await loadTossPayments(clientKey)
         const widgetsInstance = tossPayments.widgets({ customerKey })
