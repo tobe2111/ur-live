@@ -54,6 +54,7 @@ const SellerMealVoucherNewPage = lazy(() => import('./pages/SellerMealVoucherNew
 const SellerGroupBuyNewPage = lazy(() => import('./pages/SellerGroupBuyNewPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
+const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
 
 // Seller 페이지들
 const SellerPage = lazy(() => import('./pages/SellerPage'))
@@ -87,6 +88,7 @@ const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
 const MyPage = lazy(() => import('./pages/MyPage'))
 const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage'))
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
+const MyGroupBuysPage = lazy(() => import('./pages/MyGroupBuysPage'))
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 
 // Account (탈퇴) 페이지들
@@ -307,7 +309,7 @@ function AppContent() {
     import('./lib/native').then(({ setStatusBarStyle }) => {
       // 화이트 테마 페이지는 light 상태바 (검은 텍스트)
       const lightPages = ['/browse', '/checkout', '/my-orders', '/account/', '/cart',
-        '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search']
+        '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy']
       const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
       setStatusBarStyle(isLight ? 'light' : 'dark')
     }).catch(() => {})
@@ -332,6 +334,7 @@ function AppContent() {
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/group-buy" element={<GroupBuyListPage />} />
             <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
@@ -692,6 +695,11 @@ function AppContent() {
             <Route path="/mypage/wishlist" element={
               <ProtectedRoute requireUser>
                 <WishlistPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/mypage/group-buys" element={
+              <ProtectedRoute requireUser>
+                <MyGroupBuysPage />
               </ProtectedRoute>
             } />
             <Route path="/wishlist" element={

@@ -14,6 +14,7 @@ import { requireAuth, getCurrentUser, optionalAuth } from '@/worker/middleware/a
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
+import { notifyUser } from '@/lib/notifications';
 
 const referralRoutes = new Hono<{ Bindings: Env }>();
 
@@ -213,6 +214,7 @@ referralRoutes.post('/join/:code', requireAuth(), async (c) => {
   const hasTiers = tiers.length > 0;
 
   // 현재 달성 티어 계산 → discount_percent 업데이트
+  const previousUnlocked = hasTiers ? getUnlockedTier(tiers, group.current_count) : null;
   const unlocked = hasTiers ? getUnlockedTier(tiers, newCount) : null;
   const newDiscount = hasTiers
     ? (unlocked?.discount ?? 0)
@@ -222,12 +224,57 @@ referralRoutes.post('/join/:code', requireAuth(), async (c) => {
   const topTierReached = hasTiers && newCount >= tiers[tiers.length - 1].count;
   const targetReached = !hasTiers && newCount >= group.target_count;
   const newStatus = topTierReached || targetReached ? 'achieved' : 'open';
+  const wasOpen = group.status === 'open';
+  const statusBecameAchieved = wasOpen && newStatus === 'achieved';
 
   await executeRun(
     DB,
     'UPDATE referral_groups SET current_count = ?, status = ?, discount_percent = ? WHERE id = ?',
     [newCount, newStatus, newDiscount, group.id],
   );
+
+  // 알림 발송 (fire-and-forget) — 실패해도 응답에 영향 없음
+  try {
+    // 티어 마일스톤 달성 알림: 새로 해금된 티어가 있고 최종 목표는 아닐 때
+    const tierNewlyUnlocked =
+      hasTiers &&
+      !statusBecameAchieved &&
+      unlocked &&
+      (!previousUnlocked || unlocked.count > previousUnlocked.count);
+
+    if (statusBecameAchieved || tierNewlyUnlocked) {
+      const product = await queryFirst<{ name: string }>(
+        DB,
+        'SELECT name FROM products WHERE id = ?',
+        [group.product_id],
+      );
+      const productName = product?.name ?? '상품';
+
+      const members = await executeQuery<{ user_id: string }>(
+        DB,
+        'SELECT user_id FROM referral_members WHERE group_id = ?',
+        [group.id],
+      );
+
+      if (statusBecameAchieved) {
+        const title = '🎁 공동구매 목표 달성!';
+        const message = `"${productName}" 공동구매가 목표 인원에 도달했습니다! 지금 바로 결제하세요.`;
+        const link = `/referral/${group.invite_code}`;
+        for (const m of members) {
+          notifyUser(DB, m.user_id, 'group_buy_achieved', title, message, link).catch(() => {});
+        }
+      } else if (tierNewlyUnlocked && unlocked) {
+        const title = `🎯 ${unlocked.count}명 달성!`;
+        const message = `지금 ${unlocked.discount}% 할인이 적용됐어요!`;
+        const link = `/referral/${group.invite_code}`;
+        for (const m of members) {
+          notifyUser(DB, m.user_id, 'group_buy_tier_unlocked', title, message, link).catch(() => {});
+        }
+      }
+    }
+  } catch {
+    // 알림 실패는 조용히 무시
+  }
 
   return c.json({
     success: true,
