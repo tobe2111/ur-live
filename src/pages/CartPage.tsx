@@ -397,7 +397,7 @@ function CartPageContent() {
   }
 
   return (
-    <div className="flex flex-col bg-gray-50">
+    <div className="flex flex-col bg-[#f4f4f4] min-h-screen">
       {/* 🎯 분리된 Header 컴포넌트 */}
       <CartHeader
         itemCount={cartItems.length}
@@ -429,20 +429,24 @@ function CartPageContent() {
           </div>
 
           {/* 🎯 분리된 Summary 컴포넌트 */}
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 space-y-4">
+          {/* 결제 요약 */}
+          <div className="bg-white border-t border-gray-100 px-4 py-4">
             <CartSummary
               totalItems={totalItems}
               subtotal={subtotal}
               shippingFee={shippingFee}
               total={total}
             />
-            
+          </div>
+
+          {/* 하단 고정 주문 버튼 */}
+          <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3">
             <button
               onClick={handleCheckout}
               disabled={selectedIds.size === 0 || updating}
-              className="w-full py-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3.5 bg-blue-600 text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all"
             >
-              {selectedIds.size === 0 ? '상품을 선택해주세요' : `${totalItems}개 상품 주문하기`}
+              {selectedIds.size === 0 ? '상품을 선택해주세요' : `${total.toLocaleString()}원 주문하기`}
             </button>
           </div>
         </>
