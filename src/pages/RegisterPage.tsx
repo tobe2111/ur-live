@@ -20,7 +20,7 @@ export default function RegisterPage() {
   const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
   const signupWithEmailAction = krSignupWithEmail
 
-  const isLoggedIn = !!user
+  const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
