@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
 import axios from 'axios'
 import KakaoShareButton from '@/components/KakaoShareButton'
-import KakaoFriendMessage from '@/components/KakaoFriendMessage'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
@@ -1337,15 +1336,6 @@ function ReelCard({
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEE500] backdrop-blur-sm transition-all active:scale-90"
               />
 
-              <KakaoFriendMessage
-                title={`${stream?.title || '유어딜 라이브'} 같이 보자!`}
-                description={safeProduct?.name || '지금 라이브 방송 중!'}
-                link={`/live/${stream?.id}`}
-                buttonText="시청하기"
-                compact
-                triggerClassName="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm transition-all active:scale-90"
-                triggerLabel="👥"
-              />
 
               {/* 후원하기 버튼 (딜 포인트) */}
               {!isSeller && stream?.id && (

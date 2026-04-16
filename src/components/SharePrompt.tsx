@@ -6,7 +6,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import KakaoShareButton from './KakaoShareButton'
-import KakaoFriendMessage from './KakaoFriendMessage'
 
 interface SharePromptProps {
   title: string
@@ -46,16 +45,6 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
           buttonText={shareButtonText}
         />
 
-        <div className="mt-2">
-          <KakaoFriendMessage
-            title={shareTitle}
-            description={shareDescription}
-            link={shareLink}
-            buttonText={shareButtonText}
-            triggerLabel="친구에게 메시지 보내기"
-            triggerClassName="w-full flex items-center justify-center gap-2 py-2.5 bg-[#3C1E1E] text-[#FEE500] rounded-xl text-sm font-bold active:scale-[0.97]"
-          />
-        </div>
 
         <button onClick={onClose} className="w-full mt-2 py-2.5 text-sm text-gray-500 font-medium">
           다음에 하기

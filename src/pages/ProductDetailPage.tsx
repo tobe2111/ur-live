@@ -15,7 +15,6 @@ import { MobileHeader } from '@/components/product/mobile-header'
 import { ProductHeader } from '@/components/product/product-header'
 import SEO, { productJsonLd } from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
-import KakaoFriendMessage from '@/components/KakaoFriendMessage'
 import SharePrompt from '@/components/SharePrompt'
 import { ProductInfoGrid } from '@/components/product/ProductInfoGrid'
 import { ProductNoticeSection } from '@/components/product/ProductNoticeSection'
@@ -611,16 +610,6 @@ export default function ProductDetailPage() {
             link={`/products/${product.id}`}
             buttonText="상품 보러가기"
           />
-          <div className="mt-2">
-            <KakaoFriendMessage
-              title={`${product.name} 추천!`}
-              description={`${displayPrice.toLocaleString()}원에 좋은 상품 발견했어요`}
-              imageUrl={product.image_url || undefined}
-              link={`/products/${product.id}`}
-              buttonText="상품 보러가기"
-              triggerLabel="친구에게 추천하기"
-            />
-          </div>
         </div>
 
         {/* 교환 및 반품 */}
