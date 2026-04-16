@@ -458,6 +458,7 @@ html.native-app nav {
 
 /* ============================================
    Mobile App Layout - PC에서 모바일 앱처럼
+   컨테이너 자체가 뷰포트 역할 (fixed 요소가 이 안에 고정됨)
    ============================================ */
 .mobile-app-container {
   max-width: 430px;
@@ -467,12 +468,16 @@ html.native-app nav {
   background-color: #020202;
   position: relative;
   overflow-x: hidden;
-
-  /* 핵심: fixed 자식 요소가 이 컨테이너 안에 갇힘 */
-  contain: layout style;
 }
 
-/* PC에서: 그림자 + 배경 */
+/* 모바일: 전체 너비, 평소처럼 */
+@media (max-width: 430px) {
+  .mobile-app-container {
+    max-width: 100%;
+  }
+}
+
+/* PC: 프레임 + 배경 */
 @media (min-width: 431px) {
   body {
     background-color: #111;
@@ -481,14 +486,6 @@ html.native-app nav {
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
     border-left: 1px solid #2a2a2a;
     border-right: 1px solid #2a2a2a;
-  }
-}
-
-/* 모바일에서: 전체 너비 */
-@media (max-width: 430px) {
-  .mobile-app-container {
-    max-width: 100%;
-    contain: none;
   }
 }
 
