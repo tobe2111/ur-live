@@ -131,7 +131,7 @@ export default function AccountSettingsPage() {
         </Section>
 
         <Section title="결제 및 배송">
-          <Link to="/my/addresses" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+          <Link to="/mypage/addresses" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
             <div className="flex items-center space-x-3"><MapPin className="w-5 h-5 text-gray-600" /><span className="text-gray-900">배송지 관리</span></div>
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </Link>
@@ -155,6 +155,9 @@ export default function AccountSettingsPage() {
           </Link>
           <Link to="/terms" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
             <span className="text-gray-900">이용약관</span><ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
+          <Link to="/refund" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+            <span className="text-gray-900">배송 및 환불 정책</span><ChevronRight className="w-5 h-5 text-gray-400" />
           </Link>
         </Section>
 
