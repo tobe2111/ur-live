@@ -294,9 +294,16 @@ function AppContent() {
       return
     }
 
-    // ✅ 세션 쿠키 유저도 Firebase 불필요 → 즉시 ready
-    if (!hasIncomingToken && localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')) {
+    // ✅ 한국(KR): Firebase 초기화 완전 건너뜀
+    // 카카오 로그인은 세션 쿠키 기반이므로 Firebase 불필요
+    // ProtectedRoute는 localStorage (user_type + user_id)만 체크
+    if (isKorea()) {
       useAuthKR.getState().setAuthReady(true)
+      return
+    }
+
+    // ✅ 글로벌: 세션 쿠키 유저는 Firebase 불필요
+    if (!hasIncomingToken && localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')) {
       useAuthWorld.getState().setAuthReady(true)
       return
     }
@@ -307,23 +314,16 @@ function AppContent() {
       return
     }
 
-    // ✅ User (Firebase) 초기화
+    // ✅ 글로벌 전용: Firebase 초기화 (Google/Apple 로그인 등)
     const initAuth = async () => {
       try {
-        const isKR = isKorea()
-        if (isKR) {
-          useAuthKR.getState().initializeAuth()
-        } else {
-          useAuthWorld.getState().initializeAuth()
-        }
+        useAuthWorld.getState().initializeAuth()
       } catch (err) {
         console.error('[App] ❌ 인증 초기화 실패:', err)
-        // 실패해도 authReady를 true로 설정해 무한 스피너 방지
-        useAuthKR.getState().setAuthReady(true)
         useAuthWorld.getState().setAuthReady(true)
       }
     }
-    
+
     initAuth()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
