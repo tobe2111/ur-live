@@ -83,6 +83,7 @@ export default function CheckoutPage() {
   const [dealBalance, setDealBalance] = useState(0)
   const [dealToUse, setDealToUse] = useState(0)
   const [payingWithDeals, setPayingWithDeals] = useState(false)
+  const [groupBuyDiscounts, setGroupBuyDiscounts] = useState<Record<number, { percent: number; tier: any }>>({})
 
   useEffect(() => {
     api.get('/api/points/balance')
@@ -138,7 +139,7 @@ export default function CheckoutPage() {
 
   // 소계 및 배송비 계산
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
-  
+
   const totalShippingFee = Object.values(sellerGroups).reduce((total, group) => {
     if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
       return total
@@ -146,10 +147,45 @@ export default function CheckoutPage() {
     return total + group.shipping_fee
   }, 0)
 
-  const totalBeforeDeal = subtotal + totalShippingFee - couponDiscount
+  // 공동구매 할인 계산
+  const totalGroupBuyDiscount = cartItems.reduce((sum, item) => {
+    const pid = Number(item.product_id)
+    const discount = groupBuyDiscounts[pid]
+    if (!discount || !discount.percent) return sum
+    const itemPrice = item.price_snapshot ?? item.price ?? 0
+    return sum + Math.floor(itemPrice * item.quantity * discount.percent / 100)
+  }, 0)
+
+  const totalBeforeDeal = subtotal + totalShippingFee - couponDiscount - totalGroupBuyDiscount
   const totalAmount = totalBeforeDeal - dealToUse
 
   useEffect(() => { document.title = '주문/결제 - 유어딜' }, [])
+
+  // 공동구매 할인 조회 (cartItems 로드 후)
+  useEffect(() => {
+    if (cartItems.length === 0) return
+    const uniqueProductIds = Array.from(new Set(cartItems.map(item => Number(item.product_id)).filter(Boolean)))
+    if (uniqueProductIds.length === 0) return
+
+    Promise.all(
+      uniqueProductIds.map(pid =>
+        api.get(`/api/referral/discount/${pid}`)
+          .then(r => {
+            if (r.data?.success && r.data.data?.discount_percent > 0) {
+              return { pid, percent: r.data.data.discount_percent, tier: r.data.data.unlocked_tier }
+            }
+            return null
+          })
+          .catch(() => null)
+      )
+    ).then(results => {
+      const map: Record<number, { percent: number; tier: any }> = {}
+      results.forEach(r => {
+        if (r) map[r.pid] = { percent: r.percent, tier: r.tier }
+      })
+      setGroupBuyDiscounts(map)
+    })
+  }, [cartItems])
 
   // ✅ BUG #18 FIX: There were TWO separate useEffect blocks both cleaning URL
   // params on `searchParams` change.  The first (lines 143-162) fired replaceState
@@ -813,6 +849,12 @@ export default function CheckoutPage() {
                       <span className="text-[14px] font-medium text-red-500">
                         -{couponDiscount.toLocaleString()}원
                       </span>
+                    </div>
+                  )}
+                  {totalGroupBuyDiscount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[14px] text-gray-400">🎁 공동구매 할인</span>
+                      <span className="text-[14px] font-medium text-gray-900">-{totalGroupBuyDiscount.toLocaleString()}원</span>
                     </div>
                   )}
                   {dealToUse > 0 && (
