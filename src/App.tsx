@@ -162,13 +162,10 @@ const FAQPage = lazy(() => import('./pages/FAQPage'))
 // 🔧 Debug 페이지
 const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
 
-// 로딩 컴포넌트
+// 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
 const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-50">
-    <div className="text-center">
-      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      <p className="mt-4 text-gray-600 font-medium">로딩 중...</p>
-    </div>
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
   </div>
 )
 
