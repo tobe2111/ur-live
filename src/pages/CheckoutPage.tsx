@@ -480,7 +480,7 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="mx-auto max-w-lg lg:max-w-5xl px-5 py-4">
+        <div className="mx-auto max-w-md lg:max-w-5xl px-5 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/cart')}
@@ -493,7 +493,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-lg pb-52 lg:max-w-5xl lg:pb-6">
+      <main className="mx-auto max-w-md pb-52 lg:max-w-5xl lg:pb-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:gap-5 lg:px-5 lg:py-6">
 
           {/* Left column */}
