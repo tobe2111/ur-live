@@ -94,7 +94,7 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
   const seller = await DB.prepare('SELECT name FROM sellers WHERE id = ?')
     .bind(stream.seller_id).first<{ name: string }>();
 
-  // 카카오 access_token 조회
+  // 카카오 access_token 조회 → 프론트에서 직접 API 호출하도록 전달
   const row = await DB.prepare('SELECT kakao_access_token FROM users WHERE id = ?')
     .bind(user.id).first<{ kakao_access_token: string | null }>();
 
@@ -102,42 +102,32 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
     return c.json({ success: false, error: '카카오 연동이 필요합니다' }, 400);
   }
 
-  try {
-    const startAt = new Date(stream.scheduled_at || stream.created_at || Date.now());
-    if (startAt.getTime() < Date.now()) startAt.setTime(Date.now() + 3600000);
-    startAt.setMinutes(Math.ceil(startAt.getMinutes() / 5) * 5, 0, 0);
-    const endAt = new Date(startAt.getTime() + 60 * 60 * 1000); // +1시간
+  // 방송 시간 계산
+  const startAt = new Date(stream.scheduled_at || stream.created_at || Date.now());
+  if (startAt.getTime() < Date.now()) startAt.setTime(Date.now() + 3600000);
+  startAt.setMinutes(Math.ceil(startAt.getMinutes() / 5) * 5, 0, 0);
+  const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
 
-    const event = {
-      title: `🔴 ${seller?.name || '셀러'} 라이브: ${stream.title}`,
-      time: {
-        start_at: startAt.toISOString().replace('.000Z', 'Z'),
-        end_at: endAt.toISOString().replace('.000Z', 'Z'),
-        time_zone: 'Asia/Seoul',
+  // 토큰 + 이벤트 정보를 프론트에 전달 (프론트에서 직접 카카오 API 호출)
+  return c.json({
+    success: true,
+    mode: 'client_call',
+    data: {
+      access_token: row.kakao_access_token,
+      event: {
+        title: `🔴 ${seller?.name || '셀러'} 라이브: ${stream.title}`,
+        time: {
+          start_at: startAt.toISOString().replace('.000Z', 'Z'),
+          end_at: endAt.toISOString().replace('.000Z', 'Z'),
+          time_zone: 'Asia/Seoul',
+        },
+        description: `유어딜 라이브 방송\n${stream.title}\n\nhttps://live.ur-team.com/live/${stream.id}`,
+        reminders: [5],
+        color: 'RED',
       },
-      description: `유어딜 라이브 방송\n${stream.title}\n\n시청하기: https://live.ur-team.com/live/${stream.id}`,
-      reminders: [5], // 5분 전 알림
-      color: 'RED',
-    };
-
-    const res = await fetch('https://kapi.kakao.com/v2/api/calendar/create/event', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${row.kakao_access_token}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `event=${encodeURIComponent(JSON.stringify(event))}`,
-    });
-
-    const data: any = await res.json();
-    if (data.event_id) {
-      return c.json({ success: true, data: { event_id: data.event_id }, message: '카카오 캘린더에 등록되었습니다' });
-    }
-    return c.json({ success: false, error: data.msg || '캘린더 등록 실패' }, 400);
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message || '카카오 캘린더 API 오류' }, 500);
-  }
-});
+    },
+  })
+})
 
 // ── GET /calendar/ics/:streamId — Google/Apple Calendar용 .ics 파일 (글로벌) ──
 kakaoSocialRoutes.get('/calendar/ics/:streamId', async (c) => {

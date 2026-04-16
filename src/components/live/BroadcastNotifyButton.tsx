@@ -66,12 +66,24 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     setCalLoading(true)
     try {
       if (kr) {
+        // 서버에서 토큰 + 이벤트 정보를 받아서 브라우저에서 직접 카카오 API 호출
         const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
-        if (res.data.success) {
-          toast.success('카카오 캘린더에 등록되었습니다!')
-          setShowCalendarConsent(false)
+        if (res.data.success && res.data.mode === 'client_call') {
+          const { access_token, event } = res.data.data
+          // 브라우저에서 직접 카카오 캘린더 API 호출 (Worker IP 문제 우회)
+          const kakaoRes = await fetch('https://kapi.kakao.com/v2/api/calendar/create/event', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `event=${encodeURIComponent(JSON.stringify(event))}`,
+          })
+          const kakaoData = await kakaoRes.json() as any
+          if (kakaoData.event_id) {
+            toast.success('카카오 캘린더에 등록되었습니다!')
+            setShowCalendarConsent(false)
+          } else {
+            setShowCalendarConsent(true)
+          }
         } else {
-          // 카카오 토큰 없거나 동의 안 됨
           setShowCalendarConsent(true)
         }
       } else {
