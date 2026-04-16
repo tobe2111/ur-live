@@ -494,8 +494,8 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-md pb-52 lg:max-w-5xl lg:pb-6">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:gap-5 lg:px-5 lg:py-6">
+      <main className="mx-auto max-w-md pb-52">
+        <div className="flex flex-col">
 
           {/* Left column */}
           <div className="flex flex-1 flex-col lg:rounded-3xl">{/* overflow-hidden 제거 */}
@@ -815,7 +815,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* Right column - Order summary (desktop only) */}
-          <div className="hidden lg:block lg:w-[360px]">
+          <div className="hidden">
             <div className="sticky top-20 rounded-3xl">{/* overflow-hidden 제거 */}
               <section className="bg-white px-5 py-6">
                 <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>

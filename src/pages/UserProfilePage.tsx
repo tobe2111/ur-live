@@ -80,15 +80,9 @@ export default function UserProfilePage() {
   useEffect(() => { document.title = '마이페이지 - 유어딜' }, [])
 
   if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-[#020202] flex flex-col items-center justify-center px-5">
-        <p className="text-gray-400 mb-4">로그인이 필요합니다</p>
-        <button onClick={() => navigate('/login')}
-          className="px-6 py-3 bg-[#FEE500] text-[#3C1E1E] rounded-xl font-bold text-sm">
-          카카오 로그인
-        </button>
-      </div>
-    )
+    localStorage.setItem('loginReturnUrl', '/user/profile')
+    navigate('/login', { replace: true })
+    return null
   }
 
   const handleLogout = () => {
@@ -107,7 +101,7 @@ export default function UserProfilePage() {
           <button onClick={() => navigate(-1)} className="text-white">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <h1 className="text-white font-bold">마이페이지</h1>
+          <h1 className="text-white font-bold text-[15px]">마이페이지</h1>
           <div className="w-6" />
         </div>
       </div>
