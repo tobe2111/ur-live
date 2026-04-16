@@ -442,7 +442,7 @@ function CartPageContent() {
             <button
               onClick={handleCheckout}
               disabled={selectedIds.size === 0 || updating}
-              className="w-full py-3.5 bg-blue-600 text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all"
+              className="w-full py-3.5 bg-gray-900 text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all"
             >
               {selectedIds.size === 0 ? '상품을 선택해주세요' : `${total.toLocaleString()}원 주문하기`}
             </button>

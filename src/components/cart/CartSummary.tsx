@@ -13,39 +13,37 @@ export const CartSummary = React.memo(function CartSummary({
   shippingFee,
   total
 }: CartSummaryProps) {
-  const formatNumber = (n: number): string => {
-    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-  }
+  const fmt = (n: number) => n.toLocaleString()
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
-      <h3 className="font-bold text-lg text-gray-900 mb-4">결제 금액</h3>
-      
-      <div className="flex justify-between text-sm">
-        <span className="text-gray-600">상품금액 ({totalItems}개)</span>
-        <span className="font-medium">{formatNumber(subtotal)}원</span>
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="space-y-2">
+        <div className="flex justify-between text-[13px]">
+          <span className="text-gray-500">상품금액 ({totalItems}개)</span>
+          <span className="text-gray-700 font-medium">{fmt(subtotal)}원</span>
+        </div>
+        <div className="flex justify-between text-[13px]">
+          <span className="text-gray-500">배송비</span>
+          <span className="text-gray-700 font-medium">
+            {shippingFee === 0 ? '무료' : `${fmt(shippingFee)}원`}
+          </span>
+        </div>
       </div>
-      
-      <div className="flex justify-between text-sm">
-        <span className="text-gray-600">배송비</span>
-        <span className="font-medium">
-          {shippingFee === 0 ? '무료' : `${formatNumber(shippingFee)}원`}
-        </span>
-      </div>
-      
+
       {subtotal < 100000 && subtotal > 0 && (
-        <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-          💡 {formatNumber(100000 - subtotal)}원 더 담으면 무료배송!
+        <p className="text-[12px] text-gray-500 bg-gray-50 p-2 rounded-lg mt-3">
+          {fmt(100000 - subtotal)}원 더 담으면 무료배송
         </p>
       )}
-      
+
       <div className="h-px bg-gray-200 my-3" />
-      
-      <div className="flex justify-between items-center">
-        <span className="font-bold text-gray-900">총 결제금액</span>
-        <span className="text-2xl font-bold text-blue-600">
-          {formatNumber(total)}원
-        </span>
+
+      <div className="flex justify-between items-baseline">
+        <span className="text-[14px] font-bold text-gray-900">총 결제금액</span>
+        <div className="flex items-baseline gap-0.5">
+          <span className="text-[20px] font-bold text-gray-900">{fmt(total)}</span>
+          <span className="text-[14px] font-medium text-gray-900">원</span>
+        </div>
       </div>
     </div>
   )

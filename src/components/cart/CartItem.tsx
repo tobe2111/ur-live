@@ -33,9 +33,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
   onOpenOption,
   isUpdating = false
 }: CartItemProps) {
-  const formatNumber = (n: number): string => {
-    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-  }
+  const fmt = (n: number) => n.toLocaleString()
 
   const stock = item.product_stock
   const isOutOfStock = stock !== undefined && stock === 0
@@ -43,85 +41,74 @@ export const CartItemComponent = React.memo(function CartItemComponent({
   const isLowStock = stock !== undefined && stock > 0 && stock <= 5
 
   return (
-    <div className="flex items-start gap-3 p-4 bg-white rounded-lg border border-gray-200">
-      {/* 체크박스 */}
+    <div className={`flex gap-3 p-4 bg-white rounded-xl border ${isOutOfStock ? 'border-gray-100 opacity-60' : 'border-gray-200'}`}>
       <Checkbox
         checked={isSelected}
         onCheckedChange={() => onToggleSelect(item.id)}
-        className="mt-1"
+        className="mt-0.5 shrink-0"
         disabled={isOutOfStock}
       />
 
-      {/* 상품 정보 */}
+      {item.image_url && (
+        <img src={item.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-gray-100 shrink-0" />
+      )}
+
       <div className="flex-1 min-w-0">
-        <h3 className={`font-medium mb-1 truncate text-[18px] ${isOutOfStock ? 'text-gray-400' : 'text-gray-900'}`}>
-          {item.product_name}
-        </h3>
-
-        {/* 옵션 */}
-        {item.option_value && (
-          <div className="flex items-center gap-2 mb-2">
-            <p className="text-sm text-gray-600">{item.option_value}</p>
-            <button
-              onClick={() => onOpenOption(item)}
-              className="text-gray-400 hover:text-gray-600"
-              disabled={isUpdating}
-            >
-              <Settings size={14} />
-            </button>
-          </div>
-        )}
-
-        {/* 수량 조절 */}
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className={`text-[14px] font-medium leading-tight line-clamp-2 ${isOutOfStock ? 'text-gray-400' : 'text-gray-900'}`}>
+            {item.product_name}
+          </h3>
           <button
-            onClick={() => onUpdateQuantity(item.id, -1)}
-            disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
-            className="w-7 h-7 flex items-center justify-center border border-gray-300 rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => onRemove(item.id)}
+            disabled={isUpdating}
+            className="text-gray-300 hover:text-gray-500 shrink-0"
           >
-            <Minus size={14} />
-          </button>
-          <span className="w-10 text-center text-sm font-medium text-gray-900">
-            {item.quantity}
-          </span>
-          <button
-            onClick={() => onUpdateQuantity(item.id, 1)}
-            disabled={isUpdating || isOutOfStock || isAtStockLimit}
-            className="w-7 h-7 flex items-center justify-center border border-gray-300 rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus size={14} />
+            <X size={16} />
           </button>
         </div>
 
-        {/* 재고 상태 메시지 */}
-        {isOutOfStock && (
-          <p className="text-[12px] text-red-500 mb-1">품절된 상품입니다</p>
-        )}
-        {!isOutOfStock && isAtStockLimit && (
-          <p className="text-[12px] text-orange-500 mb-1">최대 구매 가능 수량입니다 (재고 {stock}개)</p>
-        )}
-        {!isOutOfStock && !isAtStockLimit && isLowStock && (
-          <p className="text-[12px] text-orange-400 mb-1">재고 {stock}개 남음</p>
+        {item.option_value && (
+          <button
+            onClick={() => onOpenOption(item)}
+            disabled={isUpdating}
+            className="mt-1 text-[12px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded"
+          >
+            {item.option_value} ›
+          </button>
         )}
 
-        {/* 가격 */}
-        <p className={`text-lg font-bold ${isOutOfStock ? 'text-gray-400' : 'text-gray-900'}`}>
-          {formatNumber(item.price_snapshot * item.quantity)}원
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => onUpdateQuantity(item.id, -1)}
+              disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
+              className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded text-gray-600 disabled:opacity-30"
+            >
+              <Minus size={12} />
+            </button>
+            <span className="w-7 text-center text-[13px] font-semibold text-gray-900">
+              {item.quantity}
+            </span>
+            <button
+              onClick={() => onUpdateQuantity(item.id, 1)}
+              disabled={isUpdating || isOutOfStock || isAtStockLimit}
+              className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded text-gray-600 disabled:opacity-30"
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+          <p className={`text-[15px] font-bold ${isOutOfStock ? 'text-gray-400' : 'text-gray-900'}`}>
+            {fmt(item.price_snapshot * item.quantity)}원
+          </p>
+        </div>
+
+        {isOutOfStock && <p className="text-[11px] text-red-500 mt-1">품절</p>}
+        {!isOutOfStock && isAtStockLimit && <p className="text-[11px] text-orange-500 mt-1">최대 수량 (재고 {stock}개)</p>}
+        {!isOutOfStock && !isAtStockLimit && isLowStock && <p className="text-[11px] text-orange-400 mt-1">재고 {stock}개 남음</p>}
       </div>
-      
-      {/* 삭제 버튼 */}
-      <button
-        onClick={() => onRemove(item.id)}
-        disabled={isUpdating}
-        className="text-gray-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <X size={20} />
-      </button>
     </div>
   )
 }, (prevProps, nextProps) => {
-  // 커스텀 비교 함수로 불필요한 리렌더 방지
   return (
     prevProps.item.id === nextProps.item.id &&
     prevProps.item.quantity === nextProps.item.quantity &&
