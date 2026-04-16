@@ -27,14 +27,18 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      // ✅ CRITICAL: User 세션 + Firebase 완전 정리 (토큰 캐시 포함)
+      // ✅ User 세션 정리 (동기) + Firebase signOut (비동기, 타임아웃 3초)
       clearAuthData('user')
       clearFirebaseTokenCache()
+      // Firebase signOut은 비동기로 실행 (hang 방지 - 3초 타임아웃)
       try {
-        const { signOut } = await import('@/lib/firebase-auth')
-        await signOut()
+        const signOutPromise = import('@/lib/firebase-auth').then(m => m.signOut())
+        await Promise.race([
+          signOutPromise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ])
       } catch (_) {}
-      
+
       // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/admin/login', {
         email,
