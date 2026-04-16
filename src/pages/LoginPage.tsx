@@ -301,7 +301,7 @@ export default function LoginPage() {
   }
 
   // 🔥 Early return: Prevent rendering while redirecting
-  if (isAuthReady && isLoggedIn && hasRedirected.current) {
+  if (isLoggedIn && hasRedirected.current) {
     return (
       <div className="min-h-screen bg-[#020202] flex items-center justify-center">
         <div className="text-gray-400">Redirecting...</div>
