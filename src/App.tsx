@@ -56,6 +56,7 @@ const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
+const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
 
 // Seller 페이지들
 const SellerPage = lazy(() => import('./pages/SellerPage'))
@@ -786,6 +787,7 @@ function AppContent() {
             <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
             <Route path="/refund-policy" element={<Navigate to="/refund" replace />} />
             <Route path="/shipping-policy" element={<Navigate to="/refund" replace />} />
+            <Route path="/coupon/:code" element={<CouponClaimPage />} />
 
             {/* 커뮤니티 공구 상세 (ReferralPage 재사용) */}
             <Route path="/community-group-buy/:code" element={<ReferralPage />} />
