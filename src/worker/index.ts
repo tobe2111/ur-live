@@ -410,6 +410,9 @@ adminApp.route('/tools', adminToolsRoutes);
 adminApp.route('/', adminManagementRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/cafe24', cafe24Routes);
+// Restaurant settlement (admin)
+import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
+adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 app.route('/api/scraper', scraperProxy);  // /api/admin 밖 — adminApp 미들웨어 간섭 없음
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)
@@ -431,6 +434,9 @@ app.route('/api/seller/alimtalk', alimtalkRoutes);
 // ── 후원(도네이션) ──
 app.route('/api/donations', donationsRoutes);
 app.route('/api/seller', sellerDonationsRoutes);
+
+// ── 식당 정산 (셀러용) ──
+app.route('/api/seller/restaurant-settlements', sellerSettlementRoutes);
 
 // ── 딜 포인트 ──
 import { pointsRoutes } from '../features/points/api/points.routes';

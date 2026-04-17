@@ -6,9 +6,10 @@ import {
   Clock,
   Users,
   CheckCircle2,
-  Flame,
   Sparkles,
   Plus,
+  MapPin,
+  HandCoins,
 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -33,6 +34,23 @@ interface GroupBuyProduct {
   created_at?: string
 }
 
+interface CommunityGroupBuy {
+  id: number
+  creator_name: string
+  restaurant_name: string
+  restaurant_address?: string
+  proposed_price: number
+  deposit_per_person: number
+  target_count: number
+  current_count: number
+  total_deposited: number
+  status: string
+  invite_code: string
+  expires_at?: string
+  created_at?: string
+}
+
+type MainTab = 'seller' | 'community'
 type CategoryFilter = 'all' | 'meal_voucher' | 'general'
 type SortOption = 'popular' | 'deadline' | 'newest'
 
@@ -40,6 +58,15 @@ const SORT_LABELS: Record<SortOption, string> = {
   popular: '인기순',
   deadline: '마감임박순',
   newest: '신규순',
+}
+
+const STATUS_BADGES: Record<string, { label: string; className: string }> = {
+  proposed: { label: '모집중', className: 'bg-pink-500 text-white' },
+  negotiating: { label: '협상중', className: 'bg-amber-500 text-white' },
+  confirmed: { label: '확정', className: 'bg-emerald-500 text-white' },
+  achieved: { label: '달성', className: 'bg-blue-500 text-white' },
+  failed: { label: '마감', className: 'bg-gray-400 text-white' },
+  refunded: { label: '환불됨', className: 'bg-gray-400 text-white' },
 }
 
 // 남은 시간 포맷
@@ -63,12 +90,16 @@ function calcDiscountRate(p: GroupBuyProduct): number {
 
 export default function GroupBuyListPage() {
   const navigate = useNavigate()
+  const [mainTab, setMainTab] = useState<MainTab>('seller')
   const [items, setItems] = useState<GroupBuyProduct[]>([])
+  const [communityItems, setCommunityItems] = useState<CommunityGroupBuy[]>([])
   const [loading, setLoading] = useState(true)
+  const [communityLoading, setCommunityLoading] = useState(true)
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [sortBy, setSortBy] = useState<SortOption>('popular')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
 
+  // 셀러 공구 로딩
   useEffect(() => {
     setLoading(true)
     api
@@ -79,6 +110,18 @@ export default function GroupBuyListPage() {
       })
       .catch(() => toast.error('네트워크 오류가 발생했습니다'))
       .finally(() => setLoading(false))
+  }, [])
+
+  // 유저 공구 로딩
+  useEffect(() => {
+    setCommunityLoading(true)
+    api
+      .get('/api/community-group-buy/list?status=proposed&sort=popular&limit=20')
+      .then((r) => {
+        if (r.data?.success) setCommunityItems(r.data.data || [])
+      })
+      .catch(() => { /* silent fail for community list */ })
+      .finally(() => setCommunityLoading(false))
   }, [])
 
   useEffect(() => {
@@ -127,6 +170,36 @@ export default function GroupBuyListPage() {
     return result
   }, [items, category, sortBy])
 
+  const filteredCommunity = useMemo(() => {
+    let result = [...communityItems]
+
+    switch (sortBy) {
+      case 'popular':
+        result.sort((a, b) => b.current_count - a.current_count)
+        break
+      case 'deadline': {
+        const getTs = (p: CommunityGroupBuy) =>
+          p.expires_at
+            ? new Date(p.expires_at).getTime()
+            : Number.MAX_SAFE_INTEGER
+        result.sort((a, b) => getTs(a) - getTs(b))
+        break
+      }
+      case 'newest':
+        result.sort((a, b) => {
+          const aTs = a.created_at ? new Date(a.created_at).getTime() : 0
+          const bTs = b.created_at ? new Date(b.created_at).getTime() : 0
+          return bTs - aTs
+        })
+        break
+    }
+
+    return result
+  }, [communityItems, sortBy])
+
+  const currentCount = mainTab === 'seller' ? filtered.length : filteredCommunity.length
+  const isCurrentLoading = mainTab === 'seller' ? loading : communityLoading
+
   return (
     <div className="bg-white min-h-screen">
       <SEO
@@ -146,7 +219,7 @@ export default function GroupBuyListPage() {
             <ChevronLeft className="w-6 h-6 text-gray-900" />
           </button>
           <h1 className="text-[16px] font-extrabold text-gray-900 flex-1 text-center pr-8">
-            🎁 공동구매
+            공동구매
           </h1>
         </div>
       </header>
@@ -164,33 +237,61 @@ export default function GroupBuyListPage() {
         </div>
       </div>
 
-      {/* 카테고리 탭 */}
+      {/* 메인 탭: 셀러 공구 | 유저 공구 */}
       <div className="px-4 mt-4">
-        <div className="flex gap-2">
-          {([
-            { key: 'all', label: '전체' },
-            { key: 'meal_voucher', label: '맛집 식사권' },
-            { key: 'general', label: '일반 상품' },
-          ] as const).map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setCategory(t.key)}
-              className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
-                category === t.key
-                  ? 'bg-gray-900 text-white border-gray-900'
-                  : 'bg-white text-gray-700 border-gray-200'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setMainTab('seller')}
+            className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
+              mainTab === 'seller'
+                ? 'text-gray-900 border-gray-900'
+                : 'text-gray-400 border-transparent'
+            }`}
+          >
+            셀러 공구
+          </button>
+          <button
+            onClick={() => setMainTab('community')}
+            className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
+              mainTab === 'community'
+                ? 'text-gray-900 border-gray-900'
+                : 'text-gray-400 border-transparent'
+            }`}
+          >
+            유저 공구
+          </button>
         </div>
       </div>
 
+      {/* 카테고리 탭 (셀러 공구 전용) */}
+      {mainTab === 'seller' && (
+        <div className="px-4 mt-4">
+          <div className="flex gap-2">
+            {([
+              { key: 'all', label: '전체' },
+              { key: 'meal_voucher', label: '맛집 식사권' },
+              { key: 'general', label: '일반 상품' },
+            ] as const).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setCategory(t.key)}
+                className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
+                  category === t.key
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'bg-white text-gray-700 border-gray-200'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 정렬 pills */}
-      <div className="px-4 mt-3 flex items-center justify-between">
+      <div className={`px-4 ${mainTab === 'seller' ? 'mt-3' : 'mt-4'} flex items-center justify-between`}>
         <span className="text-[12px] text-gray-500">
-          총 <span className="font-semibold text-gray-900">{filtered.length}</span>
+          총 <span className="font-semibold text-gray-900">{currentCount}</span>
           개
         </span>
         <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -237,150 +338,287 @@ export default function GroupBuyListPage() {
         <span className="text-[13px] font-bold">맛집 공구 시작</span>
       </button>
 
-      {/* 상품 그리드 (2열) */}
+      {/* 콘텐츠 영역 */}
       <div className="px-4 py-4 pb-20">
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {[...Array(4)].map((_, i) => (
-              <div key={i}>
-                <div className="aspect-square bg-gray-100 animate-pulse rounded-xl" />
-                <div className="mt-2 h-3 bg-gray-100 rounded animate-pulse" />
-                <div className="mt-1 h-3 bg-gray-100 rounded animate-pulse w-2/3" />
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-[36px] mb-3">🛒</p>
-            <p className="text-gray-900 font-semibold text-[14px]">
-              진행 중인 공동구매가 없습니다
-            </p>
-            <p className="text-gray-500 text-[12px] mt-1">
-              곧 새로운 상품이 올라와요!
-            </p>
-            <button
-              onClick={() => navigate('/browse')}
-              className="mt-5 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
-            >
-              쇼핑하러 가기
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-x-3 gap-y-5">
-            {filtered.map((p) => {
-              const discount = calcDiscountRate(p)
-              const target = p.group_buy_target || 0
-              const current = p.group_buy_current || 0
-              const achieved = target > 0 && current >= target
-              const progress =
-                target > 0 ? Math.min(100, (current / target) * 100) : 0
-              const timeLeft = formatTimeLeft(p.group_buy_deadline)
-
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => navigate(`/products/${p.id}`)}
-                  className="text-left active:scale-[0.98] transition-transform"
-                >
-                  {/* 이미지 */}
-                  <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-xl">
-                    {p.image_url ? (
-                      <img
-                        src={p.image_url}
-                        alt={p.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
-                    )}
-
-                    {/* 할인 뱃지 */}
-                    {discount > 0 && (
-                      <span className="absolute top-2 left-2 bg-pink-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
-                        최대 -{discount}%
-                      </span>
-                    )}
-
-                    {/* 달성 뱃지 */}
-                    {achieved && (
-                      <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
-                        <CheckCircle2 className="w-3 h-3" />
-                        달성
-                      </span>
-                    )}
+        {mainTab === 'seller' ? (
+          /* ── 셀러 공구 상품 그리드 (2열) ── */
+          <>
+            {loading ? (
+              <div className="grid grid-cols-2 gap-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i}>
+                    <div className="aspect-square bg-gray-100 animate-pulse rounded-xl" />
+                    <div className="mt-2 h-3 bg-gray-100 rounded animate-pulse" />
+                    <div className="mt-1 h-3 bg-gray-100 rounded animate-pulse w-2/3" />
                   </div>
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-[36px] mb-3">🛒</p>
+                <p className="text-gray-900 font-semibold text-[14px]">
+                  진행 중인 공동구매가 없습니다
+                </p>
+                <p className="text-gray-500 text-[12px] mt-1">
+                  곧 새로운 상품이 올라와요!
+                </p>
+                <button
+                  onClick={() => navigate('/browse')}
+                  className="mt-5 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
+                >
+                  쇼핑하러 가기
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5">
+                {filtered.map((p) => {
+                  const discount = calcDiscountRate(p)
+                  const target = p.group_buy_target || 0
+                  const current = p.group_buy_current || 0
+                  const achieved = target > 0 && current >= target
+                  const progress =
+                    target > 0 ? Math.min(100, (current / target) * 100) : 0
+                  const timeLeft = formatTimeLeft(p.group_buy_deadline)
 
-                  {/* 정보 */}
-                  <div className="mt-2">
-                    <p className="text-[12px] text-gray-900 leading-tight line-clamp-2">
-                      {p.name}
-                    </p>
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => navigate(`/products/${p.id}`)}
+                      className="text-left active:scale-[0.98] transition-transform"
+                    >
+                      {/* 이미지 */}
+                      <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-xl">
+                        {p.image_url ? (
+                          <img
+                            src={p.image_url}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
+                        )}
 
-                    {p.restaurant_name && (
-                      <p className="text-[10px] text-gray-500 mt-0.5 truncate">
-                        {p.restaurant_name}
-                      </p>
-                    )}
+                        {/* 할인 뱃지 */}
+                        {discount > 0 && (
+                          <span className="absolute top-2 left-2 bg-pink-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
+                            최대 -{discount}%
+                          </span>
+                        )}
 
-                    {/* 가격 */}
-                    <div className="flex items-baseline gap-1 mt-1">
-                      {p.original_price && p.original_price > p.price && (
-                        <span className="text-[10px] text-gray-400 line-through">
-                          {formatPrice(p.original_price)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      {discount > 0 && (
-                        <span className="text-[13px] font-extrabold text-pink-500">
-                          {discount}%
-                        </span>
-                      )}
-                      <span className="text-[13px] font-extrabold text-gray-900">
-                        {formatPrice(p.price)}
-                      </span>
-                    </div>
+                        {/* 달성 뱃지 */}
+                        {achieved && (
+                          <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
+                            <CheckCircle2 className="w-3 h-3" />
+                            달성
+                          </span>
+                        )}
+                      </div>
 
-                    {/* 진행률 */}
-                    {target > 0 && (
+                      {/* 정보 */}
                       <div className="mt-2">
+                        <p className="text-[12px] text-gray-900 leading-tight line-clamp-2">
+                          {p.name}
+                        </p>
+
+                        {p.restaurant_name && (
+                          <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                            {p.restaurant_name}
+                          </p>
+                        )}
+
+                        {/* 가격 */}
+                        <div className="flex items-baseline gap-1 mt-1">
+                          {p.original_price && p.original_price > p.price && (
+                            <span className="text-[10px] text-gray-400 line-through">
+                              {formatPrice(p.original_price)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          {discount > 0 && (
+                            <span className="text-[13px] font-extrabold text-pink-500">
+                              {discount}%
+                            </span>
+                          )}
+                          <span className="text-[13px] font-extrabold text-gray-900">
+                            {formatPrice(p.price)}
+                          </span>
+                        </div>
+
+                        {/* 진행률 */}
+                        {target > 0 && (
+                          <div className="mt-2">
+                            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  achieved ? 'bg-emerald-500' : 'bg-pink-500'
+                                }`}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-gray-600 mt-1 flex items-center gap-1">
+                              <Users className="w-3 h-3 text-gray-400" />
+                              {achieved ? (
+                                <span className="text-emerald-600 font-semibold">
+                                  목표 달성!
+                                </span>
+                              ) : (
+                                <>
+                                  현재 <span className="font-semibold">{current}</span>
+                                  명 참여중
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* 시간 */}
+                        {timeLeft && (
+                          <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-gray-400" />
+                            {timeLeft}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          /* ── 유저 공구 (Community Group Buys) ── */
+          <>
+            {communityLoading ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="border border-gray-100 rounded-2xl p-4 animate-pulse">
+                    <div className="h-4 bg-gray-100 rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2 mt-2" />
+                    <div className="h-8 bg-gray-100 rounded mt-3" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredCommunity.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-[36px] mb-3">🙋</p>
+                <p className="text-gray-900 font-semibold text-[14px]">
+                  진행 중인 유저 공구가 없습니다
+                </p>
+                <p className="text-gray-500 text-[12px] mt-1">
+                  원하는 맛집 공구를 직접 시작해보세요!
+                </p>
+                <button
+                  onClick={() => navigate('/community-group-buy/new')}
+                  className="mt-5 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
+                >
+                  공구 시작하기
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredCommunity.map((g) => {
+                  const progress =
+                    g.target_count > 0
+                      ? Math.min(100, (g.current_count / g.target_count) * 100)
+                      : 0
+                  const achieved = g.current_count >= g.target_count
+                  const badge = STATUS_BADGES[g.status] || STATUS_BADGES.proposed
+                  const timeLeft = formatTimeLeft(g.expires_at)
+
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => navigate(`/community-group-buy/${g.invite_code}`)}
+                      className="w-full text-left border border-gray-100 rounded-2xl p-4 active:scale-[0.98] transition-transform bg-white hover:border-gray-200"
+                    >
+                      {/* 상단: 아이콘 + 식당명 + 상태 배지 */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-pink-50 flex items-center justify-center flex-shrink-0">
+                            <span className="text-[18px]">🙋</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[14px] font-bold text-gray-900 truncate">
+                              {g.restaurant_name}
+                            </p>
+                            {g.restaurant_address && (
+                              <p className="text-[11px] text-gray-500 truncate flex items-center gap-0.5 mt-0.5">
+                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                {g.restaurant_address}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap flex-shrink-0 ${badge.className}`}
+                        >
+                          {badge.label}
+                        </span>
+                      </div>
+
+                      {/* 가격 + 보증금 정보 */}
+                      <div className="flex items-center gap-3 mt-3">
+                        <div className="flex items-center gap-1">
+                          <HandCoins className="w-3.5 h-3.5 text-pink-500" />
+                          <span className="text-[12px] text-gray-600">제안가</span>
+                          <span className="text-[13px] font-extrabold text-gray-900">
+                            {formatPrice(g.proposed_price)}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-gray-400">|</div>
+                        <div className="text-[12px] text-gray-500">
+                          보증금 <span className="font-semibold text-gray-700">{formatPrice(g.deposit_per_person)}</span>
+                        </div>
+                      </div>
+
+                      {/* 진행률 바 */}
+                      <div className="mt-3">
                         <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${
+                            className={`h-full rounded-full transition-all ${
                               achieved ? 'bg-emerald-500' : 'bg-pink-500'
                             }`}
                             style={{ width: `${progress}%` }}
                           />
                         </div>
-                        <p className="text-[10px] text-gray-600 mt-1 flex items-center gap-1">
-                          <Users className="w-3 h-3 text-gray-400" />
-                          {achieved ? (
-                            <span className="text-emerald-600 font-semibold">
-                              목표 달성!
-                            </span>
-                          ) : (
-                            <>
-                              현재 <span className="font-semibold">{current}</span>
-                              명 참여중
-                            </>
+                        <div className="flex items-center justify-between mt-1.5">
+                          <p className="text-[11px] text-gray-600 flex items-center gap-1">
+                            <Users className="w-3 h-3 text-gray-400" />
+                            {achieved ? (
+                              <span className="text-emerald-600 font-semibold">
+                                목표 달성!
+                              </span>
+                            ) : (
+                              <>
+                                <span className="font-semibold text-pink-500">
+                                  {g.current_count}
+                                </span>
+                                <span className="text-gray-400">/</span>
+                                <span>{g.target_count}명</span>
+                              </>
+                            )}
+                          </p>
+                          {timeLeft && (
+                            <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                              <Clock className="w-3 h-3" />
+                              {timeLeft}
+                            </p>
                           )}
-                        </p>
+                        </div>
                       </div>
-                    )}
 
-                    {/* 시간 */}
-                    {timeLeft && (
-                      <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-gray-400" />
-                        {timeLeft}
-                      </p>
-                    )}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+                      {/* 참여하기 CTA */}
+                      <div className="mt-3 bg-gray-900 text-white text-center py-2 rounded-xl text-[13px] font-bold">
+                        참여하기
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

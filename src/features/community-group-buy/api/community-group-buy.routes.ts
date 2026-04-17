@@ -247,6 +247,46 @@ communityGroupBuyRoutes.post('/join/:code', requireAuth(), async (c) => {
     [newCount, newTotalDeposited, newStatus, group.id],
   );
 
+  // 50명 도달 시 모든 에이전시에 알림 전송
+  if (newCount === 50) {
+    try {
+      // agency_notifications 테이블 보장
+      try {
+        await DB.prepare(`
+          CREATE TABLE IF NOT EXISTS agency_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agency_id INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT,
+            link TEXT,
+            is_read INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+      } catch { /* already exists */ }
+
+      const agencies = await executeQuery<{ id: number }>(
+        DB,
+        "SELECT id FROM agencies WHERE status = 'active'",
+        [],
+      );
+
+      for (const agency of agencies) {
+        await executeRun(
+          DB,
+          `INSERT INTO agency_notifications (agency_id, type, title, message, created_at)
+           VALUES (?, 'demand_alert', ?, ?, datetime('now'))`,
+          [
+            agency.id,
+            '\uD83D\uDD25 인기 맛집 공구 알림',
+            `"${group.restaurant_name}" 공구에 50명 이상 모였습니다! 식당 컨택을 검토해주세요.`,
+          ],
+        );
+      }
+    } catch { /* notification failure should not break the join */ }
+  }
+
   // 멤버 목록 조회
   const members = await executeQuery<any>(
     DB,
