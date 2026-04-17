@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
+import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { MenuList } from '@/components/my-page/menu-list'
@@ -73,6 +74,7 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#020202]">
+      <SEO title="마이페이지 - 유어딜" description="내 정보와 활동을 관리하세요" url="/user/profile" />
       {/* 헤더 */}
       <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
         <div className="flex items-center justify-between px-5 py-3">

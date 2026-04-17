@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import { ArrowLeft, Bell, Check } from 'lucide-react'
 import api from '@/lib/api'
 
@@ -27,6 +28,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO title="알림 - 유어딜" description="새로운 알림을 확인하세요" url="/notifications" />
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">

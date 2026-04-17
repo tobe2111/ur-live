@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import { ArrowLeft, Users, Clock, Gift, CheckCircle, ShoppingBag } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -177,6 +178,7 @@ export default function ReferralPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO title="공동구매 - 유어딜" description="친구와 함께 공동구매로 더 싸게 구매하세요" url="/referral" />
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between px-4 py-3">

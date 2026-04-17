@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import SEO from '@/components/SEO';
 import {
   AlertTriangle,
   Trash2,
@@ -131,6 +132,7 @@ export default function AccountDeleteWarningPage() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md bg-white">
+      <SEO title="회원 탈퇴 - 유어딜" description="회원 탈퇴 전 안내사항을 확인하세요" url="/account/delete-warning" />
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="w-full px-4 sm:px-6">

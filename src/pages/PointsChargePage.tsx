@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { ArrowLeft, Zap, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
@@ -122,6 +123,7 @@ export default function PointsChargePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO title="딜 충전 - 유어딜" description="딜 포인트를 충전하세요" url="/points/charge" />
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="mx-auto max-w-lg px-5 py-4 flex items-center gap-3">

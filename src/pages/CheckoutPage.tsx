@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
@@ -511,6 +512,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
+      <SEO title="주문/결제 - 유어딜" description="주문 정보를 확인하고 안전하게 결제하세요" url="/checkout" />
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="mx-auto max-w-md px-4 py-3">

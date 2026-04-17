@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import axios from 'axios'
 import { toast } from '@/hooks/useToast'
 import { isLoggedInSync, getUserIdSync } from '@/utils/auth'
@@ -133,6 +134,7 @@ const WishlistPage: React.FC = () => {
 
   return (
     <div className="mx-auto min-h-screen max-w-md bg-gray-50 py-8">
+      <SEO title="위시리스트 - 유어딜" description="관심 상품을 모아보세요" url="/wishlist" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* 헤더 */}
         <div className="mb-8">

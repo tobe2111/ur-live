@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import OptionSelectModal from '@/components/OptionSelectModal'
 import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
 import { CartHeader } from '@/components/cart/CartHeader'
@@ -78,6 +79,7 @@ export default function CartPage() {
   if (!loggedIn) {
     return (
       <div className="flex flex-col bg-gray-50">
+        <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" />
         <div className="flex items-center justify-between border-b bg-white px-4 py-4">
           <button onClick={() => navigate(-1)} className="text-gray-400">
             <X className="h-6 w-6" />
@@ -396,6 +398,7 @@ function CartPageContent() {
 
   return (
     <div className="flex flex-col bg-[#f4f4f4] min-h-screen">
+      <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" />
       {/* 🎯 분리된 Header 컴포넌트 */}
       <CartHeader
         itemCount={cartItems.length}

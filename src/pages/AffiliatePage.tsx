@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import { ArrowLeft, Copy, TrendingUp, Users, Gift, Loader2, Share2, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -23,6 +24,7 @@ export default function AffiliatePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO title="제휴 마케팅 - 유어딜" description="유어딜 제휴 마케팅으로 수익을 만들어보세요" url="/user/affiliate" />
       {/* 헤더 */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="flex items-center gap-3 px-4 py-3">

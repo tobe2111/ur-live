@@ -68,3 +68,21 @@
 - 후원/상품 결제: 딜 즉시 차감
 - 셀러 정산: 15% 플랫폼 수수료 적용
 - 최소 후원: 500딜
+
+## 새 페이지 생성 체크리스트 (필수)
+
+새 페이지를 만들 때 **반드시** 아래 항목을 확인합니다:
+
+1. **SEO 메타 태그**: `<SEO title="제목 - 유어딜" description="설명" url="/경로" />` 필수 (관리자/콜백 페이지 제외)
+2. **테마 적용**: 위 테마 규칙에 따라 올바른 색상 사용
+3. **text-gray-900**: 화이트 테마 input/select/textarea에 반드시 포함
+4. **App.tsx 라우트 등록**: lazy import + Route 추가
+5. **console.log 금지**: 디버그 로그는 `import.meta.env.DEV` 게이트 필수
+6. **검증**: 배포 전 `bash scripts/quality-check.sh` 실행
+
+## 한국 인증 (KR Auth)
+
+- 한국(live.ur-team.com): 카카오 세션 쿠키 **전용**. Firebase 호출 0.
+- ProtectedRoute: `localStorage(user_type + user_id)` 동기 체크만
+- 글로벌: Firebase Auth (Google/Apple 로그인) 유지
+- `isKorea()` 분기로 Firebase 코드 건너뜀

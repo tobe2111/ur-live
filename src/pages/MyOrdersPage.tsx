@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Badge } from '@/components/ui/badge'
@@ -199,6 +200,7 @@ export default function MyOrdersPage() {
 
   return (
     <div className="bg-[#fbfbfd]">
+      <SEO title="주문내역 - 유어딜" description="주문 내역과 배송 현황을 확인하세요" url="/my-orders" />
       {/* Header */}
       <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
         <div className="w-full px-4 sm:px-6">

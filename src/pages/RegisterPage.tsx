@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
@@ -98,6 +99,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-5 py-12">
+      <SEO title="회원가입 - 유어딜" description="유어딜에 가입하고 라이브 쇼핑을 시작하세요" url="/register" />
       <div className="w-full max-w-[360px]">
 
         {/* Logo */}

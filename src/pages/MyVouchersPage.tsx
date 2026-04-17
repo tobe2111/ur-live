@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle } from 'lucide-react'
 import api from '@/lib/api'
 
@@ -37,6 +38,7 @@ export default function MyVouchersPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO title="내 식사권 - 유어딜" description="구매한 식사권을 확인하고 사용하세요" url="/my-vouchers" />
       {/* 헤더 */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center px-4 py-3">
