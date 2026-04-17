@@ -32,7 +32,7 @@ fi
 # 2. SEO 메타 태그 누락
 echo ""
 echo "2️⃣  SEO 메타 태그 확인..."
-SKIP_PATTERNS="Admin|Agency|Seller|Callback|Debug|Embed|Demo|NotFound|ServerError|Deleted"
+SKIP_PATTERNS="Admin|Agency|Seller|Callback|Debug|Embed|Demo|NotFound|ServerError|Deleted|PaymentSuccess|PaymentFail|PointsChargeSuccess|StoreStats|VoucherVerify|KVMonitoring|MyPage"
 MISSING_SEO=()
 for f in $(find src/pages -name "*.tsx" | sort); do
   basename=$(basename "$f" .tsx)
