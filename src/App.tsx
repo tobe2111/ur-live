@@ -51,7 +51,6 @@ const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const SellerGroupBuyPage = lazy(() => import('./pages/SellerGroupBuyPage'))
 const SellerMealVoucherNewPage = lazy(() => import('./pages/SellerMealVoucherNewPage'))
-const SellerGroupBuyNewPage = lazy(() => import('./pages/SellerGroupBuyNewPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
@@ -478,12 +477,7 @@ function AppContent() {
                 <ErrorBoundary><SellerMealVoucherNewPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
-            <Route path="/seller/group-buy/new" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerGroupBuyNewPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/live-broadcast" element={
+<Route path="/seller/live-broadcast" element={
               <ProtectedRoute requireSeller>
                 <SellerLiveBroadcastPage />
               </ProtectedRoute>

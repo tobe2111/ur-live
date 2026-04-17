@@ -543,7 +543,7 @@ export default function SellerPage() {
                   )}
 
                   {/* 공동구매 만들기 (항상 표시) */}
-                  <Link to="/seller/group-buy/new"
+                  <Link to="/seller/meal-voucher/new"
                     className={`flex items-center justify-between p-3.5 rounded-xl transition-colors ${
                       hasMealVouchers || sellerType === 'store_owner'
                         ? 'bg-white border border-gray-200 hover:bg-gray-50'
