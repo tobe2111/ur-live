@@ -52,7 +52,7 @@ interface LiveStream {
 }
 
 type WizardStep = 'info' | 'setup' | 'live'
-type StreamMethod = 'youtube' | 'obs' | 'prism'
+type StreamMethod = 'youtube' | 'obs' | 'prism' | 'quick'
 
 // ── 스텝 인디케이터 ────────────────────────────────────────────────
 function StepIndicator({ step }: { step: WizardStep }) {
@@ -390,7 +390,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
   isScheduled, setIsScheduled, scheduledDate, setScheduledDate, scheduledTime, setScheduledTime,
   sellableProducts, selectedProducts, toggleProduct, method, setMethod, creating, onCreate, navigate
 }: StepInfoProps) {
-  const privacyOptions = [
+  const privacyOptions: { key: 'public' | 'unlisted' | 'private'; icon: typeof Globe; label: string; desc: string }[] = [
     { key: 'public', icon: Globe, label: '공개', desc: '모든 사람' },
     { key: 'unlisted', icon: EyeOff, label: '미등록', desc: '링크 공유' },
     { key: 'private', icon: Lock, label: '비공개', desc: '나만 보기' },

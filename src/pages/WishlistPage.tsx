@@ -56,7 +56,7 @@ const WishlistPage: React.FC = () => {
       } else {
         throw new Error(response.data.error)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Wishlist] Load error:', err)
       setError(err.response?.data?.error || '위시리스트를 불러오는데 실패했습니다.')
     } finally {
@@ -89,7 +89,7 @@ const WishlistPage: React.FC = () => {
       if (response.data.success) {
         toast.success('장바구니에 추가되었습니다.')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Wishlist] Add to cart error:', error)
       toast.error(error.response?.data?.error || '장바구니 추가에 실패했습니다.')
     }

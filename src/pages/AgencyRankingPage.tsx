@@ -40,7 +40,7 @@ export default function AgencyRankingPage() {
           <div className="text-center py-12 text-gray-500">소속 셀러가 없습니다</div>
         ) : (
           <div className="space-y-3">
-            {sellers.map((s: any, i: number) => (
+            {sellers.map((s: { id: number; name: string; business_name?: string; total_revenue?: number; total_orders?: number; live_count?: number; avg_rating?: number }, i: number) => (
               <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0">
                   {i < 3 ? badges[i] : <span className="text-sm font-bold text-gray-400">{i + 1}</span>}

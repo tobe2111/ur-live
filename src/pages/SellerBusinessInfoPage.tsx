@@ -101,8 +101,9 @@ export default function SellerBusinessInfoPage() {
           email: response.data.data.email || ''
         })
       }
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string }; status?: number } }
+      if (error_.response?.status === 404) {
         // Business info not yet registered
       } else {
         console.error('Failed to load business info:', error)
@@ -135,7 +136,7 @@ export default function SellerBusinessInfoPage() {
           loadBusinessInfo()
         }, 1500)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save business info:', error)
       setError(error.response?.data?.error || t('seller.businessInfoSaveFailed'))
     } finally {
@@ -206,7 +207,7 @@ export default function SellerBusinessInfoPage() {
     }
 
     new window.daum.Postcode({
-      oncomplete: function(data: any) {
+      oncomplete: function(data: { zonecode: string; address: string; roadAddress?: string; jibunAddress?: string }) {
         setFormData({
           ...formData,
           postal_code: data.zonecode,

@@ -90,7 +90,7 @@ export default function AccountDeleteWarningPage() {
 
       // 탈퇴 완료 페이지로 이동
       navigate('/account/deleted', { replace: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Account Delete] 탈퇴 실패:', error);
 
       // Axios 에러 처리

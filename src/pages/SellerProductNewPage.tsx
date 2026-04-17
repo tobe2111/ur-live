@@ -102,7 +102,7 @@ export default function SellerProductNewPage() {
         return
       }
 
-      const extra = formData as Record<string, string>
+      const extra = formData as unknown as Record<string, string>
       const payload: Record<string, unknown> = {
         name: formData.name,
         description: formData.description,

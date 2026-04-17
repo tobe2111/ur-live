@@ -90,7 +90,7 @@ export default function AdminCafe24Page() {
       const { data } = res.data
       toast.success(`동기화 완료: 생성 ${data.created}개, 업데이트 ${data.updated}개${data.errors.length > 0 ? `, 오류 ${data.errors.length}개` : ''}`)
       await loadStatus()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Cafe24] Sync failed:', err)
       toast.error(`동기화 실패: ${err.response?.data?.error || '알 수 없는 오류'}`)
     } finally {

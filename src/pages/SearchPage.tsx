@@ -74,7 +74,7 @@ export default function SearchPage() {
   const getSortedAndFilteredProducts = () => {
     if (!searchResult?.products) return []
     
-    let filtered = (searchResult.products as any[]).filter(product => {
+    let filtered = (searchResult.products as Array<{ price: number; discount_rate?: number }>).filter(product => {
       const price = getDiscountedPrice(product.price, product.discount_rate || 0)
       return price >= priceRange.min && price <= priceRange.max
     })

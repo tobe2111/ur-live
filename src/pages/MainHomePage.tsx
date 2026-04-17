@@ -38,6 +38,7 @@ interface Product {
   sold_count?: number
   avg_rating?: number
   review_count?: number
+  restaurant_address?: string
 }
 
 // ── Category (퀵메뉴 통합) ──
@@ -318,7 +319,7 @@ function GroupBuySection() {
 
   // 지역 필터링 (restaurant_address에서 첫 단어 매칭)
   const filtered = region === 'all' ? items : items.filter(item =>
-    (item as any).restaurant_address?.includes(region)
+    item.restaurant_address?.includes(region)
   )
 
   return (
@@ -437,7 +438,7 @@ function ProductCard({ product }: { product: Product }) {
         </div>
         <div className="flex items-center gap-0.5 mt-0.5">
           <span className="text-yellow-400 text-[9px]">★</span>
-          <span className="text-[9px] text-gray-500">{((product as any).avg_rating || 4.8).toFixed(1)} ({(product as any).review_count || product.sold_count || 0})</span>
+          <span className="text-[9px] text-gray-500">{(product.avg_rating || 4.8).toFixed(1)} ({product.review_count || product.sold_count || 0})</span>
         </div>
       </div>
     </div>
@@ -803,7 +804,7 @@ function InvitePrompt() {
 
 function RecentlyViewed() {
   const navigate = useNavigate()
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<Array<{ id: number; name: string; price?: number; image?: string }>>([])
 
   useEffect(() => {
     try {
@@ -818,7 +819,7 @@ function RecentlyViewed() {
     <div className="px-4 py-6">
       <h2 className="text-lg font-bold text-white mb-3">최근 본 상품</h2>
       <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-        {items.map((p: any) => (
+        {items.map((p) => (
           <div key={p.id} onClick={() => navigate(`/products/${p.id}`)}
             className="shrink-0 w-28 cursor-pointer">
             <div className="aspect-square bg-[#1A1A1A] rounded-xl overflow-hidden">

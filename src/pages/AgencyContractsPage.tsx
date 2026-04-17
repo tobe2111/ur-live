@@ -56,7 +56,7 @@ export default function AgencyContractsPage() {
             <select value={form.seller_id} onChange={e => setForm(f => ({ ...f, seller_id: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
               <option value="">셀러 선택</option>
-              {sellers.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
+              {sellers.map((s: { id: number; name: string; email: string }) => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
             </select>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -81,7 +81,7 @@ export default function AgencyContractsPage() {
           <p className="text-center py-12 text-gray-500">등록된 계약이 없습니다</p>
         ) : (
           <div className="space-y-3">
-            {contracts.map((c: any) => {
+            {contracts.map((c: { id: number; seller_name: string; start_date: string; end_date: string; terms?: string; status?: string }) => {
               const daysLeft = Math.ceil((new Date(c.end_date).getTime() - Date.now()) / 86400000)
               const isExpiring = daysLeft <= 30 && daysLeft > 0
               const isExpired = daysLeft <= 0

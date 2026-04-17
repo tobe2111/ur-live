@@ -72,8 +72,9 @@ export default function AdminReviewModerationPage() {
         setReviews(res.data.data || [])
         setTotalPages(res.data.pagination?.totalPages || 1)
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '리뷰 로드 실패')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '리뷰 로드 실패')
     } finally { setLoading(false) }
   }
 
@@ -84,8 +85,9 @@ export default function AdminReviewModerationPage() {
       toast.success(newVal ? '리뷰가 표시됩니다' : '리뷰가 숨겨졌습니다')
       setReviews(prev => prev.map(r => r.id === review.id ? { ...r, is_visible: newVal } : r))
       loadStats()
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '변경 실패')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '변경 실패')
     }
   }
 
@@ -96,8 +98,9 @@ export default function AdminReviewModerationPage() {
       toast.success('리뷰가 삭제되었습니다')
       loadReviews()
       loadStats()
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '삭제 실패')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '삭제 실패')
     }
   }
 

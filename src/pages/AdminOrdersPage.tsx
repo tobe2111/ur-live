@@ -131,7 +131,7 @@ export default function AdminOrdersPage() {
       if (!token) { navigate('/admin/login'); return }
       const response = await api.get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) setOrders(response.data.data)
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError('주문 목록을 불러올 수 없습니다.')
       if (err.response?.status === 401) navigate('/admin/login')
     } finally { setLoading(false) }
@@ -142,7 +142,7 @@ export default function AdminOrdersPage() {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       const response = await api.get('/api/admin/sellers', { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) {
-        setSellers(response.data.data.map((s: any) => ({ id: s.id, name: s.name || s.username || s.business_name || `Seller ${s.id}` })))
+        setSellers(response.data.data.map((s: { id: number; name?: string; username?: string; business_name?: string }) => ({ id: s.id, name: s.name || s.username || s.business_name || `Seller ${s.id}` })))
       }
     } catch { /* silent */ }
   }
@@ -190,8 +190,9 @@ export default function AdminOrdersPage() {
       if (selectedOrder?.order_number === orderNumber) {
         setSelectedOrder({ ...selectedOrder, status: newStatus })
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '상태 변경에 실패했습니다.')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '상태 변경에 실패했습니다.')
     }
   }
 
@@ -205,8 +206,9 @@ export default function AdminOrdersPage() {
       if (selectedOrder) {
         setSelectedOrder({ ...selectedOrder, tracking_number: trackingNumber, courier: shippingCompany, status: 'SHIPPING' })
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '운송장 등록에 실패했습니다.')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '운송장 등록에 실패했습니다.')
     }
   }
 

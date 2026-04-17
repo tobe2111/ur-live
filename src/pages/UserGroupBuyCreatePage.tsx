@@ -42,7 +42,7 @@ export default function UserGroupBuyCreatePage() {
   const [submitting, setSubmitting] = useState(false)
 
   const kakaoJsKey =
-    (import.meta as any).env?.VITE_KAKAO_JAVASCRIPT_KEY || ''
+    import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || ''
 
   // Fetch balance when restaurant + settings ready
   useEffect(() => {
@@ -92,8 +92,9 @@ export default function UserGroupBuyCreatePage() {
       } else {
         toast.error('공구 생성에 실패했습니다')
       }
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || '네트워크 오류가 발생했습니다'
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      const msg = err_.response?.data?.message || '네트워크 오류가 발생했습니다'
       toast.error(msg)
     } finally {
       setSubmitting(false)

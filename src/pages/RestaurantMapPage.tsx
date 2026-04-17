@@ -14,7 +14,8 @@ interface Restaurant {
 }
 
 declare global {
-  interface Window { kakao: any }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Kakao Maps SDK (external, untyped)
+  interface Window { kakao: { maps: Record<string, any> } } // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 const KAKAO_JS_KEY = '975a2e7f97254b08f15dba4d177a2865'

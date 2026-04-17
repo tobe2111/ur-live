@@ -90,7 +90,7 @@ export default function SellerSettlementsPage() {
       if (statsResponse.data.success) {
         setStats(statsResponse.data.data)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load settlements:', error)
       setError(t('seller.settlementLoadFailed'))
       if (error.response?.status === 401) {
@@ -128,8 +128,9 @@ export default function SellerSettlementsPage() {
         toast.success(t('seller.settlementRequested'))
         loadSettlements()
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || t('seller.settlementRequestFailed2'))
+    } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(error_.response?.data?.error || t('seller.settlementRequestFailed2'))
     }
   }
 

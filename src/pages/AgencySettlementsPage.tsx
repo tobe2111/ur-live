@@ -54,7 +54,7 @@ export default function AgencySettlementsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {data.map((r: any) => (
+                {data.map((r: { id: number; order_number: string; seller_name: string; total_amount?: number; settlement_status: string; created_at: string }) => (
                   <tr key={r.id}>
                     <td className="px-4 py-3 font-mono text-xs">{r.order_number}</td>
                     <td className="px-4 py-3">{r.seller_name}</td>

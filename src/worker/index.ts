@@ -65,6 +65,20 @@ import { rateLimit } from './middleware/rate-limit';
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
 
+// ============================================================
+// Cache Control Middleware — adds CDN + browser cache headers
+// for read-heavy GET endpoints to reduce origin load
+// ============================================================
+function cacheControl(maxAge: number) {
+  return async (c: Context, next: Next) => {
+    await next();
+    if (c.res.status === 200 && c.req.method === 'GET') {
+      c.header('Cache-Control', `public, max-age=${maxAge}, s-maxage=${maxAge}`);
+      c.header('CDN-Cache-Control', `max-age=${maxAge}`);
+    }
+  };
+}
+
 const app = new Hono<{ Bindings: Env }>();
 
 // ============================================================
@@ -306,6 +320,45 @@ app.get('/api/debug/kv-usage', requireAdmin(), async (c) => {
 });
 
 // ============================================================
+// Database Index Optimization (admin only)
+// Creates indexes on frequently queried columns for faster lookups
+// ============================================================
+app.get('/api/admin/optimize-db', requireAdmin(), async (c) => {
+  const env = c.env as Env;
+  const indexes = [
+    'CREATE INDEX IF NOT EXISTS idx_orders_seller_id ON orders(seller_id)',
+    'CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)',
+    'CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_products_seller_id ON products(seller_id)',
+    'CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)',
+    'CREATE INDEX IF NOT EXISTS idx_vouchers_status ON vouchers(status)',
+    'CREATE INDEX IF NOT EXISTS idx_vouchers_user_id ON vouchers(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_referral_tree_parent ON referral_tree(parent_id)',
+    'CREATE INDEX IF NOT EXISTS idx_referral_commissions_beneficiary ON referral_commissions(beneficiary_id)',
+  ];
+
+  let created = 0;
+  const errors: string[] = [];
+
+  for (const sql of indexes) {
+    try {
+      await env.DB.prepare(sql).run();
+      created++;
+    } catch (e) {
+      errors.push(`${sql}: ${(e as Error).message}`);
+    }
+  }
+
+  return c.json({
+    success: true,
+    indexes_created: created,
+    total: indexes.length,
+    ...(errors.length > 0 ? { errors } : {}),
+  });
+});
+
+// ============================================================
 // Auth Routes
 // ============================================================
 
@@ -335,6 +388,14 @@ app.route('/api/auth/google', googleRoutes);
 // 프론트엔드에서 /api/users/* 로 직접 호출
 // ============================================================
 app.route('/api/users', usersRouter);
+
+// ============================================================
+// Cache Control — read-heavy public endpoints
+// ============================================================
+app.use('/api/products', cacheControl(60));     // 1 min
+app.use('/api/streams', cacheControl(30));      // 30 sec
+app.use('/api/group-buy/products', cacheControl(60)); // 1 min
+app.use('/api/banners', cacheControl(300));     // 5 min
 
 // ============================================================
 // Streams Routes  ← /api/streams (공개 조회용)

@@ -87,8 +87,9 @@ export default function SellerRegisterPage() {
       } else {
         setError(response.data.error || t('seller.registerFailedGeneric'))
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.message || t('seller.registerFailedGeneric'))
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      setError(err_.response?.data?.error || err_.response?.data?.message || t('seller.registerFailedGeneric'))
     } finally {
       setLoading(false)
     }

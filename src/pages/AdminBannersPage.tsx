@@ -49,8 +49,9 @@ export default function AdminBannersPage() {
       setLoading(true)
       const response = await api.get('/api/admin/banners')
       if (response.data.success) setBanners(response.data.data || [])
-    } catch (err: any) {
-      showAlert(err.response?.data?.error || '배너 로딩 실패', 'error')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      showAlert(err_.response?.data?.error || '배너 로딩 실패', 'error')
     } finally { setLoading(false) }
   }
 
@@ -86,7 +87,7 @@ export default function AdminBannersPage() {
         showAlert('배너가 생성되었습니다.', 'success')
       }
       setShowForm(false); loadBanners()
-    } catch (err: any) { showAlert(err.response?.data?.error || '배너 저장 실패', 'error') }
+    } catch (err: unknown) { showAlert(err.response?.data?.error || '배너 저장 실패', 'error') }
   }
 
   async function handleDelete(id: number) {
@@ -94,14 +95,14 @@ export default function AdminBannersPage() {
     try {
       await api.delete(`/api/admin/banners/${id}`)
       showAlert('배너가 삭제되었습니다.', 'success'); loadBanners()
-    } catch (err: any) { showAlert(err.response?.data?.error || '배너 삭제 실패', 'error') }
+    } catch (err: unknown) { showAlert(err.response?.data?.error || '배너 삭제 실패', 'error') }
   }
 
   async function toggleActive(banner: Banner) {
     try {
       await api.put(`/api/admin/banners/${banner.id}`, { ...banner, is_active: !banner.is_active })
       showAlert(`배너가 ${!banner.is_active ? '활성화' : '비활성화'}되었습니다.`, 'success'); loadBanners()
-    } catch (err: any) { showAlert(err.response?.data?.error || '상태 변경 실패', 'error') }
+    } catch (err: unknown) { showAlert(err.response?.data?.error || '상태 변경 실패', 'error') }
   }
 
   if (loading) {

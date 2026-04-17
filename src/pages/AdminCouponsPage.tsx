@@ -58,7 +58,7 @@ export default function AdminCouponsPage() {
       } else {
         toast.error(res.data.error || '생성 실패')
       }
-    } catch (err: any) { toast.error(err?.response?.data?.error || '쿠폰 생성 실패') }
+    } catch (err: unknown) { toast.error(err?.response?.data?.error || '쿠폰 생성 실패') }
     finally { setSubmitting(false) }
   }
 

@@ -47,7 +47,7 @@ export default function AgencyReturnsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {returns.map((r: any) => {
+                {returns.map((r: { id: number; order_number: string; seller_name: string; reason: string; refund_amount?: number; status: string; created_at: string }) => {
                   const st = statusLabels[r.status] || { label: r.status, color: 'bg-gray-100 text-gray-700' }
                   return (
                     <tr key={r.id}>

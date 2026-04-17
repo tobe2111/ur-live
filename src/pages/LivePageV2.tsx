@@ -600,7 +600,7 @@ function ReelCard({
         const url = `/api/youtube/chat/chat/${stream.id}${ytPageTokenRef.current ? `?pageToken=${ytPageTokenRef.current}` : ''}`
         const res = await axios.get(url)
         if (res.data.success && res.data.data?.messages) {
-          const ytMsgs: ChatMessage[] = res.data.data.messages.map((m: any) => ({
+          const ytMsgs: ChatMessage[] = res.data.data.messages.map((m: { id: string; author: string; message: string; timestamp: string; avatarUrl?: string }) => ({
             id: `yt-${m.id}`,
             userId: 0,
             userName: m.author,
@@ -1074,7 +1074,7 @@ function ReelCard({
             price: currentProduct.price,
             item_total: currentProduct.price,
             seller_id: currentProduct.seller_id ?? null,
-            seller_name: (currentProduct as any).seller_name ?? null,
+            seller_name: (currentProduct as unknown as { seller_name?: string }).seller_name ?? null,
             shipping_fee: 3000,
             free_shipping_threshold: 0,
             option_id: null,

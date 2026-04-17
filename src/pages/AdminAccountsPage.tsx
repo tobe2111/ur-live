@@ -43,8 +43,9 @@ export default function AdminAccountsPage() {
     try {
       const res = await api.get('/api/admin/admins', h)
       if (res.data.success) setAdmins(res.data.data || [])
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '관리자 목록 로드 실패')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || '관리자 목록 로드 실패')
     } finally { setLoading(false) }
   }
 
@@ -59,8 +60,9 @@ export default function AdminAccountsPage() {
         setForm({ email: '', name: '', password: '', role: 'admin' })
         loadAdmins()
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '생성 실패')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || '생성 실패')
     } finally { setSaving(false) }
   }
 
@@ -74,8 +76,9 @@ export default function AdminAccountsPage() {
         setShowEdit(null)
         loadAdmins()
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '수정 실패')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || '수정 실패')
     } finally { setSaving(false) }
   }
 
@@ -87,8 +90,9 @@ export default function AdminAccountsPage() {
         toast.success('삭제되었습니다')
         loadAdmins()
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '삭제 실패')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || '삭제 실패')
     }
   }
 
@@ -102,8 +106,9 @@ export default function AdminAccountsPage() {
         setShowResetPw(null)
         setNewPassword('')
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '비밀번호 변경 실패')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || '비밀번호 변경 실패')
     } finally { setSaving(false) }
   }
 

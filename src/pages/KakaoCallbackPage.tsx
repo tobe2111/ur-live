@@ -82,7 +82,7 @@ export default function KakaoCallbackPage() {
         localStorage.removeItem('loginReturnUrl')
         navigate(returnUrl, { replace: true })
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[KakaoCallback] 실패:', err)
         toast.error(err.response?.data?.error || err.message || '로그인 실패')
         navigate('/login', { replace: true })

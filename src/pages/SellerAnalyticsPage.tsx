@@ -140,8 +140,8 @@ export default function SellerAnalyticsPage() {
                             formatter={((value: number, name: string) => {
                               if (name === 'revenue') return [`${value.toLocaleString()}${t('common.won')}`, t('seller.revenueLabel')]
                               return [`${value}${t('seller.ordersUnit')}`, t('seller.totalOrdersLabel')]
-                            }) as any}
-                            labelFormatter={((label: string) => label) as any}
+                            })}
+                            labelFormatter={(label: string) => label}
                           />
                           <Legend
                             formatter={(value: string) => value === 'revenue' ? t('seller.revenueLabel') : t('seller.totalOrdersLabel')}

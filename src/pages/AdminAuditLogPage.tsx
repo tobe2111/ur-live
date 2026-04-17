@@ -78,8 +78,9 @@ export default function AdminAuditLogPage() {
         setLogs(res.data.data || [])
         setTotalPages(res.data.pagination?.totalPages || 1)
       }
-    } catch (err: any) {
-      if (err.response?.status === 401) {
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number } }
+      if (axiosErr.response?.status === 401) {
         localStorage.removeItem('admin_token')
         navigate('/admin/login')
       } else {
@@ -112,7 +113,7 @@ export default function AdminAuditLogPage() {
     return d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
   }
 
-  function formatJSON(val: any) {
+  function formatJSON(val: Record<string, unknown> | string | null) {
     if (!val) return '-'
     try {
       const parsed = typeof val === 'string' ? JSON.parse(val) : val

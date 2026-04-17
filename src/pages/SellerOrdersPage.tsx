@@ -125,7 +125,7 @@ export default function SellerOrdersPage() {
         // API는 data 또는 orders 키로 응답할 수 있음
         setOrders(response.data.data || response.data.orders || [])
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load orders:', error)
       setError(t('seller.orderListLoadFailed'))
     } finally {
@@ -234,7 +234,7 @@ export default function SellerOrdersPage() {
           setSelectedOrder(null)
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update status:', error)
       setError(error.response?.data?.error || t('seller.statusChangeFailed'))
     } finally {
@@ -262,7 +262,7 @@ export default function SellerOrdersPage() {
           setSelectedOrder(null)
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update tracking:', error)
       setError(error.response?.data?.error || t('seller.trackingRegisterFailed'))
     } finally {

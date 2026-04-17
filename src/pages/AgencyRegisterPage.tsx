@@ -34,8 +34,9 @@ export default function AgencyRegisterPage() {
         phone: form.phone,
       })
       setDone(true)
-    } catch (err: any) {
-      setError(err.response?.data?.error || '가입 중 오류가 발생했습니다.')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      setError(err_.response?.data?.error || '가입 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
     }

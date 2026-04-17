@@ -71,7 +71,7 @@ export default function RegisterPage() {
       await signupWithEmailAction(formData.email, formData.password, formData.name)
       toast.success('회원가입이 완료되었습니다! 로그인해주세요.')
       navigate('/login')
-    } catch (err: any) {
+    } catch (err: unknown) {
       let errorMessage = '회원가입에 실패했습니다.'
       if (err.message.includes('email-already-in-use')) {
         errorMessage = '이미 사용 중인 이메일입니다.'

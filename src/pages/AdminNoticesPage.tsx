@@ -30,8 +30,8 @@ export default function AdminNoticesPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">발송 대상</label>
             <div className="flex gap-2">
-              {[{ v: 'all', l: '전체' }, { v: 'sellers', l: '셀러만' }, { v: 'users', l: '사용자만' }].map(t => (
-                <button key={t.v} onClick={() => setTarget(t.v as any)}
+              {([{ v: 'all' as const, l: '전체' }, { v: 'sellers' as const, l: '셀러만' }, { v: 'users' as const, l: '사용자만' }]).map(t => (
+                <button key={t.v} onClick={() => setTarget(t.v)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium ${target === t.v ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
                   {t.l}
                 </button>

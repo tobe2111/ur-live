@@ -41,7 +41,7 @@ export default function AdminKakaoTestCallbackPage() {
         }).toString(),
       })
 
-      const data: any = await res.json()
+      const data = await res.json() as { access_token?: string; error_description?: string }
 
       if (data.access_token) {
         localStorage.setItem('kakao_test_token', data.access_token)
@@ -49,8 +49,9 @@ export default function AdminKakaoTestCallbackPage() {
       } else {
         setError(`토큰 교환 실패: ${data.error_description || JSON.stringify(data)}`)
       }
-    } catch (err: any) {
-      setError(`오류: ${err.message}`)
+    } catch (err: unknown) {
+      const err_ = err as { message?: string }
+      setError(`오류: ${err_.message}`)
     }
   }
 

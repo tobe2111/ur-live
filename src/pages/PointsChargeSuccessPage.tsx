@@ -36,8 +36,9 @@ export default function PointsChargeSuccessPage() {
         } else {
           setError(res.data.error || '충전 확인에 실패했습니다.')
         }
-      } catch (err: any) {
-        setError(err.response?.data?.error || '충전 처리 중 오류가 발생했습니다.')
+      } catch (err: unknown) {
+        const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+        setError(err_.response?.data?.error || '충전 처리 중 오류가 발생했습니다.')
       } finally {
         setLoading(false)
         isProcessingRef.current = false

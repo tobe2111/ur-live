@@ -159,8 +159,9 @@ export default function AdminProductsPage() {
       }, { headers: { Authorization: `Bearer ${token}` } })
       toast.success(action === 'approve' ? '샘플 신청이 승인되었습니다.' : '샘플 신청이 거부되었습니다.')
       loadSampleRequests()
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '처리에 실패했습니다.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || '처리에 실패했습니다.')
     } finally { setActionLoading(null) }
   }
 
@@ -193,8 +194,9 @@ export default function AdminProductsPage() {
         toast.success('상품이 등록되었습니다.')
       }
       setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]); loadProducts()
-    } catch (err: any) {
-      setError(err.response?.data?.error || '상품 저장에 실패했습니다.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setError(axiosErr.response?.data?.error || '상품 저장에 실패했습니다.')
     }
   }
 
@@ -205,8 +207,9 @@ export default function AdminProductsPage() {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       await api.delete(`/api/admin/products/${productId}`, { headers: { Authorization: `Bearer ${token}` } })
       toast.success('상품이 삭제되었습니다.'); loadProducts()
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '상품 삭제에 실패했습니다.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || '상품 삭제에 실패했습니다.')
     } finally { setDeleting(null) }
   }
 
@@ -215,8 +218,9 @@ export default function AdminProductsPage() {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       await api.patch(`/api/admin/products/${productId}`, { is_active: !current }, { headers: { Authorization: `Bearer ${token}` } })
       toast.success('상품 상태가 변경되었습니다.'); loadProducts()
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '상품 상태 변경에 실패했습니다.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || '상품 상태 변경에 실패했습니다.')
     }
   }
 

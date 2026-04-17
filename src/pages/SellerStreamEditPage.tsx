@@ -65,7 +65,7 @@ export default function SellerStreamEditPage() {
           setError(t('seller.streamNotFound'))
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load stream:', error)
       setError(t('seller.streamLoadFailed'))
     } finally {
@@ -95,7 +95,7 @@ export default function SellerStreamEditPage() {
       } else {
         setError(response.data.error || t('seller.updateFailed'))
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update stream:', error)
       setError(error.response?.data?.error || t('seller.updateFailed'))
     } finally {
@@ -121,7 +121,7 @@ export default function SellerStreamEditPage() {
       } else {
         setError(response.data.error || t('seller.streamDeleteFailed'))
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to delete stream:', error)
       setError(error.response?.data?.error || t('seller.streamDeleteFailed'))
     }

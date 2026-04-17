@@ -132,7 +132,7 @@ export default function AffiliatePage() {
               </div>
             ) : (
               <div className="divide-y divide-gray-50">
-                {data.recent.map((r: any, i: number) => (
+                {data.recent.map((r: { product_name?: string; created_at: string; commission: number; order_amount: number }, i: number) => (
                   <div key={i} className="flex items-center justify-between px-4 py-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-900 truncate">{r.product_name || '상품'}</p>

@@ -46,7 +46,7 @@ export default function YouTubeCallbackPage() {
       } else {
         throw new Error(response.data.error || 'Unknown error')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('OAuth callback error:', error)
       setStatus('error')
       setMessage(error.response?.data?.error || error.message || 'YouTube 연동에 실패했습니다.')

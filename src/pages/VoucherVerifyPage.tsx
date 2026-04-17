@@ -39,8 +39,9 @@ export default function VoucherVerifyPage() {
       const res = await api.post(`/api/vouchers/${code.trim()}/use`, { pin: pin.trim() })
       setResult({ success: res.data.success, message: res.data.message || res.data.error || '' })
       if (res.data.success) setVoucher(null)
-    } catch (err: any) {
-      setResult({ success: false, message: err?.response?.data?.error || '처리 중 오류가 발생했습니다' })
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      setResult({ success: false, message: err_.response?.data?.error || '처리 중 오류가 발생했습니다' })
     } finally {
       setVerifying(false)
     }

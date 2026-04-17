@@ -64,7 +64,7 @@ function NotificationList() {
 }
 
 function StatCard({ label, value, icon: Icon, color, sub }: {
-  label: string; value: string; icon: any; color: string; sub?: string
+  label: string; value: string; icon: React.ComponentType<{ className?: string }>; color: string; sub?: string
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">

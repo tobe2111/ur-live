@@ -103,8 +103,9 @@ export default function SellerDonationsPage() {
       } else {
         toast.error(res.data.error || t('seller.settlementRequestFailed'))
       }
-    } catch (e: any) {
-      toast.error(e.response?.data?.error || t('seller.settlementRequestFailed'))
+    } catch (e: unknown) {
+      const e_ = e as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(e_.response?.data?.error || t('seller.settlementRequestFailed'))
     } finally { setRequesting(false) }
   }
 

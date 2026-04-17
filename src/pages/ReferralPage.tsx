@@ -125,8 +125,9 @@ export default function ReferralPage() {
       } else {
         toast.error(res.data.error || '참여 실패')
       }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '참여 실패')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '참여 실패')
     } finally {
       setJoining(false)
     }

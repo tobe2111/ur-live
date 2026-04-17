@@ -65,7 +65,7 @@ export default function HomePage() {
   const [user, setUser] = useState<{ name: string; email: string } | null>(null)
   const { modal, showAlert, closeModal } = useModal()
 
-  const streams = (liveStreamsData || []).map((s: any) => ({
+  const streams = (liveStreamsData || []).map((s: { id: string | number; title?: string; description?: string; stream_url?: string; thumbnail_url?: string; seller_name?: string; viewer_count?: number; status?: string; scheduled_at?: string }) => ({
     id: parseInt(s.id) || 0,
     title: s.title || '',
     description: s.description || '',

@@ -745,7 +745,7 @@ function AdminActivityFeed() {
       <h3 className="text-sm font-bold text-gray-900 mb-3">최근 활동</h3>
       {orders.length === 0 ? <p className="text-xs text-gray-400">활동이 없습니다</p> : (
         <div className="space-y-2">
-          {orders.slice(0, 8).map((o: any, i: number) => (
+          {orders.slice(0, 8).map((o: { status: string; order_number: string; total_amount: number; created_at?: string }, i: number) => (
             <div key={i} className="flex items-center gap-2 text-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
               <span className="text-gray-700 flex-1 truncate">

@@ -85,8 +85,9 @@ export default function AdminLiveMonitorPage() {
         toast.success('방송이 종료되었습니다')
         loadData()
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '종료 실패')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '종료 실패')
     }
   }
 

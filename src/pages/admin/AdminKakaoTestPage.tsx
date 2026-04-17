@@ -121,10 +121,10 @@ export default function AdminKakaoTestPage() {
         reminders: [30],
         color: 'RED',
       }
-      const data: any = await kakaoApi(
+      const data = await kakaoApi(
         'https://kapi.kakao.com/v2/api/calendar/create/event',
         `event=${encodeURIComponent(JSON.stringify(event))}`
-      )
+      ) as { event_id?: string; msg?: string }
       if (data.event_id) {
         // 생성 후 삭제
         await kakaoApi(`https://kapi.kakao.com/v2/api/calendar/delete/event?event_id=${data.event_id}`)
@@ -133,8 +133,9 @@ export default function AdminKakaoTestPage() {
       } else {
         setResults(prev => [...prev, { step: '카카오 캘린더', success: false, detail: data.msg || JSON.stringify(data) }])
       }
-    } catch (err: any) {
-      setResults(prev => [...prev, { step: '카카오 캘린더', success: false, detail: err.message }])
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setResults(prev => [...prev, { step: '카카오 캘린더', success: false, detail: msg }])
     } finally { setLoading(false) }
   }
 

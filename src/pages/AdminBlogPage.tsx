@@ -143,8 +143,9 @@ export default function AdminBlogPage() {
       await loadPosts()
       setView('list')
       setSearchParams({})
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || '저장 실패')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '저장 실패')
     } finally { setSaving(false) }
   }
 

@@ -148,8 +148,9 @@ export default function MyOrdersPage() {
       } else {
         toast.error(response.data.error || '구매확정에 실패했습니다.')
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || '구매확정 중 오류가 발생했습니다.')
+    } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(error_.response?.data?.error || '구매확정 중 오류가 발생했습니다.')
     } finally {
       setProcessing(false)
     }
@@ -189,7 +190,7 @@ export default function MyOrdersPage() {
       } else {
         toast.error(response.data.error || '주문 취소에 실패했습니다.')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to cancel order:', error)
       toast.error(error.response?.data?.error || '주문 취소 중 오류가 발생했습니다.')
     } finally {
@@ -273,7 +274,7 @@ export default function MyOrdersPage() {
           <>
             {activeTab === 'cart' && (
               <CartTab 
-                cartItems={cartItems as any}
+                cartItems={cartItems as unknown as { id: number; product_id: number; product_name: string; quantity: number; price_snapshot: number; option_value?: string }[]}
                 onUpdateQuantity={handleUpdateQuantity}
                 onRemoveItem={handleRemoveItem}
                 onCheckout={handleCheckout}
@@ -402,7 +403,7 @@ export default function MyOrdersPage() {
                       {(() => {
                         const addr = selectedOrder.shipping_address
                         if (typeof addr === 'object' && addr !== null) {
-                          const a = addr as any
+                          const a = addr as { postal_code?: string; address1?: string; address2?: string }
                           return `[${a.postal_code || ''}] ${a.address1 || ''} ${a.address2 || ''}`
                         }
                         return `[${selectedOrder.shipping_postal_code || ''}] ${addr || ''} ${selectedOrder.shipping_address_detail || ''}`

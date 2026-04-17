@@ -24,6 +24,11 @@ try {
   console.error('[App] Sentry 초기화 실패:', error)
 }
 
+// Register service worker for offline caching of static assets
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {})
+}
+
 const rootElement = document.getElementById('root')
 if (!rootElement) {
   console.error('[App] ❌ Root element not found!')

@@ -60,8 +60,8 @@ export default function AddressManagementPage() {
     const timer = setTimeout(() => {
       const container = document.getElementById('daum-postcode-container')
       if (!container) return
-      new (window as any).daum.Postcode({
-        oncomplete: (data: any) => {
+      new (window as unknown as { daum: { Postcode: new (opts: Record<string, unknown>) => { embed: (el: HTMLElement) => void } } }).daum.Postcode({
+        oncomplete: (data: { zonecode: string; roadAddress?: string; jibunAddress?: string }) => {
           setFormData(prev => ({
             ...prev,
             postal_code: data.zonecode,

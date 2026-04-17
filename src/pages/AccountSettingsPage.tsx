@@ -51,8 +51,9 @@ export default function AccountSettingsPage() {
         setEditModal(false);
         toast.success('프로필이 업데이트되었습니다.');
       }
-    } catch (e: any) {
-      toast.error(e.response?.data?.error || '업데이트에 실패했습니다.');
+    } catch (e: unknown) {
+      const e_ = e as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(e_.response?.data?.error || '업데이트에 실패했습니다.');
     } finally { setEditLoading(false); }
   }
 

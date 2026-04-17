@@ -82,7 +82,7 @@ export default function AdminReplayPage() {
       // 새로고침
       const r = await api.get('/api/admin/streams?status=ended', { headers })
       setStreams(r.data.data || [])
-    } catch (err: any) { toast.error(err?.response?.data?.error || '저장 실패') }
+    } catch (err: unknown) { toast.error(err?.response?.data?.error || '저장 실패') }
     finally { setSubmitting(false) }
   }
 

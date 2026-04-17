@@ -22,6 +22,7 @@ interface ShortItem {
   product_id?: number
   source_type?: string
   live_stream_id?: number
+  viewer_count?: number
 }
 
 // YTPlayer에 mute/isMuted 추가 (쇼츠 전용)
@@ -270,8 +271,8 @@ export default function ShortsPage() {
                     <span className="text-xs font-bold text-white">LIVE</span>
                   </div>
                   <span className="text-xs text-white/80 flex-1 text-left">라이브 방송 입장하기</span>
-                  {(item as any).viewer_count > 0 && (
-                    <span className="text-[10px] text-white/70">{(item as any).viewer_count}명 시청</span>
+                  {item.viewer_count != null && item.viewer_count > 0 && (
+                    <span className="text-[10px] text-white/70">{item.viewer_count}명 시청</span>
                   )}
                 </button>
               )}

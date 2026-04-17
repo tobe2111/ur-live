@@ -47,7 +47,7 @@ export default function AgencyTargetsPage() {
           <p className="text-center py-12 text-gray-500">소속 셀러가 없습니다</p>
         ) : (
           <div className="space-y-3">
-            {targets.map((t: any) => {
+            {targets.map((t: { seller_id: number; seller_name: string; target_amount: number; current_amount: number }) => {
               const pct = t.target_amount > 0 ? Math.min(100, Math.round((t.current_amount / t.target_amount) * 100)) : 0
               return (
                 <div key={t.seller_id} className="bg-white rounded-xl border border-gray-200 p-4">

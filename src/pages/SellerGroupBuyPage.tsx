@@ -36,7 +36,7 @@ export default function SellerGroupBuyPage() {
     try {
       const res = await api.get('/api/seller/products', { headers })
       if (res.data.success) {
-        const mealVouchers = (res.data.data || []).filter((p: any) => p.category === 'meal_voucher')
+        const mealVouchers = (res.data.data || []).filter((p: { category?: string }) => p.category === 'meal_voucher')
         setProducts(mealVouchers)
       }
     } catch { /* ignore */ }
