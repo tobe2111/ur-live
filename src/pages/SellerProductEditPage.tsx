@@ -223,8 +223,9 @@ export default function SellerProductEditPage() {
         navigate('/seller/products')
       }
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to update product:', error)
-      setError(error.response?.data?.error || t('common.productUpdateFailed'))
+      setError(error_.response?.data?.error || t('common.productUpdateFailed'))
     } finally {
       setSubmitting(false)
     }

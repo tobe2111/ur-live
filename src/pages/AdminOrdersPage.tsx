@@ -132,8 +132,9 @@ export default function AdminOrdersPage() {
       const response = await api.get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) setOrders(response.data.data)
     } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
       setError('주문 목록을 불러올 수 없습니다.')
-      if (err.response?.status === 401) navigate('/admin/login')
+      if (err_.response?.status === 401) navigate('/admin/login')
     } finally { setLoading(false) }
   }
 

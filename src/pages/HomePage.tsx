@@ -66,7 +66,7 @@ export default function HomePage() {
   const { modal, showAlert, closeModal } = useModal()
 
   const streams = (liveStreamsData || []).map((s: { id: string | number; title?: string; description?: string; stream_url?: string; thumbnail_url?: string; seller_name?: string; viewer_count?: number; status?: string; scheduled_at?: string }) => ({
-    id: parseInt(s.id) || 0,
+    id: parseInt(String(s.id)) || 0,
     title: s.title || '',
     description: s.description || '',
     youtube_video_id: s.stream_url || '',

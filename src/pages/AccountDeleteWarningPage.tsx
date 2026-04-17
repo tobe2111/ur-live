@@ -91,25 +91,26 @@ export default function AccountDeleteWarningPage() {
       // 탈퇴 완료 페이지로 이동
       navigate('/account/deleted', { replace: true });
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string };
       console.error('[Account Delete] 탈퇴 실패:', error);
 
       // Axios 에러 처리
       let errorMessage = '탈퇴 처리 중 오류가 발생했습니다.';
       
-      if (error.response?.status === 401) {
+      if (error_.response?.status === 401) {
         errorMessage = '인증이 만료되었습니다. 다시 로그인한 후 시도해주세요.';
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (error_.response?.data?.error) {
+        errorMessage = error_.response.data.error;
+      } else if (error_.response?.data?.message) {
+        errorMessage = error_.response.data.message;
+      } else if (error_.message) {
+        errorMessage = error_.message;
       }
       
       toast.error(errorMessage);
       
       // 401 에러인 경우 로그인 페이지로 리다이렉트
-      if (error.response?.status === 401) {
+      if (error_.response?.status === 401) {
         setTimeout(() => {
           navigate('/login');
         }, 1000);

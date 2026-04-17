@@ -15,7 +15,7 @@ import SellerLayout from '@/components/SellerLayout'
 
 // recharts lazy load (377KB → 대시보드 진입 시 차트 영역만 지연 로드)
 const LazyChart = lazy(() => import('recharts').then(m => ({
-  default: ({ data }: { data: Array<Record<string, unknown>> }) => {
+  default: ({ data }: { data: { date: string; orders: number; sales: number }[] }) => {
     const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = m
     return (
       <ResponsiveContainer width="100%" height="100%">
@@ -241,10 +241,11 @@ export default function SellerPage() {
       }
       if (productsRes.status === 'fulfilled' && productsRes.value.data?.success) {
         const prods = productsRes.value.data.data || []
-        const vouchers = prods.filter((p: { category?: string; group_buy_status?: string }) => p.category === 'meal_voucher' || p.category === 'group_buy')
+        type ProdEntry = { category?: string; group_buy_status?: string }
+        const vouchers = (prods as ProdEntry[]).filter(p => p.category === 'meal_voucher' || p.category === 'group_buy')
         setHasMealVouchers(vouchers.length > 0)
         setMealVoucherCount(vouchers.length)
-        setActiveGroupBuys(vouchers.filter((p) => p.group_buy_status === 'active' || p.group_buy_status === 'achieved').length)
+        setActiveGroupBuys(vouchers.filter(p => p.group_buy_status === 'active' || p.group_buy_status === 'achieved').length)
       }
     } catch {
       // silent fail

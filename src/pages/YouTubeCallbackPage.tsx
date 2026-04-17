@@ -47,9 +47,10 @@ export default function YouTubeCallbackPage() {
         throw new Error(response.data.error || 'Unknown error')
       }
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string };
       console.error('OAuth callback error:', error)
       setStatus('error')
-      setMessage(error.response?.data?.error || error.message || 'YouTube 연동에 실패했습니다.')
+      setMessage(error_.response?.data?.error || error_.message || 'YouTube 연동에 실패했습니다.')
       setTimeout(() => navigate('/seller/live-broadcast'), 3000)
     }
   }

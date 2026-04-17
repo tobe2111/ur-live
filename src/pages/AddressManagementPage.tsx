@@ -65,7 +65,7 @@ export default function AddressManagementPage() {
           setFormData(prev => ({
             ...prev,
             postal_code: data.zonecode,
-            address: data.roadAddress || data.jibunAddress
+            address: data.roadAddress || data.jibunAddress || ''
           }))
           setShowPostcodePopup(false)
         },

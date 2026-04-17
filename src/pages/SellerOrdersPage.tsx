@@ -235,8 +235,9 @@ export default function SellerOrdersPage() {
         }
       }
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to update status:', error)
-      setError(error.response?.data?.error || t('seller.statusChangeFailed'))
+      setError(error_.response?.data?.error || t('seller.statusChangeFailed'))
     } finally {
       setUpdating(false)
     }
@@ -263,8 +264,9 @@ export default function SellerOrdersPage() {
         }
       }
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to update tracking:', error)
-      setError(error.response?.data?.error || t('seller.trackingRegisterFailed'))
+      setError(error_.response?.data?.error || t('seller.trackingRegisterFailed'))
     } finally {
       setUpdating(false)
     }

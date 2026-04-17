@@ -96,8 +96,9 @@ export default function SellerStreamEditPage() {
         setError(response.data.error || t('seller.updateFailed'))
       }
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to update stream:', error)
-      setError(error.response?.data?.error || t('seller.updateFailed'))
+      setError(error_.response?.data?.error || t('seller.updateFailed'))
     } finally {
       setLoading(false)
     }
@@ -122,8 +123,9 @@ export default function SellerStreamEditPage() {
         setError(response.data.error || t('seller.streamDeleteFailed'))
       }
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to delete stream:', error)
-      setError(error.response?.data?.error || t('seller.streamDeleteFailed'))
+      setError(error_.response?.data?.error || t('seller.streamDeleteFailed'))
     }
   }
 

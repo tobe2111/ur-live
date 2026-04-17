@@ -77,6 +77,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
                 alert(res.data.error || '리뷰 작성 실패')
               }
             } catch (err: unknown) {
+              const err_ = err as { message?: string };
               const msg = err instanceof Error ? err.message : '리뷰 작성에 실패했습니다'
               alert(msg)
             } finally { setSubmitting(false) }
@@ -376,6 +377,7 @@ export default function ProductDetailPage() {
       // ✅ 장바구니 페이지로 이동
       navigate('/cart')
     } catch (err: unknown) {
+      const err_ = err as { message?: string };
       if (import.meta.env.DEV) {
         console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
       }
@@ -822,6 +824,7 @@ function ReferralSection({
         showToast(res.data.error || '공동구매 생성에 실패했습니다.', 'error')
       }
     } catch (err: unknown) {
+      const err_ = err as { message?: string };
       const msg = err instanceof Error ? err.message : '공동구매 생성에 실패했습니다.'
       showToast(msg, 'error')
     } finally {

@@ -13,10 +13,7 @@ interface Restaurant {
   discount_percent: number; rating: number
 }
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Kakao Maps SDK (external, untyped)
-  interface Window { kakao: { maps: Record<string, any> } } // eslint-disable-line @typescript-eslint/no-explicit-any
-}
+// Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
 
 const KAKAO_JS_KEY = '975a2e7f97254b08f15dba4d177a2865'
 const REGIONS = [

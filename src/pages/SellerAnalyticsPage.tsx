@@ -137,11 +137,11 @@ export default function SellerAnalyticsPage() {
                             width={50}
                           />
                           <Tooltip
-                            formatter={((value: number, name: string) => {
-                              if (name === 'revenue') return [`${value.toLocaleString()}${t('common.won')}`, t('seller.revenueLabel')]
+                            formatter={(value, name) => {
+                              if (name === 'revenue') return [`${Number(value ?? 0).toLocaleString()}${t('common.won')}`, t('seller.revenueLabel')]
                               return [`${value}${t('seller.ordersUnit')}`, t('seller.totalOrdersLabel')]
-                            })}
-                            labelFormatter={(label: string) => label}
+                            }}
+                            labelFormatter={(label) => String(label)}
                           />
                           <Legend
                             formatter={(value: string) => value === 'revenue' ? t('seller.revenueLabel') : t('seller.totalOrdersLabel')}

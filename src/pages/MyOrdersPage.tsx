@@ -191,8 +191,9 @@ export default function MyOrdersPage() {
         toast.error(response.data.error || '주문 취소에 실패했습니다.')
       }
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to cancel order:', error)
-      toast.error(error.response?.data?.error || '주문 취소 중 오류가 발생했습니다.')
+      toast.error(error_.response?.data?.error || '주문 취소 중 오류가 발생했습니다.')
     } finally {
       setProcessing(false)
     }

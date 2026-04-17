@@ -137,8 +137,9 @@ export default function SellerBusinessInfoPage() {
         }, 1500)
       }
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to save business info:', error)
-      setError(error.response?.data?.error || t('seller.businessInfoSaveFailed'))
+      setError(error_.response?.data?.error || t('seller.businessInfoSaveFailed'))
     } finally {
       setSubmitting(false)
     }

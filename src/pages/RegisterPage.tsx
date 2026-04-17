@@ -72,12 +72,13 @@ export default function RegisterPage() {
       toast.success('회원가입이 완료되었습니다! 로그인해주세요.')
       navigate('/login')
     } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       let errorMessage = '회원가입에 실패했습니다.'
-      if (err.message.includes('email-already-in-use')) {
+      if (errMsg.includes('email-already-in-use')) {
         errorMessage = '이미 사용 중인 이메일입니다.'
-      } else if (err.message.includes('invalid-email')) {
+      } else if (errMsg.includes('invalid-email')) {
         errorMessage = '유효하지 않은 이메일 형식입니다.'
-      } else if (err.message.includes('weak-password')) {
+      } else if (errMsg.includes('weak-password')) {
         errorMessage = '비밀번호가 너무 약합니다. 8자 이상 입력해주세요.'
       }
       setError(errorMessage)

@@ -15,6 +15,7 @@ interface Product {
   min_stock_alert: number
   image_url: string | null
   price: number
+  is_supply_product?: boolean
 }
 
 interface StockMovement {

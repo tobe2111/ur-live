@@ -269,6 +269,7 @@ export default function LoginPage() {
       setSuccessMessage(t('auth.resetPasswordSuccess'))
       setShowForgotPassword(false)
     } catch (err: unknown) {
+      const err_ = err as { message?: string };
       const msg = err instanceof Error ? err.message : t('common.error')
       setError(msg)
     } finally {

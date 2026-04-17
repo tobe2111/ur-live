@@ -231,6 +231,7 @@ function CartPageContent() {
         quantity: newQuantity
       })
     } catch (error: unknown) {
+      const error_ = error as { message?: string };
       console.error('Failed to update quantity:', error)
       const msg = error instanceof Error ? error.message : '수량 변경에 실패했습니다.'
       showAlert(msg, 'error', '수량 변경 실패')
@@ -251,6 +252,7 @@ function CartPageContent() {
           await removeItemMutation.mutateAsync(String(cartItemId))
           showAlert('상품이 삭제되었습니다.', 'success', '삭제 완료')
         } catch (error: unknown) {
+          const error_ = error as { message?: string };
           console.error('Failed to remove item:', error)
           const msg = error instanceof Error ? error.message : '상품 삭제에 실패했습니다.'
           showAlert(msg, 'error', '삭제 실패')
@@ -289,6 +291,7 @@ function CartPageContent() {
       })
       showAlert('옵션이 변경되었습니다.', 'success', '변경 완료')
     } catch (error: unknown) {
+      const error_ = error as { message?: string };
       console.error('Failed to change option:', error)
       const msg = error instanceof Error ? error.message : '옵션 변경에 실패했습니다.'
       showAlert(msg, 'error', '변경 실패')
@@ -313,6 +316,7 @@ function CartPageContent() {
           )
           showAlert('선택한 상품이 삭제되었습니다.', 'success', '삭제 완료')
         } catch (error: unknown) {
+          const error_ = error as { message?: string };
           console.error('Failed to delete selected:', error)
           const msg = error instanceof Error ? error.message : '상품 삭제에 실패했습니다.'
           showAlert(msg, 'error', '삭제 실패')

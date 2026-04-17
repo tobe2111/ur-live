@@ -93,7 +93,7 @@ export default function UserGroupBuyCreatePage() {
         toast.error('공구 생성에 실패했습니다')
       }
     } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } }
       const msg = err_.response?.data?.message || '네트워크 오류가 발생했습니다'
       toast.error(msg)
     } finally {

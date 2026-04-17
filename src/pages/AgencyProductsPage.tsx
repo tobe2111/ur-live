@@ -119,7 +119,7 @@ export default function AgencyProductsPage() {
                   <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
                   <p className="text-xs text-gray-500">{p.price?.toLocaleString()}원 · 재고 {p.stock}개</p>
                 </div>
-                <button onClick={() => { setEditingId(p.id); setForm({ name: p.name, description: p.description || '', price: p.price, original_price: p.original_price || 0, stock: p.stock || 0, image_url: p.image_url || '', category: p.category || 'general' }); setShowForm(true) }}
+                <button onClick={() => { setEditingId(p.id); setForm({ name: p.name, description: p.description || '', price: p.price ?? 0, original_price: p.original_price || 0, stock: p.stock || 0, image_url: p.image_url || '', category: p.category || 'general' }); setShowForm(true) }}
                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
                   <Edit2 className="w-4 h-4" />
                 </button>

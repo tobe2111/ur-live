@@ -65,8 +65,8 @@ export default function AdminKakaoTestPage() {
       const data = await kakaoApi('https://kapi.kakao.com/v1/api/talk/friends') as { elements?: Array<{ uuid?: string }>; msg?: string }
       if (data.elements) {
         if (data.elements[0]?.uuid) setFriendUuid(data.elements[0].uuid)
-        setResults(prev => [...prev, { step: '친구 목록 조회', success: true, detail: `친구 ${data.elements.length}명 조회 성공!` }])
-        toast.success(`친구 ${data.elements.length}명 조회!`)
+        setResults(prev => [...prev, { step: '친구 목록 조회', success: true, detail: `친구 ${data.elements!.length}명 조회 성공!` }])
+        toast.success(`친구 ${data.elements!.length}명 조회!`)
       } else {
         setResults(prev => [...prev, { step: '친구 목록 조회', success: false, detail: data.msg || JSON.stringify(data) }])
       }

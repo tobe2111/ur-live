@@ -64,6 +64,7 @@ export default function SellerYoutubeGrowthPage() {
         await widgets.renderAgreement({ selector: '#ytg-agreement', variantKey: 'AGREEMENT' })
         setProcessing(false)
       } catch (err: unknown) {
+        const err_ = err as { message?: string };
         toast.error(err instanceof Error ? err.message : t('seller.paymentLoadFailed'))
         setShowWidget(false)
         setProcessing(false)
@@ -122,6 +123,7 @@ export default function SellerYoutubeGrowthPage() {
       orderRef.current = { orderId, orderName }
       setShowWidget(true)
     } catch (err: unknown) {
+      const err_ = err as { message?: string };
       toast.error(err instanceof Error ? err.message : t('seller.paymentPrepareFailed'))
       setProcessing(false)
     }
@@ -140,6 +142,7 @@ export default function SellerYoutubeGrowthPage() {
         failUrl: `${window.location.origin}/seller/youtube-growth?fail=true`,
       })
     } catch (err: unknown) {
+      const err_ = err as { message?: string };
       setProcessing(false)
       const code = (err as Record<string, string>)?.code
       if (code === 'USER_CANCEL') return
@@ -218,7 +221,7 @@ export default function SellerYoutubeGrowthPage() {
                       }`}
                     >
                       <span className="text-sm font-bold text-gray-900">
-                        {String(t('seller.subscriberPlus', { count: pkg.subscribers.toLocaleString() }))}
+                        {String(t('seller.subscriberPlus', { count: pkg.subscribers.toLocaleString() } as Record<string, string>))}
                       </span>
                       <span className={`text-sm font-bold ${
                         selected?.subscribers === pkg.subscribers ? 'text-red-600' : 'text-gray-600'
@@ -262,7 +265,7 @@ export default function SellerYoutubeGrowthPage() {
             <div className="bg-red-50 rounded-xl px-4 py-3 flex justify-between items-center">
               <span className="text-sm text-gray-600">{t('seller.paymentContent')}</span>
               <span className="text-sm font-bold text-red-600">
-                {String(t('seller.subscriberPlus', { count: selected?.subscribers.toLocaleString() }))} / {selected?.price.toLocaleString()}{t('common.won')}
+                {String(t('seller.subscriberPlus', { count: selected?.subscribers.toLocaleString() } as Record<string, string>))} / {selected?.price.toLocaleString()}{t('common.won')}
               </span>
             </div>
             <div id="ytg-payment-method" className="min-h-[200px] bg-white rounded-xl border border-gray-200 p-2" />
@@ -307,7 +310,7 @@ export default function SellerYoutubeGrowthPage() {
                     <p className="text-sm text-gray-900 truncate">{req.channel_url}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <p className="text-xs text-gray-500">
-                        {String(t('seller.subscriberPlus', { count: (req.target_subscribers || 0).toLocaleString() }))}
+                        {String(t('seller.subscriberPlus', { count: (req.target_subscribers || 0).toLocaleString() } as Record<string, string>))}
                       </p>
                       {req.price > 0 && (
                         <p className="text-xs font-medium text-red-600">

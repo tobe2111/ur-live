@@ -81,7 +81,7 @@ export default function AgencyContractsPage() {
           <p className="text-center py-12 text-gray-500">등록된 계약이 없습니다</p>
         ) : (
           <div className="space-y-3">
-            {contracts.map((c: { id: number; seller_name: string; start_date: string; end_date: string; terms?: string; status?: string }) => {
+            {contracts.map((c: { id: number; seller_name: string; seller_email?: string; start_date: string; end_date: string; terms?: string; status?: string }) => {
               const daysLeft = Math.ceil((new Date(c.end_date).getTime() - Date.now()) / 86400000)
               const isExpiring = daysLeft <= 30 && daysLeft > 0
               const isExpired = daysLeft <= 0

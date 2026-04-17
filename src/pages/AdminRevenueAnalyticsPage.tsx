@@ -174,7 +174,7 @@ export default function AdminRevenueAnalyticsPage() {
                   <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`} />
                   <Tooltip
                     contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-                    formatter={(_value: number | string) => [`${fmt(Number(_value))}원`, '매출']}
+                    formatter={(value) => [`${fmt(Number(value ?? 0))}원`, '매출']}
                   />
                   <Bar dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -195,7 +195,7 @@ export default function AdminRevenueAnalyticsPage() {
                   <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
                   <Tooltip
                     contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-                    formatter={(_value: number | string) => [`${fmt(Number(_value))}건`, '주문']}
+                    formatter={(value) => [`${fmt(Number(value ?? 0))}건`, '주문']}
                   />
                   <Line type="monotone" dataKey="order_count" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
@@ -260,7 +260,7 @@ export default function AdminRevenueAnalyticsPage() {
                       </Pie>
                       <Tooltip
                         contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-                        formatter={(_value: number | string) => [`${fmt(Number(_value))}원`]}
+                        formatter={(value) => [`${fmt(Number(value ?? 0))}원`]}
                       />
                     </PieChart>
                   </ResponsiveContainer>

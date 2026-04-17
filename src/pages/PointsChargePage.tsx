@@ -52,6 +52,7 @@ export default function PointsChargePage() {
         await widgets.renderAgreement({ selector: '#charge-agreement', variantKey: 'AGREEMENT' })
         setProcessing(false)
       } catch (err: unknown) {
+        const err_ = err as { message?: string };
         const msg = err instanceof Error ? err.message : '결제창 로드에 실패했습니다.'
         toast.error(msg)
         setShowWidget(false)
@@ -86,6 +87,7 @@ export default function PointsChargePage() {
       orderRef.current = { orderId, orderName }
       setShowWidget(true)
     } catch (err: unknown) {
+      const err_ = err as { message?: string };
       const msg = err instanceof Error ? err.message : '결제 준비에 실패했습니다.'
       toast.error(msg)
       setProcessing(false)
@@ -105,6 +107,7 @@ export default function PointsChargePage() {
         failUrl: `${window.location.origin}/points/charge/fail`,
       })
     } catch (err: unknown) {
+      const err_ = err as { message?: string };
       setProcessing(false)
       const code = (err as Record<string, string>)?.code
       if (code === 'USER_CANCEL') return

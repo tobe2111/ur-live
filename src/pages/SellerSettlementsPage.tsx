@@ -91,9 +91,10 @@ export default function SellerSettlementsPage() {
         setStats(statsResponse.data.data)
       }
     } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to load settlements:', error)
       setError(t('seller.settlementLoadFailed'))
-      if (error.response?.status === 401) {
+      if (error_.response?.status === 401) {
         navigate('/seller/login')
       }
     } finally {
