@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Users, Clock, ShoppingBag, Gift } from 'lucide-react';
 import api from '@/lib/api';
+import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';
 
 interface Tier { count: number; discount: number }
@@ -92,6 +93,11 @@ export default function MyGroupBuysPage() {
 
   return (
     <div className="min-h-dvh bg-white">
+      <SEO
+        title="내 공동구매"
+        description="참여 중인 공동구매 현황을 확인하세요."
+        url="/my-group-buys"
+      />
       {/* 헤더 */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between h-14 px-4">

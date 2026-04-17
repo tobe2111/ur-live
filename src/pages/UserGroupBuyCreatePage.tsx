@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, MapPin, Phone, Loader2, AlertCircle } from 'lucide-react'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import api from '@/lib/api'
+import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 
 interface SelectedRestaurant {
@@ -103,6 +104,11 @@ export default function UserGroupBuyCreatePage() {
 
   return (
     <div className="bg-white min-h-screen pb-24">
+      <SEO
+        title="맛집 공구 시작"
+        description="내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요."
+        url="/community-group-buy/new"
+      />
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
         <div className="flex items-center h-12 px-2">

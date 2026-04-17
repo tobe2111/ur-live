@@ -494,6 +494,8 @@ import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 app.route('/api/timedeal', timedealRoutes);
 
 // ── 유저 공동구매 (커뮤니티) ──
+app.use('/api/community-group-buy/create', rateLimit({ action: 'group_buy_create', max: 10, windowSec: 300 }));
+app.use('/api/community-group-buy/join/*', rateLimit({ action: 'group_buy_join', max: 20, windowSec: 300 }));
 import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
 app.route('/api/community-group-buy', communityGroupBuyRoutes);
 
