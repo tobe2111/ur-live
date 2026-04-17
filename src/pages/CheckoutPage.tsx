@@ -471,10 +471,23 @@ export default function CheckoutPage() {
           return cookie?.[1] || undefined
         })(),
         group_buy_discounts: groupBuyDiscounts,
+        coupon_id: couponId || undefined,
+        coupon_discount: couponDiscount || undefined,
       })
 
       if (!response.data.success) {
         throw new Error(response.data.error || '주문 생성에 실패했습니다')
+      }
+
+      // 쿠폰 사용 확정
+      if (couponId && couponDiscount > 0 && response.data.data?.order_id) {
+        try {
+          await api.post('/api/coupons/use', {
+            coupon_id: couponId,
+            order_id: response.data.data.order_id,
+            discount_amount: couponDiscount,
+          })
+        } catch {} // 쿠폰 사용 처리 실패해도 결제는 진행
       }
     }
   }
@@ -786,7 +799,12 @@ export default function CheckoutPage() {
                           address2: selectedAddress.address_detail || '',
                         },
                       })
-                      if (res.data.success) navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
+                      if (res.data.success) {
+                        if (couponId && couponDiscount > 0) {
+                          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => {})
+                        }
+                        navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
+                      }
                       else toast.error(res.data.error || '결제 실패')
                     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : '딜 결제 실패') }
                     finally { setPayingWithDeals(false) }
