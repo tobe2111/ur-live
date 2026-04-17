@@ -49,7 +49,7 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
   const { DB } = c.env
   await ensureInviteRewardsTable(DB)
 
-  const body = await c.req.json<{ invited_user_id?: string }>().catch(() => ({}))
+  const body = await c.req.json<{ invited_user_id?: string }>().catch(() => ({ invited_user_id: undefined }))
   const invitedUserId = body.invited_user_id || String(user.id)
 
   // 1. Find inviter — check users.referred_by (affiliate ref code → inviter user)

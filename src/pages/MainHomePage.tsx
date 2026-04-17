@@ -522,6 +522,23 @@ export default function MainHomePage() {
       {/* ── Hero Banner ── */}
       <HeroBanner />
 
+      {/* 카카오 채널 추가 */}
+      <div className="mx-4 my-3">
+        <button
+          onClick={() => {
+            const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_ZeUTxl'
+            if (window.Kakao?.Channel) {
+              window.Kakao.Channel.addChannel({ channelPublicId: channelId })
+            } else {
+              window.open(`https://pf.kakao.com/${channelId}/friend`, '_blank')
+            }
+          }}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] rounded-xl text-[#3C1E1E] text-sm font-bold active:scale-[0.98]"
+        >
+          <span role="img" aria-label="chat">💬</span> 카카오 채널 추가하고 혜택 받기
+        </button>
+      </div>
+
       {/* ── Live Now Section ── */}
       {liveStreams.length > 0 && (
         <section className="px-4 pt-5 pb-3">
@@ -735,6 +752,24 @@ export default function MainHomePage() {
       <InvitePrompt />
 
       <SiteFooter />
+
+      {/* 카카오 채널 채팅 플로팅 버튼 */}
+      <button
+        onClick={() => {
+          const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_ZeUTxl'
+          if (window.Kakao?.Channel) {
+            window.Kakao.Channel.chat({ channelPublicId: channelId })
+          } else {
+            window.open(`https://pf.kakao.com/${channelId}/chat`, '_blank')
+          }
+        }}
+        className="fixed bottom-20 right-4 z-40 w-12 h-12 bg-[#FEE500] rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        aria-label="카카오 채널 채팅"
+      >
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#3C1E1E">
+          <path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.88 5.32 4.71 6.73-.16.57-.58 2.07-.67 2.39-.1.39.14.39.3.28.12-.08 1.94-1.31 2.73-1.84.63.09 1.28.14 1.93.14 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+        </svg>
+      </button>
     </div>
   )
 }

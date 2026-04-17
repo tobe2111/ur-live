@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
+import { LogOut, Crown, Heart, ChevronRight } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -43,6 +43,111 @@ function TeamPointsCard() {
         </button>
       </div>
     </div>
+  )
+}
+
+interface TierInfo {
+  tier: 'bronze' | 'silver' | 'gold' | 'diamond'
+  current_charged: number
+  next_threshold: number
+  discount: number
+}
+
+const TIER_STYLES: Record<string, { bg: string; text: string; label: string; icon: string }> = {
+  bronze: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Bronze', icon: '🥉' },
+  silver: { bg: 'bg-gray-200', text: 'text-gray-700', label: 'Silver', icon: '🥈' },
+  gold: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Gold', icon: '🥇' },
+  diamond: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Diamond', icon: '💎' },
+}
+
+function VipTierCard() {
+  const [tier, setTier] = useState<TierInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/api/loyalty/my-tier')
+      .then(r => { if (r.data.success) setTier(r.data.data) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="px-5 py-1.5">
+        <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A] animate-pulse">
+          <div className="h-4 bg-gray-700 rounded w-1/3 mb-2" />
+          <div className="h-3 bg-gray-700 rounded w-2/3" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!tier) return null
+
+  const style = TIER_STYLES[tier.tier] || TIER_STYLES.bronze
+  const progress = tier.next_threshold > 0
+    ? Math.min(100, (tier.current_charged / tier.next_threshold) * 100)
+    : 100
+
+  return (
+    <div className="px-5 py-1.5">
+      <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Crown className="w-4 h-4 text-yellow-400" />
+            <span className="text-[12px] text-gray-400 font-medium">VIP 등급</span>
+          </div>
+          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${style.bg} ${style.text}`}>
+            {style.icon} {style.label}
+          </span>
+        </div>
+        {/* Progress bar */}
+        <div className="mb-2">
+          <div className="w-full h-1.5 bg-[#2A2A2A] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-pink-500 to-purple-500 transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-gray-500 mt-1.5">
+            {tier.next_threshold > 0
+              ? `${tier.current_charged.toLocaleString()} / ${tier.next_threshold.toLocaleString()}딜`
+              : '최고 등급 달성!'}
+          </p>
+        </div>
+        <p className="text-[11px] text-pink-400 font-medium">
+          현재 추가 할인: {tier.discount}%
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function InterestCountButton() {
+  const navigate = useNavigate()
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    api.get('/api/interest/my-list')
+      .then(r => {
+        if (r.data.success) setCount((r.data.data || []).length)
+      })
+      .catch(() => {})
+  }, [])
+
+  return (
+    <button
+      onClick={() => navigate('/interest-list')}
+      className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center relative"
+    >
+      <Heart className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
+      관심 맛집
+      {count > 0 && (
+        <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-pink-500 rounded-full">
+          {count}
+        </span>
+      )}
+    </button>
   )
 }
 
@@ -103,11 +208,14 @@ export default function UserProfilePage() {
       {/* 딜 포인트 */}
       <TeamPointsCard />
 
+      {/* VIP 등급 */}
+      <VipTierCard />
+
       {/* 바로가기 */}
       <div className="px-5 py-3 flex gap-2">
         <button onClick={() => navigate('/my-orders')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">📦 주문내역</button>
         <button onClick={() => navigate('/wishlist')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">❤️ 위시리스트</button>
-        <button onClick={() => navigate('/user/affiliate')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">💰 추천수익</button>
+        <InterestCountButton />
       </div>
 
 

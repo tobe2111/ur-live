@@ -180,6 +180,107 @@ sellerAnalyticsRoutes.delete('/coupons/:id', requireAuth(), async (c) => {
   return c.json({ success: true })
 })
 
+// ── 재방문 분석 ──
+sellerAnalyticsRoutes.get('/revisit', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+
+  const totalRow = await c.env.DB.prepare(
+    "SELECT COUNT(DISTINCT user_id) AS total_customers FROM orders WHERE seller_id = ? AND status NOT IN ('CANCELLED','FAILED')"
+  ).bind(sellerId).first<{ total_customers: number }>()
+
+  const repeatRow = await c.env.DB.prepare(`
+    SELECT COUNT(*) AS repeat_customers FROM (
+      SELECT user_id FROM orders WHERE seller_id = ? AND status NOT IN ('CANCELLED','FAILED')
+      GROUP BY user_id HAVING COUNT(*) > 1
+    )
+  `).bind(sellerId).first<{ repeat_customers: number }>()
+
+  const avgDaysRow = await c.env.DB.prepare(`
+    SELECT AVG(day_gap) AS avg_revisit_days FROM (
+      SELECT user_id,
+        julianday(created_at) - julianday(LAG(created_at) OVER (PARTITION BY user_id ORDER BY created_at)) AS day_gap
+      FROM orders WHERE seller_id = ? AND status NOT IN ('CANCELLED','FAILED')
+    ) WHERE day_gap IS NOT NULL
+  `).bind(sellerId).first<{ avg_revisit_days: number | null }>()
+
+  const { results: topCustomers } = await c.env.DB.prepare(`
+    SELECT user_id, MAX(shipping_name) AS name, COUNT(*) AS order_count,
+      SUM(CASE WHEN status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN total_amount ELSE 0 END) AS total_spent,
+      MIN(created_at) AS first_order, MAX(created_at) AS last_order
+    FROM orders WHERE seller_id = ? AND status NOT IN ('CANCELLED','FAILED')
+    GROUP BY user_id HAVING COUNT(*) > 1
+    ORDER BY order_count DESC LIMIT 10
+  `).bind(sellerId).all()
+
+  const total = totalRow?.total_customers ?? 0
+  const repeat = repeatRow?.repeat_customers ?? 0
+
+  return c.json({
+    success: true,
+    data: {
+      total_customers: total,
+      repeat_customers: repeat,
+      revisit_rate_percent: total > 0 ? Math.round((repeat / total) * 10000) / 100 : 0,
+      avg_revisit_days: avgDaysRow?.avg_revisit_days != null ? Math.round(avgDaysRow.avg_revisit_days * 10) / 10 : null,
+      top_customers: topCustomers || [],
+    },
+  })
+})
+
+// ── 바우처 사용 통계 ──
+sellerAnalyticsRoutes.get('/voucher-usage', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+
+  const stats = await c.env.DB.prepare(`
+    SELECT
+      COUNT(*) AS total_vouchers,
+      SUM(CASE WHEN v.status = 'used' THEN 1 ELSE 0 END) AS used_count,
+      SUM(CASE WHEN v.status = 'expired' THEN 1 ELSE 0 END) AS expired_count,
+      SUM(CASE WHEN v.status = 'unused' THEN 1 ELSE 0 END) AS unused_count,
+      SUM(CASE WHEN v.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_count
+    FROM vouchers v
+    JOIN products p ON v.product_id = p.id
+    WHERE p.seller_id = ?
+  `).bind(sellerId).first<{
+    total_vouchers: number
+    used_count: number
+    expired_count: number
+    unused_count: number
+    refunded_count: number
+  }>()
+
+  const total = stats?.total_vouchers ?? 0
+  const used = stats?.used_count ?? 0
+
+  const { results: byProduct } = await c.env.DB.prepare(`
+    SELECT p.id AS product_id, p.name AS product_name,
+      COUNT(*) AS total_vouchers,
+      SUM(CASE WHEN v.status = 'used' THEN 1 ELSE 0 END) AS used_count,
+      SUM(CASE WHEN v.status = 'unused' THEN 1 ELSE 0 END) AS unused_count,
+      SUM(CASE WHEN v.status = 'expired' THEN 1 ELSE 0 END) AS expired_count
+    FROM vouchers v
+    JOIN products p ON v.product_id = p.id
+    WHERE p.seller_id = ?
+    GROUP BY p.id, p.name
+    ORDER BY total_vouchers DESC
+  `).bind(sellerId).all()
+
+  return c.json({
+    success: true,
+    data: {
+      total_vouchers: total,
+      used_count: used,
+      expired_count: stats?.expired_count ?? 0,
+      unused_count: stats?.unused_count ?? 0,
+      refunded_count: stats?.refunded_count ?? 0,
+      usage_rate_percent: total > 0 ? Math.round((used / total) * 10000) / 100 : 0,
+      by_product: byProduct || [],
+    },
+  })
+})
+
 // ── 상품 복제 ──
 sellerAnalyticsRoutes.post('/products/:id/duplicate', requireAuth(), async (c) => {
   const sellerId = await getSellerId(c)

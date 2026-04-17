@@ -10,6 +10,7 @@ import {
   Plus,
   MapPin,
   HandCoins,
+  Bell,
 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
