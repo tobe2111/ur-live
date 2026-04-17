@@ -760,7 +760,7 @@ function AppContent() {
             <Route path="/referral/:code" element={<ReferralPage />} />
 
             {/* 맛집 지도 */}
-            <Route path="/restaurant-map" element={<RestaurantMapPage />} />
+            <Route path="/restaurant-map" element={<Navigate to="/browse?category=meal_voucher" replace />} />
 
             {/* Terms Pages */}
             {/* 블로그 */}

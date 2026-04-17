@@ -1,6 +1,6 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X } from 'lucide-react'
+import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
@@ -45,6 +45,78 @@ export default function BrowsePage() {
   const [priceRange, setPriceRange] = useState<'all' | 'under10' | 'under30' | 'under50' | 'over50'>('all')
   const [freeShipOnly, setFreeShipOnly] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
+  const [mapView, setMapView] = useState(false)
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<any>(null)
+  const markersRef = useRef<any[]>([])
+
+  const isMealVoucher = category === 'meal_voucher'
+
+  // 카카오맵 초기화 (식사권 + 지도 모드일 때만)
+  useEffect(() => {
+    if (!isMealVoucher || !mapView || !mapContainerRef.current) return
+    if (mapInstanceRef.current) {
+      updateMapMarkers()
+      return
+    }
+
+    const KAKAO_JS_KEY = (import.meta as any).env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
+
+    const initMap = () => {
+      if (!mapContainerRef.current) return
+      const center = new window.kakao.maps.LatLng(35.2340, 129.0843) // 부산 기본
+      mapInstanceRef.current = new window.kakao.maps.Map(mapContainerRef.current, { center, level: 8 })
+      updateMapMarkers()
+    }
+
+    if (window.kakao?.maps) {
+      initMap()
+    } else {
+      const script = document.createElement('script')
+      script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&autoload=false`
+      script.onload = () => window.kakao.maps.load(initMap)
+      document.head.appendChild(script)
+    }
+  }, [mapView, isMealVoucher, products])
+
+  function updateMapMarkers() {
+    if (!mapInstanceRef.current) return
+    markersRef.current.forEach(m => m.setMap(null))
+    markersRef.current = []
+
+    const bounds = new window.kakao.maps.LatLngBounds()
+    let hasMarkers = false
+
+    sorted.forEach(p => {
+      const lat = (p as any).restaurant_lat
+      const lng = (p as any).restaurant_lng
+      if (!lat || !lng) return
+
+      hasMarkers = true
+      const pos = new window.kakao.maps.LatLng(Number(lat), Number(lng))
+      bounds.extend(pos)
+
+      const marker = new window.kakao.maps.Marker({ position: pos, map: mapInstanceRef.current })
+      const infoWindow = new window.kakao.maps.InfoWindow({
+        content: `<div style="padding:8px 12px;min-width:150px">
+          <div style="font-weight:700;font-size:13px;color:#111">${(p as any).restaurant_name || p.name}</div>
+          <div style="font-size:12px;color:#ef4444;font-weight:700;margin-top:4px">${(p.price || 0).toLocaleString()}원</div>
+          <a href="/products/${p.id}" style="display:inline-block;margin-top:6px;padding:4px 10px;background:#111;color:#fff;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none">상세보기</a>
+        </div>`
+      })
+
+      window.kakao.maps.event.addListener(marker, 'click', () => {
+        markersRef.current.forEach(m => m.__infoWindow?.close())
+        infoWindow.open(mapInstanceRef.current, marker)
+        marker.__infoWindow = infoWindow
+      })
+
+      marker.__infoWindow = infoWindow
+      markersRef.current.push(marker)
+    })
+
+    if (hasMarkers) mapInstanceRef.current.setBounds(bounds)
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -149,6 +221,12 @@ export default function BrowsePage() {
               <SlidersHorizontal className="w-3 h-3" /> 필터
             </button>
             <span className="text-xs text-gray-500">{sorted.length}개</span>
+            {isMealVoucher && (
+              <button onClick={() => setMapView(!mapView)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200'}`}>
+                {mapView ? <><List className="w-3 h-3" /> 리스트</> : <><Map className="w-3 h-3" /> 지도</>}
+              </button>
+            )}
           </div>
           <div className="relative" onClick={e => e.stopPropagation()}>
             <button
@@ -199,6 +277,13 @@ export default function BrowsePage() {
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* 지도 뷰 (식사권 카테고리일 때) */}
+        {isMealVoucher && mapView && (
+          <div className="mb-4 rounded-xl overflow-hidden border border-gray-200">
+            <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100" />
           </div>
         )}
 
