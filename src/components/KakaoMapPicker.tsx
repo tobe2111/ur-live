@@ -116,7 +116,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
     setLoading(true)
     try {
       const res = await fetch(
-        `/api/kakao/place/search?query=${encodeURIComponent(query)}&category_group_code=FD6,CE7&size=15`
+        `/api/kakao/place/search?query=${encodeURIComponent(query)}&size=15`
       )
       const json: any = await res.json()
       console.log('[KakaoMapPicker] API response:', JSON.stringify(json).slice(0, 500))
