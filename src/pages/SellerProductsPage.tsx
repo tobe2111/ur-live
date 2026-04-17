@@ -72,7 +72,7 @@ export default function SellerProductsPage() {
       if (prodRes.status === 'fulfilled' && prodRes.value.data.success) {
         // 내 상품에서 공급 상품(is_supply_product=1) 제외
         const allProducts = prodRes.value.data.data || []
-        setProducts(allProducts.filter((p: any) => !p.is_supply_product))
+        setProducts(allProducts.filter((p: Product & { is_supply_product?: boolean }) => !p.is_supply_product))
       }
       if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
         const d = supplyRes.value.data.data

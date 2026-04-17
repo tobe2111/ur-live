@@ -18,6 +18,9 @@ interface Product {
   stock: number
   category?: string
   seller_name?: string
+  restaurant_name?: string
+  restaurant_lat?: number
+  restaurant_lng?: number
 }
 
 type SortOption = 'popular' | 'newest' | 'price_asc' | 'price_desc' | 'discount'
@@ -48,7 +51,10 @@ export default function BrowsePage() {
   const [showFilter, setShowFilter] = useState(false)
   const [mapView, setMapView] = useState(false)
   const mapContainerRef = useRef<HTMLDivElement>(null)
+  // Kakao Maps SDK refs — no TS definitions available for this external SDK
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<any[]>([])
 
   const isMealVoucher = category === 'meal_voucher'
@@ -89,7 +95,7 @@ export default function BrowsePage() {
       return
     }
 
-    const KAKAO_JS_KEY = (import.meta as any).env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
+    const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
 
     const initMap = () => {
       if (!mapContainerRef.current) return
@@ -117,8 +123,8 @@ export default function BrowsePage() {
     let hasMarkers = false
 
     sorted.forEach(p => {
-      const lat = (p as any).restaurant_lat
-      const lng = (p as any).restaurant_lng
+      const lat = p.restaurant_lat
+      const lng = p.restaurant_lng
       if (!lat || !lng) return
 
       hasMarkers = true
@@ -128,7 +134,7 @@ export default function BrowsePage() {
       const marker = new window.kakao.maps.Marker({ position: pos, map: mapInstanceRef.current })
       const infoWindow = new window.kakao.maps.InfoWindow({
         content: `<div style="padding:8px 12px;min-width:150px">
-          <div style="font-weight:700;font-size:13px;color:#111">${(p as any).restaurant_name || p.name}</div>
+          <div style="font-weight:700;font-size:13px;color:#111">${p.restaurant_name || p.name}</div>
           <div style="font-size:12px;color:#ef4444;font-weight:700;margin-top:4px">${(p.price || 0).toLocaleString()}원</div>
           <a href="/products/${p.id}" style="display:inline-block;margin-top:6px;padding:4px 10px;background:#111;color:#fff;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none">상세보기</a>
         </div>`
@@ -234,7 +240,7 @@ export default function BrowsePage() {
       <div className="px-4 py-5">
         {/* 섹션 헤더 */}
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-extrabold text-gray-900">{category === 'all' ? '오늘의 핫딜' : `${({'fashion':'패션','beauty':'뷰티','food':'식품','living':'리빙','digital':'디지털','meal_voucher':'식사권'} as any)[category] || category}`}</h1>
+          <h1 className="text-xl font-extrabold text-gray-900">{category === 'all' ? '오늘의 핫딜' : `${({'fashion':'패션','beauty':'뷰티','food':'식품','living':'리빙','digital':'디지털','meal_voucher':'식사권'} as Record<string, string>)[category] || category}`}</h1>
         </div>
 
         {/* 배너 */}

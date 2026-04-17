@@ -12,6 +12,7 @@ interface Seller {
   id: number; name: string; username?: string; slug?: string; business_name?: string; profile_image?: string; bio?: string
   sns_instagram?: string; sns_youtube?: string; sns_facebook?: string; sns_twitter?: string
   kakao_chat_link?: string; website_url?: string; created_at: string
+  business_number?: string; email?: string; phone?: string
 }
 interface LiveStream {
   id: number; title: string; youtube_video_id?: string; status: string; viewer_count?: number
@@ -146,7 +147,7 @@ export default function SellerPublicPage() {
         setProducts(productsRes.data.data || [])
         setStreams(streamsRes.data.data || [])
         const allShorts = shortsRes.data.data || []
-        setShorts(allShorts.filter((s: any) => String(s.seller_id) === String(numericId)))
+        setShorts(allShorts.filter((s: Short & { seller_id?: number }) => String(s.seller_id) === String(numericId)))
       })
     }).catch(() => { setSeller(null) })
       .finally(() => setLoading(false))
@@ -637,11 +638,11 @@ export default function SellerPublicPage() {
                 {seller.name && (
                   <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">담당자</span><span className="text-xs">{seller.name}</span></div>
                 )}
-                {(seller as any).business_number && (
-                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">사업자번호</span><span className="text-xs">{(seller as any).business_number}</span></div>
+                {seller.business_number && (
+                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">사업자번호</span><span className="text-xs">{seller.business_number}</span></div>
                 )}
-                {(seller as any).email && (
-                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">이메일</span><span className="text-xs">{(seller as any).email}</span></div>
+                {seller.email && (
+                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">이메일</span><span className="text-xs">{seller.email}</span></div>
                 )}
               </div>
               {/* 연락 수단 */}
@@ -652,8 +653,8 @@ export default function SellerPublicPage() {
                     <MessageCircle className="w-3.5 h-3.5" /> 카카오 문의
                   </a>
                 )}
-                {(seller as any).phone && (
-                  <a href={`tel:${(seller as any).phone}`}
+                {seller.phone && (
+                  <a href={`tel:${seller.phone}`}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#020202] border border-[#2A2A2A] text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
                     <Phone className="w-3.5 h-3.5" /> 전화 문의
                   </a>

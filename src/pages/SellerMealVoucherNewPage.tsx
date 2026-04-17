@@ -39,9 +39,9 @@ export default function SellerMealVoucherNewPage() {
   const token = getSellerToken()
   const headers = { Authorization: `Bearer ${token}` }
 
-  const KAKAO_JS_KEY = (import.meta as any).env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
+  const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
 
-  function selectPlace(place: any) {
+  function selectPlace(place: KakaoPlace) {
     setForm(f => ({
       ...f,
       restaurant_name: place.place_name || f.restaurant_name,
@@ -55,27 +55,28 @@ export default function SellerMealVoucherNewPage() {
   }
 
   function openKakaoAddress() {
-    // 다음 우편번호 서비스 (주소 검색 팝업)
-    if (!(window as any).daum?.Postcode) {
+    // 다음 우편번호 서비스 (주소 검색 팝업) — external Kakao SDK, window cast acceptable
+    const w = window as unknown as { daum?: { Postcode: new (opts: { oncomplete: (data: { roadAddress: string; jibunAddress: string }) => void }) => { open: () => void } } }
+    if (!w.daum?.Postcode) {
       const script = document.createElement('script')
       script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
       script.onload = () => openKakaoAddress()
       document.head.appendChild(script)
       return
     }
-    new (window as any).daum.Postcode({
-      oncomplete: async (data: any) => {
+    new w.daum.Postcode({
+      oncomplete: async (data) => {
         const addr = data.roadAddress || data.jibunAddress
         update('restaurant_address', addr)
         // 주소 → 좌표 변환
         try {
           const res = await fetch(`/api/kakao/place/address?query=${encodeURIComponent(addr)}`)
-          const result: any = await res.json()
+          const result: { data?: { documents?: { y: string; x: string }[] } } = await res.json()
           if (result.data?.documents?.[0]) {
             update('restaurant_lat', result.data.documents[0].y)
             update('restaurant_lng', result.data.documents[0].x)
           }
-        } catch {}
+        } catch { /* ignore geocoding failure */ }
       }
     }).open()
   }
@@ -118,8 +119,9 @@ export default function SellerMealVoucherNewPage() {
       } else {
         toast.error(res.data.error || '등록 실패')
       }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '식사권 등록에 실패했습니다')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr?.response?.data?.error || '식사권 등록에 실패했습니다')
     } finally {
       setSubmitting(false)
     }

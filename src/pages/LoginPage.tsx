@@ -149,7 +149,7 @@ export default function LoginPage() {
 
       window.location.href = kakaoAuthUrl
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Kakao Login] ❌ 오류 발생:', err)
       setError(t('auth.kakaoLoginError'))
       setLoading(false)
@@ -204,7 +204,7 @@ export default function LoginPage() {
       } else {
         throw new Error(response.data.error || t('auth.loginError'))
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Kakao Login] ❌ 실패:', err)
       setError(t('auth.kakaoLoginError'))
       setLoading(false)
@@ -238,7 +238,7 @@ export default function LoginPage() {
       } else {
         navigate(returnUrl, { replace: true })
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Email Login] Error:', err)
       setError(t('auth.invalidCredentials'))
     } finally {
@@ -260,8 +260,9 @@ export default function LoginPage() {
       await sendPasswordResetEmailAction(email)
       setSuccessMessage(t('auth.resetPasswordSuccess'))
       setShowForgotPassword(false)
-    } catch (err: any) {
-      setError(err.message || t('common.error'))
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t('common.error')
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -299,9 +300,10 @@ export default function LoginPage() {
       sessionStorage.removeItem('returnUrl')
       navigate(returnUrl, { replace: true })
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Google Login] ❌ 실패:', error)
-      if (error?.code === 'auth/popup-closed-by-user') {
+      const firebaseError = error as { code?: string }
+      if (firebaseError?.code === 'auth/popup-closed-by-user') {
         // 사용자가 팝업을 닫은 경우 — 에러 표시하지 않음
       } else {
         setError(t('auth.googleLoginError'))

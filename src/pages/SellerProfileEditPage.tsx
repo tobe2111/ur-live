@@ -185,14 +185,15 @@ export default function SellerProfileEditPage() {
         setSuccessMessage(t('seller.profileUpdateSuccess'))
         setTimeout(() => setSuccessMessage(''), 3000)
       }
-    } catch (error: any) {
-      console.error('Failed to update profile:', error)
-      setErrorMessage(error.response?.data?.error || t('seller.profileUpdateFailed'))
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to update profile:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      setErrorMessage(axiosErr.response?.data?.error || t('seller.profileUpdateFailed'))
     } finally {
       setSaving(false)
     }
   }
-  
+
   async function handleSaveBusiness() {
     setSaving(true)
     setSuccessMessage('')
@@ -206,9 +207,10 @@ export default function SellerProfileEditPage() {
         setSuccessMessage(t('seller.businessUpdateSuccess'))
         setTimeout(() => setSuccessMessage(''), 3000)
       }
-    } catch (error: any) {
-      console.error('Failed to update business info:', error)
-      setErrorMessage(error.response?.data?.error || t('seller.businessUpdateFailed'))
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to update business info:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      setErrorMessage(axiosErr.response?.data?.error || t('seller.businessUpdateFailed'))
     } finally {
       setSaving(false)
     }
@@ -227,9 +229,10 @@ export default function SellerProfileEditPage() {
         setSuccessMessage(t('seller.personalUpdateSuccess'))
         setTimeout(() => setSuccessMessage(''), 3000)
       }
-    } catch (error: any) {
-      console.error('Failed to update personal info:', error)
-      setErrorMessage(error.response?.data?.error || t('seller.personalUpdateFailed'))
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to update personal info:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      setErrorMessage(axiosErr.response?.data?.error || t('seller.personalUpdateFailed'))
     } finally {
       setSaving(false)
     }
@@ -270,9 +273,10 @@ export default function SellerProfileEditPage() {
         setPasswordData({ current_password: '', new_password: '', confirm_password: '' })
         setTimeout(() => setSuccessMessage(''), 3000)
       }
-    } catch (error: any) {
-      console.error('Failed to change password:', error)
-      setErrorMessage(error.response?.data?.error || t('seller.passwordChangeFailed'))
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to change password:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      setErrorMessage(axiosErr.response?.data?.error || t('seller.passwordChangeFailed'))
     } finally {
       setSaving(false)
     }
@@ -312,9 +316,10 @@ export default function SellerProfileEditPage() {
         setSuccessMessage(t('seller.imageUploadSuccess'))
         setTimeout(() => setSuccessMessage(''), 3000)
       }
-    } catch (error: any) {
-      console.error('Failed to upload image:', error)
-      setErrorMessage(error.response?.data?.error || t('seller.imageUploadFailed'))
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to upload image:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      setErrorMessage(axiosErr.response?.data?.error || t('seller.imageUploadFailed'))
     } finally {
       setUploadingImage(false)
     }
