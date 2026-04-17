@@ -284,10 +284,10 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
       }, 403);
     }
     
-    if (seller.status !== 'active') {
-      console.warn('[Seller Refresh] Account not active:', sellerId);
-      return c.json<AuthResponse>({ 
-        success: false, 
+    if (seller.status !== 'approved' && seller.status !== 'active') {
+      console.warn('[Seller Refresh] Account not approved:', sellerId, seller.status);
+      return c.json<AuthResponse>({
+        success: false,
         error: '활성화되지 않은 계정입니다.',
         code: 'ACCOUNT_NOT_ACTIVE'
       }, 403);
