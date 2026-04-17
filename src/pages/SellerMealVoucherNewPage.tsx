@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, MapPin, Phone, Calendar, Users, Tag, Image as ImageIcon, Utensils, Search, ExternalLink, CheckCircle } from 'lucide-react'
+import { MapPin, Phone, Users, Utensils, CheckCircle } from 'lucide-react'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { toast } from '@/hooks/useToast'
@@ -32,10 +32,6 @@ export default function SellerMealVoucherNewPage() {
     stock: 100,
   })
 
-  // 카카오 매장 검색
-  const [placeQuery, setPlaceQuery] = useState('')
-  const [placeResults, setPlaceResults] = useState<any[]>([])
-  const [searchingPlace, setSearchingPlace] = useState(false)
   const [placeSelected, setPlaceSelected] = useState(false)
 
   if (!isSellerAuthenticated()) { redirectToLogin(navigate); return null }
