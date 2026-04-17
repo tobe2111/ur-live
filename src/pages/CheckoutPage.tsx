@@ -94,6 +94,24 @@ export default function CheckoutPage() {
     api.get('/api/points/balance')
       .then(r => { if (r.data.success) setDealBalance(r.data.data.balance) })
       .catch(() => {})
+    // 보유 쿠폰 자동 로드 (가장 할인 큰 것 자동 적용)
+    api.get('/api/coupons/my')
+      .then(r => {
+        if (r.data.success && r.data.data?.length > 0) {
+          const best = r.data.data.reduce((a: Record<string, unknown>, b: Record<string, unknown>) =>
+            ((a.value as number) || 0) > ((b.value as number) || 0) ? a : b
+          )
+          if (best) {
+            setCouponCode(best.code as string)
+            setCouponId(best.id as number)
+            const discount = (best.type as string) === 'percent'
+              ? Math.round(subtotal * (best.value as number) / 100)
+              : (best.value as number)
+            setCouponDiscount(Math.min(discount, (best.max_discount as number) || discount))
+          }
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // 배송지 관련 상태
@@ -680,7 +698,10 @@ export default function CheckoutPage() {
                 </button>
               </div>
               {couponDiscount > 0 && (
-                <p className="text-sm text-green-600 font-medium mt-2">✓ {couponDiscount.toLocaleString()}원 할인 적용됨</p>
+                <div className="flex items-center justify-between mt-2 p-2 bg-green-50 rounded-lg border border-green-200">
+                  <span className="text-sm text-green-700 font-medium">✓ 쿠폰 할인 적용됨</span>
+                  <span className="text-sm font-bold text-green-700">-{couponDiscount.toLocaleString()}원</span>
+                </div>
               )}
             </section>
 
