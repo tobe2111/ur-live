@@ -527,7 +527,7 @@ export default function MainHomePage() {
       <div className="mx-4 my-3">
         <button
           onClick={() => {
-            const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_ZeUTxl'
+            const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_AITdn'
             if (window.Kakao?.Channel) {
               window.Kakao.Channel.addChannel({ channelPublicId: channelId })
             } else {
@@ -757,7 +757,7 @@ export default function MainHomePage() {
       {/* 카카오 채널 채팅 플로팅 버튼 */}
       <button
         onClick={() => {
-          const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_ZeUTxl'
+          const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_AITdn'
           if (window.Kakao?.Channel) {
             window.Kakao.Channel.chat({ channelPublicId: channelId })
           } else {
