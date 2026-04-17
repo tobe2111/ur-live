@@ -75,9 +75,11 @@ export default function SellerMealVoucherNewPage() {
 
       const res = await fetch(`/api/kakao/place/search?query=${encodeURIComponent(query)}&category_group_code=FD6,CE7&size=5`)
       const json: any = await res.json()
-      setPlaceResults(json.data?.documents || [])
+      console.log('[MealVoucher] Search response:', JSON.stringify(json).slice(0, 500))
+      const results = json.data?.documents || json.documents || []
+      setPlaceResults(results)
 
-      if (!data.documents?.length) {
+      if (!results.length) {
         toast.error('검색 결과가 없습니다. 매장 이름이나 주소를 정확히 입력해주세요.')
       }
     } catch {

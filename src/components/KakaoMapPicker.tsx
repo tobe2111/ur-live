@@ -119,7 +119,8 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
         `/api/kakao/place/search?query=${encodeURIComponent(query)}&category_group_code=FD6,CE7&size=15`
       )
       const json: any = await res.json()
-      const docs: KakaoPlace[] = json.data?.documents || []
+      console.log('[KakaoMapPicker] API response:', JSON.stringify(json).slice(0, 500))
+      const docs: KakaoPlace[] = json.data?.documents || json.documents || []
       setResults(docs)
 
       clearMarkers()
