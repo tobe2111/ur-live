@@ -179,20 +179,20 @@ export default function SellerAnalyticsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
                     <p className="text-xs text-gray-500">{t('seller.totalCustomersLabel')}</p>
-                    <p className="text-2xl font-bold text-gray-900">{data.total_customers}{t('seller.persons')}</p>
+                    <p className="text-2xl font-bold text-gray-900">{(data as CustomerData).total_customers}{t('seller.persons')}</p>
                   </div>
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
                     <p className="text-xs text-gray-500">{t('seller.repeatBuyers')}</p>
-                    <p className="text-2xl font-bold text-gray-900">{data.repeat_customers}{t('seller.persons')}</p>
-                    <p className="text-xs text-green-600">{data.total_customers > 0 ? Math.round(data.repeat_customers / data.total_customers * 100) : 0}%</p>
+                    <p className="text-2xl font-bold text-gray-900">{(data as CustomerData).repeat_customers}{t('seller.persons')}</p>
+                    <p className="text-xs text-green-600">{(data as CustomerData).total_customers > 0 ? Math.round((data as CustomerData).repeat_customers / (data as CustomerData).total_customers * 100) : 0}%</p>
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200">
                   <div className="px-4 py-3 border-b border-gray-100"><h3 className="text-sm font-bold text-gray-900">{t('seller.topCustomers')}</h3></div>
-                  {(data.top_customers || []).length === 0 && (
+                  {((data as CustomerData).top_customers || []).length === 0 && (
                     <p className="text-center text-gray-500 text-xs py-6">{t('seller.noCustomerData')}</p>
                   )}
-                  {(data.top_customers || []).map((c: any, i: number) => (
+                  {((data as CustomerData).top_customers || []).map((c, i) => (
                     <div key={i} className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
                       <div>
                         <p className="text-sm font-medium text-gray-900">{c.name || t('seller.totalCustomersLabel')}</p>
@@ -210,11 +210,11 @@ export default function SellerAnalyticsPage() {
                 <div className="px-4 py-3 border-b border-gray-100">
                   <h3 className="text-sm font-bold text-gray-900">{t('seller.productPerformance')}</h3>
                 </div>
-                {(data as any[]).length === 0 && (
+                {(data as ProductPerformanceItem[]).length === 0 && (
                   <p className="text-center text-gray-500 text-xs py-6">{t('seller.noProductData')}</p>
                 )}
                 {/* Table header */}
-                {(data as any[]).length > 0 && (
+                {(data as ProductPerformanceItem[]).length > 0 && (
                   <div className="hidden md:grid grid-cols-7 gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase">
                     <span className="col-span-2">{t('seller.productName')}</span>
                     <span className="text-right">{t('seller.unitsSold')}</span>
@@ -224,7 +224,7 @@ export default function SellerAnalyticsPage() {
                     <span className="text-right">{t('seller.stockLabel')}</span>
                   </div>
                 )}
-                {(data as any[]).map((p: any) => (
+                {(data as ProductPerformanceItem[]).map((p) => (
                   <div key={p.id} className="grid grid-cols-1 md:grid-cols-7 gap-1 md:gap-2 items-center px-4 py-3 border-b border-gray-50 hover:bg-gray-50">
                     <div className="md:col-span-2 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>

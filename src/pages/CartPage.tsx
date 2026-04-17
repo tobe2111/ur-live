@@ -422,7 +422,7 @@ function CartPageContent() {
             {cartItems.map((item) => (
               <CartItemComponent
                 key={item.id}
-                item={item as CartItem & { price_snapshot: number }}
+                item={{ ...item, id: Number(item.id), product_id: Number(item.product_id), price_snapshot: item.price_snapshot ?? item.price ?? 0 }}
                 isSelected={selectedIds.has(item.id)}
                 onToggleSelect={toggleSelect}
                 onUpdateQuantity={updateQuantity}

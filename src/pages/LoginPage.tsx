@@ -12,9 +12,20 @@ import { Eye, EyeOff } from 'lucide-react'
 import SEO from '@/components/SEO'
 
 // Kakao SDK 타입 선언
+interface KakaoAuth {
+  getAccessToken(): string | null
+  setAccessToken(token: string): void
+}
+
+interface KakaoSDK {
+  init(appKey: string): void
+  isInitialized(): boolean
+  Auth: KakaoAuth
+}
+
 declare global {
   interface Window {
-    Kakao: any
+    Kakao: KakaoSDK
   }
 }
 

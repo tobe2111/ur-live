@@ -84,7 +84,11 @@ export default function CheckoutPage() {
   const [dealBalance, setDealBalance] = useState(0)
   const [dealToUse, setDealToUse] = useState(0)
   const [payingWithDeals, setPayingWithDeals] = useState(false)
-  const [groupBuyDiscounts, setGroupBuyDiscounts] = useState<Record<number, { percent: number; tier: any }>>({})
+  interface GroupBuyTier {
+    count: number
+    discount: number
+  }
+  const [groupBuyDiscounts, setGroupBuyDiscounts] = useState<Record<number, { percent: number; tier: GroupBuyTier | null }>>({})
 
   useEffect(() => {
     api.get('/api/points/balance')
@@ -180,7 +184,7 @@ export default function CheckoutPage() {
           .catch(() => null)
       )
     ).then(results => {
-      const map: Record<number, { percent: number; tier: any }> = {}
+      const map: Record<number, { percent: number; tier: GroupBuyTier | null }> = {}
       results.forEach(r => {
         if (r) map[r.pid] = { percent: r.percent, tier: r.tier }
       })
@@ -391,7 +395,7 @@ export default function CheckoutPage() {
    * 결제 승인(confirm) 단계에서 DB 금액 기반 검증이 가능하도록 합니다.
    */
   // 식사권 여부 확인
-  const isMealVoucher = cartItems.some(item => (item as any).category === 'meal_voucher')
+  const isMealVoucher = cartItems.some(item => (item as CartItem & { category?: string }).category === 'meal_voucher')
 
   const handleBeforePayment = async (orderId: string): Promise<void> => {
     if (!isMealVoucher && !selectedAddress) {
@@ -668,7 +672,7 @@ export default function CheckoutPage() {
                       } else {
                         toast.error(res.data.error)
                       }
-                    } catch (err: any) { toast.error(err?.response?.data?.error || '쿠폰 적용 실패') }
+                    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : '쿠폰 적용 실패') }
                   }}
                   className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-lg shrink-0"
                 >
@@ -763,7 +767,7 @@ export default function CheckoutPage() {
                       })
                       if (res.data.success) navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
                       else toast.error(res.data.error || '결제 실패')
-                    } catch (err: any) { toast.error(err?.response?.data?.error || '딜 결제 실패') }
+                    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : '딜 결제 실패') }
                     finally { setPayingWithDeals(false) }
                   }}
                   disabled={payingWithDeals || !selectedAddress}
