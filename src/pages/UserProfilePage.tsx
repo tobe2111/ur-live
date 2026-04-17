@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Crown, Heart, ChevronRight } from 'lucide-react'
+import { LogOut, Crown, Heart } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
