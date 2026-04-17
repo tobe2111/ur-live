@@ -654,6 +654,42 @@ app.get('/api/side-banners', async (c) => {
 // 5. CORS allowed 목록에 실제 도메인이 반드시 포함되어야 함.
 
 // ============================================================
+// Image Optimization Proxy (Cloudflare Image Resizing)
+// ============================================================
+
+app.get('/api/image/resize', async (c) => {
+  const url = c.req.query('url');
+  const width = parseInt(c.req.query('w') || '400');
+  const quality = parseInt(c.req.query('q') || '80');
+
+  if (!url) return c.json({ error: 'url required' }, 400);
+
+  // Cloudflare Image Resizing (available on paid plans)
+  // For free plan, just proxy with cache headers
+  try {
+    const response = await fetch(url, {
+      cf: {
+        image: {
+          width,
+          quality,
+          format: 'webp',
+        }
+      } as any
+    });
+
+    // If image resizing not available, just proxy with cache
+    const headers = new Headers(response.headers);
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    headers.set('Content-Type', response.headers.get('Content-Type') || 'image/webp');
+
+    return new Response(response.body, { headers });
+  } catch {
+    // Fallback: redirect to original
+    return c.redirect(url);
+  }
+});
+
+// ============================================================
 // 404 for API routes not matched above
 // ============================================================
 

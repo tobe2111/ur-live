@@ -76,8 +76,9 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               } else {
                 alert(res.data.error || '리뷰 작성 실패')
               }
-            } catch (err: any) {
-              alert(err?.response?.data?.error || '리뷰 작성에 실패했습니다')
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : '리뷰 작성에 실패했습니다'
+              alert(msg)
             } finally { setSubmitting(false) }
           }}
           className="flex-[2] py-2 bg-blue-600 text-white text-sm rounded-lg font-bold disabled:opacity-40"
@@ -139,8 +140,27 @@ function AccordionSection({ title, children, defaultOpen = false }: { title: str
 }
 
 function ProductReviews({ productId }: { productId: number | string }) {
-  const [summary, setSummary] = useState<any>(null)
-  const [reviews, setReviews] = useState<any[]>([])
+  interface ReviewSummary {
+    avg_rating: number
+    total_count: number
+    star_1?: number
+    star_2?: number
+    star_3?: number
+    star_4?: number
+    star_5?: number
+    [key: string]: number | undefined
+  }
+
+  interface Review {
+    id: number | string
+    rating: number
+    content?: string
+    user_name?: string
+    created_at: string
+  }
+
+  const [summary, setSummary] = useState<ReviewSummary | null>(null)
+  const [reviews, setReviews] = useState<Review[]>([])
 
   useEffect(() => {
     api.get(`/api/reviews/product/${productId}/summary`).then(r => {
@@ -201,7 +221,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
       {/* 리뷰 목록 */}
       {reviews.length > 0 && (
         <div className="space-y-3 mt-3">
-          {reviews.map((r: any) => (
+          {reviews.map((r) => (
             <div key={r.id} className="border border-gray-200/50 rounded-xl p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
@@ -272,7 +292,7 @@ export default function ProductDetailPage() {
     if (!product) return
     try {
       const raw = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
-      const filtered = raw.filter((p: any) => p.id !== product.id)
+      const filtered = raw.filter((p: { id: string | number }) => p.id !== product.id)
       filtered.unshift({ id: product.id, name: product.name, price: product.price, image: product.image_url })
       localStorage.setItem('recently_viewed', JSON.stringify(filtered.slice(0, 20)))
     } catch {}
@@ -301,7 +321,7 @@ export default function ProductDetailPage() {
     if (!id || !isLoggedIn) return
     api.get('/api/wishlists').then(r => {
       if (r.data.success && r.data.data?.items) {
-        const found = r.data.data.items.some((item: any) => String(item.product_id) === String(id))
+        const found = r.data.data.items.some((item: { product_id: string | number }) => String(item.product_id) === String(id))
         setIsWishlisted(found)
       }
     }).catch(() => {})

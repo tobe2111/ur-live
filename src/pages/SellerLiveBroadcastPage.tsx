@@ -222,9 +222,10 @@ export default function SellerLiveBroadcastPage() {
         if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
         else toast.error(res.data?.error || '방송 생성에 실패했습니다.')
       }
-    } catch (err: any) {
-      if (err.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
-      else toast.error(err.response?.data?.error || '방송 생성에 실패했습니다.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error_code?: string; error?: string } } }
+      if (axiosErr.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
+      else toast.error(axiosErr.response?.data?.error || '방송 생성에 실패했습니다.')
     } finally { setCreating(false) }
   }
 
@@ -358,7 +359,7 @@ export default function SellerLiveBroadcastPage() {
         {step === 'info' && (
           <StreamList
             streams={streams}
-            onManage={(stream: any) => {
+            onManage={(stream: LiveStream) => {
               setCurrentStream(stream)
               setStep(stream.status === 'live' ? 'live' : 'setup')
             }}

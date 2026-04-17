@@ -9,6 +9,7 @@
  */
 
 import type { Env } from '../types/env';
+import { sendDiscordAlert } from '../utils/discord-alert';
 
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
@@ -67,5 +68,13 @@ export async function handleAutoSettlement(env: Env) {
     console.log(`[Cron] Auto-settlement: ${Object.keys(sellerGroups).length} sellers processed`);
   } catch (err) {
     console.error('[Cron] Auto-settlement failed:', err);
+    if (env.DISCORD_WEBHOOK_URL) {
+      await sendDiscordAlert(
+        env.DISCORD_WEBHOOK_URL,
+        'Auto-Settlement Failed',
+        `Cron auto-settlement encountered an error: ${(err as Error).message || String(err)}`,
+        'error'
+      );
+    }
   }
 }
