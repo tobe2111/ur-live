@@ -783,7 +783,11 @@ function AppContent() {
             <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
             <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
             <Route path="/refund-policy" element={<Navigate to="/refund" replace />} />
-            
+            <Route path="/shipping-policy" element={<Navigate to="/refund" replace />} />
+
+            {/* 커뮤니티 공구 상세 (ReferralPage 재사용) */}
+            <Route path="/community-group-buy/:code" element={<ReferralPage />} />
+
             {/* Debug 페이지 (개발 환경만) */}
             <Route path="/kakao-debug" element={<KakaoDebugPage />} />
             
