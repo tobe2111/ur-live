@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Flame,
   Sparkles,
+  Plus,
 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -226,6 +227,15 @@ export default function GroupBuyListPage() {
           )}
         </div>
       </div>
+
+      {/* 맛집 공구 시작 FAB */}
+      <button
+        onClick={() => navigate('/community-group-buy/new')}
+        className="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 bg-gray-900 text-white pl-3 pr-4 py-3 rounded-full shadow-lg active:scale-95 transition-transform"
+      >
+        <Plus className="w-5 h-5" />
+        <span className="text-[13px] font-bold">맛집 공구 시작</span>
+      </button>
 
       {/* 상품 그리드 (2열) */}
       <div className="px-4 py-4 pb-20">

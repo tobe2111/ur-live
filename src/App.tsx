@@ -144,12 +144,14 @@ const AgencyComparePage = lazy(() => import('./pages/AgencyComparePage'))
 const AgencyContractsPage = lazy(() => import('./pages/AgencyContractsPage'))
 const AgencyTargetsPage = lazy(() => import('./pages/AgencyTargetsPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
+const AgencyGroupBuyPage = lazy(() => import('./pages/AgencyGroupBuyPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const BlogListPage = lazy(() => import('./pages/BlogListPage'))
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
+const UserGroupBuyCreatePage = lazy(() => import('./pages/UserGroupBuyCreatePage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -309,7 +311,7 @@ function AppContent() {
     import('./lib/native').then(({ setStatusBarStyle }) => {
       // 화이트 테마 페이지는 light 상태바 (검은 텍스트)
       const lightPages = ['/browse', '/checkout', '/my-orders', '/account/', '/cart',
-        '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy']
+        '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
       const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
       setStatusBarStyle(isLight ? 'light' : 'dark')
     }).catch(() => {})
@@ -669,6 +671,7 @@ function AppContent() {
             <Route path="/agency/contracts" element={<AgencyContractsPage />} />
             <Route path="/agency/targets" element={<AgencyTargetsPage />} />
             <Route path="/agency/profile" element={<AgencyProfilePage />} />
+            <Route path="/agency/group-buy" element={<AgencyGroupBuyPage />} />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<CartPage />} />
@@ -700,6 +703,11 @@ function AppContent() {
             <Route path="/mypage/group-buys" element={
               <ProtectedRoute requireUser>
                 <MyGroupBuysPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/community-group-buy/new" element={
+              <ProtectedRoute requireUser>
+                <UserGroupBuyCreatePage />
               </ProtectedRoute>
             } />
             <Route path="/wishlist" element={

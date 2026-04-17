@@ -493,6 +493,10 @@ app.route('/api/auction', auctionRoutes);
 import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 app.route('/api/timedeal', timedealRoutes);
 
+// ── 유저 공동구매 (커뮤니티) ──
+import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
+app.route('/api/community-group-buy', communityGroupBuyRoutes);
+
 // ── 친구 초대 공동구매 ──
 import { referralRoutes } from '../features/referral/api/referral.routes';
 app.route('/api/referral', referralRoutes);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import {
-  LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X, Settings, Bell, Target, Calendar, Download
+  LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X, Settings, Bell, Target, Calendar, Download, Utensils
 } from 'lucide-react'
 
 const NAV_GROUPS = [
@@ -21,6 +21,7 @@ const NAV_GROUPS = [
       { path: '/agency/schedule', label: '방송 캘린더', icon: Calendar, exact: false },
       { path: '/agency/notices', label: '셀러 공지', icon: Bell, exact: false },
       { path: '/agency/returns', label: '반품/CS', icon: ShoppingBag, exact: false },
+      { path: '/agency/group-buy', label: '공동구매', icon: Utensils, exact: false },
     ],
   },
   {
