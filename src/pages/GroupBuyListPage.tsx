@@ -99,6 +99,34 @@ export default function GroupBuyListPage() {
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [sortBy, setSortBy] = useState<SortOption>('popular')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
+  const [interestedIds, setInterestedIds] = useState<Set<number>>(new Set())
+
+  const toggleInterest = (e: React.MouseEvent, productId: number, restaurantName?: string) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const isAdding = !interestedIds.has(productId)
+    setInterestedIds(prev => {
+      const next = new Set(prev)
+      if (isAdding) next.add(productId)
+      else next.delete(productId)
+      return next
+    })
+    if (isAdding) {
+      api.post('/api/interest/add', {
+        restaurant_name: restaurantName || '',
+        product_id: productId,
+        type: 'group_buy',
+      }).catch(() => {
+        setInterestedIds(prev => { const next = new Set(prev); next.delete(productId); return next })
+      })
+      toast.success('관심 등록됨! 공구 시작 시 알려드릴게요')
+    } else {
+      api.post('/api/interest/remove', { product_id: productId, type: 'group_buy' }).catch(() => {
+        setInterestedIds(prev => { const next = new Set(prev); next.add(productId); return next })
+      })
+      toast.info('관심 등록이 해제되었습니다')
+    }
+  }
 
   // 셀러 공구 로딩
   useEffect(() => {
@@ -414,6 +442,17 @@ export default function GroupBuyListPage() {
                             달성
                           </span>
                         )}
+
+                        {/* 관심 등록 */}
+                        <button
+                          onClick={(e) => toggleInterest(e, p.id, p.restaurant_name)}
+                          className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
+                          aria-label="관심 등록"
+                        >
+                          <Bell
+                            className={`w-3.5 h-3.5 ${interestedIds.has(p.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`}
+                          />
+                        </button>
                       </div>
 
                       {/* 정보 */}
@@ -552,11 +591,22 @@ export default function GroupBuyListPage() {
                             )}
                           </div>
                         </div>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap flex-shrink-0 ${badge.className}`}
-                        >
-                          {badge.label}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={(e) => toggleInterest(e, g.id, g.restaurant_name)}
+                            className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 active:scale-90 transition-transform"
+                            aria-label="관심 등록"
+                          >
+                            <Bell
+                              className={`w-3.5 h-3.5 ${interestedIds.has(g.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`}
+                            />
+                          </button>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        </div>
                       </div>
 
                       {/* 가격 + 보증금 정보 */}

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { TrendingUp, ShoppingBag, Play, Users } from 'lucide-react'
+import { TrendingUp, ShoppingBag, Play, Users, ArrowUpDown, Trophy } from 'lucide-react'
 
 interface Seller {
   id: number
@@ -22,6 +22,24 @@ interface SellerStat {
   streams: { stream_count: number; total_viewers: number } | null
 }
 
+interface ComparisonRow {
+  id: number
+  name: string
+  business_name: string
+  order_count: number
+  revenue: number
+  live_count: number
+  ended_streams: number
+  total_vouchers: number
+  used_vouchers: number
+  voucher_usage_rate: number
+  total_group_buys: number
+  achieved_group_buys: number
+  group_buy_success_rate: number
+}
+
+type ComparisonSortKey = 'revenue' | 'order_count' | 'voucher_usage_rate' | 'group_buy_success_rate'
+
 type Period = '7d' | '30d' | '90d'
 
 export default function AgencyStatsPage() {
@@ -31,6 +49,12 @@ export default function AgencyStatsPage() {
   const [period, setPeriod] = useState<Period>('30d')
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<'revenue' | 'orders' | 'streams'>('revenue')
+
+  // Restaurant comparison state
+  const [comparison, setComparison] = useState<ComparisonRow[]>([])
+  const [comparisonLoading, setComparisonLoading] = useState(false)
+  const [comparisonSort, setComparisonSort] = useState<ComparisonSortKey>('revenue')
+  const [comparisonSortAsc, setComparisonSortAsc] = useState(false)
 
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token}` }
@@ -60,6 +84,17 @@ export default function AgencyStatsPage() {
       .catch(() => setStats(sellers.map(s => ({ seller: s, orders: null, streams: null }))))
       .finally(() => setLoading(false))
   }, [sellers, period])
+
+  // Fetch restaurant comparison data
+  useEffect(() => {
+    if (!token || !sellers.length) return
+    setComparisonLoading(true)
+    const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
+    api.get(`/api/agency/sellers/compare?period=${days}`, { headers })
+      .then(r => setComparison(r.data.data || []))
+      .catch(() => setComparison([]))
+      .finally(() => setComparisonLoading(false))
+  }, [sellers, period, token])
 
   const sorted = [...stats].sort((a, b) => {
     if (sort === 'revenue') return (b.orders?.revenue ?? 0) - (a.orders?.revenue ?? 0)

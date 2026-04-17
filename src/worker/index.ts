@@ -517,6 +517,14 @@ app.route('/api/invite', inviteRewardRoutes);
 import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 app.route('/api/broadcast-notify', broadcastNotifyRoutes);
 
+// ── VIP 등급 (유저 로열티) ──
+import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
+app.route('/api/loyalty', loyaltyRoutes);
+
+// ── 관심/알림 (맛집·상품·공동구매 관심 등록) ──
+import { interestRoutes } from '../features/loyalty/api/interest.routes';
+app.route('/api/interest', interestRoutes);
+
 // ── 카카오 소셜 (메시지 + 캘린더) + 글로벌 (.ics) ──
 import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
 app.route('/api/kakao-social', kakaoSocialRoutes);

@@ -4,6 +4,7 @@ import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, Sl
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
+import { toast } from '@/hooks/useToast'
 
 interface Product {
   id: number
@@ -51,6 +52,34 @@ export default function BrowsePage() {
   const markersRef = useRef<any[]>([])
 
   const isMealVoucher = category === 'meal_voucher'
+  const [interestedIds, setInterestedIds] = useState<Set<number>>(new Set())
+
+  const toggleInterest = (e: React.MouseEvent, productId: number, productName?: string) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const isAdding = !interestedIds.has(productId)
+    setInterestedIds(prev => {
+      const next = new Set(prev)
+      if (isAdding) next.add(productId)
+      else next.delete(productId)
+      return next
+    })
+    if (isAdding) {
+      api.post('/api/interest/add', {
+        restaurant_name: productName || '',
+        product_id: productId,
+        type: 'meal_voucher',
+      }).catch(() => {
+        setInterestedIds(prev => { const next = new Set(prev); next.delete(productId); return next })
+      })
+      toast.success('관심 등록됨! 공구 시작 시 알려드릴게요')
+    } else {
+      api.post('/api/interest/remove', { product_id: productId, type: 'meal_voucher' }).catch(() => {
+        setInterestedIds(prev => { const next = new Set(prev); next.add(productId); return next })
+      })
+      toast.info('관심 등록이 해제되었습니다')
+    }
+  }
 
   // 카카오맵 초기화 (식사권 + 지도 모드일 때만)
   useEffect(() => {
@@ -322,9 +351,21 @@ export default function BrowsePage() {
                       ) : (
                         <div className="w-full h-full bg-gray-100" />
                       )}
-                      {/* 하트 */}
+                      {/* 관심 등록 (식사권만) / 하트 (일반) */}
                       <div className="absolute bottom-2 right-2">
-                        <Heart className="w-5 h-5 text-gray-300" strokeWidth={1.5} />
+                        {isMealVoucher ? (
+                          <button
+                            onClick={(e) => toggleInterest(e, product.id, product.name)}
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
+                            aria-label="관심 등록"
+                          >
+                            <Bell
+                              className={`w-3.5 h-3.5 ${interestedIds.has(product.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`}
+                            />
+                          </button>
+                        ) : (
+                          <Heart className="w-5 h-5 text-gray-300" strokeWidth={1.5} />
+                        )}
                       </div>
                     </div>
 

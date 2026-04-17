@@ -55,6 +55,7 @@ const SellerMealVoucherNewPage = lazy(() => import('./pages/SellerMealVoucherNew
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
+const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 
 // Seller 페이지들
 const SellerPage = lazy(() => import('./pages/SellerPage'))
@@ -709,6 +710,11 @@ function AppContent() {
             <Route path="/wishlist" element={
               <ProtectedRoute requireUser>
                 <WishlistPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/interest-list" element={
+              <ProtectedRoute requireUser>
+                <InterestListPage />
               </ProtectedRoute>
             } />
             <Route path="/my-vouchers" element={

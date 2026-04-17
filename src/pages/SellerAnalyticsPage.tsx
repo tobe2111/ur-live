@@ -1,16 +1,29 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
-import { BarChart2, Users, Package, Loader2 } from 'lucide-react'
+import { BarChart2, Users, Package, Loader2, TrendingUp, Repeat, ArrowUpRight } from 'lucide-react'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from 'recharts'
 
 export default function SellerAnalyticsPage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<'revenue' | 'customers' | 'products'>('revenue')
   const [data, setData] = useState<any>(null)
+  const [detailedData, setDetailedData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(30)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } }
 
   useEffect(() => { load() }, [tab, days])
+
+  // Load detailed analytics once
+  useEffect(() => {
+    api.get('/api/seller/analytics/detailed', h)
+      .then(r => { if (r.data.success) setDetailedData(r.data.data) })
+      .catch(() => {})
+  }, [])
 
   const load = () => {
     setLoading(true)
@@ -21,18 +34,56 @@ export default function SellerAnalyticsPage() {
   }
 
   return (
-    <SellerLayout title="매출 분석">
+    <SellerLayout title={t('seller.analyticsTitle')}>
       <div className="p-6">
-        <h1 className="text-xl font-bold text-gray-900 mb-4">매출 분석</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-4">{t('seller.analyticsTitle')}</h1>
+
+        {/* KPI 카드 (전환율 + 재구��율) */}
+        {detailedData && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp className="w-4 h-4 text-blue-500" />
+                <p className="text-xs text-gray-500">{t('seller.conversionRate')}</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{detailedData.conversion_rate}%</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Repeat className="w-4 h-4 text-green-500" />
+                <p className="text-xs text-gray-500">{t('seller.repeatPurchaseRate')}</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{detailedData.repeat_purchase_rate}%</p>
+              <p className="text-[10px] text-gray-400">
+                {t('seller.repeatBuyers')} {detailedData.repeat_buyers}{t('seller.persons')} / {detailedData.total_buyers}{t('seller.persons')}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Users className="w-4 h-4 text-purple-500" />
+                <p className="text-xs text-gray-500">{t('seller.totalCustomersLabel')}</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{detailedData.total_buyers}{t('seller.persons')}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-1.5 mb-1">
+                <ArrowUpRight className="w-4 h-4 text-orange-500" />
+                <p className="text-xs text-gray-500">{t('seller.repeatBuyers')}</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{detailedData.repeat_buyers}{t('seller.persons')}</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2 mb-4">
           {[
-            { key: 'revenue', label: '매출 차트', icon: BarChart2 },
-            { key: 'customers', label: '고객 분석', icon: Users },
-            { key: 'products', label: '상품 성과', icon: Package },
-          ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as any)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 ${tab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-              <t.icon className="w-4 h-4" />{t.label}
+            { key: 'revenue', label: t('seller.revenueChart'), icon: BarChart2 },
+            { key: 'customers', label: t('seller.customerAnalysis'), icon: Users },
+            { key: 'products', label: t('seller.productPerformance'), icon: Package },
+          ].map(tabItem => (
+            <button key={tabItem.key} onClick={() => setTab(tabItem.key as any)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 ${tab === tabItem.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <tabItem.icon className="w-4 h-4" />{tabItem.label}
             </button>
           ))}
         </div>
@@ -42,29 +93,71 @@ export default function SellerAnalyticsPage() {
             {tab === 'revenue' && data && (
               <div>
                 <div className="flex gap-2 mb-4">
-                  {[7, 30, 90].map(d => (
-                    <button key={d} onClick={() => setDays(d)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium ${days === d ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{d}일</button>
+                  {[
+                    { d: 7, label: t('seller.daysFilter7') },
+                    { d: 30, label: t('seller.daysFilter30') },
+                    { d: 90, label: t('seller.daysFilter90') },
+                  ].map(item => (
+                    <button key={item.d} onClick={() => setDays(item.d)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium ${days === item.d ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{item.label}</button>
                   ))}
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-4">
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-blue-50 rounded-lg p-3">
-                      <p className="text-xs text-blue-600">총 매출</p>
-                      <p className="text-xl font-bold text-gray-900">{(data as any[]).reduce((s: number, d: any) => s + d.revenue, 0).toLocaleString()}원</p>
+                      <p className="text-xs text-blue-600">{t('seller.totalRevenueLabel')}</p>
+                      <p className="text-xl font-bold text-gray-900">{(data as any[]).reduce((s: number, d: any) => s + d.revenue, 0).toLocaleString()}{t('common.won')}</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3">
-                      <p className="text-xs text-green-600">총 주문</p>
-                      <p className="text-xl font-bold text-gray-900">{(data as any[]).reduce((s: number, d: any) => s + d.orders, 0)}건</p>
+                      <p className="text-xs text-green-600">{t('seller.totalOrdersLabel')}</p>
+                      <p className="text-xl font-bold text-gray-900">{(data as any[]).reduce((s: number, d: any) => s + d.orders, 0)}{t('seller.ordersUnit')}</p>
                     </div>
                   </div>
-                  <div className="flex items-end gap-1 overflow-x-auto scrollbar-hide" style={{ minHeight: 160 }}>
+
+                  {/* Recharts Line Chart for Revenue Trend */}
+                  <div className="mb-4">
+                    <h3 className="text-sm font-bold text-gray-900 mb-2">{t('seller.dailyRevenueTrend')}</h3>
+                    {(data as any[]).length > 0 ? (
+                      <ResponsiveContainer width="100%" height={240}>
+                        <LineChart data={(data as any[]).slice(-30)}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis
+                            dataKey="date"
+                            tickFormatter={(v: string) => v.slice(5)}
+                            tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          />
+                          <YAxis
+                            tickFormatter={(v: number) => `${(v / 10000).toFixed(0)}${t('seller.salesUnit')}`}
+                            tick={{ fontSize: 10, fill: '#9ca3af' }}
+                            width={50}
+                          />
+                          <Tooltip
+                            formatter={(value: number, name: string) => {
+                              if (name === 'revenue') return [`${value.toLocaleString()}${t('common.won')}`, t('seller.revenueLabel')]
+                              return [`${value}${t('seller.ordersUnit')}`, t('seller.totalOrdersLabel')]
+                            }}
+                            labelFormatter={(label: string) => label}
+                          />
+                          <Legend
+                            formatter={(value: string) => value === 'revenue' ? t('seller.revenueLabel') : t('seller.totalOrdersLabel')}
+                          />
+                          <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={1.5} dot={false} yAxisId={0} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <p className="text-center text-gray-500 text-xs py-8">{t('seller.noRevenueData')}</p>
+                    )}
+                  </div>
+
+                  {/* Bar chart fallback (existing) */}
+                  <div className="flex items-end gap-1 overflow-x-auto scrollbar-hide" style={{ minHeight: 120 }}>
                     {(data as any[]).slice(-14).map((d: any) => {
                       const max = Math.max(...(data as any[]).map((x: any) => x.revenue)) || 1
                       return (
                         <div key={d.date} className="flex flex-col items-center flex-1 min-w-[28px]">
-                          <span className="text-[9px] text-gray-500 mb-1">{(d.revenue / 10000).toFixed(0)}만</span>
-                          <div className="w-full bg-gray-100 rounded-t" style={{ height: `${Math.max(4, (d.revenue / max) * 120)}px` }}>
+                          <span className="text-[9px] text-gray-500 mb-1">{(d.revenue / 10000).toFixed(0)}{t('seller.salesUnit')}</span>
+                          <div className="w-full bg-gray-100 rounded-t" style={{ height: `${Math.max(4, (d.revenue / max) * 80)}px` }}>
                             <div className="w-full h-full bg-blue-500 rounded-t" />
                           </div>
                           <span className="text-[9px] text-gray-400 mt-1">{d.date.slice(5)}</span>
@@ -80,24 +173,27 @@ export default function SellerAnalyticsPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
-                    <p className="text-xs text-gray-500">전체 고객</p>
-                    <p className="text-2xl font-bold text-gray-900">{data.total_customers}명</p>
+                    <p className="text-xs text-gray-500">{t('seller.totalCustomersLabel')}</p>
+                    <p className="text-2xl font-bold text-gray-900">{data.total_customers}{t('seller.persons')}</p>
                   </div>
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
-                    <p className="text-xs text-gray-500">재구매 고객</p>
-                    <p className="text-2xl font-bold text-gray-900">{data.repeat_customers}명</p>
+                    <p className="text-xs text-gray-500">{t('seller.repeatBuyers')}</p>
+                    <p className="text-2xl font-bold text-gray-900">{data.repeat_customers}{t('seller.persons')}</p>
                     <p className="text-xs text-green-600">{data.total_customers > 0 ? Math.round(data.repeat_customers / data.total_customers * 100) : 0}%</p>
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200">
-                  <div className="px-4 py-3 border-b border-gray-100"><h3 className="text-sm font-bold text-gray-900">상위 고객</h3></div>
+                  <div className="px-4 py-3 border-b border-gray-100"><h3 className="text-sm font-bold text-gray-900">{t('seller.topCustomers')}</h3></div>
+                  {(data.top_customers || []).length === 0 && (
+                    <p className="text-center text-gray-500 text-xs py-6">{t('seller.noCustomerData')}</p>
+                  )}
                   {(data.top_customers || []).map((c: any, i: number) => (
                     <div key={i} className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{c.name || '고객'}</p>
-                        <p className="text-xs text-gray-500">{c.order_count}건 주문</p>
+                        <p className="text-sm font-medium text-gray-900">{c.name || t('seller.totalCustomersLabel')}</p>
+                        <p className="text-xs text-gray-500">{c.order_count}{t('seller.ordersUnit')} {t('seller.orderCount')}</p>
                       </div>
-                      <p className="text-sm font-bold text-gray-900">{Number(c.total_spent).toLocaleString()}원</p>
+                      <p className="text-sm font-bold text-gray-900">{Number(c.total_spent).toLocaleString()}{t('common.won')}</p>
                     </div>
                   ))}
                 </div>
@@ -106,19 +202,48 @@ export default function SellerAnalyticsPage() {
 
             {tab === 'products' && data && (
               <div className="bg-white rounded-xl border border-gray-200">
-                <div className="px-4 py-3 border-b border-gray-100"><h3 className="text-sm font-bold text-gray-900">상품별 성과</h3></div>
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <h3 className="text-sm font-bold text-gray-900">{t('seller.productPerformance')}</h3>
+                </div>
+                {(data as any[]).length === 0 && (
+                  <p className="text-center text-gray-500 text-xs py-6">{t('seller.noProductData')}</p>
+                )}
+                {/* Table header */}
+                {(data as any[]).length > 0 && (
+                  <div className="hidden md:grid grid-cols-7 gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase">
+                    <span className="col-span-2">{t('seller.productName')}</span>
+                    <span className="text-right">{t('seller.unitsSold')}</span>
+                    <span className="text-right">{t('seller.orderCount')}</span>
+                    <span className="text-right">{t('seller.revenueLabel')}</span>
+                    <span className="text-right">{t('seller.avgRating')}</span>
+                    <span className="text-right">{t('seller.stockLabel')}</span>
+                  </div>
+                )}
                 {(data as any[]).map((p: any) => (
-                  <div key={p.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-                    <div className="min-w-0 flex-1">
+                  <div key={p.id} className="grid grid-cols-1 md:grid-cols-7 gap-1 md:gap-2 items-center px-4 py-3 border-b border-gray-50 hover:bg-gray-50">
+                    <div className="md:col-span-2 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                      <div className="flex gap-3 text-xs text-gray-500 mt-0.5">
-                        <span>판매 {p.sold_count}개</span>
-                        <span>주문 {p.order_count}건</span>
-                        {p.avg_rating > 0 && <span>★{Number(p.avg_rating).toFixed(1)} ({p.review_count})</span>}
-                        <span>재고 {p.stock}개</span>
-                      </div>
                     </div>
-                    <p className="text-sm font-bold text-gray-900 ml-3">{Number(p.revenue).toLocaleString()}원</p>
+                    <div className="flex md:block md:text-right gap-3 text-xs text-gray-500">
+                      <span className="md:hidden font-medium text-gray-400">{t('seller.unitsSold')}:</span>
+                      <span>{p.sold_count}{t('common.count')}</span>
+                    </div>
+                    <div className="flex md:block md:text-right gap-3 text-xs text-gray-500">
+                      <span className="md:hidden font-medium text-gray-400">{t('seller.orderCount')}:</span>
+                      <span>{p.order_count}{t('seller.ordersUnit')}</span>
+                    </div>
+                    <div className="flex md:block md:text-right gap-3 text-xs">
+                      <span className="md:hidden font-medium text-gray-400">{t('seller.revenueLabel')}:</span>
+                      <span className="font-bold text-gray-900">{Number(p.revenue).toLocaleString()}{t('common.won')}</span>
+                    </div>
+                    <div className="flex md:block md:text-right gap-3 text-xs text-gray-500">
+                      <span className="md:hidden font-medium text-gray-400">{t('seller.avgRating')}:</span>
+                      <span>{p.avg_rating > 0 ? `★${Number(p.avg_rating).toFixed(1)} (${p.review_count})` : '-'}</span>
+                    </div>
+                    <div className="flex md:block md:text-right gap-3 text-xs text-gray-500">
+                      <span className="md:hidden font-medium text-gray-400">{t('seller.stockLabel')}:</span>
+                      <span className={p.stock < 5 ? 'text-red-500 font-medium' : ''}>{p.stock}{t('common.count')}</span>
+                    </div>
                   </div>
                 ))}
               </div>

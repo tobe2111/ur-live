@@ -281,6 +281,66 @@ sellerAnalyticsRoutes.get('/voucher-usage', requireAuth(), async (c) => {
   })
 })
 
+// ── 상세 분석 (전환율, 재구매율 등) ──
+sellerAnalyticsRoutes.get('/detailed', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+
+  try {
+    // 재구매율: 2회 이상 주���한 고�� 비율
+    const repeatStats = await c.env.DB.prepare(`
+      SELECT
+        COUNT(DISTINCT user_id) AS total_buyers,
+        COUNT(DISTINCT CASE WHEN cnt > 1 THEN user_id END) AS repeat_buyers
+      FROM (
+        SELECT user_id, COUNT(*) AS cnt
+        FROM orders
+        WHERE seller_id = ? AND status NOT IN ('CANCELLED','FAILED')
+        GROUP BY user_id
+      )
+    `).bind(sellerId).first<{ total_buyers: number; repeat_buyers: number }>()
+
+    // 전환율: 주문 수 / 조회 수 (product_views 테이블이 있으면 사용)
+    let conversionRate = 0
+    try {
+      const viewStats = await c.env.DB.prepare(`
+        SELECT
+          COALESCE(SUM(v.view_count), 0) AS total_views,
+          (SELECT COUNT(*) FROM orders WHERE seller_id = ? AND status NOT IN ('CANCELLED','FAILED')) AS total_orders
+        FROM product_views v
+        JOIN products p ON v.product_id = p.id
+        WHERE p.seller_id = ?
+      `).bind(sellerId, sellerId).first<{ total_views: number; total_orders: number }>()
+      if (viewStats && viewStats.total_views > 0) {
+        conversionRate = Math.round((viewStats.total_orders / viewStats.total_views) * 10000) / 100
+      }
+    } catch {
+      // product_views 테��블이 없는 경우: 고객 수 기반 추정
+      const orderStats = await c.env.DB.prepare(`
+        SELECT COUNT(*) AS total_orders, COUNT(DISTINCT user_id) AS unique_buyers
+        FROM orders WHERE seller_id = ? AND status NOT IN ('CANCELLED','FAILED')
+      `).bind(sellerId).first<{ total_orders: number; unique_buyers: number }>()
+      if (orderStats && orderStats.unique_buyers > 0) {
+        conversionRate = Math.round((orderStats.total_orders / orderStats.unique_buyers) * 100) / 100
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        total_buyers: repeatStats?.total_buyers || 0,
+        repeat_buyers: repeatStats?.repeat_buyers || 0,
+        repeat_purchase_rate: repeatStats && repeatStats.total_buyers > 0
+          ? Math.round((repeatStats.repeat_buyers / repeatStats.total_buyers) * 100)
+          : 0,
+        conversion_rate: conversionRate,
+      }
+    })
+  } catch (err: any) {
+    return c.json({ success: false, error: err?.message || 'Failed to load detailed analytics' }, 500)
+  }
+})
+
 // ── 상품 복제 ──
 sellerAnalyticsRoutes.post('/products/:id/duplicate', requireAuth(), async (c) => {
   const sellerId = await getSellerId(c)
