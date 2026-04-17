@@ -362,20 +362,30 @@ export default function SellerPublicPage() {
                   {mealVouchers.slice(0, 4).map(p => {
                     const disc = p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0
                     const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / p.group_buy_target!) * 100) : 0
+                    const isAchieved = p.group_buy_current && p.group_buy_target && p.group_buy_current >= p.group_buy_target
                     return (
                       <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-44 text-left active:scale-[0.97]">
                         <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1A1A1A]">
                           {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover" />}
-                          {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{disc}%</span>}
+                          {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">-{disc}%</span>}
+                          {isAchieved && <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">달성!</span>}
                         </div>
                         <div className="mt-2">
                           <p className={`text-[12px] font-medium ${T.text} line-clamp-1`}>{p.name}</p>
                           {p.restaurant_name && <p className="text-[10px] text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-2.5 h-2.5" />{p.restaurant_name}</p>}
-                          <span className="text-[13px] font-extrabold text-red-500">{p.price.toLocaleString()}원</span>
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className="text-[13px] font-extrabold text-red-500">{p.price.toLocaleString()}원</span>
+                            {p.original_price && p.original_price > p.price && (
+                              <span className="text-[10px] text-gray-500 line-through">{p.original_price.toLocaleString()}</span>
+                            )}
+                          </div>
                           {(p.group_buy_target ?? 0) > 0 && (
-                            <div className="mt-1">
-                              <div className="w-full bg-gray-200 rounded-full h-1"><div className="h-full bg-pink-500 rounded-full" style={{ width: `${progress}%` }} /></div>
-                              <p className="text-[9px] text-gray-400 mt-0.5">{p.group_buy_current || 0}/{p.group_buy_target}명</p>
+                            <div className="mt-1.5">
+                              <div className="w-full bg-gray-700 rounded-full h-1.5"><div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
+                              <div className="flex items-center justify-between mt-0.5">
+                                <p className="text-[9px] text-gray-400">{p.group_buy_current || 0}/{p.group_buy_target}명</p>
+                                {!isAchieved && <p className="text-[9px] text-pink-400 font-medium">공구 참여하기 →</p>}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -473,8 +483,14 @@ export default function SellerPublicPage() {
                       </div>
                       {(p.group_buy_target ?? 0) > 0 && (
                         <div className="mt-1.5">
-                          <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="h-full bg-pink-500 rounded-full" style={{ width: `${progress}%` }} /></div>
-                          <p className="text-[10px] text-gray-500 mt-0.5">{p.group_buy_current || 0}/{p.group_buy_target}명 참여</p>
+                          <div className="w-full bg-gray-700 rounded-full h-1.5"><div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
+                          <div className="flex items-center justify-between mt-0.5">
+                            <p className="text-[10px] text-gray-500">{p.group_buy_current || 0}/{p.group_buy_target}명 참여</p>
+                            {p.group_buy_current && p.group_buy_target && p.group_buy_current >= p.group_buy_target
+                              ? <span className="text-[10px] text-green-400 font-bold">🎉 목표 달성!</span>
+                              : <span className="text-[10px] text-pink-400 font-medium">공구 참여 →</span>
+                            }
+                          </div>
                         </div>
                       )}
                     </div>
