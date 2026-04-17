@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, MessageCircle, Share2, ShoppingBag, ChevronLeft, Volume2, VolumeX, Play } from 'lucide-react'
+import { Heart, MessageCircle, Share2, ShoppingBag, ShoppingCart, ChevronLeft, Volume2, VolumeX, Play } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
@@ -296,23 +296,59 @@ export default function ShortsPage() {
                 {item.title}
               </p>
 
-              {/* 연결 상품 */}
-              {item.product_name && (
-                <button
-                  onClick={() => item.product_id && navigate(`/products/${item.product_id}`)}
-                  className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10"
-                >
-                  {item.product_image && (
-                    <img src={item.product_image} alt="" className="w-8 h-8 rounded object-cover" />
-                  )}
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-[11px] text-white/80 truncate">{item.product_name}</p>
-                    {item.product_price && (
-                      <p className="text-[12px] font-bold text-white">{item.product_price.toLocaleString()}원</p>
+              {/* 연결 상품 — 구매 전환 카드 */}
+              {item.product_id && item.product_name && (
+                <div className="animate-[slideUp_0.4s_ease-out] bg-white/95 backdrop-blur rounded-2xl p-3 shadow-lg">
+                  <div className="flex items-center gap-3">
+                    {item.product_image ? (
+                      <img
+                        src={item.product_image}
+                        alt={item.product_name}
+                        className="w-12 h-12 rounded-xl object-cover shrink-0 cursor-pointer"
+                        onClick={() => navigate(`/products/${item.product_id}`)}
+                      />
+                    ) : (
+                      <div
+                        className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 cursor-pointer"
+                        onClick={() => navigate(`/products/${item.product_id}`)}
+                      >
+                        <ShoppingBag className="w-5 h-5 text-gray-400" />
+                      </div>
                     )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-gray-900 truncate">{item.product_name}</p>
+                      {item.product_price != null && (
+                        <p className="text-[14px] font-bold text-pink-500">{item.product_price.toLocaleString()}원</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          api.post('/api/cart', { product_id: item.product_id, quantity: 1 })
+                            .then(() => toast.success('장바구니에 담았습니다'))
+                            .catch(() => {
+                              toast.error('로그인이 필요합니다')
+                              localStorage.setItem('loginReturnUrl', window.location.pathname)
+                              navigate('/login')
+                            })
+                        }}
+                        className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition-transform"
+                      >
+                        <ShoppingCart className="w-4 h-4 text-gray-600" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/products/${item.product_id}`)
+                        }}
+                        className="px-4 py-2 bg-pink-500 text-white text-[13px] font-bold rounded-full active:scale-95 transition-transform"
+                      >
+                        구매하기
+                      </button>
+                    </div>
                   </div>
-                  <ShoppingBag className="w-4 h-4 text-white/60 shrink-0" />
-                </button>
+                </div>
               )}
 
               {/* 라이브 다시보기 */}

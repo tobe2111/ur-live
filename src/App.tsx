@@ -7,6 +7,7 @@ import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
+import PushNotificationSetup from './components/PushNotificationSetup'
 import BottomNav from '@/components/main/BottomNav'
 import SideBanner from '@/components/SideBanner'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -327,6 +328,7 @@ function AppContent() {
           <div className={fullScreen ? 'min-h-dvh' : 'max-w-[430px] mx-auto bg-white min-h-dvh'}>
           <div className="flex-1">
           <ScrollToTop />
+          <PushNotificationSetup />
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />

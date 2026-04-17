@@ -13,9 +13,10 @@ const SETTINGS_FIELDS = [
   { key: 'auto_confirm_days', label: '자동 구매확정 (일)', default: '14' },
   { key: 'return_period_days', label: '반품 가능 기간 (일)', default: '7' },
   { key: 'settlement_hold_days', label: '정산 대기 기간 (일)', default: '7' },
-  { key: 'review_reward_text', label: '텍스트 리뷰 포인트', default: '50' },
-  { key: 'review_reward_image', label: '사진 리뷰 포인트', default: '100' },
-  { key: 'review_reward_video', label: '영상 리뷰 포인트', default: '200' },
+  { key: 'invite_reward_amount', label: '초대 보상 딜', default: '1000' },
+  { key: 'review_reward_text', label: '텍스트 리뷰 보상 (딜)', default: '100' },
+  { key: 'review_reward_image', label: '이미지 리뷰 보상 (딜)', default: '300' },
+  { key: 'review_reward_video', label: '영상 리뷰 보상 (딜)', default: '500' },
   { key: 'affiliate_commission_rate', label: '제휴 마케팅 수수료율 (%)', default: '2' },
 ]
 

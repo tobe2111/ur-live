@@ -167,25 +167,17 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
           `SELECT user_id, order_number FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
         ).bind(orderId, orderId, sellerId).first<{ user_id: string; order_number: string }>();
         if (orderInfo?.user_id) {
-          const statusLabels: Record<string, string> = {
+          const statusMessages: Record<string, string> = {
             'CONFIRMED': '주문이 확인되었습니다',
-            'SHIPPING': '상품이 발송되었습니다',
-            'DELIVERED': '배송이 완료되었습니다',
-            'CANCELLED': '주문이 취소되었습니다',
+            'SHIPPING': '\u{1F4E6} 주문하신 상품이 발송되었습니다!',
+            'DELIVERED': '\u2705 배송이 완료되었습니다. 상품을 확인해주세요!',
+            'CANCELLED': '\u274C 주문이 취소되었습니다.',
           };
-          const msg = statusLabels[dbStatus] || `주문 상태: ${dbStatus}`;
-          await db.prepare(`
-            CREATE TABLE IF NOT EXISTS user_notifications (
-              id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL,
-              title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP)
-          `).run().catch(() => {});
-          await db.prepare(`
-            INSERT INTO user_notifications (user_id, type, title, message, link)
-            VALUES (?, 'order_status', ?, ?, '/my-orders')
-          `).bind(orderInfo.user_id, msg, `주문번호: ${orderInfo.order_number}`).run();
+          const msg = statusMessages[dbStatus] || `주문 상태: ${dbStatus}`;
+          const { notifyUser } = await import('@/lib/notifications');
+          await notifyUser(db, orderInfo.user_id, 'order_status', msg, `주문번호: ${orderInfo.order_number}`, '/my-orders');
         }
-      } catch {}
+      } catch {} // fire and forget
     }
 
     if (!result.meta.changes) {
@@ -275,6 +267,17 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
         ? c.json({ success: false, error: 'Forbidden' }, 403)
         : c.json({ success: false, error: 'Order not found' }, 404);
     }
+
+    // ── 유저에게 인앱 알림 발송 (배송 시작) ──
+    try {
+      const orderForNotif = await db.prepare(
+        `SELECT user_id, order_number FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
+      ).bind(orderId, orderId, sellerId).first<{ user_id: string; order_number: string }>();
+      if (orderForNotif?.user_id) {
+        const { notifyUser } = await import('@/lib/notifications');
+        await notifyUser(db, orderForNotif.user_id, 'order_status', '\u{1F4E6} 주문하신 상품이 발송되었습니다!', `주문번호: ${orderForNotif.order_number}`, '/my-orders');
+      }
+    } catch {} // fire and forget
 
     // ── 배송 시작 알림톡 (fire-and-forget) ──
     if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
@@ -426,6 +429,29 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
          SET status = ?, updated_at = datetime('now')
        WHERE id IN (${placeholders}) AND seller_id = ?`
     ).bind(dbStatus, ...order_ids, sellerId).run();
+
+    // ── 유저에게 인앱 알림 일괄 발송 ──
+    if (result.meta.changes) {
+      try {
+        const statusMessages: Record<string, string> = {
+          'SHIPPING': '\u{1F4E6} 주문하신 상품이 발송되었습니다!',
+          'DELIVERED': '\u2705 배송이 완료되었습니다. 상품을 확인해주세요!',
+          'CANCELLED': '\u274C 주문이 취소되었습니다.',
+        };
+        const msg = statusMessages[dbStatus];
+        if (msg) {
+          const { notifyUser } = await import('@/lib/notifications');
+          const { results: affectedOrders } = await db.prepare(
+            `SELECT user_id, order_number FROM orders WHERE id IN (${placeholders}) AND seller_id = ?`
+          ).bind(...order_ids, sellerId).all<{ user_id: string; order_number: string }>();
+          for (const o of affectedOrders || []) {
+            if (o.user_id) {
+              notifyUser(db, o.user_id, 'order_status', msg, `주문번호: ${o.order_number}`, '/my-orders').catch(() => {});
+            }
+          }
+        }
+      } catch {} // fire and forget
+    }
 
     return c.json({
       success: true,
