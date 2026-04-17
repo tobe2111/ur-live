@@ -47,6 +47,7 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')
         localStorage.setItem('seller_username', seller.username || seller.slug || '')
+        localStorage.setItem('seller_type', seller.seller_type || 'influencer')
         navigate('/seller', { replace: true })
       }
     } catch (err: any) {

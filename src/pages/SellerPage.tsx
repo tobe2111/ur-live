@@ -100,6 +100,9 @@ export default function SellerPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
 
+  const sellerType = localStorage.getItem('seller_type') || 'influencer'
+  const isInfluencer = sellerType === 'influencer' || sellerType === 'both'
+
   // Stats
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0, totalOrders: 0, activeStreams: 0, totalViewers: 0,
@@ -276,13 +279,15 @@ export default function SellerPage() {
           </button>
         ))}
       </div>
-      <button
-        onClick={() => navigate('/seller/live-broadcast')}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        <Play className="w-3.5 h-3.5" />
-        {t('seller.startLive')}
-      </button>
+      {isInfluencer && (
+        <button
+          onClick={() => navigate('/seller/live-broadcast')}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Play className="w-3.5 h-3.5" />
+          {t('seller.startLive')}
+        </button>
+      )}
     </div>
   )
 
@@ -295,24 +300,28 @@ export default function SellerPage() {
               {
                 label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
                 sub: stats.avgOrderValue > 0 ? t('seller.avgPerOrder', { amount: fmtPrice(stats.avgOrderValue) }) : undefined,
-                icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50'
+                icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50',
+                influencerOnly: false
               },
               {
                 label: t('seller.totalOrders'), value: `${(stats.totalOrders || 0).toLocaleString()}`,
                 sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
-                icon: <ShoppingBag className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50'
+                icon: <ShoppingBag className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50',
+                influencerOnly: false
               },
               {
                 label: t('seller.pendingOrders'), value: `${(stats.pendingOrders || 0).toLocaleString()}`,
                 sub: t('seller.needsAction'),
-                icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50'
+                icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50',
+                influencerOnly: false
               },
               {
                 label: t('seller.activeStreams'), value: `${stats.activeStreams || 0}`,
                 sub: stats.totalViewers > 0 ? t('seller.viewerCount', { count: stats.totalViewers }) : t('seller.noStreams'),
-                icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50'
+                icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50',
+                influencerOnly: true
               },
-            ].map(card => (
+            ].filter(card => !card.influencerOnly || isInfluencer).map(card => (
               <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>

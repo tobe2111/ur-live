@@ -153,6 +153,7 @@ export interface SellersTable {
   business_number: string | null
   bank_account: string | null
   status: string                // 'pending' | 'approved' | 'rejected' | 'suspended'
+  seller_type: string           // 'influencer' | 'store_owner' | 'both' — DEFAULT 'influencer'
   is_active: number
   commission_rate: number       // REAL DEFAULT 10.00
   created_at: string

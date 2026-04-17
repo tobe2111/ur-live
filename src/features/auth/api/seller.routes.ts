@@ -42,6 +42,7 @@ type SellerLoginResponse = {
     business_name: string;
     status: string;
     commission_rate: number;
+    seller_type: string;
   };
 };
 
@@ -87,11 +88,11 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     
     // 1. 이메일로 셀러 조회
     const seller = await DB.prepare(`
-      SELECT 
-        id, username, email, password_hash, name, 
+      SELECT
+        id, username, email, password_hash, name,
         business_name, business_number, phone, status, commission_rate,
-        created_at, updated_at
-      FROM sellers 
+        seller_type, created_at, updated_at
+      FROM sellers
       WHERE email = ?
     `).bind(email).first<Record<string, any>>();
     
@@ -143,6 +144,7 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       username: seller.username,
       type: 'seller',
       status: seller.status,
+      seller_type: (seller.seller_type as string) || 'influencer',
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7일
     };
@@ -170,7 +172,8 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
           name: seller.name as string,
           business_name: seller.business_name as string,
           status: seller.status as string,
-          commission_rate: seller.commission_rate as number
+          commission_rate: seller.commission_rate as number,
+          seller_type: (seller.seller_type as string) || 'influencer'
         }
       }
     });
@@ -251,8 +254,8 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
     // 3. DB에서 셀러 정보 조회 (계정 상태 확인)
     const sellerId = payload.seller_id || payload.sub;
     const seller = await DB.prepare(`
-      SELECT id, email, name, username, status, business_name, commission_rate
-      FROM sellers 
+      SELECT id, email, name, username, status, business_name, commission_rate, seller_type
+      FROM sellers
       WHERE id = ?
     `).bind(sellerId).first<Record<string, any>>();
     
@@ -293,6 +296,7 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
       username: seller.username,
       type: 'seller',
       status: seller.status,
+      seller_type: (seller.seller_type as string) || 'influencer',
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7일
     };
@@ -319,7 +323,8 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
           name: seller.name as string,
           business_name: seller.business_name as string,
           status: seller.status as string,
-          commission_rate: seller.commission_rate as number
+          commission_rate: seller.commission_rate as number,
+          seller_type: (seller.seller_type as string) || 'influencer'
         }
       }
     });
