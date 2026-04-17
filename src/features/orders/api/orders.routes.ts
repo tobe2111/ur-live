@@ -427,13 +427,18 @@ ordersRoutes.post('/:id/confirm', cors(), requireAuth(), async (c) => {
 
   // 셀러 정산 알림
   try {
-    const orderInfo = await DB.prepare('SELECT seller_id, total_amount FROM orders WHERE id = ?').bind(id).first<{ seller_id: number; total_amount: number }>();
+    const orderInfo = await DB.prepare('SELECT seller_id, total_amount, order_number FROM orders WHERE id = ?').bind(id).first<{ seller_id: number; total_amount: number; order_number: string }>();
     if (orderInfo?.seller_id) {
       const { createDashboardNotification } = await import('@/features/notifications/api/dashboard-notifications.routes');
       await createDashboardNotification(DB, 'seller', String(orderInfo.seller_id), 'purchase_confirmed',
         '구매 확정', `주문 #${id} 구매 확정 (${orderInfo.total_amount?.toLocaleString()}원) — 정산 가능`, '/seller/settlements');
     }
-  } catch {}
+    // 유저에게 배송 완료 인앱 알림
+    if (order.user_id) {
+      const { notifyUser } = await import('@/lib/notifications');
+      await notifyUser(DB, String(order.user_id), 'order_status', '\u2705 배송이 완료되었습니다. 상품을 확인해주세요!', `주문번호: ${orderInfo?.order_number || id}`, '/my-orders');
+    }
+  } catch {} // fire and forget
 
   return c.json({ success: true, data: { message: '구매확정이 완료되었습니다.' } });
 });

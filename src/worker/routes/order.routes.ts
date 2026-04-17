@@ -474,6 +474,12 @@ ordersRouter.post('/refund', async (c) => {
     });
     await orderRepo.restoreStock(body.order_id);
 
+    // 유저에게 인앱 알림 (환불/주문 취소)
+    try {
+      const { notifyUser } = await import('../../lib/notifications');
+      await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${(order as any).order_number || body.order_id}`, '/my-orders');
+    } catch {} // fire and forget
+
     const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
     return c.json({
@@ -593,6 +599,12 @@ ordersRouter.post('/:id/cancel', async (c) => {
         createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
       }
 
+      // 유저에게 인앱 알림 (주문 취소)
+      try {
+        const { notifyUser } = await import('../../lib/notifications');
+        await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders');
+      } catch {} // fire and forget
+
       const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
       console.info('[ORDERS] Cancel success (paid):', {
@@ -626,6 +638,12 @@ ordersRouter.post('/:id/cancel', async (c) => {
     if (order.seller_id) {
       createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
     }
+
+    // 유저에게 인앱 알림 (주문 취소)
+    try {
+      const { notifyUser } = await import('../../lib/notifications');
+      await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders');
+    } catch {} // fire and forget
 
     console.info('[ORDERS] Cancel success (unpaid):', { orderId, status: order.status });
 
