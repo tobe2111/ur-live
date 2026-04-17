@@ -75,7 +75,6 @@ export default function SellerMealVoucherNewPage() {
 
       const res = await fetch(`/api/kakao/place/search?query=${encodeURIComponent(query)}&category_group_code=FD6&size=5`)
       const json: any = await res.json()
-      console.log('[MealVoucher] Search response:', JSON.stringify(json).slice(0, 500))
       const results = json.data?.documents || json.documents || []
       setPlaceResults(results)
 

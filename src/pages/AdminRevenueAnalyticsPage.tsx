@@ -173,7 +173,7 @@ export default function AdminRevenueAnalyticsPage() {
                   <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`} />
                   <Tooltip
                     contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-                    formatter={(value: number) => [`${fmt(value)}원`, '매출']}
+                    formatter={((value: number) => [`${fmt(value)}원`, '매출']) as any}
                   />
                   <Bar dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -194,7 +194,7 @@ export default function AdminRevenueAnalyticsPage() {
                   <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
                   <Tooltip
                     contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-                    formatter={(value: number) => [`${fmt(value)}건`, '주문']}
+                    formatter={((value: number) => [`${fmt(value)}건`, '주문']) as any}
                   />
                   <Line type="monotone" dataKey="order_count" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
@@ -249,7 +249,7 @@ export default function AdminRevenueAnalyticsPage() {
                         cx="50%"
                         cy="50%"
                         outerRadius={90}
-                        label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
+                        label={(props: any) => `${props.category} ${((props.percent ?? 0) * 100).toFixed(0)}%`}
                         labelLine={{ stroke: '#9CA3AF' }}
                         fontSize={11}
                       >
@@ -259,7 +259,7 @@ export default function AdminRevenueAnalyticsPage() {
                       </Pie>
                       <Tooltip
                         contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-                        formatter={(value: number) => [`${fmt(value)}원`]}
+                        formatter={((value: number) => [`${fmt(value)}원`]) as any}
                       />
                     </PieChart>
                   </ResponsiveContainer>
