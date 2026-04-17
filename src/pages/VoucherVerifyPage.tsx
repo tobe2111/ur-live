@@ -74,7 +74,7 @@ export default function VoucherVerifyPage() {
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
               placeholder="UR-XXXX-XXXX"
-              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg font-mono font-bold tracking-widest focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
+              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg text-gray-900 font-mono font-bold tracking-widest focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
               maxLength={13}
             />
             <button
@@ -120,7 +120,7 @@ export default function VoucherVerifyPage() {
               onChange={e => setPin(e.target.value)}
               type="password"
               placeholder="비밀번호 입력"
-              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-xl tracking-[0.5em] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
+              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-xl text-gray-900 tracking-[0.5em] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
               maxLength={10}
             />
             <button
