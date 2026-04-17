@@ -39,50 +39,7 @@ export default function SellerMealVoucherNewPage() {
   const token = getSellerToken()
   const headers = { Authorization: `Bearer ${token}` }
 
-  const KAKAO_REST_KEY = (import.meta as any).env?.VITE_KAKAO_REST_API_KEY || ''
   const KAKAO_JS_KEY = (import.meta as any).env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
-
-  // 카카오맵 URL에서 place ID 추출
-  function extractKakaoPlaceId(url: string): string | null {
-    const match = url.match(/place\.map\.kakao\.com\/(\d+)/)
-      || url.match(/map\.kakao\.com.*itemId=(\d+)/)
-      || url.match(/kakaomap.*place\/(\d+)/)
-    return match ? match[1] : null
-  }
-
-  // 카카오맵 링크 또는 검색어로 매장 검색
-  async function searchPlace(query: string) {
-    if (!query.trim()) return
-    setSearchingPlace(true)
-    setPlaceResults([])
-
-    try {
-      // 카카오맵 URL인 경우 → place ID로 직접 조회
-      const placeId = extractKakaoPlaceId(query)
-
-      if (placeId) {
-        const res = await fetch(`/api/kakao/place/search?query=${encodeURIComponent(query)}&size=1`)
-        const json: any = await res.json()
-        if (json.data?.documents?.length) {
-          selectPlace(json.data.documents[0])
-          return
-        }
-      }
-
-      const res = await fetch(`/api/kakao/place/search?query=${encodeURIComponent(query)}&category_group_code=FD6&size=5`)
-      const json: any = await res.json()
-      const results = json.data?.documents || json.documents || []
-      setPlaceResults(results)
-
-      if (!results.length) {
-        toast.error('검색 결과가 없습니다. 매장 이름이나 주소를 정확히 입력해주세요.')
-      }
-    } catch {
-      toast.error('검색 실패. 잠시 후 다시 시도해주세요.')
-    } finally {
-      setSearchingPlace(false)
-    }
-  }
 
   function selectPlace(place: any) {
     setForm(f => ({
@@ -94,8 +51,6 @@ export default function SellerMealVoucherNewPage() {
       restaurant_lng: place.x || '',
     }))
     setPlaceSelected(true)
-    setPlaceResults([])
-    setPlaceQuery('')
     toast.success(`${place.place_name} 정보가 자동 입력되었습니다!`)
   }
 
