@@ -254,6 +254,9 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
       }, 401);
     }
     
+    // seller_type 컬럼 존재 보장
+    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'").run() } catch { /* already exists */ }
+
     // 3. DB에서 셀러 정보 조회 (계정 상태 확인)
     const sellerId = payload.seller_id || payload.sub;
     const seller = await DB.prepare(`
