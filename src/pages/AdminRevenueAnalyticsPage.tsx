@@ -101,8 +101,9 @@ export default function AdminRevenueAnalyticsPage() {
       if (categoryRes.data.success) {
         setCategories(categoryRes.data.data || [])
       }
-    } catch (err: any) {
-      if (err.response?.status === 401) {
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number } }
+      if (axiosErr.response?.status === 401) {
         localStorage.removeItem('admin_token')
         navigate('/admin/login')
       } else {
@@ -249,7 +250,7 @@ export default function AdminRevenueAnalyticsPage() {
                         cx="50%"
                         cy="50%"
                         outerRadius={90}
-                        label={(props: any) => `${props.category} ${((props.percent ?? 0) * 100).toFixed(0)}%`}
+                        label={(props: { category?: string; percent?: number }) => `${props.category} ${((props.percent ?? 0) * 100).toFixed(0)}%`}
                         labelLine={{ stroke: '#9CA3AF' }}
                         fontSize={11}
                       >

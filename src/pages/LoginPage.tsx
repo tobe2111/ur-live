@@ -17,10 +17,18 @@ interface KakaoAuth {
   setAccessToken(token: string): void
 }
 
+interface KakaoChannel {
+  addChannel(params: { channelPublicId: string }): void
+  chat(params: { channelPublicId: string }): void
+}
+
 interface KakaoSDK {
   init(appKey: string): void
   isInitialized(): boolean
   Auth: KakaoAuth
+  Channel: KakaoChannel
+  _appKey?: string
+  [key: string]: unknown
 }
 
 declare global {

@@ -13,8 +13,8 @@ interface AuditLog {
   target_type: string
   target_id: string | number
   ip_address: string
-  before_value: any
-  after_value: any
+  before_value: Record<string, unknown> | string | null
+  after_value: Record<string, unknown> | string | null
   created_at: string
 }
 
@@ -57,7 +57,7 @@ export default function AdminAuditLogPage() {
     try {
       const res = await api.get('/api/admin/admins')
       if (res.data.success) {
-        setAdminOptions(res.data.data.map((a: any) => ({ id: a.id, email: a.email })))
+        setAdminOptions(res.data.data.map((a: { id: number; email: string }) => ({ id: a.id, email: a.email })))
       }
     } catch {
       // ignore - dropdown will just be empty
