@@ -7,7 +7,8 @@ import {
   TrendingUp, Clock,
   ChevronRight, RefreshCw, ArrowUpRight,
   AlertCircle, CheckCircle2, Truck, XCircle,
-  AlertTriangle, CreditCard, ArchiveRestore, Users
+  AlertTriangle, CreditCard, ArchiveRestore, Users,
+  Utensils, Gift, Radio, MapPin
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -128,6 +129,12 @@ export default function SellerPage() {
   // 팔로워/구독자 수
   const [followerCount, setFollowerCount] = useState(0)
 
+  // 활동 데이터 기반 대시보드 커스터마이징
+  const [hasLiveHistory, setHasLiveHistory] = useState(false)
+  const [hasMealVouchers, setHasMealVouchers] = useState(false)
+  const [mealVoucherCount, setMealVoucherCount] = useState(0)
+  const [activeGroupBuys, setActiveGroupBuys] = useState(0)
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSellerAuthenticated()) {
@@ -183,11 +190,12 @@ export default function SellerPage() {
       const token = getSellerToken()
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
-      const [dashRes, streamsRes, stockRes, followerRes] = await Promise.allSettled([
+      const [dashRes, streamsRes, stockRes, followerRes, productsRes] = await Promise.allSettled([
         api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
         api.get('/api/seller/streams', { headers }),
         api.get('/api/inventory/stock/alerts', { headers }),
-        api.get(`/api/social/followers/${getSellerId()}`)
+        api.get(`/api/social/followers/${getSellerId()}`),
+        api.get('/api/seller/products', { headers }),
       ])
 
       if (dashRes.status === 'fulfilled' && dashRes.value.data.success) {
@@ -224,6 +232,19 @@ export default function SellerPage() {
       }
       if (followerRes.status === 'fulfilled' && followerRes.value.data?.success) {
         setFollowerCount(followerRes.value.data.data?.count || 0)
+      }
+
+      // 활동 데이터 분석: 라이브 이력 + 식사권 상품
+      if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
+        const allStreams: LiveStream[] = streamsRes.value.data.data || []
+        setHasLiveHistory(allStreams.length > 0)
+      }
+      if (productsRes.status === 'fulfilled' && productsRes.value.data?.success) {
+        const prods = productsRes.value.data.data || []
+        const vouchers = prods.filter((p: any) => p.category === 'meal_voucher' || p.category === 'group_buy')
+        setHasMealVouchers(vouchers.length > 0)
+        setMealVoucherCount(vouchers.length)
+        setActiveGroupBuys(vouchers.filter((p: any) => p.group_buy_status === 'active' || p.group_buy_status === 'achieved').length)
       }
     } catch {
       // silent fail
@@ -487,22 +508,76 @@ export default function SellerPage() {
                 </div>
               </div>
 
-              {/* 빠른 액션 */}
+              {/* 빠른 액션 — 활동 데이터 기반 동적 배치 */}
               <div>
                 <h2 className="text-sm font-semibold text-gray-900 mb-3">빠른 액션</h2>
-                <Link
-                  to="/seller/group-buy/new"
-                  className="flex items-center justify-between p-4 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Users className="w-5 h-5" />
-                    <div>
-                      <p className="text-sm font-bold">공동구매 만들기</p>
-                      <p className="text-xs text-gray-300 mt-0.5">티어 기반 할인 상품 등록</p>
+                <div className="space-y-2">
+                  {/* 식사권/공구 관련 (식사권 이력 있거나 가게사장님이면 상단) */}
+                  {(hasMealVouchers || sellerType === 'store_owner') && (
+                    <>
+                      <Link to="/seller/meal-voucher/new"
+                        className="flex items-center justify-between p-3.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Utensils className="w-4 h-4" />
+                          <div>
+                            <p className="text-[13px] font-bold">식사권 등록</p>
+                            <p className="text-[11px] text-gray-400">카카오맵으로 맛집 선택</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      </Link>
+                      {activeGroupBuys > 0 && (
+                        <Link to="/seller/group-buy"
+                          className="flex items-center justify-between p-3.5 bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <Gift className="w-4 h-4 text-pink-600" />
+                            <div>
+                              <p className="text-[13px] font-bold text-gray-900">공동구매 관리</p>
+                              <p className="text-[11px] text-pink-600">{activeGroupBuys}개 진행중</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </Link>
+                      )}
+                    </>
+                  )}
+
+                  {/* 공동구매 만들기 (항상 표시) */}
+                  <Link to="/seller/group-buy/new"
+                    className={`flex items-center justify-between p-3.5 rounded-xl transition-colors ${
+                      hasMealVouchers || sellerType === 'store_owner'
+                        ? 'bg-white border border-gray-200 hover:bg-gray-50'
+                        : 'bg-gray-900 text-white hover:bg-gray-800'
+                    }`}>
+                    <div className="flex items-center gap-3">
+                      <Users className={`w-4 h-4 ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-600' : ''}`} />
+                      <div>
+                        <p className={`text-[13px] font-bold ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-900' : ''}`}>공동구매 만들기</p>
+                        <p className={`text-[11px] ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-500' : 'text-gray-400'}`}>티어 기반 할인 상품</p>
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </Link>
+
+                  {/* 라이브 관련 (라이브 이력 있거나 인플루언서면 표시) */}
+                  {isInfluencer && (
+                    <Link to="/seller/live-broadcast"
+                      className={`flex items-center justify-between p-3.5 rounded-xl transition-colors ${
+                        hasLiveHistory
+                          ? 'bg-red-50 border border-red-200 hover:bg-red-100'
+                          : 'bg-white border border-gray-200 hover:bg-gray-50'
+                      }`}>
+                      <div className="flex items-center gap-3">
+                        <Radio className={`w-4 h-4 ${hasLiveHistory ? 'text-red-500' : 'text-gray-600'}`} />
+                        <div>
+                          <p className="text-[13px] font-bold text-gray-900">라이브 방송</p>
+                          <p className="text-[11px] text-gray-500">{hasLiveHistory ? '이전 방송 이어서' : '첫 라이브 시작'}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </Link>
+                  )}
+                </div>
               </div>
 
               {/* 알림 */}
