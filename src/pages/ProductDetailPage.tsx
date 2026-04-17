@@ -375,11 +375,11 @@ export default function ProductDetailPage() {
       
       // ✅ 장바구니 페이지로 이동
       navigate('/cart')
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (import.meta.env.DEV) {
         console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
       }
-      const errorMessage = err instanceof Error ? err.message : (err.response?.data?.error || '장바구니 추가에 실패했습니다.')
+      const errorMessage = err instanceof Error ? err.message : '장바구니 추가에 실패했습니다.'
       showToast(errorMessage, 'error')
     }
   }
@@ -409,8 +409,8 @@ export default function ProductDetailPage() {
           price_snapshot: product.price,
           price: product.price,
           item_total: product.price * quantity,
-          seller_id: (product as any).seller_id ?? null,
-          seller_name: (product as any).seller_name ?? null,
+          seller_id: product.seller_id ?? null,
+          seller_name: product.seller_name ?? null,
           shipping_fee: 3000,
           free_shipping_threshold: 0,
           option_id: Object.values(selectedOptions)[0] || null,
@@ -494,9 +494,9 @@ export default function ProductDetailPage() {
           image: product.image_url,
           description: product.description,
           url: `/products/${product.id}`,
-          seller: (product as any).seller_name,
+          seller: product.seller_name,
           originalPrice: product.original_price,
-          stock: (product as any).stock,
+          stock: product.stock,
           sku: product.id,
           rating: reviewSummary?.avg_rating,
           reviewCount: reviewSummary?.total_count,
@@ -523,9 +523,9 @@ export default function ProductDetailPage() {
           price={displayPrice}
           originalPrice={product.original_price || undefined}
           discountRate={product.discount_rate || undefined}
-          sellerName={(product as any).seller_name}
-          sellerId={(product as any).seller_id}
-          soldCount={(product as any).sold_count}
+          sellerName={product.seller_name}
+          sellerId={product.seller_id}
+          soldCount={product.sold_count}
           reviewCount={reviewSummary?.total_count}
           avgRating={reviewSummary?.avg_rating}
         />
@@ -540,11 +540,11 @@ export default function ProductDetailPage() {
         )}
 
         {/* Long Description */}
-        {(product as any).long_description && (
+        {product.long_description && (
           <div className="px-5 py-4 border-t border-gray-100">
             <h2 className="text-sm font-bold text-gray-900 mb-2">상품 상세</h2>
             <div className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-              {(product as any).long_description}
+              {product.long_description}
             </div>
           </div>
         )}
@@ -659,7 +659,7 @@ export default function ProductDetailPage() {
         {/* 친구 초대 공동구매 */}
         <ReferralSection
           productId={product.id}
-          productTiers={(product as any).group_buy_tiers}
+          productTiers={product.group_buy_tiers}
           isLoggedIn={isLoggedIn}
           showToast={showToast}
         />
@@ -745,7 +745,10 @@ function parseTiers(raw: unknown): GroupTier[] {
     const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
     if (Array.isArray(arr) && arr.length > 0) {
       return arr
-        .filter((t: any) => typeof t?.count === 'number' && typeof t?.discount === 'number')
+        .filter((t: unknown): t is GroupTier => {
+          const item = t as Record<string, unknown>
+          return typeof item?.count === 'number' && typeof item?.discount === 'number'
+        })
         .sort((a: GroupTier, b: GroupTier) => a.count - b.count)
     }
   } catch {
@@ -818,8 +821,9 @@ function ReferralSection({
       } else {
         showToast(res.data.error || '공동구매 생성에 실패했습니다.', 'error')
       }
-    } catch (err: any) {
-      showToast(err?.response?.data?.error || '공동구매 생성에 실패했습니다.', 'error')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '공동구매 생성에 실패했습니다.'
+      showToast(msg, 'error')
     } finally {
       setCreating(false)
     }

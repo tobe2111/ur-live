@@ -10,8 +10,13 @@ import {
 export default function SellerAnalyticsPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<'revenue' | 'customers' | 'products'>('revenue')
-  const [data, setData] = useState<any>(null)
-  const [detailedData, setDetailedData] = useState<any>(null)
+  interface RevenueDataPoint { date: string; revenue: number; orders: number }
+  interface CustomerData { total_customers: number; repeat_customers: number; top_customers: { name: string; order_count: number; total_spent: number }[] }
+  interface ProductPerformanceItem { id: number; name: string; sold_count: number; order_count: number; revenue: number; avg_rating: number; review_count: number; stock: number }
+  interface DetailedAnalytics { conversion_rate: number; repeat_purchase_rate: number; repeat_buyers: number; total_buyers: number }
+
+  const [data, setData] = useState<RevenueDataPoint[] | CustomerData | ProductPerformanceItem[] | null>(null)
+  const [detailedData, setDetailedData] = useState<DetailedAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(30)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } }
@@ -81,7 +86,7 @@ export default function SellerAnalyticsPage() {
             { key: 'customers', label: t('seller.customerAnalysis'), icon: Users },
             { key: 'products', label: t('seller.productPerformance'), icon: Package },
           ].map(tabItem => (
-            <button key={tabItem.key} onClick={() => setTab(tabItem.key as any)}
+            <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products')}
               className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 ${tab === tabItem.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
               <tabItem.icon className="w-4 h-4" />{tabItem.label}
             </button>
@@ -106,20 +111,20 @@ export default function SellerAnalyticsPage() {
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-blue-50 rounded-lg p-3">
                       <p className="text-xs text-blue-600">{t('seller.totalRevenueLabel')}</p>
-                      <p className="text-xl font-bold text-gray-900">{(data as any[]).reduce((s: number, d: any) => s + d.revenue, 0).toLocaleString()}{t('common.won')}</p>
+                      <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.revenue, 0).toLocaleString()}{t('common.won')}</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3">
                       <p className="text-xs text-green-600">{t('seller.totalOrdersLabel')}</p>
-                      <p className="text-xl font-bold text-gray-900">{(data as any[]).reduce((s: number, d: any) => s + d.orders, 0)}{t('seller.ordersUnit')}</p>
+                      <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.orders, 0)}{t('seller.ordersUnit')}</p>
                     </div>
                   </div>
 
                   {/* Recharts Line Chart for Revenue Trend */}
                   <div className="mb-4">
                     <h3 className="text-sm font-bold text-gray-900 mb-2">{t('seller.dailyRevenueTrend')}</h3>
-                    {(data as any[]).length > 0 ? (
+                    {(data as RevenueDataPoint[]).length > 0 ? (
                       <ResponsiveContainer width="100%" height={240}>
-                        <LineChart data={(data as any[]).slice(-30)}>
+                        <LineChart data={(data as RevenueDataPoint[]).slice(-30)}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                           <XAxis
                             dataKey="date"
@@ -152,8 +157,8 @@ export default function SellerAnalyticsPage() {
 
                   {/* Bar chart fallback (existing) */}
                   <div className="flex items-end gap-1 overflow-x-auto scrollbar-hide" style={{ minHeight: 120 }}>
-                    {(data as any[]).slice(-14).map((d: any) => {
-                      const max = Math.max(...(data as any[]).map((x: any) => x.revenue)) || 1
+                    {(data as RevenueDataPoint[]).slice(-14).map((d) => {
+                      const max = Math.max(...(data as RevenueDataPoint[]).map((x) => x.revenue)) || 1
                       return (
                         <div key={d.date} className="flex flex-col items-center flex-1 min-w-[28px]">
                           <span className="text-[9px] text-gray-500 mb-1">{(d.revenue / 10000).toFixed(0)}{t('seller.salesUnit')}</span>

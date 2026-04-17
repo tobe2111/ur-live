@@ -34,6 +34,9 @@ export interface Product {
   group_buy_current?: number
   group_buy_deadline?: string
   group_buy_status?: string
+  group_buy_tiers?: unknown
+  restaurant_lat?: number
+  restaurant_lng?: number
 }
 
 export interface ProductOption {

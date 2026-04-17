@@ -209,14 +209,14 @@ describe('Deal point operations', () => {
     });
 
     it('multiple small deductions drain to zero', () => {
-      let wallet = charge(createWallet(), 1_000);
-      for (let i = 0; i < 10; i++) {
+      let wallet = charge(createWallet(), 5_000);
+      for (let i = 0; i < 50; i++) {
         const result = deduct(wallet, 100);
         expect(result).not.toBeNull();
         wallet = result!;
       }
       expect(wallet.balance).toBe(0);
-      // 11th deduction fails
+      // 51st deduction fails
       expect(deduct(wallet, 100)).toBeNull();
     });
   });

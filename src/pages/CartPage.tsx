@@ -220,8 +220,8 @@ function CartPageContent() {
 
     const newQuantity = item.quantity + delta
     if (newQuantity < 1) return
-    const stock = (item as any).product_stock
-    if (stock !== undefined && newQuantity > stock) return
+    const stock = item.product_stock
+    if (stock !== undefined && stock !== null && newQuantity > stock) return
     if (updating) return
 
     setUpdating(true)
@@ -230,9 +230,10 @@ function CartPageContent() {
         itemId: String(cartItemId),
         quantity: newQuantity
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update quantity:', error)
-      showAlert(error.response?.data?.error || '수량 변경에 실패했습니다.', 'error', '수량 변경 실패')
+      const msg = error instanceof Error ? error.message : '수량 변경에 실패했습니다.'
+      showAlert(msg, 'error', '수량 변경 실패')
     } finally {
       setUpdating(false)
     }
@@ -249,9 +250,10 @@ function CartPageContent() {
         try {
           await removeItemMutation.mutateAsync(String(cartItemId))
           showAlert('상품이 삭제되었습니다.', 'success', '삭제 완료')
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Failed to remove item:', error)
-          showAlert(error.response?.data?.error || '상품 삭제에 실패했습니다.', 'error', '삭제 실패')
+          const msg = error instanceof Error ? error.message : '상품 삭제에 실패했습니다.'
+          showAlert(msg, 'error', '삭제 실패')
         } finally {
           setUpdating(false)
         }
@@ -286,9 +288,10 @@ function CartPageContent() {
         optionId
       })
       showAlert('옵션이 변경되었습니다.', 'success', '변경 완료')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to change option:', error)
-      showAlert(error.response?.data?.error || '옵션 변경에 실패했습니다.', 'error', '변경 실패')
+      const msg = error instanceof Error ? error.message : '옵션 변경에 실패했습니다.'
+      showAlert(msg, 'error', '변경 실패')
     } finally {
       setUpdating(false)
     }
@@ -309,9 +312,10 @@ function CartPageContent() {
             )
           )
           showAlert('선택한 상품이 삭제되었습니다.', 'success', '삭제 완료')
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Failed to delete selected:', error)
-          showAlert(error.response?.data?.error || '상품 삭제에 실패했습니다.', 'error', '삭제 실패')
+          const msg = error instanceof Error ? error.message : '상품 삭제에 실패했습니다.'
+          showAlert(msg, 'error', '삭제 실패')
         } finally {
           setUpdating(false)
         }
@@ -342,7 +346,7 @@ function CartPageContent() {
       groups[sellerId].subtotal += (getCartItemPrice(item) * item.quantity)
       return groups
     }, {} as Record<string | number, {
-      items: any[]
+      items: CartItem[]
       subtotal: number
       shipping_fee: number
       free_shipping_threshold: number
@@ -418,7 +422,7 @@ function CartPageContent() {
             {cartItems.map((item) => (
               <CartItemComponent
                 key={item.id}
-                item={item as any}
+                item={item as CartItem & { price_snapshot: number }}
                 isSelected={selectedIds.has(item.id)}
                 onToggleSelect={toggleSelect}
                 onUpdateQuantity={updateQuantity}
