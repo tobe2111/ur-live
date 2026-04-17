@@ -288,6 +288,12 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
           }),
         }).catch(() => {})
       )
+
+      // 추천 트리 등록 (안전망: 카카오 콜백에서 등록 안 된 경우 대비)
+      try {
+        const { registerInReferralTree } = await import('../../features/referral/api/referral-tree.routes');
+        await registerInReferralTree(c.env.DB, String(userId), 'user', referrerId);
+      } catch { /* non-critical */ }
     }
 
     return c.json({ success: true, data: order }, 201);

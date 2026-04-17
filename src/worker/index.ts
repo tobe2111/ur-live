@@ -513,6 +513,10 @@ app.route('/api/referral', referralRoutes);
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
 app.route('/api/invite', inviteRewardRoutes);
 
+// ── 다단계 추천 커미션 ──
+import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
+app.route('/api/referral-tree', referralTreeRoutes);
+
 // ── 방송 알림 구독 ──
 import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 app.route('/api/broadcast-notify', broadcastNotifyRoutes);

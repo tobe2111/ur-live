@@ -77,6 +77,17 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       await DB.prepare("UPDATE users SET kakao_access_token = ? WHERE id = ?")
         .bind(accessToken, user.id).run();
 
+      // ── 추천 트리 등록 (affiliate_ref 쿠키 확인) ────────────────────
+      try {
+        const cookieHeader = c.req.header('Cookie') || '';
+        const refMatch = cookieHeader.match(/affiliate_ref=([^;]+)/);
+        const affiliateRef = refMatch?.[1] || null;
+        if (affiliateRef) {
+          const { registerInReferralTree } = await import('../../referral/api/referral-tree.routes');
+          await registerInReferralTree(DB, String(user.id), 'user', affiliateRef);
+        }
+      } catch { /* referral tree registration is non-critical */ }
+
       // Set httpOnly session cookie on the redirect response
       try {
         const sessionCookie = await createSessionCookie(
@@ -186,6 +197,17 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run() } catch {}
     await DB.prepare("UPDATE users SET kakao_access_token = ? WHERE id = ?")
       .bind(accessToken, user.id).run().catch(() => {});
+
+    // ── 추천 트리 등록 (affiliate_ref 쿠키 확인) ────────────────────
+    try {
+      const cookieHeader = c.req.header('Cookie') || '';
+      const refMatch = cookieHeader.match(/affiliate_ref=([^;]+)/);
+      const affiliateRef = refMatch?.[1] || null;
+      if (affiliateRef) {
+        const { registerInReferralTree } = await import('../../referral/api/referral-tree.routes');
+        await registerInReferralTree(DB, String(user.id), 'user', affiliateRef);
+      }
+    } catch { /* referral tree registration is non-critical */ }
 
     if (sessionCookieHeader) c.header('Set-Cookie', sessionCookieHeader);
     return c.json({
