@@ -183,8 +183,8 @@ export default function SellerPublicPage() {
   return (
     <div className={`min-h-screen ${T.bg}`}>
       <SEO
-        title={seller.name}
-        description={seller.bio || `${seller.name} - 유어딜에서 라이브 방송과 상품을 만나보세요`}
+        title={seller.name || '셀러'}
+        description={seller.bio || `${seller.name || '셀러'} - 유어딜에서 라이브 방송과 상품을 만나보세요`}
         image={seller.profile_image}
         url={`/profile/${seller.username || seller.slug || seller.id}`}
       />
@@ -226,7 +226,7 @@ export default function SellerPublicPage() {
                 <img src={seller.profile_image} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
-                  <span className={`text-2xl font-bold ${T.text}`}>{seller.name.charAt(0)}</span>
+                  <span className={`text-2xl font-bold ${T.text}`}>{(seller.name || '?').charAt(0)}</span>
                 </div>
               )}
               {isOwner && (
@@ -260,7 +260,7 @@ export default function SellerPublicPage() {
             </div>
           ) : (
             <h1 className={`text-xl font-extrabold ${T.text} group`} onClick={() => startEdit('name')}>
-              {seller.name}
+              {seller.name || '이름 없음'}
               {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />}
             </h1>
           )}
@@ -360,9 +360,9 @@ export default function SellerPublicPage() {
                 </div>
                 <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
                   {mealVouchers.slice(0, 4).map(p => {
-                    const disc = p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0
-                    const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / p.group_buy_target!) * 100) : 0
-                    const isAchieved = p.group_buy_current && p.group_buy_target && p.group_buy_current >= p.group_buy_target
+                    const disc = p.original_price && p.original_price > 0 ? Math.round((1 - (p.price || 0) / p.original_price) * 100) : 0
+                    const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / (p.group_buy_target || 1)) * 100) : 0
+                    const isAchieved = (p.group_buy_current || 0) > 0 && (p.group_buy_target || 0) > 0 && p.group_buy_current! >= p.group_buy_target!
                     return (
                       <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-44 text-left active:scale-[0.97]">
                         <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1A1A1A]">
@@ -374,9 +374,9 @@ export default function SellerPublicPage() {
                           <p className={`text-[12px] font-medium ${T.text} line-clamp-1`}>{p.name}</p>
                           {p.restaurant_name && <p className="text-[10px] text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-2.5 h-2.5" />{p.restaurant_name}</p>}
                           <div className="flex items-baseline gap-1.5 mt-0.5">
-                            <span className="text-[13px] font-extrabold text-red-500">{p.price.toLocaleString()}원</span>
+                            <span className="text-[13px] font-extrabold text-red-500">{(p.price || 0).toLocaleString()}원</span>
                             {p.original_price && p.original_price > p.price && (
-                              <span className="text-[10px] text-gray-500 line-through">{p.original_price.toLocaleString()}</span>
+                              <span className="text-[10px] text-gray-500 line-through">{(p.original_price || 0).toLocaleString()}</span>
                             )}
                           </div>
                           {(p.group_buy_target ?? 0) > 0 && (
@@ -465,8 +465,8 @@ export default function SellerPublicPage() {
           ) : (
             <div className="space-y-3">
               {mealVouchers.map(p => {
-                const disc = p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0
-                const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / p.group_buy_target!) * 100) : 0
+                const disc = p.original_price && p.original_price > 0 ? Math.round((1 - (p.price || 0) / p.original_price) * 100) : 0
+                const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / (p.group_buy_target || 1)) * 100) : 0
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-[#121212] rounded-xl text-left active:scale-[0.98]">
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-200 shrink-0">
@@ -478,8 +478,8 @@ export default function SellerPublicPage() {
                       {p.restaurant_address && <p className="text-[10px] text-gray-400 mt-0.5">{p.restaurant_address}</p>}
                       <div className="flex items-baseline gap-1.5 mt-1.5">
                         {disc > 0 && <span className="text-sm font-extrabold text-red-500">{disc}%</span>}
-                        <span className={`text-sm font-extrabold ${T.text}`}>{p.price.toLocaleString()}원</span>
-                        {p.original_price && <span className="text-xs text-gray-400 line-through">{p.original_price.toLocaleString()}원</span>}
+                        <span className={`text-sm font-extrabold ${T.text}`}>{(p.price || 0).toLocaleString()}원</span>
+                        {p.original_price && <span className="text-xs text-gray-400 line-through">{(p.original_price || 0).toLocaleString()}원</span>}
                       </div>
                       {(p.group_buy_target ?? 0) > 0 && (
                         <div className="mt-1.5">
@@ -743,13 +743,13 @@ function StreamCard({ stream, onClick }: { stream: LiveStream; onClick: () => vo
         ) : null}
         {isLive && stream.viewer_count !== undefined && (
           <span className="absolute bottom-2 left-2 text-white text-[10px] flex items-center gap-0.5 drop-shadow-lg">
-            <Eye className="w-3 h-3" /> {stream.viewer_count.toLocaleString()}
+            <Eye className="w-3 h-3" /> {(stream.viewer_count || 0).toLocaleString()}
           </span>
         )}
       </div>
       <p className="text-[11px] text-gray-800 mt-1.5 line-clamp-2 font-medium">{stream.title}</p>
       <p className="text-[10px] text-gray-400 mt-0.5">
-        {stream.viewer_count !== undefined ? `👁 ${stream.viewer_count.toLocaleString()}` : ''}
+        {stream.viewer_count !== undefined ? `👁 ${(stream.viewer_count || 0).toLocaleString()}` : ''}
         {stream.created_at ? ` · ${new Date(stream.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}` : ''}
       </p>
     </button>
