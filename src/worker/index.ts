@@ -194,12 +194,38 @@ app.get('/health', (c) => c.json({
   environment: (c.env as Env).ENVIRONMENT ?? 'development',
 }));
 
-app.get('/api/health', (c) => c.json({
-  status: 'ok',
-  timestamp: new Date().toISOString(),
-  version: '2.0.0',
-  environment: (c.env as Env).ENVIRONMENT ?? 'development',
-}));
+app.get('/api/health', async (c) => {
+  const env = c.env as Env;
+  const checks: Record<string, string> = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  };
+
+  // DB check
+  try {
+    await env.DB.prepare("SELECT 1").first();
+    checks.database = 'ok';
+  } catch {
+    checks.database = 'error';
+    checks.status = 'degraded';
+  }
+
+  // KV check
+  try {
+    if (env.RATE_LIMIT_KV) {
+      await env.RATE_LIMIT_KV.get('health-check');
+      checks.kv = 'ok';
+    }
+  } catch {
+    checks.kv = 'error';
+  }
+
+  checks.version = '2.0.0';
+  checks.region = env.REGION || 'unknown';
+  checks.environment = env.ENVIRONMENT ?? 'development';
+
+  return c.json(checks, checks.status === 'ok' ? 200 : 503);
+});
 
 // ============================================================
 // API Documentation (OpenAPI / Swagger UI)
@@ -771,10 +797,15 @@ app.onError(errorHandler);
 // ============================================================
 
 import { handleScheduled } from './cron/scheduled-cleanup';
+import { handleAutoSettlement } from './cron/auto-settlement';
 
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // Run existing cleanup tasks (every 5 minutes)
     ctx.waitUntil(handleScheduled(env));
+
+    // Auto-settlement: runs on every trigger but only processes vouchers 7+ days old
+    ctx.waitUntil(handleAutoSettlement(env));
   },
 };
