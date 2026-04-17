@@ -62,6 +62,20 @@ couponRoutes.get('/my', requireAuth(), async (c) => {
   return c.json({ success: true, data: results ?? [] })
 })
 
+// 쿠폰 시드 생성 (배포 후 1회 호출: GET /api/coupons/seed)
+couponRoutes.get('/seed', async (c) => {
+  const { DB } = c.env
+  await ensureTables(DB)
+
+  const existing = await DB.prepare("SELECT id FROM coupons WHERE code = 'WELCOME2026'").first()
+  if (existing) return c.json({ success: true, message: '이미 존재합니다', coupon_id: existing.id })
+
+  await DB.prepare(`INSERT INTO coupons (code, name, type, value, min_order_amount, max_discount, total_count, used_count, is_active, expires_at)
+    VALUES ('WELCOME2026', '카카오 채널 추가 감사 쿠폰', 'fixed', 3000, 10000, NULL, 10000, 0, 1, '2026-12-31 23:59:59')`).run()
+
+  return c.json({ success: true, message: 'WELCOME2026 쿠폰 생성 완료 (3,000원 할인, 최소주문 10,000원, 10,000장)' })
+})
+
 // 자동 쿠폰 발급 (링크 클릭 → 로그인 유저에게 자동 지급)
 couponRoutes.get('/claim/:code', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
