@@ -307,7 +307,7 @@ export default function UserProfilePage() {
       <MenuList />
 
       {/* 로그아웃 */}
-      <div className="px-5 py-6">
+      <div className="px-5 py-6 pb-24">
         <button onClick={handleLogout}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#2A2A2A] bg-[#121212] py-3.5 text-sm font-medium text-gray-400">
           <LogOut className="w-4 h-4" /> 로그아웃
