@@ -700,6 +700,8 @@ export default function ProductDetailPage() {
           disabled={product.stock === 0 && product.stock_quantity === 0}
           isWishlisted={isWishlisted}
           onToggleWishlist={handleToggleWishlist}
+          price={product.price}
+          originalPrice={product.original_price}
         />
       </Suspense>
 
