@@ -31,13 +31,13 @@ export function MobileHeader({ onShare, isWishlisted, onToggleWishlist }: Mobile
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-11 items-center justify-between bg-background/90 px-4 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 flex h-11 items-center justify-between bg-white/90 px-4 backdrop-blur-sm border-b border-gray-100">
       <button
         aria-label="Go back"
         className="p-1"
         onClick={handleBack}
       >
-        <ArrowLeft className="h-5 w-5 text-foreground" />
+        <ArrowLeft className="h-5 w-5 text-gray-900" />
       </button>
 
       <div className="flex items-center gap-4">
@@ -51,7 +51,7 @@ export function MobileHeader({ onShare, isWishlisted, onToggleWishlist }: Mobile
               className={`h-[18px] w-[18px] transition-colors ${
                 isWishlisted
                   ? 'fill-red-500 text-red-500'
-                  : 'text-foreground'
+                  : 'text-gray-900'
               }`}
             />
           </button>
@@ -61,14 +61,14 @@ export function MobileHeader({ onShare, isWishlisted, onToggleWishlist }: Mobile
           className="p-1"
           onClick={onShare}
         >
-          <Share2 className="h-[18px] w-[18px] text-foreground" />
+          <Share2 className="h-[18px] w-[18px] text-gray-900" />
         </button>
         <button
           aria-label="Cart"
           className="p-1"
           onClick={() => navigate('/cart')}
         >
-          <ShoppingBag className="h-[18px] w-[18px] text-foreground" />
+          <ShoppingBag className="h-[18px] w-[18px] text-gray-900" />
         </button>
       </div>
     </header>
