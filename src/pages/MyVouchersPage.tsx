@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X } from 'lucide-react'
 import api from '@/lib/api'
 
 interface Voucher {
@@ -24,10 +24,48 @@ const STATUS_MAP = {
   refunded: { label: '환불됨', color: 'bg-yellow-100 text-yellow-700', icon: XCircle },
 }
 
+function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) {
+  return (
+    <img
+      src={`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`}
+      alt="QR Code"
+      className="mx-auto"
+      width={size}
+      height={size}
+    />
+  )
+}
+
+function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }) {
+  const qrUrl = `https://live.ur-team.com/v/${voucher.code}`
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="bg-white rounded-2xl p-6 mx-4 max-w-xs w-full relative" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
+          <X className="w-5 h-5 text-gray-500" />
+        </button>
+        <p className="text-center text-sm font-bold text-gray-900 mb-1">{voucher.product_name}</p>
+        {voucher.restaurant_name && (
+          <p className="text-center text-xs text-gray-500 mb-4">{voucher.restaurant_name}</p>
+        )}
+        <div className="flex justify-center mb-4">
+          <VoucherQRCode value={qrUrl} size={160} />
+        </div>
+        <div className="bg-gray-100 rounded-lg px-3 py-2 text-center">
+          <code className="text-sm font-mono font-bold text-pink-500">{voucher.code}</code>
+        </div>
+        <p className="text-[10px] text-gray-400 text-center mt-2">매장에서 이 QR 코드를 보여주세요</p>
+      </div>
+    </div>
+  )
+}
+
 export default function MyVouchersPage() {
   const navigate = useNavigate()
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [loading, setLoading] = useState(true)
+  const [qrVoucher, setQrVoucher] = useState<Voucher | null>(null)
 
   useEffect(() => {
     api.get('/api/vouchers/my')
@@ -91,14 +129,25 @@ export default function MyVouchersPage() {
                       {/* 바우처 코드 */}
                       <div className="mt-2 bg-gray-100 rounded-lg px-3 py-2 flex items-center justify-between">
                         <code className="text-sm font-mono font-bold text-pink-400">{v.code}</code>
-                        {v.status === 'unused' && (
-                          <button
-                            onClick={() => navigator.clipboard?.writeText(v.code)}
-                            className="text-[10px] text-gray-500 hover:text-gray-900"
-                          >
-                            복사
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {v.status === 'unused' && (
+                            <button
+                              onClick={() => setQrVoucher(v)}
+                              className="text-[10px] text-pink-500 hover:text-pink-600 font-medium flex items-center gap-0.5"
+                            >
+                              <QrCode className="w-3 h-3" />
+                              QR 보기
+                            </button>
+                          )}
+                          {v.status === 'unused' && (
+                            <button
+                              onClick={() => navigator.clipboard?.writeText(v.code)}
+                              className="text-[10px] text-gray-500 hover:text-gray-900"
+                            >
+                              복사
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {/* 유효기간 */}
                       {v.expires_at && (
@@ -115,6 +164,9 @@ export default function MyVouchersPage() {
           </div>
         )}
       </div>
+
+      {/* QR Code Modal */}
+      {qrVoucher && <QRModal voucher={qrVoucher} onClose={() => setQrVoucher(null)} />}
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Users, ShoppingBag, Handshake, CheckCircle, X } from 'lucide-react'
+import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown } from 'lucide-react'
 
 interface GroupBuy {
   id: number
@@ -131,6 +131,36 @@ function ConfirmModal({ groupBuy, onClose, onConfirm }: {
       </div>
     </div>
   )
+}
+
+function generateContract(groupBuy: GroupBuy) {
+  const html = `
+    <html><head><meta charset="utf-8"><style>body{font-family:sans-serif;padding:40px;} h1{text-align:center;} table{width:100%;border-collapse:collapse;} td,th{border:1px solid #ddd;padding:8px;}</style></head>
+    <body>
+      <h1>식사권 공동구매 계약서</h1>
+      <p>계약일: ${new Date().toLocaleDateString('ko-KR')}</p>
+      <table>
+        <tr><th>항목</th><th>내용</th></tr>
+        <tr><td>식당명</td><td>${groupBuy.restaurant_name}</td></tr>
+        <tr><td>확정 가격</td><td>${groupBuy.confirmed_price?.toLocaleString()}원</td></tr>
+        <tr><td>할인율</td><td>${groupBuy.confirmed_discount_percent}%</td></tr>
+        <tr><td>참여 인원</td><td>${groupBuy.participant_count}명</td></tr>
+        <tr><td>총 거래액</td><td>${(groupBuy.total_deposit_deals || 0).toLocaleString()}딜</td></tr>
+      </table>
+      <p style="margin-top:40px">양 당사자는 위 내용에 동의합니다.</p>
+      <div style="display:flex;justify-content:space-between;margin-top:60px">
+        <div>에이전시 서명: ___________</div>
+        <div>식당 대표 서명: ___________</div>
+      </div>
+    </body></html>
+  `
+  const blob = new Blob([html], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `계약서_${groupBuy.restaurant_name}_${new Date().toISOString().slice(0, 10)}.html`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 type TabKey = 'popular' | 'all' | 'negotiating' | 'confirmed'
@@ -302,7 +332,16 @@ export default function AgencyGroupBuyPage() {
                           실패 처리
                         </button>
                       )}
-                      {(g.status === 'confirmed' || g.status === 'achieved' || g.status === 'failed') && (
+                      {g.status === 'confirmed' && (
+                        <button
+                          onClick={() => generateContract(g)}
+                          className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-200 flex items-center gap-1"
+                        >
+                          <FileDown className="w-3 h-3" />
+                          계약서 다운로드
+                        </button>
+                      )}
+                      {(g.status === 'achieved' || g.status === 'failed') && (
                         <span className="text-xs text-gray-400">-</span>
                       )}
                     </div>

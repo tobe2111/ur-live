@@ -5,7 +5,8 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
   Users, ShoppingBag, DollarSign, Play,
-  TrendingUp, ArrowUpRight, CheckCircle, XCircle, Clock, Download, Bell
+  TrendingUp, ArrowUpRight, CheckCircle, XCircle, Clock, Download, Bell,
+  Link2, Copy, UserPlus
 } from 'lucide-react'
 
 interface Stats {
@@ -99,6 +100,65 @@ function payBadge(status: string) {
   return <span className="flex items-center gap-1 text-xs text-amber-600"><Clock className="w-3 h-3" />대기중</span>
 }
 
+function InviteLinkSection() {
+  const agencyId = localStorage.getItem('agency_id')
+  const inviteUrl = `https://live.ur-team.com/seller/register?agency=${agencyId}`
+  const [recruitedCount, setRecruitedCount] = useState(0)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem('agency_token')
+    if (!token) return
+    api.get('/api/agency/sellers', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        const sellers = r.data.data || []
+        setRecruitedCount(sellers.length)
+      })
+      .catch(() => {})
+  }, [])
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl)
+      setCopied(true)
+      toast.success('초대 링크가 복사되었습니다.')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('복사에 실패했습니다.')
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+          <UserPlus className="w-4 h-4 text-purple-600" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-gray-900">인플루언서 초대</h3>
+          <p className="text-xs text-gray-500">링크를 공유하여 셀러를 모집하세요</p>
+        </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <Link2 className="w-3.5 h-3.5 text-gray-400" />
+          <span className="text-xs font-semibold text-gray-700">모집된 셀러: {recruitedCount}명</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 truncate font-mono">
+          {inviteUrl}
+        </div>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shrink-0"
+        >
+          <Copy className="w-3.5 h-3.5" />
+          {copied ? '복사됨!' : '복사'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AgencyPage() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
@@ -182,6 +242,9 @@ export default function AgencyPage() {
         <button onClick={() => navigate('/agency/compare')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">셀러 비교</button>
         <button onClick={() => navigate('/agency/targets')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">매출 목표</button>
       </div>
+
+      {/* 인플루언서 초대 */}
+      <InviteLinkSection />
 
       {/* Quick Actions: 리포트 다운로드 + 알림 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

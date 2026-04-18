@@ -2,9 +2,9 @@
  * UserProfilePage - 마이페이지
  * 세션 쿠키 기반 인증 (Firebase 불필요)
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Crown, Heart } from 'lucide-react'
+import { LogOut, Crown, Heart, Users } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -151,6 +151,87 @@ function InterestCountButton() {
   )
 }
 
+interface GroupBuy {
+  id: number
+  product_name: string
+  status: string
+  current_count: number
+  target_count: number
+  expires_at: string
+}
+
+function formatCountdown(expiresAt: string): string {
+  const diff = new Date(expiresAt).getTime() - Date.now()
+  if (diff <= 0) return '만료됨'
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+  if (hours > 24) {
+    const days = Math.floor(hours / 24)
+    return `${days}일 ${hours % 24}시간 남음`
+  }
+  if (hours > 0) return `${hours}시간 ${minutes}분 ${seconds}초 남음`
+  if (minutes > 0) return `${minutes}분 ${seconds}초 남음`
+  return `${seconds}초 남음`
+}
+
+function ActiveGroupBuys() {
+  const navigate = useNavigate()
+  const [groups, setGroups] = useState<GroupBuy[]>([])
+  const [, setTick] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    api.get('/api/referral/my')
+      .then(r => {
+        if (r.data.success) {
+          const active = (r.data.data || []).filter((g: GroupBuy) => g.status === 'open')
+          setGroups(active)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (groups.length === 0) return
+    intervalRef.current = setInterval(() => setTick(t => t + 1), 1000)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [groups.length])
+
+  if (groups.length === 0) return null
+
+  return (
+    <div className="px-5 py-1.5">
+      <div className="flex items-center gap-2 mb-2">
+        <Users className="w-4 h-4 text-pink-400" />
+        <span className="text-[12px] text-gray-400 font-medium">진행 중인 공구</span>
+      </div>
+      <div className="space-y-2">
+        {groups.map(group => (
+          <div
+            key={group.id}
+            onClick={() => navigate(`/referral/${group.id}`)}
+            className="bg-[#121212] border border-[#2A2A2A] rounded-2xl px-4 py-3 cursor-pointer active:scale-[0.98] transition-all"
+          >
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-gray-500">진행 중인 공구</p>
+                <p className="text-sm font-bold text-white truncate">{group.product_name}</p>
+              </div>
+              <div className="text-right shrink-0 ml-3">
+                <p className="text-xs text-pink-400">{formatCountdown(group.expires_at)}</p>
+                <p className="text-[10px] text-gray-500">{group.current_count}/{group.target_count}명</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function UserProfilePage() {
   const navigate = useNavigate()
   const isLoggedIn = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
@@ -210,6 +291,9 @@ export default function UserProfilePage() {
 
       {/* VIP 등급 */}
       <VipTierCard />
+
+      {/* 진행 중인 공구 */}
+      <ActiveGroupBuys />
 
       {/* 바로가기 */}
       <div className="px-5 py-3 flex gap-2">

@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
 export default function SellerRegisterPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const agencyId = searchParams.get('agency')
   const [formData, setFormData] = useState({
     sellerType: 'influencer' as 'influencer' | 'store_owner' | 'both',
     username: '',
@@ -78,7 +80,8 @@ export default function SellerRegisterPage() {
         business_number: formData.businessNumber,
         business_name: formData.businessName,
         youtube_email: formData.sellerType !== 'store_owner' ? formData.youtubeEmail : undefined,
-        seller_type: formData.sellerType
+        seller_type: formData.sellerType,
+        agency_id: agencyId ? Number(agencyId) : undefined
       })
 
       if (response.data.success) {
@@ -103,6 +106,11 @@ export default function SellerRegisterPage() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">👨‍💼</h1>
           <h2 className="text-3xl font-bold text-gray-900">{t('seller.sellerRegister')}</h2>
           <p className="text-gray-600 mt-2">{t('seller.sellerRegistration')}</p>
+          {agencyId && (
+            <div className="mt-3 inline-flex items-center gap-1.5 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-xs font-medium">
+              <span>🤝</span> 에이전시 초대를 통한 가입
+            </div>
+          )}
         </div>
 
         {/* Registration Form */}
