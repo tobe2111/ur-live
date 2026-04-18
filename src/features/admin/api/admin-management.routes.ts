@@ -2351,6 +2351,107 @@ adminManagementRoutes.delete('/coupons/:id', cors(), async (c) => {
   } catch (err) { return c.json({ success: false, error: (err as Error).message }, 500); }
 });
 
+// ── 쿠폰 세그먼트 발송 ──
+adminManagementRoutes.post('/coupons/:id/send-segment', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const couponId = c.req.param('id');
+    const { segment } = await c.req.json<{ segment: 'all' | 'vip' | 'new' | 'dormant' | 'active' }>();
+
+    if (!segment || !['all', 'vip', 'new', 'dormant', 'active'].includes(segment)) {
+      return c.json({ success: false, error: '유효하지 않은 세그먼트' }, 400);
+    }
+
+    // 쿠폰 존재 확인
+    const coupon = await DB.prepare('SELECT * FROM coupons WHERE id = ?').bind(couponId).first<Record<string, unknown>>();
+    if (!coupon) return c.json({ success: false, error: '쿠폰을 찾을 수 없습니다' }, 404);
+
+    // user_coupons 테이블 생성
+    try {
+      await DB.prepare(`CREATE TABLE IF NOT EXISTS user_coupons (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        coupon_id INTEGER NOT NULL,
+        claimed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, coupon_id)
+      )`).run();
+    } catch { /* already exists */ }
+
+    // 세그먼트에 따라 유저 조회
+    let userQuery = '';
+    switch (segment) {
+      case 'all':
+        userQuery = "SELECT id FROM users";
+        break;
+      case 'vip':
+        userQuery = "SELECT DISTINCT u.id FROM users u INNER JOIN user_tiers ut ON u.id = ut.user_id WHERE ut.tier IN ('gold', 'diamond')";
+        break;
+      case 'new':
+        userQuery = "SELECT id FROM users WHERE created_at > datetime('now', '-7 days')";
+        break;
+      case 'dormant':
+        userQuery = "SELECT u.id FROM users u WHERE u.id NOT IN (SELECT DISTINCT user_id FROM orders WHERE created_at > datetime('now', '-30 days'))";
+        break;
+      case 'active':
+        userQuery = "SELECT DISTINCT user_id as id FROM orders WHERE created_at > datetime('now', '-7 days')";
+        break;
+    }
+
+    const { results: users } = await DB.prepare(userQuery).all<{ id: string }>();
+    if (!users || users.length === 0) {
+      return c.json({ success: false, error: '해당 세그먼트에 유저가 없습니다' }, 404);
+    }
+
+    let sentCount = 0;
+    // 배치로 user_coupons 레코드 생성 및 알림 발송
+    for (const user of users) {
+      try {
+        await DB.prepare("INSERT OR IGNORE INTO user_coupons (user_id, coupon_id) VALUES (?, ?)").bind(String(user.id), couponId).run();
+        sentCount++;
+      } catch { /* duplicate or error — skip */ }
+    }
+
+    // 알림 생성 (notifications 테이블이 있으면)
+    try {
+      await DB.prepare(`CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        type TEXT DEFAULT 'coupon',
+        title TEXT NOT NULL,
+        message TEXT,
+        is_read INTEGER DEFAULT 0,
+        link TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`).run();
+    } catch { /* already exists */ }
+
+    const couponName = coupon.name as string || '쿠폰';
+    const segmentLabels: Record<string, string> = {
+      all: '전체', vip: 'VIP', new: '신규', dormant: '휴면', active: '활성'
+    };
+
+    for (const user of users) {
+      try {
+        await DB.prepare(
+          "INSERT INTO notifications (user_id, type, title, message, link) VALUES (?, 'coupon', ?, ?, '/cart')"
+        ).bind(
+          String(user.id),
+          `쿠폰이 도착했어요!`,
+          `[${couponName}] 쿠폰이 지급되었습니다. 지금 사용해보세요!`
+        ).run();
+      } catch { /* skip */ }
+    }
+
+    return c.json({
+      success: true,
+      message: `${segmentLabels[segment]} 유저 ${sentCount}명에게 쿠폰이 발송되었습니다`,
+      data: { sent_count: sentCount, segment }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 1. Audit Log Viewer
 // ═══════════════════════════════════════════════════════════════════════════════
