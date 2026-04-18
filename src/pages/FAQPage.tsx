@@ -53,7 +53,7 @@ export default function FAQPage() {
         </div>
       </header>
 
-      <div className="px-4 pt-4 pb-10">
+      <div className="px-4 pt-4 pb-20">
         {/* Hero */}
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2">

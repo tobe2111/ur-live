@@ -191,7 +191,7 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      <div className="px-4 py-5 space-y-4 pb-28">
+      <div className="px-4 py-5 space-y-4 pb-32">
         {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
         <section className="bg-white rounded-2xl p-4 border border-gray-200">
           {product && (

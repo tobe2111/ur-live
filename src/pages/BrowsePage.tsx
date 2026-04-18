@@ -408,7 +408,7 @@ export default function BrowsePage() {
 
             {/* 더보기 */}
             {hasMore && (
-              <div className="flex justify-center mt-6 pb-4">
+              <div className="flex justify-center mt-6 pb-20">
                 <button onClick={() => setShowCount(c => c + ITEMS_PER_PAGE)}
                   className="px-8 py-3 border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50">
                   더보기 ({sorted.length - showCount}개 남음)

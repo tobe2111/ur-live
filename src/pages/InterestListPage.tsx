@@ -42,7 +42,7 @@ export default function InterestListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020202]">
+    <div className="min-h-screen bg-[#020202] pb-20">
       <SEO title="관심 맛집 - 유어딜" description="관심 등록한 맛집과 공동구매 알림 목록" url="/interest-list" />
 
       {/* 헤더 */}

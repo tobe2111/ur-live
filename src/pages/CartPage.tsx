@@ -405,7 +405,7 @@ function CartPageContent() {
   }
 
   return (
-    <div className="flex flex-col bg-[#f4f4f4] min-h-screen">
+    <div className="flex flex-col bg-[#f4f4f4] min-h-screen pb-20">
       <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" />
       {/* 🎯 분리된 Header 컴포넌트 */}
       <CartHeader

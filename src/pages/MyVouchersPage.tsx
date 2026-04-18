@@ -75,7 +75,7 @@ export default function MyVouchersPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-20">
       <SEO title="내 식사권 - 유어딜" description="구매한 식사권을 확인하고 사용하세요" url="/my-vouchers" />
       {/* 헤더 */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
