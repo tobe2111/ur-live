@@ -2,7 +2,7 @@
  * UserProfilePage - 마이페이지
  * 세션 쿠키 기반 인증 (Firebase 불필요)
  */
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LogOut, Crown, Heart, Users } from 'lucide-react'
 import SEO from '@/components/SEO'

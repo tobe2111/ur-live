@@ -1,12 +1,12 @@
 import { CustomModal, useModal } from '@/components/CustomModal'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { clearAuthData } from '@/utils/auth'
 import {
   Users, Play, Package, TrendingUp, CheckCircle, XCircle,
-  DollarSign, Eye, RefreshCw
+  DollarSign, Eye, RefreshCw, X
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { formatKST, formatKSTDate } from '@/utils/date'
@@ -69,6 +69,13 @@ interface DashboardStats {
   liveStreams: number
 }
 
+interface Alert {
+  type: 'success' | 'warning' | 'error'
+  emoji: string
+  title: string
+  message: string
+}
+
 export default function AdminPage() {
   const navigate = useNavigate()
   const [sellers, setSellers] = useState<Seller[]>([])
@@ -83,12 +90,41 @@ export default function AdminPage() {
   const [bizInfoSeller, setBizInfoSeller] = useState<Seller | null>(null)
   const [commissionSettings, setCommissionSettings] = useState<{ key: string; value: string; description: string }[]>([])
 
-  // 수수료 설정 로드
+  // ── 실시간 알림 ──
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [salesTarget, setSalesTarget] = useState(1000000)
+  const salesAlertShown = useRef(false)
+  const recentOrdersRef = useRef<{ userId: string; time: number }[]>([])
+
+  const dismissAlert = useCallback((index: number) => {
+    setAlerts(prev => prev.filter((_, i) => i !== index))
+  }, [])
+
+  // 매출 목표 설정 로드
   useEffect(() => {
     api.get('/api/admin/settings/commission', { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } })
-      .then(r => { if (r.data.success) setCommissionSettings(r.data.data) })
+      .then(r => {
+        if (r.data.success) {
+          setCommissionSettings(r.data.data)
+          const target = r.data.data?.find((s: { key: string }) => s.key === 'daily_sales_target')
+          if (target) setSalesTarget(Number(target.value) || 1000000)
+        }
+      })
       .catch(() => {})
   }, [])
+
+  // 매출 목표 달성 알림
+  useEffect(() => {
+    if (dashboardStats.todaySales >= salesTarget && !salesAlertShown.current) {
+      setAlerts(prev => [...prev, {
+        type: 'success',
+        emoji: '\uD83C\uDF89',
+        title: '일일 매출 목표 달성!',
+        message: `오늘 매출 ${fmtPrice(dashboardStats.todaySales)} 달성 (목표: ${fmtPrice(salesTarget)})`
+      }])
+      salesAlertShown.current = true
+    }
+  }, [dashboardStats.todaySales, salesTarget])
 
   async function updateCommission(key: string, newValue: string) {
     try {
@@ -153,6 +189,55 @@ export default function AdminPage() {
       if (response.data?.success && response.data?.data) {
         setDashboardStats(response.data.data)
       }
+    } catch { /* silent */ }
+
+    // 이상 거래 감지: 최근 주문 확인
+    try {
+      const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+      const ordersRes = await api.get('/api/admin/orders?page=1&limit=5', h)
+      const orders = ordersRes.data?.data?.orders || ordersRes.data?.data || []
+      const now = Date.now()
+
+      for (const order of orders) {
+        // 고액 주문 감지 (50만원 초과)
+        if (Number(order.total_amount) > 500000) {
+          setAlerts(prev => {
+            if (prev.some(a => a.message.includes(order.order_number))) return prev
+            return [...prev, {
+              type: 'warning' as const,
+              emoji: '\u26A0\uFE0F',
+              title: '이상 거래 감지 - 고액 주문',
+              message: `주문 ${order.order_number}: ${Number(order.total_amount).toLocaleString()}원 (유저: ${order.user_email || order.user_id})`
+            }]
+          })
+        }
+
+        // 동일 유저 1분 내 다중 주문 감지
+        if (order.user_id && order.created_at) {
+          const orderTime = new Date(order.created_at).getTime()
+          const recent = recentOrdersRef.current.filter(
+            r => r.userId === order.user_id && Math.abs(now - r.time) < 60000
+          )
+          if (recent.length >= 2) {
+            setAlerts(prev => {
+              if (prev.some(a => a.title === '이상 거래 감지 - 연속 주문' && a.message.includes(order.user_id))) return prev
+              return [...prev, {
+                type: 'error' as const,
+                emoji: '\uD83D\uDEA8',
+                title: '이상 거래 감지 - 연속 주문',
+                message: `유저 ${order.user_email || order.user_id}이(가) 1분 내 ${recent.length + 1}건 주문`
+              }]
+            })
+          }
+          // 기존 기록에 없으면 추가
+          if (!recentOrdersRef.current.some(r => r.userId === order.user_id && r.time === orderTime)) {
+            recentOrdersRef.current.push({ userId: order.user_id, time: orderTime })
+          }
+        }
+      }
+
+      // 오래된 기록 정리 (5분 이상)
+      recentOrdersRef.current = recentOrdersRef.current.filter(r => now - r.time < 300000)
     } catch { /* silent */ }
   }
 
@@ -327,6 +412,26 @@ export default function AdminPage() {
               >거부 확정</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── 실시간 알림 ── */}
+      {alerts.length > 0 && (
+        <div className="space-y-2 mb-4">
+          {alerts.map((alert, i) => (
+            <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl ${
+              alert.type === 'success' ? 'bg-green-50 border border-green-200' :
+              alert.type === 'warning' ? 'bg-amber-50 border border-amber-200' :
+              'bg-red-50 border border-red-200'
+            }`}>
+              <span className="text-lg">{alert.emoji}</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">{alert.title}</p>
+                <p className="text-xs text-gray-500">{alert.message}</p>
+              </div>
+              <button onClick={() => dismissAlert(i)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+            </div>
+          ))}
         </div>
       )}
 

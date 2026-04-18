@@ -78,3 +78,68 @@ export async function handleAutoSettlement(env: Env) {
     }
   }
 }
+
+/**
+ * Auto-refund expired vouchers.
+ *
+ * 1. Find vouchers with status='unused' and expires_at < now
+ * 2. Mark them as 'expired'
+ * 3. If paid with deal points, refund the user's deal_balance
+ * 4. Send notification to the user
+ */
+export async function handleExpiredVoucherRefunds(env: Env) {
+  const DB = env.DB;
+
+  try {
+    // Find expired unused vouchers
+    const expired = await DB.prepare(`
+      SELECT v.id, v.code, v.order_id, v.product_id,
+             o.user_id, o.payment_method, p.price, p.name as product_name
+      FROM vouchers v
+      JOIN orders o ON v.order_id = o.id
+      JOIN products p ON v.product_id = p.id
+      WHERE v.status = 'unused'
+        AND v.expires_at < datetime('now')
+    `).all();
+
+    if (!expired.results?.length) return;
+
+    let refundCount = 0;
+    let expireCount = 0;
+
+    for (const voucher of expired.results) {
+      // Mark voucher as expired
+      await DB.prepare("UPDATE vouchers SET status = 'expired' WHERE id = ?")
+        .bind(voucher.id).run();
+      expireCount++;
+
+      // Refund deal points if paid with deal_points
+      if (voucher.payment_method === 'deal_points' && voucher.user_id && voucher.price) {
+        await DB.prepare("UPDATE users SET deal_balance = deal_balance + ? WHERE id = ?")
+          .bind(voucher.price, voucher.user_id).run();
+        refundCount++;
+
+        // Send notification to user
+        await DB.prepare(`
+          INSERT INTO notifications (user_id, type, title, message, created_at, is_read)
+          VALUES (?, 'refund', '바우처 만료 환불', ?, datetime('now'), 0)
+        `).bind(
+          voucher.user_id,
+          `바우처가 만료되어 ${Number(voucher.price).toLocaleString()}딜 포인트가 환불되었습니다 (${voucher.product_name})`
+        ).run();
+      }
+    }
+
+    console.log(`[Cron] Expired voucher refunds: ${expireCount} expired, ${refundCount} refunded`);
+  } catch (err) {
+    console.error('[Cron] Expired voucher refund failed:', err);
+    if (env.DISCORD_WEBHOOK_URL) {
+      await sendDiscordAlert(
+        env.DISCORD_WEBHOOK_URL,
+        'Expired Voucher Refund Failed',
+        `Cron expired voucher refund encountered an error: ${(err as Error).message || String(err)}`,
+        'error'
+      );
+    }
+  }
+}

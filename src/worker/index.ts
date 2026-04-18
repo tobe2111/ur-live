@@ -895,7 +895,7 @@ app.onError(errorHandler);
 // ============================================================
 
 import { handleScheduled } from './cron/scheduled-cleanup';
-import { handleAutoSettlement } from './cron/auto-settlement';
+import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
 
 export default {
   fetch: app.fetch,
@@ -905,5 +905,8 @@ export default {
 
     // Auto-settlement: runs on every trigger but only processes vouchers 7+ days old
     ctx.waitUntil(handleAutoSettlement(env));
+
+    // Auto-refund expired vouchers: marks unused expired vouchers and refunds deal points
+    ctx.waitUntil(handleExpiredVoucherRefunds(env));
   },
 };
