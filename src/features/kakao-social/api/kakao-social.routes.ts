@@ -16,6 +16,22 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 const kakaoSocialRoutes = new Hono<{ Bindings: Env }>();
 kakaoSocialRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
 
+function isKakaoScopeError(data: any, httpStatus: number): boolean {
+  if (httpStatus === 403) return true;
+  if (data?.code === -402 || data?.code === -401) return true;
+  const msg = (data?.msg || data?.error_description || '').toLowerCase();
+  return msg.includes('scope') || msg.includes('consent') || msg.includes('koe006');
+}
+
+function scopeErrorResponse(c: any, requiredScope: string) {
+  return c.json({
+    success: false,
+    error: '카카오 권한이 필요합니다',
+    code: 'KAKAO_SCOPE_REQUIRED',
+    required_scope: requiredScope,
+  }, 403);
+}
+
 // ── POST /message/broadcast — 나에게 카카오톡 메시지 보내기 ──
 kakaoSocialRoutes.post('/message/broadcast', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
@@ -66,6 +82,9 @@ kakaoSocialRoutes.post('/message/broadcast', requireAuth(), async (c) => {
     });
 
     const data: any = await res.json();
+    if (isKakaoScopeError(data, res.status)) {
+      return scopeErrorResponse(c, 'talk_message');
+    }
     if (data.result_code === 0) {
       return c.json({ success: true, message: '카카오톡 메시지가 발송되었습니다' });
     }
@@ -129,6 +148,9 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
     });
 
     const data: any = await res.json();
+    if (isKakaoScopeError(data, res.status)) {
+      return scopeErrorResponse(c, 'talk_calendar');
+    }
     if (data.event_id) {
       return c.json({ success: true, data: { event_id: data.event_id }, message: '카카오 캘린더에 등록되었습니다' });
     }
@@ -270,6 +292,7 @@ kakaoSocialRoutes.post('/test/message', async (c) => {
     });
     const data: any = await res.json();
 
+    if (isKakaoScopeError(data, res.status)) return scopeErrorResponse(c, 'talk_message');
     if (data.result_code === 0) return c.json({ success: true });
     return c.json({ success: false, error: data.msg || JSON.stringify(data) });
   } catch (err: any) {
@@ -303,6 +326,7 @@ kakaoSocialRoutes.post('/test/calendar', async (c) => {
     });
     const createData: any = await createRes.json();
 
+    if (isKakaoScopeError(createData, createRes.status)) return scopeErrorResponse(c, 'talk_calendar');
     if (!createData.event_id) {
       return c.json({ success: false, error: createData.msg || JSON.stringify(createData) });
     }
@@ -330,6 +354,7 @@ kakaoSocialRoutes.post('/test/friends', async (c) => {
     });
     const data: any = await res.json();
 
+    if (isKakaoScopeError(data, res.status)) return scopeErrorResponse(c, 'friends');
     if (data.elements) {
       return c.json({ success: true, count: data.elements.length, friends: data.elements.slice(0, 5) });
     }
@@ -381,6 +406,7 @@ kakaoSocialRoutes.post('/test/friend-message', async (c) => {
     });
     const msgData: any = await msgRes.json();
 
+    if (isKakaoScopeError(msgData, msgRes.status)) return scopeErrorResponse(c, 'friends,talk_message');
     if (msgData.successful_receiver_uuids && msgData.successful_receiver_uuids.length > 0) {
       return c.json({ success: true, detail: `${friendName}님에게 메시지 전송 성공!` });
     }
