@@ -23,7 +23,7 @@ export default function InterestListPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get('/api/interest/my-list')
+    api.get('/api/interest/my')
       .then(r => {
         if (r.data.success) setItems(r.data.data || [])
       })

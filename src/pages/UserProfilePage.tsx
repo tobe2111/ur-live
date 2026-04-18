@@ -128,7 +128,7 @@ function InterestCountButton() {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
-    api.get('/api/interest/my-list')
+    api.get('/api/interest/my')
       .then(r => {
         if (r.data.success) setCount((r.data.data || []).length)
       })
