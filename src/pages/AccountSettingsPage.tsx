@@ -65,42 +65,43 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="bg-white">
+    <div className="min-h-screen bg-[#020202]">
       <SEO
         title="계정 설정"
         description="프로필, 알림, 결제 수단 등 계정 설정을 관리하세요."
         url="/account/settings"
       />
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between h-16 px-4">
-          <button onClick={() => navigate(-1)} className="flex items-center text-gray-700 hover:text-gray-900">
-            <ChevronLeft className="w-6 h-6" /><span className="ml-1">뒤로</span>
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
+        <div className="flex items-center justify-between px-5 py-3">
+          <button onClick={() => navigate(-1)} className="text-white">
+            <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900">계정 설정</h1>
-          <div className="w-16" />
+          <h1 className="text-white font-bold text-[15px]">계정 설정</h1>
+          <div className="w-6" />
         </div>
-      </header>
+      </div>
 
       <main className="px-4 py-6 pb-32">
         {/* 프로필 */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 mb-6">
+        <div className="bg-[#121212] border border-[#2A2A2A] rounded-2xl p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">내 프로필</h2>
-            <button onClick={openEdit} className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg shadow-sm hover:shadow transition-shadow text-sm font-medium text-gray-700">
+            <h2 className="text-lg font-bold text-white">내 프로필</h2>
+            <button onClick={openEdit} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg transition-colors text-sm font-medium text-gray-300 hover:bg-[#2A2A2A]">
               <Edit className="w-4 h-4" />수정
             </button>
           </div>
           <div className="space-y-3">
             {[
-              { icon: <User className="w-5 h-5 text-purple-500" />, label: '이름', value: user.name },
-              { icon: <Mail className="w-5 h-5 text-purple-500" />, label: '이메일', value: user.email },
-              { icon: <Phone className="w-5 h-5 text-purple-500" />, label: '전화번호', value: user.phone || '미등록' },
+              { icon: <User className="w-5 h-5 text-pink-400" />, label: '이름', value: user.name },
+              { icon: <Mail className="w-5 h-5 text-pink-400" />, label: '이메일', value: user.email },
+              { icon: <Phone className="w-5 h-5 text-pink-400" />, label: '전화번호', value: user.phone || '미등록' },
             ].map(({ icon, label, value }) => (
-              <div key={label} className="flex items-center space-x-3 bg-white rounded-xl p-3">
+              <div key={label} className="flex items-center space-x-3 bg-[#1A1A1A] rounded-xl p-3">
                 {icon}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-500">{label}</p>
-                  <p className="font-medium text-gray-900 truncate">{value}</p>
+                  <p className="font-medium text-white truncate">{value}</p>
                 </div>
               </div>
             ))}
@@ -113,50 +114,50 @@ export default function AccountSettingsPage() {
         </Section>
 
         <Section title="결제 및 배송">
-          <Link to="/mypage/addresses" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-            <div className="flex items-center space-x-3"><MapPin className="w-5 h-5 text-gray-600" /><span className="text-gray-900">배송지 관리</span></div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
+          <Link to="/mypage/addresses" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
+            <div className="flex items-center space-x-3"><MapPin className="w-5 h-5 text-gray-400" /><span className="text-gray-300">배송지 관리</span></div>
+            <ChevronRight className="w-5 h-5 text-gray-500" />
           </Link>
           <Item icon={<CreditCard className="w-5 h-5" />} label="결제 수단 관리" onClick={() => toast.info('준비 중인 기능입니다.')} badge="준비중" />
         </Section>
 
         <Section title="기타">
           <div className="flex items-center justify-between p-4">
-            <div className="flex items-center space-x-3"><Globe className="w-5 h-5 text-gray-600" /><span className="text-gray-900">언어 설정</span></div>
+            <div className="flex items-center space-x-3"><Globe className="w-5 h-5 text-gray-400" /><span className="text-gray-300">언어 설정</span></div>
             <span className="text-sm text-gray-500">한국어</span>
           </div>
-          <Link to="/faq" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-            <div className="flex items-center space-x-3"><HelpCircle className="w-5 h-5 text-gray-600" /><span className="text-gray-900">고객센터</span></div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
+          <Link to="/faq" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
+            <div className="flex items-center space-x-3"><HelpCircle className="w-5 h-5 text-gray-400" /><span className="text-gray-300">고객센터</span></div>
+            <ChevronRight className="w-5 h-5 text-gray-500" />
           </Link>
         </Section>
 
         <Section title="약관 및 정책">
-          <Link to="/privacy" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">개인정보 처리방침</span><ChevronRight className="w-5 h-5 text-gray-400" />
+          <Link to="/privacy" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
+            <span className="text-gray-300">개인정보 처리방침</span><ChevronRight className="w-5 h-5 text-gray-500" />
           </Link>
-          <Link to="/terms" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">이용약관</span><ChevronRight className="w-5 h-5 text-gray-400" />
+          <Link to="/terms" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
+            <span className="text-gray-300">이용약관</span><ChevronRight className="w-5 h-5 text-gray-500" />
           </Link>
-          <Link to="/refund" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">배송 및 환불 정책</span><ChevronRight className="w-5 h-5 text-gray-400" />
+          <Link to="/refund" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
+            <span className="text-gray-300">배송 및 환불 정책</span><ChevronRight className="w-5 h-5 text-gray-500" />
           </Link>
         </Section>
 
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-gray-500 mb-3 px-2">앱 정보</h3>
-          <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
-            <div className="flex justify-between text-sm"><span className="text-gray-600">버전</span><span className="font-medium text-gray-900">1.0.0</span></div>
-            <div className="flex justify-between text-sm"><span className="text-gray-600">최신 버전</span><span className="text-green-600 font-medium">사용 중</span></div>
+          <div className="bg-[#121212] border border-[#2A2A2A] rounded-xl p-4 space-y-2">
+            <div className="flex justify-between text-sm"><span className="text-gray-400">버전</span><span className="font-medium text-white">1.0.0</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-400">최신 버전</span><span className="text-green-400 font-medium">사용 중</span></div>
           </div>
         </div>
 
-        <div className="mt-16 pt-8 border-t border-gray-200 text-center">
-          <Link to="/account/delete-warning" className="text-xs text-gray-400 hover:text-gray-600 underline">회원 탈퇴</Link>
+        <div className="mt-16 pt-8 border-t border-[#1A1A1A] text-center">
+          <Link to="/account/delete-warning" className="text-xs text-gray-500 hover:text-gray-400 underline">회원 탈퇴</Link>
         </div>
       </main>
 
-      {/* 프로필 편집 모달 */}
+      {/* 프로필 편집 모달 — stays white for readability */}
       {editModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
@@ -196,20 +197,20 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div className="mb-6">
       <h3 className="text-sm font-semibold text-gray-500 mb-3 px-2">{title}</h3>
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">{children}</div>
+      <div className="bg-[#121212] border border-[#2A2A2A] rounded-xl overflow-hidden divide-y divide-[#1A1A1A]">{children}</div>
     </div>
   );
 }
 
 function Item({ icon, label, onClick, badge }: { icon: React.ReactNode; label: string; onClick: () => void; badge?: string }) {
   return (
-    <button onClick={onClick} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left">
+    <button onClick={onClick} className="w-full flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors text-left">
       <div className="flex items-center space-x-3">
-        <span className="text-gray-600">{icon}</span>
-        <span className="text-gray-900">{label}</span>
-        {badge && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{badge}</span>}
+        <span className="text-gray-400">{icon}</span>
+        <span className="text-gray-300">{label}</span>
+        {badge && <span className="text-xs bg-[#1A1A1A] text-gray-500 px-2 py-0.5 rounded-full">{badge}</span>}
       </div>
-      <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+      <ChevronRight className="w-5 h-5 text-gray-500 flex-shrink-0" />
     </button>
   );
 }
@@ -218,10 +219,10 @@ function ToggleItem({ icon, label, value, onChange }: { icon: React.ReactNode; l
   return (
     <div className="flex items-center justify-between p-4">
       <div className="flex items-center space-x-3">
-        <span className="text-gray-600">{icon}</span>
-        <span className="text-gray-900">{label}</span>
+        <span className="text-gray-400">{icon}</span>
+        <span className="text-gray-300">{label}</span>
       </div>
-      <button onClick={onChange} className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-blue-500' : 'bg-gray-300'}`}>
+      <button onClick={onChange} className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-pink-500' : 'bg-gray-600'}`}>
         <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
       </button>
     </div>
