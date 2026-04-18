@@ -49,12 +49,20 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
 
   const requestCalendarConsent = () => {
     const kakaoKey = import.meta.env.VITE_KAKAO_REST_API_KEY
-    // 동의 전용 리다이렉트 (로그인 콜백과 분리)
     const redirectUri = encodeURIComponent(`${window.location.origin}/auth/kakao/consent/callback`)
     const state = encodeURIComponent(window.location.pathname)
     const url = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoKey}&redirect_uri=${redirectUri}&response_type=code&state=${state}&scope=talk_calendar`
     const popup = window.open(url, 'kakao_consent', 'width=480,height=700,scrollbars=yes')
-    if (!popup) window.location.href = url
+    if (!popup) { window.location.href = url; return }
+
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'kakao_consent_done') {
+        window.removeEventListener('message', handler)
+        toast.success('카카오 캘린더 동의 완료! 다시 시도해주세요.')
+        setShowCalendarConsent(false)
+      }
+    }
+    window.addEventListener('message', handler)
   }
 
   const handleAddCalendar = async (e: React.MouseEvent) => {
