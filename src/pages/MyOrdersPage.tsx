@@ -201,21 +201,20 @@ export default function MyOrdersPage() {
 
 
   return (
-    <div className="bg-[#fbfbfd]">
+    <div className="min-h-screen bg-[#020202]">
       <SEO title="주문내역 - 유어딜" description="주문 내역과 배송 현황을 확인하세요" url="/my-orders" />
       {/* Header */}
-      <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
+      <header className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
         <div className="w-full px-4 sm:px-6">
           <div className="flex h-[52px] items-center justify-between">
-            <Link 
-              to="/"
-              className="flex items-center space-x-2 text-[#1d1d1f] hover:opacity-60 transition-opacity"
+            <button
+              onClick={() => navigate(-1)}
+              className="text-white"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span className="text-[14px] font-normal hidden sm:inline">홈으로</span>
-            </Link>
-            <h1 className="text-[17px] font-semibold text-[#1d1d1f]">
-              마이페이지
+            </button>
+            <h1 className="text-[15px] font-bold text-white">
+              주문내역
             </h1>
             <div className="w-16"></div>
           </div>
@@ -223,7 +222,7 @@ export default function MyOrdersPage() {
       </header>
 
       {/* Tab Navigation */}
-      <div className="bg-white border-b border-[#e5e5ea]">
+      <div className="bg-[#121212] border-b border-[#2A2A2A]">
         <div className="w-full px-4 sm:px-6">
           <div className="flex space-x-1">
             <button
@@ -232,7 +231,7 @@ export default function MyOrdersPage() {
                 flex-1 py-3 px-4 text-[15px] font-medium transition-all relative
                 ${activeTab === 'cart' 
                   ? 'text-[#007aff]' 
-                  : 'text-[#6e6e73] hover:text-[#1d1d1f]'
+                  : 'text-gray-500 hover:text-gray-300'
                 }
               `}
             >
@@ -248,7 +247,7 @@ export default function MyOrdersPage() {
                 flex-1 py-3 px-4 text-[15px] font-medium transition-all relative
                 ${activeTab === 'orders' 
                   ? 'text-[#007aff]' 
-                  : 'text-[#6e6e73] hover:text-[#1d1d1f]'
+                  : 'text-gray-500 hover:text-gray-300'
                 }
               `}
             >
