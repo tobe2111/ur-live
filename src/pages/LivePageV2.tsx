@@ -1001,6 +1001,16 @@ function ReelCard({
       
       // 🎯 장바구니 아이템 추가 이벤트 발생 (아이콘 애니메이션용)
       window.dispatchEvent(new CustomEvent('cartItemAdded'))
+      try {
+        const g = (window as any).gtag
+        if (typeof g === 'function') {
+          g('event', 'add_to_cart', {
+            currency: 'KRW',
+            value: currentProduct.price || 0,
+            items: [{ item_id: currentProduct.id, item_name: currentProduct.name }],
+          })
+        }
+      } catch {}
 
       // 🔥 시스템 메시지 전송 (채팅창에 표시)
       const userName = localStorage.getItem('user_name') || '익명'
@@ -1715,6 +1725,7 @@ export default function LivePageV2() {
           const currentStreamData = streams.find(s => s.id === parseInt(streamId))
           if (currentStreamData) {
             setCurrentStream(currentStreamData)
+            document.title = `${currentStreamData.title} - 유어딜 라이브`
           }
         }
 

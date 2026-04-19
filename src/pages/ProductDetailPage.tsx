@@ -339,6 +339,10 @@ export default function ProductDetailPage() {
       })
       showToast('장바구니에 추가되었습니다.', 'success')
       localStorage.setItem('hasCartItems', 'true')
+      try {
+        const g = (window as any).gtag
+        if (typeof g === 'function') g('event', 'add_to_cart', { currency: 'KRW', value: product!.price, items: [{ item_id: product!.id, item_name: product!.name }] })
+      } catch {}
       
       // ✅ 장바구니 페이지로 이동
       navigate('/cart')
