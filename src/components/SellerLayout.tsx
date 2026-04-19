@@ -158,31 +158,11 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           <Settings className="w-4 h-4" />
           {t('seller.settings')}
         </Link>
-        {localStorage.getItem('seller_token') && (
+        {localStorage.getItem('user_id') && (
           <button
-            onClick={async () => {
-              try {
-                const res = await api.post('/api/seller/switch-to-user')
-                if (res.data.success) {
-                  const { user_id, user_name, user_email, profile_image } = res.data.data
-                  localStorage.removeItem('seller_token')
-                  localStorage.removeItem('seller_refresh_token')
-                  localStorage.removeItem('seller_id')
-                  localStorage.removeItem('seller_name')
-                  localStorage.removeItem('seller_email')
-                  localStorage.removeItem('seller_username')
-                  localStorage.removeItem('seller_type')
-                  localStorage.setItem('user_type', 'user')
-                  localStorage.setItem('user_id', String(user_id))
-                  localStorage.setItem('user_name', user_name || '')
-                  if (user_email) localStorage.setItem('user_email', user_email)
-                  if (profile_image) localStorage.setItem('user_profile_image', profile_image)
-                  toast.success('유저 모드로 돌아갑니다')
-                  navigate('/')
-                }
-              } catch {
-                toast.error('유저 전환에 실패했습니다')
-              }
+            onClick={() => {
+              toast.success('메인으로 돌아갑니다')
+              navigate('/')
             }}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
           >

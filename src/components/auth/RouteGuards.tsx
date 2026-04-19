@@ -42,10 +42,10 @@ export function ProtectedRoute({
   const location = useLocation()
 
   // ─── Seller: 동기 체크 (Firebase 완전 무관) ─────────────────────────
+  // 듀얼 세션: user_type이 'user'여도 seller_token이 있으면 셀러 대시보드 접근 허용
   if (requireSeller) {
     const sellerToken = localStorage.getItem('seller_token')
-    const userType = localStorage.getItem('user_type')
-    const ok = !!(sellerToken && userType === 'seller')
+    const ok = !!sellerToken
     if (DEBUG) console.log('[ProtectedRoute] Seller 체크:', { ok, path: location.pathname })
     if (!ok) return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
     return <>{children}</>
@@ -204,8 +204,7 @@ export function PublicRoute({
   // ─── Seller 로그인 페이지: 동기 체크 ────────────────────────────────
   if (forSeller) {
     const sellerToken = localStorage.getItem('seller_token')
-    const userType = localStorage.getItem('user_type')
-    if (sellerToken && userType === 'seller') {
+    if (sellerToken) {
       if (DEBUG) console.log('[PublicRoute] Seller 이미 로그인됨 → /seller')
       return <Navigate to="/seller" replace />
     }

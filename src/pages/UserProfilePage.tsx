@@ -243,7 +243,8 @@ function SellerSwitchCard() {
       if (res.data.success) {
         const { accessToken, refreshToken, seller } = res.data.data
 
-        // 셀러 세션 먼저 설정 (중간 상태에서 user_type이 없는 구간 방지)
+        // 듀얼 세션: 셀러 토큰만 추가 (유저 세션은 유지)
+        // user_type은 'user'로 유지 — 메인페이지에서 쇼핑/공구 계속 가능
         localStorage.setItem('seller_token', accessToken)
         localStorage.setItem('seller_refresh_token', refreshToken)
         localStorage.setItem('seller_id', String(seller.id))
@@ -251,15 +252,6 @@ function SellerSwitchCard() {
         localStorage.setItem('seller_email', seller.email)
         localStorage.setItem('seller_username', seller.username)
         localStorage.setItem('seller_type', seller.seller_type)
-        localStorage.setItem('user_type', 'seller')
-
-        // 유저 세션 정리 (seller 키는 clearAuthData('user')가 건드리지 않음)
-        const { clearAuthData } = await import('@/utils/auth')
-        clearAuthData('user')
-        try {
-          const { clearFirebaseTokenCache } = await import('@/lib/api')
-          clearFirebaseTokenCache()
-        } catch {}
 
         toast.success('셀러 대시보드로 이동합니다!')
         navigate('/seller')
