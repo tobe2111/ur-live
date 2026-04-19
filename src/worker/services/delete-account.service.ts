@@ -60,7 +60,9 @@ export async function deleteUserAccount(
              name = '탈퇴 회원',
              phone = NULL,
              firebase_uid = NULL,
+             kakao_access_token = NULL,
              avatar_url = NULL,
+             profile_image = NULL,
              status = 'DELETED',
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`

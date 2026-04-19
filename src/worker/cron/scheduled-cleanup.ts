@@ -21,31 +21,30 @@ export async function handleScheduled(env: Env) {
   } catch (e) { console.error('[Cron] stale_streams error:', e) }
 
   // ── 2. 미결제 주문: 24시간 후 자동 취소 + 재고 복구 ──
+  // 동시 실행 방지: UPDATE RETURNING으로 원자적으로 취소 후 재고 복구
   try {
-    // 먼저 취소 대상 주문의 상품/수량을 조회
-    const { results: pendingOrders } = await DB.prepare(`
-      SELECT o.id, oi.product_id, oi.quantity
-      FROM orders o
-      JOIN order_items oi ON oi.order_id = o.id
-      WHERE o.status = 'PENDING'
-        AND o.created_at < datetime('now', '-24 hours')
-    `).all<{ id: number; product_id: number; quantity: number }>();
+    const { results: cancelledOrders } = await DB.prepare(`
+      UPDATE orders
+      SET status = 'CANCELLED', cancel_reason = '결제 시간 초과 (24시간)', updated_at = datetime('now')
+      WHERE status = 'PENDING'
+        AND created_at < datetime('now', '-24 hours')
+      RETURNING id
+    `).all<{ id: number }>();
 
-    if (pendingOrders && pendingOrders.length > 0) {
-      // 재고 복구
-      for (const item of pendingOrders) {
-        await DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
-          .bind(item.quantity, item.product_id).run();
+    if (cancelledOrders && cancelledOrders.length > 0) {
+      const orderIds = cancelledOrders.map(o => o.id);
+      for (const orderId of orderIds) {
+        const { results: items } = await DB.prepare(
+          'SELECT product_id, quantity FROM order_items WHERE order_id = ?'
+        ).bind(orderId).all<{ product_id: number; quantity: number }>();
+        if (items) {
+          for (const item of items) {
+            await DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
+              .bind(item.quantity, item.product_id).run();
+          }
+        }
       }
-
-      // 주문 취소
-      const { meta } = await DB.prepare(`
-        UPDATE orders
-        SET status = 'CANCELLED', cancel_reason = '결제 시간 초과 (24시간)', updated_at = datetime('now')
-        WHERE status = 'PENDING'
-          AND created_at < datetime('now', '-24 hours')
-      `).run();
-      results.pending_orders_cancelled = meta.changes ?? 0;
+      results.pending_orders_cancelled = cancelledOrders.length;
     }
   } catch (e) { console.error('[Cron] pending_orders error:', e) }
 
