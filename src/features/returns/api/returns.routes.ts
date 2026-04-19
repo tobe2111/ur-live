@@ -17,6 +17,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { tossCancelPayment } from '@/worker/utils/toss-payments';
@@ -384,7 +385,7 @@ returnsRoutes.put('/:id/inspect', requireAuth(), async (c) => {
  * PUT /:id/refund — 환불 처리
  * Calls tossCancelPayment, restores stock, updates status
  */
-returnsRoutes.put('/:id/refund', requireAuth(), async (c) => {
+returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec: 3600 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -423,6 +424,11 @@ returnsRoutes.put('/:id/refund', requireAuth(), async (c) => {
   }
 
   const paymentKey = order.toss_payment_key || order.payment_key;
+  const orderAmount = order.total_amount || order.amount || 0;
+
+  if (returnRecord.refund_amount > orderAmount) {
+    return c.json({ success: false, error: '환불 금액이 주문 금액을 초과합니다' }, 400);
+  }
 
   // 2. Toss 결제 취소 (payment_key가 있는 경우만)
   if (paymentKey) {

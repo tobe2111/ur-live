@@ -243,7 +243,7 @@ authRouter.patch('/profile', authMiddleware, async (c) => {
 });
 
 // POST /api/auth/change-password — 비밀번호 변경
-authRouter.post('/change-password', authMiddleware, async (c) => {
+authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 5, windowSec: 3600 }), authMiddleware, async (c) => {
   const { id } = c.get('user');
   const db = c.env.DB;
   try {
