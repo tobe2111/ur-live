@@ -53,7 +53,9 @@ kakaoRoutes.get('/sync/callback', async (c) => {
     const firebaseService = new FirebaseAuthService(c.env);
     
     try {
-      const accessToken = await kakaoService.exchangeCode(code, KAKAO_REDIRECT_URI);
+      const tokenData = await kakaoService.exchangeCodeFull(code, KAKAO_REDIRECT_URI);
+      const accessToken = tokenData.access_token;
+      const kakaoRefreshToken = tokenData.refresh_token || null;
       const kakaoUser = await kakaoService.getUserInfo(accessToken);
       const serviceTerms = await kakaoService.getServiceTerms(accessToken);
       const user = await kakaoService.upsertUser(kakaoUser);
@@ -70,12 +72,11 @@ kakaoRoutes.get('/sync/callback', async (c) => {
 
       await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
-      // 카카오 access_token 저장 (메시지/캘린더 API용)
-      try {
-        await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run();
-      } catch { /* already exists */ }
-      await DB.prepare("UPDATE users SET kakao_access_token = ? WHERE id = ?")
-        .bind(accessToken, user.id).run();
+      // 카카오 access_token + refresh_token 저장 (메시지/캘린더 API용)
+      try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run() } catch {}
+      try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_refresh_token TEXT").run() } catch {}
+      await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
+        .bind(accessToken, kakaoRefreshToken, user.id).run();
 
       // Set httpOnly session cookie on the redirect response
       try {
@@ -146,10 +147,18 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
     const firebaseService = new FirebaseAuthService(c.env);
     
-    const accessToken = await kakaoService.exchangeCode(code, redirectUri);
+    const tokenData = await kakaoService.exchangeCodeFull(code, redirectUri);
+    const accessToken = tokenData.access_token;
+    const kakaoRefreshToken2 = tokenData.refresh_token || null;
     const kakaoUser = await kakaoService.getUserInfo(accessToken);
     const user = await kakaoService.upsertUser(kakaoUser);
-    
+
+    // 토큰 저장 (consent callback에서도 갱신)
+    try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run() } catch {}
+    try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_refresh_token TEXT").run() } catch {}
+    await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
+      .bind(accessToken, kakaoRefreshToken2, user.id).run();
+
     const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
     const customToken = await firebaseService.createCustomToken(firebaseUID, {
       role: 'user',

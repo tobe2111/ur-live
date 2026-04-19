@@ -58,8 +58,53 @@ export class KakaoAuthService {
     if (!data.access_token) {
       throw new Error('No access token in response');
     }
-    
+
     return data.access_token;
+  }
+
+  /**
+   * Authorization Code → Access Token + Refresh Token 반환
+   */
+  async exchangeCodeFull(code: string, redirectUri: string): Promise<KakaoTokenResponse> {
+    const response = await fetch(`${this.KAKAO_AUTH_URL}/oauth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: this.kakaoRestApiKey,
+        redirect_uri: redirectUri,
+        code,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Kakao token exchange failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Refresh Token으로 새 Access Token 발급
+   */
+  async refreshAccessToken(refreshToken: string): Promise<{ access_token: string; refresh_token?: string }> {
+    const response = await fetch(`${this.KAKAO_AUTH_URL}/oauth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: this.kakaoRestApiKey,
+        refresh_token: refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Kakao token refresh failed: ${errorText}`);
+    }
+
+    return response.json();
   }
   
   /**
