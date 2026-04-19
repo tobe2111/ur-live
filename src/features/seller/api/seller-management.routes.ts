@@ -135,6 +135,14 @@ interface SellerJWTPayload extends Record<string, unknown> {
 
 export const sellerManagementRoutes = new Hono<{ Bindings: Bindings }>();
 
+let _sellerColumnsEnsured = false;
+async function ensureSellerColumns(db: D1Database) {
+  if (_sellerColumnsEnsured) return;
+  try { await db.prepare("ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER").run() } catch { /* exists */ }
+  try { await db.prepare("ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'").run() } catch { /* exists */ }
+  _sellerColumnsEnsured = true;
+}
+
 // CORS 설정
 sellerManagementRoutes.use('*', cors({
   origin: [...ALLOWED_ORIGINS],
@@ -302,9 +310,7 @@ sellerManagementRoutes.post('/register-from-user', async (c) => {
 
     const userId = sessionUser.userId;
 
-    // linked_user_id 컬럼 보장
-    try { await db.prepare("ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER").run() } catch { /* already exists */ }
-    try { await db.prepare("ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'").run() } catch { /* already exists */ }
+    await ensureSellerColumns(db);
 
     // 이미 연결된 셀러 계정이 있는지 확인
     const existing = await db.prepare('SELECT id, status FROM sellers WHERE linked_user_id = ?').bind(userId).first<Record<string, any>>();
@@ -409,7 +415,7 @@ sellerManagementRoutes.get('/my-seller-status', async (c) => {
       return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
     }
 
-    try { await db.prepare("ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER").run() } catch { /* already exists */ }
+    await ensureSellerColumns(db);
 
     const seller = await db.prepare(
       'SELECT id, status, seller_type, business_name FROM sellers WHERE linked_user_id = ?'
@@ -452,7 +458,7 @@ sellerManagementRoutes.post('/switch-to-seller', async (c) => {
       return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
     }
 
-    try { await db.prepare("ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER").run() } catch { /* already exists */ }
+    await ensureSellerColumns(db);
 
     const seller = await db.prepare(`
       SELECT id, username, email, name, business_name, status, commission_rate, seller_type

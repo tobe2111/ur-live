@@ -242,6 +242,16 @@ function SellerSwitchCard() {
       const res = await api.post('/api/seller/switch-to-seller')
       if (res.data.success) {
         const { accessToken, refreshToken, seller } = res.data.data
+
+        // 유저 세션 정리 (세션 충돌 방지)
+        const { clearAuthData } = await import('@/utils/auth')
+        clearAuthData('user')
+        try {
+          const { clearFirebaseTokenCache } = await import('@/lib/api')
+          clearFirebaseTokenCache()
+        } catch {}
+
+        // 셀러 세션 설정
         localStorage.setItem('seller_token', accessToken)
         localStorage.setItem('seller_refresh_token', refreshToken)
         localStorage.setItem('user_type', 'seller')
@@ -411,7 +421,6 @@ export default function UserProfilePage() {
         })
         .catch((error) => {
           console.error('[UserProfilePage] ❌ 토큰 처리 실패:', error)
-          hasProcessedToken.current = false
           setIsProcessingToken(false)
           navigate('/login', { replace: true })
         })
