@@ -174,10 +174,12 @@ adminManagementRoutes.get('/sellers/pending', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellers = await executeQuery<SellerRow>(DB, `
-      SELECT id, email, name, phone, business_name, business_number,
-             status, created_at,
-             COALESCE(commission_rate, 10) AS commission_rate
-      FROM sellers WHERE status = 'pending' ORDER BY created_at ASC
+      SELECT s.id, s.email, s.name, s.phone, s.business_name, s.business_number,
+             s.status, s.created_at,
+             COALESCE(s.commission_rate, 10) AS commission_rate,
+             s.linked_user_id, u.name AS linked_user_name
+      FROM sellers s LEFT JOIN users u ON s.linked_user_id = u.id
+      WHERE s.status = 'pending' ORDER BY s.created_at ASC
     `);
     return c.json({ success: true, data: sellers });
   } catch (err) {

@@ -371,16 +371,24 @@ sellerManagementRoutes.post('/register-from-user', async (c) => {
     const tempPasswordStr = Array.from(tempPassword).map(b => b.toString(16).padStart(2, '0')).join('');
     const passwordHash = await hashPassword(tempPasswordStr);
 
-    const result = await db.prepare(`
-      INSERT INTO sellers (
-        username, email, password_hash, name, business_name, business_number,
-        phone, description, youtube_email, seller_type, linked_user_id,
-        status, commission_rate, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
-    `).bind(
-      username, sellerEmail, passwordHash, userName, business_name, business_number,
-      phone, description || null, youtube_email || null, resolvedSellerType, userId
-    ).run();
+    let result;
+    try {
+      result = await db.prepare(`
+        INSERT INTO sellers (
+          username, email, password_hash, name, business_name, business_number,
+          phone, description, youtube_email, seller_type, linked_user_id,
+          status, commission_rate, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+      `).bind(
+        username, sellerEmail, passwordHash, userName, business_name, business_number,
+        phone, description || null, youtube_email || null, resolvedSellerType, userId
+      ).run();
+    } catch (insertErr: any) {
+      if (insertErr?.message?.includes('UNIQUE') || insertErr?.message?.includes('unique')) {
+        return c.json({ success: false, error: '이미 셀러 전환 신청 중입니다' }, 409);
+      }
+      throw insertErr;
+    }
 
     if (!result.success) {
       throw new Error('Failed to create seller account');
@@ -516,6 +524,60 @@ sellerManagementRoutes.post('/switch-to-seller', async (c) => {
   } catch (error) {
     console.error('switch-to-seller error:', error);
     return c.json({ success: false, error: '셀러 전환 실패' }, 500);
+  }
+});
+
+/**
+ * POST /api/seller/switch-to-user
+ * 셀러 → 유저 세션 복귀
+ * 셀러 JWT로 인증된 요청에서 linked_user_id로 유저 정보 조회 후 세션 쿠키 발급
+ */
+sellerManagementRoutes.post('/switch-to-user', async (c) => {
+  try {
+    const db = c.env.DB;
+    const jwtSecret = c.env.JWT_SECRET;
+
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), jwtSecret);
+    if (!sellerId) {
+      return c.json({ success: false, error: '셀러 로그인이 필요합니다' }, 401);
+    }
+
+    await ensureSellerColumns(db);
+
+    const seller = await db.prepare(
+      'SELECT linked_user_id FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<Record<string, any>>();
+
+    if (!seller?.linked_user_id) {
+      return c.json({ success: false, error: '연결된 유저 계정이 없습니다' }, 404);
+    }
+
+    const user = await db.prepare(
+      'SELECT id, name, email, profile_image FROM users WHERE id = ?'
+    ).bind(seller.linked_user_id).first<Record<string, any>>();
+
+    if (!user) {
+      return c.json({ success: false, error: '유저 계정을 찾을 수 없습니다' }, 404);
+    }
+
+    const { createSessionCookie } = await import('../../../worker/utils/session');
+    const sessionCookie = await createSessionCookie(
+      user.id, user.name || '', user.email || '', user.profile_image || undefined, jwtSecret,
+    );
+    c.header('Set-Cookie', sessionCookie);
+
+    return c.json({
+      success: true,
+      data: {
+        user_id: user.id,
+        user_name: user.name,
+        user_email: user.email,
+        profile_image: user.profile_image,
+      },
+    });
+  } catch (error) {
+    console.error('switch-to-user error:', error);
+    return c.json({ success: false, error: '유저 전환 실패' }, 500);
   }
 });
 

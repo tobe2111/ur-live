@@ -243,7 +243,17 @@ function SellerSwitchCard() {
       if (res.data.success) {
         const { accessToken, refreshToken, seller } = res.data.data
 
-        // 유저 세션 정리 (세션 충돌 방지)
+        // 셀러 세션 먼저 설정 (중간 상태에서 user_type이 없는 구간 방지)
+        localStorage.setItem('seller_token', accessToken)
+        localStorage.setItem('seller_refresh_token', refreshToken)
+        localStorage.setItem('seller_id', String(seller.id))
+        localStorage.setItem('seller_name', seller.name)
+        localStorage.setItem('seller_email', seller.email)
+        localStorage.setItem('seller_username', seller.username)
+        localStorage.setItem('seller_type', seller.seller_type)
+        localStorage.setItem('user_type', 'seller')
+
+        // 유저 세션 정리 (seller 키는 clearAuthData('user')가 건드리지 않음)
         const { clearAuthData } = await import('@/utils/auth')
         clearAuthData('user')
         try {
@@ -251,15 +261,6 @@ function SellerSwitchCard() {
           clearFirebaseTokenCache()
         } catch {}
 
-        // 셀러 세션 설정
-        localStorage.setItem('seller_token', accessToken)
-        localStorage.setItem('seller_refresh_token', refreshToken)
-        localStorage.setItem('user_type', 'seller')
-        localStorage.setItem('seller_id', String(seller.id))
-        localStorage.setItem('seller_name', seller.name)
-        localStorage.setItem('seller_email', seller.email)
-        localStorage.setItem('seller_username', seller.username)
-        localStorage.setItem('seller_type', seller.seller_type)
         toast.success('셀러 대시보드로 이동합니다!')
         navigate('/seller')
       }
@@ -292,6 +293,26 @@ function SellerSwitchCard() {
             <div className="flex-1">
               <p className="text-sm font-bold text-white">셀러 전환 심사 중</p>
               <p className="text-[11px] text-yellow-400 mt-0.5">{status.business_name} — 관리자 승인 대기 중</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status?.has_seller && (status.status === 'rejected' || status.status === 'suspended')) {
+    return (
+      <div className="px-5 py-1.5">
+        <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10">
+              <Store className="w-5 h-5 text-red-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-white">
+                {status.status === 'rejected' ? '셀러 신청이 반려되었습니다' : '셀러 계정이 정지되었습니다'}
+              </p>
+              <p className="text-[11px] text-red-400 mt-0.5">관리자에게 문의해주세요</p>
             </div>
           </div>
         </div>
