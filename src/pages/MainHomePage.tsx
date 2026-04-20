@@ -334,7 +334,7 @@ function GroupBuySection() {
           <p className="text-white/80 text-xs mt-1">인플루언서 추천 맛집 식사권</p>
         </button>
         <button
-          onClick={() => navigate('/browse?category=meal_voucher')}
+          onClick={() => navigate('/restaurant-map')}
           className="w-[120px] bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4 text-left active:scale-[0.98] transition-transform shrink-0"
         >
           <p className="text-white text-2xl">🗺️</p>
