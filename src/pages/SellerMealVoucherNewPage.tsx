@@ -58,7 +58,9 @@ export default function SellerMealVoucherNewPage() {
     // 네이버 이미지 검색으로 맛집 사진 추천
     if (place.place_name) {
       setLoadingImages(true)
-      api.get(`/api/naver/image/search?query=${encodeURIComponent(place.place_name + ' 맛집')}&display=6`)
+      const area = (place.road_address_name || place.address_name || '').split(' ').slice(0, 2).join(' ')
+      const searchQuery = area ? `${place.place_name} ${area}` : `${place.place_name} 맛집`
+      api.get(`/api/naver/image/search?query=${encodeURIComponent(searchQuery)}&display=6`)
         .then(res => {
           if (res.data.success && res.data.data?.items) {
             setSuggestedImages(res.data.data.items.map((img: any) => img.link).filter(Boolean))
