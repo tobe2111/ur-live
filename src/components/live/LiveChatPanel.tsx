@@ -1,14 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, X, MessageCircle } from 'lucide-react'
-
-/** 닉네임 마스킹: 정종문 → 정*문, ab → a* */
-function maskUserName(name: string): string {
-  if (!name || name === '익명' || name === 'Anonymous' || name === '🎉 시스템') return name
-  if (name.length === 1) return name + '*'
-  if (name.length === 2) return name[0] + '*'
-  if (name.length === 3) return name[0] + '*' + name[2]
-  return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1]
-}
+import { maskUserName } from './LiveUtils'
 
 interface ChatMessage {
   id: string
