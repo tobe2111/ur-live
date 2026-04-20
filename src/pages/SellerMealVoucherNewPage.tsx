@@ -63,7 +63,7 @@ export default function SellerMealVoucherNewPage() {
       api.get(`/api/naver/image/search?query=${encodeURIComponent(searchQuery)}&display=6`)
         .then(res => {
           if (res.data.success && res.data.data?.items) {
-            setSuggestedImages(res.data.data.items.map((img: any) => img.link).filter(Boolean))
+            setSuggestedImages(res.data.data.items.map((img: any) => (img.link || '').replace(/^http:\/\//, 'https://')).filter(Boolean))
           }
         })
         .catch(() => {})
