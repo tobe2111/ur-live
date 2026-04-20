@@ -43,8 +43,6 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     } finally { setLoading(false) }
   }
 
-  const [showCalendarConsent, setShowCalendarConsent] = useState(false)
-
   const kr = isKorea()
 
   const requestKakaoConsent = (scope: string) => {
@@ -111,40 +109,27 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     toast.success('Google 캘린더가 열립니다')
   }
 
-  const calendarConsentUI = showCalendarConsent ? (
-    <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3 mt-1.5">
-      <p className="text-xs text-yellow-800 font-medium mb-2">카카오 캘린더 동의가 필요합니다</p>
-      <button onClick={requestCalendarConsent}
-        className="w-full py-2 bg-[#FEE500] text-[#3C1E1E] rounded-lg text-xs font-bold active:scale-[0.97]">
-        카카오 캘린더 동의하기
-      </button>
-    </div>
-  ) : null
-
   if (compact) {
     return (
-      <div>
-        <div className="flex gap-1.5">
-          <button
-            onClick={handleSubscribe}
-            disabled={loading}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all active:scale-95 ${
-              subscribed
-                ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
-                : 'bg-white/10 text-white border border-white/20'
-            }`}
-          >
-            {subscribed ? '🔔 알림 ON' : '🔔 알림'}
-          </button>
-          <button
-            onClick={handleAddCalendar}
-            disabled={calLoading}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#FEE500] text-[#3C1E1E] active:scale-95 disabled:opacity-50"
-          >
-            {kr ? '📅 캘린더' : '📅 Calendar'}
-          </button>
-        </div>
-        {calendarConsentUI}
+      <div className="flex gap-1.5">
+        <button
+          onClick={handleSubscribe}
+          disabled={loading}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all active:scale-95 ${
+            subscribed
+              ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+              : 'bg-white/10 text-white border border-white/20'
+          }`}
+        >
+          {subscribed ? '🔔 알림 ON' : '🔔 알림'}
+        </button>
+        <button
+          onClick={handleAddCalendar}
+          disabled={calLoading}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#FEE500] text-[#3C1E1E] active:scale-95 disabled:opacity-50"
+        >
+          {kr ? '📅 캘린더' : '📅 Calendar'}
+        </button>
       </div>
     )
   }
@@ -169,7 +154,6 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
       >
         {calLoading ? '추가 중...' : kr ? '📅 카카오 캘린더에 추가' : '📅 Add to Calendar'}
       </button>
-      {calendarConsentUI}
     </div>
   )
 }

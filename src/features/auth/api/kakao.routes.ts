@@ -78,17 +78,6 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
         .bind(accessToken, kakaoRefreshToken, user.id).run();
 
-      // ── 추천 트리 등록 (affiliate_ref 쿠키 확인) ────────────────────
-      try {
-        const cookieHeader = c.req.header('Cookie') || '';
-        const refMatch = cookieHeader.match(/affiliate_ref=([^;]+)/);
-        const affiliateRef = refMatch?.[1] || null;
-        if (affiliateRef) {
-          const { registerInReferralTree } = await import('../../referral/api/referral-tree.routes');
-          await registerInReferralTree(DB, String(user.id), 'user', affiliateRef);
-        }
-      } catch { /* referral tree registration is non-critical */ }
-
       // Set httpOnly session cookie on the redirect response
       try {
         const sessionCookie = await createSessionCookie(
@@ -103,18 +92,11 @@ kakaoRoutes.get('/sync/callback', async (c) => {
         console.error('[Kakao Sync] Session cookie creation failed:', e);
       }
 
-      // ✅ 세션 쿠키가 이미 설정됨 (위 Set-Cookie)
-      // firebase_token을 URL에 붙이지 않음 — 프론트에서 localStorage로 인증 처리
-      // 유저 정보를 안전하게 전달하기 위해 최소한의 파라미터만 사용
       const stateUrl = new URL(state, 'https://dummy.com');
-      stateUrl.searchParams.set('login', 'success');
-      stateUrl.searchParams.set('userId', String(user.id));
+      stateUrl.searchParams.set('firebase_token', customToken);
       stateUrl.searchParams.set('userName', user.name);
       if (user.profile_image) {
         stateUrl.searchParams.set('profileImage', user.profile_image);
-      }
-      if (user.email) {
-        stateUrl.searchParams.set('userEmail', user.email);
       }
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;
@@ -188,56 +170,42 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
       ...(user.profile_image ? { profileImage: user.profile_image } : {}),
     });
 
-    // Firebase Custom Token (ProtectedRoute가 의존)
-    let customToken = '';
-    let firebaseUID = '';
-    try {
-      firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
-      customToken = await firebaseService.createCustomToken(firebaseUID, {
-        role: 'user', userId: user.id, userName: user.name,
-        email: user.email, kakaoId: kakaoUser.kakaoId,
-      });
-      await kakaoService.updateFirebaseUID(user.id, firebaseUID).catch(() => {});
-    } catch (e) {
-      console.error('[Kakao] Firebase token failed:', e);
-    }
+    await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
-    // 세션 쿠키
+    // Set httpOnly session cookie for user auth (new flow)
     let sessionCookieHeader: string | undefined;
     try {
       sessionCookieHeader = await createSessionCookie(
-        user.id, user.name, user.email || '',
-        user.profile_image || undefined, c.env.JWT_SECRET,
+        user.id,
+        user.name,
+        user.email || '',
+        user.profile_image || undefined,
+        c.env.JWT_SECRET,
       );
     } catch (e) {
-      console.error('[Kakao] Session cookie failed:', e);
+      console.error('[Kakao Callback] Session cookie creation failed:', e);
     }
 
-    // 카카오 access_token 저장
-    try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run() } catch {}
-    await DB.prepare("UPDATE users SET kakao_access_token = ? WHERE id = ?")
-      .bind(accessToken, user.id).run().catch(() => {});
-
-    // ── 추천 트리 등록 (affiliate_ref 쿠키 확인) ────────────────────
-    try {
-      const cookieHeader = c.req.header('Cookie') || '';
-      const refMatch = cookieHeader.match(/affiliate_ref=([^;]+)/);
-      const affiliateRef = refMatch?.[1] || null;
-      if (affiliateRef) {
-        const { registerInReferralTree } = await import('../../referral/api/referral-tree.routes');
-        await registerInReferralTree(DB, String(user.id), 'user', affiliateRef);
-      }
-    } catch { /* referral tree registration is non-critical */ }
-
-    if (sessionCookieHeader) c.header('Set-Cookie', sessionCookieHeader);
-    return c.json({
+    const responseBody = {
       success: true,
       data: {
-        customToken: customToken || null,
+        customToken,
         session_ready: !!sessionCookieHeader,
-        user: { id: user.id, name: user.name, email: user.email, profile_image: user.profile_image, firebaseUID },
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          profile_image: user.profile_image,
+          firebaseUID
+        }
       },
-    });
+      message: 'Login successful'
+    };
+
+    if (sessionCookieHeader) {
+      c.header('Set-Cookie', sessionCookieHeader);
+    }
+    return c.json(responseBody);
 
   } catch (error) {
     console.error('[Kakao Callback] Error:', error);

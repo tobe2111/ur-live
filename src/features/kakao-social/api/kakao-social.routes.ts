@@ -81,10 +81,10 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
 
   // 방송 정보 조회
   const stream = await DB.prepare(
-    'SELECT id, title, scheduled_at, created_at, seller_id FROM live_streams WHERE id = ?'
+    'SELECT id, title, scheduled_at, seller_id FROM live_streams WHERE id = ?'
   ).bind(stream_id).first<any>();
-  if (!stream) {
-    return c.json({ success: false, error: '방송 정보를 찾을 수 없습니다' }, 404);
+  if (!stream || !stream.scheduled_at) {
+    return c.json({ success: false, error: '예정 방송 정보를 찾을 수 없습니다' }, 404);
   }
 
   const seller = await DB.prepare('SELECT name FROM sellers WHERE id = ?')
@@ -125,19 +125,17 @@ kakaoSocialRoutes.get('/calendar/ics/:streamId', async (c) => {
   const streamId = c.req.param('streamId');
 
   const stream = await DB.prepare(
-    'SELECT id, title, scheduled_at, created_at, seller_id FROM live_streams WHERE id = ?'
+    'SELECT id, title, scheduled_at, seller_id FROM live_streams WHERE id = ?'
   ).bind(streamId).first<any>();
 
-  if (!stream) {
+  if (!stream || !stream.scheduled_at) {
     return c.json({ success: false, error: '방송 정보 없음' }, 404);
   }
 
   const seller = await DB.prepare('SELECT name FROM sellers WHERE id = ?')
     .bind(stream.seller_id).first<{ name: string }>();
 
-  const start = new Date(stream.scheduled_at || stream.created_at || Date.now());
-  // 이미 지난 시간이면 1시간 후로 설정
-  if (start.getTime() < Date.now()) start.setTime(Date.now() + 3600000)
+  const start = new Date(stream.scheduled_at);
   const end = new Date(start.getTime() + 60 * 60 * 1000);
 
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
