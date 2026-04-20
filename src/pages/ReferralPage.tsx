@@ -1,25 +1,48 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Users, Share2, Check, Clock, Gift, Copy, Timer, ShoppingBag } from 'lucide-react'
+import SEO from '@/components/SEO'
+import { ArrowLeft, Users, Clock, Gift, CheckCircle, ShoppingBag } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { getUserIdSync } from '@/utils/auth'
-import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
 
+interface Tier { count: number; discount: number }
+interface Member { user_name: string; joined_at: string }
 interface ReferralGroup {
-  id: number; product_id: number; invite_code: string; creator_name: string
-  target_count: number; current_count: number; discount_percent: number
-  discount_per_person: number; status: string; expires_at: string
-  product: { id: number; name: string; price: number; image_url: string } | null
-  members: { user_name: string; joined_at: string }[]
+  invite_code: string
+  creator_name: string
+  product_id: number
+  current_count: number
+  target_count: number
+  discount_percent: number
+  tiers: Tier[]
+  unlocked_tier: Tier | null
+  next_tier: Tier | null
+  expires_at: string
+  status: 'open' | 'achieved' | 'expired'
+  members: Member[]
 }
 
+interface ProductInfo {
+  id: number
+  name: string
+  price: number
+  image_url?: string
+}
+
+/** 로그인 여부 판단 (localStorage) */
+function useCurrentUserId(): string | null {
+  const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null
+  if (userType === 'user' && userId) return userId
+  return null
+}
+
+/** 카운트다운 훅 — 매초 업데이트 */
 function useCountdown(targetDate: Date) {
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, targetDate.getTime() - Date.now()))
 
   useEffect(() => {
-    if (timeLeft <= 0) return
     const timer = setInterval(() => {
       const diff = Math.max(0, targetDate.getTime() - Date.now())
       setTimeLeft(diff)
@@ -28,50 +51,91 @@ function useCountdown(targetDate: Date) {
     return () => clearInterval(timer)
   }, [targetDate])
 
-  const hours = Math.floor(timeLeft / 3600000)
+  const days = Math.floor(timeLeft / 86400000)
+  const hours = Math.floor((timeLeft % 86400000) / 3600000)
   const minutes = Math.floor((timeLeft % 3600000) / 60000)
   const seconds = Math.floor((timeLeft % 60000) / 1000)
 
-  return { hours, minutes, seconds, isExpired: timeLeft <= 0 }
+  return { days, hours, minutes, seconds, isExpired: timeLeft <= 0 }
 }
 
 export default function ReferralPage() {
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
+  const userId = useCurrentUserId()
   const [group, setGroup] = useState<ReferralGroup | null>(null)
+  const [product, setProduct] = useState<ProductInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState(false)
-  const userId = getUserIdSync()
 
-  useEffect(() => {
+  const fetchGroup = async () => {
     if (!code) return
-    api.get(`/api/referral/${code}`)
-      .then(r => { if (r.data.success) setGroup(r.data.data) })
-      .catch(() => toast.error('초대 링크가 유효하지 않습니다'))
-      .finally(() => setLoading(false))
-  }, [code])
+    try {
+      const r = await api.get(`/api/referral/${code}`)
+      if (r.data.success) {
+        const g: ReferralGroup = r.data.data
+        setGroup(g)
+        // 상품 정보 조회
+        if (g.product_id) {
+          try {
+            const p = await api.get(`/api/group-buy/products/${g.product_id}`)
+            if (p.data.success) {
+              const prod = p.data.data
+              setProduct({
+                id: prod.id,
+                name: prod.name,
+                price: prod.price,
+                image_url: prod.image_url || prod.thumbnail_url,
+              })
+            }
+          } catch {
+            // 상품 조회 실패해도 페이지는 표시
+          }
+        }
+      }
+    } catch {
+      toast.error('초대 링크가 유효하지 않습니다')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchGroup() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [code])
 
   const handleJoin = async () => {
-    if (!userId) { toast.error('로그인이 필요합니다'); localStorage.setItem('loginReturnUrl', window.location.pathname); navigate('/login'); return }
+    if (!userId) {
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      navigate('/login')
+      return
+    }
     if (!code) return
     setJoining(true)
     try {
       const res = await api.post(`/api/referral/join/${code}`)
       if (res.data.success) {
-        toast.success(res.data.data.achieved ? '목표 달성! 할인 혜택이 적용됩니다' : '참여 완료!')
-        const r = await api.get(`/api/referral/${code}`)
-        if (r.data.success) setGroup(r.data.data)
+        const d = res.data.data
+        if (d.status === 'achieved') {
+          toast.success(`목표 달성! ${d.discount_percent}% 할인 적용`)
+        } else if (d.unlocked_tier) {
+          toast.success(`${d.unlocked_tier.discount}% 할인 단계 달성!`)
+        } else {
+          toast.success('참여 완료!')
+        }
+        await fetchGroup()
       } else {
-        toast.error(res.data.error)
+        toast.error(res.data.error || '참여 실패')
       }
-    } catch (err: any) { toast.error(err?.response?.data?.error || '참여 실패') }
-    finally { setJoining(false) }
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '참여 실패')
+    } finally {
+      setJoining(false)
+    }
   }
 
-  const handleShare = async () => {
-    const url = `${window.location.origin}/referral/${code}`
-    await nativeShare({ title: '친구 초대 공동구매', text: `함께 사면 ${group?.discount_percent}% 할인! 지금 참여하세요`, url })
-    toast.success('링크가 복사되었습니다')
+  const handleCheckout = () => {
+    if (!group) return
+    navigate(`/checkout?product_id=${group.product_id}&referral_code=${group.invite_code}`)
   }
 
   if (loading) {
@@ -87,211 +151,346 @@ export default function ReferralPage() {
       <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
         <Gift className="w-16 h-16 text-gray-300 mb-4" />
         <p className="text-gray-900 font-bold text-lg">유효하지 않은 초대입니다</p>
-        <Link to="/" className="mt-4 text-blue-600 text-sm font-medium">홈으로 돌아가기</Link>
+        <Link to="/" className="mt-4 text-gray-900 text-sm font-medium underline">홈으로 돌아가기</Link>
       </div>
     )
   }
 
   const isAchieved = group.status === 'achieved'
   const isExpired = group.status === 'expired' || new Date(group.expires_at) < new Date()
-  const progressPct = Math.min(100, (group.current_count / group.target_count) * 100)
-  const remaining = Math.max(0, group.target_count - group.current_count)
-  const discountPrice = group.product
-    ? Math.round(group.product.price * (100 - group.discount_percent) / 100)
+  const isOpen = group.status === 'open' && !isExpired
+  const alreadyJoined = !!userId && group.members.some(m => m.user_name)
+    && group.members.some(m => {
+      // user_name 기반 매칭 폴백 (정확한 판별은 서버 응답 참조)
+      const currentName = localStorage.getItem('user_name') || ''
+      return currentName && m.user_name === currentName
+    })
+
+  const topTier = group.tiers[group.tiers.length - 1]
+  const currentDiscount = group.unlocked_tier?.discount ?? 0
+  const discountedPrice = product
+    ? Math.round(product.price * (100 - currentDiscount) / 100)
     : 0
-  const alreadyJoined = group.members.some(m => m.user_name && userId)
+
+  const shareTitle = product
+    ? `🎁 ${product.name} 공동구매 같이 해요!`
+    : `🎁 ${group.creator_name}님의 공동구매 같이 해요!`
+  const shareDescription = `지금 ${group.current_count}/${group.target_count}명 모였어요. 친구 초대하면 최대 ${topTier?.discount ?? 0}% 할인!`
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO title="공동구매 - 유어딜" description="친구와 함께 공동구매로 더 싸게 구매하세요" url="/referral" />
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
-          <h1 className="text-[18px] font-bold text-gray-900">친구 초대 공동구매</h1>
-          <button onClick={handleShare} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
-            <Share2 className="w-5 h-5" />
-          </button>
+          <h1 className="text-[18px] font-bold text-gray-900">공동구매</h1>
+          <div className="w-10" />
         </div>
       </div>
 
-      <div className="px-4 py-5 space-y-4 pb-28">
-        {/* 상태 배너 + 카운트다운 */}
-        <div className={`rounded-2xl p-5 text-center ${
-          isAchieved ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' :
-          isExpired ? 'bg-gray-200 text-gray-600' :
-          'bg-gradient-to-r from-pink-500 to-red-500 text-white'
-        }`}>
-          {isAchieved ? (
-            <>
-              <Check className="w-10 h-10 mx-auto mb-2" />
-              <p className="text-xl font-bold">목표 달성!</p>
-              <p className="text-sm mt-1 opacity-90">{group.discount_percent}% 할인이 적용됩니다</p>
-            </>
-          ) : isExpired ? (
-            <>
-              <Clock className="w-10 h-10 mx-auto mb-2" />
-              <p className="text-xl font-bold">마감된 공동구매</p>
-            </>
-          ) : (
-            <>
-              <Users className="w-10 h-10 mx-auto mb-2" />
-              <p className="text-xl font-bold">{remaining}명 더 모이면 할인!</p>
-              <p className="text-sm mt-1 opacity-90">{group.discount_percent}% 할인 적용</p>
-            </>
-          )}
-        </div>
-
-        {/* 실시간 카운트다운 */}
-        {!isExpired && !isAchieved && (
-          <CountdownTimer expiresAt={group.expires_at} />
-        )}
-
-        {/* 상품 카드 */}
-        {group.product && (
-          <button
-            onClick={() => navigate(`/products/${group.product!.id}`)}
-            className="w-full bg-white rounded-2xl p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
-          >
-            <div className="flex gap-3">
-              {group.product.image_url && (
-                <img src={group.product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" />
+      <div className="px-4 py-5 space-y-4 pb-32">
+        {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
+        <section className="bg-white rounded-2xl p-4 border border-gray-200">
+          {product && (
+            <div className="flex gap-3 mb-4">
+              {product.image_url && (
+                <img src={product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 line-clamp-2">{group.product.name}</p>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-lg font-bold text-red-500">{discountPrice.toLocaleString()}원</span>
-                  <span className="text-xs text-gray-400 line-through">{group.product.price.toLocaleString()}원</span>
-                  <span className="text-xs text-red-500 font-bold">-{group.discount_percent}%</span>
+                <p className="text-[15px] font-bold text-gray-900 line-clamp-2">{product.name}</p>
+                <div className="mt-1.5 flex items-baseline gap-2">
+                  {currentDiscount > 0 ? (
+                    <>
+                      <span className="text-lg font-bold text-pink-500">{discountedPrice.toLocaleString()}원</span>
+                      <span className="text-xs text-gray-400 line-through">{product.price.toLocaleString()}원</span>
+                    </>
+                  ) : (
+                    <span className="text-lg font-bold text-gray-900">{product.price.toLocaleString()}원</span>
+                  )}
                 </div>
               </div>
             </div>
-          </button>
-        )}
-
-        {/* 진행 상황 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-gray-900">참여 현황</span>
-            <span className="text-sm text-pink-500 font-bold">{group.current_count}/{group.target_count}명</span>
-          </div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-3">
-            <div className="h-full bg-gradient-to-r from-pink-500 to-red-500 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
+          )}
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+            <div className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">
+              {group.creator_name.slice(0, 1)}
+            </div>
+            <p className="text-sm text-gray-900">
+              <span className="font-bold">{group.creator_name}</span>
+              <span className="text-gray-600">님의 공동구매</span>
+            </p>
           </div>
 
-          {/* 멤버 목록 */}
+          {/* 카운트다운 */}
+          <div className="pt-3">
+            {isExpired ? (
+              <div className="flex items-center justify-center gap-2 text-gray-500 text-sm">
+                <Clock className="w-4 h-4" />
+                <span>마감된 공동구매입니다</span>
+              </div>
+            ) : isAchieved ? (
+              <div className="flex items-center justify-center gap-2 text-green-600 text-sm font-semibold">
+                <CheckCircle className="w-4 h-4" />
+                <span>목표 달성! 결제가 가능합니다</span>
+              </div>
+            ) : (
+              <CountdownTimer expiresAt={group.expires_at} />
+            )}
+          </div>
+        </section>
+
+        {/* 2. Tier Progress Bar */}
+        <section className="bg-white rounded-2xl p-5 border border-gray-200">
+          {/* 현재 할인 표시 */}
+          <div className="text-center mb-5">
+            {currentDiscount > 0 ? (
+              <>
+                <p className="text-xs text-gray-600 mb-1">현재 적용 할인</p>
+                <p className="text-3xl font-bold text-pink-500">{currentDiscount}% 할인 적용 중!</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-gray-600 mb-1">현재 참여 인원</p>
+                <p className="text-3xl font-bold text-gray-900">{group.current_count}명</p>
+              </>
+            )}
+            {group.next_tier && (
+              <p className="text-sm text-gray-700 mt-2">
+                <span className="font-bold text-pink-500">{group.next_tier.count - group.current_count}명</span>
+                <span> 더 모이면 </span>
+                <span className="font-bold text-pink-500">{group.next_tier.discount}% 할인!</span>
+              </p>
+            )}
+            {!group.next_tier && isAchieved && (
+              <p className="text-sm text-green-600 mt-2 font-semibold">최대 할인 달성!</p>
+            )}
+          </div>
+
+          {/* 티어 진행 바 */}
+          <TierProgressBar
+            tiers={group.tiers}
+            currentCount={group.current_count}
+            targetCount={group.target_count}
+          />
+        </section>
+
+        {/* 3. Participants */}
+        <section className="bg-white rounded-2xl p-4 border border-gray-200">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="w-4 h-4 text-gray-900" />
+            <h2 className="text-sm font-bold text-gray-900">{group.current_count}명 참여 중</h2>
+          </div>
           <div className="space-y-2">
             {group.members.map((m, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-pink-500">{i + 1}</span>
+              <div key={i} className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-bold shrink-0">
+                  {m.user_name?.slice(0, 1) || '?'}
                 </div>
-                <span className="text-sm text-gray-700">{m.user_name}</span>
-                {i === 0 && <span className="text-[10px] bg-pink-50 text-pink-500 px-1.5 py-0.5 rounded-full font-medium">방장</span>}
+                <span className="text-sm text-gray-900">{m.user_name}</span>
+                {i === 0 && (
+                  <span className="text-[10px] bg-gray-900 text-white px-1.5 py-0.5 rounded-full font-medium">방장</span>
+                )}
               </div>
             ))}
-            {/* 빈 슬롯 */}
-            {Array.from({ length: remaining }).map((_, i) => (
-              <div key={`empty-${i}`} className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center border-2 border-dashed border-gray-200">
-                  <span className="text-xs text-gray-300">?</span>
-                </div>
-                <span className="text-sm text-gray-300">초대 대기 중</span>
-              </div>
-            ))}
+            {group.members.length === 0 && (
+              <p className="text-xs text-gray-500">아직 참여자가 없습니다.</p>
+            )}
           </div>
-        </div>
+        </section>
 
         {/* 혜택 안내 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-2">공동구매 혜택</h3>
-          <div className="space-y-2 text-xs text-gray-600">
-            <div className="flex items-start gap-2">
-              <span className="text-pink-500 shrink-0">✓</span>
-              <span>{group.target_count}명이 모이면 <strong className="text-pink-500">{group.discount_percent}%</strong> 추가 할인</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-pink-500 shrink-0">✓</span>
-              <span>카카오톡으로 친구에게 링크를 공유하세요</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-pink-500 shrink-0">✓</span>
-              <span>목표 달성 후 할인가로 바로 구매 가능</span>
-            </div>
+        <section className="bg-white rounded-2xl p-4 border border-gray-200">
+          <div className="flex items-center gap-2 mb-2">
+            <Gift className="w-4 h-4 text-pink-500" />
+            <h3 className="text-sm font-bold text-gray-900">티어별 할인</h3>
           </div>
-        </div>
+          <div className="space-y-1.5">
+            {group.tiers.map((t, i) => {
+              const reached = group.current_count >= t.count
+              return (
+                <div key={i} className={`flex items-center justify-between text-xs px-3 py-2 rounded-lg ${reached ? 'bg-pink-50' : 'bg-gray-50'}`}>
+                  <span className={reached ? 'text-pink-600 font-semibold' : 'text-gray-600'}>
+                    {t.count}명 모이면
+                  </span>
+                  <span className={`font-bold ${reached ? 'text-pink-600' : 'text-gray-500'}`}>
+                    {t.discount}% 할인
+                    {reached && <CheckCircle className="inline w-3 h-3 ml-1 -mt-0.5" />}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </section>
       </div>
 
-      {/* 하단 고정 버튼 */}
-      {!isExpired && !isAchieved && (
-        <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-4 safe-area-bottom">
-          <div className="flex gap-2 max-w-md mx-auto">
+      {/* 4. Action Buttons (fixed bottom) */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 p-4 safe-area-bottom">
+        <div className="max-w-md mx-auto">
+          {isAchieved ? (
+            <button
+              onClick={handleCheckout}
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-900 text-white rounded-xl font-bold text-sm active:scale-[0.98]"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              {product
+                ? `${discountedPrice.toLocaleString()}원에 결제하기 (${currentDiscount}% 할인)`
+                : '결제하기'}
+            </button>
+          ) : isExpired ? (
+            <button
+              disabled
+              className="w-full py-3.5 bg-gray-200 text-gray-500 rounded-xl font-bold text-sm cursor-not-allowed"
+            >
+              마감된 공동구매
+            </button>
+          ) : alreadyJoined ? (
             <KakaoShareButton
-              title={`${group?.product?.name || '상품'} 공동구매`}
-              description={`${group?.target_count}명 모이면 ${group?.discount_percent}% 추가 할인! 함께 사요`}
-              link={`/referral/${code}`}
-              buttonText="공동구매 참여하기"
-              className="flex items-center justify-center gap-1.5 px-5 py-3.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl font-bold text-sm shrink-0"
+              title={shareTitle}
+              description={shareDescription}
+              imageUrl={product?.image_url}
+              link={`/referral/${group.invite_code}`}
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl font-bold text-sm active:scale-[0.98]"
             />
+          ) : !userId ? (
             <button
               onClick={handleJoin}
-              disabled={joining}
-              className="flex-1 py-3.5 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-xl font-bold text-sm active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold text-sm active:scale-[0.98]"
             >
-              {joining ? '참여 중...' : '공동구매 참여하기'}
+              로그인 후 참여하기
             </button>
-          </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={handleJoin}
+                disabled={joining}
+                className="flex-1 py-3.5 bg-gray-900 text-white rounded-xl font-bold text-sm active:scale-[0.98] disabled:opacity-50"
+              >
+                {joining ? '참여 중...' : '참여하기'}
+              </button>
+              <div className="shrink-0">
+                <KakaoShareButton
+                  title={shareTitle}
+                  description={shareDescription}
+                  imageUrl={product?.image_url}
+                  link={`/referral/${group.invite_code}`}
+                  compact
+                  className="h-full px-4 flex items-center gap-1.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold active:scale-95"
+                />
+              </div>
+            </div>
+          )}
         </div>
-      )}
-
-      {isAchieved && group.product && (
-        <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-4 safe-area-bottom">
-          <button
-            onClick={() => navigate(`/products/${group.product!.id}`)}
-            className="w-full max-w-md mx-auto flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-sm active:scale-[0.98]"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            {discountPrice.toLocaleString()}원에 구매하기 ({group.discount_percent}% 할인)
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
 
-/** 실시간 카운트다운 컴포넌트 */
-function CountdownTimer({ expiresAt }: { expiresAt: string }) {
-  const { hours, minutes, seconds, isExpired } = useCountdown(new Date(expiresAt))
+/** 티어 진행 바 — 마일스톤 시각화 */
+function TierProgressBar({
+  tiers,
+  currentCount,
+  targetCount,
+}: {
+  tiers: Tier[]
+  currentCount: number
+  targetCount: number
+}) {
+  if (!tiers || tiers.length === 0) return null
 
-  if (isExpired) return null
-
-  const isUrgent = hours === 0 && minutes < 30
+  const maxCount = Math.max(targetCount, tiers[tiers.length - 1].count)
+  const progressPct = Math.min(100, (currentCount / maxCount) * 100)
 
   return (
-    <div className="rounded-2xl p-4 text-center bg-white shadow-sm">
-      <div className="flex items-center justify-center gap-1.5 mb-1">
-        <Timer className={`w-4 h-4 ${isUrgent ? 'text-red-500' : 'text-gray-500'}`} />
-        <span className={`text-xs font-medium ${isUrgent ? 'text-red-500' : 'text-gray-500'}`}>
+    <div className="relative pt-2 pb-8">
+      {/* 트랙 */}
+      <div className="relative h-2 bg-gray-100 rounded-full">
+        {/* 채워진 부분 */}
+        <div
+          className="absolute inset-y-0 left-0 bg-gradient-to-r from-pink-400 to-pink-500 rounded-full transition-all duration-500"
+          style={{ width: `${progressPct}%` }}
+        />
+
+        {/* 티어 마커 */}
+        {tiers.map((t, i) => {
+          const pct = Math.min(100, (t.count / maxCount) * 100)
+          const reached = currentCount >= t.count
+          return (
+            <div
+              key={i}
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+              style={{ left: `${pct}%` }}
+            >
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                  reached
+                    ? 'bg-pink-500 border-pink-500 shadow-md shadow-pink-200'
+                    : 'bg-white border-gray-300'
+                }`}
+              >
+                {reached && <CheckCircle className="w-3 h-3 text-white" />}
+              </div>
+              {/* 라벨 */}
+              <div className="absolute top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-center">
+                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-500'}`}>
+                  {t.count}명
+                </div>
+                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-400'}`}>
+                  -{t.discount}%
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** 실시간 카운트다운 (days:hours:minutes:seconds) */
+function CountdownTimer({ expiresAt }: { expiresAt: string }) {
+  const { days, hours, minutes, seconds, isExpired } = useCountdown(new Date(expiresAt))
+  if (isExpired) return null
+
+  const isUrgent = days === 0 && hours < 1
+
+  return (
+    <div className="text-center">
+      <div className="flex items-center justify-center gap-1.5 mb-2">
+        <Clock className={`w-4 h-4 ${isUrgent ? 'text-pink-500' : 'text-gray-500'}`} />
+        <span className={`text-xs font-medium ${isUrgent ? 'text-pink-500' : 'text-gray-500'}`}>
           {isUrgent ? '마감 임박!' : '남은 시간'}
         </span>
       </div>
-      <div className="flex items-center justify-center gap-2">
-        <div className="px-3 py-2 rounded-lg bg-gray-100 text-gray-900">
-          <span className="text-xl font-mono font-bold">{String(hours).padStart(2, '0')}</span>
-          <span className="text-[10px] block mt-0.5">시간</span>
-        </div>
-        <span className="text-xl font-bold text-gray-400">:</span>
-        <div className="px-3 py-2 rounded-lg bg-gray-100 text-gray-900">
-          <span className="text-xl font-mono font-bold">{String(minutes).padStart(2, '0')}</span>
-          <span className="text-[10px] block mt-0.5">분</span>
-        </div>
-        <span className="text-xl font-bold text-gray-400">:</span>
-        <div className="px-3 py-2 rounded-lg bg-gray-100 text-gray-900">
-          <span className="text-xl font-mono font-bold">{String(seconds).padStart(2, '0')}</span>
-          <span className="text-[10px] block mt-0.5">초</span>
-        </div>
+      <div className="flex items-center justify-center gap-1.5">
+        {days > 0 && (
+          <>
+            <TimeBlock value={days} label="일" urgent={isUrgent} />
+            <Colon />
+          </>
+        )}
+        <TimeBlock value={hours} label="시간" urgent={isUrgent} />
+        <Colon />
+        <TimeBlock value={minutes} label="분" urgent={isUrgent} />
+        <Colon />
+        <TimeBlock value={seconds} label="초" urgent={isUrgent} />
       </div>
     </div>
   )
 }
+
+function TimeBlock({ value, label, urgent }: { value: number; label: string; urgent: boolean }) {
+  return (
+    <div className={`px-2.5 py-1.5 rounded-lg ${urgent ? 'bg-pink-50 text-pink-600' : 'bg-gray-100 text-gray-900'}`}>
+      <span className="text-base font-mono font-bold">{String(value).padStart(2, '0')}</span>
+      <span className="text-[10px] block leading-none mt-0.5">{label}</span>
+    </div>
+  )
+}
+
+function Colon() {
+  return <span className="text-base font-bold text-gray-400">:</span>
+}
+

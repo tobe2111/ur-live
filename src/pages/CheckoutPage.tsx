@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
@@ -81,11 +82,35 @@ export default function CheckoutPage() {
   const [couponDiscount, setCouponDiscount] = useState(0)
   const [couponId, setCouponId] = useState<number | null>(null)
   const [dealBalance, setDealBalance] = useState(0)
+  const [dealToUse, setDealToUse] = useState(0)
   const [payingWithDeals, setPayingWithDeals] = useState(false)
+  interface GroupBuyTier {
+    count: number
+    discount: number
+  }
+  const [groupBuyDiscounts, setGroupBuyDiscounts] = useState<Record<number, { percent: number; tier: GroupBuyTier | null }>>({})
 
   useEffect(() => {
     api.get('/api/points/balance')
       .then(r => { if (r.data.success) setDealBalance(r.data.data.balance) })
+      .catch(() => {})
+    // 보유 쿠폰 자동 로드 (가장 할인 큰 것 자동 적용)
+    api.get('/api/coupons/my')
+      .then(r => {
+        if (r.data.success && r.data.data?.length > 0) {
+          const best = r.data.data.reduce((a: Record<string, unknown>, b: Record<string, unknown>) =>
+            ((a.value as number) || 0) > ((b.value as number) || 0) ? a : b
+          )
+          if (best) {
+            setCouponCode(best.code as string)
+            setCouponId(best.id as number)
+            const discount = (best.type as string) === 'percent'
+              ? Math.round(subtotal * (best.value as number) / 100)
+              : (best.value as number)
+            setCouponDiscount(Math.min(discount, (best.max_discount as number) || discount))
+          }
+        }
+      })
       .catch(() => {})
   }, [])
 
@@ -137,7 +162,7 @@ export default function CheckoutPage() {
 
   // 소계 및 배송비 계산
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
-  
+
   const totalShippingFee = Object.values(sellerGroups).reduce((total, group) => {
     if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
       return total
@@ -145,9 +170,45 @@ export default function CheckoutPage() {
     return total + group.shipping_fee
   }, 0)
 
-  const totalAmount = subtotal + totalShippingFee - couponDiscount
+  // 공동구매 할인 계산
+  const totalGroupBuyDiscount = cartItems.reduce((sum, item) => {
+    const pid = Number(item.product_id)
+    const discount = groupBuyDiscounts[pid]
+    if (!discount || !discount.percent) return sum
+    const itemPrice = item.price_snapshot ?? item.price ?? 0
+    return sum + Math.floor(itemPrice * item.quantity * discount.percent / 100)
+  }, 0)
+
+  const totalBeforeDeal = subtotal + totalShippingFee - couponDiscount - totalGroupBuyDiscount
+  const totalAmount = totalBeforeDeal - dealToUse
 
   useEffect(() => { document.title = '주문/결제 - 유어딜' }, [])
+
+  // 공동구매 할인 조회 (cartItems 로드 후)
+  useEffect(() => {
+    if (cartItems.length === 0) return
+    const uniqueProductIds = Array.from(new Set(cartItems.map(item => Number(item.product_id)).filter(Boolean)))
+    if (uniqueProductIds.length === 0) return
+
+    Promise.all(
+      uniqueProductIds.map(pid =>
+        api.get(`/api/referral/discount/${pid}`)
+          .then(r => {
+            if (r.data?.success && r.data.data?.discount_percent > 0) {
+              return { pid, percent: r.data.data.discount_percent, tier: r.data.data.unlocked_tier }
+            }
+            return null
+          })
+          .catch(() => null)
+      )
+    ).then(results => {
+      const map: Record<number, { percent: number; tier: GroupBuyTier | null }> = {}
+      results.forEach(r => {
+        if (r) map[r.pid] = { percent: r.percent, tier: r.tier }
+      })
+      setGroupBuyDiscounts(map)
+    })
+  }, [cartItems])
 
   // ✅ BUG #18 FIX: There were TWO separate useEffect blocks both cleaning URL
   // params on `searchParams` change.  The first (lines 143-162) fired replaceState
@@ -188,15 +249,8 @@ export default function CheckoutPage() {
       return
     }
 
-    // 🔥 Fix: Use Firebase UID directly if getUserId() returns null
-    let uid = getUserIdSync()
-    
-    // Fallback to Firebase UID if userId is not in localStorage
-    if (!uid && user) {
-      uid = user.uid
-      // Save Firebase UID as user_id for future use
-      localStorage.setItem('user_id', user.uid)
-    }
+    // localStorage에서 user_id 읽기 (세션 쿠키 유저 + Firebase 유저 모두 호환)
+    const uid = getUserIdSync()
 
     if (!uid) {
       captureError(new Error('CheckoutPage: userId 없음'), { context: 'CheckoutPage.loadData' })
@@ -365,7 +419,7 @@ export default function CheckoutPage() {
    * 결제 승인(confirm) 단계에서 DB 금액 기반 검증이 가능하도록 합니다.
    */
   // 식사권 여부 확인
-  const isMealVoucher = cartItems.some(item => (item as any).category === 'meal_voucher')
+  const isMealVoucher = cartItems.some(item => (item as CartItem & { category?: string }).category === 'meal_voucher')
 
   const handleBeforePayment = async (orderId: string): Promise<void> => {
     if (!isMealVoucher && !selectedAddress) {
@@ -414,16 +468,39 @@ export default function CheckoutPage() {
         shipping_phone: isMealVoucher ? '' : selectedAddress!.phone,
         shipping_fee: groupShippingFee,
         idempotency_key: `${orderId}_${group.seller_id}`,
+        referrer_id: (() => {
+          const ref = localStorage.getItem('affiliate_ref')
+          const expires = localStorage.getItem('affiliate_ref_expires')
+          if (ref && expires && Date.now() < Number(expires)) return ref
+          // 쿠키 폴백
+          const cookie = document.cookie.match(/affiliate_ref=([^;]+)/)
+          return cookie?.[1] || undefined
+        })(),
+        group_buy_discounts: groupBuyDiscounts,
+        coupon_id: couponId || undefined,
+        coupon_discount: couponDiscount || undefined,
       })
 
       if (!response.data.success) {
         throw new Error(response.data.error || '주문 생성에 실패했습니다')
       }
+
+      // 쿠폰 사용 확정
+      if (couponId && couponDiscount > 0 && response.data.data?.order_id) {
+        try {
+          await api.post('/api/coupons/use', {
+            coupon_id: couponId,
+            order_id: response.data.data.order_id,
+            discount_amount: couponDiscount,
+          })
+        } catch {} // 쿠폰 사용 처리 실패해도 결제는 진행
+      }
     }
   }
 
   // ✅ BUG #3 FIX: Auth-guard and loading checks rendered here (after all hooks)
-  if (!isAuthReady || authLoading) {
+  const isSessionUser = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
+  if (!isSessionUser && (!isAuthReady || authLoading)) {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
@@ -434,7 +511,7 @@ export default function CheckoutPage() {
     )
   }
 
-  if (!user) {
+  if (!user && !isSessionUser) {
     // ProtectedRoute가 /login 으로 리다이렉트하므로 여기서는 null만 반환
     return null
   }
@@ -475,43 +552,36 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f4f4f4]">
+      <SEO title="주문/결제 - 유어딜" description="주문 정보를 확인하고 안전하게 결제하세요" url="/checkout" />
       {/* 헤더 */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="mx-auto max-w-lg lg:max-w-5xl px-5 py-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/cart')}
-              className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-50 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <div className="mx-auto max-w-md px-4 py-3">
+          <div className="flex items-center justify-between">
+            <button onClick={() => navigate('/cart')} className="p-1">
+              <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
-            <h1 className="text-[18px] font-bold">주문/결제</h1>
+            <h1 className="text-[16px] font-bold text-gray-900">결제하기</h1>
+            <div className="w-7" />
           </div>
         </div>
       </div>
 
-      <main className="mx-auto max-w-lg pb-52 lg:max-w-5xl lg:pb-6">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:gap-5 lg:px-5 lg:py-6">
+      <main className="mx-auto max-w-md pb-52">
+        <div className="flex flex-col">
 
           {/* Left column */}
           <div className="flex flex-1 flex-col lg:rounded-3xl">{/* overflow-hidden 제거 */}
             {/* 배송지 정보 */}
-            <section className="bg-white px-5 py-6">
-              <div className="flex items-center justify-between relative">
-                <h2 className="text-[17px] font-bold text-gray-900">배송지</h2>
+            <section className="bg-white px-5 py-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[15px] font-bold text-gray-900">배송지</h2>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setShowAddressModal(true)
-                  }}
-                  className="flex items-center text-[14px] sm:text-[15px] lg:text-[16px] font-semibold text-blue-600 transition-all hover:text-blue-700 hover:underline active:scale-95 cursor-pointer px-3 py-2 -mr-2 touch-manipulation relative z-10"
-                  style={{ pointerEvents: 'auto' }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowAddressModal(true) }}
+                  className="text-[13px] font-medium text-blue-600 active:scale-95"
                 >
                   {selectedAddress ? '변경' : '선택'}
-                  <ChevronRight className="h-5 w-5 ml-0.5" />
                 </button>
               </div>
 
@@ -544,12 +614,12 @@ export default function CheckoutPage() {
             </section>
             
             {/* Divider */}
-            <div className="h-2 bg-gray-50" />
+            <div className="h-[6px] bg-gray-100" />
 
             {/* 주문 상품 정보 */}
             <section className="bg-white px-5 py-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-[17px] font-bold text-gray-900">주문 상품</h2>
+                <h2 className="text-[15px] font-bold text-gray-900">주문 상품</h2>
                 <span className="text-[13px] text-gray-400">
                   {cartItems.length}개
                 </span>
@@ -625,7 +695,7 @@ export default function CheckoutPage() {
                   value={couponCode}
                   onChange={e => setCouponCode(e.target.value.toUpperCase())}
                   placeholder="쿠폰 코드 입력"
-                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none"
                 />
                 <button
                   onClick={async () => {
@@ -639,7 +709,7 @@ export default function CheckoutPage() {
                       } else {
                         toast.error(res.data.error)
                       }
-                    } catch (err: any) { toast.error(err?.response?.data?.error || '쿠폰 적용 실패') }
+                    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : '쿠폰 적용 실패') }
                   }}
                   className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-lg shrink-0"
                 >
@@ -647,16 +717,19 @@ export default function CheckoutPage() {
                 </button>
               </div>
               {couponDiscount > 0 && (
-                <p className="text-sm text-green-600 font-medium mt-2">✓ {couponDiscount.toLocaleString()}원 할인 적용됨</p>
+                <div className="flex items-center justify-between mt-2 p-2 bg-green-50 rounded-lg border border-green-200">
+                  <span className="text-sm text-green-700 font-medium">✓ 쿠폰 할인 적용됨</span>
+                  <span className="text-sm font-bold text-green-700">-{couponDiscount.toLocaleString()}원</span>
+                </div>
               )}
             </section>
 
             {/* Divider */}
-            <div className="h-2 bg-gray-50" />
+            <div className="h-[6px] bg-gray-100" />
 
             {/* 결제 수단 선택 */}
             <section className="bg-white px-5 py-4">
-              <h2 className="text-[17px] font-bold text-gray-900 mb-3">결제 수단</h2>
+              <h2 className="text-[15px] font-bold text-gray-900 mb-3">결제 수단</h2>
 
               {/* 결제 방법 탭 */}
               <div className="flex gap-2 mb-4">
@@ -670,97 +743,83 @@ export default function CheckoutPage() {
                 >
                   카드/간편결제
                 </button>
-                <button
-                  onClick={() => setPaymentMethod('deal')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
-                    paymentMethod === 'deal'
-                      ? 'border-pink-500 bg-gradient-to-r from-pink-500 to-red-500 text-white'
-                      : 'border-gray-200 bg-white text-gray-500'
-                  }`}
-                >
-                  딜로 결제
-                </button>
               </div>
 
-              {paymentMethod === 'deal' ? (
-                /* 딜 결제 */
-                <div>
-                  <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-400">보유 딜</span>
-                      <span className="text-lg font-bold text-gray-900">{dealBalance.toLocaleString()}딜</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">결제 필요</span>
-                      <span className={`text-lg font-bold ${dealBalance >= totalAmount ? 'text-green-400' : 'text-red-400'}`}>
-                        {totalAmount.toLocaleString()}딜
-                      </span>
-                    </div>
-                    {dealBalance < totalAmount && (
-                      <p className="text-xs text-red-400 mt-2">
-                        딜이 {(totalAmount - dealBalance).toLocaleString()}딜 부족합니다.
-                        <button onClick={() => navigate('/points/charge')} className="text-pink-400 font-bold ml-1 underline">충전하기</button>
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={async () => {
-                      if (!selectedAddress) {
-                        toast.error('배송지를 선택해주세요')
-                        setShowAddressModal(true)
-                        return
-                      }
-                      if (dealBalance < totalAmount) {
-                        toast.error('딜이 부족합니다')
-                        return
-                      }
-
-                      setPayingWithDeals(true)
-                      try {
-                        const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-
-                        if (isDirectPurchase) {
-                          sessionStorage.setItem('directPurchase', 'true')
-                        }
-
-                        const res = await api.post('/api/points/pay', {
-                          order_number: orderNumber,
-                          total_amount: totalAmount,
-                          items: cartItems.map(item => ({
-                            product_id: String(item.product_id),
-                            product_name: item.product_name || '상품',
-                            quantity: item.quantity,
-                            price: item.price_snapshot ?? item.price ?? 0,
-                            seller_id: item.seller_id ? String(item.seller_id) : undefined,
-                            option_value: item.option_value,
-                          })),
-                          shipping: {
-                            name: selectedAddress.recipient_name,
-                            phone: selectedAddress.phone,
-                            postal_code: selectedAddress.postal_code,
-                            address1: selectedAddress.address,
-                            address2: selectedAddress.address_detail || '',
-                          },
-                        })
-
-                        if (res.data.success) {
-                          navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
-                        } else {
-                          toast.error(res.data.error || '결제에 실패했습니다')
-                        }
-                      } catch (err: any) {
-                        toast.error(err?.response?.data?.error || '딜 결제 중 오류가 발생했습니다')
-                      } finally {
-                        setPayingWithDeals(false)
-                      }
-                    }}
-                    disabled={dealBalance < totalAmount || payingWithDeals || !selectedAddress}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white text-base font-bold disabled:opacity-40 active:scale-[0.98] transition-all"
-                  >
-                    {payingWithDeals ? '결제 처리 중...' : `${totalAmount.toLocaleString()}딜로 결제하기`}
-                  </button>
+              {/* 딜 포인트 */}
+              <div className="bg-white border-t border-gray-100 px-5 py-5 mb-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[15px] font-bold text-gray-900">딜 포인트</h3>
+                  <span className="text-[13px] text-gray-500">보유 <span className="font-bold text-pink-500">{dealBalance.toLocaleString()}</span>딜</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={dealToUse || ''}
+                    onChange={e => {
+                      const v = Math.min(Math.max(0, Number(e.target.value)), Math.min(dealBalance, totalBeforeDeal))
+                      setDealToUse(v)
+                    }}
+                    placeholder="사용할 딜 입력"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium placeholder:text-gray-400"
+                  />
+                  <button onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
+                    className="px-4 py-3 bg-gray-900 text-white rounded-lg text-xs font-bold shrink-0">전액사용</button>
+                </div>
+                {dealToUse > 0 && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="text-gray-500">상품 금액</span>
+                      <span className="text-gray-700">{totalBeforeDeal.toLocaleString()}원</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[13px] mt-1">
+                      <span className="text-pink-500 font-medium">딜 포인트 차감</span>
+                      <span className="text-pink-500 font-bold">-{dealToUse.toLocaleString()}딜</span>
+                    </div>
+                    <div className="border-t border-gray-200 mt-2 pt-2 flex items-center justify-between">
+                      <span className="text-[13px] font-bold text-gray-900">카드 결제 금액</span>
+                      <span className="text-[15px] font-bold text-gray-900">{Math.max(0, totalAmount).toLocaleString()}원</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {dealToUse >= totalBeforeDeal ? (
+                /* 딜 전액 결제 */
+                <button
+                  onClick={async () => {
+                    if (!selectedAddress) { toast.error('배송지를 선택해주세요'); return }
+                    setPayingWithDeals(true)
+                    try {
+                      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+                      if (isDirectPurchase) sessionStorage.setItem('directPurchase', 'true')
+                      const res = await api.post('/api/points/pay', {
+                        order_number: orderNumber, total_amount: totalAmount,
+                        items: cartItems.map(item => ({
+                          product_id: String(item.product_id), product_name: item.product_name || '상품',
+                          quantity: item.quantity, price: item.price_snapshot ?? item.price ?? 0,
+                          seller_id: item.seller_id ? String(item.seller_id) : undefined,
+                        })),
+                        shipping: {
+                          name: selectedAddress.recipient_name, phone: selectedAddress.phone,
+                          postal_code: selectedAddress.postal_code, address1: selectedAddress.address,
+                          address2: selectedAddress.address_detail || '',
+                        },
+                      })
+                      if (res.data.success) {
+                        if (couponId && couponDiscount > 0) {
+                          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => {})
+                        }
+                        navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
+                      }
+                      else toast.error(res.data.error || '결제 실패')
+                    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : '딜 결제 실패') }
+                    finally { setPayingWithDeals(false) }
+                  }}
+                  disabled={payingWithDeals || !selectedAddress}
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white text-base font-bold disabled:opacity-40"
+                >
+                  {payingWithDeals ? '처리 중...' : `${totalAmount.toLocaleString()}딜로 결제`}
+                </button>
               ) : isKorea() ? (
                 /* 한국: Toss Payments */
                 <Suspense fallback={
@@ -773,7 +832,7 @@ export default function CheckoutPage() {
                     userId={userId || ''}
                     clientKey={clientKey}
                     cartItems={cartItems}
-                    totalAmount={subtotal - couponDiscount}
+                    totalAmount={Math.max(0, totalAmount)}
                     shippingFee={totalShippingFee}
                     onBeforePayment={handleBeforePayment}
                     onPaymentSuccess={(orderId, paymentKey, amount) => {
@@ -796,7 +855,7 @@ export default function CheckoutPage() {
                   <StripeCheckout
                     userId={userId || ''}
                     cartItems={cartItems}
-                    totalAmount={subtotal - couponDiscount}
+                    totalAmount={Math.max(0, totalAmount)}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentIntentId, amount) => {
                       navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
@@ -812,10 +871,10 @@ export default function CheckoutPage() {
           </div>
 
           {/* Right column - Order summary (desktop only) */}
-          <div className="hidden lg:block lg:w-[360px]">
+          <div className="hidden">
             <div className="sticky top-20 rounded-3xl">{/* overflow-hidden 제거 */}
               <section className="bg-white px-5 py-6">
-                <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>
+                <h2 className="text-[15px] font-bold text-gray-900">결제 금액</h2>
 
                 <div className="mt-5 flex flex-col gap-3.5">
                   <div className="flex items-center justify-between">
@@ -844,6 +903,20 @@ export default function CheckoutPage() {
                       </span>
                     </div>
                   )}
+                  {totalGroupBuyDiscount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[14px] text-gray-400">🎁 공동구매 할인</span>
+                      <span className="text-[14px] font-medium text-gray-900">-{totalGroupBuyDiscount.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {dealToUse > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[14px] text-gray-400">딜 포인트</span>
+                      <span className="text-[14px] font-medium text-pink-500">
+                        -{dealToUse.toLocaleString()}딜
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="my-5 h-px bg-[#333]" />
@@ -852,7 +925,7 @@ export default function CheckoutPage() {
                   <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
                   <div className="flex items-baseline gap-0.5">
                     <span className="text-[26px] font-bold tracking-tight text-gray-900">
-                      {totalAmount.toLocaleString()}
+                      {Math.max(0, totalAmount).toLocaleString()}
                     </span>
                     <span className="text-[15px] font-semibold text-gray-900">원</span>
                   </div>
@@ -871,11 +944,11 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Mobile order summary */}
-        <div className="lg:hidden">
-          <div className="h-2 bg-gray-50" />
-          <section className="bg-white px-5 py-6">
-            <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>
+        {/* 결제 예정금액 */}
+        <div>
+          <div className="h-[6px] bg-gray-100" />
+          <section className="bg-white px-5 py-5">
+            <h2 className="text-[15px] font-bold text-gray-900">결제 예정금액</h2>
 
             <div className="mt-5 flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
@@ -904,6 +977,18 @@ export default function CheckoutPage() {
                   </span>
                 </div>
               )}
+              {totalGroupBuyDiscount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[14px] text-gray-400">🎁 공동구매 할인</span>
+                  <span className="text-[14px] font-medium text-gray-900">-{totalGroupBuyDiscount.toLocaleString()}원</span>
+                </div>
+              )}
+              {dealToUse > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[14px] text-gray-400">딜 포인트</span>
+                  <span className="text-[14px] font-medium text-pink-500">-{dealToUse.toLocaleString()}딜</span>
+                </div>
+              )}
             </div>
 
             <div className="my-5 h-px bg-[#333]" />
@@ -912,7 +997,7 @@ export default function CheckoutPage() {
               <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
               <div className="flex items-baseline gap-0.5">
                 <span className="text-[26px] font-bold tracking-tight text-gray-900">
-                  {totalAmount.toLocaleString()}
+                  {Math.max(0, totalAmount).toLocaleString()}
                 </span>
                 <span className="text-[15px] font-semibold text-gray-900">원</span>
               </div>
@@ -934,58 +1019,48 @@ export default function CheckoutPage() {
         type="custom"
         maxWidth="lg"
       >
-        <div className="space-y-3">
+        <div className="space-y-2">
           {addresses.length === 0 ? (
             <div className="py-12 text-center">
-              <MapPin className="w-12 h-12 mx-auto text-gray-500 mb-3" />
+              <MapPin className="w-12 h-12 mx-auto text-gray-300 mb-3" />
               <p className="text-[15px] text-gray-500">등록된 배송지가 없습니다.</p>
               <p className="text-[13px] text-gray-400 mt-1">새 배송지를 추가해주세요.</p>
             </div>
           ) : (
-            addresses.map((addr) => (
-              <div
-                key={addr.id}
-                className={`border rounded-2xl p-4 cursor-pointer transition-all ${
-                  selectedAddress?.id === addr.id 
-                    ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setSelectedAddress(addr)
-                  setShowAddressModal(false)
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <p className="text-[15px] font-semibold text-gray-900">{addr.recipient_name}</p>
-                      {addr.is_default === 1 && (
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-600">
-                          기본
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[14px] text-gray-400 mb-1">{addr.phone}</p>
-                    <p className="text-[14px] text-gray-500 leading-relaxed">
-                      [{addr.postal_code}] {addr.address}
-                    </p>
-                    {addr.address_detail && (
-                      <p className="text-[14px] text-gray-500 leading-relaxed mt-0.5">
-                        {addr.address_detail}
-                      </p>
+            addresses.map((addr) => {
+              const isSelected = selectedAddress?.id === addr.id
+              return (
+                <div
+                  key={addr.id}
+                  className={`relative rounded-xl p-4 cursor-pointer transition-all active:scale-[0.99] ${
+                    isSelected
+                      ? 'bg-gray-50 ring-1 ring-gray-900'
+                      : 'bg-white border border-gray-100 hover:bg-gray-50'
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedAddress(addr)
+                    setShowAddressModal(false)
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <p className="text-[15px] font-bold text-gray-900">{addr.recipient_name}</p>
+                    <span className="text-[13px] text-gray-400">{addr.phone}</span>
+                    {addr.is_default === 1 && (
+                      <span className="text-[11px] text-gray-500 font-medium">기본 배송지</span>
+                    )}
+                    {isSelected && (
+                      <svg className="w-4 h-4 text-gray-900 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
                     )}
                   </div>
-                  {selectedAddress?.id === addr.id && (
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center mt-1">
-                      <svg className="w-3 h-3 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  )}
+                  <p className="text-[13px] text-gray-500 leading-relaxed">
+                    [{addr.postal_code}] {addr.address}{addr.address_detail ? ` ${addr.address_detail}` : ''}
+                  </p>
                 </div>
-              </div>
-            ))
+              )
+            })
           )}
 
           <button
@@ -995,10 +1070,10 @@ export default function CheckoutPage() {
               setShowAddressModal(false)
               setTimeout(() => setShowNewAddressForm(true), 100)
             }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-4 text-[15px] font-semibold text-gray-400 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer touch-manipulation active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 py-3.5 text-[14px] font-medium text-gray-500 transition-all hover:bg-gray-50 cursor-pointer active:scale-[0.98]"
           >
-            <Plus className="w-5 h-5" />
-            <span>새 배송지 추가</span>
+            <Plus className="w-4 h-4" />
+            새 배송지 추가
           </button>
         </div>
       </CustomModal>
@@ -1023,7 +1098,7 @@ export default function CheckoutPage() {
               type="text"
               value={newAddress.recipient_name}
               onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="받으실 분의 이름을 입력하세요"
             />
           </div>
@@ -1036,7 +1111,7 @@ export default function CheckoutPage() {
               type="tel"
               value={newAddress.phone}
               onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="010-1234-5678"
             />
           </div>
@@ -1093,7 +1168,7 @@ export default function CheckoutPage() {
               type="text"
               value={newAddress.address_detail}
               onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="동/호수, 건물명 등 (선택)"
             />
           </div>

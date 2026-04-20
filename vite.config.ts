@@ -68,6 +68,17 @@ export default defineConfig({
       },
     },
     chunkSizeWarningLimit: 600,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.debug', 'console.info'],
+      },
+      mangle: {
+        safari10: true,
+      },
+    },
   },
   server: {
     port: 5173,

@@ -12,7 +12,12 @@
  */
 
 import { NavigateFunction } from 'react-router-dom'
-import { getFirebaseAuth } from '@/lib/firebase-auth'
+
+// Firebase는 dynamic import로만 사용 (초기 번들에서 제외)
+async function getFirebaseAuth() {
+  const { getFirebaseAuth: getAuth } = await import('@/lib/firebase-auth')
+  return getAuth()
+}
 
 // Firebase 표준 localStorage 키
 const FIREBASE_STORAGE_KEYS = {
@@ -84,7 +89,8 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'hasCartItems',
       'tempCartItem',
       'loginReturnUrl',
-      'lastLoginUid'
+      'lastLoginUid',
+      'session_login'
     )
     // seller/admin 세션이 남아있으면 user_type 유지
     const hasSellerSession = !!localStorage.getItem('seller_token')
@@ -447,12 +453,15 @@ export async function logout(type?: 'seller' | 'admin' | 'user' | null): Promise
     // Sentry 초기화 실패 시 무시
   }
   
-  // Firebase 로그아웃
+  // Firebase 로그아웃 (글로벌 전용 — 한국은 세션 쿠키만 사용)
   try {
-    const auth = await getFirebaseAuth()
-    auth.signOut()
+    const { isKorea } = await import('@/shared/config/region')
+    if (!isKorea()) {
+      const auth = await getFirebaseAuth()
+      auth.signOut()
+    }
   } catch (e) {
-    console.error('[Auth] Firebase signOut 실패:', e)
+    // Firebase 초기화 실패 시 무시
   }
   
 }

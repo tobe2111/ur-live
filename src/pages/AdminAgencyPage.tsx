@@ -101,8 +101,9 @@ export default function AdminAgencyPage() {
       }
       setModal(null)
       fetchAgencies()
-    } catch (err: any) {
-      setError(err.response?.data?.error || '저장 실패')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      setError(err_.response?.data?.error || '저장 실패')
     } finally {
       setSaving(false)
     }

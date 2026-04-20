@@ -12,9 +12,28 @@ import { Eye, EyeOff } from 'lucide-react'
 import SEO from '@/components/SEO'
 
 // Kakao SDK 타입 선언
+interface KakaoAuth {
+  getAccessToken(): string | null
+  setAccessToken(token: string): void
+}
+
+interface KakaoChannel {
+  addChannel(params: { channelPublicId: string }): void
+  chat(params: { channelPublicId: string }): void
+}
+
+interface KakaoSDK {
+  init(appKey: string): void
+  isInitialized(): boolean
+  Auth: KakaoAuth
+  Channel: KakaoChannel
+  _appKey?: string
+  [key: string]: unknown
+}
+
 declare global {
   interface Window {
-    Kakao: any
+    Kakao: KakaoSDK
   }
 }
 
@@ -64,19 +83,15 @@ export default function LoginPage() {
       : _rawReturnUrl
   }
   const returnUrl = returnUrlRef.current
-  const isLoggedIn = !!user
+  const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
 
-  // ✅ 로그인 상태 확인 및 리다이렉트
+  // ✅ 로그인 상태 확인 및 리다이렉트 (isAuthReady 대기 불필요 — KR은 즉시 true)
   useEffect(() => {
-    if (!isAuthReady) {
-      return
-    }
-
     if (isLoggedIn && !hasRedirected.current) {
       hasRedirected.current = true
       navigate(returnUrlRef.current!, { replace: true })
     }
-  }, [isAuthReady, isLoggedIn, navigate])
+  }, [isLoggedIn, navigate])
 
   // ✅ Kakao SDK 초기화 및 returnUrl 저장 (KR만)
   useEffect(() => {
@@ -130,18 +145,18 @@ export default function LoginPage() {
         || sessionStorage.getItem('returnUrl')
         || '/'
 
-      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(currentReturnUrl)}&scope=talk_calendar,talk_message,friends`
+      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(currentReturnUrl)}`
 
       window.location.href = kakaoAuthUrl
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Kakao Login] ❌ 오류 발생:', err)
       setError(t('auth.kakaoLoginError'))
       setLoading(false)
     }
   }
 
-  // ✅ Kakao accessToken → Firebase customToken 처리
+  // ✅ Kakao accessToken → 로그인 처리
   async function processKakaoLogin(accessToken: string) {
     try {
       const response = await api.post('/api/auth/kakao/firebase', {
@@ -151,52 +166,45 @@ export default function LoginPage() {
       if (response.data.success) {
         const { customToken, user: kakaoUser } = response.data
 
-        // ✅ Lazy load Firebase Auth
-        const { signInWithCustomToken } = await import('@/lib/firebase-auth')
-
-        // Firebase signInWithCustomToken
-        const credential = await signInWithCustomToken(customToken)
-
-        // ✅ ID Token 가져오기 (캐시 우선)
-        const idToken = await credential.user.getIdToken(false)
-
-        // ✅ 중복 처리 방지 플래그 먼저 설정 (onAuthStateChanged race condition 방지)
-        sessionStorage.setItem('auth_processed_uid', credential.user.uid)
-
-        // ✅ localStorage 설정
+        // ✅ localStorage 설정 (Firebase 무관)
         localStorage.setItem('user_type', 'user')
         localStorage.setItem('user_name', kakaoUser.name)
         localStorage.setItem('user_id', String(kakaoUser.id))
         if (kakaoUser.email) localStorage.setItem('user_email', kakaoUser.email)
 
-        // ✅ Zustand store 직접 업데이트 (onAuthStateChanged 대기 없이 즉시 인증)
-        const authStore = useAuthKR.getState()
-        authStore.setUser(credential.user)
-        authStore.setAuthReady(true)
-
-        // ✅ API 요청용 accessToken 저장
-        try {
-          const { useAuthStore } = await import('@/client/stores/auth.store')
-          useAuthStore.getState().setAuth(
-            {
-              id: credential.user.uid,
-              email: kakaoUser.email || '',
-              name: kakaoUser.name,
-              role: 'user',
-            },
-            idToken,
-            ''
-          )
-        } catch (_) {}
+        if (isKR) {
+          // 한국: Firebase 건너뜀, 세션 쿠키만
+          useAuthKR.getState().setAuthReady(true)
+        } else if (customToken) {
+          // 글로벌: Firebase customToken 로그인
+          try {
+            const { signInWithCustomToken } = await import('@/lib/firebase-auth')
+            const credential = await signInWithCustomToken(customToken)
+            const idToken = await credential.user.getIdToken(false)
+            sessionStorage.setItem('auth_processed_uid', credential.user.uid)
+            const authStore = useAuthWorld.getState()
+            authStore.setUser(credential.user)
+            authStore.setAuthReady(true)
+            try {
+              const { useAuthStore } = await import('@/client/stores/auth.store')
+              useAuthStore.getState().setAuth(
+                { id: credential.user.uid, email: kakaoUser.email || '', name: kakaoUser.name, role: 'user' },
+                idToken, ''
+              )
+            } catch (_) {}
+          } catch (e) {
+            console.error('[Login] Firebase failed:', e)
+            useAuthWorld.getState().setAuthReady(true)
+          }
+        }
 
         const savedReturnUrl = sessionStorage.getItem('returnUrl') || '/'
         sessionStorage.removeItem('returnUrl')
-
         navigate(savedReturnUrl, { replace: true })
       } else {
         throw new Error(response.data.error || t('auth.loginError'))
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Kakao Login] ❌ 실패:', err)
       setError(t('auth.kakaoLoginError'))
       setLoading(false)
@@ -230,7 +238,7 @@ export default function LoginPage() {
       } else {
         navigate(returnUrl, { replace: true })
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Email Login] Error:', err)
       setError(t('auth.invalidCredentials'))
     } finally {
@@ -252,8 +260,10 @@ export default function LoginPage() {
       await sendPasswordResetEmailAction(email)
       setSuccessMessage(t('auth.resetPasswordSuccess'))
       setShowForgotPassword(false)
-    } catch (err: any) {
-      setError(err.message || t('common.error'))
+    } catch (err: unknown) {
+      const err_ = err as { message?: string };
+      const msg = err instanceof Error ? err.message : t('common.error')
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -291,9 +301,10 @@ export default function LoginPage() {
       sessionStorage.removeItem('returnUrl')
       navigate(returnUrl, { replace: true })
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Google Login] ❌ 실패:', error)
-      if (error?.code === 'auth/popup-closed-by-user') {
+      const firebaseError = error as { code?: string }
+      if (firebaseError?.code === 'auth/popup-closed-by-user') {
         // 사용자가 팝업을 닫은 경우 — 에러 표시하지 않음
       } else {
         setError(t('auth.googleLoginError'))
@@ -304,7 +315,7 @@ export default function LoginPage() {
   }
 
   // 🔥 Early return: Prevent rendering while redirecting
-  if (isAuthReady && isLoggedIn && hasRedirected.current) {
+  if (isLoggedIn && hasRedirected.current) {
     return (
       <div className="min-h-screen bg-[#020202] flex items-center justify-center">
         <div className="text-gray-400">Redirecting...</div>

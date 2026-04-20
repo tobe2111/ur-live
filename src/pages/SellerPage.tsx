@@ -7,14 +7,15 @@ import {
   TrendingUp, Clock,
   ChevronRight, RefreshCw, ArrowUpRight,
   AlertCircle, CheckCircle2, Truck, XCircle,
-  AlertTriangle, CreditCard, ArchiveRestore, Users
+  AlertTriangle, CreditCard, ArchiveRestore, Users,
+  Utensils, Gift, Radio, MapPin
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 
 // recharts lazy load (377KB → 대시보드 진입 시 차트 영역만 지연 로드)
 const LazyChart = lazy(() => import('recharts').then(m => ({
-  default: ({ data }: { data: any[] }) => {
+  default: ({ data }: { data: { date: string; orders: number; sales: number }[] }) => {
     const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = m
     return (
       <ResponsiveContainer width="100%" height="100%">
@@ -100,6 +101,9 @@ export default function SellerPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
 
+  const sellerType = localStorage.getItem('seller_type') || 'influencer'
+  const isInfluencer = sellerType === 'influencer' || sellerType === 'both'
+
   // Stats
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0, totalOrders: 0, activeStreams: 0, totalViewers: 0,
@@ -124,6 +128,12 @@ export default function SellerPage() {
 
   // 팔로워/구독자 수
   const [followerCount, setFollowerCount] = useState(0)
+
+  // 활동 데이터 기반 대시보드 커스터마이징
+  const [hasLiveHistory, setHasLiveHistory] = useState(false)
+  const [hasMealVouchers, setHasMealVouchers] = useState(false)
+  const [mealVoucherCount, setMealVoucherCount] = useState(0)
+  const [activeGroupBuys, setActiveGroupBuys] = useState(0)
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -180,11 +190,12 @@ export default function SellerPage() {
       const token = getSellerToken()
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
-      const [dashRes, streamsRes, stockRes, followerRes] = await Promise.allSettled([
+      const [dashRes, streamsRes, stockRes, followerRes, productsRes] = await Promise.allSettled([
         api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
         api.get('/api/seller/streams', { headers }),
         api.get('/api/inventory/stock/alerts', { headers }),
-        api.get(`/api/social/followers/${getSellerId()}`)
+        api.get(`/api/social/followers/${getSellerId()}`),
+        api.get('/api/seller/products', { headers }),
       ])
 
       if (dashRes.status === 'fulfilled' && dashRes.value.data.success) {
@@ -221,6 +232,20 @@ export default function SellerPage() {
       }
       if (followerRes.status === 'fulfilled' && followerRes.value.data?.success) {
         setFollowerCount(followerRes.value.data.data?.count || 0)
+      }
+
+      // 활동 데이터 분석: 라이브 이력 + 식사권 상품
+      if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
+        const allStreams: LiveStream[] = streamsRes.value.data.data || []
+        setHasLiveHistory(allStreams.length > 0)
+      }
+      if (productsRes.status === 'fulfilled' && productsRes.value.data?.success) {
+        const prods = productsRes.value.data.data || []
+        type ProdEntry = { category?: string; group_buy_status?: string }
+        const vouchers = (prods as ProdEntry[]).filter(p => p.category === 'meal_voucher' || p.category === 'group_buy')
+        setHasMealVouchers(vouchers.length > 0)
+        setMealVoucherCount(vouchers.length)
+        setActiveGroupBuys(vouchers.filter(p => p.group_buy_status === 'active' || p.group_buy_status === 'achieved').length)
       }
     } catch {
       // silent fail
@@ -276,13 +301,15 @@ export default function SellerPage() {
           </button>
         ))}
       </div>
-      <button
-        onClick={() => navigate('/seller/live-broadcast')}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        <Play className="w-3.5 h-3.5" />
-        {t('seller.startLive')}
-      </button>
+      {isInfluencer && (
+        <button
+          onClick={() => navigate('/seller/live-broadcast')}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Play className="w-3.5 h-3.5" />
+          {t('seller.startLive')}
+        </button>
+      )}
     </div>
   )
 
@@ -295,24 +322,28 @@ export default function SellerPage() {
               {
                 label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
                 sub: stats.avgOrderValue > 0 ? t('seller.avgPerOrder', { amount: fmtPrice(stats.avgOrderValue) }) : undefined,
-                icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50'
+                icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50',
+                influencerOnly: false
               },
               {
                 label: t('seller.totalOrders'), value: `${(stats.totalOrders || 0).toLocaleString()}`,
                 sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
-                icon: <ShoppingBag className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50'
+                icon: <ShoppingBag className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50',
+                influencerOnly: false
               },
               {
                 label: t('seller.pendingOrders'), value: `${(stats.pendingOrders || 0).toLocaleString()}`,
                 sub: t('seller.needsAction'),
-                icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50'
+                icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50',
+                influencerOnly: false
               },
               {
                 label: t('seller.activeStreams'), value: `${stats.activeStreams || 0}`,
                 sub: stats.totalViewers > 0 ? t('seller.viewerCount', { count: stats.totalViewers }) : t('seller.noStreams'),
-                icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50'
+                icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50',
+                influencerOnly: true
               },
-            ].map(card => (
+            ].filter(card => !card.influencerOnly || isInfluencer).map(card => (
               <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>
@@ -475,6 +506,78 @@ export default function SellerPage() {
                     <span className="text-sm text-gray-500">{t('seller.unprocessedOrders')}</span>
                     <span className="text-sm font-bold text-amber-600">{(stats.pendingOrders || 0).toLocaleString()}</span>
                   </div>
+                </div>
+              </div>
+
+              {/* 빠른 액션 — 활동 데이터 기반 동적 배치 */}
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">빠른 액션</h2>
+                <div className="space-y-2">
+                  {/* 식사권/공구 관련 (식사권 이력 있거나 가게사장님이면 상단) */}
+                  {(hasMealVouchers || sellerType === 'store_owner') && (
+                    <>
+                      <Link to="/seller/meal-voucher/new"
+                        className="flex items-center justify-between p-3.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Utensils className="w-4 h-4" />
+                          <div>
+                            <p className="text-[13px] font-bold">식사권 등록</p>
+                            <p className="text-[11px] text-gray-400">카카오맵으로 맛집 선택</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      </Link>
+                      {activeGroupBuys > 0 && (
+                        <Link to="/seller/group-buy"
+                          className="flex items-center justify-between p-3.5 bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <Gift className="w-4 h-4 text-pink-600" />
+                            <div>
+                              <p className="text-[13px] font-bold text-gray-900">공동구매 관리</p>
+                              <p className="text-[11px] text-pink-600">{activeGroupBuys}개 진행중</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </Link>
+                      )}
+                    </>
+                  )}
+
+                  {/* 공동구매 만들기 (항상 표시) */}
+                  <Link to="/seller/meal-voucher/new"
+                    className={`flex items-center justify-between p-3.5 rounded-xl transition-colors ${
+                      hasMealVouchers || sellerType === 'store_owner'
+                        ? 'bg-white border border-gray-200 hover:bg-gray-50'
+                        : 'bg-gray-900 text-white hover:bg-gray-800'
+                    }`}>
+                    <div className="flex items-center gap-3">
+                      <Users className={`w-4 h-4 ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-600' : ''}`} />
+                      <div>
+                        <p className={`text-[13px] font-bold ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-900' : ''}`}>공동구매 만들기</p>
+                        <p className={`text-[11px] ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-500' : 'text-gray-400'}`}>티어 기반 할인 상품</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </Link>
+
+                  {/* 라이브 관련 (라이브 이력 있거나 인플루언서면 표시) */}
+                  {isInfluencer && (
+                    <Link to="/seller/live-broadcast"
+                      className={`flex items-center justify-between p-3.5 rounded-xl transition-colors ${
+                        hasLiveHistory
+                          ? 'bg-red-50 border border-red-200 hover:bg-red-100'
+                          : 'bg-white border border-gray-200 hover:bg-gray-50'
+                      }`}>
+                      <div className="flex items-center gap-3">
+                        <Radio className={`w-4 h-4 ${hasLiveHistory ? 'text-red-500' : 'text-gray-600'}`} />
+                        <div>
+                          <p className="text-[13px] font-bold text-gray-900">라이브 방송</p>
+                          <p className="text-[11px] text-gray-500">{hasLiveHistory ? '이전 방송 이어서' : '첫 라이브 시작'}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </Link>
+                  )}
                 </div>
               </div>
 

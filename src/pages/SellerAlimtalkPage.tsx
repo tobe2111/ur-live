@@ -42,7 +42,7 @@ interface AlimtalkLog {
 
 declare global {
   interface Window {
-    TossPayments: any
+    TossPayments?: (clientKey: string) => { requestPayment: (method: string, opts: Record<string, unknown>) => Promise<void> }
   }
 }
 
@@ -128,7 +128,7 @@ export default function SellerAlimtalkPage() {
       }
 
       await loadTossPaymentsSDK()
-      const toss = window.TossPayments(clientKey)
+      const toss = window.TossPayments!(clientKey)
       await toss.requestPayment('카드', {
         amount,
         orderId,
@@ -136,9 +136,10 @@ export default function SellerAlimtalkPage() {
         successUrl: `${window.location.origin}/seller/brandmessage?charge=success&orderId=${orderId}`,
         failUrl: `${window.location.origin}/seller/brandmessage?charge=fail`,
       })
-    } catch (err: any) {
-      if (err?.code !== 'USER_CANCEL') {
-        toast.error(err?.message || t('seller.paymentError'))
+    } catch (err: unknown) {
+      const err_ = err as { message?: string; code?: string }
+      if (err_.code !== 'USER_CANCEL') {
+        toast.error(err_.message || t('seller.paymentError'))
       }
     } finally { setPaying(false) }
   }

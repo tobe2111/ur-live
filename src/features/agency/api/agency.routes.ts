@@ -865,7 +865,7 @@ app.get('/sellers/compare', async (c: AgencyCtx) => {
   const period = c.req.query('period') || '30'
 
   const { results } = await c.env.DB.prepare(`
-    SELECT s.id, s.name,
+    SELECT s.id, s.name, s.business_name,
       COUNT(DISTINCT o.id) AS order_count,
       COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END), 0) AS revenue,
       COUNT(DISTINCT CASE WHEN ls.status = 'live' THEN ls.id END) AS live_count,
@@ -878,7 +878,50 @@ app.get('/sellers/compare', async (c: AgencyCtx) => {
     GROUP BY s.id, s.name ORDER BY revenue DESC
   `).bind(period, period, agencyId).all()
 
-  return c.json({ success: true, data: results || [] })
+  // Fetch voucher usage stats per seller
+  const { results: voucherStats } = await c.env.DB.prepare(`
+    SELECT p.seller_id,
+      COUNT(*) AS total_vouchers,
+      SUM(CASE WHEN v.status = 'used' THEN 1 ELSE 0 END) AS used_vouchers
+    FROM vouchers v
+    JOIN products p ON v.product_id = p.id
+    JOIN agency_sellers ag ON ag.seller_id = p.seller_id
+    WHERE ag.agency_id = ?
+    GROUP BY p.seller_id
+  `).bind(agencyId).all<{ seller_id: number; total_vouchers: number; used_vouchers: number }>().catch(() => ({ results: [] as any[] }))
+
+  // Fetch group buy participation per seller
+  const { results: groupBuyStats } = await c.env.DB.prepare(`
+    SELECT p.seller_id,
+      COUNT(*) AS total_group_buys,
+      SUM(CASE WHEN p.group_buy_status = 'achieved' THEN 1 ELSE 0 END) AS achieved_group_buys
+    FROM products p
+    JOIN agency_sellers ag ON ag.seller_id = p.seller_id
+    WHERE ag.agency_id = ? AND p.category = 'meal_voucher' AND p.group_buy_status IS NOT NULL
+    GROUP BY p.seller_id
+  `).bind(agencyId).all<{ seller_id: number; total_group_buys: number; achieved_group_buys: number }>().catch(() => ({ results: [] as any[] }))
+
+  const voucherMap: Record<number, { total_vouchers: number; used_vouchers: number }> = {}
+  for (const v of (voucherStats || [])) voucherMap[v.seller_id] = v
+
+  const groupBuyMap: Record<number, { total_group_buys: number; achieved_group_buys: number }> = {}
+  for (const g of (groupBuyStats || [])) groupBuyMap[g.seller_id] = g
+
+  const enriched = (results || []).map((r: any) => ({
+    ...r,
+    total_vouchers: voucherMap[r.id]?.total_vouchers ?? 0,
+    used_vouchers: voucherMap[r.id]?.used_vouchers ?? 0,
+    voucher_usage_rate: voucherMap[r.id]?.total_vouchers
+      ? Math.round((voucherMap[r.id].used_vouchers / voucherMap[r.id].total_vouchers) * 100)
+      : 0,
+    total_group_buys: groupBuyMap[r.id]?.total_group_buys ?? 0,
+    achieved_group_buys: groupBuyMap[r.id]?.achieved_group_buys ?? 0,
+    group_buy_success_rate: groupBuyMap[r.id]?.total_group_buys
+      ? Math.round((groupBuyMap[r.id].achieved_group_buys / groupBuyMap[r.id].total_group_buys) * 100)
+      : 0,
+  }))
+
+  return c.json({ success: true, data: enriched })
 })
 
 // ── 셀러 계약 관리 ──

@@ -71,8 +71,9 @@ export default function AdminAlimtalkPricingPage() {
       setPackages(pricingRes.data.data ?? [])
       setAccounts(accountsRes.data.data ?? [])
       setStats(statsRes.data.data ?? null)
-    } catch (err: any) {
-      if (err.response?.status === 401) navigate('/admin/login')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      if (err_.response?.status === 401) navigate('/admin/login')
       else toast.error('데이터를 불러오지 못했습니다')
     } finally {
       setLoading(false)

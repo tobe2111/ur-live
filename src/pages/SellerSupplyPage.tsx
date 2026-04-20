@@ -123,8 +123,9 @@ export default function SellerSupplyPage() {
       toast.success(t('seller.sampleRequestSuccess'))
       setRequestModal(null); setSellerMemo('')
       loadCatalog()
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || t('seller.sampleRequestFailed'))
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || t('seller.sampleRequestFailed'))
     } finally { setSubmitting(false) }
   }
 
@@ -141,8 +142,9 @@ export default function SellerSupplyPage() {
       toast.success(t('seller.productRegisteredSuccess'))
       setRegisterModal(null); setSellerPrice('')
       loadMyRequests()
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || t('seller.productRegisterFailedMsg'))
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || t('seller.productRegisterFailedMsg'))
     } finally { setRegistering(false) }
   }
 

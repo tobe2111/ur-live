@@ -17,7 +17,9 @@ import {
   TrendingUp,
   Loader2,
   RefreshCw,
-  FileText
+  FileText,
+  BarChart3,
+  Table
 } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 
@@ -47,6 +49,46 @@ interface SettlementStats {
   paid_amount: number
 }
 
+function RevenueCalendar({ dailyData }: { dailyData: { date: string; revenue: number }[] }) {
+  const today = new Date()
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  const startDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay()
+
+  const dataMap = new Map(dailyData.map(d => [d.date, d.revenue]))
+  const maxRevenue = Math.max(...dailyData.map(d => d.revenue), 1)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-gray-900">
+          {today.getFullYear()}년 {today.getMonth() + 1}월 수익 캘린더
+        </h3>
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {['일', '월', '화', '수', '목', '금', '토'].map(d => (
+          <div key={d} className="text-center text-[10px] text-gray-500 py-1 font-medium">{d}</div>
+        ))}
+        {Array.from({ length: startDay }).map((_, i) => <div key={`e-${i}`} />)}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
+          const rev = dataMap.get(date) || 0
+          const intensity = rev > 0 ? Math.max(0.2, rev / maxRevenue) : 0
+          return (
+            <div
+              key={i}
+              className="aspect-square rounded-lg flex flex-col items-center justify-center text-[10px]"
+              style={{ backgroundColor: intensity > 0 ? `rgba(236,72,153,${intensity})` : '#f3f4f6' }}
+            >
+              <span className={rev > 0 ? 'text-white font-bold' : 'text-gray-600'}>{i + 1}</span>
+              {rev > 0 && <span className="text-white text-[8px]">{(rev / 10000).toFixed(0)}만</span>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function SellerSettlementsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -55,6 +97,8 @@ export default function SellerSettlementsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all')
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
+  const [dailyRevenue, setDailyRevenue] = useState<{ date: string; revenue: number }[]>([])
 
   useEffect(() => {
     const sessionToken = localStorage.getItem('seller_token')
@@ -90,10 +134,23 @@ export default function SellerSettlementsPage() {
       if (statsResponse.data.success) {
         setStats(statsResponse.data.data)
       }
-    } catch (error: any) {
+
+      // Get daily revenue for calendar
+      try {
+        const dailyRes = await api.get('/api/seller/dashboard/stats?period=30d', {
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
+        })
+        if (dailyRes.data.success && dailyRes.data.data?.daily_revenue) {
+          setDailyRevenue(dailyRes.data.data.daily_revenue)
+        }
+      } catch {
+        // daily revenue is optional - calendar will show empty
+      }
+    } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to load settlements:', error)
       setError(t('seller.settlementLoadFailed'))
-      if (error.response?.status === 401) {
+      if (error_.response?.status === 401) {
         navigate('/seller/login')
       }
     } finally {
@@ -128,8 +185,9 @@ export default function SellerSettlementsPage() {
         toast.success(t('seller.settlementRequested'))
         loadSettlements()
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || t('seller.settlementRequestFailed2'))
+    } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(error_.response?.data?.error || t('seller.settlementRequestFailed2'))
     }
   }
 
@@ -279,6 +337,40 @@ export default function SellerSettlementsPage() {
           </div>
         )}
 
+        {/* View Mode Toggle */}
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Table className="w-4 h-4" />
+              {t('seller.settlementTableView', '정산 내역')}
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'calendar'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              {t('seller.revenueCalendar', '수익 캘린더')}
+            </button>
+          </div>
+        </div>
+
+        {viewMode === 'calendar' ? (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <RevenueCalendar dailyData={dailyRevenue} />
+          </div>
+        ) : (
+        <>
         {/* Period Filter */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
           <div className="flex items-center gap-4">
@@ -417,6 +509,8 @@ export default function SellerSettlementsPage() {
             <li>• {t('seller.settlementGuide5')}</li>
           </ul>
         </div>
+        </>
+        )}
       </div>
     </SellerLayout>
   )

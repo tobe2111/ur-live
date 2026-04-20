@@ -85,8 +85,9 @@ export default function AdminDealMonitorPage() {
     try {
       const res = await api.get('/api/admin/deals/stats')
       if (res.data.success) setStats(res.data.data)
-    } catch (err: any) {
-      if (err.response?.status === 401) {
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      if (err_.response?.status === 401) {
         localStorage.removeItem('admin_token')
         navigate('/admin/login')
       }

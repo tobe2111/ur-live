@@ -5,6 +5,7 @@
 // ============================================================
 
 import { Hono } from 'hono';
+import type { Context, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timing } from 'hono/timing';
@@ -63,6 +64,20 @@ import { rateLimit } from './middleware/rate-limit';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
+
+// ============================================================
+// Cache Control Middleware — adds CDN + browser cache headers
+// for read-heavy GET endpoints to reduce origin load
+// ============================================================
+function cacheControl(maxAge: number) {
+  return async (c: Context, next: Next) => {
+    await next();
+    if (c.res.status === 200 && c.req.method === 'GET') {
+      c.header('Cache-Control', `public, max-age=${maxAge}, s-maxage=${maxAge}`);
+      c.header('CDN-Cache-Control', `max-age=${maxAge}`);
+    }
+  };
+}
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -194,12 +209,38 @@ app.get('/health', (c) => c.json({
   environment: (c.env as Env).ENVIRONMENT ?? 'development',
 }));
 
-app.get('/api/health', (c) => c.json({
-  status: 'ok',
-  timestamp: new Date().toISOString(),
-  version: '2.0.0',
-  environment: (c.env as Env).ENVIRONMENT ?? 'development',
-}));
+app.get('/api/health', async (c) => {
+  const env = c.env as Env;
+  const checks: Record<string, string> = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  };
+
+  // DB check
+  try {
+    await env.DB.prepare("SELECT 1").first();
+    checks.database = 'ok';
+  } catch {
+    checks.database = 'error';
+    checks.status = 'degraded';
+  }
+
+  // KV check
+  try {
+    if (env.RATE_LIMIT_KV) {
+      await env.RATE_LIMIT_KV.get('health-check');
+      checks.kv = 'ok';
+    }
+  } catch {
+    checks.kv = 'error';
+  }
+
+  checks.version = '2.0.0';
+  checks.region = env.REGION || 'unknown';
+  checks.environment = env.ENVIRONMENT ?? 'development';
+
+  return c.json(checks, checks.status === 'ok' ? 200 : 503);
+});
 
 // 클라이언트 빌드 버전 확인 — index.html의 스크립트 해시를 서버가 알려줌
 // 프론트가 자신의 번들 해시와 비교해서 불일치 시 자동 리로드
@@ -304,6 +345,45 @@ app.get('/api/debug/kv-usage', requireAdmin(), async (c) => {
 });
 
 // ============================================================
+// Database Index Optimization (admin only)
+// Creates indexes on frequently queried columns for faster lookups
+// ============================================================
+app.get('/api/admin/optimize-db', requireAdmin(), async (c) => {
+  const env = c.env as Env;
+  const indexes = [
+    'CREATE INDEX IF NOT EXISTS idx_orders_seller_id ON orders(seller_id)',
+    'CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)',
+    'CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_products_seller_id ON products(seller_id)',
+    'CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)',
+    'CREATE INDEX IF NOT EXISTS idx_vouchers_status ON vouchers(status)',
+    'CREATE INDEX IF NOT EXISTS idx_vouchers_user_id ON vouchers(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_referral_tree_parent ON referral_tree(parent_id)',
+    'CREATE INDEX IF NOT EXISTS idx_referral_commissions_beneficiary ON referral_commissions(beneficiary_id)',
+  ];
+
+  let created = 0;
+  const errors: string[] = [];
+
+  for (const sql of indexes) {
+    try {
+      await env.DB.prepare(sql).run();
+      created++;
+    } catch (e) {
+      errors.push(`${sql}: ${(e as Error).message}`);
+    }
+  }
+
+  return c.json({
+    success: true,
+    indexes_created: created,
+    total: indexes.length,
+    ...(errors.length > 0 ? { errors } : {}),
+  });
+});
+
+// ============================================================
 // Auth Routes
 // ============================================================
 
@@ -333,6 +413,14 @@ app.route('/api/auth/google', googleRoutes);
 // 프론트엔드에서 /api/users/* 로 직접 호출
 // ============================================================
 app.route('/api/users', usersRouter);
+
+// ============================================================
+// Cache Control — read-heavy public endpoints
+// ============================================================
+app.use('/api/products', cacheControl(60));     // 1 min
+app.use('/api/streams', cacheControl(30));      // 30 sec
+app.use('/api/group-buy/products', cacheControl(60)); // 1 min
+app.use('/api/banners', cacheControl(300));     // 5 min
 
 // ============================================================
 // Streams Routes  ← /api/streams (공개 조회용)
@@ -369,6 +457,10 @@ app.route('/api/seller/streams', sellerStreamsRoutes);
 // Email notifications (global)
 import { emailRoutes } from '../features/notifications/api/email.routes';
 app.route('/api/email', emailRoutes);
+
+// Affiliate marketing
+import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
+app.route('/api/affiliate', affiliateRoutes);
 
 // ============================================================
 // Order & Payment Routes
@@ -431,6 +523,9 @@ adminApp.route('/tools', adminToolsRoutes);
 adminApp.route('/', adminManagementRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/cafe24', cafe24Routes);
+// Restaurant settlement (admin)
+import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
+adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 app.route('/api/scraper', scraperProxy);  // /api/admin 밖 — adminApp 미들웨어 간섭 없음
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)
@@ -452,6 +547,9 @@ app.route('/api/seller/alimtalk', alimtalkRoutes);
 // ── 후원(도네이션) ──
 app.route('/api/donations', donationsRoutes);
 app.route('/api/seller', sellerDonationsRoutes);
+
+// ── 식당 정산 (셀러용) ──
+app.route('/api/seller/restaurant-settlements', sellerSettlementRoutes);
 
 // ── 딜 포인트 ──
 import { pointsRoutes } from '../features/points/api/points.routes';
@@ -514,17 +612,72 @@ app.route('/api/auction', auctionRoutes);
 import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 app.route('/api/timedeal', timedealRoutes);
 
+// ── 유저 공동구매 (커뮤니티) ──
+app.use('/api/community-group-buy/create', rateLimit({ action: 'group_buy_create', max: 10, windowSec: 300 }));
+app.use('/api/community-group-buy/join/*', rateLimit({ action: 'group_buy_join', max: 20, windowSec: 300 }));
+import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
+app.route('/api/community-group-buy', communityGroupBuyRoutes);
+
 // ── 친구 초대 공동구매 ──
 import { referralRoutes } from '../features/referral/api/referral.routes';
 app.route('/api/referral', referralRoutes);
+
+// ── 초대 보상 ──
+import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
+app.route('/api/invite', inviteRewardRoutes);
+
+// ── 다단계 추천 커미션 ──
+import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
+app.route('/api/referral-tree', referralTreeRoutes);
 
 // ── 방송 알림 구독 ──
 import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 app.route('/api/broadcast-notify', broadcastNotifyRoutes);
 
+// ── VIP 등급 (유저 로열티) ──
+import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
+app.route('/api/loyalty', loyaltyRoutes);
+
+// ── 관심/알림 (맛집·상품·공동구매 관심 등록) ──
+import { interestRoutes } from '../features/loyalty/api/interest.routes';
+app.route('/api/interest', interestRoutes);
+
 // ── 카카오 소셜 (메시지 + 캘린더) + 글로벌 (.ics) ──
 import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
 app.route('/api/kakao-social', kakaoSocialRoutes);
+
+// ── 카카오 장소 검색 프록시 (브라우저 CORS 우회) ──
+app.get('/api/kakao/place/search', async (c) => {
+  const query = c.req.query('query')
+  const category = c.req.query('category_group_code') || 'FD6,CE7'
+  const size = c.req.query('size') || '15'
+  if (!query) return c.json({ success: false, error: 'query required' }, 400)
+  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY
+  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500)
+  try {
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=${size}${category && !category.includes(',') ? `&category_group_code=${category}` : ''}`
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } })
+    const data = await res.json()
+    return c.json({ success: true, data })
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500)
+  }
+})
+
+app.get('/api/kakao/place/address', async (c) => {
+  const query = c.req.query('query')
+  if (!query) return c.json({ success: false, error: 'query required' }, 400)
+  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY
+  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500)
+  try {
+    const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}`
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } })
+    const data = await res.json()
+    return c.json({ success: true, data })
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500)
+  }
+})
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 import { blogRoutes } from '../features/blog/api/blog.routes';
@@ -586,6 +739,42 @@ app.get('/api/side-banners', async (c) => {
 // 4. 프론트 호출 경로와 백엔드 app.route() 등록 경로가 반드시 일치해야 함.
 //    프론트가 /api/streams 를 호출하는데 백엔드에 /api/seller/streams 만 있으면 404.
 // 5. CORS allowed 목록에 실제 도메인이 반드시 포함되어야 함.
+
+// ============================================================
+// Image Optimization Proxy (Cloudflare Image Resizing)
+// ============================================================
+
+app.get('/api/image/resize', async (c) => {
+  const url = c.req.query('url');
+  const width = parseInt(c.req.query('w') || '400');
+  const quality = parseInt(c.req.query('q') || '80');
+
+  if (!url) return c.json({ error: 'url required' }, 400);
+
+  // Cloudflare Image Resizing (available on paid plans)
+  // For free plan, just proxy with cache headers
+  try {
+    const response = await fetch(url, {
+      cf: {
+        image: {
+          width,
+          quality,
+          format: 'webp',
+        }
+      } as any
+    });
+
+    // If image resizing not available, just proxy with cache
+    const headers = new Headers(response.headers);
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    headers.set('Content-Type', response.headers.get('Content-Type') || 'image/webp');
+
+    return new Response(response.body, { headers });
+  } catch {
+    // Fallback: redirect to original
+    return c.redirect(url);
+  }
+});
 
 // ============================================================
 // 404 for API routes not matched above
@@ -731,10 +920,18 @@ app.onError(errorHandler);
 // ============================================================
 
 import { handleScheduled } from './cron/scheduled-cleanup';
+import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
 
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // Run existing cleanup tasks (every 5 minutes)
     ctx.waitUntil(handleScheduled(env));
+
+    // Auto-settlement: runs on every trigger but only processes vouchers 7+ days old
+    ctx.waitUntil(handleAutoSettlement(env));
+
+    // Auto-refund expired vouchers: marks unused expired vouchers and refunds deal points
+    ctx.waitUntil(handleExpiredVoucherRefunds(env));
   },
 };

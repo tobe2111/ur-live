@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import SEO from '@/components/SEO';
 import {
   AlertTriangle,
   Trash2,
@@ -89,26 +90,27 @@ export default function AccountDeleteWarningPage() {
 
       // 탈퇴 완료 페이지로 이동
       navigate('/account/deleted', { replace: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string };
       console.error('[Account Delete] 탈퇴 실패:', error);
 
       // Axios 에러 처리
       let errorMessage = '탈퇴 처리 중 오류가 발생했습니다.';
       
-      if (error.response?.status === 401) {
+      if (error_.response?.status === 401) {
         errorMessage = '인증이 만료되었습니다. 다시 로그인한 후 시도해주세요.';
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (error_.response?.data?.error) {
+        errorMessage = error_.response.data.error;
+      } else if (error_.response?.data?.message) {
+        errorMessage = error_.response.data.message;
+      } else if (error_.message) {
+        errorMessage = error_.message;
       }
       
       toast.error(errorMessage);
       
       // 401 에러인 경우 로그인 페이지로 리다이렉트
-      if (error.response?.status === 401) {
+      if (error_.response?.status === 401) {
         setTimeout(() => {
           navigate('/login');
         }, 1000);
@@ -131,6 +133,7 @@ export default function AccountDeleteWarningPage() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md bg-white">
+      <SEO title="회원 탈퇴 - 유어딜" description="회원 탈퇴 전 안내사항을 확인하세요" url="/account/delete-warning" />
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="w-full px-4 sm:px-6">
@@ -316,7 +319,7 @@ export default function AccountDeleteWarningPage() {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder="회원탈퇴 (정확히 입력)"
-            className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 ${
+            className={`w-full px-4 py-3 border-2 rounded-lg text-gray-900 focus:outline-none focus:ring-2 ${
               confirmText === '회원탈퇴'
                 ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                 : 'border-gray-300 focus:border-purple-500 focus:ring-purple-200'
@@ -346,7 +349,7 @@ export default function AccountDeleteWarningPage() {
       </main>
 
       {/* 하단 고정 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 shadow-lg">
         <div className="mx-auto max-w-md px-4 py-4 space-y-3">
           <button
             onClick={handleProceedToDelete}

@@ -102,6 +102,7 @@ export default function SellerProductNewPage() {
         return
       }
 
+      const extra = formData as unknown as Record<string, string>
       const payload: Record<string, unknown> = {
         name: formData.name,
         description: formData.description,
@@ -116,14 +117,14 @@ export default function SellerProductNewPage() {
         category: formData.category,
         // 식사권/공동구매 필드 (category가 meal_voucher일 때만 유효)
         ...(formData.category === 'meal_voucher' ? {
-          restaurant_name: (formData as any).restaurant_name || null,
-          restaurant_address: (formData as any).restaurant_address || null,
-          restaurant_phone: (formData as any).restaurant_phone || null,
-          voucher_terms: (formData as any).voucher_terms || null,
-          voucher_expiry: (formData as any).voucher_expiry || null,
-          group_buy_target: Number((formData as any).group_buy_target) || 0,
-          group_buy_deadline: (formData as any).group_buy_deadline || null,
-          store_verify_pin: (formData as any).store_verify_pin || null,
+          restaurant_name: extra.restaurant_name || null,
+          restaurant_address: extra.restaurant_address || null,
+          restaurant_phone: extra.restaurant_phone || null,
+          voucher_terms: extra.voucher_terms || null,
+          voucher_expiry: extra.voucher_expiry || null,
+          group_buy_target: Number(extra.group_buy_target) || 0,
+          group_buy_deadline: extra.group_buy_deadline || null,
+          store_verify_pin: extra.store_verify_pin || null,
         } : {}),
       }
 
@@ -142,8 +143,8 @@ export default function SellerProductNewPage() {
             }, {
               headers: { 'Authorization': `Bearer ${sessionToken}` }
             })
-          } catch (optError: any) {
-            console.error('Failed to save options:', optError)
+          } catch (optError: unknown) {
+            if (import.meta.env.DEV) console.error('Failed to save options:', optError)
             // 옵션 저장 실패해도 상품은 등록됨
             toast.error(t('common.productRegisteredOptionsFailed'))
           }
@@ -152,9 +153,10 @@ export default function SellerProductNewPage() {
         toast.success(t('common.productRegistered'))
         navigate('/seller/products')
       }
-    } catch (error: any) {
-      console.error('Failed to create product:', error)
-      setError(error.response?.data?.error || t('common.productRegisterFailed'))
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to create product:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      setError(axiosErr.response?.data?.error || t('common.productRegisterFailed'))
     } finally {
       setLoading(false)
     }

@@ -6,6 +6,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
+import ScrollToTop from './components/ScrollToTop'
+import PushNotificationSetup from './components/PushNotificationSetup'
 import BottomNav from '@/components/main/BottomNav'
 import SideBanner from '@/components/SideBanner'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -32,6 +34,7 @@ const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
+const KakaoConsentCallbackPage = lazy(() => import('./pages/KakaoConsentCallbackPage'))
 const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
 const LiveListPage = lazy(() => import('./pages/LiveListPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
@@ -50,6 +53,9 @@ const SellerGroupBuyPage = lazy(() => import('./pages/SellerGroupBuyPage'))
 const SellerMealVoucherNewPage = lazy(() => import('./pages/SellerMealVoucherNewPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
+const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
+const InterestListPage = lazy(() => import('./pages/InterestListPage'))
+const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
 
 // Seller 페이지들
 const SellerPage = lazy(() => import('./pages/SellerPage'))
@@ -83,6 +89,7 @@ const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
 const MyPage = lazy(() => import('./pages/MyPage'))
 const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage'))
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
+const MyGroupBuysPage = lazy(() => import('./pages/MyGroupBuysPage'))
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 
 // Account (탈퇴) 페이지들
@@ -114,6 +121,12 @@ const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
 const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
 const AdminReplayPage = lazy(() => import('./pages/AdminReplayPage'))
 const AdminCouponsPage = lazy(() => import('./pages/AdminCouponsPage'))
+const AdminAuditLogPage = lazy(() => import('./pages/AdminAuditLogPage'))
+const AdminRevenueAnalyticsPage = lazy(() => import('./pages/AdminRevenueAnalyticsPage'))
+const AdminAccountsPage = lazy(() => import('./pages/AdminAccountsPage'))
+const AdminLiveMonitorPage = lazy(() => import('./pages/AdminLiveMonitorPage'))
+const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'))
+const AdminReviewModerationPage = lazy(() => import('./pages/AdminReviewModerationPage'))
 // Agency 페이지들
 const AgencyLoginPage = lazy(() => import('./pages/AgencyLoginPage'))
 const AgencyPage = lazy(() => import('./pages/AgencyPage'))
@@ -132,12 +145,14 @@ const AgencyComparePage = lazy(() => import('./pages/AgencyComparePage'))
 const AgencyContractsPage = lazy(() => import('./pages/AgencyContractsPage'))
 const AgencyTargetsPage = lazy(() => import('./pages/AgencyTargetsPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
+const AgencyGroupBuyPage = lazy(() => import('./pages/AgencyGroupBuyPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const BlogListPage = lazy(() => import('./pages/BlogListPage'))
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
+const UserGroupBuyCreatePage = lazy(() => import('./pages/UserGroupBuyCreatePage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -148,18 +163,16 @@ const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const GDPRPage = lazy(() => import('./pages/GDPRPage'))
+const AffiliatePage = lazy(() => import('./pages/AffiliatePage'))
 const FAQPage = lazy(() => import('./pages/FAQPage'))
 
 // 🔧 Debug 페이지
 const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
 
-// 로딩 컴포넌트
+// 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
 const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-50">
-    <div className="text-center">
-      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      <p className="mt-4 text-gray-600 font-medium">로딩 중...</p>
-    </div>
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
   </div>
 )
 
@@ -168,101 +181,77 @@ function AppContent() {
   // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
   const authInitialized = useRef(false)
 
-  // ✅ firebase_token URL 파라미터 처리 (최우선, 한 번만)
+  // ✅ 카카오 로그인 콜백: URL 파라미터 → localStorage (동기, 렌더 전 실행)
+  // useEffect가 아닌 useMemo로 첫 렌더 전에 처리해야 ProtectedRoute가 통과됨
+  const loginParamsProcessed = useRef(false)
+  if (!loginParamsProcessed.current) {
+    loginParamsProcessed.current = true
+    const urlParams = new URLSearchParams(window.location.search)
+
+    if (urlParams.get('login') === 'success' && urlParams.get('userId')) {
+      // ── 카카오 로그인 성공: localStorage 즉시 설정 ──
+      localStorage.setItem('user_type', 'user')
+      localStorage.setItem('user_id', urlParams.get('userId')!)
+      const userName = urlParams.get('userName')
+      const userEmail = urlParams.get('userEmail')
+      const profileImage = urlParams.get('profileImage')
+      if (userName) localStorage.setItem('user_name', userName)
+      if (userEmail) localStorage.setItem('user_email', userEmail)
+      if (profileImage) localStorage.setItem('user_profile_image', profileImage.replace(/^http:\/\//, 'https://'))
+
+      // URL 정리 (auth 파라미터 제거)
+      urlParams.delete('login'); urlParams.delete('userId'); urlParams.delete('userName')
+      urlParams.delete('userEmail'); urlParams.delete('profileImage')
+      const clean = urlParams.toString()
+      window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
+    } else if (urlParams.has('firebase_token')) {
+      if (isKorea()) {
+        // 한국: firebase_token 무시, URL만 정리
+        urlParams.delete('firebase_token'); urlParams.delete('userName'); urlParams.delete('profileImage')
+        const clean = urlParams.toString()
+        window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
+      }
+      // 글로벌: firebase_token은 아래 useEffect에서 비동기 처리
+    }
+  }
+
+  // ✅ 글로벌 전용: firebase_token 비동기 처리 (Firebase SDK 필요)
   useEffect(() => {
-    const processFirebaseToken = async () => {
-      const urlParams = new URLSearchParams(window.location.search)
-      const firebaseToken = urlParams.get('firebase_token')
-      
-      if (!firebaseToken) return
-      
+    if (isKorea()) return
+    const urlParams = new URLSearchParams(window.location.search)
+    const firebaseToken = urlParams.get('firebase_token')
+    if (!firebaseToken) return
+
+    ;(async () => {
       try {
-        // URL에서 사용자 정보 미리 읽기 (삭제 전에)
         const urlUserName = urlParams.get('userName') || ''
         const urlProfileImage = urlParams.get('profileImage') || ''
-
         const { signInWithCustomToken } = await import('@/lib/firebase-auth')
-        const userCredential = await signInWithCustomToken(firebaseToken)
-        const user = userCredential.user
-        // ID Token 갱신 및 claims 추출
-        const idToken = await user.getIdToken(true)
-        const tokenResult = await user.getIdTokenResult(true)
+        const cred = await signInWithCustomToken(firebaseToken)
+        const idToken = await cred.user.getIdToken(true)
+        const tokenResult = await cred.user.getIdTokenResult(true)
         const numericUserId = tokenResult.claims?.userId || tokenResult.claims?.user_id || 0
         const claimsUserName = (tokenResult.claims?.userName as string) || urlUserName
-        const rawProfileImage = (tokenResult.claims?.profileImage as string) || urlProfileImage
-        const claimsProfileImage = rawProfileImage.replace(/^http:\/\//, 'https://')
-        // ✅ user_name / profileImage localStorage 저장 (프로필 페이지 표시용)
-        if (claimsUserName) {
-          localStorage.setItem('user_name', claimsUserName)
-        }
-        if (claimsProfileImage) {
-          localStorage.setItem('user_profile_image', claimsProfileImage)
-        }
 
-        // ✅ Firebase displayName / photoURL 업데이트
-        if (!user.displayName && claimsUserName) {
-          try {
-            const { updateProfile } = await import('firebase/auth')
-            await updateProfile(user, {
-              displayName: claimsUserName,
-              ...(claimsProfileImage ? { photoURL: claimsProfileImage } : {}),
-            })
-          } catch (e) {
-            console.warn('[App] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
-          }
-        }
-
-        // ✅ localStorage를 먼저 업데이트 (hasFirebaseUserSession() race condition 방지)
         localStorage.setItem('user_type', 'user')
-        localStorage.setItem('lastLoginUid', user.uid)
-        localStorage.setItem('user_id', user.uid)
-        localStorage.setItem('user_email', user.email || '')
+        localStorage.setItem('user_id', cred.user.uid)
+        localStorage.setItem('lastLoginUid', cred.user.uid)
+        if (claimsUserName) localStorage.setItem('user_name', claimsUserName)
+        if (urlProfileImage) localStorage.setItem('user_profile_image', urlProfileImage.replace(/^http:\/\//, 'https://'))
         localStorage.setItem('numeric_user_id', String(numericUserId))
 
-        // ✅ useAuthKR에 Firebase User 즉시 설정 (onAuthStateChanged 지연 방지)
-        const { useAuthKR } = await import('@/shared/stores/useAuthKR')
-        useAuthKR.getState().setUser(user)
-        useAuthKR.getState().setAuthReady(true)  // ProtectedRoute 스피너 즉시 해제
-        sessionStorage.setItem('auth_processed_uid', user.uid)  // onAuthStateChanged 중복 방지
-        // ✅ useAuthStore에 토큰 저장
-        const { useAuthStore } = await import('@/client/stores/auth.store')
-        useAuthStore.getState().setAuth(
-          {
-            id: user.uid,
-            email: user.email || '',
-            name: claimsUserName || user.displayName || '',
-            role: 'user',
-          },
-          idToken,
-          ''
-        )
-        // URL 파라미터 제거 (auth 관련 전부)
-        urlParams.delete('firebase_token')
-        urlParams.delete('userName')
-        urlParams.delete('profileImage')
-        const newUrl = urlParams.toString()
-          ? `${window.location.pathname}?${urlParams.toString()}`
-          : window.location.pathname
-        window.history.replaceState({}, '', newUrl)
-      } catch (error) {
-        console.error('[App] ❌ Firebase Custom Token 로그인 실패:', error)
-
-        // URL 파라미터 제거
-        const urlParams2 = new URLSearchParams(window.location.search)
-        urlParams2.delete('firebase_token')
-        urlParams2.delete('userName')
-        urlParams2.delete('profileImage')
-        const newUrl = urlParams2.toString()
-          ? `${window.location.pathname}?${urlParams2.toString()}`
-          : window.location.pathname
-        window.history.replaceState({}, '', newUrl)
-
-        // ✅ 로그인 페이지로 리다이렉트 (무한 루프 방지)
-        window.location.href = '/login'
+        const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
+        useAuthWorld.getState().setUser(cred.user)
+        useAuthWorld.getState().setAuthReady(true)
+      } catch (err) {
+        console.error('[App] Firebase token login failed:', err)
+      } finally {
+        const p = new URLSearchParams(window.location.search)
+        p.delete('firebase_token'); p.delete('userName'); p.delete('profileImage')
+        const clean = p.toString()
+        window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
       }
-    }
-    
-    processFirebaseToken()
+    })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ✅ 핵심 수정: 단일 Auth 초기화 (중복 구독 완전 제거)
@@ -274,40 +263,42 @@ function AppContent() {
 
     const userType = localStorage.getItem('user_type')
 
-    // ✅ firebase_token이 URL에 있으면 Seller/Admin 빠른 처리 건너뜀
-    // (카카오 로그인 중이므로 processFirebaseToken이 user_type을 'user'로 덮어씀)
-    const hasIncomingToken = !!new URLSearchParams(window.location.search).get('firebase_token')
-
     // ✅ Seller/Admin은 Firebase 초기화 불필요 → isAuthReady를 즉시 true로
-    if (!hasIncomingToken && (userType === 'seller' || userType === 'admin')) {
+    if (userType === 'seller' || userType === 'admin') {
       useAuthKR.getState().setAuthReady(true)
       useAuthWorld.getState().setAuthReady(true)
       return
     }
 
-    // ✅ firebase_token이 있으면 processFirebaseToken이 인증을 처리하므로
-    // initializeAuth()를 호출하지 않음 (onAuthStateChanged(null) → 깜빡임 방지)
-    if (hasIncomingToken) {
+    // ✅ 한국(KR): Firebase 초기화 완전 건너뜀
+    // 카카오 로그인은 세션 쿠키 기반이므로 Firebase 불필요
+    // ProtectedRoute는 localStorage (user_type + user_id)만 체크
+    if (isKorea()) {
+      useAuthKR.getState().setAuthReady(true)
       return
     }
 
-    // ✅ User (Firebase) 초기화
+    // ✅ 글로벌: 세션 쿠키 유저는 Firebase 불필요
+    if (localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')) {
+      useAuthWorld.getState().setAuthReady(true)
+      return
+    }
+
+    // firebase_token이 URL에 있으면 위 useEffect가 처리하므로 init 불필요
+    if (new URLSearchParams(window.location.search).has('firebase_token')) {
+      return
+    }
+
+    // ✅ 글로벌 전용: Firebase 초기화 (Google/Apple 로그인 등)
     const initAuth = async () => {
       try {
-        const isKR = isKorea()
-        if (isKR) {
-          useAuthKR.getState().initializeAuth()
-        } else {
-          useAuthWorld.getState().initializeAuth()
-        }
+        useAuthWorld.getState().initializeAuth()
       } catch (err) {
         console.error('[App] ❌ 인증 초기화 실패:', err)
-        // 실패해도 authReady를 true로 설정해 무한 스피너 방지
-        useAuthKR.getState().setAuthReady(true)
         useAuthWorld.getState().setAuthReady(true)
       }
     }
-    
+
     initAuth()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -321,7 +312,7 @@ function AppContent() {
     import('./lib/native').then(({ setStatusBarStyle }) => {
       // 화이트 테마 페이지는 light 상태바 (검은 텍스트)
       const lightPages = ['/browse', '/checkout', '/my-orders', '/account/', '/cart',
-        '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search']
+        '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
       const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
       setStatusBarStyle(isLight ? 'light' : 'dark')
     }).catch(() => {})
@@ -335,8 +326,10 @@ function AppContent() {
     <>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
-          <div className={fullScreen ? 'min-h-dvh' : 'max-w-screen-sm mx-auto bg-white min-h-dvh pb-14'}>
+          <div className={fullScreen ? 'min-h-dvh' : 'max-w-[430px] mx-auto bg-white min-h-dvh'}>
           <div className="flex-1">
+          <ScrollToTop />
+          <PushNotificationSetup />
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
@@ -345,6 +338,7 @@ function AppContent() {
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/group-buy" element={<GroupBuyListPage />} />
             <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
@@ -486,7 +480,7 @@ function AppContent() {
                 <ErrorBoundary><SellerMealVoucherNewPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
-            <Route path="/seller/live-broadcast" element={
+<Route path="/seller/live-broadcast" element={
               <ProtectedRoute requireSeller>
                 <SellerLiveBroadcastPage />
               </ProtectedRoute>
@@ -612,6 +606,7 @@ function AppContent() {
                 <AdminKakaoTestPage />
               </ProtectedRoute>
             } />
+            <Route path="/auth/kakao/consent/callback" element={<KakaoConsentCallbackPage />} />
             <Route path="/admin/kakao-test/callback" element={<AdminKakaoTestCallbackPage />} />
             <Route path="/admin/coupons" element={
               <ProtectedRoute requireAdmin>
@@ -621,6 +616,37 @@ function AppContent() {
             <Route path="/admin/agencies" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminAgencyPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/audit-log" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminAuditLogPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/revenue" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminRevenueAnalyticsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/accounts" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminAccountsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/live-monitor" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminLiveMonitorPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminUsersPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/review-moderation" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminReviewModerationPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
 
@@ -642,6 +668,7 @@ function AppContent() {
             <Route path="/agency/contracts" element={<AgencyContractsPage />} />
             <Route path="/agency/targets" element={<AgencyTargetsPage />} />
             <Route path="/agency/profile" element={<AgencyProfilePage />} />
+            <Route path="/agency/group-buy" element={<AgencyGroupBuyPage />} />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<CartPage />} />
@@ -670,9 +697,24 @@ function AppContent() {
                 <WishlistPage />
               </ProtectedRoute>
             } />
+            <Route path="/mypage/group-buys" element={
+              <ProtectedRoute requireUser>
+                <MyGroupBuysPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/community-group-buy/new" element={
+              <ProtectedRoute requireUser>
+                <UserGroupBuyCreatePage />
+              </ProtectedRoute>
+            } />
             <Route path="/wishlist" element={
               <ProtectedRoute requireUser>
                 <WishlistPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/interest-list" element={
+              <ProtectedRoute requireUser>
+                <InterestListPage />
               </ProtectedRoute>
             } />
             <Route path="/my-vouchers" element={
@@ -726,7 +768,7 @@ function AppContent() {
             <Route path="/referral/:code" element={<ReferralPage />} />
 
             {/* 맛집 지도 */}
-            <Route path="/restaurant-map" element={<RestaurantMapPage />} />
+            <Route path="/restaurant-map" element={<Navigate to="/browse?category=meal_voucher" replace />} />
 
             {/* Terms Pages */}
             {/* 블로그 */}
@@ -736,13 +778,19 @@ function AppContent() {
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/gdpr" element={<GDPRPage />} />
+            <Route path="/user/affiliate" element={<AffiliatePage />} />
             <Route path="/refund" element={<RefundPolicyPage />} />
             <Route path="/faq" element={<FAQPage />} />
             {/* ✅ 마이페이지 메뉴에서 사용하는 긴 형식 경로 → 짧은 경로로 리다이렉트 */}
             <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
             <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
             <Route path="/refund-policy" element={<Navigate to="/refund" replace />} />
-            
+            <Route path="/shipping-policy" element={<Navigate to="/refund" replace />} />
+            <Route path="/coupon/:code" element={<CouponClaimPage />} />
+
+            {/* 커뮤니티 공구 상세 (ReferralPage 재사용) */}
+            <Route path="/community-group-buy/:code" element={<ReferralPage />} />
+
             {/* Debug 페이지 (개발 환경만) */}
             <Route path="/kakao-debug" element={<KakaoDebugPage />} />
             
@@ -758,7 +806,8 @@ function AppContent() {
               href="http://pf.kakao.com/_AITdn/chat"
               target="_blank"
               rel="noopener noreferrer"
-              className="fixed bottom-16 right-4 z-[9998] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
+              className="fixed bottom-20 right-4 z-[9998] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
+              style={{ right: 'calc(max(16px, (100vw - 430px) / 2 + 16px))' }}
               title="카카오 채널 상담"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.86 5.32 4.64 6.74-.15.56-.82 3.06-.85 3.26 0 0-.02.13.05.18.07.06.16.03.16.03.22-.03 2.54-1.67 3.6-2.4.77.11 1.57.19 2.4.19 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/></svg>

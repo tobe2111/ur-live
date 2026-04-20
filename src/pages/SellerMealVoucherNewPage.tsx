@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, MapPin, Phone, Calendar, Users, Tag, Image as ImageIcon, Utensils, Search, ExternalLink, CheckCircle } from 'lucide-react'
+import { MapPin, Phone, Users, Utensils, CheckCircle } from 'lucide-react'
 import api from '@/lib/api'
+import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -31,10 +32,6 @@ export default function SellerMealVoucherNewPage() {
     stock: 100,
   })
 
-  // 카카오 매장 검색
-  const [placeQuery, setPlaceQuery] = useState('')
-  const [placeResults, setPlaceResults] = useState<any[]>([])
-  const [searchingPlace, setSearchingPlace] = useState(false)
   const [placeSelected, setPlaceSelected] = useState(false)
 
   if (!isSellerAuthenticated()) { redirectToLogin(navigate); return null }
@@ -42,58 +39,9 @@ export default function SellerMealVoucherNewPage() {
   const token = getSellerToken()
   const headers = { Authorization: `Bearer ${token}` }
 
-  const KAKAO_REST_KEY = '975a2e7f97254b08f15dba4d177a2865'
+  const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
 
-  // 카카오맵 URL에서 place ID 추출
-  function extractKakaoPlaceId(url: string): string | null {
-    const match = url.match(/place\.map\.kakao\.com\/(\d+)/)
-      || url.match(/map\.kakao\.com.*itemId=(\d+)/)
-      || url.match(/kakaomap.*place\/(\d+)/)
-    return match ? match[1] : null
-  }
-
-  // 카카오맵 링크 또는 검색어로 매장 검색
-  async function searchPlace(query: string) {
-    if (!query.trim()) return
-    setSearchingPlace(true)
-    setPlaceResults([])
-
-    try {
-      // 카카오맵 URL인 경우 → place ID로 직접 조회
-      const placeId = extractKakaoPlaceId(query)
-
-      if (placeId) {
-        // place ID로 키워드 검색 (카카오 REST API는 ID 직접 조회 미지원 → 이름으로 대체)
-        const res = await fetch(
-          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=1`,
-          { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-        )
-        const data: any = await res.json()
-        if (data.documents?.length) {
-          selectPlace(data.documents[0])
-          return
-        }
-      }
-
-      // 일반 키워드 검색
-      const res = await fetch(
-        `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=FD6,CE7&size=5`,
-        { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-      )
-      const data: any = await res.json()
-      setPlaceResults(data.documents || [])
-
-      if (!data.documents?.length) {
-        toast.error('검색 결과가 없습니다. 매장 이름이나 주소를 정확히 입력해주세요.')
-      }
-    } catch {
-      toast.error('검색 실패. 잠시 후 다시 시도해주세요.')
-    } finally {
-      setSearchingPlace(false)
-    }
-  }
-
-  function selectPlace(place: any) {
+  function selectPlace(place: KakaoPlace) {
     setForm(f => ({
       ...f,
       restaurant_name: place.place_name || f.restaurant_name,
@@ -103,36 +51,32 @@ export default function SellerMealVoucherNewPage() {
       restaurant_lng: place.x || '',
     }))
     setPlaceSelected(true)
-    setPlaceResults([])
-    setPlaceQuery('')
     toast.success(`${place.place_name} 정보가 자동 입력되었습니다!`)
   }
 
   function openKakaoAddress() {
-    // 다음 우편번호 서비스 (주소 검색 팝업)
-    if (!(window as any).daum?.Postcode) {
+    // 다음 우편번호 서비스 (주소 검색 팝업) — external Kakao SDK, window cast acceptable
+    const w = window as unknown as { daum?: { Postcode: new (opts: { oncomplete: (data: { roadAddress: string; jibunAddress: string }) => void }) => { open: () => void } } }
+    if (!w.daum?.Postcode) {
       const script = document.createElement('script')
       script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
       script.onload = () => openKakaoAddress()
       document.head.appendChild(script)
       return
     }
-    new (window as any).daum.Postcode({
-      oncomplete: async (data: any) => {
+    new w.daum.Postcode({
+      oncomplete: async (data) => {
         const addr = data.roadAddress || data.jibunAddress
         update('restaurant_address', addr)
         // 주소 → 좌표 변환
         try {
-          const res = await fetch(
-            `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}`,
-            { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-          )
-          const result: any = await res.json()
-          if (result.documents?.[0]) {
-            update('restaurant_lat', result.documents[0].y)
-            update('restaurant_lng', result.documents[0].x)
+          const res = await fetch(`/api/kakao/place/address?query=${encodeURIComponent(addr)}`)
+          const result: { data?: { documents?: { y: string; x: string }[] } } = await res.json()
+          if (result.data?.documents?.[0]) {
+            update('restaurant_lat', result.data.documents[0].y)
+            update('restaurant_lng', result.data.documents[0].x)
           }
-        } catch {}
+        } catch { /* ignore geocoding failure */ }
       }
     }).open()
   }
@@ -175,8 +119,9 @@ export default function SellerMealVoucherNewPage() {
       } else {
         toast.error(res.data.error || '등록 실패')
       }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '식사권 등록에 실패했습니다')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr?.response?.data?.error || '식사권 등록에 실패했습니다')
     } finally {
       setSubmitting(false)
     }
@@ -266,56 +211,30 @@ export default function SellerMealVoucherNewPage() {
             </div>
 
             <div className="space-y-4">
-              {/* 카카오 매장 검색 */}
-              <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-                <label className="block text-sm font-bold text-orange-800 mb-2">🔍 카카오맵에서 매장 찾기</label>
-                <p className="text-[11px] text-orange-600 mb-3">매장 이름이나 카카오맵 링크를 붙여넣으면 자동으로 정보가 입력됩니다</p>
-                <div className="flex gap-2">
-                  <input
-                    value={placeQuery}
-                    onChange={e => setPlaceQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), searchPlace(placeQuery))}
-                    placeholder="매장 이름 또는 카카오맵 링크 붙여넣기"
-                    className="flex-1 px-3 py-2.5 border border-orange-200 rounded-lg text-sm text-gray-900 bg-white focus:border-orange-400 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => searchPlace(placeQuery)}
-                    disabled={searchingPlace || !placeQuery.trim()}
-                    className="px-4 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-bold shrink-0 active:scale-95 disabled:opacity-50"
-                  >
-                    {searchingPlace ? '검색 중...' : '검색'}
-                  </button>
+              {/* 카카오맵 매장 검색 (지도 시각화) */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900">🗺️ 카카오맵에서 매장 찾기</label>
+                    <p className="text-[11px] text-gray-500 mt-0.5">지도에서 직접 찾거나 검색해서 마커를 클릭하세요</p>
+                  </div>
+                  {placeSelected && (
+                    <div className="flex items-center gap-1 text-xs text-green-600 shrink-0">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      선택됨
+                    </div>
+                  )}
                 </div>
-
-                {/* 검색 결과 */}
-                {placeResults.length > 0 && (
-                  <div className="mt-2 border border-orange-200 rounded-lg overflow-hidden bg-white">
-                    {placeResults.map((p: any, i: number) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => selectPlace(p)}
-                        className="w-full flex items-start gap-3 px-3 py-3 text-left hover:bg-orange-50 border-b border-orange-100 last:border-0"
-                      >
-                        <MapPin className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{p.place_name}</p>
-                          <p className="text-[11px] text-gray-500 mt-0.5">{p.road_address_name || p.address_name}</p>
-                          {p.phone && <p className="text-[11px] text-gray-400 mt-0.5">{p.phone}</p>}
-                          <p className="text-[10px] text-orange-500 mt-0.5">{p.category_name}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {placeSelected && (
-                  <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    매장 정보가 자동 입력되었습니다
-                  </div>
-                )}
+                <KakaoMapPicker
+                  kakaoJsKey={KAKAO_JS_KEY}
+                  selectedPlace={placeSelected && form.restaurant_lat ? {
+                    name: form.restaurant_name,
+                    address: form.restaurant_address,
+                    lat: form.restaurant_lat,
+                    lng: form.restaurant_lng,
+                  } : null}
+                  onSelect={(p: KakaoPlace) => selectPlace(p)}
+                />
               </div>
 
               {/* 자동 입력된 정보 (수정 가능) */}

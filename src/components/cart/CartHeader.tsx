@@ -32,21 +32,15 @@ export const CartHeader = React.memo(function CartHeader({
   return (
     <>
       {/* 상단 헤더 */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between p-4">
-          <button
-            onClick={handleBack}
-            className="text-gray-600 hover:text-gray-900"
-            aria-label="뒤로 가기"
-          >
-            <ChevronLeft size={24} />
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button onClick={handleBack} className="p-1">
+            <ChevronLeft size={22} className="text-gray-700" />
           </button>
-          
-          <h1 className="text-lg font-bold text-gray-900">
+          <h1 className="text-[16px] font-bold text-gray-900">
             장바구니 {itemCount > 0 && `(${itemCount})`}
           </h1>
-          
-          <div className="w-6" /> {/* Spacer for center alignment */}
+          <div className="w-7" />
         </div>
       </div>
 

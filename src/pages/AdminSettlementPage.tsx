@@ -72,8 +72,9 @@ export default function AdminSettlementPage() {
       const recordsRes = await api.get(`/api/admin/settlement/records?${params.toString()}`)
       if (recordsRes.data.success) setRecords(recordsRes.data.data || [])
       setLoading(false)
-    } catch (err: any) {
-      if (err.response?.status === 401) {
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number } }
+      if (axiosErr.response?.status === 401) {
         localStorage.removeItem('admin_token'); localStorage.removeItem('user_type'); navigate('/admin/login')
       }
       setLoading(false)
@@ -85,7 +86,7 @@ export default function AdminSettlementPage() {
       await api.patch(`/api/admin/settlement/${orderId}/status`, { status })
       toast.success('정산 상태가 변경되었습니다')
       loadData()
-    } catch (err: any) { toast.error(`상태 변경 실패: ${err.response?.data?.error || err.message}`) }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } }; message?: string }; toast.error(`상태 변경 실패: ${e.response?.data?.error || e.message}`) }
   }
 
   async function batchComplete(orderIds: number[]) {
@@ -93,7 +94,7 @@ export default function AdminSettlementPage() {
     try {
       await api.post('/api/admin/settlement/batch-complete', { order_ids: orderIds })
       toast.success('일괄 정산 완료!'); loadData()
-    } catch (err: any) { toast.error(`일괄 처리 실패: ${err.response?.data?.error || err.message}`) }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } }; message?: string }; toast.error(`일괄 처리 실패: ${e.response?.data?.error || e.message}`) }
   }
 
   async function executeSellerSettlement(sellerId: number, sellerName: string) {
@@ -108,7 +109,7 @@ export default function AdminSettlementPage() {
       await api.post('/api/admin/settlement/batch-complete', { order_ids: pendingForSeller.map(r => r.id) })
       toast.success(`${sellerName}의 ${pendingForSeller.length}건 정산 완료!`)
       loadData()
-    } catch (err: any) { toast.error(`정산 실행 실패: ${err.response?.data?.error || err.message}`) }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } }; message?: string }; toast.error(`정산 실행 실패: ${e.response?.data?.error || e.message}`) }
   }
 
   async function exportCSV() {
@@ -122,7 +123,7 @@ export default function AdminSettlementPage() {
       link.href = url; link.setAttribute('download', `settlement_${period}_${Date.now()}.csv`)
       document.body.appendChild(link); link.click(); link.remove()
       window.URL.revokeObjectURL(url)
-    } catch (err: any) { toast.error(`CSV 다운로드 실패: ${err.response?.data?.error || err.message}`) }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } }; message?: string }; toast.error(`CSV 다운로드 실패: ${e.response?.data?.error || e.message}`) }
   }
 
   function fmtCurrency(n: number) {

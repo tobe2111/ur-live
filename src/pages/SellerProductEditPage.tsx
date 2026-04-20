@@ -138,7 +138,7 @@ export default function SellerProductEditPage() {
           setProductOptions(productData.options)
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load product:', error)
       setError(t('common.productLoadFailed'))
     } finally {
@@ -214,7 +214,7 @@ export default function SellerProductEditPage() {
           }, {
             headers: { 'Authorization': `Bearer ${sessionToken}` }
           })
-        } catch (optError: any) {
+        } catch (optError: unknown) {
           console.error('Failed to save options:', optError)
           toast.error(t('common.productSavedOptionsFailed'))
         }
@@ -222,9 +222,10 @@ export default function SellerProductEditPage() {
         toast.success(t('common.productUpdated'))
         navigate('/seller/products')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('Failed to update product:', error)
-      setError(error.response?.data?.error || t('common.productUpdateFailed'))
+      setError(error_.response?.data?.error || t('common.productUpdateFailed'))
     } finally {
       setSubmitting(false)
     }

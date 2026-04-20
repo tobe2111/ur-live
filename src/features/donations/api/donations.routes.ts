@@ -195,16 +195,23 @@ donationsRoutes.get('/stream/:streamId', async (c) => {
   const streamId = c.req.param('streamId');
 
   try {
-    const { results } = await DB.prepare(`
-      SELECT id,
-             SUBSTR(donor_name, 1, 1) || '**' AS donor_name,
-             amount, message, created_at
-      FROM donations
-      WHERE live_stream_id = ? AND payment_status = 'completed'
-      ORDER BY created_at DESC LIMIT 50
-    `).bind(streamId).all();
+    const [donations, totalRow] = await Promise.all([
+      DB.prepare(`
+        SELECT id,
+               SUBSTR(donor_name, 1, 1) || '**' AS donor_name,
+               amount, message, created_at
+        FROM donations
+        WHERE live_stream_id = ? AND payment_status = 'completed'
+        ORDER BY created_at DESC LIMIT 50
+      `).bind(streamId).all(),
+      DB.prepare(`
+        SELECT COALESCE(SUM(amount), 0) AS total
+        FROM donations
+        WHERE live_stream_id = ? AND payment_status = 'completed'
+      `).bind(streamId).first<{ total: number }>(),
+    ]);
 
-    return c.json({ success: true, data: results ?? [] });
+    return c.json({ success: true, data: { donations: donations.results ?? [], total: totalRow?.total || 0 } });
   } catch {
     return c.json({ success: true, data: [] });
   }

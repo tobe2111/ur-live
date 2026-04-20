@@ -2,32 +2,43 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
-  Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Star, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard
+  Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Star, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
+  BarChart3, Shield, UserCog, Radio, Users, MessageSquare
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
 import DashboardNotificationBell from './DashboardNotificationBell'
 
 const NAV_ITEMS = [
+  // 핵심
   { path: '/admin',               label: '대시보드',    icon: LayoutDashboard, exact: true },
+  { path: '/admin/revenue',       label: '매출 분석',   icon: BarChart3 },
+  { path: '/admin/live-monitor',  label: '라이브 모니터', icon: Radio },
   { path: '/admin/orders',        label: '주문 관리',   icon: ShoppingBag },
   { path: '/admin/products',      label: '상품 관리',   icon: Package },
-  { path: '/admin/banners',       label: '배너 관리',   icon: Image },
+  // 유저/셀러
+  { path: '/admin/users',         label: '유저 관리',   icon: Users },
+  { path: '/admin/seller-approval', label: '셀러 승인', icon: UserCheck },
+  { path: '/admin/agencies',     label: '에이전시 관리', icon: Building2 },
+  // 정산/매출
   { path: '/admin/settlement',    label: '정산',        icon: DollarSign },
+  { path: '/admin/settlements-bulk', label: '정산 일괄', icon: CreditCard },
+  { path: '/admin/deals',        label: '딜 모니터링',  icon: Gift },
+  // 콘텐츠
+  { path: '/admin/review-moderation', label: '리뷰 관리', icon: MessageSquare },
+  { path: '/admin/banners',       label: '배너 관리',   icon: Image },
+  { path: '/admin/coupons',      label: '쿠폰 관리',   icon: Ticket },
+  { path: '/admin/replay',       label: '다시보기 관리', icon: Play },
+  { path: '/admin/blog',         label: '블로그 관리',  icon: BookOpen },
+  { path: '/admin/notices',     label: '공지사항',    icon: Send },
+  // 시스템
+  { path: '/admin/accounts',     label: '관리자 계정',  icon: UserCog },
+  { path: '/admin/audit-log',    label: '감사 로그',   icon: Shield },
+  { path: '/admin/platform-settings', label: '플랫폼 설정', icon: Settings },
   { path: '/admin/alimtalk',      label: '브랜드메시지', icon: Bell },
-  { path: '/admin/kv-monitoring', label: 'KV 모니터링', icon: Monitor },
   { path: '/admin/sample-requests', label: '샘플 신청', icon: ClipboardList },
+  { path: '/admin/kv-monitoring', label: 'KV 모니터링', icon: Monitor },
   { path: '/admin/cafe24',       label: 'Cafe24 연동', icon: Store },
   { path: '/admin/ad-scraper',   label: '광고주 이메일', icon: Search },
-  { path: '/admin/deals',        label: '딜 모니터링',  icon: Gift },
-  { path: '/admin/reviews',      label: '리뷰 관리',   icon: Star },
-  { path: '/admin/replay',       label: '다시보기 관리', icon: Play },
-  { path: '/admin/coupons',      label: '쿠폰 관리',   icon: Ticket },
-  { path: '/admin/blog',         label: '블로그 관리',  icon: BookOpen },
-  { path: '/admin/agencies',     label: '에이전시 관리', icon: Building2 },
-  { path: '/admin/seller-approval', label: '셀러 승인', icon: UserCheck },
-  { path: '/admin/settlements-bulk', label: '정산 일괄', icon: CreditCard },
-  { path: '/admin/notices',     label: '공지사항',    icon: Send },
-  { path: '/admin/platform-settings', label: '플랫폼 설정', icon: Settings },
 ]
 
 interface AdminLayoutProps {

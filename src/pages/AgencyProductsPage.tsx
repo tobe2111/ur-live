@@ -24,7 +24,7 @@ export default function AgencyProductsPage() {
       api.get('/api/agency/sellers', { headers }),
     ]).then(([prodRes, sellersRes]) => {
       if (prodRes.data.success) setProducts(prodRes.data.data || [])
-      const seller = (sellersRes.data.data || []).find((s: any) => String(s.id) === sellerId)
+      const seller = (sellersRes.data.data || []).find((s: { id: number | string; name?: string }) => String(s.id) === sellerId)
       if (seller) setSellerName(seller.name)
     }).catch(() => {})
       .finally(() => setLoading(false))
@@ -45,7 +45,7 @@ export default function AgencyProductsPage() {
       setForm({ name: '', description: '', price: 0, original_price: 0, stock: 100, image_url: '', category: 'general' })
       const r = await api.get(`/api/agency/sellers/${sellerId}/products`, { headers })
       if (r.data.success) setProducts(r.data.data || [])
-    } catch (err: any) { toast.error(err?.response?.data?.error || '실패') }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e.response?.data?.error || '실패') }
     finally { setSubmitting(false) }
   }
 
@@ -112,14 +112,14 @@ export default function AgencyProductsPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {products.map((p: any) => (
+            {products.map((p: { id: number; name: string; price?: number; stock?: number; image_url?: string; description?: string; original_price?: number; category?: string }) => (
               <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
                 {p.image_url && <img src={p.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
                   <p className="text-xs text-gray-500">{p.price?.toLocaleString()}원 · 재고 {p.stock}개</p>
                 </div>
-                <button onClick={() => { setEditingId(p.id); setForm({ name: p.name, description: p.description || '', price: p.price, original_price: p.original_price || 0, stock: p.stock || 0, image_url: p.image_url || '', category: p.category || 'general' }); setShowForm(true) }}
+                <button onClick={() => { setEditingId(p.id); setForm({ name: p.name, description: p.description || '', price: p.price ?? 0, original_price: p.original_price || 0, stock: p.stock || 0, image_url: p.image_url || '', category: p.category || 'general' }); setShowForm(true) }}
                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
                   <Edit2 className="w-4 h-4" />
                 </button>

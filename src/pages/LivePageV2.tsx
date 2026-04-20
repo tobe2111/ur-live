@@ -599,7 +599,7 @@ function ReelCard({
         const url = `/api/youtube/chat/chat/${stream.id}${ytPageTokenRef.current ? `?pageToken=${ytPageTokenRef.current}` : ''}`
         const res = await axios.get(url)
         if (res.data.success && res.data.data?.messages) {
-          const ytMsgs: ChatMessage[] = res.data.data.messages.map((m: any) => ({
+          const ytMsgs: ChatMessage[] = res.data.data.messages.map((m: { id: string; author: string; message: string; timestamp: string; avatarUrl?: string }) => ({
             id: `yt-${m.id}`,
             userId: 0,
             userName: m.author,
@@ -1083,7 +1083,7 @@ function ReelCard({
             price: currentProduct.price,
             item_total: currentProduct.price,
             seller_id: currentProduct.seller_id ?? null,
-            seller_name: (currentProduct as any).seller_name ?? null,
+            seller_name: (currentProduct as unknown as { seller_name?: string }).seller_name ?? null,
             shipping_fee: 3000,
             free_shipping_threshold: 0,
             option_id: null,
@@ -1196,8 +1196,8 @@ function ReelCard({
       const rawUserName = localStorage.getItem('user_name') || '익명'
       const maskedChatName = maskUserName(rawUserName)
 
-      // 호환성: claims.userId (숫자 ID) 사용, 없으면 0 (Anonymous)
-      const numericUserId = parseInt(localStorage.getItem('numeric_user_id') || '0', 10) || 0;
+      // 숫자 ID: numeric_user_id → user_id 순서로 fallback
+      const numericUserId = parseInt(localStorage.getItem('numeric_user_id') || localStorage.getItem('user_id') || '0', 10) || 0;
 
       // 🔥 SSE 기반 메시지 전송 (닉네임 마스킹 적용: 정종문 → 정*문)
       await sendChatMessage(
@@ -1907,6 +1907,7 @@ export default function LivePageV2() {
 
   return (
     <main className="relative h-dvh overflow-hidden bg-black no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+      <SEO title="라이브 - 유어딜" description="실시간 라이브 방송으로 만나는 최저가 특가 상품" url="/live" />
       <TopNav
         viewers={viewerCount}
         sellerName={reels[activeIndex]?.stream?.seller_name || reels[activeIndex]?.stream?.streamerName}

@@ -178,6 +178,18 @@ paymentsRouter.post('/confirm', async (c) => {
       ordersCount: updatedOrders.length,
     });
 
+    // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
+    // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
+    try {
+      const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes');
+      for (const order of updatedOrders) {
+        const oid = typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10);
+        if (oid && order.total_amount) {
+          await calculateMultiTierCommission(c.env.DB, oid, order.total_amount, String(userId));
+        }
+      }
+    } catch { /* referral commission is non-critical — silent fail */ }
+
     // ── 알림톡 자동 발송 (주문 완료) ──────────────────────────────────────
     // 실패해도 결제 응답에 영향 없도록 fire-and-forget
     if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {

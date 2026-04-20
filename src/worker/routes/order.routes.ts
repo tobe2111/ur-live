@@ -271,6 +271,31 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       }).catch(() => { /* alimtalk not critical */ });
     }
 
+    // 제휴 마케팅 수수료 추적 (ref 파라미터)
+    const referrerId = body.referrer_id || body.ref
+    if (referrerId && referrerId !== String(userId)) {
+      c.executionCtx?.waitUntil?.(
+        fetch(`${c.req.url.split('/api/')[0]}/api/affiliate/track`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            referrer_id: referrerId,
+            order_id: order.id,
+            product_id: request.items?.[0]?.product_id,
+            product_name: (request.items?.[0] as any)?.product_name,
+            buyer_id: String(userId),
+            order_amount: order.total_amount,
+          }),
+        }).catch(() => {})
+      )
+
+      // 추천 트리 등록 (안전망: 카카오 콜백에서 등록 안 된 경우 대비)
+      try {
+        const { registerInReferralTree } = await import('../../features/referral/api/referral-tree.routes');
+        await registerInReferralTree(c.env.DB, String(userId), 'user', referrerId);
+      } catch { /* non-critical */ }
+    }
+
     return c.json({ success: true, data: order }, 201);
 
   } catch (err) {
@@ -455,6 +480,12 @@ ordersRouter.post('/refund', async (c) => {
     });
     await orderRepo.restoreStock(body.order_id);
 
+    // 유저에게 인앱 알림 (환불/주문 취소)
+    try {
+      const { notifyUser } = await import('../../lib/notifications');
+      await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${(order as any).order_number || body.order_id}`, '/my-orders');
+    } catch {} // fire and forget
+
     const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
     return c.json({
@@ -574,6 +605,12 @@ ordersRouter.post('/:id/cancel', async (c) => {
         createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
       }
 
+      // 유저에게 인앱 알림 (주문 취소)
+      try {
+        const { notifyUser } = await import('../../lib/notifications');
+        await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders');
+      } catch {} // fire and forget
+
       const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
       console.info('[ORDERS] Cancel success (paid):', {
@@ -607,6 +644,12 @@ ordersRouter.post('/:id/cancel', async (c) => {
     if (order.seller_id) {
       createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
     }
+
+    // 유저에게 인앱 알림 (주문 취소)
+    try {
+      const { notifyUser } = await import('../../lib/notifications');
+      await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders');
+    } catch {} // fire and forget
 
     console.info('[ORDERS] Cancel success (unpaid):', { orderId, status: order.status });
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import OptionSelectModal from '@/components/OptionSelectModal'
 import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
 import { CartHeader } from '@/components/cart/CartHeader'
@@ -12,9 +13,7 @@ import { getCartItemPrice } from '@/types/cart'
 
 /** 로그인 여부를 localStorage로 동기 확인 (Firebase user 기준) */
 function isUserLoggedIn(): boolean {
-  const userType = localStorage.getItem('user_type')
-  const lastLoginUid = localStorage.getItem('lastLoginUid')
-  return userType === 'user' && !!lastLoginUid
+  return localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
 }
 
 interface ModalProps {
@@ -62,7 +61,7 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
               if (onConfirm) onConfirm()
               onClose()
             }}
-            className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-blue-700"
+            className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
           >
             확인
           </button>
@@ -80,6 +79,7 @@ export default function CartPage() {
   if (!loggedIn) {
     return (
       <div className="flex flex-col bg-gray-50">
+        <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" />
         <div className="flex items-center justify-between border-b bg-white px-4 py-4">
           <button onClick={() => navigate(-1)} className="text-gray-400">
             <X className="h-6 w-6" />
@@ -220,8 +220,8 @@ function CartPageContent() {
 
     const newQuantity = item.quantity + delta
     if (newQuantity < 1) return
-    const stock = (item as any).product_stock
-    if (stock !== undefined && newQuantity > stock) return
+    const stock = item.product_stock
+    if (stock !== undefined && stock !== null && newQuantity > stock) return
     if (updating) return
 
     setUpdating(true)
@@ -230,9 +230,11 @@ function CartPageContent() {
         itemId: String(cartItemId),
         quantity: newQuantity
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const error_ = error as { message?: string };
       console.error('Failed to update quantity:', error)
-      showAlert(error.response?.data?.error || '수량 변경에 실패했습니다.', 'error', '수량 변경 실패')
+      const msg = error instanceof Error ? error.message : '수량 변경에 실패했습니다.'
+      showAlert(msg, 'error', '수량 변경 실패')
     } finally {
       setUpdating(false)
     }
@@ -249,9 +251,11 @@ function CartPageContent() {
         try {
           await removeItemMutation.mutateAsync(String(cartItemId))
           showAlert('상품이 삭제되었습니다.', 'success', '삭제 완료')
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const error_ = error as { message?: string };
           console.error('Failed to remove item:', error)
-          showAlert(error.response?.data?.error || '상품 삭제에 실패했습니다.', 'error', '삭제 실패')
+          const msg = error instanceof Error ? error.message : '상품 삭제에 실패했습니다.'
+          showAlert(msg, 'error', '삭제 실패')
         } finally {
           setUpdating(false)
         }
@@ -286,9 +290,11 @@ function CartPageContent() {
         optionId
       })
       showAlert('옵션이 변경되었습니다.', 'success', '변경 완료')
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const error_ = error as { message?: string };
       console.error('Failed to change option:', error)
-      showAlert(error.response?.data?.error || '옵션 변경에 실패했습니다.', 'error', '변경 실패')
+      const msg = error instanceof Error ? error.message : '옵션 변경에 실패했습니다.'
+      showAlert(msg, 'error', '변경 실패')
     } finally {
       setUpdating(false)
     }
@@ -309,9 +315,11 @@ function CartPageContent() {
             )
           )
           showAlert('선택한 상품이 삭제되었습니다.', 'success', '삭제 완료')
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const error_ = error as { message?: string };
           console.error('Failed to delete selected:', error)
-          showAlert(error.response?.data?.error || '상품 삭제에 실패했습니다.', 'error', '삭제 실패')
+          const msg = error instanceof Error ? error.message : '상품 삭제에 실패했습니다.'
+          showAlert(msg, 'error', '삭제 실패')
         } finally {
           setUpdating(false)
         }
@@ -342,7 +350,7 @@ function CartPageContent() {
       groups[sellerId].subtotal += (getCartItemPrice(item) * item.quantity)
       return groups
     }, {} as Record<string | number, {
-      items: any[]
+      items: CartItem[]
       subtotal: number
       shipping_fee: number
       free_shipping_threshold: number
@@ -397,7 +405,8 @@ function CartPageContent() {
   }
 
   return (
-    <div className="flex flex-col bg-gray-50">
+    <div className="flex flex-col bg-[#f4f4f4] min-h-screen pb-20">
+      <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" />
       {/* 🎯 분리된 Header 컴포넌트 */}
       <CartHeader
         itemCount={cartItems.length}
@@ -417,7 +426,7 @@ function CartPageContent() {
             {cartItems.map((item) => (
               <CartItemComponent
                 key={item.id}
-                item={item as any}
+                item={{ ...item, id: Number(item.id), product_id: Number(item.product_id), price_snapshot: item.price_snapshot ?? item.price ?? 0, option_id: item.option_id != null ? Number(item.option_id) : undefined }}
                 isSelected={selectedIds.has(item.id)}
                 onToggleSelect={toggleSelect}
                 onUpdateQuantity={updateQuantity}
@@ -429,20 +438,24 @@ function CartPageContent() {
           </div>
 
           {/* 🎯 분리된 Summary 컴포넌트 */}
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 space-y-4">
+          {/* 결제 요약 */}
+          <div className="bg-white border-t border-gray-100 px-4 py-4">
             <CartSummary
               totalItems={totalItems}
               subtotal={subtotal}
               shippingFee={shippingFee}
               total={total}
             />
-            
+          </div>
+
+          {/* 하단 고정 주문 버튼 */}
+          <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3">
             <button
               onClick={handleCheckout}
               disabled={selectedIds.size === 0 || updating}
-              className="w-full py-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3.5 bg-gray-900 text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all"
             >
-              {selectedIds.size === 0 ? '상품을 선택해주세요' : `${totalItems}개 상품 주문하기`}
+              {selectedIds.size === 0 ? '상품을 선택해주세요' : `${total.toLocaleString()}원 주문하기`}
             </button>
           </div>
         </>

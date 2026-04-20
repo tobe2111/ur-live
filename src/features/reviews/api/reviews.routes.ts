@@ -156,12 +156,17 @@ reviewsRoutes.post('/', requireAuth(), async (c) => {
     createDashboardNotification(DB, 'seller', String(productInfo.seller_id), 'new_review', '새 리뷰', `${productInfo.name}: ★${body.rating}`, '/seller/products').catch(() => {});
   }
 
-  // ── 리뷰 리워드: 딜 포인트 지급 ──
-  // 텍스트 리뷰: 50딜, 사진 리뷰: 100딜, 영상 리뷰: 200딜
+  // ── 리뷰 리워드: 딜 포인트 지급 (platform_settings 기반) ──
   try {
     const hasImages = body.images && body.images.length > 0;
     const hasVideo = body.images?.some(img => /\.(mp4|webm|mov)$/i.test(img));
-    const rewardAmount = hasVideo ? 200 : hasImages ? 100 : 50;
+
+    // platform_settings에서 리뷰 보상 금액 조회
+    const rewardKey = hasVideo ? 'review_reward_video' : hasImages ? 'review_reward_image' : 'review_reward_text';
+    const defaultReward = hasVideo ? 500 : hasImages ? 300 : 100;
+    const settingsRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = ?").bind(rewardKey).first<{ value: string }>().catch(() => null);
+    const rewardAmount = settingsRow?.value ? parseInt(settingsRow.value) : defaultReward;
+
     const rewardDesc = hasVideo ? '[리뷰리워드] 영상 리뷰 작성' : hasImages ? '[리뷰리워드] 사진 리뷰 작성' : '[리뷰리워드] 텍스트 리뷰 작성';
 
     // user_points 테이블이 없으면 생성
@@ -183,6 +188,22 @@ reviewsRoutes.post('/', requireAuth(), async (c) => {
 
     await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
       .bind(user.id, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc).run();
+
+    // deal_balance도 동기화 (users 테이블)
+    await DB.prepare('UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?')
+      .bind(rewardAmount, user.id).run().catch(() => {});
+
+    // 유저에게 알림 생성
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => {});
+    await DB.prepare(
+      "INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)"
+    ).bind(
+      user.id,
+      'review_reward',
+      '리뷰 작성 보상',
+      `🎁 리뷰 작성 보상으로 ${rewardAmount}딜이 지급되었습니다!`,
+      '/user/profile'
+    ).run().catch(() => {});
   } catch { /* 포인트 지급 실패해도 리뷰는 성공 */ }
 
   // 실제 유저 리뷰 → sold_count 2~3 증가

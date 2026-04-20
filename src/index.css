@@ -14,6 +14,19 @@
     margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
     white-space: nowrap; border-width: 0;
   }
+  @keyframes float-heart {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    50% { opacity: 0.8; transform: translateY(-60px) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-120px) scale(0.8); }
+  }
+  .animate-float-heart { animation: float-heart 2s ease-out forwards; }
+  @keyframes bounce-in {
+    0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+    50% { opacity: 1; transform: scale(1.05) translateY(-5px); }
+    70% { transform: scale(0.98) translateY(2px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .animate-bounce-in { animation: bounce-in 0.5s ease-out forwards; }
 }
 
 @layer base {
@@ -49,6 +62,7 @@
 
     --radius: 0.75rem;
   }
+
 }
 
 @layer base {
@@ -152,6 +166,17 @@
 }
 
 /* Apple-style animations - Subtle and purposeful */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes smooth-appear {
   from {
     opacity: 0;
@@ -458,54 +483,32 @@ html.native-app nav {
 
 /* ============================================
    Mobile App Layout - PC에서 모바일 앱처럼
+   컨테이너 자체가 뷰포트 역할 (fixed 요소가 이 안에 고정됨)
    ============================================ */
 .mobile-app-container {
-  /* 고정 너비: 실제 모바일 너비 (iPhone 14 Pro Max: 393px) */
-  max-width: 393px;
+  max-width: 430px;
   width: 100%;
-  
-  /* 화면 정중앙 배치 */
   margin: 0 auto;
-  
-  /* 최소 높이: 화면 꽉 채우기 */
-  min-height: 100vh;
-  
-  /* 컨테이너 배경: 다크 */
+  min-height: 100dvh;
   background-color: #020202;
-  
-  /* 은은한 그림자: 입체감 */
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
-  
-  /* 상대 위치: 하단 탭바 기준 */
   position: relative;
-  
-  /* 오버플로우: 스크롤 가능 */
   overflow-x: hidden;
 }
 
-/* 모바일에서는 그림자 제거 & 전체 너비 */
-@media (max-width: 393px) {
+/* 모바일: 전체 너비, 평소처럼 */
+@media (max-width: 430px) {
   .mobile-app-container {
-    box-shadow: none;
     max-width: 100%;
   }
 }
 
-/* 하단 탭바: 모바일 컨테이너 안에서만 고정 */
-.mobile-app-container nav[class*="fixed bottom"] {
-  /* PC에서: 393px 안에서만 고정 */
-  max-width: 393px;
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-}
-
-@media (max-width: 393px) {
-  .mobile-app-container nav[class*="fixed bottom"] {
-    /* 모바일에서: 전체 너비 */
-    max-width: 100%;
-    left: 0;
-    transform: none;
+/* PC: 프레임 + 배경 */
+@media (min-width: 431px) {
+  body {
+    background-color: #111;
+  }
+  .mobile-app-container {
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.4);
   }
 }
 

@@ -13,9 +13,7 @@ interface Restaurant {
   discount_percent: number; rating: number
 }
 
-declare global {
-  interface Window { kakao: any }
-}
+// Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
 
 const REGIONS = [
   { key: '', label: '전체', emoji: '📍', lat: 36.5, lng: 127.8, level: 13 },

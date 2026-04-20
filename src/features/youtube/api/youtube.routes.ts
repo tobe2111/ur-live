@@ -397,7 +397,7 @@ app.post('/live/create', async (c) => {
     }, 401)
   }
 
-  const { title, description, product_ids, scheduled_start_time, privacy_status } = await c.req.json()
+  const { title, description, thumbnail_url, product_ids, scheduled_start_time, privacy_status } = await c.req.json()
 
   if (!title) {
     return c.json({
@@ -481,16 +481,17 @@ app.post('/live/create', async (c) => {
     // Save to database
     const streamResult = await c.env.DB.prepare(`
       INSERT INTO live_streams (
-        seller_id, title, description, status,
+        seller_id, title, description, status, thumbnail_url,
         youtube_video_id, youtube_broadcast_id, youtube_stream_key, youtube_live_chat_id,
         rtmp_url, rtmp_key, youtube_embed_url,
         scheduled_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).bind(
       sellerId,
       title,
       description || '',
       'scheduled',
+      thumbnail_url || null,
       liveSetup.broadcast.id,
       liveSetup.broadcast.id,
       liveSetup.stream.ingestionInfo.streamName,

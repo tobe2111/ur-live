@@ -8,6 +8,13 @@
     <meta name="theme-color" content="#020202" />
     <title>유어딜 - 라이브 커머스</title>
 
+    <!-- DNS prefetch + preconnect: 주요 외부 리소스 도메인 -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <link rel="dns-prefetch" href="https://www.youtube.com" />
+    <link rel="dns-prefetch" href="https://img.youtube.com" />
+
     <!-- Pretendard 웹폰트 -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 
@@ -32,6 +39,15 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js"
             crossorigin="anonymous"></script>
 
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-B1ST2L37CM"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-B1ST2L37CM');
+    </script>
+
     <!-- YouTube IFrame API (preload for faster live page entry) -->
     <script>
       window.youtubeCallbacks = [];
@@ -43,7 +59,7 @@
     <script src="https://www.youtube.com/iframe_api" async></script>
 
   </head>
-  <body>
+  <body style="background-color:#020202">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[9999] focus:bg-white focus:p-4 focus:text-blue-600 focus:font-bold">본문 바로가기</a>
     <div id="root" role="application" aria-label="유어딜 라이브 커머스"></div>
     <script type="module" src="/src/main.tsx"></script>

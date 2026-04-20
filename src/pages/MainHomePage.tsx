@@ -38,6 +38,7 @@ interface Product {
   sold_count?: number
   avg_rating?: number
   review_count?: number
+  restaurant_address?: string
 }
 
 // ── Category (퀵메뉴 통합) ──
@@ -158,33 +159,149 @@ function getDayLabel(date: Date): string {
 // ── 날짜 탭 바 컴포넌트 ──
 function ScheduleDateTabs({ selectedDate, onSelect }: { selectedDate: Date | null; onSelect: (d: Date | null) => void }) {
   const today = new Date()
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today); d.setDate(today.getDate() + i); return d
   })
-  const dayLabels = ['오늘', '내일', '모레', '월', '화', '수', '목', '금', '토', '일']
   const dayNames = ['일', '월', '화', '수', '목', '금', '토']
 
   return (
-    <div className="flex gap-1 px-4 overflow-x-auto no-scrollbar">
+    <div className="flex gap-1.5 px-4 overflow-x-auto no-scrollbar pb-1">
+      <button
+        onClick={() => onSelect(null)}
+        className={`flex flex-col items-center shrink-0 px-3 py-2 rounded-xl transition-all ${
+          !selectedDate ? 'bg-red-500 text-white' : 'text-gray-500'
+        }`}
+      >
+        <span className="text-[10px] font-medium">전체</span>
+        <span className={`text-[14px] font-bold ${!selectedDate ? 'text-white' : 'text-gray-300'}`}>ALL</span>
+      </button>
       {days.map((d, i) => {
-        const isSelected = selectedDate ? d.toDateString() === selectedDate.toDateString() : i === 0
-        const label = i === 0 ? '오늘' : i === 1 ? '내일' : i === 2 ? '모레' : dayNames[d.getDay()]
+        const isSelected = selectedDate ? d.toDateString() === selectedDate.toDateString() : false
+        const label = i === 0 ? '오늘' : i === 1 ? '내일' : dayNames[d.getDay()]
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6
         return (
           <button
             key={i}
-            onClick={() => onSelect(i === 0 && (!selectedDate || selectedDate.toDateString() === d.toDateString()) ? null : d)}
+            onClick={() => onSelect(d)}
             className={`flex flex-col items-center shrink-0 px-3 py-2 rounded-xl transition-all ${
               isSelected
                 ? 'bg-red-500 text-white'
-                : 'text-gray-500'
+                : isWeekend ? 'text-red-400' : 'text-gray-500'
             }`}
           >
             <span className="text-[10px] font-medium">{label}</span>
-            <span className={`text-[16px] font-bold ${isSelected ? 'text-white' : 'text-gray-300'}`}>{d.getDate()}</span>
+            <span className={`text-[14px] font-bold ${isSelected ? 'text-white' : 'text-gray-300'}`}>{d.getDate()}</span>
           </button>
         )
       })}
     </div>
+  )
+}
+
+// ── 지금 뜨는 공동구매 섹션 (가로 스크롤 TOP 상품) ──
+function TrendingGroupBuySection() {
+  const navigate = useNavigate()
+  const [items, setItems] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/api/group-buy/products?status=active')
+      .then(r => {
+        if (r.data?.success) {
+          const list: Product[] = r.data.data || []
+          // 참여자 많은 순 → 상위 10개
+          const sorted = [...list].sort(
+            (a, b) => ((b.group_buy_current || 0) - (a.group_buy_current || 0))
+          ).slice(0, 10)
+          setItems(sorted)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return null
+  if (items.length === 0) return null
+
+  return (
+    <section className="px-4 pt-4 pb-2">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-[15px] font-bold text-white">🎁 지금 뜨는 공동구매</h2>
+          <p className="text-[11px] text-gray-500 mt-0.5">모일수록 저렴해지는 인기 상품</p>
+        </div>
+        <button
+          onClick={() => navigate('/group-buy')}
+          className="text-[12px] text-gray-500 flex items-center"
+        >
+          더 보기 <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+        {items.map(item => {
+          const target = item.group_buy_target || 0
+          const current = item.group_buy_current || 0
+          const achieved = target > 0 && current >= target
+          const progress = target > 0 ? Math.min(100, (current / target) * 100) : 0
+          const disc = item.original_price && item.original_price > item.price
+            ? Math.round((1 - item.price / item.original_price) * 100)
+            : 0
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => navigate(`/products/${item.id}`)}
+              className="shrink-0 w-36 text-left active:scale-[0.97] transition-transform"
+            >
+              <div className="relative aspect-square rounded-xl overflow-hidden bg-[#1A1A1A]">
+                {item.image_url ? (
+                  <img src={item.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-pink-900/30 to-rose-900/30" />
+                )}
+                {disc > 0 && (
+                  <span className="absolute top-1.5 left-1.5 bg-pink-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md">
+                    최대 -{disc}%
+                  </span>
+                )}
+                {achieved && (
+                  <span className="absolute top-1.5 right-1.5 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                    달성
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-2">
+                <p className="text-[11px] text-white font-medium line-clamp-1">{item.name}</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  {disc > 0 && (
+                    <span className="text-[12px] font-extrabold text-pink-400">{disc}%</span>
+                  )}
+                  <span className="text-[12px] font-extrabold text-white">
+                    {item.price?.toLocaleString()}원
+                  </span>
+                </div>
+
+                {target > 0 && (
+                  <div className="mt-1.5">
+                    <div className="w-full h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${achieved ? 'bg-emerald-500' : 'bg-pink-500'}`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <p className="text-[9px] text-gray-500 mt-0.5">
+                      {achieved ? '목표 달성!' : `${current}명 참여중`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -202,7 +319,7 @@ function GroupBuySection() {
 
   // 지역 필터링 (restaurant_address에서 첫 단어 매칭)
   const filtered = region === 'all' ? items : items.filter(item =>
-    (item as any).restaurant_address?.includes(region)
+    item.restaurant_address?.includes(region)
   )
 
   return (
@@ -217,7 +334,7 @@ function GroupBuySection() {
           <p className="text-white/80 text-xs mt-1">인플루언서 추천 맛집 식사권</p>
         </button>
         <button
-          onClick={() => navigate('/restaurant-map')}
+          onClick={() => navigate('/browse?category=meal_voucher')}
           className="w-[120px] bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4 text-left active:scale-[0.98] transition-transform shrink-0"
         >
           <p className="text-white text-2xl">🗺️</p>
@@ -321,7 +438,7 @@ function ProductCard({ product }: { product: Product }) {
         </div>
         <div className="flex items-center gap-0.5 mt-0.5">
           <span className="text-yellow-400 text-[9px]">★</span>
-          <span className="text-[9px] text-gray-500">{((product as any).avg_rating || 4.8).toFixed(1)} ({(product as any).review_count || product.sold_count || 0})</span>
+          <span className="text-[9px] text-gray-500">{(product.avg_rating || 4.8).toFixed(1)} ({product.review_count || product.sold_count || 0})</span>
         </div>
       </div>
     </div>
@@ -405,6 +522,23 @@ export default function MainHomePage() {
 
       {/* ── Hero Banner ── */}
       <HeroBanner />
+
+      {/* 카카오 채널 추가 */}
+      <div className="mx-4 my-3">
+        <button
+          onClick={() => {
+            const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_AITdn'
+            if (window.Kakao?.Channel) {
+              window.Kakao.Channel.addChannel({ channelPublicId: channelId })
+            } else {
+              window.open(`https://pf.kakao.com/${channelId}/friend`, '_blank')
+            }
+          }}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] rounded-xl text-[#3C1E1E] text-sm font-bold active:scale-[0.98]"
+        >
+          <span role="img" aria-label="chat">💬</span> 카카오 채널 추가하고 혜택 받기
+        </button>
+      </div>
 
       {/* ── Live Now Section ── */}
       {liveStreams.length > 0 && (
@@ -551,6 +685,9 @@ export default function MainHomePage() {
         </section>
       )}
 
+      {/* ── 지금 뜨는 공동구매 (가로 스크롤) ── */}
+      <TrendingGroupBuySection />
+
       {/* ── UR 특가 ── */}
       {/* ── 맛집 공동구매 섹션 ── */}
       <GroupBuySection />
@@ -616,6 +753,24 @@ export default function MainHomePage() {
       <InvitePrompt />
 
       <SiteFooter />
+
+      {/* 카카오 채널 채팅 플로팅 버튼 */}
+      <button
+        onClick={() => {
+          const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_AITdn'
+          if (window.Kakao?.Channel) {
+            window.Kakao.Channel.chat({ channelPublicId: channelId })
+          } else {
+            window.open(`https://pf.kakao.com/${channelId}/chat`, '_blank')
+          }
+        }}
+        className="fixed bottom-20 right-4 z-40 w-12 h-12 bg-[#FEE500] rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        aria-label="카카오 채널 채팅"
+      >
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#3C1E1E">
+          <path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.88 5.32 4.71 6.73-.16.57-.58 2.07-.67 2.39-.1.39.14.39.3.28.12-.08 1.94-1.31 2.73-1.84.63.09 1.28.14 1.93.14 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+        </svg>
+      </button>
     </div>
   )
 }
@@ -649,7 +804,7 @@ function InvitePrompt() {
 
 function RecentlyViewed() {
   const navigate = useNavigate()
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<Array<{ id: number; name: string; price?: number; image?: string }>>([])
 
   useEffect(() => {
     try {
@@ -664,7 +819,7 @@ function RecentlyViewed() {
     <div className="px-4 py-6">
       <h2 className="text-lg font-bold text-white mb-3">최근 본 상품</h2>
       <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-        {items.map((p: any) => (
+        {items.map((p) => (
           <div key={p.id} onClick={() => navigate(`/products/${p.id}`)}
             className="shrink-0 w-28 cursor-pointer">
             <div className="aspect-square bg-[#1A1A1A] rounded-xl overflow-hidden">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn } from 'lucide-react'
+import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift } from 'lucide-react'
 
 export default function BottomNav() {
   const navigate = useNavigate()
@@ -9,13 +9,8 @@ export default function BottomNav() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadProfile = () => {
-      setProfileImage(localStorage.getItem('user_profile_image'))
-    }
-    loadProfile()
-    window.addEventListener('storage', loadProfile)
-    return () => window.removeEventListener('storage', loadProfile)
-  }, [])
+    setProfileImage(localStorage.getItem('user_profile_image'))
+  }, [location.pathname])
 
   const userType = localStorage.getItem('user_type')
   const isLoggedIn = !!localStorage.getItem('access_token')
@@ -27,6 +22,7 @@ export default function BottomNav() {
   ]
 
   const rightItems = [
+    { icon: Gift, label: '공구', path: '/group-buy' },
     { icon: ShoppingCart, label: '쇼핑', path: '/browse' },
     { icon: User, label: '마이', path: '/user/profile' },
   ]
@@ -73,8 +69,8 @@ export default function BottomNav() {
   return (
     <>
       {/* Nav bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard">
-        <div className="max-w-screen-sm mx-auto pointer-events-auto">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[9999] pointer-events-none hide-on-keyboard">
+        <div className="pointer-events-auto">
           <nav
             className="bg-[#020202] border-t border-[#0A0A0A]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -109,8 +105,8 @@ export default function BottomNav() {
           />
 
           {/* Sheet */}
-          <div className="fixed inset-x-0 bottom-0 z-[10001] animate-sheet-up">
-            <div className="max-w-screen-sm mx-auto">
+          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[10001] animate-sheet-up">
+            <div>
               <div
                 className="bg-[#121212] rounded-t-3xl"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}

@@ -34,8 +34,9 @@ export default function StoreStatsPage() {
       } else {
         setError(res.data.error || '인증 실패')
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.error || '인증에 실패했습니다')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      setError(err_.response?.data?.error || '인증에 실패했습니다')
     } finally {
       setLoading(false)
     }
@@ -58,7 +59,7 @@ export default function StoreStatsPage() {
             onChange={e => setPin(e.target.value)}
             type="password"
             placeholder="비밀번호 입력"
-            className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
+            className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg text-gray-900 tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
             onKeyDown={e => e.key === 'Enter' && authenticate()}
           />
           <button

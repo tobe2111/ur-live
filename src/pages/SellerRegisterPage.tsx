@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
 export default function SellerRegisterPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const agencyId = searchParams.get('agency')
   const [formData, setFormData] = useState({
+    sellerType: 'influencer' as 'influencer' | 'store_owner' | 'both',
     username: '',
     email: '',
     password: '',
@@ -48,7 +51,7 @@ export default function SellerRegisterPage() {
       return
     }
 
-    if (!formData.youtubeEmail.includes('@')) {
+    if (formData.sellerType !== 'store_owner' && !formData.youtubeEmail.includes('@')) {
       setError(t('seller.invalidYoutubeEmail'))
       return
     }
@@ -76,7 +79,9 @@ export default function SellerRegisterPage() {
         phone: formData.phone,
         business_number: formData.businessNumber,
         business_name: formData.businessName,
-        youtube_email: formData.youtubeEmail
+        youtube_email: formData.sellerType !== 'store_owner' ? formData.youtubeEmail : undefined,
+        seller_type: formData.sellerType,
+        agency_id: agencyId ? Number(agencyId) : undefined
       })
 
       if (response.data.success) {
@@ -85,8 +90,9 @@ export default function SellerRegisterPage() {
       } else {
         setError(response.data.error || t('seller.registerFailedGeneric'))
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.message || t('seller.registerFailedGeneric'))
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } }
+      setError(err_.response?.data?.error || err_.response?.data?.message || t('seller.registerFailedGeneric'))
     } finally {
       setLoading(false)
     }
@@ -100,6 +106,11 @@ export default function SellerRegisterPage() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">👨‍💼</h1>
           <h2 className="text-3xl font-bold text-gray-900">{t('seller.sellerRegister')}</h2>
           <p className="text-gray-600 mt-2">{t('seller.sellerRegistration')}</p>
+          {agencyId && (
+            <div className="mt-3 inline-flex items-center gap-1.5 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-xs font-medium">
+              <span>🤝</span> 에이전시 초대를 통한 가입
+            </div>
+          )}
         </div>
 
         {/* Registration Form */}
@@ -110,6 +121,35 @@ export default function SellerRegisterPage() {
                 {error}
               </div>
             )}
+
+            {/* 셀러 유형 선택 */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('seller.sellerTypeLabel')} *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button"
+                  onClick={() => setFormData(f => ({...f, sellerType: 'influencer'}))}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    formData.sellerType === 'influencer'
+                      ? 'border-gray-900 bg-gray-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}>
+                  <span className="text-xl mb-1 block">🎥</span>
+                  <p className="text-sm font-bold text-gray-900">{t('seller.influencerLabel')}</p>
+                  <p className="text-[11px] text-gray-500 mt-1">{t('seller.influencerDesc')}</p>
+                </button>
+                <button type="button"
+                  onClick={() => setFormData(f => ({...f, sellerType: 'store_owner'}))}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    formData.sellerType === 'store_owner'
+                      ? 'border-gray-900 bg-gray-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}>
+                  <span className="text-xl mb-1 block">🏪</span>
+                  <p className="text-sm font-bold text-gray-900">{t('seller.storeOwnerLabel')}</p>
+                  <p className="text-[11px] text-gray-500 mt-1">{t('seller.storeOwnerDesc')}</p>
+                </button>
+              </div>
+            </div>
 
             {/* 기본 정보 */}
             <div className="space-y-4">
@@ -146,6 +186,7 @@ export default function SellerRegisterPage() {
                 />
               </div>
 
+              {formData.sellerType !== 'store_owner' && (
               <div>
                 <label htmlFor="youtubeEmail" className="block text-sm font-medium text-gray-700 mb-1">
                   {t('seller.youtubeEmailLabel')}
@@ -164,6 +205,7 @@ export default function SellerRegisterPage() {
                   placeholder="example@gmail.com"
                 />
               </div>
+              )}
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">

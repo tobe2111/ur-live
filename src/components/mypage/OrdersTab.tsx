@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Package, MapPin, Truck, ChevronRight, CheckCircle, Circle, MessageCircle, Phone as PhoneIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/useToast'
 import type { Order } from '@/types/order'
@@ -21,7 +20,7 @@ const StatusButton = ({
   <button
     onClick={onClick}
     className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
-      active ? 'bg-[#007aff] text-white' : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
+      active ? 'bg-white text-[#020202]' : 'bg-[#1A1A1A] text-gray-400 hover:bg-[#2A2A2A]'
     }`}
   >
     {label}
@@ -30,11 +29,11 @@ const StatusButton = ({
 
 const getStatusBadgeClass = (status: string) => {
   switch (status.toLowerCase()) {
-    case 'delivered': return 'bg-[#34c759] text-white'
-    case 'shipping':  return 'bg-[#007aff] text-white'
-    case 'cancelled': return 'bg-[#ff3b30] text-white'
-    case 'preparing': return 'bg-[#ff9500] text-white'
-    default:          return 'bg-[#8e8e93] text-white'
+    case 'delivered': return 'bg-green-500/20 text-green-400'
+    case 'shipping':  return 'bg-amber-500/20 text-amber-400'
+    case 'cancelled': return 'bg-red-500/20 text-red-400'
+    case 'preparing': return 'bg-amber-500/20 text-amber-400'
+    default:          return 'bg-gray-500/20 text-gray-400'
   }
 }
 
@@ -109,22 +108,22 @@ function RefundFlowStepper({ status, refundStatus }: { status: string; refundSta
           <div key={step.key} className="flex items-center flex-1 min-w-0">
             <div className="flex flex-col items-center flex-1 min-w-0">
               <div className={`w-5 h-5 rounded-full flex items-center justify-center mb-1 ${
-                done ? 'bg-[#ff3b30]' : 'bg-[#d1d1d6]'
+                done ? 'bg-red-500' : 'bg-[#2A2A2A]'
               }`}>
                 {done
                   ? <CheckCircle className="w-3.5 h-3.5 text-white" />
-                  : <Circle className="w-3.5 h-3.5 text-white" />
+                  : <Circle className="w-3.5 h-3.5 text-gray-500" />
                 }
               </div>
               <span className={`text-[10px] font-medium text-center leading-tight ${
-                done ? 'text-[#ff3b30]' : 'text-[#c7c7cc]'
+                done ? 'text-red-400' : 'text-gray-500'
               }`}>
                 {step.label}
               </span>
             </div>
             {!isLast && (
               <div className={`h-[2px] flex-1 mx-1 rounded-full mt-[-12px] ${
-                stepNum < currentIdx ? 'bg-[#ff3b30]' : 'bg-[#d1d1d6]'
+                stepNum < currentIdx ? 'bg-red-500' : 'bg-[#2A2A2A]'
               }`} />
             )}
           </div>
@@ -152,22 +151,22 @@ function OrderFlowStepper({ status }: { status: string }) {
           <div key={step.key} className="flex items-center flex-1 min-w-0">
             <div className="flex flex-col items-center flex-1 min-w-0">
               <div className={`w-5 h-5 rounded-full flex items-center justify-center mb-1 ${
-                done ? 'bg-[#007aff]' : 'bg-[#d1d1d6]'
+                done ? 'bg-pink-500' : 'bg-[#2A2A2A]'
               }`}>
                 {done
                   ? <CheckCircle className="w-3.5 h-3.5 text-white" />
-                  : <Circle className="w-3.5 h-3.5 text-white" />
+                  : <Circle className="w-3.5 h-3.5 text-gray-500" />
                 }
               </div>
               <span className={`text-[10px] font-medium text-center leading-tight ${
-                done ? 'text-[#007aff]' : 'text-[#c7c7cc]'
+                done ? 'text-pink-400' : 'text-gray-500'
               }`}>
                 {step.label}
               </span>
             </div>
             {!isLast && (
               <div className={`h-[2px] flex-1 mx-1 rounded-full mt-[-12px] ${
-                STATUS_ORDER[FLOW_STEPS[idx + 1].key] <= currentIdx ? 'bg-[#007aff]' : 'bg-[#d1d1d6]'
+                STATUS_ORDER[FLOW_STEPS[idx + 1].key] <= currentIdx ? 'bg-pink-500' : 'bg-[#2A2A2A]'
               }`} />
             )}
           </div>
@@ -218,29 +217,29 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
 
       {/* 주문 목록 */}
       {filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-          <div className="w-24 h-24 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-6">
-            <Package className="h-12 w-12 text-[#6e6e73]" />
+        <div className="bg-[#121212] rounded-2xl border border-[#2A2A2A] p-12 text-center">
+          <div className="w-24 h-24 bg-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-6">
+            <Package className="h-12 w-12 text-gray-500" />
           </div>
-          <h2 className="text-[28px] font-semibold text-[#1d1d1f] mb-4">주문 내역이 없습니다</h2>
-          <p className="text-[17px] text-[#6e6e73] mb-8">라이브에서 마음에 드는 상품을 구매해보세요</p>
-          <Button className="apple-button" asChild>
-            <Link to="/">라이브 보러가기</Link>
-          </Button>
+          <h2 className="text-[22px] font-semibold text-white mb-4">주문 내역이 없습니다</h2>
+          <p className="text-[15px] text-gray-400 mb-8">라이브에서 마음에 드는 상품을 구매해보세요</p>
+          <Link to="/" className="inline-block px-6 py-3 bg-white text-[#020202] font-medium rounded-xl hover:bg-gray-200 transition-colors">
+            라이브 보러가기
+          </Link>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredOrders.map(order => (
-            <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div key={order.id} className="bg-[#121212] rounded-2xl border border-[#2A2A2A] p-5">
               {/* 주문번호 + 상태 배지 */}
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="text-[13px] text-[#6e6e73] mb-1">
+                  <p className="text-[13px] text-gray-500 mb-1">
                     {new Date(order.created_at).toLocaleDateString('ko-KR', {
                       year: 'numeric', month: 'long', day: 'numeric',
                     })}
                   </p>
-                  <p className="text-[15px] font-semibold text-[#1d1d1f]">
+                  <p className="text-[15px] font-semibold text-white">
                     주문번호: {order.order_number ?? String(order.id)}
                   </p>
                 </div>
@@ -258,28 +257,28 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                 {order.items?.slice(0, 2).map((item, idx) => (
                   <div key={idx} className="flex gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium text-[#1d1d1f] line-clamp-1">{item.product_name}</p>
+                      <p className="text-[14px] font-medium text-white line-clamp-1">{item.product_name}</p>
                       {item.option_value && (
-                        <p className="text-[12px] text-[#6e6e73]">옵션: {item.option_value}</p>
+                        <p className="text-[12px] text-gray-500">옵션: {item.option_value}</p>
                       )}
-                      <p className="text-[13px] text-[#6e6e73]">
+                      <p className="text-[13px] text-gray-400">
                         {item.quantity}개 · {(item.price_snapshot * item.quantity).toLocaleString()}원
                       </p>
                     </div>
                   </div>
                 ))}
                 {order.items && order.items.length > 2 && (
-                  <p className="text-[13px] text-[#6e6e73] text-center">외 {order.items.length - 2}개</p>
+                  <p className="text-[13px] text-gray-500 text-center">외 {order.items.length - 2}개</p>
                 )}
               </div>
 
               {/* 배송지 + 배송 추적 */}
-              <div className="p-4 bg-[#f5f5f7] rounded-xl mb-4">
+              <div className="p-4 bg-[#1A1A1A] rounded-xl mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="h-4 w-4 text-[#6e6e73]" />
-                  <span className="text-[14px] font-medium text-[#1d1d1f]">{order.shipping_name ?? '-'}</span>
+                  <MapPin className="h-4 w-4 text-gray-500" />
+                  <span className="text-[14px] font-medium text-white">{order.shipping_name ?? '-'}</span>
                 </div>
-                <p className="text-[14px] text-[#6e6e73] ml-6">
+                <p className="text-[14px] text-gray-400 ml-6">
                   {(() => {
                     const addr = order.shipping_address
                     if (typeof addr === 'object' && addr !== null) {
@@ -290,24 +289,24 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                   })()}
                 </p>
                 {order.shipping_address_detail && typeof order.shipping_address_detail === 'string' && (
-                  <p className="text-[14px] text-[#6e6e73] ml-6">{order.shipping_address_detail}</p>
+                  <p className="text-[14px] text-gray-400 ml-6">{order.shipping_address_detail}</p>
                 )}
 
                 {/* 송장번호 + 배송조회 링크 */}
                 {order.courier && order.tracking_number && (
-                  <div className="mt-3 pt-3 border-t border-[#d2d2d7] flex items-center justify-between">
+                  <div className="mt-3 pt-3 border-t border-[#2A2A2A] flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Truck className="h-4 w-4 text-[#007aff]" />
+                      <Truck className="h-4 w-4 text-pink-400" />
                       <div className="text-[13px]">
-                        <span className="text-[#6e6e73]">{order.courier} · </span>
-                        <span className="font-medium text-[#1d1d1f]">{order.tracking_number}</span>
+                        <span className="text-gray-500">{order.courier} · </span>
+                        <span className="font-medium text-white">{order.tracking_number}</span>
                       </div>
                     </div>
                     <a
                       href={getTrackingUrl(order.courier, order.tracking_number)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
+                      className="text-[13px] text-pink-400 font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
                     >
                       배송조회
                       <ChevronRight className="h-3.5 w-3.5" />
@@ -320,7 +319,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={() => handleSellerContact(order)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#6e6e73] bg-[#f5f5f7] rounded-xl hover:bg-[#e5e5ea] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-gray-400 bg-[#1A1A1A] rounded-xl hover:bg-[#2A2A2A] transition-colors"
                 >
                   <MessageCircle className="h-3.5 w-3.5" />
                   판매자 문의
@@ -330,7 +329,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                     href={getTrackingUrl(order.courier, order.tracking_number)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#007aff] bg-[#f0f4ff] rounded-xl hover:bg-[#e0e8ff] transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-pink-400 bg-pink-500/10 rounded-xl hover:bg-pink-500/20 transition-colors"
                   >
                     <Truck className="h-3.5 w-3.5" />
                     배송 조회
@@ -340,14 +339,14 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
 
               {/* 금액 + 액션 */}
               <div className="flex items-center justify-between">
-                <span className="text-[19px] font-bold text-[#1d1d1f]">
+                <span className="text-[19px] font-bold text-white">
                   {(order.total_amount ?? order.amount ?? 0).toLocaleString()}원
                 </span>
                 <div className="flex gap-2">
                   {['pending', 'paid', 'confirmed', 'done'].includes(order.status.toLowerCase()) && (
                     <button
                       onClick={() => onCancelOrder(order.id, order.order_number ?? String(order.id))}
-                      className="px-4 py-2 text-[13px] font-medium text-[#ff3b30] border border-[#ff3b30] rounded-full hover:bg-[#ff3b30] hover:text-white transition-colors"
+                      className="px-4 py-2 text-[13px] font-medium text-red-400 border border-red-500/30 rounded-full hover:bg-red-500/10 transition-colors"
                     >
                       주문취소
                     </button>
@@ -355,14 +354,14 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                   {order.status === 'shipping' && onConfirmOrder && (
                     <button
                       onClick={() => onConfirmOrder(order.id, order.order_number ?? String(order.id))}
-                      className="px-4 py-2 text-[13px] font-medium text-[#34c759] border border-[#34c759] rounded-full hover:bg-[#34c759] hover:text-white transition-colors"
+                      className="px-4 py-2 text-[13px] font-medium text-green-400 border border-green-500/30 rounded-full hover:bg-green-500/10 transition-colors"
                     >
                       구매확정
                     </button>
                   )}
                   <button
                     onClick={() => onSelectOrder(order)}
-                    className="flex items-center text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity"
+                    className="flex items-center text-[15px] text-pink-400 font-medium hover:opacity-60 transition-opacity"
                   >
                     상세보기
                     <ChevronRight className="h-4 w-4 ml-1" />

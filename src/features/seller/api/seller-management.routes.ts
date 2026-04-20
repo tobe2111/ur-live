@@ -37,6 +37,7 @@ type SellerRegisterRequest = {
   address?: string;
   description?: string;
   youtube_email: string; // 유튜브 라이브에 사용할 구글 계정 (필수)
+  seller_type?: 'influencer' | 'store_owner' | 'both';
 };
 
 type SellerProfileUpdate = {
@@ -174,7 +175,7 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
 sellerManagementRoutes.post('/register', async (c) => {
   try {
     const body = await c.req.json<SellerRegisterRequest>();
-    const { username, email, password, name, business_name, business_number, phone, address, description, youtube_email } = body;
+    const { username, email, password, name, business_name, business_number, phone, address, description, youtube_email, seller_type } = body;
 
     // 필수 필드 검증
     if (!username || !email || !password || !name || !business_name || !business_number || !phone || !youtube_email) {
@@ -220,6 +221,9 @@ sellerManagementRoutes.post('/register', async (c) => {
 
     const db = c.env.DB;
 
+    // seller_type 컬럼 존재 보장
+    try { await db.prepare("ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'").run() } catch { /* already exists */ }
+
     // 이메일 중복 확인
     const existingEmail = await db.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first();
     if (existingEmail) {
@@ -241,12 +245,16 @@ sellerManagementRoutes.post('/register', async (c) => {
     // 비밀번호 해시화
     const passwordHash = await hashPassword(password);
 
+    // seller_type 검증
+    const validSellerTypes = ['influencer', 'store_owner', 'both'] as const;
+    const resolvedSellerType = seller_type && validSellerTypes.includes(seller_type) ? seller_type : 'influencer';
+
     // 셀러 등록 (pending 상태로)
     const result = await db.prepare(`
       INSERT INTO sellers (
         username, email, password_hash, name, business_name, business_number,
-        phone, address, description, youtube_email, status, commission_rate, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+        phone, address, description, youtube_email, seller_type, status, commission_rate, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
     `).bind(
       username,
       email,
@@ -257,7 +265,8 @@ sellerManagementRoutes.post('/register', async (c) => {
       phone,
       address || null,
       description || null,
-      youtube_email
+      youtube_email,
+      resolvedSellerType
     ).run();
 
     if (!result.success) {

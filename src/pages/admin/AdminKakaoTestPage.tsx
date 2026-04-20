@@ -42,18 +42,19 @@ export default function AdminKakaoTestPage() {
         },
         buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' } }],
       })
-      const data: any = await kakaoApi(
+      const data = await kakaoApi(
         'https://kapi.kakao.com/v2/api/talk/memo/default/send',
         `template_object=${encodeURIComponent(templateObject)}`
-      )
+      ) as { result_code?: number; msg?: string }
       if (data.result_code === 0) {
         setResults(prev => [...prev, { step: '카카오톡 메시지', success: true, detail: '나에게 메시지 발송 성공!' }])
         toast.success('메시지 발송 성공!')
       } else {
         setResults(prev => [...prev, { step: '카카오톡 메시지', success: false, detail: data.msg || JSON.stringify(data) }])
       }
-    } catch (err: any) {
-      setResults(prev => [...prev, { step: '카카오톡 메시지', success: false, detail: err.message }])
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setResults(prev => [...prev, { step: '카카오톡 메시지', success: false, detail: msg }])
     } finally { setLoading(false) }
   }
 
@@ -61,16 +62,17 @@ export default function AdminKakaoTestPage() {
     if (!accessToken) { toast.error('먼저 토큰을 입력해주세요'); return }
     setLoading(true)
     try {
-      const data: any = await kakaoApi('https://kapi.kakao.com/v1/api/talk/friends')
+      const data = await kakaoApi('https://kapi.kakao.com/v1/api/talk/friends') as { elements?: Array<{ uuid?: string }>; msg?: string }
       if (data.elements) {
         if (data.elements[0]?.uuid) setFriendUuid(data.elements[0].uuid)
-        setResults(prev => [...prev, { step: '친구 목록 조회', success: true, detail: `친구 ${data.elements.length}명 조회 성공!` }])
-        toast.success(`친구 ${data.elements.length}명 조회!`)
+        setResults(prev => [...prev, { step: '친구 목록 조회', success: true, detail: `친구 ${data.elements!.length}명 조회 성공!` }])
+        toast.success(`친구 ${data.elements!.length}명 조회!`)
       } else {
         setResults(prev => [...prev, { step: '친구 목록 조회', success: false, detail: data.msg || JSON.stringify(data) }])
       }
-    } catch (err: any) {
-      setResults(prev => [...prev, { step: '친구 목록 조회', success: false, detail: err.message }])
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setResults(prev => [...prev, { step: '친구 목록 조회', success: false, detail: msg }])
     } finally { setLoading(false) }
   }
 
@@ -89,18 +91,19 @@ export default function AdminKakaoTestPage() {
         },
         buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' } }],
       })
-      const data: any = await kakaoApi(
+      const data = await kakaoApi(
         'https://kapi.kakao.com/v1/api/talk/friends/message/default/send',
         `receiver_uuids=${encodeURIComponent(JSON.stringify([friendUuid]))}&template_object=${encodeURIComponent(templateObject)}`
-      )
-      if (data.successful_receiver_uuids?.length > 0) {
+      ) as { successful_receiver_uuids?: string[]; msg?: string }
+      if (data.successful_receiver_uuids?.length && data.successful_receiver_uuids.length > 0) {
         setResults(prev => [...prev, { step: '친구에게 메시지', success: true, detail: '친구에게 메시지 전송 성공!' }])
         toast.success('친구 메시지 전송 성공!')
       } else {
         setResults(prev => [...prev, { step: '친구에게 메시지', success: false, detail: data.msg || JSON.stringify(data) }])
       }
-    } catch (err: any) {
-      setResults(prev => [...prev, { step: '친구에게 메시지', success: false, detail: err.message }])
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setResults(prev => [...prev, { step: '친구에게 메시지', success: false, detail: msg }])
     } finally { setLoading(false) }
   }
 
@@ -118,10 +121,10 @@ export default function AdminKakaoTestPage() {
         reminders: [30],
         color: 'RED',
       }
-      const data: any = await kakaoApi(
+      const data = await kakaoApi(
         'https://kapi.kakao.com/v2/api/calendar/create/event',
         `event=${encodeURIComponent(JSON.stringify(event))}`
-      )
+      ) as { event_id?: string; msg?: string }
       if (data.event_id) {
         // 생성 후 삭제
         await kakaoApi(`https://kapi.kakao.com/v2/api/calendar/delete/event?event_id=${data.event_id}`)
@@ -130,8 +133,9 @@ export default function AdminKakaoTestPage() {
       } else {
         setResults(prev => [...prev, { step: '카카오 캘린더', success: false, detail: data.msg || JSON.stringify(data) }])
       }
-    } catch (err: any) {
-      setResults(prev => [...prev, { step: '카카오 캘린더', success: false, detail: err.message }])
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setResults(prev => [...prev, { step: '카카오 캘린더', success: false, detail: msg }])
     } finally { setLoading(false) }
   }
 

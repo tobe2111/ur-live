@@ -24,8 +24,9 @@ export default function AgencyLoginPage() {
         localStorage.setItem('agency_email', agency.email)
         navigate('/agency', { replace: true })
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || '이메일 또는 비밀번호가 올바르지 않습니다.')
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      setError(err_.response?.data?.error || '이메일 또는 비밀번호가 올바르지 않습니다.')
     } finally {
       setLoading(false)
     }

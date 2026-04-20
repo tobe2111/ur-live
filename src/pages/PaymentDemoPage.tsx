@@ -32,8 +32,9 @@ export default function PaymentDemoPage() {
         const widgetsInstance = tossPayments.widgets({ customerKey })
         
         setWidgets(widgetsInstance)
-      } catch (err: any) {
-        setError(`SDK 초기화 실패: ${err.message}`)
+      } catch (err: unknown) {
+        const err_ = err as { message?: string }
+        setError(`SDK 초기화 실패: ${err_.message}`)
       }
     }
 
@@ -71,7 +72,7 @@ export default function PaymentDemoPage() {
         // 결제 수단 렌더링 (variantKey 'DEFAULT' 사용)
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: 'DEFAULT'
+          variantKey: 'widgetA'
         })
         
         // 이용약관 렌더링
@@ -81,8 +82,9 @@ export default function PaymentDemoPage() {
         })
         
         setReady(true)
-      } catch (err: any) {
-        setError(`UI 렌더링 실패: ${err.message}`)
+      } catch (err: unknown) {
+        const err_ = err as { message?: string }
+        setError(`UI 렌더링 실패: ${err_.message}`)
       }
     }
 
@@ -98,7 +100,7 @@ export default function PaymentDemoPage() {
     async function updateAmount() {
       try {
         await widgets.setAmount(amount)
-      } catch (err: any) {
+      } catch (err: unknown) {
       }
     }
 
@@ -125,11 +127,12 @@ export default function PaymentDemoPage() {
         customerName: '테스트',
         customerMobilePhone: '01012341234'
       })
-    } catch (err: any) {
-      if (err.code === 'USER_CANCEL') {
+    } catch (err: unknown) {
+      const err_ = err as { message?: string; code?: string }
+      if (err_.code === 'USER_CANCEL') {
         toast.info('결제가 취소되었습니다.')
       } else {
-        toast.error(`결제 오류: ${err.message}`)
+        toast.error(`결제 오류: ${err_.message}`)
       }
     }
   }

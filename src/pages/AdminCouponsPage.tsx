@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Plus, Trash2, Ticket, Copy } from 'lucide-react'
+import { Plus, Trash2, Ticket, Copy, Send, X } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 
 interface Coupon {
@@ -10,6 +10,8 @@ interface Coupon {
   total_count: number; used_count: number
   is_active: number; expires_at: string | null; created_at: string
 }
+
+type Segment = 'all' | 'vip' | 'new' | 'dormant' | 'active'
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([])
@@ -20,6 +22,12 @@ export default function AdminCouponsPage() {
     value: 0, min_order_amount: 0, max_discount: 0, total_count: 0, expires_at: ''
   })
   const [submitting, setSubmitting] = useState(false)
+
+  // 세그먼트 발송 상태
+  const [segmentModalOpen, setSegmentModalOpen] = useState(false)
+  const [segmentCouponId, setSegmentCouponId] = useState<number | null>(null)
+  const [segment, setSegment] = useState<Segment>('all')
+  const [sendingSegment, setSendingSegment] = useState(false)
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
 
@@ -58,7 +66,7 @@ export default function AdminCouponsPage() {
       } else {
         toast.error(res.data.error || '생성 실패')
       }
-    } catch (err: any) { toast.error(err?.response?.data?.error || '쿠폰 생성 실패') }
+    } catch (err: unknown) { toast.error((err as { response?: { data?: { error?: string; message?: string }; status?: number } }).response?.data?.error || '쿠폰 생성 실패') }
     finally { setSubmitting(false) }
   }
 
@@ -74,6 +82,30 @@ export default function AdminCouponsPage() {
   function copyCode(code: string) {
     navigator.clipboard.writeText(code)
     toast.success(`${code} 복사됨`)
+  }
+
+  function openSegmentModal(couponId: number) {
+    setSegmentCouponId(couponId)
+    setSegment('all')
+    setSegmentModalOpen(true)
+  }
+
+  async function sendCouponToSegment() {
+    if (!segmentCouponId) return
+    setSendingSegment(true)
+    try {
+      const res = await api.post(`/api/admin/coupons/${segmentCouponId}/send-segment`, { segment }, { headers })
+      if (res.data.success) {
+        toast.success(res.data.message || `${res.data.data?.sent_count || 0}명에게 쿠폰이 발송되었습니다`)
+        setSegmentModalOpen(false)
+      } else {
+        toast.error(res.data.error || '발송 실패')
+      }
+    } catch (err: unknown) {
+      toast.error((err as { response?: { data?: { error?: string } } }).response?.data?.error || '세그먼트 발송 실패')
+    } finally {
+      setSendingSegment(false)
+    }
   }
 
   return (
@@ -277,12 +309,21 @@ export default function AdminCouponsPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleDelete(c.id)}
-                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => openSegmentModal(c.id)}
+                              className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                              title="세그먼트 발송"
+                            >
+                              <Send className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(c.id)}
+                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -293,6 +334,44 @@ export default function AdminCouponsPage() {
           </div>
         )}
       </div>
+
+      {/* 세그먼트 발송 모달 */}
+      {segmentModalOpen && segmentCouponId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setSegmentModalOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-900">쿠폰 타겟 발송</h3>
+              <button onClick={() => setSegmentModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              쿠폰 #{segmentCouponId}을(를) 선택한 세그먼트 유저에게 발송합니다.
+            </p>
+            <div className="space-y-3">
+              <select
+                value={segment}
+                onChange={e => setSegment(e.target.value as Segment)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
+              >
+                <option value="all">전체 유저</option>
+                <option value="vip">VIP (골드+다이아)</option>
+                <option value="new">신규 가입 (7일 이내)</option>
+                <option value="dormant">휴면 유저 (30일 미접속)</option>
+                <option value="active">활성 유저 (최근 7일 주문)</option>
+              </select>
+              <button
+                onClick={sendCouponToSegment}
+                disabled={sendingSegment}
+                className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+              >
+                {sendingSegment ? '발송 중...' : '발송'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }

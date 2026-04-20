@@ -47,10 +47,12 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')
         localStorage.setItem('seller_username', seller.username || seller.slug || '')
+        localStorage.setItem('seller_type', seller.seller_type || 'influencer')
         navigate('/seller', { replace: true })
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || t('seller.loginErrorDefault'))
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      setError(err_.response?.data?.error || t('seller.loginErrorDefault'))
     } finally {
       setLoading(false)
     }

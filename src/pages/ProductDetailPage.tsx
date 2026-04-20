@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { Users, Gift, Clock, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId } from '@/utils/auth'
 // ✅ Zustand 직접 사용
@@ -58,7 +59,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         onChange={e => setContent(e.target.value)}
         placeholder="상품은 어떠셨나요? 최소 10자 이상 작성해주세요."
         rows={3}
-        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:border-blue-400"
+        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 resize-none focus:outline-none focus:border-blue-400"
       />
       <div className="flex gap-2 mt-3">
         <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg font-medium">취소</button>
@@ -75,8 +76,10 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               } else {
                 alert(res.data.error || '리뷰 작성 실패')
               }
-            } catch (err: any) {
-              alert(err?.response?.data?.error || '리뷰 작성에 실패했습니다')
+            } catch (err: unknown) {
+              const err_ = err as { message?: string };
+              const msg = err instanceof Error ? err.message : '리뷰 작성에 실패했습니다'
+              alert(msg)
             } finally { setSubmitting(false) }
           }}
           className="flex-[2] py-2 bg-blue-600 text-white text-sm rounded-lg font-bold disabled:opacity-40"
@@ -138,8 +141,27 @@ function AccordionSection({ title, children, defaultOpen = false }: { title: str
 }
 
 function ProductReviews({ productId }: { productId: number | string }) {
-  const [summary, setSummary] = useState<any>(null)
-  const [reviews, setReviews] = useState<any[]>([])
+  interface ReviewSummary {
+    avg_rating: number
+    total_count: number
+    star_1?: number
+    star_2?: number
+    star_3?: number
+    star_4?: number
+    star_5?: number
+    [key: string]: number | undefined
+  }
+
+  interface Review {
+    id: number | string
+    rating: number
+    content?: string
+    user_name?: string
+    created_at: string
+  }
+
+  const [summary, setSummary] = useState<ReviewSummary | null>(null)
+  const [reviews, setReviews] = useState<Review[]>([])
 
   useEffect(() => {
     api.get(`/api/reviews/product/${productId}/summary`).then(r => {
@@ -200,7 +222,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
       {/* 리뷰 목록 */}
       {reviews.length > 0 && (
         <div className="space-y-3 mt-3">
-          {reviews.map((r: any) => (
+          {reviews.map((r) => (
             <div key={r.id} className="border border-gray-200/50 rounded-xl p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
@@ -225,6 +247,18 @@ function ProductReviews({ productId }: { productId: number | string }) {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  // 추천 링크 ref 파라미터 저장 (24시간 유효)
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref) {
+      localStorage.setItem('affiliate_ref', ref)
+      localStorage.setItem('affiliate_ref_expires', String(Date.now() + 24 * 60 * 60 * 1000))
+      // 쿠키로도 저장 (다른 탭/세션에서도 유지)
+      document.cookie = `affiliate_ref=${ref}; path=/; max-age=86400; SameSite=Lax`
+    }
+  }, [searchParams])
   
   // ✅ Region 기반 Store 선택
   const krUser = useAuthKR(state => state.user)
@@ -232,7 +266,7 @@ export default function ProductDetailPage() {
   
   // ✅ Selector로 필요한 상태만 구독
   const user = isKorea() ? krUser : worldUser
-  const isLoggedIn = !!user
+  const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
   
   // 🔥 React Query로 데이터 fetching (자동 캐싱 + 재시도)
   const { data: product, isLoading, error } = useProduct(id)
@@ -259,7 +293,7 @@ export default function ProductDetailPage() {
     if (!product) return
     try {
       const raw = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
-      const filtered = raw.filter((p: any) => p.id !== product.id)
+      const filtered = raw.filter((p: { id: string | number }) => p.id !== product.id)
       filtered.unshift({ id: product.id, name: product.name, price: product.price, image: product.image_url })
       localStorage.setItem('recently_viewed', JSON.stringify(filtered.slice(0, 20)))
     } catch {}
@@ -288,7 +322,7 @@ export default function ProductDetailPage() {
     if (!id || !isLoggedIn) return
     api.get('/api/wishlists').then(r => {
       if (r.data.success && r.data.data?.items) {
-        const found = r.data.data.items.some((item: any) => String(item.product_id) === String(id))
+        const found = r.data.data.items.some((item: { product_id: string | number }) => String(item.product_id) === String(id))
         setIsWishlisted(found)
       }
     }).catch(() => {})
@@ -346,11 +380,12 @@ export default function ProductDetailPage() {
       
       // ✅ 장바구니 페이지로 이동
       navigate('/cart')
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const err_ = err as { message?: string };
       if (import.meta.env.DEV) {
         console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
       }
-      const errorMessage = err instanceof Error ? err.message : (err.response?.data?.error || '장바구니 추가에 실패했습니다.')
+      const errorMessage = err instanceof Error ? err.message : '장바구니 추가에 실패했습니다.'
       showToast(errorMessage, 'error')
     }
   }
@@ -380,8 +415,8 @@ export default function ProductDetailPage() {
           price_snapshot: product.price,
           price: product.price,
           item_total: product.price * quantity,
-          seller_id: (product as any).seller_id ?? null,
-          seller_name: (product as any).seller_name ?? null,
+          seller_id: product.seller_id ?? null,
+          seller_name: product.seller_name ?? null,
           shipping_fee: 3000,
           free_shipping_threshold: 0,
           option_id: Object.values(selectedOptions)[0] || null,
@@ -465,9 +500,9 @@ export default function ProductDetailPage() {
           image: product.image_url,
           description: product.description,
           url: `/products/${product.id}`,
-          seller: (product as any).seller_name,
+          seller: product.seller_name,
           originalPrice: product.original_price,
-          stock: (product as any).stock,
+          stock: product.stock,
           sku: product.id,
           rating: reviewSummary?.avg_rating,
           reviewCount: reviewSummary?.total_count,
@@ -494,9 +529,9 @@ export default function ProductDetailPage() {
           price={displayPrice}
           originalPrice={product.original_price || undefined}
           discountRate={product.discount_rate || undefined}
-          sellerName={(product as any).seller_name}
-          sellerId={(product as any).seller_id}
-          soldCount={(product as any).sold_count}
+          sellerName={product.seller_name}
+          sellerId={product.seller_id}
+          soldCount={product.sold_count}
           reviewCount={reviewSummary?.total_count}
           avgRating={reviewSummary?.avg_rating}
         />
@@ -511,11 +546,11 @@ export default function ProductDetailPage() {
         )}
 
         {/* Long Description */}
-        {(product as any).long_description && (
+        {product.long_description && (
           <div className="px-5 py-4 border-t border-gray-100">
             <h2 className="text-sm font-bold text-gray-900 mb-2">상품 상세</h2>
             <div className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-              {(product as any).long_description}
+              {product.long_description}
             </div>
           </div>
         )}
@@ -592,21 +627,21 @@ export default function ProductDetailPage() {
           ]} />
         </AccordionSection>
 
-        {/* 안내 정보 */}
-        <AccordionSection title="안내 정보">
-          <ProductNoticeSection />
-        </AccordionSection>
-
-        {/* 친구 초대 공동구매 */}
-        <ReferralSection productId={product.id} />
-
-        {/* 상품 리뷰 */}
-        <AccordionSection title={`리뷰`} defaultOpen={true}>
-          <ProductReviews productId={product.id} />
-        </AccordionSection>
-
-        {/* 카카오톡 공유 */}
-        <div className="px-5 py-4">
+        {/* 공유 + 추천 링크 (가격 바로 아래) */}
+        <div className="px-5 py-3 space-y-2">
+          {isLoggedIn && (
+            <button
+              onClick={() => {
+                const userId = getUserId()
+                const url = `https://live.ur-team.com/products/${product.id}?ref=${userId}`
+                navigator.clipboard.writeText(url)
+                showToast('추천 링크가 복사되었습니다!', 'success')
+              }}
+              className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98]"
+            >
+              🔗 추천 링크 복사 (판매 당 2% 무한 적립)
+            </button>
+          )}
           <KakaoShareButton
             title={product.name}
             description={`${displayPrice.toLocaleString()}원 ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
@@ -615,6 +650,35 @@ export default function ProductDetailPage() {
             buttonText="상품 보러가기"
           />
         </div>
+
+        {/* 배송 안내 배너 */}
+        <div className="px-5 py-3">
+          <div className="bg-blue-50 rounded-xl px-4 py-3 flex items-center gap-3">
+            <span className="text-lg">🚚</span>
+            <div>
+              <p className="text-xs font-bold text-blue-700">무료배송</p>
+              <p className="text-[10px] text-blue-500">50,000원 이상 구매 시 · 주문 후 2~5일 배송</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 친구 초대 공동구매 */}
+        <ReferralSection
+          productId={product.id}
+          productTiers={product.group_buy_tiers}
+          isLoggedIn={isLoggedIn}
+          showToast={showToast}
+        />
+
+        {/* 안내 정보 */}
+        <AccordionSection title="안내 정보">
+          <ProductNoticeSection />
+        </AccordionSection>
+
+        {/* 상품 리뷰 */}
+        <AccordionSection title={`리뷰`} defaultOpen={true}>
+          <ProductReviews productId={product.id} />
+        </AccordionSection>
 
         {/* 교환 및 반품 */}
         <AccordionSection title="교환 및 반품 안내">
@@ -633,13 +697,15 @@ export default function ProductDetailPage() {
       </main>
 
       {/* Floating Cart / Purchase Bar */}
-      <Suspense fallback={<div className="fixed bottom-0 left-0 right-0 h-16 bg-gray-100 animate-pulse" />}>
+      <Suspense fallback={<div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-gray-100 animate-pulse" />}>
         <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
           disabled={product.stock === 0 && product.stock_quantity === 0}
           isWishlisted={isWishlisted}
           onToggleWishlist={handleToggleWishlist}
+          price={product.price}
+          originalPrice={product.original_price}
         />
       </Suspense>
 
@@ -659,67 +725,208 @@ export default function ProductDetailPage() {
   )
 }
 
-function ReferralSection({ productId }: { productId: number | string }) {
+interface GroupTier {
+  count: number
+  discount: number
+}
+
+interface ActiveGroup {
+  id?: number | string
+  invite_code: string
+  creator_name: string
+  current_count: number
+  target_count: number
+  tiers?: GroupTier[]
+  expires_at?: string
+  unlocked_tier?: GroupTier | null
+}
+
+const DEFAULT_TIERS: GroupTier[] = [
+  { count: 2, discount: 10 },
+  { count: 5, discount: 20 },
+  { count: 10, discount: 30 },
+]
+
+function parseTiers(raw: unknown): GroupTier[] {
+  if (!raw) return DEFAULT_TIERS
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (Array.isArray(arr) && arr.length > 0) {
+      return arr
+        .filter((t: unknown): t is GroupTier => {
+          const item = t as Record<string, unknown>
+          return typeof item?.count === 'number' && typeof item?.discount === 'number'
+        })
+        .sort((a: GroupTier, b: GroupTier) => a.count - b.count)
+    }
+  } catch {
+    // fall through
+  }
+  return DEFAULT_TIERS
+}
+
+function formatTimeRemaining(expiresAt?: string): string {
+  if (!expiresAt) return ''
+  const diff = new Date(expiresAt).getTime() - Date.now()
+  if (diff <= 0) return '마감됨'
+  const d = Math.floor(diff / 86400000)
+  const h = Math.floor((diff % 86400000) / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  if (d > 0) return `${d}일 ${h}시간 남음`
+  if (h > 0) return `${h}시간 ${m}분 남음`
+  return `${m}분 남음`
+}
+
+function ReferralSection({
+  productId,
+  productTiers,
+  isLoggedIn,
+  showToast,
+}: {
+  productId: number | string
+  productTiers?: unknown
+  isLoggedIn: boolean
+  showToast: (message: string, type?: 'success' | 'error') => void
+}) {
   const navigate = useNavigate()
-  const [groups, setGroups] = useState<any[]>([])
+  const [groups, setGroups] = useState<ActiveGroup[]>([])
+  const [loadingGroups, setLoadingGroups] = useState(true)
   const [creating, setCreating] = useState(false)
 
+  const tiers = parseTiers(productTiers)
+
   useEffect(() => {
+    let cancelled = false
+    setLoadingGroups(true)
     api.get(`/api/referral/product/${productId}`)
-      .then(r => { if (r.data.success) setGroups(r.data.data || []) })
+      .then(r => {
+        if (cancelled) return
+        if (r.data.success) setGroups((r.data.data || []) as ActiveGroup[])
+      })
       .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingGroups(false) })
+    return () => { cancelled = true }
   }, [productId])
 
   const handleCreate = async () => {
+    if (!isLoggedIn) {
+      showToast('로그인 후 시작할 수 있습니다.', 'error')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      navigate('/login')
+      return
+    }
     setCreating(true)
     try {
-      const res = await api.post('/api/referral/create', { product_id: Number(productId), target_count: 3, discount_percent: 10 })
+      const maxTier = tiers[tiers.length - 1]
+      const res = await api.post('/api/referral/create', {
+        product_id: Number(productId),
+        target_count: maxTier.count,
+        discount_percent: maxTier.discount,
+        tiers,
+      })
       if (res.data.success) {
         navigate(`/referral/${res.data.data.invite_code}`)
       } else {
-        alert(res.data.error || '그룹 생성 실패')
+        showToast(res.data.error || '공동구매 생성에 실패했습니다.', 'error')
       }
-    } catch (err: any) {
-      alert(err?.response?.data?.error || '로그인이 필요합니다')
-    } finally { setCreating(false) }
+    } catch (err: unknown) {
+      const err_ = err as { message?: string };
+      const msg = err instanceof Error ? err.message : '공동구매 생성에 실패했습니다.'
+      showToast(msg, 'error')
+    } finally {
+      setCreating(false)
+    }
   }
 
+  const tierPreview = tiers.map(t => `${t.count}명: ${t.discount}%할인`).join(' → ')
+
   return (
-    <div className="bg-gradient-to-r from-pink-50 to-red-50 rounded-2xl p-4 mx-4 mb-3">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">👫</span>
-        <h3 className="text-sm font-bold text-gray-900">친구 초대 공동구매</h3>
-        <span className="text-xs bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded">10% 할인</span>
+    <div className="mx-4 mb-3 bg-white rounded-xl border border-gray-200 p-4">
+      {/* 헤더 */}
+      <div className="flex items-center gap-2 mb-1.5">
+        <Gift className="w-4 h-4 text-gray-900" />
+        <h3 className="text-sm font-bold text-gray-900">공동구매로 더 싸게</h3>
       </div>
-      <p className="text-xs text-gray-500 mb-3">3명이 모이면 10% 추가 할인! 카카오로 친구를 초대하세요.</p>
+      <p className="text-xs text-gray-600 leading-relaxed mb-3">
+        친구를 초대할수록 더 큰 할인! 모집 인원에 따라 단계별 할인이 적용됩니다.
+      </p>
 
-      {groups.length > 0 && (
-        <div className="space-y-2 mb-3">
-          {groups.slice(0, 2).map((g: any) => (
-            <button
-              key={g.id}
-              onClick={() => navigate(`/referral/${g.invite_code}`)}
-              className="w-full flex items-center justify-between p-2.5 bg-white rounded-xl text-left"
-            >
-              <div>
-                <p className="text-xs font-medium text-gray-900">{g.creator_name}님의 그룹</p>
-                <p className="text-[10px] text-gray-400">{g.current_count}/{g.target_count}명 참여</p>
-              </div>
-              <div className="h-1.5 w-16 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-pink-500 rounded-full" style={{ width: `${(g.current_count / g.target_count) * 100}%` }} />
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* 티어 미리보기 */}
+      <div className="mb-3 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5">
+        <p className="text-[11px] text-gray-500 mb-1">할인 단계</p>
+        <p className="text-xs font-semibold text-gray-900 leading-snug break-keep">
+          {tierPreview}
+        </p>
+      </div>
 
+      {/* 시작 버튼 */}
       <button
         onClick={handleCreate}
         disabled={creating}
-        className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-red-500 text-white text-sm font-bold rounded-xl active:scale-[0.98] disabled:opacity-50"
+        className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-xl active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
       >
-        {creating ? '생성 중...' : '공동구매 그룹 만들기'}
+        <Users className="w-4 h-4" />
+        {creating ? '생성 중...' : '공동구매 시작하기'}
       </button>
+
+      {/* 진행 중인 그룹 */}
+      {loadingGroups ? (
+        <div className="mt-3 space-y-2">
+          <div className="h-14 rounded-lg bg-gray-50 animate-pulse" />
+        </div>
+      ) : groups.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold text-gray-900 mb-2">진행 중인 공동구매</p>
+          <div className="space-y-2">
+            {groups.map((g) => {
+              const progress = g.target_count > 0 ? (g.current_count / g.target_count) * 100 : 0
+              const unlockedDiscount = g.unlocked_tier?.discount ?? 0
+              const timeLeft = formatTimeRemaining(g.expires_at)
+              return (
+                <button
+                  key={g.invite_code}
+                  onClick={() => navigate(`/referral/${g.invite_code}`)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white text-left hover:bg-gray-50 active:scale-[0.99] transition"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <p className="text-xs font-semibold text-gray-900 truncate">
+                        {g.creator_name}님의 공동구매
+                      </p>
+                      {unlockedDiscount > 0 && (
+                        <span className="text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded">
+                          {unlockedDiscount}% 할인 중
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-gray-500">
+                      <Users className="w-3 h-3" />
+                      <span>{g.current_count}/{g.target_count}명</span>
+                      {timeLeft && (
+                        <>
+                          <span className="text-gray-300">·</span>
+                          <Clock className="w-3 h-3" />
+                          <span>{timeLeft}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gray-900 rounded-full transition-all"
+                        style={{ width: `${Math.min(100, progress)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5 shrink-0">
+                    <span className="text-[11px] font-bold text-gray-900">참여</span>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

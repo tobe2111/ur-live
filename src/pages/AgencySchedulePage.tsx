@@ -77,7 +77,7 @@ export default function AgencySchedulePage() {
                       isToday ? 'bg-blue-600 text-white' : dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : 'text-gray-700'
                     }`}>{day}</span>
                     <div className="mt-1 space-y-0.5">
-                      {dayStreams.slice(0, 3).map((s: any) => {
+                      {dayStreams.slice(0, 3).map((s: { id: number; status: string; scheduled_at?: string; created_at: string; seller_name: string; title: string }) => {
                         const isLive = s.status === 'live'
                         const time = new Date(s.scheduled_at || s.created_at)
                         return (
@@ -106,7 +106,7 @@ export default function AgencySchedulePage() {
                 <div className="mt-6">
                   <h2 className="text-sm font-bold text-gray-900 mb-3">오늘의 방송</h2>
                   <div className="space-y-2">
-                    {todayStreams.map((s: any) => (
+                    {todayStreams.map((s: { id: number; status: string; scheduled_at?: string; created_at: string; seller_name: string; title: string }) => (
                       <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${s.status === 'live' ? 'bg-red-50' : 'bg-blue-50'}`}>
                           {s.status === 'live' ? <Play className="w-4 h-4 text-red-500" /> : <Clock className="w-4 h-4 text-blue-500" />}

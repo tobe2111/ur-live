@@ -10,6 +10,7 @@ import {
   Ticket,
   Heart,
   Bell,
+  Gift,
 } from "lucide-react"
 
 const menuItems = [
@@ -31,6 +32,12 @@ const menuItems = [
     title: "위시리스트",
     subtitle: "찜한 상품 목록",
     path: "/wishlist",
+  },
+  {
+    icon: Gift,
+    title: "내 공동구매",
+    subtitle: "참여 중인 공구를 확인하세요",
+    path: "/mypage/group-buys",
   },
   {
     icon: Bell,

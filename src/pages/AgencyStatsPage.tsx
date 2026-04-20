@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { TrendingUp, ShoppingBag, Play, Users } from 'lucide-react'
+import { TrendingUp, ShoppingBag, Play, Users, ArrowUpDown, Trophy } from 'lucide-react'
 
 interface Seller {
   id: number
@@ -22,6 +22,24 @@ interface SellerStat {
   streams: { stream_count: number; total_viewers: number } | null
 }
 
+interface ComparisonRow {
+  id: number
+  name: string
+  business_name: string
+  order_count: number
+  revenue: number
+  live_count: number
+  ended_streams: number
+  total_vouchers: number
+  used_vouchers: number
+  voucher_usage_rate: number
+  total_group_buys: number
+  achieved_group_buys: number
+  group_buy_success_rate: number
+}
+
+type ComparisonSortKey = 'revenue' | 'order_count' | 'voucher_usage_rate' | 'group_buy_success_rate'
+
 type Period = '7d' | '30d' | '90d'
 
 export default function AgencyStatsPage() {
@@ -31,6 +49,12 @@ export default function AgencyStatsPage() {
   const [period, setPeriod] = useState<Period>('30d')
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<'revenue' | 'orders' | 'streams'>('revenue')
+
+  // Restaurant comparison state
+  const [comparison, setComparison] = useState<ComparisonRow[]>([])
+  const [comparisonLoading, setComparisonLoading] = useState(false)
+  const [comparisonSort, setComparisonSort] = useState<ComparisonSortKey>('revenue')
+  const [comparisonSortAsc, setComparisonSortAsc] = useState(false)
 
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token}` }
@@ -61,11 +85,43 @@ export default function AgencyStatsPage() {
       .finally(() => setLoading(false))
   }, [sellers, period])
 
+  // Fetch restaurant comparison data
+  useEffect(() => {
+    if (!token || !sellers.length) return
+    setComparisonLoading(true)
+    const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
+    api.get(`/api/agency/sellers/compare?period=${days}`, { headers })
+      .then(r => setComparison(r.data.data || []))
+      .catch(() => setComparison([]))
+      .finally(() => setComparisonLoading(false))
+  }, [sellers, period, token])
+
   const sorted = [...stats].sort((a, b) => {
     if (sort === 'revenue') return (b.orders?.revenue ?? 0) - (a.orders?.revenue ?? 0)
     if (sort === 'orders') return (b.orders?.order_count ?? 0) - (a.orders?.order_count ?? 0)
     return (b.streams?.stream_count ?? 0) - (a.streams?.stream_count ?? 0)
   })
+
+  const sortedComparison = useMemo(() => {
+    const list = [...comparison]
+    list.sort((a, b) => {
+      const aVal = a[comparisonSort] ?? 0
+      const bVal = b[comparisonSort] ?? 0
+      return comparisonSortAsc ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number)
+    })
+    return list
+  }, [comparison, comparisonSort, comparisonSortAsc])
+
+  const topPerformerId = sortedComparison.length > 0 ? sortedComparison[0].id : null
+
+  function handleComparisonSort(key: ComparisonSortKey) {
+    if (comparisonSort === key) {
+      setComparisonSortAsc(!comparisonSortAsc)
+    } else {
+      setComparisonSort(key)
+      setComparisonSortAsc(false)
+    }
+  }
 
   const totals = stats.reduce((acc, s) => ({
     revenue: acc.revenue + (s.orders?.revenue ?? 0),
@@ -175,6 +231,91 @@ export default function AgencyStatsPage() {
                     <td className="px-4 py-3 text-gray-700">{s.streams?.stream_count ?? 0}회</td>
                     <td className="px-4 py-3 text-gray-700">
                       {(s.streams?.total_viewers ?? 0).toLocaleString()}명
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      {/* Restaurant Comparison Table */}
+      <div className="bg-white rounded-xl border border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-900">식당별 성과 비교</h2>
+          <p className="text-xs text-gray-400">열 클릭으로 정렬</p>
+        </div>
+
+        {comparisonLoading ? (
+          <div className="p-8 text-center text-sm text-gray-400">불러오는 중...</div>
+        ) : sortedComparison.length === 0 ? (
+          <div className="p-8 text-center text-sm text-gray-400">비교할 식당이 없습니다.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">식당명</th>
+                  {([
+                    { key: 'revenue' as ComparisonSortKey, label: '매출' },
+                    { key: 'order_count' as ComparisonSortKey, label: '주문수' },
+                    { key: 'voucher_usage_rate' as ComparisonSortKey, label: '바우처 사용률' },
+                    { key: 'group_buy_success_rate' as ComparisonSortKey, label: '공구 참여율' },
+                  ]).map(col => (
+                    <th
+                      key={col.key}
+                      onClick={() => handleComparisonSort(col.key)}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        <ArrowUpDown className={`w-3 h-3 ${comparisonSort === col.key ? 'text-blue-600' : 'text-gray-300'}`} />
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {sortedComparison.map(row => (
+                  <tr
+                    key={row.id}
+                    className={`hover:bg-gray-50 ${row.id === topPerformerId ? 'bg-yellow-50' : ''}`}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {row.id === topPerformerId && (
+                          <Trophy className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-900">{row.business_name || row.name}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-gray-900">
+                      {((row.revenue ?? 0) / 10000).toFixed(1)}만원
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{row.order_count ?? 0}건</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden max-w-[80px]">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full"
+                            style={{ width: `${Math.min(row.voucher_usage_rate ?? 0, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-gray-700 text-xs font-medium">{row.voucher_usage_rate ?? 0}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden max-w-[80px]">
+                          <div
+                            className="h-full bg-violet-500 rounded-full"
+                            style={{ width: `${Math.min(row.group_buy_success_rate ?? 0, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-gray-700 text-xs font-medium">{row.group_buy_success_rate ?? 0}%</span>
+                      </div>
                     </td>
                   </tr>
                 ))}

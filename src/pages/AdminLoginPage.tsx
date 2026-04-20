@@ -74,9 +74,10 @@ export default function AdminLoginPage() {
         
         navigate('/admin', { replace: true })
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
       console.error('[AdminLogin] ❌ Error:', err)
-      setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
+      setError(err_.response?.data?.message || err_.response?.data?.error || '로그인 실패')
     } finally {
       setLoading(false)
     }

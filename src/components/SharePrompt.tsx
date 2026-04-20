@@ -45,6 +45,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
           buttonText={shareButtonText}
         />
 
+
         <button onClick={onClose} className="w-full mt-2 py-2.5 text-sm text-gray-500 font-medium">
           다음에 하기
         </button>

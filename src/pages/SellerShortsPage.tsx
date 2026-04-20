@@ -98,8 +98,9 @@ export default function SellerShortsPage() {
       } else {
         toast.error(res.data.error || t('seller.registerFailed'))
       }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || t('seller.registerError'))
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || t('seller.registerError'))
     } finally {
       setSubmitting(false)
     }

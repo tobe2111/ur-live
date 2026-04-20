@@ -15,6 +15,7 @@ interface Product {
   min_stock_alert: number
   image_url: string | null
   price: number
+  is_supply_product?: boolean
 }
 
 interface StockMovement {
@@ -78,7 +79,7 @@ export default function SellerInventoryPage() {
           // Try BarcodeDetector if available
           if ('BarcodeDetector' in window) {
             scanningRef.current = true
-            const detector = new (window as any).BarcodeDetector({
+            const detector = new (window as unknown as { BarcodeDetector: new (opts: { formats: string[] }) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector({
               formats: ['ean_13', 'qr_code', 'code_128']
             })
             const scanLoop = async () => {
@@ -141,7 +142,7 @@ export default function SellerInventoryPage() {
 
       if (prodRes.data.success) {
         const all = prodRes.data.data?.products || prodRes.data.data || []
-        setProducts(all.filter((p: any) => !p.is_supply_product))
+        setProducts(all.filter((p: Product) => !p.is_supply_product))
       }
       if (alertRes.data.success) {
         setAlerts(alertRes.data.data || [])

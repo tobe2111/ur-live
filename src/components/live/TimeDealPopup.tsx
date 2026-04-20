@@ -2,13 +2,23 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Zap, Clock, ShoppingCart } from 'lucide-react'
+import { Zap, Clock, ShoppingCart, Users, Gift } from 'lucide-react'
 
 interface TimeDeal {
   id: number; product_id: number; product_name: string
   original_price: number; deal_price: number; discount_percent: number
   max_claims: number; claimed_count: number
   status: string; expires_at: string
+  // Group buy fields (optional for backward compat)
+  is_group_buy?: boolean
+  target_participants?: number
+  current_participants?: number
+  progress_percent?: number
+  target_reached?: boolean
+  bonus_discount_percent?: number
+  effective_discount_percent?: number
+  effective_price?: number
+  remaining?: number
 }
 
 export default function TimeDealPopup({ streamId }: { streamId: string | number }) {
@@ -56,11 +66,21 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
   const handleClaim = async () => {
     if (!deal || claiming || claimed) return
     setClaiming(true)
+    const wasTargetReached = !!deal.target_reached
     try {
       const res = await api.post(`/api/timedeal/${deal.id}/claim`)
       if (res.data.success) {
         setClaimed(true)
-        toast.success('타임딜 획득! 장바구니에서 할인가로 구매하세요')
+        const isGroupBuy = !!deal.is_group_buy
+        // Detect if target was just reached with this claim
+        const newTargetReached = res.data.data?.target_reached ?? res.data.target_reached
+        if (isGroupBuy && !wasTargetReached && newTargetReached) {
+          toast.success('🎉 목표 달성! 추가 할인이 적용됐어요!')
+        } else if (isGroupBuy) {
+          toast.success('공구 참여 완료! 장바구니에서 확인하세요')
+        } else {
+          toast.success('타임딜 획득! 장바구니에서 할인가로 구매하세요')
+        }
       } else {
         toast.error(res.data.error)
       }
@@ -70,12 +90,37 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
 
   if (!deal || !show || deal.status !== 'active') return null
 
-  const remaining = deal.max_claims - deal.claimed_count
+  const isGroupBuy = !!deal.is_group_buy
+  const remaining = typeof deal.remaining === 'number' ? deal.remaining : (deal.max_claims - deal.claimed_count)
   const progressPct = Math.min(100, (deal.claimed_count / deal.max_claims) * 100)
+
+  // Group buy specific
+  const currentParticipants = deal.current_participants ?? 0
+  const targetParticipants = deal.target_participants ?? 0
+  const groupProgressPct = Math.min(100, deal.progress_percent ?? 0)
+  const targetReached = !!deal.target_reached
+  const needMore = Math.max(0, targetParticipants - currentParticipants)
+  const effectiveDiscount = deal.effective_discount_percent ?? deal.discount_percent
+  const effectivePrice = deal.effective_price ?? deal.deal_price
+  const bonusDiscount = deal.bonus_discount_percent ?? 0
+
+  const containerGradient = isGroupBuy
+    ? 'bg-gradient-to-r from-pink-500 to-pink-600'
+    : 'bg-gradient-to-r from-red-500 to-pink-600'
+
+  const ctaLabel = claimed
+    ? '✓ 획득 완료'
+    : remaining <= 0
+      ? '매진'
+      : claiming
+        ? '처리 중...'
+        : isGroupBuy ? '참여하기' : '지금 구매하기'
+
+  const ctaColorClass = isGroupBuy ? 'bg-white text-pink-600' : 'bg-white text-red-600'
 
   return (
     <div className="fixed inset-x-0 bottom-24 z-[60] flex justify-center px-4 animate-in slide-in-from-bottom duration-300">
-      <div className="w-full max-w-md bg-gradient-to-r from-red-500 to-pink-600 rounded-2xl p-4 text-white shadow-2xl relative overflow-hidden">
+      <div className={`w-full max-w-md ${containerGradient} rounded-2xl p-4 text-white shadow-2xl relative overflow-hidden`}>
         {/* 배경 효과 */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full" />
@@ -86,8 +131,12 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
           {/* 헤더 */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <Zap className="w-5 h-5 text-yellow-300 fill-yellow-300" />
-              <span className="font-bold">타임딜!</span>
+              {isGroupBuy ? (
+                <Users className="w-5 h-5 text-white" />
+              ) : (
+                <Zap className="w-5 h-5 text-yellow-300 fill-yellow-300" />
+              )}
+              <span className="font-bold">{isGroupBuy ? '🎁 라이브 공구!' : '타임딜!'}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-black/30 rounded-full px-3 py-1">
               <Clock className="w-3.5 h-3.5" />
@@ -100,25 +149,55 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
 
           <div className="flex items-end gap-2 mb-2">
             <span className="text-[10px] line-through text-white/60">{deal.original_price.toLocaleString()}원</span>
-            <span className="text-xl font-bold">{deal.deal_price.toLocaleString()}원</span>
-            <span className="bg-yellow-400 text-red-700 text-xs font-bold px-1.5 py-0.5 rounded">
-              -{deal.discount_percent}%
+            <span className="text-xl font-bold">{(isGroupBuy ? effectivePrice : deal.deal_price).toLocaleString()}원</span>
+            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isGroupBuy ? 'bg-white text-pink-600' : 'bg-yellow-400 text-red-700'}`}>
+              -{isGroupBuy ? effectiveDiscount : deal.discount_percent}%
             </span>
           </div>
 
-          {/* 남은 수량 바 */}
-          <div className="mb-3">
-            <div className="flex justify-between text-[10px] text-white/70 mb-1">
-              <span>남은 수량 {remaining}개</span>
-              <span>{deal.claimed_count}/{deal.max_claims}</span>
+          {/* 진행 바: 공구 vs 타임딜 */}
+          {isGroupBuy ? (
+            <div className="mb-3">
+              <div className="flex items-center justify-between text-[11px] text-white/90 mb-1">
+                <div className="flex items-center gap-1 font-semibold">
+                  <Users className="w-3 h-3" />
+                  <span>{currentParticipants}/{targetParticipants}명 참여중</span>
+                </div>
+                <span className="font-mono">{Math.floor(groupProgressPct)}%</span>
+              </div>
+              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-pink-200 rounded-full transition-all"
+                  style={{ width: `${groupProgressPct}%` }}
+                />
+              </div>
+              <div className="mt-1.5 text-[11px] flex items-center gap-1">
+                {targetReached ? (
+                  <span className="font-bold text-yellow-200">
+                    🎉 목표 달성! {effectiveDiscount}% 할인 적용!
+                  </span>
+                ) : (
+                  <span className="text-white/90 flex items-center gap-1">
+                    <Gift className="w-3 h-3" />
+                    {needMore}명 더 모이면 -{bonusDiscount}% 추가 할인!
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-yellow-400 rounded-full transition-all"
-                style={{ width: `${progressPct}%` }}
-              />
+          ) : (
+            <div className="mb-3">
+              <div className="flex justify-between text-[10px] text-white/70 mb-1">
+                <span>남은 수량 {remaining}개</span>
+                <span>{deal.claimed_count}/{deal.max_claims}</span>
+              </div>
+              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-yellow-400 rounded-full transition-all"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* 버튼 */}
           <div className="flex gap-2">
@@ -128,10 +207,10 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
               className={`flex-1 py-3 rounded-xl font-bold text-sm active:scale-[0.97] transition-all ${
                 claimed ? 'bg-green-400 text-green-900' :
                 remaining <= 0 ? 'bg-gray-400 text-gray-200' :
-                'bg-white text-red-600'
+                ctaColorClass
               }`}
             >
-              {claimed ? '✓ 획득 완료' : remaining <= 0 ? '매진' : claiming ? '처리 중...' : '지금 구매하기'}
+              {ctaLabel}
             </button>
             <button
               onClick={() => setShow(false)}

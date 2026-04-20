@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
@@ -20,7 +21,7 @@ export default function RegisterPage() {
   const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
   const signupWithEmailAction = krSignupWithEmail
 
-  const isLoggedIn = !!user
+  const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -70,13 +71,14 @@ export default function RegisterPage() {
       await signupWithEmailAction(formData.email, formData.password, formData.name)
       toast.success('회원가입이 완료되었습니다! 로그인해주세요.')
       navigate('/login')
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       let errorMessage = '회원가입에 실패했습니다.'
-      if (err.message.includes('email-already-in-use')) {
+      if (errMsg.includes('email-already-in-use')) {
         errorMessage = '이미 사용 중인 이메일입니다.'
-      } else if (err.message.includes('invalid-email')) {
+      } else if (errMsg.includes('invalid-email')) {
         errorMessage = '유효하지 않은 이메일 형식입니다.'
-      } else if (err.message.includes('weak-password')) {
+      } else if (errMsg.includes('weak-password')) {
         errorMessage = '비밀번호가 너무 약합니다. 8자 이상 입력해주세요.'
       }
       setError(errorMessage)
@@ -98,6 +100,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-5 py-12">
+      <SEO title="회원가입 - 유어딜" description="유어딜에 가입하고 라이브 쇼핑을 시작하세요" url="/register" />
       <div className="w-full max-w-[360px]">
 
         {/* Logo */}
@@ -130,7 +133,7 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="홍길동"
               required
-              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
             />
           </div>
 
@@ -145,7 +148,7 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="example@email.com"
               required
-              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
             />
           </div>
 
@@ -162,7 +165,7 @@ export default function RegisterPage() {
                 placeholder="8자 이상 입력해주세요"
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
               />
               <button
                 type="button"
@@ -187,7 +190,7 @@ export default function RegisterPage() {
                 placeholder="비밀번호를 다시 입력해주세요"
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
               />
               <button
                 type="button"

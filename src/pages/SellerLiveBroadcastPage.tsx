@@ -10,7 +10,7 @@ import {
   Youtube, Loader2, ExternalLink, Radio, Play,
   VideoIcon, CheckCircle2, AlertCircle, Copy,
   Smartphone, ArrowLeft, Gavel, Zap,
-  Globe, EyeOff, Lock
+  Globe, EyeOff, Lock, Users
 } from 'lucide-react'
 import { isSellerAuthenticated } from '@/lib/seller-auth'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
@@ -52,7 +52,7 @@ interface LiveStream {
 }
 
 type WizardStep = 'info' | 'setup' | 'live'
-type StreamMethod = 'youtube' | 'obs' | 'prism'
+type StreamMethod = 'youtube' | 'obs' | 'prism' | 'quick'
 
 // ── 스텝 인디케이터 ────────────────────────────────────────────────
 function StepIndicator({ step }: { step: WizardStep }) {
@@ -129,6 +129,7 @@ export default function SellerLiveBroadcastPage() {
   // Step 1 폼
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [thumbnailUrl, setThumbnailUrl] = useState('')
   const [selectedProducts, setSelectedProducts] = useState<number[]>([])
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledDate, setScheduledDate] = useState('')
@@ -201,6 +202,7 @@ export default function SellerLiveBroadcastPage() {
 
       const res = await api.post('/api/seller/youtube/live/create', {
         title: title.trim(), description: description.trim(),
+        thumbnail_url: thumbnailUrl.trim() || undefined,
         product_ids: selectedProducts,
         scheduled_start_time: scheduledStartTime,
         privacy_status: privacy,
@@ -220,9 +222,10 @@ export default function SellerLiveBroadcastPage() {
         if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
         else toast.error(res.data?.error || '방송 생성에 실패했습니다.')
       }
-    } catch (err: any) {
-      if (err.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
-      else toast.error(err.response?.data?.error || '방송 생성에 실패했습니다.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error_code?: string; error?: string } } }
+      if (axiosErr.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
+      else toast.error(axiosErr.response?.data?.error || '방송 생성에 실패했습니다.')
     } finally { setCreating(false) }
   }
 
@@ -315,6 +318,7 @@ export default function SellerLiveBroadcastPage() {
           <StepInfo
             title={title} setTitle={setTitle}
             description={description} setDescription={setDescription}
+            thumbnailUrl={thumbnailUrl} setThumbnailUrl={setThumbnailUrl}
             privacy={privacy} setPrivacy={setPrivacy}
             isScheduled={isScheduled} setIsScheduled={setIsScheduled}
             scheduledDate={scheduledDate} setScheduledDate={setScheduledDate}
@@ -355,7 +359,7 @@ export default function SellerLiveBroadcastPage() {
         {step === 'info' && (
           <StreamList
             streams={streams}
-            onManage={(stream: any) => {
+            onManage={(stream: LiveStream) => {
               setCurrentStream(stream)
               setStep(stream.status === 'live' ? 'live' : 'setup')
             }}
@@ -368,11 +372,25 @@ export default function SellerLiveBroadcastPage() {
 }
 
 // ── Step 1: 방송 정보 입력 ───────────────────────────────────────
-function StepInfo({ title, setTitle, description, setDescription, privacy, setPrivacy,
+interface StepInfoProps {
+  title: string; setTitle: (v: string) => void
+  description: string; setDescription: (v: string) => void
+  thumbnailUrl: string; setThumbnailUrl: (v: string) => void
+  privacy: 'public' | 'unlisted' | 'private'; setPrivacy: (v: 'public' | 'unlisted' | 'private') => void
+  isScheduled: boolean; setIsScheduled: (fn: (v: boolean) => boolean) => void
+  scheduledDate: string; setScheduledDate: (v: string) => void
+  scheduledTime: string; setScheduledTime: (v: string) => void
+  sellableProducts: Product[]; selectedProducts: number[]; toggleProduct: (id: number) => void
+  method: StreamMethod; setMethod: (v: StreamMethod) => void
+  creating: boolean; onCreate: () => void
+  navigate: ReturnType<typeof useNavigate>
+}
+
+function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, setThumbnailUrl, privacy, setPrivacy,
   isScheduled, setIsScheduled, scheduledDate, setScheduledDate, scheduledTime, setScheduledTime,
   sellableProducts, selectedProducts, toggleProduct, method, setMethod, creating, onCreate, navigate
-}: any) {
-  const privacyOptions = [
+}: StepInfoProps) {
+  const privacyOptions: { key: 'public' | 'unlisted' | 'private'; icon: typeof Globe; label: string; desc: string }[] = [
     { key: 'public', icon: Globe, label: '공개', desc: '모든 사람' },
     { key: 'unlisted', icon: EyeOff, label: '미등록', desc: '링크 공유' },
     { key: 'private', icon: Lock, label: '비공개', desc: '나만 보기' },
@@ -393,7 +411,7 @@ function StepInfo({ title, setTitle, description, setDescription, privacy, setPr
       {/* 제목 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">방송 제목 <span className="text-red-500">*</span></label>
-        <input value={title} onChange={(e: any) => setTitle(e.target.value)}
+        <input value={title} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
           placeholder="예) 오늘만 이 가격! 신상 맛집 라이브" maxLength={100}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
       </div>
@@ -401,9 +419,21 @@ function StepInfo({ title, setTitle, description, setDescription, privacy, setPr
       {/* 설명 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">설명 <span className="text-xs text-gray-400 font-normal">(선택)</span></label>
-        <textarea value={description} onChange={(e: any) => setDescription(e.target.value)}
+        <textarea value={description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
           placeholder="방송 내용을 간단히 소개해주세요" rows={2} maxLength={500}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" />
+      </div>
+
+      {/* 썸네일 */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">썸네일 이미지 <span className="text-xs text-gray-400 font-normal">(선택)</span></label>
+        <input value={thumbnailUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setThumbnailUrl(e.target.value)}
+          placeholder="이미지 URL (없으면 YouTube 썸네일 자동 사용)"
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        {thumbnailUrl && (
+          <img src={thumbnailUrl} alt="미리보기" className="mt-2 w-full max-w-[200px] rounded-lg object-cover"
+            onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none' }} />
+        )}
       </div>
 
       {/* 공개 설정 */}
@@ -434,10 +464,10 @@ function StepInfo({ title, setTitle, description, setDescription, privacy, setPr
       </div>
       {isScheduled && (
         <div className="flex gap-3">
-          <input type="date" value={scheduledDate} onChange={(e: any) => setScheduledDate(e.target.value)}
+          <input type="date" value={scheduledDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledDate(e.target.value)}
             min={new Date().toISOString().split('T')[0]}
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          <input type="time" value={scheduledTime} onChange={(e: any) => setScheduledTime(e.target.value)}
+          <input type="time" value={scheduledTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledTime(e.target.value)}
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
         </div>
       )}
@@ -494,7 +524,13 @@ function StepInfo({ title, setTitle, description, setDescription, privacy, setPr
 }
 
 // ── Step 2: 연결 설정 ────────────────────────────────────────────
-function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, onBack }: any) {
+interface StepSetupProps {
+  stream: LiveStream; method: StreamMethod; channels: YouTubeChannel[]
+  copiedField: string | null; onCopy: (v: string, k: string) => void
+  onGoLive: () => void; onBack: () => void
+}
+
+function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, onBack }: StepSetupProps) {
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
@@ -642,7 +678,12 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
 }
 
 // ── Step 3: 라이브 중 ────────────────────────────────────────────
-function StepLive({ stream, products, onChangeProduct, onEndStream }: any) {
+interface StepLiveProps {
+  stream: LiveStream; products: Product[]
+  onChangeProduct: (productId: number) => void; onEndStream: () => void
+}
+
+function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLiveProps) {
   return (
     <div className="space-y-4">
       {/* 상태 바 */}
@@ -718,7 +759,11 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: any) {
 }
 
 // ── 기존/최근 방송 목록 ──────────────────────────────────────────
-function StreamList({ streams, onManage }: any) {
+interface StreamListProps {
+  streams: LiveStream[]; onManage: (stream: LiveStream) => void
+}
+
+function StreamList({ streams, onManage }: StreamListProps) {
   const active = streams.filter((s: LiveStream) => s.status !== 'ended')
   const ended = streams.filter((s: LiveStream) => s.status === 'ended')
   if (streams.length === 0) return null
@@ -763,8 +808,10 @@ function StreamList({ streams, onManage }: any) {
 function AuctionTimeDealControls({ streamId, products }: { streamId: number; products: Product[] }) {
   const [showAuction, setShowAuction] = useState(false)
   const [showTimeDeal, setShowTimeDeal] = useState(false)
+  const [showGroupBuy, setShowGroupBuy] = useState(false)
   const [auctionForm, setAuctionForm] = useState({ product_id: 0, title: '', start_price: 1000, min_increment: 1000, duration_seconds: 180 })
   const [dealForm, setDealForm] = useState({ product_id: 0, discount_percent: 30, max_claims: 10, duration_seconds: 30 })
+  const [groupBuyForm, setGroupBuyForm] = useState({ product_id: 0, target_participants: 20, bonus_discount_percent: 50, duration_minutes: 10 })
   const [submitting, setSubmitting] = useState(false)
   const token = localStorage.getItem('seller_token')
 
@@ -775,7 +822,7 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
       const res = await api.post('/api/auction/create', { stream_id: streamId, ...auctionForm }, { headers: { Authorization: `Bearer ${token}` } })
       if (res.data.success) { toast.success('경매가 시작되었습니다!'); setShowAuction(false) }
       else toast.error(res.data.error)
-    } catch (err: any) { toast.error(err?.response?.data?.error || '경매 생성 실패') }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e?.response?.data?.error || '경매 생성 실패') }
     finally { setSubmitting(false) }
   }
 
@@ -786,20 +833,44 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
       const res = await api.post('/api/timedeal/create', { stream_id: streamId, ...dealForm }, { headers: { Authorization: `Bearer ${token}` } })
       if (res.data.success) { toast.success(`타임딜 시작! ${dealForm.duration_seconds}초`); setShowTimeDeal(false) }
       else toast.error(res.data.error)
-    } catch (err: any) { toast.error(err?.response?.data?.error || '타임딜 생성 실패') }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e?.response?.data?.error || '타임딜 생성 실패') }
+    finally { setSubmitting(false) }
+  }
+
+  async function createGroupBuy() {
+    if (!groupBuyForm.product_id) { toast.error('상품을 선택해주세요'); return }
+    setSubmitting(true)
+    try {
+      const res = await api.post('/api/timedeal/create', {
+        stream_id: streamId,
+        product_id: groupBuyForm.product_id,
+        discount_percent: 0,
+        max_claims: 100,
+        duration_seconds: groupBuyForm.duration_minutes * 60,
+        is_group_buy: true,
+        target_participants: groupBuyForm.target_participants,
+        bonus_discount_percent: groupBuyForm.bonus_discount_percent,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) { toast.success('🎁 라이브 공구가 시작되었습니다!'); setShowGroupBuy(false) }
+      else toast.error(res.data.error)
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e?.response?.data?.error || '라이브 공구 생성 실패') }
     finally { setSubmitting(false) }
   }
 
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <button onClick={() => { setShowAuction(!showAuction); setShowTimeDeal(false) }}
+        <button onClick={() => { setShowAuction(!showAuction); setShowTimeDeal(false); setShowGroupBuy(false) }}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showAuction ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-          <Gavel className="w-3.5 h-3.5" /> 경매 시작
+          <Gavel className="w-3.5 h-3.5" /> 경매
         </button>
-        <button onClick={() => { setShowTimeDeal(!showTimeDeal); setShowAuction(false) }}
+        <button onClick={() => { setShowTimeDeal(!showTimeDeal); setShowAuction(false); setShowGroupBuy(false) }}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showTimeDeal ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 border border-red-200'}`}>
           <Zap className="w-3.5 h-3.5" /> 타임딜
+        </button>
+        <button onClick={() => { setShowGroupBuy(!showGroupBuy); setShowAuction(false); setShowTimeDeal(false) }}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showGroupBuy ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-600 border border-pink-200'}`}>
+          <Users className="w-3.5 h-3.5" /> 라이브 공구
         </button>
       </div>
 
@@ -849,6 +920,31 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
           <button onClick={createTimeDeal} disabled={submitting || !dealForm.product_id}
             className="w-full py-2 bg-red-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
             {submitting ? '생성 중...' : `타임딜 시작 (${dealForm.duration_seconds}초)`}
+          </button>
+        </div>
+      )}
+
+      {showGroupBuy && (
+        <div className="bg-pink-50 border border-pink-200 rounded-xl p-3 space-y-2">
+          <p className="text-xs font-bold text-pink-700">라이브 공구 설정</p>
+          <p className="text-[10px] text-pink-600">목표 인원이 모이면 할인이 적용됩니다</p>
+          <select value={groupBuyForm.product_id} onChange={e => setGroupBuyForm(f => ({ ...f, product_id: Number(e.target.value) }))}
+            className="w-full px-2.5 py-2 border border-pink-200 rounded-lg text-xs bg-white">
+            <option value={0}>상품 선택</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}원)</option>)}
+          </select>
+          <div className="grid grid-cols-3 gap-2">
+            {([['target_participants', '목표 인원'], ['bonus_discount_percent', '할인율(%)'], ['duration_minutes', '시간(분)']] as const).map(([key, label]) => (
+              <div key={key}>
+                <label className="text-[10px] text-pink-600">{label}</label>
+                <input type="number" value={groupBuyForm[key]} onChange={e => setGroupBuyForm(f => ({ ...f, [key]: Number(e.target.value) }))}
+                  className="w-full px-2 py-1.5 border border-pink-200 rounded-lg text-xs bg-white" />
+              </div>
+            ))}
+          </div>
+          <button onClick={createGroupBuy} disabled={submitting || !groupBuyForm.product_id}
+            className="w-full py-2 bg-pink-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
+            {submitting ? '생성 중...' : '라이브 공구 시작'}
           </button>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { Play, Users, Search, ShoppingCart, User, Clock, ChevronRight, ShoppingBag } from 'lucide-react'
 import { CustomModal, useModal } from '@/components/CustomModal'
@@ -64,8 +65,8 @@ export default function HomePage() {
   const [user, setUser] = useState<{ name: string; email: string } | null>(null)
   const { modal, showAlert, closeModal } = useModal()
 
-  const streams = (liveStreamsData || []).map((s: any) => ({
-    id: parseInt(s.id) || 0,
+  const streams = (liveStreamsData || []).map((s: { id: string | number; title?: string; description?: string; stream_url?: string; thumbnail_url?: string; seller_name?: string; viewer_count?: number; status?: string; scheduled_at?: string }) => ({
+    id: parseInt(String(s.id)) || 0,
     title: s.title || '',
     description: s.description || '',
     youtube_video_id: s.stream_url || '',
@@ -155,6 +156,7 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md bg-white relative pb-16">
+      <SEO title="유어딜 - 라이브 커머스" description="라이브 방송으로 만나는 최저가 특가 상품" url="/" />
       <CustomModal
         isOpen={modal.isOpen}
         onClose={closeModal}

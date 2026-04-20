@@ -10,7 +10,20 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import DashboardNotificationBell from './DashboardNotificationBell'
 
-const NAV_GROUPS = [
+type SellerType = 'influencer' | 'store_owner' | 'both'
+
+const NAV_GROUPS: {
+  label: string
+  hideFor?: SellerType[]
+  items: {
+    path: string
+    labelKey: string
+    icon: any
+    exact?: boolean
+    highlight?: boolean
+    hideFor?: SellerType[]
+  }[]
+}[] = [
   {
     label: '', // 홈 (그룹 라벨 없음)
     items: [
@@ -19,6 +32,7 @@ const NAV_GROUPS = [
   },
   {
     label: '방송',
+    hideFor: ['store_owner'],
     items: [
       { path: '/seller/live-broadcast', labelKey: 'seller.live', icon: Radio, highlight: true },
       { path: '/seller/shorts', labelKey: 'seller.shorts', icon: Play },
@@ -41,7 +55,7 @@ const NAV_GROUPS = [
     items: [
       { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2 },
       { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign },
-      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart },
+      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'] },
     ],
   },
   {
@@ -68,6 +82,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   const [langOpen, setLangOpen] = useState(false)
 
   const sellerName = localStorage.getItem('seller_name') || 'Seller'
+  const sellerType = (localStorage.getItem('seller_type') || 'influencer') as SellerType
+
+  const filteredNavGroups = NAV_GROUPS
+    .filter(group => !group.hideFor?.includes(sellerType))
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => !item.hideFor?.includes(sellerType)),
+    }))
+    .filter(group => group.items.length > 0)
 
   const languages = [
     { code: 'ko', label: '한국어', flag: '🇰🇷' },
@@ -107,7 +130,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
       {/* Nav - Grouped */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto">
-        {NAV_GROUPS.map((group, gi) => (
+        {filteredNavGroups.map((group, gi) => (
           <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
             {group.label && (
               <p className="px-3 mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.label}</p>

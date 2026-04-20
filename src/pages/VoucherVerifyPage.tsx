@@ -1,7 +1,28 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Ticket, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Ticket, CheckCircle, XCircle, Loader2, QrCode } from 'lucide-react'
 import api from '@/lib/api'
+
+/**
+ * Parse voucher code from QR scanned content.
+ * QR encodes: https://live.ur-team.com/v/{voucher_code}
+ * Also accepts raw voucher codes.
+ */
+function parseVoucherCode(input: string): string {
+  const trimmed = input.trim()
+  // Match QR URL pattern
+  const urlMatch = trimmed.match(/\/v\/([A-Za-z0-9-]+)$/)
+  if (urlMatch) return urlMatch[1].toUpperCase()
+  // Try full URL parse
+  try {
+    const url = new URL(trimmed)
+    const pathMatch = url.pathname.match(/\/v\/([A-Za-z0-9-]+)$/)
+    if (pathMatch) return pathMatch[1].toUpperCase()
+  } catch {
+    // Not a URL, treat as raw code
+  }
+  return trimmed.toUpperCase()
+}
 
 export default function VoucherVerifyPage() {
   const { code: urlCode } = useParams<{ code: string }>()
@@ -15,10 +36,12 @@ export default function VoucherVerifyPage() {
   // 바우처 조회
   async function lookupVoucher() {
     if (!code.trim()) return
+    const parsedCode = parseVoucherCode(code)
+    setCode(parsedCode)
     setLoading(true)
     setResult(null)
     try {
-      const res = await api.get(`/api/vouchers/verify/${code.trim()}`)
+      const res = await api.get(`/api/vouchers/verify/${parsedCode}`)
       if (res.data.success) {
         setVoucher(res.data.data)
       } else {
@@ -39,8 +62,9 @@ export default function VoucherVerifyPage() {
       const res = await api.post(`/api/vouchers/${code.trim()}/use`, { pin: pin.trim() })
       setResult({ success: res.data.success, message: res.data.message || res.data.error || '' })
       if (res.data.success) setVoucher(null)
-    } catch (err: any) {
-      setResult({ success: false, message: err?.response?.data?.error || '처리 중 오류가 발생했습니다' })
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      setResult({ success: false, message: err_.response?.data?.error || '처리 중 오류가 발생했습니다' })
     } finally {
       setVerifying(false)
     }
@@ -73,10 +97,19 @@ export default function VoucherVerifyPage() {
             <input
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
+              onPaste={e => {
+                e.preventDefault()
+                const pasted = e.clipboardData.getData('text')
+                setCode(parseVoucherCode(pasted))
+              }}
               placeholder="UR-XXXX-XXXX"
-              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg font-mono font-bold tracking-widest focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
-              maxLength={13}
+              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg text-gray-900 font-mono font-bold tracking-widest focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
+              maxLength={60}
             />
+            <div className="flex items-center gap-1.5 mt-2 justify-center">
+              <QrCode className="w-3.5 h-3.5 text-gray-400" />
+              <p className="text-xs text-gray-400">QR 스캔 결과를 붙여넣기하면 자동으로 코드가 추출됩니다</p>
+            </div>
             <button
               onClick={lookupVoucher}
               disabled={!code.trim() || loading}
@@ -120,7 +153,7 @@ export default function VoucherVerifyPage() {
               onChange={e => setPin(e.target.value)}
               type="password"
               placeholder="비밀번호 입력"
-              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-xl tracking-[0.5em] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
+              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-xl text-gray-900 tracking-[0.5em] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
               maxLength={10}
             />
             <button

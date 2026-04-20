@@ -72,7 +72,7 @@ export default function SellerProductsPage() {
       if (prodRes.status === 'fulfilled' && prodRes.value.data.success) {
         // 내 상품에서 공급 상품(is_supply_product=1) 제외
         const allProducts = prodRes.value.data.data || []
-        setProducts(allProducts.filter((p: any) => !p.is_supply_product))
+        setProducts(allProducts.filter((p: Product & { is_supply_product?: boolean }) => !p.is_supply_product))
       }
       if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
         const d = supplyRes.value.data.data
@@ -85,8 +85,8 @@ export default function SellerProductsPage() {
           image_url: p.image_url || '', is_active: 1, category: p.category || '',
         } as unknown as Product)))
       }
-    } catch (error: any) {
-      console.error('Failed to load products:', error)
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to load products:', error)
       setError(t('seller.productListLoadFailed'))
     } finally {
       setLoading(false)
@@ -112,9 +112,10 @@ export default function SellerProductsPage() {
         toast.success(t('seller.productStatusChanged'))
         loadProducts()
       }
-    } catch (error: any) {
-      console.error('Failed to toggle product:', error)
-      toast.error(error.response?.data?.error || t('seller.productStatusChangeFailed'))
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to toggle product:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || t('seller.productStatusChangeFailed'))
     }
   }
 
@@ -137,9 +138,10 @@ export default function SellerProductsPage() {
         toast.success(t('seller.productDeleted'))
         loadProducts()
       }
-    } catch (error: any) {
-      console.error('Failed to delete product:', error)
-      toast.error(error.response?.data?.error || t('seller.productDeleteFailed'))
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to delete product:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || t('seller.productDeleteFailed'))
     } finally {
       setDeleting(null)
     }
