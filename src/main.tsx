@@ -12,6 +12,34 @@ import { initNativeFeatures, isNative } from '@/lib/native'
 // ✅ 런타임 환경 변수 검증 (Week 5 Day 2)
 validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
 
+// ✅ Service Worker 자동 갱신 — 새 버전 배포 시 브라우저가 감지하고 리로드
+if ('serviceWorker' in navigator && !import.meta.env.DEV) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => {
+      reg.update()
+      reg.addEventListener('updatefound', () => {
+        const installing = reg.installing
+        if (installing) {
+          installing.addEventListener('statechange', () => {
+            if (installing.state === 'activated') {
+              window.location.reload()
+            }
+          })
+        }
+      })
+    })
+  })
+
+  // 탭 복귀 시 SW 업데이트 체크
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => reg.update())
+      })
+    }
+  })
+}
+
 // Region 정보 출력 (디버깅용)
 if (import.meta.env.DEV) {
   logRegionInfo()
