@@ -76,7 +76,15 @@ async function checkVersion() {
 export function startVersionCheck() {
   if (import.meta.env.DEV) return
 
-  // 초기 로드 시 즉시 확인
+  // MIME 에러 감지: 스크립트가 text/html로 로드됐으면 즉시 캐시 클리어
+  // (서버에서 옛 번들 대신 index.html을 반환한 경우)
+  window.addEventListener('error', (e) => {
+    if (e.message?.includes('MIME type') || e.message?.includes('text/html')) {
+      console.warn('[VersionCheck] MIME mismatch detected — clearing cache')
+      forceReload()
+    }
+  })
+
   currentVersion = getLocalVersion()
   if (currentVersion) localStorage.setItem(VERSION_STORAGE_KEY, currentVersion)
 
