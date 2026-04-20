@@ -12,7 +12,10 @@ import { initNativeFeatures, isNative } from '@/lib/native'
 // ✅ 런타임 환경 변수 검증 (Week 5 Day 2)
 validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
 
-// ✅ Service Worker 자동 갱신 — 새 버전 배포 시 브라우저가 감지하고 리로드
+// ✅ 빌드 버전 자동 감지 & 자동 리로드
+// Service Worker + 버전 체크 이중 보호로 옛 번들 고착 완전 차단
+import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck())
+
 if ('serviceWorker' in navigator && !import.meta.env.DEV) {
   navigator.serviceWorker.getRegistrations().then((regs) => {
     regs.forEach((reg) => {
@@ -28,15 +31,6 @@ if ('serviceWorker' in navigator && !import.meta.env.DEV) {
         }
       })
     })
-  })
-
-  // 탭 복귀 시 SW 업데이트 체크
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      navigator.serviceWorker.getRegistrations().then((regs) => {
-        regs.forEach((reg) => reg.update())
-      })
-    }
   })
 }
 

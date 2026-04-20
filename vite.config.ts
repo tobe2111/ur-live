@@ -1,9 +1,32 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
+
+// 빌드마다 유니크한 버전 — 타임스탬프 기반
+const BUILD_VERSION = `${new Date().toISOString().slice(0, 10)}-${Date.now().toString(36)}`;
+
+// 빌드 후 훅: Service Worker의 CACHE_VERSION 자동 치환
+function swVersionPlugin() {
+  return {
+    name: 'sw-version-injector',
+    closeBundle() {
+      const swPath = path.resolve('dist/client/sw.js');
+      if (fs.existsSync(swPath)) {
+        let content = fs.readFileSync(swPath, 'utf-8');
+        content = content.replace(/const CACHE_VERSION = ['"][^'"]+['"]/, `const CACHE_VERSION = '${BUILD_VERSION}'`);
+        fs.writeFileSync(swPath, content);
+        console.log(`[SW] CACHE_VERSION set to ${BUILD_VERSION}`);
+      }
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), swVersionPlugin()],
+  define: {
+    __BUILD_VERSION__: JSON.stringify(BUILD_VERSION),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

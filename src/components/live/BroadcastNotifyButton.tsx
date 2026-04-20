@@ -55,41 +55,43 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     toast.info('카카오 권한 동의 후 다시 시도해주세요')
   }
 
+  const fallbackToIcs = () => {
+    window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
+    toast.success('📆 캘린더 파일을 다운로드합니다')
+  }
+
   const handleAddCalendar = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!kr) { openGoogleCalendar(); return }
     if (!userId) {
       toast.error('로그인이 필요합니다')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
     }
+
     setCalLoading(true)
     try {
-      if (kr) {
-        const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
-        if (res.data.success) {
-          toast.success('카카오 캘린더에 등록되었습니다!')
-        } else {
-          window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
-          toast.success('캘린더 파일을 다운로드합니다')
-        }
+      const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
+      if (res.data.success) {
+        toast.success('카카오 캘린더에 등록되었습니다!')
       } else {
-        openGoogleCalendar()
+        // success: false인데 throw 안 된 경우
+        fallbackToIcs()
       }
     } catch (err: any) {
       const code = err?.response?.data?.code
-      if (kr && code === 'KAKAO_REAUTH_REQUIRED') {
+      if (code === 'KAKAO_REAUTH_REQUIRED') {
         toast.error('카카오 인증이 만료되었습니다. 다시 로그인해주세요.')
         localStorage.setItem('loginReturnUrl', window.location.pathname)
         navigate('/login')
-      } else if (kr && code === 'KAKAO_SCOPE_REQUIRED') {
+      } else if (code === 'KAKAO_SCOPE_REQUIRED') {
         const scope = err?.response?.data?.required_scope || 'talk_calendar'
         requestKakaoConsent(scope)
-      } else if (kr) {
-        window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
-        toast.success('캘린더 파일을 다운로드합니다')
       } else {
-        openGoogleCalendar()
+        // 403/500 등 기타 모든 카카오 에러 → ICS 파일 폴백
+        // (KOE006 앱 설정 오류, 일시적 장애, 네트워크 등)
+        fallbackToIcs()
       }
     } finally {
       setCalLoading(false)
