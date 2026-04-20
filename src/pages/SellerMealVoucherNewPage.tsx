@@ -151,99 +151,7 @@ export default function SellerMealVoucherNewPage() {
       <div className="max-w-2xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
 
-          {/* 기본 정보 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Utensils className="w-5 h-5 text-pink-500" />
-              <h2 className="text-base font-bold text-gray-900">식사권 정보</h2>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">식사권 이름 *</label>
-                <input
-                  value={form.name}
-                  onChange={e => update('name', e.target.value)}
-                  placeholder="예: [강남맛집] 2인 코스 식사권"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
-                <textarea
-                  value={form.description}
-                  onChange={e => update('description', e.target.value)}
-                  placeholder="식사권 상세 설명 (메뉴, 이용 조건 등)"
-                  rows={3}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">판매가 (원) *</label>
-                  <input
-                    type="number"
-                    value={form.price || ''}
-                    onChange={e => update('price', Number(e.target.value))}
-                    placeholder="25000"
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">정가 (원)</label>
-                  <input
-                    type="number"
-                    value={form.original_price || ''}
-                    onChange={e => update('original_price', Number(e.target.value))}
-                    placeholder="50000"
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">대표 이미지</label>
-                <input
-                  value={form.image_url}
-                  onChange={e => update('image_url', e.target.value)}
-                  placeholder="이미지 URL을 입력하거나 아래에서 선택하세요"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
-                />
-                {form.image_url && (
-                  <img src={form.image_url} alt="" className="mt-2 w-32 h-32 rounded-lg object-cover" />
-                )}
-                {/* 네이버 이미지 추천 */}
-                {loadingImages && (
-                  <p className="mt-2 text-xs text-gray-500">맛집 사진을 검색하는 중...</p>
-                )}
-                {suggestedImages.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs font-medium text-gray-600 mb-2">추천 이미지 (클릭하여 선택)</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {suggestedImages.map((url, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => { update('image_url', url); toast.success('이미지가 선택되었습니다') }}
-                          className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                            form.image_url === url ? 'border-pink-500 ring-2 ring-pink-200' : 'border-gray-200 hover:border-gray-400'
-                          }`}
-                        >
-                          <img src={url} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* 맛집 정보 — 카카오 검색 연동 */}
+          {/* 1. 맛집 정보 — 카카오맵 검색 (가장 위) */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <MapPin className="w-5 h-5 text-orange-500" />
@@ -337,7 +245,107 @@ export default function SellerMealVoucherNewPage() {
             </div>
           </div>
 
-          {/* 공동구매 설정 */}
+          {/* 2. 추천 이미지 (맛집 선택 후 표시) */}
+          {(loadingImages || suggestedImages.length > 0 || form.image_url) && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">📸</span>
+                <h2 className="text-base font-bold text-gray-900">대표 이미지</h2>
+              </div>
+
+              <div className="space-y-3">
+                <input
+                  value={form.image_url}
+                  onChange={e => update('image_url', e.target.value)}
+                  placeholder="이미지 URL을 입력하거나 아래에서 선택하세요"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                />
+                {form.image_url && (
+                  <img src={form.image_url} alt="" className="w-full max-w-[200px] h-40 rounded-lg object-cover" />
+                )}
+                {loadingImages && (
+                  <p className="text-xs text-gray-500">맛집 사진을 검색하는 중...</p>
+                )}
+                {suggestedImages.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-2">추천 이미지 (클릭하여 선택)</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {suggestedImages.map((url, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => { update('image_url', url); toast.success('이미지가 선택되었습니다') }}
+                          className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                            form.image_url === url ? 'border-pink-500 ring-2 ring-pink-200' : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          <img src={url} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 3. 식사권 정보 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Utensils className="w-5 h-5 text-pink-500" />
+              <h2 className="text-base font-bold text-gray-900">식사권 정보</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">식사권 이름 *</label>
+                <input
+                  value={form.name}
+                  onChange={e => update('name', e.target.value)}
+                  placeholder="예: [강남맛집] 2인 코스 식사권"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <textarea
+                  value={form.description}
+                  onChange={e => update('description', e.target.value)}
+                  placeholder="식사권 상세 설명 (메뉴, 이용 조건 등)"
+                  rows={3}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">판매가 (원) *</label>
+                  <input
+                    type="number"
+                    value={form.price || ''}
+                    onChange={e => update('price', Number(e.target.value))}
+                    placeholder="25000"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">정가 (원)</label>
+                  <input
+                    type="number"
+                    value={form.original_price || ''}
+                    onChange={e => update('original_price', Number(e.target.value))}
+                    placeholder="50000"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. 공동구매 설정 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Users className="w-5 h-5 text-blue-500" />
