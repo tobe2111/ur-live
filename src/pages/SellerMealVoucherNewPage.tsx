@@ -33,6 +33,8 @@ export default function SellerMealVoucherNewPage() {
   })
 
   const [placeSelected, setPlaceSelected] = useState(false)
+  const [suggestedImages, setSuggestedImages] = useState<string[]>([])
+  const [loadingImages, setLoadingImages] = useState(false)
 
   if (!isSellerAuthenticated()) { redirectToLogin(navigate); return null }
 
@@ -52,6 +54,19 @@ export default function SellerMealVoucherNewPage() {
     }))
     setPlaceSelected(true)
     toast.success(`${place.place_name} 정보가 자동 입력되었습니다!`)
+
+    // 네이버 이미지 검색으로 맛집 사진 추천
+    if (place.place_name) {
+      setLoadingImages(true)
+      api.get(`/api/naver/image/search?query=${encodeURIComponent(place.place_name + ' 맛집')}&display=6`)
+        .then(res => {
+          if (res.data.success && res.data.data?.items) {
+            setSuggestedImages(res.data.data.items.map((img: any) => img.link).filter(Boolean))
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingImages(false))
+    }
   }
 
   function openKakaoAddress() {
@@ -189,15 +204,38 @@ export default function SellerMealVoucherNewPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">이미지 URL</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">대표 이미지</label>
                 <input
                   value={form.image_url}
                   onChange={e => update('image_url', e.target.value)}
-                  placeholder="https://..."
+                  placeholder="이미지 URL을 입력하거나 아래에서 선택하세요"
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                 />
                 {form.image_url && (
                   <img src={form.image_url} alt="" className="mt-2 w-32 h-32 rounded-lg object-cover" />
+                )}
+                {/* 네이버 이미지 추천 */}
+                {loadingImages && (
+                  <p className="mt-2 text-xs text-gray-500">맛집 사진을 검색하는 중...</p>
+                )}
+                {suggestedImages.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-gray-600 mb-2">추천 이미지 (클릭하여 선택)</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {suggestedImages.map((url, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => { update('image_url', url); toast.success('이미지가 선택되었습니다') }}
+                          className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                            form.image_url === url ? 'border-pink-500 ring-2 ring-pink-200' : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          <img src={url} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
