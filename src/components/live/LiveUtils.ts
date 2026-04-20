@@ -29,6 +29,11 @@ export function maskUserName(name: string): string {
   if (!name || name.length === 0) return '익명'
   if (name === '익명' || name === 'Anonymous') return name
 
+  // 유저 설정: 마스킹 해제 시 원본 이름 반환
+  if (typeof window !== 'undefined' && localStorage.getItem('chat_name_mask') === 'off') {
+    return name
+  }
+
   if (name.length === 1) {
     return name + '*'
   } else if (name.length === 2) {
