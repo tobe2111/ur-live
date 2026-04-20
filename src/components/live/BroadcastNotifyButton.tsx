@@ -78,7 +78,11 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
       }
     } catch (err: any) {
       const code = err?.response?.data?.code
-      if (kr && code === 'KAKAO_SCOPE_REQUIRED') {
+      if (kr && code === 'KAKAO_REAUTH_REQUIRED') {
+        toast.error('카카오 인증이 만료되었습니다. 다시 로그인해주세요.')
+        localStorage.setItem('loginReturnUrl', window.location.pathname)
+        navigate('/login')
+      } else if (kr && code === 'KAKAO_SCOPE_REQUIRED') {
         const scope = err?.response?.data?.required_scope || 'talk_calendar'
         requestKakaoConsent(scope)
       } else if (kr) {

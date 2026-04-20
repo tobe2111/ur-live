@@ -316,6 +316,12 @@ export default function CheckoutPage() {
       return
     }
 
+    const phoneClean = newAddress.phone.replace(/[^0-9]/g, '')
+    if (phoneClean.length < 10 || phoneClean.length > 11) {
+      toast.error('올바른 전화번호를 입력해주세요.')
+      return
+    }
+
     try {
       // 첫 번째 배송지는 자동으로 기본 배송지로 설정
       const isFirstAddress = addresses.length === 0

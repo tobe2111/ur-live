@@ -12,60 +12,10 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { getKakaoToken, getKakaoTokenSimple, callKakaoApi } from '@/lib/kakao-token';
 
 const kakaoSocialRoutes = new Hono<{ Bindings: Env }>();
 kakaoSocialRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
-
-/**
- * 카카오 access_token 조회 — 만료 시 refresh_token으로 자동 갱신
- */
-async function getKakaoToken(
-  DB: D1Database, userId: string | number, kakaoRestApiKey: string
-): Promise<string | null> {
-  const row = await DB.prepare(
-    'SELECT kakao_access_token, kakao_refresh_token FROM users WHERE id = ?'
-  ).bind(userId).first<{ kakao_access_token: string | null; kakao_refresh_token: string | null }>();
-
-  if (!row?.kakao_access_token) return null;
-
-  // 토큰 유효성 빠른 체크 (카카오 token_info API)
-  const checkRes = await fetch('https://kapi.kakao.com/v1/user/access_token_info', {
-    headers: { 'Authorization': `Bearer ${row.kakao_access_token}` },
-  });
-
-  if (checkRes.status === 200) return row.kakao_access_token;
-
-  // 401 → refresh_token으로 갱신 시도
-  if (row.kakao_refresh_token) {
-    try {
-      const refreshRes = await fetch('https://kauth.kakao.com/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          client_id: kakaoRestApiKey,
-          refresh_token: row.kakao_refresh_token,
-        }),
-      });
-
-      if (refreshRes.ok) {
-        const data: any = await refreshRes.json();
-        const newAccessToken = data.access_token;
-        const newRefreshToken = data.refresh_token || null;
-
-        await DB.prepare(
-          'UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?'
-        ).bind(newAccessToken, newRefreshToken, userId).run();
-
-        return newAccessToken;
-      }
-    } catch (e) {
-      console.error('[KakaoSocial] Token refresh failed:', e);
-    }
-  }
-
-  return null;
-}
 
 function isKakaoScopeError(data: any, httpStatus: number): boolean {
   if (httpStatus === 403) return true;
@@ -93,53 +43,32 @@ kakaoSocialRoutes.post('/message/broadcast', requireAuth(), async (c) => {
     stream_id: number; title: string; message?: string;
   }>();
 
-  const kakaoToken = await getKakaoToken(DB, user.id, (c.env as any).KAKAO_REST_API_KEY);
-  if (!kakaoToken) {
-    return c.json({ success: false, error: '카카오 연동이 필요합니다. 다시 로그인해주세요.' }, 400);
+  const templateObject = JSON.stringify({
+    object_type: 'feed',
+    content: {
+      title: `🔴 ${title}`,
+      description: message || '유어딜에서 라이브 방송이 시작되었습니다!',
+      image_url: 'https://live.ur-team.com/og-image.png',
+      link: { web_url: `https://live.ur-team.com/live/${stream_id}`, mobile_web_url: `https://live.ur-team.com/live/${stream_id}` },
+    },
+    buttons: [{ title: '라이브 시청하기', link: { web_url: `https://live.ur-team.com/live/${stream_id}`, mobile_web_url: `https://live.ur-team.com/live/${stream_id}` } }],
+  });
+
+  const result = await callKakaoApi(DB, user.id, (c.env as any).KAKAO_REST_API_KEY,
+    'https://kapi.kakao.com/v2/api/talk/memo/default/send',
+    { body: `template_object=${encodeURIComponent(templateObject)}` }
+  );
+
+  if (result.needsReauth) {
+    return c.json({ success: false, error: '카카오 인증이 만료되었습니다. 다시 로그인해주세요.', code: 'KAKAO_REAUTH_REQUIRED' }, 401);
   }
-
-  try {
-    // 카카오 나에게 보내기 API
-    const templateObject = JSON.stringify({
-      object_type: 'feed',
-      content: {
-        title: `🔴 ${title}`,
-        description: message || '유어딜에서 라이브 방송이 시작되었습니다!',
-        image_url: 'https://live.ur-team.com/og-image.png',
-        link: {
-          web_url: `https://live.ur-team.com/live/${stream_id}`,
-          mobile_web_url: `https://live.ur-team.com/live/${stream_id}`,
-        },
-      },
-      buttons: [{
-        title: '라이브 시청하기',
-        link: {
-          web_url: `https://live.ur-team.com/live/${stream_id}`,
-          mobile_web_url: `https://live.ur-team.com/live/${stream_id}`,
-        },
-      }],
-    });
-
-    const res = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${kakaoToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `template_object=${encodeURIComponent(templateObject)}`,
-    });
-
-    const data: any = await res.json();
-    if (isKakaoScopeError(data, res.status)) {
-      return scopeErrorResponse(c, 'talk_message');
-    }
-    if (data.result_code === 0) {
-      return c.json({ success: true, message: '카카오톡 메시지가 발송되었습니다' });
-    }
-    return c.json({ success: false, error: data.msg || '메시지 발송 실패' }, 400);
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message || '카카오 API 오류' }, 500);
+  if (isKakaoScopeError(result.data, result.ok ? 200 : 403)) {
+    return scopeErrorResponse(c, 'talk_message');
   }
+  if (result.data?.result_code === 0) {
+    return c.json({ success: true, message: '카카오톡 메시지가 발송되었습니다' });
+  }
+  return c.json({ success: false, error: result.data?.msg || '메시지 발송 실패' }, 400);
 });
 
 // ── POST /calendar/add — 카카오 캘린더에 방송 일정 등록 ──
@@ -161,48 +90,33 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
   const seller = await DB.prepare('SELECT name FROM sellers WHERE id = ?')
     .bind(stream.seller_id).first<{ name: string }>();
 
-  const kakaoToken = await getKakaoToken(DB, user.id, (c.env as any).KAKAO_REST_API_KEY);
-  if (!kakaoToken) {
-    return c.json({ success: false, error: '카카오 연동이 필요합니다. 다시 로그인해주세요.' }, 400);
+  const startAt = new Date(stream.scheduled_at);
+  startAt.setMinutes(Math.ceil(startAt.getMinutes() / 5) * 5, 0, 0);
+  const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
+
+  const event = {
+    title: `🔴 ${seller?.name || '셀러'} 라이브: ${stream.title}`,
+    time: { start_at: startAt.toISOString().replace('.000Z', 'Z'), end_at: endAt.toISOString().replace('.000Z', 'Z'), time_zone: 'Asia/Seoul' },
+    description: `유어딜 라이브 방송\n${stream.title}\n\n시청하기: https://live.ur-team.com/live/${stream.id}`,
+    reminders: [5],
+    color: 'RED',
+  };
+
+  const result = await callKakaoApi(DB, user.id, (c.env as any).KAKAO_REST_API_KEY,
+    'https://kapi.kakao.com/v2/api/calendar/create/event',
+    { body: `event=${encodeURIComponent(JSON.stringify(event))}` }
+  );
+
+  if (result.needsReauth) {
+    return c.json({ success: false, error: '카카오 인증이 만료되었습니다. 다시 로그인해주세요.', code: 'KAKAO_REAUTH_REQUIRED' }, 401);
   }
-
-  try {
-    const startAt = new Date(stream.scheduled_at);
-    startAt.setMinutes(Math.ceil(startAt.getMinutes() / 5) * 5, 0, 0);
-    const endAt = new Date(startAt.getTime() + 60 * 60 * 1000); // +1시간
-
-    const event = {
-      title: `🔴 ${seller?.name || '셀러'} 라이브: ${stream.title}`,
-      time: {
-        start_at: startAt.toISOString().replace('.000Z', 'Z'),
-        end_at: endAt.toISOString().replace('.000Z', 'Z'),
-        time_zone: 'Asia/Seoul',
-      },
-      description: `유어딜 라이브 방송\n${stream.title}\n\n시청하기: https://live.ur-team.com/live/${stream.id}`,
-      reminders: [5], // 5분 전 알림
-      color: 'RED',
-    };
-
-    const res = await fetch('https://kapi.kakao.com/v2/api/calendar/create/event', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${kakaoToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `event=${encodeURIComponent(JSON.stringify(event))}`,
-    });
-
-    const data: any = await res.json();
-    if (isKakaoScopeError(data, res.status)) {
-      return scopeErrorResponse(c, 'talk_calendar');
-    }
-    if (data.event_id) {
-      return c.json({ success: true, data: { event_id: data.event_id }, message: '카카오 캘린더에 등록되었습니다' });
-    }
-    return c.json({ success: false, error: data.msg || '캘린더 등록 실패' }, 400);
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message || '카카오 캘린더 API 오류' }, 500);
+  if (isKakaoScopeError(result.data, result.ok ? 200 : 403)) {
+    return scopeErrorResponse(c, 'talk_calendar');
   }
+  if (result.data?.event_id) {
+    return c.json({ success: true, data: { event_id: result.data.event_id }, message: '카카오 캘린더에 등록되었습니다' });
+  }
+  return c.json({ success: false, error: result.data?.msg || '캘린더 등록 실패' }, 400);
 });
 
 // ── GET /calendar/ics/:streamId — Google/Apple Calendar용 .ics 파일 (글로벌) ──
@@ -278,7 +192,7 @@ kakaoSocialRoutes.post('/message/send-to-subscribers', async (c) => {
   if (subs) {
     for (const sub of subs) {
       try {
-        const freshToken = await getKakaoToken(DB, sub.user_id, kakaoApiKey);
+        const freshToken = await getKakaoTokenSimple(DB, sub.user_id, kakaoApiKey);
         if (!freshToken) continue;
         const templateObject = JSON.stringify({
           object_type: 'feed',
