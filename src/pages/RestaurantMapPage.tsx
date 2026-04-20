@@ -17,7 +17,6 @@ declare global {
   interface Window { kakao: any }
 }
 
-const KAKAO_JS_KEY = '975a2e7f97254b08f15dba4d177a2865'
 const REGIONS = [
   { key: '', label: '전체', emoji: '📍', lat: 36.5, lng: 127.8, level: 13 },
   { key: '서울', label: '서울', emoji: '🏙️', lat: 37.5665, lng: 126.978, level: 8 },
@@ -51,25 +50,19 @@ export default function RestaurantMapPage() {
   useEffect(() => {
     if (!kr) {
       setSdkLoaded(false)
-      setMapView(false) // 글로벌은 목록 뷰만
-      return
-    }
-    if (window.kakao?.maps) {
-      setSdkLoaded(true)
-      return
-    }
-    const script = document.createElement('script')
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&autoload=false`
-    script.onload = () => {
-      window.kakao.maps.load(() => setSdkLoaded(true))
-    }
-    script.onerror = () => {
-      console.error('카카오맵 SDK 로드 실패 — 목록 모드로 전환')
-      setSdkLoaded(false)
       setMapView(false)
+      return
     }
-    document.head.appendChild(script)
-  }, [])
+    import('@/lib/kakao-sdk').then(({ ensureKakaoMaps }) => {
+      ensureKakaoMaps()
+        .then(() => setSdkLoaded(true))
+        .catch((e) => {
+          console.error('[RestaurantMap] Kakao Maps load failed:', e)
+          setSdkLoaded(false)
+          setMapView(false)
+        })
+    })
+  }, [kr])
 
   // 데이터 로드
   useEffect(() => {

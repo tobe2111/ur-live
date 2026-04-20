@@ -100,7 +100,8 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       }
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;
-      return c.redirect(redirectUrl);
+      // 302 명시: Set-Cookie 헤더가 일부 브라우저에서 303에 무시되는 문제 회피
+      return c.redirect(redirectUrl, 302);
       
     } catch (serviceError) {
       console.error('[Kakao Sync] Service error:', serviceError);

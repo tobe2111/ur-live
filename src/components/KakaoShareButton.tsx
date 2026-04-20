@@ -16,30 +16,9 @@ interface ShareButtonProps {
   compact?: boolean
 }
 
-function ensureKakaoSDK(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const w = window as any
-    if (w.Kakao?.isInitialized()) { resolve(); return }
-    if (w.Kakao) {
-      const key = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY
-      if (key) { w.Kakao.init(key); resolve() }
-      else reject(new Error('no key'))
-      return
-    }
-    const script = document.createElement('script')
-    script.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js'
-    script.onload = () => {
-      const key = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY
-      if (key && w.Kakao) { w.Kakao.init(key); resolve() }
-      else reject(new Error('load failed'))
-    }
-    script.onerror = () => reject(new Error('load failed'))
-    document.head.appendChild(script)
-  })
-}
-
 async function shareKakao(title: string, description: string, imageUrl: string | undefined, fullUrl: string, buttonText?: string) {
-  await ensureKakaoSDK()
+  const { ensureKakaoSdk } = await import('@/lib/kakao-sdk')
+  await ensureKakaoSdk()
   ;(window as any).Kakao.Share.sendDefault({
     objectType: 'feed',
     content: {

@@ -85,21 +85,13 @@ export default function LoginPage() {
       sessionStorage.setItem('returnUrl', urlParam)
     }
 
-    if (!isKR) return // GLOBAL에서는 Kakao SDK 불필요
+    if (!isKR) return
 
-    const checkKakaoSDK = () => {
-      if (window.Kakao && !window.Kakao.isInitialized()) {
-        window.Kakao.init('975a2e7f97254b08f15dba4d177a2865')
-      }
-
-      if (window.Kakao && window.Kakao.isInitialized()) {
-        setKakaoReady(true)
-      } else {
-        setTimeout(checkKakaoSDK, 100)
-      }
-    }
-
-    checkKakaoSDK()
+    import('@/lib/kakao-sdk').then(({ ensureKakaoSdk }) => {
+      ensureKakaoSdk()
+        .then(() => setKakaoReady(true))
+        .catch((e) => console.error('[LoginPage] Kakao SDK init failed:', e))
+    })
   }, [searchParams, isKR])
 
   // ✅ Kakao 로그인 핸들러
