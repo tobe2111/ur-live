@@ -12,10 +12,9 @@ export function getSellerToken(): string | null {
     return sellerToken
   }
   
-  // Fallback: access_token (호환성)
+  // Fallback: access_token (이메일 가입 셀러 호환)
   const accessToken = localStorage.getItem('access_token')
-  const userType = localStorage.getItem('user_type')
-  if (accessToken && userType === 'seller') {
+  if (accessToken && localStorage.getItem('seller_id')) {
     return accessToken
   }
   
@@ -23,10 +22,7 @@ export function getSellerToken(): string | null {
 }
 
 export function isSellerAuthenticated(): boolean {
-  const token = getSellerToken()
-  const userType = localStorage.getItem('user_type')
-  
-  return !!token && userType === 'seller'
+  return !!getSellerToken()
 }
 
 export function getSellerId(): string | null {

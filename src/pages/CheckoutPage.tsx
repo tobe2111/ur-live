@@ -33,7 +33,7 @@ declare global {
   }
 }
 
-const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY'
+const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
 
 import { CartItem } from '@/types/cart'
 
@@ -367,6 +367,12 @@ export default function CheckoutPage() {
 
     if (!newAddress.recipient_name || !newAddress.phone || !newAddress.postal_code || !newAddress.address) {
       toast.error('모든 필수 항목을 입력해주세요.')
+      return
+    }
+
+    const phoneClean = newAddress.phone.replace(/[^0-9]/g, '')
+    if (phoneClean.length < 10 || phoneClean.length > 11) {
+      toast.error('올바른 전화번호를 입력해주세요.')
       return
     }
 

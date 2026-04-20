@@ -54,8 +54,10 @@ adminToolsRoutes.get('/report/csv', async (c) => {
 // ── 셀러 승인 대기 목록 ──
 adminToolsRoutes.get('/sellers/pending', async (c) => {
   const { results } = await c.env.DB.prepare(`
-    SELECT id, username, name, email, business_name, business_number, phone, created_at
-    FROM sellers WHERE status = 'pending' ORDER BY created_at DESC
+    SELECT s.id, s.username, s.name, s.email, s.business_name, s.business_number, s.phone, s.created_at,
+           s.linked_user_id, u.name AS linked_user_name
+    FROM sellers s LEFT JOIN users u ON s.linked_user_id = u.id
+    WHERE s.status = 'pending' ORDER BY s.created_at DESC
   `).all()
   return c.json({ success: true, data: results || [] })
 })

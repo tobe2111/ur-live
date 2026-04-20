@@ -26,7 +26,6 @@ import ToastContainer from './components/ToastContainer'
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
 // ✅ 모든 페이지를 lazy loading (초기 번들 크기 최소화)
-const HomePage = lazy(() => import('./pages/HomePage'))
 const MainHomePage = lazy(() => import('./pages/MainHomePage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const ShortsPage = lazy(() => import('./pages/ShortsPage'))

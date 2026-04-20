@@ -185,7 +185,7 @@ export default function SellerOrdersPage() {
       return
     }
 
-    const headers = ['주문번호', '주문자', '전화번호', '주소', '주문금액', '주문상태', '결제상태', '택배사', '송장번호', '주문일시']
+    const headers = [t('seller.orderNumber'), t('seller.buyer'), t('seller.phone'), t('seller.address'), t('seller.orderAmount'), t('seller.orderStatus'), t('seller.paymentStatus'), t('seller.courier'), t('seller.trackingNumber'), t('seller.orderDate')]
     const rows = filteredOrders.map(order => [
       order.order_number,
       order.shipping_name,
@@ -207,7 +207,7 @@ export default function SellerOrdersPage() {
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `주문목록_${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `orders_${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
   }
 

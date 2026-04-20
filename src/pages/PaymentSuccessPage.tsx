@@ -122,6 +122,20 @@ export default function PaymentSuccessPage() {
       const paymentData = response.data.data
       setOrderInfo(paymentData)
 
+      // 전환 추적 (Google Analytics)
+      try {
+        const method = paymentData?.orders?.[0]?.payment_method || paymentData?.method || 'unknown'
+        const g = (window as any).gtag
+        if (typeof g === 'function') {
+          g('event', 'purchase', {
+            transaction_id: orderId,
+            value: parsedAmount,
+            currency: 'KRW',
+            payment_type: method,
+          })
+        }
+      } catch {}
+
       // 3️⃣ 장바구니 비우기 (바로구매 모드에서는 스킵)
       const isDirectPurchase = sessionStorage.getItem('directPurchase') === 'true'
       sessionStorage.removeItem('directPurchase')

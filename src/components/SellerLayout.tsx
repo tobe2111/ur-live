@@ -6,6 +6,8 @@ import {
   Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity, Ticket, Star, BarChart2
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import DashboardNotificationBell from './DashboardNotificationBell'
 
 type SellerType = 'influencer' | 'store_owner' | 'both'
@@ -179,6 +181,18 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           <Settings className="w-4 h-4" />
           {t('seller.settings')}
         </Link>
+        {localStorage.getItem('user_id') && (
+          <button
+            onClick={() => {
+              toast.success('메인으로 돌아갑니다')
+              navigate('/')
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+          >
+            <Globe className="w-4 h-4" />
+            유저로 돌아가기
+          </button>
+        )}
         <button
           onClick={() => logoutSeller(navigate)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"

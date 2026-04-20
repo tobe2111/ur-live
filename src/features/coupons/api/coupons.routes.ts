@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 
@@ -13,7 +14,7 @@ async function ensureTables(DB: D1Database) {
 }
 
 // 쿠폰 적용 (코드 입력 → 할인 금액 반환)
-couponRoutes.post('/apply', requireAuth(), async (c) => {
+couponRoutes.post('/apply', rateLimit({ action: 'coupon_apply', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -36,7 +37,7 @@ couponRoutes.post('/apply', requireAuth(), async (c) => {
 })
 
 // 쿠폰 사용 확정 (결제 완료 시)
-couponRoutes.post('/use', requireAuth(), async (c) => {
+couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env

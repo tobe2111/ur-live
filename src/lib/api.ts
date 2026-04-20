@@ -311,7 +311,7 @@ api.interceptors.response.use(
         console.error('[API] ❌ 토큰 갱신 중 예외 발생:', err);
       }
 
-      // Firebase 갱신도 실패 → 로그아웃
+      // Firebase 갱신도 실패 → 세션 헬스체크 먼저
       // ⚠️ 결제 성공 페이지는 Firebase 초기화 지연으로 인한 일시적 401일 수 있으므로 제외
       const currentPath = window.location.pathname;
       if (currentPath.startsWith('/payment/')) {
@@ -319,10 +319,22 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      // 세션 쿠키 유저는 쿠키가 유효한지 확인 후 처리
+      const isSessionCookieUser = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id');
+      if (isSessionCookieUser) {
+        try {
+          const health = await axios.get('/api/auth/session/health', { withCredentials: true });
+          if (health.data?.data?.session) {
+            // 세션은 유효 — 해당 API 자체의 권한 문제
+            captureError(new Error('Buyer 401: API-specific (session valid)'), { url });
+            return Promise.reject(error);
+          }
+        } catch {}
+      }
+
       clearFirebaseTokenCache();
       const { clearAuthData } = await import('@/utils/auth');
       clearAuthData('user');
-      // ✅ useAuthStore 도 정리
       try {
         const { useAuthStore } = await import('@/client/stores/auth.store');
         useAuthStore.getState().clearAuth();

@@ -24,8 +24,8 @@ export class WebhookEventRepository {
     source: string = 'toss'
   ): Promise<boolean> {
     const row = await this.qb.queryOne<{ count: number }>(
-      `SELECT COUNT(*) as count FROM webhook_events 
-       WHERE source = ? AND event_type = ? AND toss_order_id = ? AND status = 'PROCESSED'`,
+      `SELECT COUNT(*) as count FROM webhook_events
+       WHERE source = ? AND event_type = ? AND toss_order_id = ? AND status IN ('PROCESSED', 'RECEIVED')`,
       [source, eventType, tossOrderId]
     );
     return (row?.count ?? 0) > 0;

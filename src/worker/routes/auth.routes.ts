@@ -243,7 +243,7 @@ authRouter.patch('/profile', authMiddleware, async (c) => {
 });
 
 // POST /api/auth/change-password — 비밀번호 변경
-authRouter.post('/change-password', authMiddleware, async (c) => {
+authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 5, windowSec: 3600 }), authMiddleware, async (c) => {
   const { id } = c.get('user');
   const db = c.env.DB;
   try {
@@ -271,6 +271,42 @@ authRouter.post('/change-password', authMiddleware, async (c) => {
 authRouter.get('/validate', authMiddleware, async (c) => {
   const user = c.get('user');
   return c.json({ success: true, data: { valid: true, user } });
+});
+
+// GET /api/auth/session/health — 세션+카카오 토큰 상태 통합 체크
+// 프론트가 마운트 시 호출해서 "로그인 됐는데 API 실패" 상황을 진단
+authRouter.get('/session/health', async (c) => {
+  const cookieHeader = c.req.header('Cookie');
+  const sessionUser = await parseSessionCookie(cookieHeader, c.env.JWT_SECRET);
+
+  let kakaoValid = false;
+  let kakaoNeedsReauth = false;
+  if (sessionUser) {
+    try {
+      const row = await c.env.DB.prepare(
+        'SELECT kakao_access_token, kakao_refresh_token FROM users WHERE id = ?'
+      ).bind(sessionUser.userId).first<{ kakao_access_token: string | null; kakao_refresh_token: string | null }>();
+
+      if (row?.kakao_access_token) {
+        const check = await fetch('https://kapi.kakao.com/v1/user/access_token_info', {
+          headers: { 'Authorization': `Bearer ${row.kakao_access_token}` },
+        });
+        if (check.status === 200) kakaoValid = true;
+        else if (!row.kakao_refresh_token) kakaoNeedsReauth = true;
+      } else {
+        kakaoNeedsReauth = true;
+      }
+    } catch { kakaoNeedsReauth = true }
+  }
+
+  return c.json({
+    success: true,
+    data: {
+      session: !!sessionUser,
+      user: sessionUser || null,
+      kakao: { valid: kakaoValid, needsReauth: kakaoNeedsReauth },
+    },
+  });
 });
 
 // POST /api/auth/logout — clear session cookie (user logout)

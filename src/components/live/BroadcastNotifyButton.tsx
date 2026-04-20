@@ -43,67 +43,55 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     } finally { setLoading(false) }
   }
 
-  const [showCalendarConsent, setShowCalendarConsent] = useState(false)
-
   const kr = isKorea()
 
-  const requestCalendarConsent = () => {
+  const requestKakaoConsent = (scope: string) => {
     const kakaoKey = import.meta.env.VITE_KAKAO_REST_API_KEY
     const redirectUri = encodeURIComponent(`${window.location.origin}/auth/kakao/consent/callback`)
     const state = encodeURIComponent(window.location.pathname)
-    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoKey}&redirect_uri=${redirectUri}&response_type=code&state=${state}&scope=talk_calendar`
+    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoKey}&redirect_uri=${redirectUri}&response_type=code&state=${state}&scope=${scope}`
     const popup = window.open(url, 'kakao_consent', 'width=480,height=700,scrollbars=yes')
     if (!popup) { window.location.href = url; return }
+    toast.info('카카오 권한 동의 후 다시 시도해주세요')
+  }
 
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === 'kakao_consent_done') {
-        window.removeEventListener('message', handler)
-        toast.success('카카오 캘린더 동의 완료! 다시 시도해주세요.')
-        setShowCalendarConsent(false)
-      }
-    }
-    window.addEventListener('message', handler)
+  const fallbackToIcs = () => {
+    window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
+    toast.success('📆 캘린더 파일을 다운로드합니다')
   }
 
   const handleAddCalendar = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!kr) { openGoogleCalendar(); return }
     if (!userId) {
       toast.error('로그인이 필요합니다')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
     }
+
     setCalLoading(true)
     try {
-      if (kr) {
-        // 서버에서 토큰 + 이벤트 정보를 받아서 브라우저에서 직접 카카오 API 호출
-        const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
-        if (res.data.success && res.data.mode === 'client_call') {
-          const { access_token, event } = res.data.data
-          // 브라우저에서 직접 카카오 캘린더 API 호출 (Worker IP 문제 우회)
-          const kakaoRes = await fetch('https://kapi.kakao.com/v2/api/calendar/create/event', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `event=${encodeURIComponent(JSON.stringify(event))}`,
-          })
-          const kakaoData = await kakaoRes.json() as any
-          if (kakaoData.event_id) {
-            toast.success('카카오 캘린더에 등록되었습니다!')
-            setShowCalendarConsent(false)
-          } else {
-            setShowCalendarConsent(true)
-          }
-        } else {
-          setShowCalendarConsent(true)
-        }
+      const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
+      if (res.data.success) {
+        toast.success('카카오 캘린더에 등록되었습니다!')
       } else {
-        openGoogleCalendar()
+        // success: false인데 throw 안 된 경우
+        fallbackToIcs()
       }
-    } catch {
-      if (kr) {
-        setShowCalendarConsent(true)
+    } catch (err: any) {
+      const code = err?.response?.data?.code
+      if (code === 'KAKAO_REAUTH_REQUIRED') {
+        toast.error('카카오 인증이 만료되었습니다. 다시 로그인해주세요.')
+        localStorage.setItem('loginReturnUrl', window.location.pathname)
+        navigate('/login')
+      } else if (code === 'KAKAO_SCOPE_REQUIRED') {
+        const scope = err?.response?.data?.required_scope || 'talk_calendar'
+        requestKakaoConsent(scope)
       } else {
-        openGoogleCalendar()
+        // 403/500 등 기타 모든 카카오 에러 → ICS 파일 폴백
+        // (KOE006 앱 설정 오류, 일시적 장애, 네트워크 등)
+        fallbackToIcs()
       }
     } finally {
       setCalLoading(false)
@@ -121,40 +109,27 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     toast.success('Google 캘린더가 열립니다')
   }
 
-  const calendarConsentUI = showCalendarConsent ? (
-    <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3 mt-1.5">
-      <p className="text-xs text-yellow-800 font-medium mb-2">카카오 캘린더 동의가 필요합니다</p>
-      <button onClick={requestCalendarConsent}
-        className="w-full py-2 bg-[#FEE500] text-[#3C1E1E] rounded-lg text-xs font-bold active:scale-[0.97]">
-        카카오 캘린더 동의하기
-      </button>
-    </div>
-  ) : null
-
   if (compact) {
     return (
-      <div>
-        <div className="flex gap-1.5">
-          <button
-            onClick={handleSubscribe}
-            disabled={loading}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all active:scale-95 ${
-              subscribed
-                ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
-                : 'bg-white/10 text-white border border-white/20'
-            }`}
-          >
-            {subscribed ? '🔔 알림 ON' : '🔔 알림'}
-          </button>
-          <button
-            onClick={handleAddCalendar}
-            disabled={calLoading}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#FEE500] text-[#3C1E1E] active:scale-95 disabled:opacity-50"
-          >
-            {kr ? '📅 캘린더' : '📅 Calendar'}
-          </button>
-        </div>
-        {calendarConsentUI}
+      <div className="flex gap-1.5">
+        <button
+          onClick={handleSubscribe}
+          disabled={loading}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all active:scale-95 ${
+            subscribed
+              ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+              : 'bg-white/10 text-white border border-white/20'
+          }`}
+        >
+          {subscribed ? '🔔 알림 ON' : '🔔 알림'}
+        </button>
+        <button
+          onClick={handleAddCalendar}
+          disabled={calLoading}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#FEE500] text-[#3C1E1E] active:scale-95 disabled:opacity-50"
+        >
+          {kr ? '📅 캘린더' : '📅 Calendar'}
+        </button>
       </div>
     )
   }
@@ -179,7 +154,6 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
       >
         {calLoading ? '추가 중...' : kr ? '📅 카카오 캘린더에 추가' : '📅 Add to Calendar'}
       </button>
-      {calendarConsentUI}
     </div>
   )
 }

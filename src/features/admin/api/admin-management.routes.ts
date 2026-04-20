@@ -174,10 +174,12 @@ adminManagementRoutes.get('/sellers/pending', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellers = await executeQuery<SellerRow>(DB, `
-      SELECT id, email, name, phone, business_name, business_number,
-             status, created_at,
-             COALESCE(commission_rate, 10) AS commission_rate
-      FROM sellers WHERE status = 'pending' ORDER BY created_at ASC
+      SELECT s.id, s.email, s.name, s.phone, s.business_name, s.business_number,
+             s.status, s.created_at,
+             COALESCE(s.commission_rate, 10) AS commission_rate,
+             s.linked_user_id, u.name AS linked_user_name
+      FROM sellers s LEFT JOIN users u ON s.linked_user_id = u.id
+      WHERE s.status = 'pending' ORDER BY s.created_at ASC
     `);
     return c.json({ success: true, data: sellers });
   } catch (err) {
@@ -599,23 +601,27 @@ adminManagementRoutes.get('/products', cors(), async (c) => {
 });
 
 // ─── DELETE /api/admin/products/:id ─────────────────────────────────────────
+// 소프트 삭제: 주문 내역 보존을 위해 is_active=0으로 비활성화
 adminManagementRoutes.delete('/products/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const productId = c.req.param('id');
-    
-    // Check if product exists
+
     const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
-    
-    // Delete related order_items first (if any)
-    await executeRun(DB, 'DELETE FROM order_items WHERE product_id = ?', [productId]);
-    
-    // Delete the product
+
+    // 주문이 있는 상품은 소프트 삭제 (주문 내역 보존)
+    const hasOrders = await executeQuery<IdRow>(DB, 'SELECT id FROM order_items WHERE product_id = ? LIMIT 1', [productId]);
+    if (hasOrders.length > 0) {
+      await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
+      return c.json({ success: true, data: { id: productId, soft_deleted: true } });
+    }
+
+    // 주문 없는 상품만 하드 삭제
     await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
-    
+
     return c.json({ success: true, data: { id: productId } });
   } catch (err) {
     console.error('[Admin] delete product error:', err);

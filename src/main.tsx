@@ -12,6 +12,28 @@ import { initNativeFeatures, isNative } from '@/lib/native'
 // ✅ 런타임 환경 변수 검증 (Week 5 Day 2)
 validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
 
+// ✅ 빌드 버전 자동 감지 & 자동 리로드
+// Service Worker + 버전 체크 이중 보호로 옛 번들 고착 완전 차단
+import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck())
+
+if ('serviceWorker' in navigator && !import.meta.env.DEV) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => {
+      reg.update()
+      reg.addEventListener('updatefound', () => {
+        const installing = reg.installing
+        if (installing) {
+          installing.addEventListener('statechange', () => {
+            if (installing.state === 'activated') {
+              window.location.reload()
+            }
+          })
+        }
+      })
+    })
+  })
+}
+
 // Region 정보 출력 (디버깅용)
 if (import.meta.env.DEV) {
   logRegionInfo()

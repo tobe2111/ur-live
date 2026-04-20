@@ -98,22 +98,24 @@ export async function notifyAgencyForSeller(DB: D1Database, sellerId: number, ty
 }
 
 // ─── 카카오톡 메시지 (소비자, 구독자 대상, 시스템 자동) ─────────────────
-// 방송 시작 시 kakao_access_token 보유 구독자에게 무료 메시지 발송
-// ※ 본앱 talk_message 권한 승인 + IP 문제 해결 후 동작
-export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: number, title: string, sellerName: string) {
+export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: number, title: string, sellerName: string, kakaoRestApiKey?: string) {
+  if (!kakaoRestApiKey) return 0;
   try {
     const { results: subs } = await DB.prepare(`
-      SELECT bs.user_id, u.kakao_access_token
+      SELECT bs.user_id
       FROM broadcast_subscriptions bs
       JOIN users u ON CAST(bs.user_id AS TEXT) = CAST(u.id AS TEXT)
       WHERE bs.stream_id = ? AND u.kakao_access_token IS NOT NULL
-    `).bind(streamId).all<{ user_id: string; kakao_access_token: string }>();
+    `).bind(streamId).all<{ user_id: string }>();
 
     if (!subs?.length) return 0;
 
+    const { getKakaoTokenSimple } = await import('./kakao-token');
     let sent = 0;
     for (const sub of subs) {
       try {
+        const token = await getKakaoTokenSimple(DB, sub.user_id, kakaoRestApiKey);
+        if (!token) continue;
         const templateObject = JSON.stringify({
           object_type: 'feed',
           content: {
@@ -127,7 +129,7 @@ export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: nu
 
         await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${sub.kakao_access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
           body: `template_object=${encodeURIComponent(templateObject)}`,
         });
         sent++;
@@ -138,20 +140,24 @@ export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: nu
 }
 
 // ─── 팔로워에게 카카오 메시지 (방송 시작 시) ─────────────────
-export async function sendKakaoToFollowers(DB: D1Database, sellerId: number, title: string, description: string, link: string, buttonText: string) {
+export async function sendKakaoToFollowers(DB: D1Database, sellerId: number, title: string, description: string, link: string, buttonText: string, kakaoRestApiKey?: string) {
+  if (!kakaoRestApiKey) return 0;
   try {
     const { results: followers } = await DB.prepare(`
-      SELECT u.kakao_access_token
+      SELECT sf.user_id
       FROM social_follows sf
       JOIN users u ON CAST(sf.user_id AS TEXT) = CAST(u.id AS TEXT)
       WHERE sf.seller_id = ? AND u.kakao_access_token IS NOT NULL
-    `).bind(sellerId).all<{ kakao_access_token: string }>();
+    `).bind(sellerId).all<{ user_id: string }>();
 
     if (!followers?.length) return 0;
+    const { getKakaoTokenSimple } = await import('./kakao-token');
     const fullUrl = `https://live.ur-team.com${link}`
     let sent = 0;
-    for (const f of followers.slice(0, 100)) { // 일일 100건 제한
+    for (const f of followers.slice(0, 100)) {
       try {
+        const token = await getKakaoTokenSimple(DB, f.user_id, kakaoRestApiKey);
+        if (!token) continue;
         const templateObject = JSON.stringify({
           object_type: 'feed',
           content: { title, description, image_url: 'https://live.ur-team.com/og-image.png', link: { web_url: fullUrl, mobile_web_url: fullUrl } },
@@ -159,7 +165,7 @@ export async function sendKakaoToFollowers(DB: D1Database, sellerId: number, tit
         });
         await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${f.kakao_access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
           body: `template_object=${encodeURIComponent(templateObject)}`,
         });
         sent++;

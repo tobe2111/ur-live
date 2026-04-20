@@ -27,9 +27,17 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      // ✅ 기존 유저 세션 정리 (동기, Firebase 불필요)
+      // ✅ User 세션 정리 (동기) + Firebase signOut (비동기, 타임아웃 3초)
       clearAuthData('user')
       clearFirebaseTokenCache()
+      // Firebase signOut은 비동기로 실행 (hang 방지 - 3초 타임아웃)
+      try {
+        const signOutPromise = import('@/lib/firebase-auth').then(m => m.signOut())
+        await Promise.race([
+          signOutPromise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ])
+      } catch (_) {}
 
       // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/admin/login', {
@@ -66,10 +74,9 @@ export default function AdminLoginPage() {
         
         navigate('/admin', { replace: true })
       }
-    } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
+    } catch (err: any) {
       console.error('[AdminLogin] ❌ Error:', err)
-      setError(err_.response?.data?.message || err_.response?.data?.error || '로그인 실패')
+      setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
     } finally {
       setLoading(false)
     }
