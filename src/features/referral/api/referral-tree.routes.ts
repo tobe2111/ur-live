@@ -347,8 +347,10 @@ export async function registerInReferralTree(
 // POST /register — Register a user in the referral tree
 // ---------------------------------------------------------------------------
 
-referralTreeRoutes.post('/register', async (c) => {
+referralTreeRoutes.post('/register', requireAuth(), async (c) => {
   const { DB } = c.env
+  const authUser = getCurrentUser(c)
+  if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401)
 
   const body = await c.req.json<{
     user_id: string
@@ -362,6 +364,11 @@ referralTreeRoutes.post('/register', async (c) => {
 
   if (!['user', 'seller', 'agency'].includes(body.user_type)) {
     return c.json({ success: false, error: 'user_type must be user, seller, or agency' }, 400)
+  }
+
+  // ✅ AUTH FIX: Only allow registering your own user_id (admin can register any)
+  if (body.user_id !== String(authUser.id) && authUser.type !== 'admin') {
+    return c.json({ success: false, error: 'forbidden' }, 403)
   }
 
   try {
@@ -379,6 +386,12 @@ referralTreeRoutes.post('/register', async (c) => {
 
 referralTreeRoutes.post('/calculate-commission', async (c) => {
   const { DB } = c.env
+
+  // ✅ AUTH FIX: Internal-only endpoint — require shared token
+  const internalToken = c.env.INTERNAL_API_TOKEN
+  if (!internalToken || c.req.header('X-Internal-Token') !== internalToken) {
+    return c.json({ success: false, error: 'forbidden' }, 403)
+  }
 
   const body = await c.req.json<{
     order_id: number

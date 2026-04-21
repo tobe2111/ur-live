@@ -95,7 +95,7 @@ returnsRoutes.post('/request', requireAuth(), async (c) => {
 
   // 1. 주문 조회 + 소유자 확인
   const order = await DB.prepare(
-    'SELECT id, order_number, user_id, seller_id, status, total_amount, amount, delivered_at FROM orders WHERE id = ?'
+    'SELECT id, order_number, user_id, seller_id, status, total_amount, delivered_at FROM orders WHERE id = ?'
   ).bind(body.order_id).first<{
     id: number;
     order_number: string;
@@ -103,7 +103,6 @@ returnsRoutes.post('/request', requireAuth(), async (c) => {
     seller_id: number | null;
     status: string;
     total_amount: number | null;
-    amount: number | null;
     delivered_at: string | null;
   }>();
 
@@ -140,7 +139,7 @@ returnsRoutes.post('/request', requireAuth(), async (c) => {
   }
 
   // 5. 반품 생성
-  const refundAmount = order.total_amount ?? order.amount ?? 0;
+  const refundAmount = order.total_amount ?? 0;
 
   const result = await DB.prepare(`
     INSERT INTO returns (order_id, order_number, user_id, seller_id, status, reason, detail_reason, refund_amount)
@@ -245,17 +244,12 @@ returnsRoutes.put('/:id/shipping', requireAuth(), async (c) => {
  */
 returnsRoutes.get('/seller', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
 
   const { DB } = c.env;
   await ensureTable(DB);
 
-  const seller = await DB.prepare(
-    'SELECT id FROM sellers WHERE id = ?'
-  ).bind(String(user.id)).first<{ id: number }>();
-
-  // seller 테이블이 없거나 매칭 안 되면 user.id를 seller_id로 시도
-  const sellerId = seller?.id ?? user.id;
+  const sellerId = Number(user.id);
 
   const returns = await DB.prepare(`
     SELECT r.*, o.total_amount as order_total, o.status as order_status,
@@ -274,7 +268,8 @@ returnsRoutes.get('/seller', requireAuth(), async (c) => {
  */
 returnsRoutes.put('/:id/approve', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
+  const sellerId = Number(user.id);
 
   const { DB } = c.env;
   await ensureTable(DB);
@@ -287,6 +282,10 @@ returnsRoutes.put('/:id/approve', requireAuth(), async (c) => {
 
   if (!returnRecord) {
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
+  }
+
+  if (returnRecord.seller_id !== sellerId) {
+    return c.json({ success: false, error: 'forbidden' }, 403);
   }
 
   if (returnRecord.status !== 'requested') {
@@ -306,7 +305,8 @@ returnsRoutes.put('/:id/approve', requireAuth(), async (c) => {
  */
 returnsRoutes.put('/:id/reject', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
+  const sellerId = Number(user.id);
 
   const { DB } = c.env;
   await ensureTable(DB);
@@ -320,6 +320,10 @@ returnsRoutes.put('/:id/reject', requireAuth(), async (c) => {
 
   if (!returnRecord) {
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
+  }
+
+  if (returnRecord.seller_id !== sellerId) {
+    return c.json({ success: false, error: 'forbidden' }, 403);
   }
 
   if (returnRecord.status !== 'requested') {
@@ -339,7 +343,8 @@ returnsRoutes.put('/:id/reject', requireAuth(), async (c) => {
  */
 returnsRoutes.put('/:id/inspect', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
+  const sellerId = Number(user.id);
 
   const { DB } = c.env;
   await ensureTable(DB);
@@ -360,6 +365,10 @@ returnsRoutes.put('/:id/inspect', requireAuth(), async (c) => {
 
   if (!returnRecord) {
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
+  }
+
+  if (returnRecord.seller_id !== sellerId) {
+    return c.json({ success: false, error: 'forbidden' }, 403);
   }
 
   if (!['shipped', 'received'].includes(returnRecord.status)) {
@@ -386,7 +395,8 @@ returnsRoutes.put('/:id/inspect', requireAuth(), async (c) => {
  */
 returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec: 3600 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
+  const sellerId = Number(user.id);
 
   const { DB } = c.env;
   await ensureTable(DB);
@@ -403,19 +413,22 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
   }
 
+  if (returnRecord.seller_id !== sellerId) {
+    return c.json({ success: false, error: 'forbidden' }, 403);
+  }
+
   if (returnRecord.status !== 'inspected') {
     return c.json({ success: false, error: '검수 완료된 반품만 환불 처리할 수 있습니다' }, 400);
   }
 
   // 1. 주문에서 payment_key 조회
   const order = await DB.prepare(
-    'SELECT id, toss_payment_key, payment_key, total_amount, amount FROM orders WHERE id = ?'
+    'SELECT id, toss_payment_key, payment_key, total_amount FROM orders WHERE id = ?'
   ).bind(returnRecord.order_id).first<{
     id: number;
     toss_payment_key: string | null;
     payment_key: string | null;
     total_amount: number | null;
-    amount: number | null;
   }>();
 
   if (!order) {
@@ -423,7 +436,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   }
 
   const paymentKey = order.toss_payment_key || order.payment_key;
-  const orderAmount = order.total_amount || order.amount || 0;
+  const orderAmount = order.total_amount || 0;
 
   if (returnRecord.refund_amount > orderAmount) {
     return c.json({ success: false, error: '환불 금액이 주문 금액을 초과합니다' }, 400);
