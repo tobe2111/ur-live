@@ -818,18 +818,7 @@ function AppContent() {
           </div>
           {!hideBottomNav && <BottomNav />}
           {!fullScreen && <SideBanner />}
-          {!hideBottomNav && (
-            <a
-              href="http://pf.kakao.com/_AITdn/chat"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="fixed bottom-20 right-4 z-[9998] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
-              style={{ right: 'calc(max(16px, (100vw - 430px) / 2 + 16px))' }}
-              title="카카오 채널 상담"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.86 5.32 4.64 6.74-.15.56-.82 3.06-.85 3.26 0 0-.02.13.05.18.07.06.16.03.16.03.22-.03 2.54-1.67 3.6-2.4.77.11 1.57.19 2.4.19 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/></svg>
-            </a>
-          )}
+          {/* 카카오 채널 상담 버튼 — SideBanner 컴포넌트에서 처리 */}
           </div>
         </Suspense>
       </FrameWrapper>

@@ -46,9 +46,10 @@ try {
   console.error('[App] Sentry 초기화 실패:', error)
 }
 
-// Register service worker for offline caching of static assets
+// Service Worker 비활성화 — Cloudflare Pages에서 sw.js가 누락되어 MIME type 에러 발생
+// 기존 SW가 있으면 해제
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {})
+  navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()))
 }
 
 const rootElement = document.getElementById('root')
