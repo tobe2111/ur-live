@@ -197,8 +197,8 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
       // 카카오 access_token + refresh_token 저장 (메시지/캘린더 API용)
-      try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run() } catch {}
-      try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_refresh_token TEXT").run() } catch {}
+      // ✅ FIX (H5): One-time schema check (not per-request)
+      await ensureKakaoColumns(DB);
       await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
         .bind(accessToken, kakaoRefreshToken, user.id).run();
 
@@ -288,8 +288,8 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     const user = await kakaoService.upsertUser(kakaoUser);
 
     // 토큰 저장 (consent callback에서도 갱신)
-    try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run() } catch {}
-    try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_refresh_token TEXT").run() } catch {}
+    // ✅ FIX (H5): One-time schema check (not per-request)
+    await ensureKakaoColumns(DB);
     await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
       .bind(accessToken, kakaoRefreshToken2, user.id).run();
 

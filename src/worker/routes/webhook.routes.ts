@@ -129,8 +129,11 @@ async function verifyTossSignature(
   }
 }
 
-// Replay-attack defense: reject webhooks older than 5 minutes
-const WEBHOOK_TIMESTAMP_TOLERANCE_SEC = 5 * 60;
+// Replay-attack defense: reject webhooks older than 30 minutes.
+// ✅ FIX (H7): Raised from 5min → 30min to accommodate Toss retry delays
+// (Toss retries up to 24h; 30m is the sweet spot between legitimate retries
+// and replay protection).
+const WEBHOOK_TIMESTAMP_TOLERANCE_SEC = 30 * 60;
 
 function verifyTimestamp(timestampHeader: string | undefined | null): boolean {
   if (!timestampHeader) return false; // require timestamp in production
