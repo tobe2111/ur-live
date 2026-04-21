@@ -182,12 +182,14 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     const currentBalance = pts?.balance ?? 0;
     const newBalance = currentBalance + rewardAmount;
 
+    // ✅ BUG #19 FIX: Review reward is not a top-up, so don't inflate total_charged
+    // (which represents money the user spent to charge their wallet).  Just bump balance.
     if (pts) {
-      await DB.prepare('UPDATE user_points SET balance = ?, total_charged = total_charged + ?, updated_at = datetime(\'now\') WHERE user_id = ?')
-        .bind(newBalance, rewardAmount, ptsUserId).run();
+      await DB.prepare('UPDATE user_points SET balance = ?, updated_at = datetime(\'now\') WHERE user_id = ?')
+        .bind(newBalance, ptsUserId).run();
     } else {
-      await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)')
-        .bind(ptsUserId, rewardAmount, rewardAmount).run();
+      await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, 0)')
+        .bind(ptsUserId, rewardAmount).run();
     }
 
     await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')

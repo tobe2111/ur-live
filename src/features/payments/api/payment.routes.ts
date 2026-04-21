@@ -174,12 +174,15 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
     const orderData = order[0];
 
     // 이미 취소된 주문인지 확인
-    if (['CANCELLED', 'REFUNDED'].includes(orderData.status)) {
+    // ✅ BUG #18 FIX: Status may be stored mixed-case in legacy rows — normalize
+    // before comparing so 'cancelled'/'Cancelled'/'CANCELLED' all match.
+    const normalizedStatus = ((orderData.status as string) || '').toUpperCase();
+    if (['CANCELLED', 'REFUNDED'].includes(normalizedStatus)) {
       return c.json(badRequestResponse('Order already cancelled'), 400);
     }
 
     // 취소 불가능한 상태인지 확인
-    if (['DELIVERED'].includes(orderData.status)) {
+    if (['DELIVERED'].includes(normalizedStatus)) {
       return c.json(badRequestResponse('Cannot cancel delivered order'), 400);
     }
 

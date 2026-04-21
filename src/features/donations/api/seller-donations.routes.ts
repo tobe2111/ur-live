@@ -96,7 +96,7 @@ sellerDonationsRoutes.get('/donations', async (c) => {
                d.donor_name, d.amount, COALESCE(d.credit_amount, 0) AS seller_amount,
                COALESCE(d.commission_amount, 0) AS commission_amount, COALESCE(d.commission_rate, 0) AS commission_rate,
                d.message, 0 AS is_anonymous,
-               COALESCE(d.status, d.payment_status) AS status, d.created_at,
+               d.payment_status AS status, d.created_at,
                CASE WHEN DATE(d.created_at) <= DATE('now', '-10 days') THEN 1 ELSE 0 END AS can_settle
         FROM donations d
         LEFT JOIN live_streams ls ON d.live_stream_id = ls.id

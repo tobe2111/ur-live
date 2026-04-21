@@ -48,6 +48,26 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
   }
 }
 
+/**
+ * ✅ BUG #33 FIX: Authorize only approved + active sellers.
+ * `getSellerIdFromToken` only proves the JWT was signed by us.  A seller whose
+ * account was suspended, rejected, or soft-deleted still holds a valid token
+ * and could otherwise keep calling these endpoints.  This helper does the JWT
+ * check + a DB status check in one shot.
+ */
+async function getActiveSellerId(
+  DB: D1Database,
+  authorization: string | undefined,
+  jwtSecret: string
+): Promise<string | null> {
+  const id = await getSellerIdFromToken(authorization, jwtSecret);
+  if (!id) return null;
+  const seller = await DB.prepare(
+    "SELECT id FROM sellers WHERE id = ? AND status = 'approved' AND is_active = 1"
+  ).bind(id).first();
+  return seller ? id : null;
+}
+
 /** DB status 값과 프론트엔드 status 값 매핑 */
 const STATUS_MAP: Record<string, string> = {
   PAY_COMPLETE: 'DONE',   // 프론트 → DB
@@ -58,7 +78,8 @@ const VALID_STATUSES = ['PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'DONE
 // ─── GET /api/seller/orders ────────────────────────────────────────────────
 sellerOrdersRoutes.get('/orders', async (c) => {
   try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    // ✅ BUG #33 FIX: Require approved + active seller (not just a signed JWT).
+    const sellerId = await getActiveSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const db = c.env.DB;

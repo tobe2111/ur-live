@@ -145,9 +145,14 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
       return c.json({ success: false, error: '공동구매가 마감되었습니다' }, 400)
     }
 
-    // 재고 확인
-    if (product.stock < qty) {
-      return c.json({ success: false, error: '재고가 부족합니다' }, 400)
+    // ✅ BUG #26 FIX: Atomic stock reservation. Previous SELECT-then-UPDATE
+    // pattern allowed two concurrent joiners to both pass the stock check and
+    // then oversell via unconditional decrement.
+    const reserveStock = await DB.prepare(
+      'UPDATE products SET stock = stock - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND stock >= ?'
+    ).bind(qty, productId, qty).run()
+    if (!reserveStock.meta.changes) {
+      return c.json({ success: false, error: '재고가 부족합니다' }, 409)
     }
 
     const totalAmount = product.price * qty
@@ -220,10 +225,11 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
       }
     }
 
-    // 공동구매 카운트 증가 + 재고 감소
+    // ✅ BUG #26 FIX: Stock was already decremented atomically above — only
+    // bump the group-buy counter here to avoid double-subtracting.
     await DB.prepare(`
-      UPDATE products SET group_buy_current = group_buy_current + ?, stock = stock - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-    `).bind(qty, qty, productId).run()
+      UPDATE products SET group_buy_current = group_buy_current + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(qty, productId).run()
 
     // 목표 달성 확인
     const updated = await DB.prepare('SELECT group_buy_current, group_buy_target FROM products WHERE id = ?')
@@ -339,8 +345,11 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
       await DB.prepare("UPDATE vouchers SET status = 'refunded' WHERE id = ?").bind(v.id).run()
 
       // 딜 결제였으면 딜 환불
+      // ✅ BUG #45 FIX: `o.total_amount` covers the whole order (N vouchers).
+      // Refunding that per-voucher would multiply the refund by N.  Refund
+      // exactly one voucher's worth of points — `product.price`.
       if ((v as any).payment_method === 'deal_points' && (v as any).user_id) {
-        const amount = (v as any).total_amount || product.price
+        const amount = product.price
         await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
           .bind(amount, (v as any).user_id).run()
         await DB.prepare(

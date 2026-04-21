@@ -234,7 +234,22 @@ paymentsRouter.post('/confirm', async (c) => {
  */
 paymentsRouter.post('/checkout-session', async (c) => {
   try {
-    const userId = c.get('user').id;
+    // ✅ IDOR FIX: Resolve Firebase UID → DB integer id (same pattern as /confirm).
+    // Previously compared o.user_id (INTEGER) to raw rawId (STRING) directly.
+    const rawId = String(c.get('user').id);
+    let dbUserId = rawId;
+    const numId = parseInt(rawId);
+    if (isNaN(numId) || String(numId) !== rawId) {
+      try {
+        const row = await c.env.DB.prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
+          .bind(rawId).first<{ id: string | number }>();
+        if (row?.id != null) dbUserId = String(row.id);
+        else return c.json({ success: false, error: 'Unauthorized' }, 401);
+      } catch {
+        // fallback: keep raw id
+      }
+    }
+
     const { order_number } = await c.req.json<{ order_number: string }>();
 
     if (!order_number) {
@@ -248,8 +263,7 @@ paymentsRouter.post('/checkout-session', async (c) => {
       return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
     }
 
-    const unauthorized = orders.find(o => o.user_id !== userId);
-    if (unauthorized) {
+    if (orders.some(o => String(o.user_id) !== String(dbUserId))) {
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 

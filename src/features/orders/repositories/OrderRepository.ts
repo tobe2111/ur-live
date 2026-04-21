@@ -73,6 +73,11 @@ export class OrderRepository {
    * duplicate order row with the same order_number, charging the customer twice
    * or creating phantom orders.  We now check for an existing order_number
    * before inserting; if found we return the existing order instead of failing.
+   *
+   * ✅ BUG #16/#17/#30 FIX: Orders must be created with status='PENDING' (uppercase)
+   * to match the dashboards/seller order views.  Lowercase 'pending' made orders
+   * invisible to the seller/admin UI.  We also now decrement product stock
+   * atomically before the INSERT to prevent overselling under concurrent load.
    */
   async create(data: OrderCreateInput): Promise<Order> {
     // 주문 번호 생성
@@ -85,13 +90,32 @@ export class OrderRepository {
       return existing;
     }
 
+    // ✅ BUG #17 FIX: Atomically reserve stock BEFORE creating the order.
+    // D1 doesn't support SELECT FOR UPDATE, but a conditional UPDATE
+    // (`WHERE stock >= ?`) is atomic.  If any item is oversold, abort.
+    if (data.items.length > 0) {
+      const stockStmts = data.items.map(item => (
+        this.db.prepare(
+          `UPDATE products SET stock = stock - ?, updated_at = datetime('now')
+           WHERE id = ? AND stock >= ?`
+        ).bind(item.quantity, item.product_id, item.quantity)
+      ));
+      const stockResults = await this.db.batch(stockStmts);
+      for (let i = 0; i < stockResults.length; i++) {
+        if ((stockResults[i]?.meta?.changes ?? 0) === 0) {
+          throw new Error(`재고가 부족합니다 (상품 ID: ${data.items[i].product_id})`);
+        }
+      }
+    }
+
     // ✅ SCHEMA FIX: Use `total_amount` to match the actual DB schema column
+    // ✅ BUG #16/#30 FIX: status='PENDING' (uppercase) to match dashboard filters
     const orderResult = await this.db.prepare(`
       INSERT INTO orders (
         order_number, user_id, seller_id, total_amount, status,
         payment_method, shipping_address, shipping_name, shipping_phone,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       orderNumber,
       data.user_id,
