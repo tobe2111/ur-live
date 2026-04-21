@@ -13,6 +13,7 @@ import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+import { cacheGet } from '@/worker/utils/cache'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -89,17 +90,25 @@ groupBuyRoutes.get('/products', async (c) => {
 
   const status = c.req.query('status') || 'active'
 
-  const { results } = await DB.prepare(`
-    SELECT p.*, s.name as seller_name, s.profile_image as seller_avatar
-    FROM products p
-    LEFT JOIN sellers s ON p.seller_id = s.id
-    WHERE p.category = 'meal_voucher' AND p.is_active = 1
-      AND (p.group_buy_status = ? OR ? = 'all')
-    ORDER BY p.created_at DESC
-    LIMIT 50
-  `).bind(status, status).all()
+  const results = await cacheGet(
+    c.env.SESSION_KV,
+    `group_buy_products:${status}`,
+    async () => {
+      const { results } = await DB.prepare(`
+        SELECT p.*, s.name as seller_name, s.profile_image as seller_avatar
+        FROM products p
+        LEFT JOIN sellers s ON p.seller_id = s.id
+        WHERE p.category = 'meal_voucher' AND p.is_active = 1
+          AND (p.group_buy_status = ? OR ? = 'all')
+        ORDER BY p.created_at DESC
+        LIMIT 50
+      `).bind(status, status).all()
+      return results ?? []
+    },
+    { ttl: 60, staleWhileRevalidate: 30 }
+  )
 
-  return c.json({ success: true, data: results ?? [] })
+  return c.json({ success: true, data: results })
 })
 
 // ── GET /api/group-buy/products/:id ─────────────────────────────────

@@ -29,7 +29,7 @@ import { globalErrorHandler as errorHandler } from './middleware/error-handler';
 
 // ---- Feature module routes ----
 import { accountRoutes } from '../features/account/api/account.routes';
-import { adminManagementRoutes, adminBannersRoutes } from '../features/admin/api/index';
+import { adminManagementRoutes, adminBannersRoutes, adminFlagsRoutes } from '../features/admin/api/index';
 import { scraperProxy } from '../features/admin/api/scraper-proxy.routes';
 import { naverScraper } from '../features/scraper/api/naver-scraper.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
@@ -62,6 +62,7 @@ import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/
 import { requireAdmin } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
 import { rateLimit } from './middleware/rate-limit';
+import { bodyLimit } from './middleware/body-limit';
 import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
@@ -103,6 +104,9 @@ adminApp.use('*', adminAuditMiddleware());
 
 app.use('*', timing());
 app.use('*', logger());
+// Reject any request body larger than 1MB before it hits route handlers.
+// Bulk-upload routes apply a larger limit locally if needed.
+app.use('/api/*', bodyLimit(1_000_000));
 app.use('/api/*', i18nMiddleware);
 app.use('/api/*', rateLimiterMiddleware as any);
 
@@ -456,6 +460,19 @@ app.use('/api/group-buy/products', cacheControl(60)); // 1 min
 app.use('/api/banners', cacheControl(300));     // 5 min
 
 // ============================================================
+// Rate limits for read/write endpoints
+// Applied per-IP (default key). Auth-sensitive routes fail closed.
+// ============================================================
+// Search: prevent keyword-abuse / scraping
+app.use('/api/search/*', rateLimit({ action: 'search', max: 30, windowSec: 60 }));
+// Product list: prevent scraping the catalog
+app.use('/api/products', rateLimit({ action: 'product_list', max: 60, windowSec: 60 }));
+// Seller public profile view: prevent enumeration
+app.use('/api/sellers/*', rateLimit({ action: 'seller_view', max: 60, windowSec: 60 }));
+// Chat send: prevent spam; only on POSTs handled inside chatRoutes
+app.use('/api/chat/*/messages', rateLimit({ action: 'chat_send', max: 30, windowSec: 60 }));
+
+// ============================================================
 // Streams Routes  ← /api/streams (공개 조회용)
 // 프론트엔드의 LiveNow, useLiveStream, AdminPage 등이 /api/streams 호출
 // 판매자 전용 CRUD는 /api/seller/streams 유지
@@ -558,8 +575,13 @@ adminApp.route('/agencies', adminAgencyRoutes);
 // Admin tools (chart, sellers, banners, notices, settlements, reports, settings)
 import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 adminApp.route('/tools', adminToolsRoutes);
+// Admin real-time health metrics (active streams, orders/min, stuck orders, webhooks)
+import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
+adminApp.route('/metrics', adminMetricsRoutes);
 adminApp.route('/', adminManagementRoutes);
 adminApp.route('/banners', adminBannersRoutes);
+// Feature flags / kill-switch (graceful degradation for traffic spikes)
+adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
 // Restaurant settlement (admin)
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';

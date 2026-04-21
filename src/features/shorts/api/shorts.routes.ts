@@ -14,6 +14,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { getFeatureFlags } from '@/worker/utils/feature-flags'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 
@@ -61,6 +62,13 @@ async function ensureTables(DB: D1Database) {
 
 // ── GET /api/shorts/feed — 쇼츠 + 실시간 라이브 + 다시보기 혼합 피드 ──
 shortsRoutes.get('/feed', async (c) => {
+  // Kill switch: when shorts feed is disabled, serve a minimal empty payload
+  // instead of running the multi-query blend. Front-end already tolerates [].
+  const flags = await getFeatureFlags((c.env as Env).SESSION_KV)
+  if (!flags.enable_shorts_feed) {
+    return c.json({ success: true, data: [], degraded: true })
+  }
+
   const { DB } = c.env
   await ensureTables(DB)
 

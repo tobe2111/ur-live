@@ -18,11 +18,14 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { getFeatureFlags } from '@/worker/utils/feature-flags';
+import type { KVNamespace } from '@cloudflare/workers-types';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 
 type Bindings = {
   DB: D1Database;
+  SESSION_KV?: KVNamespace;
 };
 
 export const productsRoutes = new Hono<{ Bindings: Bindings }>();
@@ -55,9 +58,17 @@ productsRoutes.get('/search/popular', cors(), async (c) => {
  * 검색 자동완성 제안 (/api/search/suggestions 로 프론트에서 호출)
  */
 productsRoutes.get('/search/suggestions', cors(), async (c) => {
+  // Kill switch: serve empty suggestions during traffic spikes to cut DB load
+  const flags = await getFeatureFlags(c.env.SESSION_KV);
+  if (!flags.enable_search_suggestions) {
+    return c.json({ success: true, data: [] });
+  }
+
   const { DB } = c.env;
   const q = c.req.query('q') || '';
   if (!q || q.length < 2) return c.json({ success: true, data: [] });
+  // Defensive: cap query length to prevent DoS via giant LIKE patterns.
+  if (q.length > 200) return c.json({ success: true, data: [] });
 
   try {
     const result = await DB.prepare(
@@ -83,11 +94,14 @@ productsRoutes.get('/', cors(), async (c) => {
     // Query params 파싱
     // featured=true 이면 어드민이 등록한 ur특가 상품(product_type='featured')만 반환
     const featuredOnly = c.req.query('featured') === 'true';
+    // Defensive: cap search string length (200) to prevent giant LIKE DoS.
+    const rawSearch = c.req.query('search');
+    const safeSearch = rawSearch && rawSearch.length <= 200 ? rawSearch : undefined;
     const filter: ProductFilter = {
       sellerId: c.req.query('seller_id') ? Number(c.req.query('seller_id')) : undefined,
       category: c.req.query('category'),
       status: c.req.query('status') as 'active' | 'inactive' | undefined,
-      search: c.req.query('search'),
+      search: safeSearch,
       minPrice: c.req.query('min_price') ? Number(c.req.query('min_price')) : undefined,
       maxPrice: c.req.query('max_price') ? Number(c.req.query('max_price')) : undefined,
       productType: featuredOnly ? 'featured' : undefined,

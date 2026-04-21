@@ -167,19 +167,33 @@ export class OrderRepository {
   }
   
   /**
-   * 주문 상태 업데이트
+   * 주문 상태 업데이트 (CAS — state machine 기반)
+   *
+   * ✅ CONCURRENCY FIX: 이전에는 무조건 UPDATE 하여 PAID → PENDING 같은
+   * 역행 전환이 가능했습니다. 이제 state machine의 허용된 이전 상태 집합만
+   * 매칭되도록 CAS UPDATE를 사용합니다.
    */
   async updateStatus(id: number, status: Order['status']): Promise<Order> {
-    await this.db.prepare(`
-      UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?
-    `).bind(status, id).run();
-    
+    const { transitionOrderStatus, canTransition } = await import('../../../worker/utils/state-machine');
+
+    const ok = await transitionOrderStatus(this.db as unknown as D1Database, id, String(status));
+    if (!ok) {
+      // Transition rejected — fetch current row for diagnostics
+      const current = await this.findById(id);
+      if (!current) throw new Error('Order not found');
+      if (canTransition(current.status, String(status))) {
+        // Somehow state machine reports legal but DB didn't change — rare race
+        throw new Error('Order status update failed (concurrent change)');
+      }
+      throw new Error(
+        `Invalid status transition: ${current.status} → ${status}`
+      );
+    }
+
     const order = await this.findById(id);
-    
     if (!order) {
       throw new Error('Order not found after update');
     }
-    
     return order;
   }
   

@@ -113,3 +113,50 @@ export function setUser(user: { id: string; email?: string; username?: string } 
     Sentry.setUser(user)
   }
 }
+
+/**
+ * Breadcrumb 추가 — 에러 발생 시 직전 흐름을 Sentry에 함께 전송.
+ * 결제/주문/로그인 같은 critical flow에서 호출하여 디버깅 컨텍스트를 확보.
+ *
+ * 민감한 값(email, phone, token 등)은 호출 전에 마스킹해서 전달할 것.
+ */
+export function addBreadcrumb(
+  category: string,
+  message: string,
+  data?: Record<string, any>,
+  level: 'info' | 'warning' | 'error' = 'info',
+) {
+  try {
+    Sentry.addBreadcrumb({ category, message, data, level })
+  } catch {
+    // Sentry 초기화 실패 시 무시
+  }
+}
+
+/**
+ * 사용자 컨텍스트 설정 (breadcrumb와 같이 쓰는 간편 함수).
+ * `type`은 'user' | 'seller' | 'admin' 등 세그먼트 구분용.
+ */
+export function setUserContext(user: { id: string | number; type?: string; email?: string }) {
+  try {
+    Sentry.setUser({
+      id: String(user.id),
+      ...(user.email ? { email: user.email } : {}),
+      ...(user.type ? { segment: user.type } : {}),
+    })
+  } catch {
+    // no-op
+  }
+}
+
+/**
+ * 이메일 마스킹 헬퍼 (breadcrumb data용).
+ * 'hello@ex.com' → 'h***@ex.com'
+ */
+export function maskEmail(email: string | null | undefined): string {
+  if (!email || typeof email !== 'string') return ''
+  const [local, domain] = email.split('@')
+  if (!local || !domain) return '***'
+  const head = local.slice(0, 1)
+  return `${head}***@${domain}`
+}

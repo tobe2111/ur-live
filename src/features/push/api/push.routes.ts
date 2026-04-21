@@ -10,6 +10,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { getFeatureFlags } from '@/worker/utils/feature-flags';
+import type { KVNamespace } from '@cloudflare/workers-types';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 
 type Bindings = {
@@ -17,6 +19,7 @@ type Bindings = {
   VAPID_PUBLIC_KEY?: string;
   JWT_SECRET?: string;
   FIREBASE_PROJECT_ID?: string;
+  SESSION_KV?: KVNamespace;
 };
 
 // Push subscription helpers (inline to avoid circular imports)
@@ -51,6 +54,13 @@ pushRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
 // Push 알림 구독 등록 — JWT 인증 필수 (X-User-ID 헤더는 스푸핑 가능하여 제거)
 pushRoutes.post('/api/push/subscribe', requireAuth(), async (c) => {
   try {
+    // Kill switch: skip enrolling new push subscriptions during overload.
+    // We ACK success so the client doesn't retry-loop on 503.
+    const flags = await getFeatureFlags(c.env.SESSION_KV);
+    if (!flags.enable_push_notifications) {
+      return c.json({ success: true, skipped: true, reason: 'push_disabled' });
+    }
+
     const authUser = getCurrentUser(c);
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
 

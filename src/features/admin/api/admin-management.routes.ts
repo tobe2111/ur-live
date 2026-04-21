@@ -1347,8 +1347,27 @@ adminManagementRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => 
       updates.push('delivered_at = datetime(\'now\')');
     }
 
+    // ✅ CONCURRENCY: state-machine CAS so admin cannot corrupt order flow
+    // (e.g. DELIVERED → PENDING) or race with webhooks/seller updates.
+    const { statusesThatCanReach } = await import('@/worker/utils/state-machine');
+    const allowedPrev = statusesThatCanReach(status);
+    if (allowedPrev.length === 0) {
+      return c.json({ success: false, error: `상태 전환 불가: ${status}` }, 400);
+    }
+    const prevPh = allowedPrev.map(() => '?').join(',');
     params.push(orderNumber);
-    await executeQuery(DB, `UPDATE orders SET ${updates.join(', ')} WHERE order_number = ?`, params);
+    const adminStatusRes = await DB.prepare(
+      `UPDATE orders SET ${updates.join(', ')}
+       WHERE order_number = ? AND UPPER(status) IN (${prevPh})`
+    ).bind(...params, ...allowedPrev).run();
+
+    if ((adminStatusRes.meta?.changes ?? 0) === 0) {
+      return c.json({
+        success: false,
+        error: `현재 상태(${orders[0].status})에서 ${status}로 전환할 수 없습니다`,
+        code: 'INVALID_STATUS_TRANSITION',
+      }, 409);
+    }
 
     // 11. 배송 완료 → 어드민 + 셀러 알림
     if (status === 'DELIVERED') {
@@ -1359,13 +1378,19 @@ adminManagementRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => 
       }
     }
 
-    // 취소 시 재고 복구
+    // 취소 시 재고 복구 — order_items.status != 'CANCELLED'인 항목만 복구 후
+    // 모든 항목을 CANCELLED로 마킹해 이중 복구를 차단한다.
     if (status === 'CANCELLED') {
       const items = await executeQuery<{ product_id: number; quantity: number }>(
-        DB, 'SELECT product_id, quantity FROM order_items WHERE order_id = ?', [String(orders[0].id)]
+        DB,
+        "SELECT product_id, quantity FROM order_items WHERE order_id = ? AND (status IS NULL OR status != 'CANCELLED')",
+        [String(orders[0].id)],
       );
       for (const item of items) {
         await executeQuery(DB, 'UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+      }
+      if (items.length > 0) {
+        await executeQuery(DB, "UPDATE order_items SET status = 'CANCELLED' WHERE order_id = ?", [String(orders[0].id)]);
       }
     }
 
@@ -1423,12 +1448,30 @@ adminManagementRoutes.patch('/orders/bulk-status', cors(), async (c) => {
     }
 
     const placeholders = order_numbers.map(() => '?').join(',');
-    await executeQuery(DB,
-      `UPDATE orders SET status = ?, updated_at = datetime('now') WHERE order_number IN (${placeholders})`,
-      [status, ...order_numbers]
-    );
+    // ✅ CONCURRENCY: enforce state machine — skip rows whose current state
+    // cannot legally transition to `status`. This prevents bulk ops from
+    // regressing e.g. DELIVERED → SHIPPING.
+    const { statusesThatCanReach } = await import('@/worker/utils/state-machine');
+    const allowedPrev = statusesThatCanReach(status);
+    if (allowedPrev.length === 0) {
+      return c.json({ success: false, error: `잘못된 상태 값: ${status}` }, 400);
+    }
+    const prevPh = allowedPrev.map(() => '?').join(',');
+    const updateRes = await DB.prepare(
+      `UPDATE orders SET status = ?, updated_at = datetime('now')
+       WHERE order_number IN (${placeholders})
+         AND UPPER(status) IN (${prevPh})`
+    ).bind(status, ...order_numbers, ...allowedPrev).run();
+    const updated = Number(updateRes.meta?.changes ?? 0);
 
-    return c.json({ success: true, data: { updated: order_numbers.length, status } });
+    return c.json({
+      success: true,
+      data: {
+        updated,
+        skipped: order_numbers.length - updated,
+        status,
+      },
+    });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }

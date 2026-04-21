@@ -113,11 +113,11 @@ export async function rollbackOrder(
       .bind(row.id, row.id)
       .run()
 
-    // 주문 상태 업데이트 (DB constraint는 uppercase)
-    await db
-      .prepare('UPDATE orders SET status = ? WHERE id = ?')
-      .bind('CANCELLED', row.id)
-      .run()
+    // 주문 상태 업데이트 — state machine로 원자적 전환 (이미 CANCELLED/REFUNDED이면 no-op)
+    const { transitionOrderStatus } = await import('./state-machine')
+    await transitionOrderStatus(db, row.id, 'CANCELLED', {
+      extraSets: { cancel_reason: '주문 롤백 (checkout 실패)' },
+    })
 
     // Order rollback completed
   } catch (error) {
@@ -217,13 +217,25 @@ export async function processCheckout(
     const newOrderId = orderInsert.meta.last_row_id as number
 
     // Step B: Batch remaining (stock deduction + order_items insert)
+    // ✅ CONCURRENCY: guard on `stock >= qty` so two concurrent checkouts for
+    // the same product can't oversell.  D1 batch() is atomic — if any guarded
+    // UPDATE reports meta.changes === 0 we must roll back, but the batch
+    // itself will not partially apply.
+    const stockStmts = products.map((item) =>
+      db
+        .prepare('UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?')
+        .bind(item.quantity, item.productId, item.quantity)
+    );
+    const stockResults = await db.batch(stockStmts);
+    for (let i = 0; i < stockResults.length; i++) {
+      if ((stockResults[i]?.meta?.changes ?? 0) === 0) {
+        // Undo partial changes via rollbackOrder
+        await rollbackOrder(db, orderId);
+        throw new Error(`재고가 부족합니다 (상품 ID: ${products[i].productId})`);
+      }
+    }
+
     await db.batch([
-      // 재고 차감
-      ...products.map((item) =>
-        db
-          .prepare('UPDATE products SET stock = stock - ? WHERE id = ?')
-          .bind(item.quantity, item.productId)
-      ),
       // 주문 아이템 생성 (schema: order_id, product_id, product_name [NOT NULL], quantity, price)
       ...products.map((item) =>
         db
