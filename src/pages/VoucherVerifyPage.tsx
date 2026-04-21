@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Ticket, CheckCircle, XCircle, Loader2, QrCode } from 'lucide-react'
 import api from '@/lib/api'
+import SEO from '@/components/SEO'
 
 /**
  * Parse voucher code from QR scanned content.
@@ -72,6 +73,7 @@ export default function VoucherVerifyPage() {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-5">
+      <SEO title="식사권 확인" description="QR 코드로 식사권을 확인합니다" url={urlCode ? `/v/${urlCode}` : '/v'} noindex />
       <div className="w-full max-w-sm">
         {/* 로고 */}
         <div className="text-center mb-8">

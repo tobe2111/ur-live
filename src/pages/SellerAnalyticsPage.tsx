@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { BarChart2, Users, Package, Loader2, TrendingUp, Repeat, ArrowUpRight } from 'lucide-react'
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
-} from 'recharts'
+
+// Recharts lazy load (377KB → 차트 영역만 지연 로드)
+const SellerAnalyticsChart = lazy(() => import('@/components/charts/SellerAnalyticsChart'))
 
 export default function SellerAnalyticsPage() {
   const { t } = useTranslation()
@@ -122,33 +122,9 @@ export default function SellerAnalyticsPage() {
                   <div className="mb-4">
                     <h3 className="text-sm font-bold text-gray-900 mb-2">{t('seller.dailyRevenueTrend')}</h3>
                     {(data as RevenueDataPoint[]).length > 0 ? (
-                      <ResponsiveContainer width="100%" height={240}>
-                        <LineChart data={(data as RevenueDataPoint[]).slice(-30)}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis
-                            dataKey="date"
-                            tickFormatter={(v: string) => v.slice(5)}
-                            tick={{ fontSize: 10, fill: '#9ca3af' }}
-                          />
-                          <YAxis
-                            tickFormatter={(v: number) => `${(v / 10000).toFixed(0)}${t('seller.salesUnit')}`}
-                            tick={{ fontSize: 10, fill: '#9ca3af' }}
-                            width={50}
-                          />
-                          <Tooltip
-                            formatter={(value, name) => {
-                              if (name === 'revenue') return [`${Number(value ?? 0).toLocaleString()}${t('common.won')}`, t('seller.revenueLabel')]
-                              return [`${value}${t('seller.ordersUnit')}`, t('seller.totalOrdersLabel')]
-                            }}
-                            labelFormatter={(label) => String(label)}
-                          />
-                          <Legend
-                            formatter={(value: string) => value === 'revenue' ? t('seller.revenueLabel') : t('seller.totalOrdersLabel')}
-                          />
-                          <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={1.5} dot={false} yAxisId={0} />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <Suspense fallback={<div className="flex items-center justify-center h-[240px]"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div>}>
+                        <SellerAnalyticsChart data={(data as RevenueDataPoint[]).slice(-30)} />
+                      </Suspense>
                     ) : (
                       <p className="text-center text-gray-500 text-xs py-8">{t('seller.noRevenueData')}</p>
                     )}

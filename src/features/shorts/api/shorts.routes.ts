@@ -278,6 +278,15 @@ shortsRoutes.delete('/:id', requireAuth(), async (c) => {
   const { DB } = c.env
   const id = c.req.param('id')
 
+  // Ownership check
+  const shorts = await DB.prepare('SELECT seller_id FROM shorts WHERE id = ?').bind(id).first<{ seller_id: number }>()
+  if (!shorts) return c.json({ success: false, error: '쇼츠를 찾을 수 없습니다.' }, 404)
+
+  const seller = await DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(String(user.id)).first<{ id: number }>()
+  if (!seller || shorts.seller_id !== seller.id) {
+    return c.json({ success: false, error: '다른 셀러의 쇼츠는 삭제할 수 없습니다.' }, 403)
+  }
+
   await DB.prepare("UPDATE shorts SET status = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(id).run()
 
   return c.json({ success: true, message: '삭제되었습니다' })

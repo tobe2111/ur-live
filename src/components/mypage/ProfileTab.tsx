@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { MapPin, CreditCard, Settings, LogOut, ChevronRight } from 'lucide-react'
+import { MapPin, Settings, LogOut, ChevronRight } from 'lucide-react'
 
 interface ProfileTabProps {
   userName: string
@@ -60,20 +60,15 @@ export function ProfileTab({ userName, userEmail, userProfileImage, onLogout }: 
         </div>
 
         <div className="space-y-2">
-          <ProfileMenuItem 
-            icon={MapPin} 
-            label="배송지 관리" 
-            onClick={() => navigate('/shipping-addresses')} 
+          <ProfileMenuItem
+            icon={MapPin}
+            label="배송지 관리"
+            onClick={() => navigate('/mypage/addresses')}
           />
-          <ProfileMenuItem 
-            icon={CreditCard} 
-            label="결제 수단" 
-            onClick={() => navigate('/payment-methods')} 
-          />
-          <ProfileMenuItem 
-            icon={Settings} 
-            label="설정" 
-            onClick={() => navigate('/settings')} 
+          <ProfileMenuItem
+            icon={Settings}
+            label="설정"
+            onClick={() => navigate('/account/settings')}
           />
         </div>
       </div>

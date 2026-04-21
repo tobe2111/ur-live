@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock } from 'lucide-react'
 import api from '@/lib/api'
+import SEO from '@/components/SEO'
 
 interface StoreStats {
   product_name: string
@@ -45,6 +46,7 @@ export default function StoreStatsPage() {
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-5">
+        <SEO title="식당 통계" description="공동구매 식당 통계 페이지" url={`/store/stats/${productId ?? ''}`} noindex />
         <div className="w-full max-w-sm text-center">
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-orange-100 flex items-center justify-center">
             <Lock className="w-7 h-7 text-orange-600" />
@@ -80,6 +82,7 @@ export default function StoreStatsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-5 py-8">
+      <SEO title={`${stats.restaurant_name || '식당'} 통계`} description={`${stats.product_name} 공동구매 식당 통계`} url={`/store/stats/${productId ?? ''}`} noindex />
       <div className="max-w-md mx-auto">
         {/* 헤더 */}
         <div className="text-center mb-6">

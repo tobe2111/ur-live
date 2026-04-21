@@ -1,13 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { TrendingUp, DollarSign, ShoppingCart, BarChart2, Loader2 } from 'lucide-react'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell
-} from 'recharts'
+
+// Recharts lazy load (377KB → 차트 영역만 지연 로드)
+const RevenueBarChart = lazy(() => import('@/components/charts/AdminRevenueCharts').then(m => ({ default: m.RevenueBarChart })))
+const OrderCountLineChart = lazy(() => import('@/components/charts/AdminRevenueCharts').then(m => ({ default: m.OrderCountLineChart })))
+const CategoryPieChart = lazy(() => import('@/components/charts/AdminRevenueCharts').then(m => ({ default: m.CategoryPieChart })))
+
+const ChartFallback = ({ height }: { height: number }) => (
+  <div className="flex items-center justify-center" style={{ height }}>
+    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+  </div>
+)
 
 interface RevenueSummary {
   total_revenue: number
@@ -167,18 +174,9 @@ export default function AdminRevenueAnalyticsPage() {
           <div className="bg-white rounded-xl shadow-sm p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">매출 추이</h3>
             {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6B7280' }} />
-                  <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-                    formatter={(value) => [`${fmt(Number(value ?? 0))}원`, '매출']}
-                  />
-                  <Bar dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<ChartFallback height={320} />}>
+                <RevenueBarChart chartData={chartData} />
+              </Suspense>
             ) : (
               <p className="text-center text-gray-400 py-10 text-sm">데이터가 없습니다</p>
             )}
@@ -188,18 +186,9 @@ export default function AdminRevenueAnalyticsPage() {
           {chartData.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">주문 건수 추이</h3>
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6B7280' }} />
-                  <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-                    formatter={(value) => [`${fmt(Number(value ?? 0))}건`, '주문']}
-                  />
-                  <Line type="monotone" dataKey="order_count" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<ChartFallback height={280} />}>
+                <OrderCountLineChart chartData={chartData} />
+              </Suspense>
             </div>
           )}
 
@@ -241,29 +230,9 @@ export default function AdminRevenueAnalyticsPage() {
               <h3 className="text-sm font-semibold text-gray-900 mb-4">카테고리별 매출</h3>
               {categories.length > 0 ? (
                 <div className="flex flex-col items-center">
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={categories}
-                        dataKey="revenue"
-                        nameKey="category"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={90}
-                        label={(props: { category?: string; percent?: number }) => `${props.category} ${((props.percent ?? 0) * 100).toFixed(0)}%`}
-                        labelLine={{ stroke: '#9CA3AF' }}
-                        fontSize={11}
-                      >
-                        {categories.map((_, i) => (
-                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-                        formatter={(value) => [`${fmt(Number(value ?? 0))}원`]}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <Suspense fallback={<ChartFallback height={250} />}>
+                    <CategoryPieChart categories={categories} colors={PIE_COLORS} />
+                  </Suspense>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {categories.map((c, i) => (
                       <span key={c.category} className="flex items-center gap-1 text-xs text-gray-600">

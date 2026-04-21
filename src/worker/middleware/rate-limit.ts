@@ -19,10 +19,50 @@ function defaultKey(c: Context, action: string): string {
   return `${action}:${ip}`;
 }
 
+// Sensitive auth actions that must fail CLOSED when the rate-limit store is
+// unavailable. Failing open here would let an attacker brute-force credentials
+// simply by forcing DB errors, so we return 429 instead.
+const AUTH_SENSITIVE_ACTIONS = new Set<string>([
+  'login',
+  'register',
+  'signup',
+  'password-reset',
+  'password_reset',
+  'reset-password',
+  'otp',
+  'verify',
+  'verify-code',
+]);
+
+function isAuthSensitive(action: string): boolean {
+  const a = action.toLowerCase();
+  if (AUTH_SENSITIVE_ACTIONS.has(a)) return true;
+  // Heuristic: catch variants like 'seller-login', 'admin-login', 'kakao-login', etc.
+  return (
+    a.includes('login') ||
+    a.includes('register') ||
+    a.includes('signup') ||
+    a.includes('password') ||
+    a.includes('otp') ||
+    a.includes('verify')
+  );
+}
+
 export function rateLimit(opts: RateLimitOptions) {
   return async (c: Context, next: Next) => {
     const db: D1Database | undefined = (c.env as Record<string, unknown>).DB as D1Database | undefined;
-    if (!db) return next(); // skip if no DB
+    const authSensitive = isAuthSensitive(opts.action);
+
+    if (!db) {
+      // No DB binding: for auth-sensitive actions we fail CLOSED
+      if (authSensitive) {
+        return c.json(
+          { success: false, error: '요청을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.' },
+          429
+        );
+      }
+      return next(); // non-sensitive: skip
+    }
 
     const key = opts.keyFn ? opts.keyFn(c) : defaultKey(c, opts.action);
     const now = Math.floor(Date.now() / 1000);
@@ -54,8 +94,17 @@ export function rateLimit(opts: RateLimitOptions) {
 
       c.header('X-RateLimit-Limit', String(opts.max));
       c.header('X-RateLimit-Remaining', String(Math.max(0, opts.max - count)));
-    } catch {
-      // Rate limit DB error must not block the request — fail open
+    } catch (err) {
+      console.error('[rate-limit] DB error', { action: opts.action, err });
+      // Auth-sensitive: fail CLOSED to prevent brute-force when the store is down.
+      // Non-sensitive: fail open to avoid breaking unrelated traffic.
+      if (authSensitive) {
+        c.header('Retry-After', '60');
+        return c.json(
+          { success: false, error: '요청을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.' },
+          429
+        );
+      }
     }
 
     return next();

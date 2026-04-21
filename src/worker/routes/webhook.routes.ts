@@ -160,7 +160,8 @@ webhookRouter.post('/', async (c) => {
     if (isProduction || (webhookSecret && webhookSecret.length > 0)) {
       if (!webhookSecret) {
         console.error('[WEBHOOK] ❌ TOSS_WEBHOOK_SECRET not configured in production');
-        return c.json({ received: true, status: 'rejected' }, 200);
+        // Return 401 so Toss retries (misconfig may be transient) and legitimate deliveries are not silently lost
+        return c.json({ received: false, status: 'rejected', error: 'webhook_secret_not_configured' }, 401);
       }
       const signatureHeader = c.req.header('Toss-Signature');
       const isValid = await verifyTossSignature(rawBody, signatureHeader, webhookSecret);
@@ -168,7 +169,8 @@ webhookRouter.post('/', async (c) => {
         console.error('[WEBHOOK] ❌ INVALID_SIGNATURE', {
           ip: c.req.header('CF-Connecting-IP'),
         });
-        return c.json({ received: true, status: 'rejected' }, 200);
+        // Return 401 so Toss retries legitimate deliveries whose signatures failed transiently
+        return c.json({ received: false, status: 'rejected', error: 'invalid_signature' }, 401);
       }
 
       // 3. Timestamp verification (replay attack defense) — BEFORE any logic
@@ -178,7 +180,8 @@ webhookRouter.post('/', async (c) => {
           timestamp: timestampHeader,
           ip: c.req.header('CF-Connecting-IP'),
         });
-        return c.json({ received: true, status: 'rejected' }, 200);
+        // Return 401 — do not silently accept possibly-replayed requests
+        return c.json({ received: false, status: 'rejected', error: 'invalid_timestamp' }, 401);
       }
     } else {
       console.warn('[WEBHOOK] ⚠️ Signature/timestamp verification skipped (non-production, no secret configured)');
@@ -311,14 +314,15 @@ async function handlePaymentConfirmed(
     return;
   }
 
+  // ✅ SCHEMA FIX: Removed webhook_processed_at / webhook_event_id —
+  // those columns don't exist on `orders`. Webhook idempotency is already
+  // tracked via WebhookEventRepository (webhook_events table).
   // Update all orders with this order_number (multi-seller)
   await orderRepo.updateStatus(orderNumber, 'DONE', {
     toss_payment_key: paymentKey,
     toss_order_id: orderNumber,
     payment_method: data.method,
     paid_at: data.approvedAt ?? new Date().toISOString(),
-    webhook_processed_at: new Date().toISOString(),
-    webhook_event_id: `payment.confirmed:${orderNumber}`,
   });
 
   // Find all orders to reduce stock
@@ -351,12 +355,11 @@ async function handlePaymentCancelled(
 
   const orders = await orderRepo.findByOrderNumber(orderNumber);
 
+  // ✅ SCHEMA FIX: Removed webhook_processed_at / webhook_event_id (not in schema)
   // Update all orders to CANCELLED
   await orderRepo.updateStatus(orderNumber, 'CANCELLED', {
     cancelled_at: data.cancelledAt ?? new Date().toISOString(),
     cancel_reason: data.failureMessage ?? 'Payment cancelled',
-    webhook_processed_at: new Date().toISOString(),
-    webhook_event_id: `payment.cancelled:${orderNumber}`,
   });
 
   // Restore stock for each order.
@@ -394,10 +397,9 @@ async function handlePaymentFailed(
     failureMessage: data.failureMessage,
   });
 
+  // ✅ SCHEMA FIX: Removed webhook_processed_at / webhook_event_id (not in schema)
   await orderRepo.updateStatus(orderNumber, 'FAILED', {
     cancel_reason: `${data.failureCode ?? 'UNKNOWN'}: ${data.failureMessage ?? 'Payment failed'}`,
-    webhook_processed_at: new Date().toISOString(),
-    webhook_event_id: `payment.failed:${orderNumber}`,
   });
 
   // Restore stock — reserveStock() was called at order creation (PENDING).
@@ -422,10 +424,9 @@ async function handleVirtualAccountIssued(
 ): Promise<void> {
   console.log('[WEBHOOK] VIRTUAL_ACCOUNT_ISSUED', { orderNumber });
 
+  // ✅ SCHEMA FIX: Removed webhook_processed_at / webhook_event_id (not in schema)
   await orderRepo.updateStatus(orderNumber, 'AWAITING_PAYMENT', {
     toss_order_id: orderNumber,
-    webhook_processed_at: new Date().toISOString(),
-    webhook_event_id: `payment.virtual_account_issued:${orderNumber}`,
   });
 }
 

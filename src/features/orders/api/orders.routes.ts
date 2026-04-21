@@ -133,15 +133,10 @@ ordersRoutes.get('/', cors(), requireAuth(), async (c) => {
     const repository = new OrderRepository(DB);
     const orders = await repository.findAll(filter);
 
-    // ✅ BUG #4 FIX: Map DB column (total_price) to API field (total_amount)
-    const mappedOrders = orders.map((order: any) => ({
-      ...order,
-      total_amount: order.total_price,
-    }));
-
+    // ✅ SCHEMA FIX: DB column is `total_amount` (no mapping needed)
     return c.json({
       success: true,
-      data: mappedOrders
+      data: orders
     });
 
   } catch (error) {
@@ -198,14 +193,13 @@ ordersRoutes.get('/:id', cors(), requireAuth(), async (c) => {
     
     // 주문 아이템도 함께 조회
     const items = await repository.findItems(id);
-    
-    // ✅ BUG #4 FIX: Map DB column (total_price) to API field (total_amount)
+
+    // ✅ SCHEMA FIX: DB column is `total_amount` (no mapping needed)
     const mappedOrder = {
       ...order,
-      total_amount: (order as any).total_price,
       items
     };
-    
+
     return c.json({
       success: true,
       data: mappedOrder
@@ -284,16 +278,11 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
     
     const repository = new OrderRepository(DB);
     const order = await repository.create(data);
-    
-    // ✅ BUG #2 FIX: Map DB column (total_price) to API field (total_amount)
-    const mappedOrder = {
-      ...order,
-      total_amount: (order as any).total_price,
-    };
-    
+
+    // ✅ SCHEMA FIX: DB column is `total_amount` (no mapping needed)
     return c.json({
       success: true,
-      data: mappedOrder
+      data: order
     }, 201);
     
   } catch (error: any) {

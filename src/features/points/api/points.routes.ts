@@ -504,19 +504,23 @@ pointsRoutes.post('/pay', requireAuth(), async (c) => {
       const groupTotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
       const shippingFee = groupTotal >= 50000 ? 0 : 3000;
 
+      // ✅ SCHEMA FIX: orders.order_number is UNIQUE — multi-seller loop must
+      // generate distinct numbers to avoid UNIQUE constraint violation.
+      const sellerOrderNumber = `${order_number}_s${sellerId}`;
+
       await DB.prepare(`
         INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo)
         VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
       `).bind(
-        order_number, userId, sellerId === '0' ? null : sellerId,
+        sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
         groupTotal, shippingFee, groupTotal + shippingFee,
         shipping.name, shipping.phone,
         JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' })
       ).run();
 
-      // 주문 상세 아이템 INSERT
-      const orderRow = await DB.prepare('SELECT id FROM orders WHERE order_number = ? AND seller_id = ? ORDER BY id DESC LIMIT 1')
-        .bind(order_number, sellerId === '0' ? null : sellerId).first<{ id: number }>();
+      // 주문 상세 아이템 INSERT (use sellerOrderNumber to look up the right row)
+      const orderRow = await DB.prepare('SELECT id FROM orders WHERE order_number = ? ORDER BY id DESC LIMIT 1')
+        .bind(sellerOrderNumber).first<{ id: number }>();
 
       if (orderRow) {
         for (const item of groupItems) {
