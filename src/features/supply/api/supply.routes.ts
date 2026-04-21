@@ -307,6 +307,14 @@ supplyRoutes.post('/register', async (c) => {
       return c.json({ success: false, error: '승인된 샘플 신청을 찾을 수 없습니다' }, 404);
     }
 
+    // 공급가 마진 제한: 판매가가 공급가보다 낮으면 거부
+    if (request.supply_price > 0 && body.seller_price < request.supply_price) {
+      return c.json({
+        success: false,
+        error: `판매가는 공급가(${request.supply_price.toLocaleString()}원) 이상이어야 합니다`,
+      }, 400);
+    }
+
     // 이미 등록된 상품인지 확인
     const alreadyRegistered = await DB.prepare(
       'SELECT id FROM products WHERE seller_id = ? AND supply_source_id = ?'
