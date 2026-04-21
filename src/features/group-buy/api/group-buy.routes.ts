@@ -11,6 +11,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { cacheGet } from '@/worker/utils/cache'
@@ -385,34 +386,58 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
 })
 
 // ── POST /api/vouchers/:code/use — 바우처 사용 (비밀번호 인증) ─────
-groupBuyRoutes.post('/:code/use', async (c) => {
-  const { DB } = c.env
-  const code = c.req.param('code')
-  const { pin } = await c.req.json<{ pin: string }>()
+// ✅ C1 FIX: rate limit (brute-force 차단) + atomic CAS (race condition 차단).
+//    6자리 PIN은 IP당 5회/분으로 제한하여 단시간 무차별 대입 방지.
+groupBuyRoutes.post(
+  '/:code/use',
+  rateLimit({ action: 'voucher_use', max: 5, windowSec: 60 }),
+  async (c) => {
+    const { DB } = c.env
+    const code = c.req.param('code')
+    const { pin } = await c.req.json<{ pin?: string }>().catch(() => ({ pin: undefined }))
 
-  const voucher = await DB.prepare(
-    "SELECT v.*, p.store_verify_pin FROM vouchers v LEFT JOIN products p ON v.product_id = p.id WHERE v.code = ?"
-  ).bind(code).first<any>()
+    if (!pin || typeof pin !== 'string') {
+      return c.json({ success: false, error: '비밀번호를 입력해주세요' }, 400)
+    }
 
-  if (!voucher) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
-  if (voucher.status === 'used') return c.json({ success: false, error: '이미 사용된 바우처입니다' }, 400)
-  if (voucher.status === 'expired') return c.json({ success: false, error: '만료된 바우처입니다' }, 400)
+    // 만료된 바우처 선차단: 만료 기한이 지났다면 상태를 전이시킨 뒤 400 응답.
+    // (CAS 조건에 만료 체크를 묶으면 만료 자체가 "PIN 오류"로 혼동될 수 있어 분리)
+    try {
+      await DB.prepare(
+        "UPDATE vouchers SET status = 'expired' WHERE code = ? AND status = 'unused' AND expires_at IS NOT NULL AND expires_at < datetime('now')"
+      ).bind(code).run()
+    } catch { /* ignore */ }
 
-  if (voucher.expires_at && new Date(voucher.expires_at) < new Date()) {
-    await DB.prepare("UPDATE vouchers SET status = 'expired' WHERE id = ?").bind(voucher.id).run()
-    return c.json({ success: false, error: '만료된 바우처입니다' }, 400)
+    // CAS: code + pin + status='unused' 세 조건을 원자적으로 검증/갱신.
+    // 중간 SELECT 없이 단일 UPDATE 로 경쟁 조건과 PIN 타이밍 공격을 동시에 차단.
+    const result = await DB.prepare(
+      `UPDATE vouchers
+         SET status = 'used', used_at = datetime('now')
+       WHERE code = ?
+         AND status = 'unused'
+         AND product_id IN (
+           SELECT id FROM products
+           WHERE id = vouchers.product_id
+             AND (store_verify_pin IS NULL OR store_verify_pin = ?)
+         )`
+    ).bind(code, pin).run()
+
+    if ((result.meta?.changes ?? 0) === 0) {
+      // 실패 원인 분기: 존재 여부만 확인 (PIN 정답 여부는 노출하지 않음)
+      const exists = await DB.prepare(
+        "SELECT status, expires_at FROM vouchers WHERE code = ?"
+      ).bind(code).first<{ status: string; expires_at: string | null }>()
+
+      if (!exists) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
+      if (exists.status === 'used') return c.json({ success: false, error: '이미 사용된 바우처입니다' }, 400)
+      if (exists.status === 'expired') return c.json({ success: false, error: '만료된 바우처입니다' }, 400)
+      if (exists.status === 'refunded') return c.json({ success: false, error: '환불된 바우처입니다' }, 400)
+      return c.json({ success: false, error: '이미 사용되었거나 PIN이 틀립니다.' }, 400)
+    }
+
+    return c.json({ success: true, message: '식사권이 사용 처리되었습니다! 맛있게 드세요 🍽️' })
   }
-
-  // 비밀번호 확인
-  if (voucher.store_verify_pin && voucher.store_verify_pin !== pin) {
-    return c.json({ success: false, error: '비밀번호가 일치하지 않습니다' }, 403)
-  }
-
-  await DB.prepare("UPDATE vouchers SET status = 'used', used_at = CURRENT_TIMESTAMP WHERE id = ?")
-    .bind(voucher.id).run()
-
-  return c.json({ success: true, message: '식사권이 사용 처리되었습니다! 맛있게 드세요 🍽️' })
-})
+)
 
 // ── POST /api/group-buy/store-stats/:productId — 식당 사장 통계 (PIN 인증) ──
 groupBuyRoutes.post('/store-stats/:productId', async (c) => {

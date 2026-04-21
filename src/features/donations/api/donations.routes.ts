@@ -47,6 +47,10 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
   if (body.amount > 10_000_000) {
     return c.json({ success: false, error: '후원 금액은 최대 1천만원입니다' }, 400);
   }
+  // ✅ C2 FIX: cap message length (DoS / UI overflow 방지)
+  if (body.message && body.message.length > 500) {
+    return c.json({ success: false, error: '메시지는 500자 이내로 작성해주세요.' }, 400);
+  }
 
   const { DB } = c.env;
 
@@ -160,6 +164,28 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
   if (pending.amount !== body.amount) {
     console.error('[donations/confirm] Amount mismatch', { db: pending.amount, client: body.amount, orderId: body.orderId });
     return c.json({ success: false, error: '결제 금액이 일치하지 않습니다' }, 400);
+  }
+
+  // ✅ C2 FIX: confirm 시점에 스트림 상태 재확인.
+  //    init 후 방송이 종료되었을 수 있으므로 결제 승인 전 한 번 더 검사한다.
+  //    라이브가 아니면 결제를 취소하고 pending → cancelled 전이하여 이중 처리 방지.
+  const streamRecheck = await DB.prepare('SELECT status FROM live_streams WHERE id = ?')
+    .bind(pending.live_stream_id).first<{ status: string }>().catch(() => null);
+  if (!streamRecheck || streamRecheck.status !== 'live') {
+    if (import.meta.env.DEV) {
+      console.warn('[donations/confirm] stream ended before confirm', {
+        streamId: pending.live_stream_id,
+        orderId: body.orderId,
+        status: streamRecheck?.status ?? 'missing',
+      });
+    }
+    await DB.prepare('UPDATE donations SET payment_status = ? WHERE order_id = ?')
+      .bind('cancelled', body.orderId).run().catch(() => {});
+    return c.json({
+      success: false,
+      error: '방송이 종료되어 후원이 취소되었습니다. 결제는 승인되지 않았습니다.',
+      code: 'STREAM_ENDED',
+    }, 409);
   }
 
   // 토스 결제 승인 (DB에서 검증된 금액 사용)
