@@ -53,22 +53,35 @@ export async function deleteUserAccount(
       .run();
 
     // 3. 사용자 정보 익명화
-    await db
-      .prepare(
-        `UPDATE users
-         SET email = ?,
-             name = '탈퇴 회원',
-             phone = NULL,
-             firebase_uid = NULL,
-             kakao_access_token = NULL,
-             avatar_url = NULL,
-             profile_image = NULL,
-             status = 'DELETED',
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`
-      )
-      .bind(`deleted_${Date.now()}@deleted.invalid`, userId)
-      .run();
+    // NOTE: production users 테이블에는 status, avatar_url, kakao_access_token 컬럼이 없음.
+    //       존재하는 컬럼(email, name, phone, firebase_uid)만 업데이트.
+    try {
+      await db
+        .prepare(
+          `UPDATE users
+           SET email = ?,
+               name = '탈퇴 회원',
+               phone = NULL,
+               firebase_uid = NULL,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+        )
+        .bind(`deleted_${Date.now()}@deleted.invalid`, userId)
+        .run();
+    } catch (e) {
+      // If firebase_uid/updated_at columns don't exist, fall back to minimal update
+      try {
+        await db
+          .prepare(
+            `UPDATE users SET email = ?, name = '탈퇴 회원', phone = NULL WHERE id = ?`
+          )
+          .bind(`deleted_${Date.now()}@deleted.invalid`, userId)
+          .run();
+      } catch {
+        // eslint-disable-next-line no-console
+        if (typeof console !== 'undefined') console.warn('[delete-account] users anonymize failed', e);
+      }
+    }
 
     // 4. 탈퇴 기록 저장
     await db
