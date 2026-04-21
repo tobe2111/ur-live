@@ -65,10 +65,17 @@ export class WebhookEventRepository {
 
   /**
    * Mark event as failed
+   *
+   * ⚠️ TODO (H3 — known gap): FAILED webhook events are not currently
+   * auto-retried. Toss retries up to 24h, but if we return 200 after
+   * marking the event FAILED, Toss will not retry. A cron task in
+   * scheduled-cleanup.ts should scan `webhook_events WHERE status='FAILED'
+   * AND retry_count < 3 AND created_at > datetime('now','-24 hours')`
+   * and re-dispatch the event handler.
    */
   async markFailed(eventId: string, errorMessage: string): Promise<void> {
     await this.qb.execute(
-      `UPDATE webhook_events 
+      `UPDATE webhook_events
        SET status = 'FAILED', error_message = ?, retry_count = retry_count + 1
        WHERE id = ?`,
       [errorMessage, eventId]

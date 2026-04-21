@@ -173,7 +173,8 @@ export async function handleScheduled(env: Env) {
       // pre_notified 컬럼 보장
       try { await DB.prepare("ALTER TABLE live_streams ADD COLUMN pre_notified INTEGER DEFAULT 0").run() } catch {}
 
-      for (const stream of upcomingStreams) {
+      // ✅ FIX (H4): Cap loop size to avoid Worker subrequest limits (50 per invocation)
+      for (const stream of upcomingStreams.slice(0, 20)) {
         // 구독자에게 인앱 알림 발송
         try {
           const { results: subs } = await DB.prepare(
@@ -220,7 +221,9 @@ export async function handleScheduled(env: Env) {
 
     let alertsSent = 0;
     if (lowStock?.length) {
-      for (const p of lowStock) {
+      // ✅ FIX (H4): Batch inserts + cap loop to stay within subrequest budget.
+      const inserts: any[] = [];
+      for (const p of lowStock.slice(0, 20)) {
         // 24시간 윈도우 dedup: 같은 셀러 + 같은 제품명에 대해 최근 알림 존재 확인
         const existing = await DB.prepare(`
           SELECT 1 FROM dashboard_notifications
@@ -233,11 +236,13 @@ export async function handleScheduled(env: Env) {
         `).bind(String(p.seller_id), `%${p.name}%`).first();
         if (existing) continue;
 
-        await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
+        inserts.push(DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
           VALUES ('seller', ?, 'low_stock', ?, ?, '/seller/products')`)
-          .bind(String(p.seller_id), `⚠️ 재고 부족: ${p.name}`, `재고 ${p.stock}개 남음`).run();
+          .bind(String(p.seller_id), `⚠️ 재고 부족: ${p.name}`, `재고 ${p.stock}개 남음`));
         alertsSent++;
-        if (alertsSent >= 20) break;
+      }
+      if (inserts.length > 0) {
+        await DB.batch(inserts);
       }
       results.low_stock_alerts = alertsSent;
     }
@@ -256,7 +261,8 @@ export async function handleScheduled(env: Env) {
 
     if (expiringCoupons?.length) {
       // 쿠폰을 사용하지 않은 유저들에게 알림
-      for (const coupon of expiringCoupons) {
+      // ✅ FIX (H4): Cap coupon loop to stay within subrequest budget.
+      for (const coupon of expiringCoupons.slice(0, 10)) {
         const { results: users } = await DB.prepare(`
           SELECT DISTINCT u.id FROM users u
           WHERE u.id NOT IN (SELECT user_id FROM coupon_uses WHERE coupon_id = ?)
