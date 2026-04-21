@@ -64,7 +64,9 @@ async function checkVersion() {
   if (!currentVersion && local) currentVersion = local
 
   if (local && serverVersion !== local) {
-    console.info(`[VersionCheck] new build detected: ${local} → ${serverVersion}`)
+    const reloadKey = 'version_reload_' + serverVersion
+    if (sessionStorage.getItem(reloadKey)) return
+    sessionStorage.setItem(reloadKey, '1')
     localStorage.setItem(VERSION_STORAGE_KEY, serverVersion)
     forceReload()
   } else if (!local) {

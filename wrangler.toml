@@ -54,8 +54,8 @@ new_sqlite_classes = ["LiveStreamDurableObject"]
 [vars]
 # ENVIRONMENT is set via Cloudflare Dashboard
 TOSS_CLIENT_KEY = "live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY"
-FRONTEND_URL = "http://localhost:5173"
-SCRAPER_URL = "http://localhost:3456"
+FRONTEND_URL = "https://live.ur-team.com"
+SCRAPER_URL = "https://live.ur-team.com"
 # REGION is set via Cloudflare Dashboard
 
 # ============================================================

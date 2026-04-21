@@ -2,5 +2,5 @@
   "version": 1,
   "description": "All routes go through Worker except static assets",
   "include": ["/*"],
-  "exclude": ["/assets/*", "/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg", "/*.ico", "/*.woff", "/*.woff2", "/*.json", "/locales/*", "/static/*", "/favicon.svg", "/robots.txt", "/sitemap.xml"]
+  "exclude": ["/assets/*", "/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg", "/*.ico", "/*.woff", "/*.woff2", "/*.json", "/*.html", "/locales/*", "/static/*", "/favicon.svg", "/robots.txt", "/sitemap.xml", "/sw.js"]
 }

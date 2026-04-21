@@ -12,42 +12,16 @@ import { initNativeFeatures, isNative } from '@/lib/native'
 // ✅ 런타임 환경 변수 검증 (Week 5 Day 2)
 validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
 
-// ✅ 빌드 버전 자동 감지 & 자동 리로드
-// Service Worker + 버전 체크 이중 보호로 옛 번들 고착 완전 차단
+// Sentry 초기화
+try { initSentry() } catch {}
+
+// Region 정보 (개발 환경)
+if (import.meta.env.DEV) logRegionInfo()
+
+// 빌드 버전 자동 감지 & 자동 리로드
 import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck())
 
-if ('serviceWorker' in navigator && !import.meta.env.DEV) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((reg) => {
-      reg.update()
-      reg.addEventListener('updatefound', () => {
-        const installing = reg.installing
-        if (installing) {
-          installing.addEventListener('statechange', () => {
-            if (installing.state === 'activated') {
-              window.location.reload()
-            }
-          })
-        }
-      })
-    })
-  })
-}
-
-// Region 정보 출력 (디버깅용)
-if (import.meta.env.DEV) {
-  logRegionInfo()
-}
-
-// Sentry 초기화 (앱 시작 전)
-try {
-  initSentry()
-} catch (error) {
-  console.error('[App] Sentry 초기화 실패:', error)
-}
-
-// Service Worker 비활성화 — Cloudflare Pages에서 sw.js가 누락되어 MIME type 에러 발생
-// 기존 SW가 있으면 해제
+// Service Worker 완전 비활성화 — sw.js 배포 누락으로 MIME 에러 발생 방지
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()))
 }
