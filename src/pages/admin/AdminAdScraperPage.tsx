@@ -173,8 +173,6 @@ export default function AdminAdScraperPage() {
     setLogs([]); setProgress(0)
     setRunning(true)
 
-    // 1순위: Worker 직접 크롤링 (브라우저 없음, 즉시 결과)
-    // 키워드를 쉼표로 분리해서 각각 크롤링
     const keywordList = keywords.split(',').map(k => k.trim()).filter(Boolean)
     addLog(`${keywordList.length}개 키워드 크롤링 시작...`, 'info')
 
@@ -184,37 +182,56 @@ export default function AdminAdScraperPage() {
     for (let i = 0; i < keywordList.length; i++) {
       const kw = keywordList[i]
       setProgress(Math.round((i / keywordList.length) * 100))
-      addLog(`[${i + 1}/${keywordList.length}] "${kw}" 크롤링 중...`, 'info')
 
+      // 1단계: 광고주 URL 수집 (최대 30개)
+      addLog(`[${i + 1}/${keywordList.length}] "${kw}" 광고주 수집 중...`, 'info')
+      let advertisers: Array<{ url: string; title: string; domain: string }> = []
       try {
-        const res = await fetch('/api/naver-scraper/scrape', {
+        const collectRes = await fetch('/api/naver-scraper/collect', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ keyword: kw }),
-        }).then(r => r.json()) as {
-          success: boolean
-          data?: { keyword: string; found: number; emails: number; saved: number; duration: number; results: any[] }
-          error?: string
-        }
-
-        if (res.success && res.data) {
-          totalFound += res.data.found
-          totalEmails += res.data.emails
-          addLog(`✓ "${kw}": 광고주 ${res.data.found}개 / 이메일 ${res.data.emails}개 (${res.data.duration}ms)`, 'found')
-        } else {
-          addLog(`✗ "${kw}": ${res.error || '실패'}`, 'error')
+          body: JSON.stringify({ keyword: kw, pages: 3 }),
+        }).then(r => r.json()) as any
+        if (collectRes.success) {
+          advertisers = collectRes.data.advertisers || []
+          addLog(`  광고주 ${advertisers.length}개 발견`, 'info')
         }
       } catch (e: any) {
-        addLog(`✗ "${kw}": ${e.message}`, 'error')
+        addLog(`  수집 실패: ${e.message}`, 'error')
+        continue
       }
+
+      if (advertisers.length === 0) {
+        addLog(`  "${kw}": 광고주 없음`, 'info')
+        continue
+      }
+
+      // 2단계: 10개씩 배치로 이메일 추출
+      let keywordEmails = 0
+      for (let batch = 0; batch < advertisers.length; batch += 10) {
+        const chunk = advertisers.slice(batch, batch + 10)
+        addLog(`  이메일 추출 중... (${batch + 1}-${Math.min(batch + 10, advertisers.length)}/${advertisers.length})`, 'info')
+
+        try {
+          const extractRes = await fetch('/api/naver-scraper/extract', {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ keyword: kw, advertisers: chunk }),
+          }).then(r => r.json()) as any
+          if (extractRes.success) {
+            keywordEmails += extractRes.data.totalEmails || 0
+          }
+        } catch {}
+      }
+
+      totalFound += advertisers.length
+      totalEmails += keywordEmails
+      addLog(`✓ "${kw}": 광고주 ${advertisers.length}개 / 이메일 ${keywordEmails}개`, 'found')
     }
 
     setProgress(100)
     addLog(`완료! 총 광고주 ${totalFound}개, 이메일 ${totalEmails}개 수집`, 'done')
-    addLog('"D1 결과 조회" 탭에서 전체 결과 확인', 'info')
     setRunning(false)
-
-    // 세션 목록 자동 갱신
     loadSessions()
   }
 

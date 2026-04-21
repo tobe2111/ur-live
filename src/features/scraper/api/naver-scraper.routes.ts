@@ -1,16 +1,12 @@
 /**
  * 네이버 광고주 이메일 크롤러 (Cloudflare Worker 직접 실행)
  *
- * 브라우저 없이 fetch + HTMLRewriter + 정규식으로 처리
- * - 네이버 파워링크 검색 → 광고주 URL 추출
- * - 광고주 사이트 HTML fetch → 이메일 정규식 추출
- * - D1 scraped_advertisers 테이블에 저장
+ * 2단계 분할 방식으로 Workers subrequest 제한 회피:
+ *   1단계: POST /collect  → 네이버 검색 → 광고주 URL 목록 반환 (subreq ~15)
+ *   2단계: POST /extract  → URL 배치 → 이메일 추출 (subreq ~10/배치)
+ *   통합:  POST /scrape   → 1단계+2단계 자동 (키워드당 ~10개, 빠른 테스트용)
  *
- * Cloudflare Workers 제한 고려:
- * - 무료: 50 subrequests, 10ms CPU
- * - 유료: 1000 subrequests, 50ms CPU
- *
- * 전략: 키워드당 최대 10개 광고 + 광고당 1개 사이트 방문 = 20 subrequests
+ * 프론트엔드가 collect → extract × N 반복으로 무제한 수집 가능
  */
 
 import { Hono } from 'hono';
@@ -18,143 +14,34 @@ import type { Env } from '../../../worker/types/env';
 
 const naverScraper = new Hono<{ Bindings: Env }>();
 
-// 한국어 Bot 감지 회피용 헤더
-const HEADERS = {
+const HEADERS: Record<string, string> = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
-  'Accept-Encoding': 'gzip, deflate, br',
-  'Connection': 'keep-alive',
 };
 
 const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-const BAD_EMAIL_DOMAINS = ['example.com', 'test.com', 'email.com', 'domain.com', 'sentry.io', 'wixpress.com', 'jsdelivr.net'];
+const BAD_DOMAINS = ['example.com', 'test.com', 'email.com', 'domain.com', 'sentry.io', 'wixpress.com', 'jsdelivr.net'];
 
 function cleanEmails(html: string): string[] {
   const matches = html.match(EMAIL_RE) || [];
   const unique = new Set<string>();
   for (const e of matches) {
     const email = e.toLowerCase().trim();
-    if (email.length > 50) continue; // 비정상적으로 긴 것 제외
-    if (email.includes('..')) continue;
+    if (email.length > 50 || email.includes('..')) continue;
     const domain = email.split('@')[1];
-    if (!domain || BAD_EMAIL_DOMAINS.some(b => domain.includes(b))) continue;
+    if (!domain || BAD_DOMAINS.some(b => domain.includes(b))) continue;
     if (/\.(png|jpg|gif|svg|css|js|woff|ico)$/i.test(email)) continue;
     unique.add(email);
   }
   return Array.from(unique);
 }
 
-/**
- * 네이버 검색광고 결과 페이지에서 광고주 URL 추출
- */
-async function fetchAdvertisers(keyword: string): Promise<Array<{ url: string; title: string; description: string }>> {
-  const searchUrl = `https://ad.search.naver.com/search.naver?where=nexearch&query=${encodeURIComponent(keyword)}`;
-  const res = await fetch(searchUrl, { headers: HEADERS });
-  if (!res.ok) return [];
-  const html = await res.text();
-
-  const ads: Array<{ url: string; title: string; description: string }> = [];
-  const seenDomains = new Set<string>();
-
-  // 1차: nclk.naver.com 또는 lavad.naver.com 광고 링크 추출 (정규식)
-  const linkPattern = /<a[^>]+href=["']([^"']*(?:nclk\.naver\.com|lavad\.naver\.com|ader\.naver\.com)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let match: RegExpExecArray | null;
-  while ((match = linkPattern.exec(html)) !== null && ads.length < 15) {
-    const href = match[1].replace(/&amp;/g, '&');
-    const title = match[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
-    if (title && !ads.find(a => a.url === href)) {
-      ads.push({ url: href, title, description: '' });
-    }
-  }
-
-  // 2차: site= 파라미터에서 실제 URL 추출
-  const enrichedAds = await Promise.all(
-    ads.slice(0, 10).map(async (ad) => {
-      try {
-        // URL 파라미터에서 site/url 추출
-        const urlMatch = ad.url.match(/[?&](?:url|site|u)=([^&]+)/i);
-        if (urlMatch) {
-          const decoded = decodeURIComponent(urlMatch[1]);
-          if (decoded.startsWith('http')) {
-            const domain = new URL(decoded).hostname.replace(/^www\./, '');
-            if (!domain.includes('naver.com') && !seenDomains.has(domain)) {
-              seenDomains.add(domain);
-              return { url: decoded, title: ad.title, description: ad.description };
-            }
-          }
-        }
-        // HEAD 요청으로 리다이렉트 추적
-        const res = await fetch(ad.url, {
-          method: 'HEAD',
-          headers: HEADERS,
-          redirect: 'follow',
-          signal: AbortSignal.timeout(5000),
-        });
-        const finalUrl = res.url;
-        const domain = new URL(finalUrl).hostname.replace(/^www\./, '');
-        if (!domain.includes('naver.com') && !seenDomains.has(domain)) {
-          seenDomains.add(domain);
-          return { url: finalUrl, title: ad.title, description: ad.description };
-        }
-      } catch {}
-      return null;
-    })
-  );
-
-  return enrichedAds.filter((a): a is NonNullable<typeof a> => a !== null);
+function getDomain(url: string): string | null {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return null; }
 }
 
-/**
- * 광고주 사이트에서 이메일 추출
- */
-async function fetchEmails(siteUrl: string): Promise<{ emails: string[]; phone: string | null; companyName: string | null }> {
-  try {
-    // 1차: 메인 페이지
-    const res = await fetch(siteUrl, {
-      headers: HEADERS,
-      redirect: 'follow',
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return { emails: [], phone: null, companyName: null };
-    const html = await res.text();
-
-    const emails = cleanEmails(html);
-
-    // 전화번호 추출 (한국식)
-    const phoneMatch = html.match(/\b(0[17]0|02|0[3-9]\d)[-\s.]?\d{3,4}[-\s.]?\d{4}\b/);
-    const phone = phoneMatch ? phoneMatch[0].replace(/[^\d]/g, '') : null;
-
-    // 회사명 추출 (<title> 또는 og:site_name)
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    const siteNameMatch = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i);
-    const companyName = (siteNameMatch?.[1] || titleMatch?.[1] || '').trim().slice(0, 100) || null;
-
-    // 2차: 이메일이 없으면 contact 페이지 시도
-    if (emails.length === 0) {
-      try {
-        const origin = new URL(siteUrl).origin;
-        for (const path of ['/contact', '/contact.html', '/about', '/company']) {
-          const contactRes = await fetch(origin + path, {
-            headers: HEADERS,
-            signal: AbortSignal.timeout(3000),
-          });
-          if (contactRes.ok) {
-            const contactHtml = await contactRes.text();
-            const found = cleanEmails(contactHtml);
-            if (found.length > 0) return { emails: found, phone, companyName };
-          }
-        }
-      } catch {}
-    }
-
-    return { emails, phone, companyName };
-  } catch {
-    return { emails: [], phone: null, companyName: null };
-  }
-}
-
-async function verifyAdminToken(c: any): Promise<boolean> {
+async function verifyAdmin(c: any): Promise<boolean> {
   const auth = c.req.header('Authorization');
   if (!auth) return false;
   try {
@@ -167,94 +54,259 @@ async function verifyAdminToken(c: any): Promise<boolean> {
 async function ensureTable(DB: D1Database) {
   await DB.prepare(`CREATE TABLE IF NOT EXISTS scraped_advertisers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    keyword TEXT,
-    advertiser_name TEXT,
-    site_url TEXT,
-    email TEXT,
-    phone TEXT,
-    description TEXT,
-    scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    session_name TEXT,
+    keyword TEXT, advertiser_name TEXT, site_url TEXT, email TEXT,
+    phone TEXT, description TEXT,
+    scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP, session_name TEXT,
     UNIQUE(keyword, email)
   )`).run().catch(() => {});
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_scraped_email ON scraped_advertisers(email)').run().catch(() => {});
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_scraped_keyword ON scraped_advertisers(keyword)').run().catch(() => {});
 }
 
-// ── POST /scrape — 키워드로 즉시 크롤링 ──
+// ════════════════════════════════════════════════════════════════════
+// 1단계: 광고주 URL 수집 (subrequest ~15)
+// ════════════════════════════════════════════════════════════════════
+naverScraper.post('/collect', async (c) => {
+  if (!await verifyAdmin(c)) return c.json({ error: 'Admin only' }, 401);
+
+  const { keyword, pages = 3 } = await c.req.json<{ keyword: string; pages?: number }>();
+  if (!keyword?.trim()) return c.json({ success: false, error: '키워드를 입력하세요' }, 400);
+
+  const allAds: Array<{ nclkUrl: string; title: string }> = [];
+
+  // 여러 페이지 크롤링
+  for (let page = 1; page <= Math.min(pages, 5); page++) {
+    try {
+      const start = (page - 1) * 15 + 1;
+      const url = `https://ad.search.naver.com/search.naver?where=nexearch&query=${encodeURIComponent(keyword.trim())}&start=${start}`;
+      const res = await fetch(url, { headers: HEADERS });
+      if (!res.ok) continue;
+      const html = await res.text();
+
+      // nclk/lavad 광고 링크 추출
+      const linkRe = /<a[^>]+href=["']([^"']*(?:nclk\.naver\.com|lavad\.naver\.com|ader\.naver\.com)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+      let m: RegExpExecArray | null;
+      while ((m = linkRe.exec(html)) !== null) {
+        const href = m[1].replace(/&amp;/g, '&');
+        const title = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
+        if (title && !allAds.find(a => a.nclkUrl === href)) {
+          allAds.push({ nclkUrl: href, title });
+        }
+      }
+
+      // 일반 검색 결과의 광고 (class에 ad 포함)
+      const adBlockRe = /class="[^"]*(?:ad_area|power_link|lst_ad)[^"]*"[\s\S]*?<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+      while ((m = adBlockRe.exec(html)) !== null) {
+        const href = m[1].replace(/&amp;/g, '&');
+        const title = m[2].replace(/<[^>]+>/g, '').trim().slice(0, 200);
+        if (title && href.startsWith('http') && !allAds.find(a => a.nclkUrl === href)) {
+          allAds.push({ nclkUrl: href, title });
+        }
+      }
+    } catch {}
+  }
+
+  // nclk URL → 실제 광고주 URL 리다이렉트 추적
+  const seenDomains = new Set<string>();
+  const resolved: Array<{ url: string; title: string; domain: string }> = [];
+
+  await Promise.all(
+    allAds.slice(0, 30).map(async (ad) => {
+      try {
+        // URL 파라미터에서 직접 추출 시도
+        const paramMatch = ad.nclkUrl.match(/[?&](?:url|site|u|lurl)=([^&]+)/i);
+        if (paramMatch) {
+          const decoded = decodeURIComponent(paramMatch[1]);
+          if (decoded.startsWith('http')) {
+            const domain = getDomain(decoded);
+            if (domain && !domain.includes('naver.com') && !seenDomains.has(domain)) {
+              seenDomains.add(domain);
+              resolved.push({ url: decoded, title: ad.title, domain });
+              return;
+            }
+          }
+        }
+
+        // HEAD 요청으로 리다이렉트 추적
+        const res = await fetch(ad.nclkUrl, {
+          method: 'GET',
+          headers: HEADERS,
+          redirect: 'follow',
+          signal: AbortSignal.timeout(5000),
+        });
+        const finalUrl = res.url;
+        const domain = getDomain(finalUrl);
+        if (domain && !domain.includes('naver.com') && !seenDomains.has(domain)) {
+          seenDomains.add(domain);
+          resolved.push({ url: finalUrl, title: ad.title, domain });
+        }
+      } catch {}
+    })
+  );
+
+  return c.json({
+    success: true,
+    data: {
+      keyword: keyword.trim(),
+      total: resolved.length,
+      advertisers: resolved,
+    },
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════
+// 2단계: 이메일 추출 (URL 배치, subrequest ~15)
+// ════════════════════════════════════════════════════════════════════
+naverScraper.post('/extract', async (c) => {
+  if (!await verifyAdmin(c)) return c.json({ error: 'Admin only' }, 401);
+
+  const { keyword, advertisers, sessionName } = await c.req.json<{
+    keyword: string;
+    advertisers: Array<{ url: string; title: string; domain: string }>;
+    sessionName?: string;
+  }>();
+
+  if (!advertisers?.length) return c.json({ success: false, error: '광고주 목록이 없습니다' }, 400);
+
+  await ensureTable(c.env.DB);
+  const session = sessionName || `quick_${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}`;
+
+  const results: Array<{ url: string; domain: string; companyName: string; emails: string[]; phone: string | null }> = [];
+
+  await Promise.all(
+    advertisers.slice(0, 10).map(async (ad) => {
+      try {
+        const res = await fetch(ad.url, {
+          headers: HEADERS,
+          redirect: 'follow',
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) return;
+        const html = await res.text();
+
+        let emails = cleanEmails(html);
+
+        // 전화번호
+        const phoneMatch = html.match(/\b(0[17]0|02|0[3-9]\d)[-\s.]?\d{3,4}[-\s.]?\d{4}\b/);
+        const phone = phoneMatch ? phoneMatch[0].replace(/[^\d-]/g, '') : null;
+
+        // 회사명
+        const siteNameMatch = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i);
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const companyName = (siteNameMatch?.[1] || titleMatch?.[1] || ad.title).trim().slice(0, 100);
+
+        // 이메일 없으면 contact 페이지 시도
+        if (emails.length === 0) {
+          const origin = new URL(ad.url).origin;
+          for (const path of ['/contact', '/about', '/company', '/info']) {
+            try {
+              const cr = await fetch(origin + path, { headers: HEADERS, signal: AbortSignal.timeout(3000) });
+              if (cr.ok) {
+                emails = cleanEmails(await cr.text());
+                if (emails.length > 0) break;
+              }
+            } catch {}
+          }
+        }
+
+        results.push({ url: ad.url, domain: ad.domain, companyName, emails, phone });
+
+        // D1 저장
+        for (const email of emails) {
+          await c.env.DB.prepare(`
+            INSERT OR IGNORE INTO scraped_advertisers (keyword, advertiser_name, site_url, email, phone, description, session_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).bind(keyword, companyName, ad.url, email, phone, ad.title, session).run().catch(() => {});
+        }
+      } catch {}
+    })
+  );
+
+  return c.json({
+    success: true,
+    data: {
+      processed: results.length,
+      withEmail: results.filter(r => r.emails.length > 0).length,
+      totalEmails: results.reduce((s, r) => s + r.emails.length, 0),
+      results: results.filter(r => r.emails.length > 0),
+    },
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════
+// 통합: 1단계 + 2단계 한번에 (빠른 테스트용, 키워드당 ~10개)
+// ════════════════════════════════════════════════════════════════════
 naverScraper.post('/scrape', async (c) => {
-  if (!await verifyAdminToken(c)) return c.json({ error: 'Admin only' }, 401);
+  if (!await verifyAdmin(c)) return c.json({ error: 'Admin only' }, 401);
 
   const { keyword } = await c.req.json<{ keyword: string }>();
   if (!keyword?.trim()) return c.json({ success: false, error: '키워드를 입력하세요' }, 400);
 
   await ensureTable(c.env.DB);
-
+  const session = `quick_${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}`;
   const startTime = Date.now();
-  const sessionName = `quick_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
 
+  // 1단계: 광고주 수집 (1페이지만)
+  let advertisers: Array<{ url: string; title: string; domain: string }> = [];
   try {
-    // 1. 광고주 URL 목록 추출
-    const advertisers = await fetchAdvertisers(keyword.trim());
-    if (advertisers.length === 0) {
-      return c.json({
-        success: true,
-        data: { keyword, found: 0, emails: 0, duration: Date.now() - startTime, results: [] },
-      });
-    }
-
-    // 2. 각 광고주 사이트에서 이메일 추출 (병렬)
-    const results = await Promise.all(
-      advertisers.map(async (ad) => {
-        const { emails, phone, companyName } = await fetchEmails(ad.url);
-        return {
-          url: ad.url,
-          domain: new URL(ad.url).hostname.replace(/^www\./, ''),
-          title: ad.title,
-          companyName: companyName || ad.title,
-          emails,
-          phone,
-        };
-      })
-    );
-
-    // 3. D1에 저장 (이메일 있는 것만)
-    let savedCount = 0;
-    for (const r of results) {
-      for (const email of r.emails) {
-        try {
-          await c.env.DB.prepare(`
-            INSERT OR IGNORE INTO scraped_advertisers
-              (keyword, advertiser_name, site_url, email, phone, description, session_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `).bind(
-            keyword.trim(),
-            r.companyName,
-            r.url,
-            email,
-            r.phone,
-            r.title,
-            sessionName,
-          ).run();
-          savedCount++;
-        } catch {}
+    const url = `https://ad.search.naver.com/search.naver?where=nexearch&query=${encodeURIComponent(keyword.trim())}`;
+    const res = await fetch(url, { headers: HEADERS });
+    if (res.ok) {
+      const html = await res.text();
+      const seenDomains = new Set<string>();
+      const linkRe = /<a[^>]+href=["']([^"']*(?:nclk|lavad|ader)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+      let m: RegExpExecArray | null;
+      const raw: Array<{ nclkUrl: string; title: string }> = [];
+      while ((m = linkRe.exec(html)) !== null && raw.length < 15) {
+        raw.push({ nclkUrl: m[1].replace(/&amp;/g, '&'), title: m[2].replace(/<[^>]+>/g, '').trim().slice(0, 200) });
       }
-    }
 
-    return c.json({
-      success: true,
-      data: {
-        keyword: keyword.trim(),
-        found: results.length,
-        emails: results.reduce((sum, r) => sum + r.emails.length, 0),
-        saved: savedCount,
-        duration: Date.now() - startTime,
-        results: results.filter(r => r.emails.length > 0),
-      },
-    });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message || '크롤링 실패' }, 500);
+      const resolved = await Promise.all(raw.slice(0, 10).map(async (ad) => {
+        try {
+          const r = await fetch(ad.nclkUrl, { method: 'GET', headers: HEADERS, redirect: 'follow', signal: AbortSignal.timeout(5000) });
+          const d = getDomain(r.url);
+          if (d && !d.includes('naver.com') && !seenDomains.has(d)) { seenDomains.add(d); return { url: r.url, title: ad.title, domain: d }; }
+        } catch {}
+        return null;
+      }));
+      advertisers = resolved.filter((a): a is NonNullable<typeof a> => !!a);
+    }
+  } catch {}
+
+  if (advertisers.length === 0) {
+    return c.json({ success: true, data: { keyword, found: 0, emails: 0, duration: Date.now() - startTime, results: [] } });
   }
+
+  // 2단계: 이메일 추출
+  const results: Array<{ url: string; domain: string; companyName: string; emails: string[]; phone: string | null }> = [];
+  await Promise.all(advertisers.map(async (ad) => {
+    try {
+      const res = await fetch(ad.url, { headers: HEADERS, redirect: 'follow', signal: AbortSignal.timeout(8000) });
+      if (!res.ok) return;
+      const html = await res.text();
+      const emails = cleanEmails(html);
+      const phoneMatch = html.match(/\b(0[17]0|02|0[3-9]\d)[-\s.]?\d{3,4}[-\s.]?\d{4}\b/);
+      const siteNameMatch = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i);
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      const companyName = (siteNameMatch?.[1] || titleMatch?.[1] || ad.title).trim().slice(0, 100);
+
+      results.push({ url: ad.url, domain: ad.domain, companyName, emails, phone: phoneMatch ? phoneMatch[0] : null });
+      for (const email of emails) {
+        await c.env.DB.prepare('INSERT OR IGNORE INTO scraped_advertisers (keyword, advertiser_name, site_url, email, phone, description, session_name) VALUES (?, ?, ?, ?, ?, ?, ?)')
+          .bind(keyword.trim(), companyName, ad.url, email, phoneMatch?.[0] || null, ad.title, session).run().catch(() => {});
+      }
+    } catch {}
+  }));
+
+  return c.json({
+    success: true,
+    data: {
+      keyword: keyword.trim(),
+      found: advertisers.length,
+      emails: results.reduce((s, r) => s + r.emails.length, 0),
+      saved: results.filter(r => r.emails.length > 0).length,
+      duration: Date.now() - startTime,
+      results: results.filter(r => r.emails.length > 0),
+    },
+  });
 });
 
 export { naverScraper };
