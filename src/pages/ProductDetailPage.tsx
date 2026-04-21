@@ -46,7 +46,10 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
   return (
     <div className="mt-3 border border-gray-200 rounded-xl p-4">
       <h3 className="text-sm font-bold text-gray-900 mb-1">리뷰 작성</h3>
-      <p className="text-xs text-pink-500 mb-3 font-medium">🎁 텍스트 50딜 · 사진 100딜 · 영상 200딜 리워드 지급!</p>
+      <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center gap-2 bg-pink-50">
+        <span className="text-sm">🎁</span>
+        <span className="text-[11px] font-semibold text-pink-700">텍스트 50딜 · 사진 100딜 · 영상 200딜 리워드</span>
+      </div>
       {/* 별점 */}
       <div className="flex gap-1 mb-3">
         {[1, 2, 3, 4, 5].map(s => (
@@ -521,8 +524,6 @@ export default function ProductDetailPage() {
           <ProductImageCarousel images={allImages} />
         </Suspense>
 
-        <Separator />
-
         {/* Product Info */}
         <ProductHeader
           name={product.name}
@@ -536,64 +537,47 @@ export default function ProductDetailPage() {
           avgRating={reviewSummary?.avg_rating}
         />
 
-        {/* Product Description */}
-        {product.description && (
-          <div className="px-5 py-3">
-            <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-              {product.description}
-            </p>
-          </div>
-        )}
+        {/* v4: description은 상세정보 섹션에서 통합 표시 */}
 
-        {/* Long Description */}
-        {product.long_description && (
-          <div className="px-5 py-4 border-t border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900 mb-2">상품 상세</h2>
-            <div className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-              {product.long_description}
+        {/* v4 상세 정보 (이미지 + 설명 + 펼쳐보기) */}
+        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <section className="px-5 py-5">
+          <p className="text-[13px] font-bold text-gray-900 mb-3">상세 정보</p>
+          {detailImages.length > 0 && (
+            <div className="rounded-xl overflow-hidden mb-3" style={{ background: '#F9FAFB' }}>
+              <img src={detailImages[0]} alt="" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
             </div>
-          </div>
-        )}
+          )}
+          {product.long_description && (
+            <p className="text-[12px] text-gray-700 leading-relaxed">{product.long_description.slice(0, 200)}</p>
+          )}
+          {(detailImages.length > 1 || (product.long_description && product.long_description.length > 200)) && (
+            <button className="w-full mt-4 py-3 rounded-xl border border-gray-200 bg-white text-[12px] font-semibold text-gray-700 active:bg-gray-50">
+              상세정보 펼쳐보기
+            </button>
+          )}
+        </section>
 
-        {/* Product Details - Vertical Images */}
-        {detailImages.length > 0 && (
-          <>
-            <Separator />
-            <div className="px-0">
-              <h2 className="text-sm font-bold text-gray-900 px-5 py-4">상세 이미지</h2>
-              <div className="flex flex-col">
-                {detailImages.map((src, idx) => (
-                  <img
-                    key={idx}
-                    src={src}
-                    alt={`Product detail ${idx + 1}`}
-                    className="w-full h-auto block"
-                    loading={idx === 0 ? 'eager' : 'lazy'}
-                  />
-                ))}
+        {/* v4 공동구매 배너 (다크 카드) */}
+        {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
+          <div className="px-5 py-5">
+            <div className="rounded-2xl p-4 bg-gray-900 text-white">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 bg-red-500 text-[9px] font-extrabold tracking-wide mb-2">공동구매 참여하기</span>
+                  <p className="text-[15px] font-bold">추가 15% 할인</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/60" />
+              </div>
+              <div className="flex items-center justify-between mb-1 text-[11px] text-white/70">
+                <span>{product.group_buy_current || 0}명 참여 · {product.group_buy_target}명 목표</span>
+                {product.group_buy_deadline && <GroupBuyCountdown deadline={product.group_buy_deadline} />}
+              </div>
+              <div className="w-full rounded-full overflow-hidden h-1 bg-white/15">
+                <div className="h-full rounded-full bg-gradient-to-r from-red-500 to-pink-500 transition-all duration-500"
+                  style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }} />
               </div>
             </div>
-          </>
-        )}
-
-        {/* 공동구매 진행률 (식사권일 때만) */}
-        {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
-          <div className="px-5 py-4 bg-white border-b border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-gray-900">공동구매 진행 중</span>
-              <span className="text-xs text-pink-400 font-bold">
-                {product.group_buy_current || 0}/{product.group_buy_target}명
-              </span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-pink-500 to-red-500 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }}
-              />
-            </div>
-            {product.group_buy_deadline && (
-              <GroupBuyCountdown deadline={product.group_buy_deadline} />
-            )}
           </div>
         )}
 
@@ -618,16 +602,40 @@ export default function ProductDetailPage() {
           </AccordionSection>
         )}
 
-        {/* 상품 정보 — 아코디언 */}
-        <AccordionSection title="상품 정보">
-          <ProductInfoGrid items={[
-            { label: '재고', value: `${product.stock ?? product.stock_quantity ?? 0}개` },
-            ...(product.sold_count !== undefined && product.sold_count > 0 ? [{ label: '판매량', value: `${product.sold_count}개` }] : []),
-            ...(product.category ? [{ label: '카테고리', value: product.category }] : []),
-          ]} />
-        </AccordionSection>
+        {/* v4 옵션 선택 */}
+        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <section className="px-5 py-5">
+          <p className="text-[13px] font-bold text-gray-900 mb-3">옵션 선택</p>
+          {options.length > 0 ? (
+            <div className="space-y-2">
+              {options.map((opt: ProductOption) => (
+                <button key={opt.id} onClick={() => setSelectedOptions({ option: Number(opt.id) })}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
+                    selectedOptions.option === opt.id ? 'border-gray-900 bg-gray-50' : 'border-gray-200'
+                  }`}>
+                  <span className="text-[12px] text-gray-900">{opt.option_value}</span>
+                  {opt.price_adjustment !== 0 && (
+                    <span className="text-[11px] text-red-500 font-bold">
+                      {(opt.price_adjustment || 0) > 0 ? '+' : ''}{(opt.price_adjustment || 0).toLocaleString()}원
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200">
+              <span className="text-[12px] text-gray-500">옵션을 선택해주세요</span>
+              <svg className="w-3.5 h-3.5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+          )}
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-[11px] text-gray-400">포인트 적립</span>
+            <span className="text-[11px] font-bold text-pink-500">최대 {Math.round(displayPrice * 0.03).toLocaleString()}딜</span>
+          </div>
+        </section>
+        <div style={{ height: 8, background: '#F9FAFB' }} />
 
-        {/* 공유 + 추천 링크 (가격 바로 아래) */}
+        {/* 공유 + 추천 링크 */}
         <div className="px-5 py-3 space-y-2">
           {isLoggedIn && (
             <button
@@ -651,14 +659,12 @@ export default function ProductDetailPage() {
           />
         </div>
 
-        {/* 배송 안내 배너 */}
+        {/* v4 배송 정보 카드 */}
         <div className="px-5 py-3">
-          <div className="bg-blue-50 rounded-xl px-4 py-3 flex items-center gap-3">
-            <span className="text-lg">🚚</span>
-            <div>
-              <p className="text-xs font-bold text-blue-700">무료배송</p>
-              <p className="text-[10px] text-blue-500">50,000원 이상 구매 시 · 주문 후 2~5일 배송</p>
-            </div>
+          <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50">
+            <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            <span className="text-[12px] font-semibold text-gray-900">내일 도착 예정</span>
+            <span className="text-[11px] text-gray-500">· 5만원 이상 무료</span>
           </div>
         </div>
 
@@ -670,30 +676,40 @@ export default function ProductDetailPage() {
           showToast={showToast}
         />
 
-        {/* 안내 정보 */}
-        <AccordionSection title="안내 정보">
-          <ProductNoticeSection />
-        </AccordionSection>
+        {/* v4: 안내정보는 하단 아코디언으로 이동 */}
 
-        {/* 상품 리뷰 */}
-        <AccordionSection title={`리뷰`} defaultOpen={true}>
-          <ProductReviews productId={product.id} />
-        </AccordionSection>
-
-        {/* 교환 및 반품 */}
-        <AccordionSection title="교환 및 반품 안내">
-          <ReturnPolicySection />
-        </AccordionSection>
-
-        {/* 배송안내 */}
-        <AccordionSection title="배송 안내">
-          <div className="space-y-2.5 text-xs text-gray-500">
-            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송업체</span><span>택배사 (추후 안내)</span></div>
-            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송지역</span><span>대한민국 전 지역</span></div>
-            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송비용</span><span>3,000원 / 50,000원 이상 무료</span></div>
-            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송기간</span><span>주말·공휴일 제외 2-5일</span></div>
+        {/* v4 리뷰 섹션 (독립) */}
+        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <section className="px-5 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[13px] font-bold text-gray-900">
+              리뷰 <span className="text-gray-400 font-normal">({(reviewSummary?.total_count || 0).toLocaleString()})</span>
+            </p>
+            <button className="flex items-center gap-0.5 text-[11px] text-gray-400">
+              전체보기 <ChevronRight className="w-2.5 h-2.5" />
+            </button>
           </div>
-        </AccordionSection>
+          <ProductReviews productId={product.id} />
+        </section>
+
+        {/* v4 아코디언 — 3개 표준 섹션 */}
+        <div className="border-t border-gray-100">
+          <AccordionSection title="상품 정보 고시">
+            <ProductInfoGrid items={[
+              { label: '재고', value: `${product.stock ?? 0}개` },
+              ...(product.sold_count ? [{ label: '판매량', value: `${product.sold_count}개` }] : []),
+              ...(product.category ? [{ label: '카테고리', value: product.category }] : []),
+            ]} />
+          </AccordionSection>
+          <AccordionSection title="배송 · 교환 · 반품 안내">
+            <ReturnPolicySection />
+          </AccordionSection>
+          <AccordionSection title="유의사항">
+            <ProductNoticeSection />
+          </AccordionSection>
+        </div>
+
+        {/* v4: 배송 안내는 하단 아코디언 "배송·교환·반품"에 통합됨 */}
       </main>
 
       {/* Floating Cart / Purchase Bar */}

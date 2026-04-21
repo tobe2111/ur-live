@@ -128,6 +128,7 @@ export default function AgencySellersPage() {
                     <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                       <div className="text-right">
                         <p className="text-xs font-semibold text-gray-900">{(s.total_revenue / 10000).toFixed(0)}만원</p>
+                        <p className="text-xs text-indigo-500 font-medium">수수료 {Math.round(s.total_revenue * (s.commission_rate || 2) / 100).toLocaleString()}원</p>
                         <p className="text-xs text-gray-400">{s.total_orders}건</p>
                       </div>
                       <StatusBadge status={s.status} />

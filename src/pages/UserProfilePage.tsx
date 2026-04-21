@@ -539,71 +539,127 @@ export default function UserProfilePage() {
 
   return (
     <div className="bg-[#020202] flex flex-col min-h-screen">
-      {/* Header with Back Button */}
-      <div className="sticky top-0 z-50 bg-[#020202] border-b border-[#1A1A1A]">
-        <div className="flex items-center px-4 py-3">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/10 transition-colors"
-            aria-label="뒤로가기"
-          >
-            <ArrowLeft className="w-5 h-5 text-white" />
+      {/* v4 Premium Hero Header */}
+      <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3" style={{ background: '#0A0A0A' }}>
+        <p className="text-[16px] font-extrabold text-white">My</p>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/notifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
           </button>
-          <h1 className="flex-1 text-center text-[18px] font-bold text-white pr-10">마이페이지</h1>
+          <button onClick={() => navigate('/account/settings')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          </button>
         </div>
       </div>
 
-      {/* User Info Section */}
-      <UserInfo userName={userName} profileImage={profileImage} />
+      {/* v4 Hero Profile — 그라데이션 배경 */}
+      <div className="px-4 pt-2 pb-6 relative" style={{ background: 'radial-gradient(ellipse at top, rgba(236,72,153,0.25), transparent 60%), #0A0A0A' }}>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <img
+              src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
+              alt="" className="w-16 h-16 rounded-full object-cover" style={{ border: '2px solid rgba(255,255,255,0.15)' }}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[17px] font-extrabold text-white" style={{ letterSpacing: '-0.01em' }}>{userName}</p>
+            <p className="text-[11px] text-white/50 mt-0.5">{localStorage.getItem('user_email') || ''}</p>
+            <button onClick={() => navigate('/account/settings')} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-white/[0.08] text-[10px] text-white/75 font-semibold">
+              프로필 편집 <ChevronRight className="w-2.5 h-2.5" />
+            </button>
+          </div>
+        </div>
+      </div>
 
-      {/* 딜 포인트 잔액 */}
+      {/* v4 3-스탯 칩 (딜포인트 통합) */}
       <TeamPointsCard />
 
       {/* 셀러 전환 */}
       <SellerSwitchCard />
 
-      {/* 광고 시청으로 딜 받기 */}
-      <RewardAdCard />
-
       {/* 채팅 이름 설정 */}
       <ChatNameSetting />
 
-      {/* 바로가기 */}
-      <div className="px-5 py-3 flex gap-2">
-        <button onClick={() => navigate('/my-orders')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">📦 주문내역</button>
-        <button onClick={() => navigate('/wishlist')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">❤️ 위시리스트</button>
-        <button onClick={() => navigate('/mypage/addresses')} className="flex-1 py-3 bg-[#121212] border border-[#2A2A2A] rounded-xl text-xs font-medium text-gray-300 text-center">📍 배송지</button>
+      {/* v4 주문 현황 */}
+      <div className="px-4 pt-3">
+        <p className="text-[12px] font-bold text-white mb-3">주문 현황</p>
+        <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-white/[0.04]">
+          {[
+            { label: '결제완료', path: '/my-orders?status=paid' },
+            { label: '배송준비', path: '/my-orders?status=preparing' },
+            { label: '배송중', path: '/my-orders?status=shipping' },
+            { label: '배송완료', path: '/my-orders?status=delivered' },
+            { label: '리뷰대기', path: '/my-orders?status=review' },
+          ].map(o => (
+            <button key={o.label} onClick={() => navigate(o.path)} className="flex-1 text-center">
+              <p className="text-[18px] font-extrabold text-white/30" style={{ letterSpacing: '-0.02em' }}>-</p>
+              <p className="text-[9px] text-white/55 mt-0.5">{o.label}</p>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Menu List Section */}
-      <MenuList />
+      {/* v4 바로가기 그리드 */}
+      <div className="px-4 pt-4">
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { icon: '❤️', label: '찜', path: '/wishlist', tint: '#EC4899' },
+            { icon: '🎫', label: '쿠폰', path: '/browse', tint: '#F59E0B' },
+            { icon: '🎟️', label: '바우처', path: '/my-vouchers', tint: '#A78BFA' },
+            { icon: '📦', label: '주문내역', path: '/my-orders', tint: '#60A5FA' },
+            { icon: '📍', label: '배송지', path: '/mypage/addresses', tint: '#FBBF24' },
+            { icon: '📝', label: '리뷰', path: '/my-orders', tint: '#34D399' },
+            { icon: '👥', label: '친구초대', path: '/referral', tint: '#F472B6' },
+            { icon: '⚙️', label: '설정', path: '/account/settings', tint: '#94A3B8' },
+          ].map(m => (
+            <button key={m.label} onClick={() => navigate(m.path)} className="rounded-xl py-4 flex flex-col items-center gap-1.5 bg-white/[0.04] active:bg-white/[0.08] transition-colors">
+              <span className="text-lg">{m.icon}</span>
+              <span className="text-[10px] text-white font-medium">{m.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {/* Logout Button Section */}
-      <div className="px-5 py-6 space-y-3">
+      {/* v4 도움말 섹션 */}
+      <div className="px-4 pt-6">
+        <p className="text-[12px] font-bold text-white mb-3">도움말</p>
+        <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
+          {[
+            { label: '고객센터', sub: '0507-0177-0432', path: '' },
+            { label: '자주 묻는 질문', sub: 'FAQ', path: '' },
+            { label: '이용약관', path: '/terms' },
+            { label: '개인정보 처리방침', path: '/privacy' },
+            { label: '배송 정책', path: '/shipping-policy' },
+          ].map((item, i) => (
+            <button
+              key={item.label}
+              onClick={() => item.path && navigate(item.path)}
+              className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
+              style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+            >
+              <div className="flex-1">
+                <p className="text-[12px] text-white">{item.label}</p>
+                {item.sub && <p className="text-[10px] text-white/45 mt-0.5">{item.sub}</p>}
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-white/30" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* v4 로그아웃 */}
+      <div className="px-4 py-6">
         <button
           onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#2A2A2A] bg-[#121212] py-3.5 text-sm font-medium text-gray-400 transition-colors active:bg-white/5"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/[0.04] text-[13px] font-semibold text-white/75 active:bg-white/[0.08] transition-colors"
         >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           로그아웃
         </button>
-
-        <button
-          onClick={() => navigate('/account/settings')}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#2A2A2A] bg-[#121212] py-3.5 text-sm font-medium text-gray-400 transition-colors active:bg-white/5"
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          계정 설정
-        </button>
+        <p className="text-[10px] text-white/25 text-center mt-3">YourDeal v2.4 · 2026</p>
       </div>
 
-      {/* Footer Section */}
-      <Footer />
+      {/* v4: Footer는 로그아웃 아래 버전 정보로 대체됨 */}
       
     </div>
   )

@@ -14,60 +14,70 @@ interface ProductHeaderProps {
 
 export function ProductHeader({ name, price, originalPrice, discountRate, sellerName, sellerId, soldCount, reviewCount, avgRating }: ProductHeaderProps) {
   const formatPrice = (p: number) => new Intl.NumberFormat('ko-KR').format(p)
-
   const hasDiscount = originalPrice && originalPrice > price
   const displayDiscount = discountRate || (hasDiscount ? Math.round((1 - price / originalPrice) * 100) : 0)
 
   return (
-    <div className="px-5 py-4">
-      {/* Seller */}
+    <>
+      {/* v4 Brand strip */}
       {sellerName && (
-        sellerId ? (
-          <Link to={`/s/${sellerId}`} className="text-xs text-pink-500 font-medium mb-1 block">
-            {sellerName} →
-          </Link>
-        ) : (
-          <p className="text-xs text-gray-500 mb-1">{sellerName}</p>
-        )
-      )}
-
-      {/* Product Name */}
-      <h1 className="text-[17px] font-bold leading-snug text-gray-900">
-        {name}
-      </h1>
-
-      {/* Price */}
-      <div className="mt-3 flex items-end gap-2">
-        {displayDiscount > 0 && (
-          <span className="text-[28px] font-black text-red-500 leading-none">{displayDiscount}%</span>
-        )}
-        <span className="text-[28px] font-black text-gray-900 leading-none">{formatPrice(price)}<span className="text-[16px]">원</span></span>
-      </div>
-
-      {hasDiscount && (
-        <p className="mt-1 text-sm text-gray-400 line-through">{formatPrice(originalPrice)}원</p>
-      )}
-
-      {/* Stats */}
-      {(reviewCount || soldCount) ? (
-        <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
-          {avgRating ? (
-            <span className="flex items-center gap-0.5">
-              <span className="text-yellow-500">★</span> {avgRating.toFixed(1)}
-              {reviewCount ? <span className="text-gray-400">({reviewCount})</span> : null}
-            </span>
-          ) : null}
-          {soldCount ? <span>{soldCount.toLocaleString()}개 구매</span> : null}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-full flex items-center justify-center w-9 h-9 bg-pink-50 border border-pink-200">
+              <span className="text-[13px] font-extrabold text-pink-500">{sellerName.charAt(0)}</span>
+            </div>
+            <div>
+              {sellerId ? (
+                <Link to={`/s/${sellerId}`} className="text-[13px] font-extrabold text-gray-900 hover:underline">{sellerName}</Link>
+              ) : (
+                <p className="text-[13px] font-extrabold text-gray-900">{sellerName}</p>
+              )}
+              <p className="text-[10px] text-gray-400">브랜드</p>
+            </div>
+          </div>
+          <button className="rounded-full px-3 py-1.5 border border-gray-900 text-[11px] font-bold text-gray-900 active:scale-95 transition-transform">
+            팔로우
+          </button>
         </div>
-      ) : null}
+      )}
 
-      {/* Shipping */}
-      <div className="mt-3 flex items-center gap-1.5 text-xs">
-        <span className="text-gray-400">배송비</span>
-        <span className="font-medium text-gray-700">3,000원</span>
-        <span className="text-gray-400">·</span>
-        <span className="text-blue-600 font-medium">50,000원 이상 무료</span>
-      </div>
-    </div>
+      <div className="h-px bg-gray-100" />
+
+      {/* v4 Product info */}
+      <section className="px-5 pt-5 pb-6">
+        <p className="text-[13px] text-gray-900 leading-relaxed line-clamp-2">{name}</p>
+
+        {/* Rating + stats */}
+        {(reviewCount || soldCount) && (
+          <div className="flex items-center gap-1.5 mt-1.5">
+            {avgRating && (
+              <>
+                <span className="text-yellow-500 text-[12px]">★</span>
+                <span className="text-[12px] font-semibold text-gray-900">{avgRating.toFixed(1)}</span>
+              </>
+            )}
+            <span className="text-[12px] text-gray-400">
+              {reviewCount ? `· 리뷰 ${reviewCount.toLocaleString()}` : ''}
+              {soldCount ? ` · ${soldCount.toLocaleString()}명 구매` : ''}
+            </span>
+          </div>
+        )}
+
+        {/* v4 Price cluster */}
+        <div className="flex items-baseline gap-2 mt-4">
+          {displayDiscount > 0 && (
+            <span className="text-[22px] font-extrabold text-red-500">{displayDiscount}%</span>
+          )}
+          <span className="text-[26px] font-extrabold text-gray-900" style={{ letterSpacing: '-0.03em' }}>
+            {formatPrice(price)}
+          </span>
+          <span className="text-[14px] text-gray-900">원</span>
+        </div>
+
+        {hasDiscount && (
+          <p className="text-[11px] text-gray-400 line-through mt-0.5">{formatPrice(originalPrice)}원</p>
+        )}
+      </section>
+    </>
   )
 }

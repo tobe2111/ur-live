@@ -235,6 +235,25 @@ export default function AgencyPage() {
         />
       </div>
 
+      {/* 에이전시 수수료 수익 */}
+      <div className="mt-4 bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm opacity-80">이번달 에이전시 수수료</p>
+            <p className="text-2xl font-extrabold mt-1">
+              {Math.round((stats?.revenue_30d ?? 0) * 0.02).toLocaleString()}원
+            </p>
+            <p className="text-xs opacity-60 mt-1">매출 대비 2% · 확정 후 정산 신청 가능</p>
+          </div>
+          <button
+            onClick={() => navigate('/agency/settlements')}
+            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-bold transition-colors"
+          >
+            정산 관리 →
+          </button>
+        </div>
+      </div>
+
       {/* 빠른 실행 */}
       <div className="flex flex-wrap gap-2">
         <button onClick={() => navigate('/agency/sellers')} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">+ 셀러 초대</button>

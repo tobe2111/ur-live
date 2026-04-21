@@ -100,7 +100,7 @@ export default function SearchPage() {
   const showResults = !loading && !error && query && hasResults
 
   return (
-    <div className="bg-[#f5f5f7] pb-20">
+    <div className="bg-white pb-20">
       <SEO title={query ? `${query} 검색결과 - 유어딜` : '검색 - 유어딜'} description="유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요." url="/search" />
       {/* Header */}
       <SearchHeader
@@ -132,7 +132,7 @@ export default function SearchPage() {
             />
             
             {/* Product Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

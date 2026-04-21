@@ -180,18 +180,18 @@ export default function ReferralPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <SEO title="공동구매 - 유어딜" description="친구와 함께 공동구매로 더 싸게 구매하세요" url="/referral" />
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between px-4 py-3">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
+      {/* v4 Header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-100">
+        <div className="flex items-center justify-between px-3 py-3">
+          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
-          <h1 className="text-[18px] font-bold text-gray-900">공동구매</h1>
-          <div className="w-10" />
+          <h1 className="text-[16px] font-extrabold text-gray-900">공동구매</h1>
+          <div className="w-9" />
         </div>
       </div>
 
-      <div className="px-4 py-5 space-y-4 pb-32">
+      <div className="px-4 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100vh - 48px)' }}>
         {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
         <section className="bg-white rounded-2xl p-4 border border-gray-200">
           {product && (
@@ -277,22 +277,50 @@ export default function ReferralPage() {
           />
         </section>
 
-        {/* 3. Participants */}
-        <section className="bg-white rounded-2xl p-4 border border-gray-200">
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="w-4 h-4 text-gray-900" />
-            <h2 className="text-sm font-bold text-gray-900">{group.current_count}명 참여 중</h2>
+        {/* v4 Participants — 아바타 스택 + 최근 참여자 */}
+        <section className="bg-white rounded-2xl p-4 border border-gray-100">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Users className="w-3.5 h-3.5 text-gray-900" />
+            <p className="text-[13px] font-bold text-gray-900">{group.current_count}명 참여 중</p>
           </div>
-          <div className="space-y-2">
-            {group.members.map((m, i) => (
-              <div key={i} className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-bold shrink-0">
-                  {m.user_name?.slice(0, 1) || '?'}
+          {/* 아바타 스택 */}
+          {group.members.length > 0 && (
+            <div className="flex items-center flex-wrap -space-x-2 mb-3">
+              {group.members.slice(0, 12).map((m, i) => {
+                const colors = ['#FEE2E2','#FCE7F3','#DBEAFE','#D1FAE5','#FEF3C7','#EDE9FE'];
+                return (
+                  <div key={i} className="rounded-full border-2 border-white flex items-center justify-center relative"
+                    style={{
+                      width: 28, height: 28, zIndex: 20 - i,
+                      background: i === 0 ? '#111827' : colors[i % colors.length],
+                      color: i === 0 ? '#fff' : '#111827',
+                      fontSize: 10, fontWeight: 700,
+                    }}>
+                    {(m.user_name || '?').slice(0, 1)}
+                  </div>
+                );
+              })}
+              {group.members.length > 12 && (
+                <div className="rounded-full flex items-center justify-center ml-1"
+                  style={{ width: 28, height: 28, background: '#F3F4F6', color: '#6B7280', fontSize: 9, fontWeight: 700 }}>
+                  +{group.members.length - 12}
                 </div>
-                <span className="text-sm text-gray-900">{m.user_name}</span>
-                {i === 0 && (
-                  <span className="text-[10px] bg-gray-900 text-white px-1.5 py-0.5 rounded-full font-medium">방장</span>
-                )}
+              )}
+            </div>
+          )}
+          {/* 최근 참여자 */}
+          <div className="space-y-2">
+            {group.members.slice(0, 3).map((m, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ background: '#FCE7F3', color: '#BE185D', fontSize: 10, fontWeight: 700 }}>
+                  {(m.user_name || '?').slice(0, 1)}
+                </div>
+                <span className="text-[12px] text-gray-900 font-medium">{m.user_name}</span>
+                {i === 0 && <span className="rounded-full px-1.5 py-0.5 bg-gray-900 text-white text-[9px] font-bold">방장</span>}
+                <span className="text-[10px] text-gray-400 ml-auto">
+                  {m.joined_at ? new Date(m.joined_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : ''}
+                </span>
               </div>
             ))}
             {group.members.length === 0 && (
@@ -301,23 +329,23 @@ export default function ReferralPage() {
           </div>
         </section>
 
-        {/* 혜택 안내 */}
-        <section className="bg-white rounded-2xl p-4 border border-gray-200">
-          <div className="flex items-center gap-2 mb-2">
-            <Gift className="w-4 h-4 text-pink-500" />
-            <h3 className="text-sm font-bold text-gray-900">티어별 할인</h3>
+        {/* v4 티어별 할인표 */}
+        <section className="bg-white rounded-2xl p-4 border border-gray-100">
+          <div className="flex items-center gap-1.5 mb-3">
+            <span className="text-sm">🎁</span>
+            <p className="text-[13px] font-bold text-gray-900">티어별 할인</p>
           </div>
           <div className="space-y-1.5">
             {group.tiers.map((t, i) => {
               const reached = group.current_count >= t.count
               return (
-                <div key={i} className={`flex items-center justify-between text-xs px-3 py-2 rounded-lg ${reached ? 'bg-pink-50' : 'bg-gray-50'}`}>
-                  <span className={reached ? 'text-pink-600 font-semibold' : 'text-gray-600'}>
+                <div key={i} className="flex items-center justify-between rounded-lg px-3 py-2"
+                  style={{ background: reached ? '#FDF2F8' : '#F9FAFB' }}>
+                  <span style={{ fontSize: 12, color: reached ? '#BE185D' : '#6B7280', fontWeight: reached ? 700 : 500 }}>
                     {t.count}명 모이면
                   </span>
-                  <span className={`font-bold ${reached ? 'text-pink-600' : 'text-gray-500'}`}>
-                    {t.discount}% 할인
-                    {reached && <CheckCircle className="inline w-3 h-3 ml-1 -mt-0.5" />}
+                  <span style={{ fontSize: 12, fontWeight: 800, color: reached ? '#BE185D' : '#9CA3AF' }}>
+                    {t.discount}% 할인{reached ? ' ✓' : ''}
                   </span>
                 </div>
               )
@@ -404,13 +432,12 @@ function TierProgressBar({
   const progressPct = Math.min(100, (currentCount / maxCount) * 100)
 
   return (
-    <div className="relative pt-2 pb-8">
-      {/* 트랙 */}
-      <div className="relative h-2 bg-gray-100 rounded-full">
-        {/* 채워진 부분 */}
+    <div className="relative pt-2 pb-10">
+      {/* v4 트랙 */}
+      <div className="relative rounded-full" style={{ height: 8, background: '#F3F4F6' }}>
         <div
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-pink-400 to-pink-500 rounded-full transition-all duration-500"
-          style={{ width: `${progressPct}%` }}
+          className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+          style={{ width: `${progressPct}%`, background: 'linear-gradient(90deg, #F472B6, #EC4899)' }}
         />
 
         {/* 티어 마커 */}
@@ -454,43 +481,28 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   const { days, hours, minutes, seconds, isExpired } = useCountdown(new Date(expiresAt))
   if (isExpired) return null
 
-  const isUrgent = days === 0 && hours < 1
-
   return (
-    <div className="text-center">
-      <div className="flex items-center justify-center gap-1.5 mb-2">
-        <Clock className={`w-4 h-4 ${isUrgent ? 'text-pink-500' : 'text-gray-500'}`} />
-        <span className={`text-xs font-medium ${isUrgent ? 'text-pink-500' : 'text-gray-500'}`}>
-          {isUrgent ? '마감 임박!' : '남은 시간'}
-        </span>
-      </div>
+    <div className="pt-4 text-center">
+      <p className="text-[11px] text-pink-500 font-bold mb-2">⏰ 남은 시간</p>
       <div className="flex items-center justify-center gap-1.5">
-        {days > 0 && (
-          <>
-            <TimeBlock value={days} label="일" urgent={isUrgent} />
-            <Colon />
-          </>
-        )}
-        <TimeBlock value={hours} label="시간" urgent={isUrgent} />
-        <Colon />
-        <TimeBlock value={minutes} label="분" urgent={isUrgent} />
-        <Colon />
-        <TimeBlock value={seconds} label="초" urgent={isUrgent} />
+        {[
+          { v: days, l: '일' },
+          { v: hours, l: '시간' },
+          { v: minutes, l: '분' },
+          { v: seconds, l: '초' },
+        ].filter((t, i) => i > 0 || t.v > 0).map((t, i, arr) => (
+          <span key={t.l} className="contents">
+            <div className="rounded-lg px-2.5 py-1.5 bg-pink-50">
+              <span className="text-[16px] font-extrabold text-pink-700" style={{ fontFamily: 'ui-monospace, monospace' }}>
+                {String(t.v).padStart(2, '0')}
+              </span>
+              <span className="text-[9px] block leading-none mt-0.5 text-pink-700">{t.l}</span>
+            </div>
+            {i < arr.length - 1 && <span className="text-[14px] text-gray-300 font-extrabold">:</span>}
+          </span>
+        ))}
       </div>
     </div>
   )
-}
-
-function TimeBlock({ value, label, urgent }: { value: number; label: string; urgent: boolean }) {
-  return (
-    <div className={`px-2.5 py-1.5 rounded-lg ${urgent ? 'bg-pink-50 text-pink-600' : 'bg-gray-100 text-gray-900'}`}>
-      <span className="text-base font-mono font-bold">{String(value).padStart(2, '0')}</span>
-      <span className="text-[10px] block leading-none mt-0.5">{label}</span>
-    </div>
-  )
-}
-
-function Colon() {
-  return <span className="text-base font-bold text-gray-400">:</span>
 }
 

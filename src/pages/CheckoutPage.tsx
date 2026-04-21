@@ -554,20 +554,18 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
       <SEO title="주문/결제 - 유어딜" description="주문 정보를 확인하고 안전하게 결제하세요" url="/checkout" />
-      {/* 헤더 */}
+      {/* v4 Breakdown 헤더 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="mx-auto max-w-md px-4 py-3">
-          <div className="flex items-center justify-between">
-            <button onClick={() => navigate('/cart')} className="p-1">
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
-            </button>
-            <h1 className="text-[16px] font-bold text-gray-900">결제하기</h1>
-            <div className="w-7" />
-          </div>
+        <div className="mx-auto max-w-md flex items-center justify-between px-3 py-3">
+          <button onClick={() => navigate('/cart')} className="w-9 h-9 flex items-center justify-center">
+            <ArrowLeft className="w-5 h-5 text-gray-900" />
+          </button>
+          <h1 className="text-[15px] font-extrabold text-gray-900">주문 · 결제</h1>
+          <div className="w-9" />
         </div>
       </div>
 
-      <main className="mx-auto max-w-md pb-52">
+      <main className="mx-auto max-w-md pb-52" style={{ background: '#F4F4F4' }}>
         <div className="flex flex-col">
 
           {/* Left column */}
@@ -991,17 +989,19 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            <div className="my-5 h-px bg-[#333]" />
-
-            <div className="flex items-end justify-between">
-              <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
-              <div className="flex items-baseline gap-0.5">
-                <span className="text-[26px] font-bold tracking-tight text-gray-900">
-                  {Math.max(0, totalAmount).toLocaleString()}
-                </span>
-                <span className="text-[15px] font-semibold text-gray-900">원</span>
-              </div>
+            <div className="flex items-end justify-between pt-3 mt-3 border-t border-gray-100">
+              <span className="text-[14px] font-extrabold text-gray-900">총 결제 금액</span>
+              <span className="text-[20px] font-black text-red-500" style={{ letterSpacing: '-0.03em' }}>
+                {Math.max(0, totalAmount).toLocaleString()}원
+              </span>
             </div>
+            {totalAmount > 0 && (
+              <div className="flex justify-end mt-1">
+                <span className="rounded-md px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold">
+                  결제 시 {Math.round(Math.max(0, totalAmount) * 0.03).toLocaleString()}딜 적립 예정
+                </span>
+              </div>
+            )}
           </section>
         </div>
       </main>
