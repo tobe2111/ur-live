@@ -174,7 +174,7 @@ api.interceptors.request.use(
             if (current.user && current.accessToken !== freshToken) {
               useAuthStore.getState().setAuth(current.user, freshToken, '');
             }
-          } catch (_) {}
+          } catch (_) {} // non-critical: optional auth store sync
           return config;
         }
       }
@@ -338,7 +338,7 @@ api.interceptors.response.use(
       try {
         const { useAuthStore } = await import('@/client/stores/auth.store');
         useAuthStore.getState().clearAuth();
-      } catch (_) {}
+      } catch (_) {} // non-critical: best-effort clearAuth on 401
       captureError(new Error('Buyer 401: Unauthorized'), { url });
 
       alert('인증이 만료되었습니다.\n다시 로그인해주세요.');

@@ -387,10 +387,15 @@ app.get('/api/admin/optimize-db', requireAdmin(), async (c) => {
 // Auth Routes
 // ============================================================
 
-// Worker-native user auth (register / login / logout / refresh / me)
+// -------------------------------------------------------
+// Auth routing: TWO routers on /api/auth (non-overlapping sub-routes).
+//
+// authRouter     → POST /register, /login, /logout, /refresh, GET /me, /session/*
+// authTokenRoutes → POST /id-token (Phase 2.3 backend token exchange)
+//
+// ⚠️ Both mounted on /api/auth — authRouter registered first for priority.
+// -------------------------------------------------------
 app.route('/api/auth', authRouter);
-
-// Phase 2.3: Backend ID Token endpoint
 app.route('/api/auth', authTokenRoutes);
 
 // Feature: Kakao OAuth  →  /auth/kakao/sync/callback + /api/auth/kakao/*
@@ -401,6 +406,17 @@ app.route('/api/auth/kakao', kakaoRoutes);
 app.use('/api/admin/login', rateLimit({ action: 'admin_login', max: 5, windowSec: 300 }));
 app.route('/api/admin', adminAuthRoutes);
 
+// -------------------------------------------------------
+// Seller routing: FOUR routers on /api/seller (non-overlapping sub-routes).
+//
+// sellerAuthRoutes       → POST /login, /register, GET /me  (auth)
+// sellerManagementRoutes → /products/*, /profile, /dashboard (management CRUD)
+// sellerOrdersRoutes     → /orders/*, /store-verify/*        (order management)
+// sellerDonationsRoutes  → /donations/*                      (donation endpoints)
+//
+// ⚠️ All mounted on /api/seller — sellerAuthRoutes registered first for priority.
+//    Rate limiting applied to /api/seller/login before route registration.
+// -------------------------------------------------------
 // Feature: Seller auth — rate limited: 10 attempts per 5 min per IP
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
@@ -448,7 +464,7 @@ app.route('/api/search', featureProductsRoutes);
 // Worker-native sellers list + public routes
 app.route('/api/sellers', sellersRouter);
 
-// Feature seller management
+// Feature seller management (see /api/seller routing note above — non-overlapping sub-routes)
 app.route('/api/seller', sellerManagementRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller/analytics', sellerAnalyticsRoutes);
@@ -484,10 +500,15 @@ app.route('/api/affiliate', affiliateRoutes);
 app.route('/api/orders', ordersRouter);
 app.route('/api/orders', featureOrdersRoutes);
 
-// ✅ paymentsRouter: POST /confirm, POST /checkout-session (worker-native)
+// -------------------------------------------------------
+// Payment routing: TWO routers on /api/payments (non-overlapping sub-routes).
+//
+// paymentsRouter       → POST /confirm, POST /checkout-session (worker-native, PRIMARY)
+// featurePaymentRoutes → POST /rollback (feature module, SECONDARY)
+//
+// ⚠️ Both mounted on /api/payments — paymentsRouter registered first for priority.
+// -------------------------------------------------------
 app.route('/api/payments', paymentsRouter);
-
-// ✅ featurePaymentRoutes: POST /rollback 만 담당 (confirm은 paymentsRouter가 처리)
 app.route('/api/payments', featurePaymentRoutes);
 
 // ✅ Stripe routes (Global region): POST /api/payment/stripe/create-intent
@@ -546,7 +567,7 @@ app.route('/api/seller/alimtalk', alimtalkRoutes);
 
 // ── 후원(도네이션) ──
 app.route('/api/donations', donationsRoutes);
-app.route('/api/seller', sellerDonationsRoutes);
+app.route('/api/seller', sellerDonationsRoutes); // (see /api/seller routing note — non-overlapping /donations/* sub-routes)
 
 // ── 식당 정산 (셀러용) ──
 app.route('/api/seller/restaurant-settlements', sellerSettlementRoutes);

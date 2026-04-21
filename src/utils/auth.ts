@@ -252,7 +252,7 @@ export async function getUserId(): Promise<string | null> {
           if (parsed.userId) {
             return parsed.userId.toString()
           }
-        } catch (_) {}
+        } catch (_) {} // non-critical: JSON.parse of custom claims may fail
       }
       // ✅ Fallback: use Firebase UID (email login users without custom claims)
       return user.uid
