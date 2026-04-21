@@ -201,7 +201,7 @@ export default function SellerYoutubeGrowthPage() {
                   value={channelUrl}
                   onChange={e => setChannelUrl(e.target.value)}
                   placeholder="https://youtube.com/@your-channel"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                   required
                 />
               </div>

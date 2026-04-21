@@ -63,7 +63,7 @@ export default function AdminPlatformSettingsPage() {
                 <input
                   value={settings[f.key] ?? f.default}
                   onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm text-right font-medium"
+                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium"
                 />
               </div>
             ))}

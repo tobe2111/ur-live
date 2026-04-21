@@ -57,7 +57,7 @@ export default function AgencyProfilePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
-            <input value={profile?.email || ''} disabled className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-gray-50" />
+            <input value={profile?.email || ''} disabled className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 text-gray-500 bg-gray-50" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">수수료율</label>

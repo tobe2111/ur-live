@@ -542,7 +542,7 @@ export default function AdminPage() {
                     type="number"
                     value={setting.value}
                     onChange={e => setCommissionSettings(prev => prev.map(s => s.key === setting.key ? { ...s, value: e.target.value } : s))}
-                    className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-right font-bold"
+                    className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-bold"
                     min="0" max="100" step="0.5"
                   />
                   <span className="text-sm text-gray-500">%</span>

@@ -435,44 +435,44 @@ export default function SellerProductNewPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">식당명 *</label>
                 <input name="restaurant_name" onChange={handleChange} placeholder="예) 강남 OO식당"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">식당 주소</label>
                 <input name="restaurant_address" onChange={handleChange} placeholder="서울시 강남구..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">식당 전화번호</label>
                 <input name="restaurant_phone" onChange={handleChange} placeholder="02-1234-5678"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">이용 조건</label>
                 <input name="voucher_terms" onChange={handleChange} placeholder="평일 런치만 / 주말 포함 등"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">유효기간</label>
                   <input type="date" name="voucher_expiry" onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">공동구매 목표 인원</label>
                   <input type="number" name="group_buy_target" onChange={handleChange} placeholder="50"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">공동구매 마감일</label>
                 <input type="datetime-local" name="group_buy_deadline" onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">식당 인증 비밀번호 *</label>
                 <input name="store_verify_pin" onChange={handleChange} placeholder="식당 사장에게 전달할 비밀번호"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
                 <p className="text-xs text-gray-400 mt-1">식당 사장이 바우처 사용 시 입력할 비밀번호입니다. 식당 사장에게 전달해주세요.</p>
               </div>
             </div>

@@ -137,7 +137,7 @@ export default function AdminCouponsPage() {
                     value={form.code}
                     onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
                     placeholder="UR-XXXX-XXXX"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                   />
                   <button onClick={generateCode} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
                     자동생성
@@ -150,7 +150,7 @@ export default function AdminCouponsPage() {
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="예: 신규가입 할인"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                 />
               </div>
               <div>
@@ -158,7 +158,7 @@ export default function AdminCouponsPage() {
                 <select
                   value={form.type}
                   onChange={e => setForm(f => ({ ...f, type: e.target.value as 'fixed' | 'percent' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                 >
                   <option value="fixed">정액 (원)</option>
                   <option value="percent">정률 (%)</option>
@@ -173,7 +173,7 @@ export default function AdminCouponsPage() {
                   value={form.value || ''}
                   onChange={e => setForm(f => ({ ...f, value: Number(e.target.value) }))}
                   placeholder={form.type === 'fixed' ? '5000' : '10'}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                 />
               </div>
               <div>
@@ -183,7 +183,7 @@ export default function AdminCouponsPage() {
                   value={form.min_order_amount || ''}
                   onChange={e => setForm(f => ({ ...f, min_order_amount: Number(e.target.value) }))}
                   placeholder="0 (제한 없음)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                 />
               </div>
               <div>
@@ -193,7 +193,7 @@ export default function AdminCouponsPage() {
                   value={form.max_discount || ''}
                   onChange={e => setForm(f => ({ ...f, max_discount: Number(e.target.value) }))}
                   placeholder="0 (제한 없음)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                 />
               </div>
               <div>
@@ -203,7 +203,7 @@ export default function AdminCouponsPage() {
                   value={form.total_count || ''}
                   onChange={e => setForm(f => ({ ...f, total_count: Number(e.target.value) }))}
                   placeholder="100"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                 />
               </div>
               <div>
@@ -212,7 +212,7 @@ export default function AdminCouponsPage() {
                   type="datetime-local"
                   value={form.expires_at}
                   onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                 />
               </div>
             </div>

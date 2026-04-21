@@ -121,7 +121,7 @@ export default function AdminReviewsPage() {
               <select
                 value={selectedProduct || ''}
                 onChange={e => setSelectedProduct(Number(e.target.value) || null)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
               >
                 <option value="">상품을 선택하세요</option>
                 {products.map(p => (
@@ -137,7 +137,7 @@ export default function AdminReviewsPage() {
                 <input
                   type="number" value={count} onChange={e => setCount(Number(e.target.value))}
                   min={1} max={mode === 'ai' ? 500 : 20000}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
                 />
                 {mode === 'ai' && <p className="text-[10px] text-gray-400 mt-1">AI는 최대 500개</p>}
               </div>
@@ -146,7 +146,7 @@ export default function AdminReviewsPage() {
                 <input
                   type="number" value={avgRating} onChange={e => setAvgRating(Number(e.target.value))}
                   min={1} max={5} step={0.1}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
                 />
               </div>
             </div>
@@ -157,7 +157,7 @@ export default function AdminReviewsPage() {
               <input
                 value={options} onChange={e => setOptions(e.target.value)}
                 placeholder="예: 블랙 M, 화이트 L, 네이비 XL"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
               />
             </div>
 

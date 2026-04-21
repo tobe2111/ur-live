@@ -413,7 +413,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         <label className="block text-sm font-medium text-gray-700 mb-1">방송 제목 <span className="text-red-500">*</span></label>
         <input value={title} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
           placeholder="예) 오늘만 이 가격! 신상 맛집 라이브" maxLength={100}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
       </div>
 
       {/* 설명 */}
@@ -421,7 +421,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         <label className="block text-sm font-medium text-gray-700 mb-1">설명 <span className="text-xs text-gray-400 font-normal">(선택)</span></label>
         <textarea value={description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
           placeholder="방송 내용을 간단히 소개해주세요" rows={2} maxLength={500}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" />
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" />
       </div>
 
       {/* 썸네일 */}
@@ -429,7 +429,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         <label className="block text-sm font-medium text-gray-700 mb-1">썸네일 이미지 <span className="text-xs text-gray-400 font-normal">(선택)</span></label>
         <input value={thumbnailUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setThumbnailUrl(e.target.value)}
           placeholder="이미지 URL (없으면 YouTube 썸네일 자동 사용)"
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
         {thumbnailUrl && (
           <img src={thumbnailUrl} alt="미리보기" className="mt-2 w-full max-w-[200px] rounded-lg object-cover"
             onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none' }} />
@@ -466,9 +466,9 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         <div className="flex gap-3">
           <input type="date" value={scheduledDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledDate(e.target.value)}
             min={new Date().toISOString().split('T')[0]}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
           <input type="time" value={scheduledTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledTime(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
         </div>
       )}
 

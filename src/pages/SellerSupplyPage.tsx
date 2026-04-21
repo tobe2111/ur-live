@@ -187,7 +187,7 @@ export default function SellerSupplyPage() {
                   onChange={e => setSearchInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') setSearch(searchInput) }}
                   placeholder={t('seller.searchProductName')}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
+                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
                 />
               </div>
               <button
@@ -361,7 +361,7 @@ export default function SellerSupplyPage() {
                 onChange={e => setSellerMemo(e.target.value)}
                 rows={3}
                 placeholder={t('seller.requestMemoPlaceholder')}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
               />
             </div>
 
@@ -404,7 +404,7 @@ export default function SellerSupplyPage() {
                 onChange={e => setSellerPrice(e.target.value)}
                 min={registerModal.supply_price || 1}
                 placeholder={t('seller.enterSellerPrice')}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-green-500 focus:outline-none"
               />
               {sellerPrice && Number(sellerPrice) > (registerModal.supply_price || 0) && (
                 <p className="text-xs text-green-600 mt-1 font-medium">

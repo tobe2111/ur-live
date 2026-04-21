@@ -289,7 +289,7 @@ export default function AdminBlogPage() {
                 value={form.slug}
                 onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
                 placeholder="url-friendly-slug"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
@@ -303,7 +303,7 @@ export default function AdminBlogPage() {
               placeholder="검색 결과와 소셜 미리보기에 표시될 요약 (150자 이내 권장)"
               rows={2}
               maxLength={300}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             />
             <p className="text-xs text-gray-400 mt-1 text-right">{form.summary.length}/300</p>
           </div>
@@ -315,7 +315,7 @@ export default function AdminBlogPage() {
               value={form.tagsInput}
               onChange={e => setForm(f => ({ ...f, tagsInput: e.target.value }))}
               placeholder="셀러, 라이브방송, 팁  (콤마로 구분)"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -327,7 +327,7 @@ export default function AdminBlogPage() {
                 value={form.author}
                 onChange={e => setForm(f => ({ ...f, author: e.target.value }))}
                 placeholder="유어딜 팀"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div>
@@ -336,7 +336,7 @@ export default function AdminBlogPage() {
                 value={form.thumbnail_url}
                 onChange={e => setForm(f => ({ ...f, thumbnail_url: e.target.value }))}
                 placeholder="https://..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>

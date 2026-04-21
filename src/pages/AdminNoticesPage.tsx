@@ -39,9 +39,9 @@ export default function AdminNoticesPage() {
             </div>
           </div>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="공지 제목"
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm" />
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
           <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="공지 내용" rows={5}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm resize-none" />
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none" />
           <button onClick={send} disabled={sending}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

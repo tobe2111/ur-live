@@ -171,7 +171,7 @@ export default function SellerShortsPage() {
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder={t('seller.shortsTitle')}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-purple-400 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
                 />
               </div>
 
@@ -181,7 +181,7 @@ export default function SellerShortsPage() {
                   value={videoUrl}
                   onChange={e => setVideoUrl(e.target.value)}
                   placeholder="https://youtube.com/shorts/... or https://youtu.be/..."
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-purple-400 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
                 />
                 {videoUrl && extractYoutubeId(videoUrl) && (
                   <div className="mt-2 rounded-lg overflow-hidden bg-gray-100">
@@ -199,7 +199,7 @@ export default function SellerShortsPage() {
                 <select
                   value={productId || ''}
                   onChange={e => setProductId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-purple-400 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
                 >
                   <option value="">{t('seller.noProduct')}</option>
                   {products.map(p => (
