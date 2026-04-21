@@ -2422,6 +2422,7 @@ adminManagementRoutes.post('/coupons/:id/send-segment', cors(), async (c) => {
       await DB.prepare(`CREATE TABLE IF NOT EXISTS notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL,
+        user_type TEXT NOT NULL DEFAULT 'user',
         type TEXT DEFAULT 'coupon',
         title TEXT NOT NULL,
         message TEXT,
@@ -2438,8 +2439,9 @@ adminManagementRoutes.post('/coupons/:id/send-segment', cors(), async (c) => {
 
     for (const user of users) {
       try {
+        // Production `notifications` table requires `user_type` column
         await DB.prepare(
-          "INSERT INTO notifications (user_id, type, title, message, link) VALUES (?, 'coupon', ?, ?, '/cart')"
+          "INSERT INTO notifications (user_id, user_type, type, title, message, link) VALUES (?, 'user', 'coupon', ?, ?, '/cart')"
         ).bind(
           String(user.id),
           `쿠폰이 도착했어요!`,
