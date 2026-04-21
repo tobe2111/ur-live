@@ -136,14 +136,14 @@ export async function handleExpiredVoucherRefunds(env: Env) {
               .bind(voucher.user_id, voucher.price, voucher.price).run();
           }
         } catch (e) {
-          if (import.meta.env?.DEV) console.warn('[auto-settlement user_points]', e);
+          if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement user_points]', e);
         }
         // Best-effort legacy column sync
         try {
           await DB.prepare("UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?")
             .bind(voucher.price, voucher.user_id).run();
         } catch (e) {
-          if (import.meta.env?.DEV) console.warn('[deal_balance]', e);
+          if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement deal_balance]', e);
         }
         refundCount++;
 
@@ -157,7 +157,7 @@ export async function handleExpiredVoucherRefunds(env: Env) {
             `바우처가 만료되어 ${Number(voucher.price).toLocaleString()}딜 포인트가 환불되었습니다 (${voucher.product_name})`
           ).run();
         } catch (e) {
-          if (import.meta.env?.DEV) console.warn('[notifications insert]', e);
+          if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement notifications insert]', e);
         }
       }
     }

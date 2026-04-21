@@ -212,12 +212,19 @@ export async function fetchAllProducts(
   const allProducts: Cafe24Product[] = [];
   let offset = 0;
   const limit = 100;
+  // ✅ FIX (M8): Hard cap iterations to avoid runaway loops
+  const MAX_PAGES = 100;
+  let pages = 0;
 
-  while (true) {
+  while (pages < MAX_PAGES) {
     const batch = await fetchProducts(mallId, accessToken, { limit, offset });
     allProducts.push(...batch);
     if (batch.length < limit) break;
     offset += limit;
+    pages++;
+  }
+  if (pages === MAX_PAGES) {
+    console.warn('[Cafe24] fetchAllProducts hit MAX_PAGES, stopping');
   }
 
   return allProducts;
