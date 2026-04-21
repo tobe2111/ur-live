@@ -232,6 +232,7 @@ export default function ShortsPage() {
                   src={`https://img.youtube.com/vi/${item.youtube_video_id}/maxresdefault.jpg`}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover -z-10"
+                  onError={(e) => { (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${item.youtube_video_id}/hqdefault.jpg` }}
                 />
               </div>
             ) : (

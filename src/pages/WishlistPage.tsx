@@ -68,7 +68,7 @@ const WishlistPage: React.FC = () => {
 
   // 상품 클릭
   const handleProductClick = (productId: number) => {
-    navigate(`/product/${productId}`)
+    navigate(`/products/${productId}`)
   }
 
   // 장바구니 추가
