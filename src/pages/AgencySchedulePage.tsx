@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { ChevronLeft, ChevronRight, Play, Clock, Loader2 } from 'lucide-react'
 
 export default function AgencySchedulePage() {
+  const navigate = useNavigate()
   const [streams, setStreams] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
+  const token = localStorage.getItem('agency_token')
+  const headers = { Authorization: `Bearer ${token || ''}` }
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/agency/login', { replace: true })
+    }
+  }, [token, navigate])
 
   useEffect(() => {
     api.get('/api/agency/schedule', { headers })

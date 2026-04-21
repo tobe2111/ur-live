@@ -1,15 +1,24 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
 import { Save, Loader2 } from 'lucide-react'
 
 export default function AgencyProfilePage() {
+  const navigate = useNavigate()
   const [profile, setProfile] = useState<any>(null)
   const [form, setForm] = useState({ name: '', contact_name: '', phone: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
+  const token = localStorage.getItem('agency_token')
+  const headers = { Authorization: `Bearer ${token || ''}` }
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/agency/login', { replace: true })
+    }
+  }, [token, navigate])
 
   useEffect(() => {
     api.get('/api/agency/profile', { headers })

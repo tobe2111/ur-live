@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle } from 'lucide-react'
 
 interface Agency {
@@ -26,6 +28,7 @@ type ModalMode = 'create' | 'edit' | null
 const initForm = { name: '', contact_name: '', email: '', password: '', phone: '', status: 'active' }
 
 export default function AdminAgencyPage() {
+  const navigate = useNavigate()
   const [agencies, setAgencies] = useState<Agency[]>([])
   const [unassigned, setUnassigned] = useState<Seller[]>([])
   const [agencySellers, setAgencySellers] = useState<Record<number, Seller[]>>({})
@@ -39,6 +42,12 @@ export default function AdminAgencyPage() {
 
   const token = localStorage.getItem('admin_token')
   const headers = { Authorization: `Bearer ${token}` }
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
 
   async function fetchAgencies() {
     const r = await api.get('/api/admin/agencies', { headers })
@@ -110,37 +119,61 @@ export default function AdminAgencyPage() {
   }
 
   async function handleApprove(a: Agency) {
-    await api.patch(`/api/admin/agencies/${a.id}`, { status: 'active' }, { headers })
-    fetchAgencies()
+    try {
+      await api.patch(`/api/admin/agencies/${a.id}`, { status: 'active' }, { headers })
+      fetchAgencies()
+    } catch {
+      toast.error('승인 처리에 실패했습니다.')
+    }
   }
 
   async function handleReject(a: Agency) {
     if (!confirm(`"${a.name}" 에이전시 가입을 거절하시겠습니까?`)) return
-    await api.patch(`/api/admin/agencies/${a.id}`, { status: 'rejected' }, { headers })
-    fetchAgencies()
+    try {
+      await api.patch(`/api/admin/agencies/${a.id}`, { status: 'rejected' }, { headers })
+      fetchAgencies()
+    } catch {
+      toast.error('거절 처리에 실패했습니다.')
+    }
   }
 
   async function handleToggleStatus(a: Agency) {
     const newStatus = a.status === 'active' ? 'inactive' : 'active'
-    await api.patch(`/api/admin/agencies/${a.id}`, { status: newStatus }, { headers })
-    fetchAgencies()
+    try {
+      await api.patch(`/api/admin/agencies/${a.id}`, { status: newStatus }, { headers })
+      fetchAgencies()
+    } catch {
+      toast.error('상태 변경에 실패했습니다.')
+    }
   }
 
   async function handleDelete(a: Agency) {
     if (!confirm(`"${a.name}" 에이전시를 삭제하시겠습니까? 소속 셀러 배정도 모두 해제됩니다.`)) return
-    await api.delete(`/api/admin/agencies/${a.id}`, { headers })
-    fetchAgencies()
-    fetchUnassigned()
+    try {
+      await api.delete(`/api/admin/agencies/${a.id}`, { headers })
+      fetchAgencies()
+      fetchUnassigned()
+    } catch {
+      toast.error('삭제에 실패했습니다.')
+    }
   }
 
   async function assignSeller(agencyId: number, sellerId: number) {
-    await api.post(`/api/admin/agencies/${agencyId}/sellers`, { seller_id: sellerId }, { headers })
-    refreshAgencySellers(agencyId)
+    try {
+      await api.post(`/api/admin/agencies/${agencyId}/sellers`, { seller_id: sellerId }, { headers })
+      refreshAgencySellers(agencyId)
+    } catch {
+      toast.error('셀러 배정에 실패했습니다.')
+    }
   }
 
   async function removeSeller(agencyId: number, sellerId: number) {
-    await api.delete(`/api/admin/agencies/${agencyId}/sellers/${sellerId}`, { headers })
-    refreshAgencySellers(agencyId)
+    try {
+      await api.delete(`/api/admin/agencies/${agencyId}/sellers/${sellerId}`, { headers })
+      refreshAgencySellers(agencyId)
+    } catch {
+      toast.error('셀러 해제에 실패했습니다.')
+    }
   }
 
   return (

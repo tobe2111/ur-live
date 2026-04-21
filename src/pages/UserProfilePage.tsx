@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Navigate } from 'react-router-dom'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
+import SEO from '@/components/SEO'
 import { loginWithFirebaseToken, logout } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { UserInfo } from '@/components/my-page/user-info'
@@ -539,6 +540,7 @@ export default function UserProfilePage() {
 
   return (
     <div className="bg-[#020202] flex flex-col min-h-screen">
+      <SEO title="마이페이지 - 유어딜" description="내 프로필, 주문내역, 쿠폰 등을 관리하세요" url="/user/profile" />
       {/* v4 Premium Hero Header */}
       <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3" style={{ background: '#0A0A0A' }}>
         <p className="text-[16px] font-extrabold text-white">My</p>

@@ -378,14 +378,14 @@ export default function AdminProductsPage() {
                           type="number"
                           defaultValue={product.sold_count || 0}
                           min={0}
-                          className="w-16 px-1.5 py-1 text-xs text-center border border-gray-200 rounded-lg focus:border-blue-400 focus:outline-none"
+                          className="w-16 px-1.5 py-1 text-xs text-center border border-gray-200 rounded-lg text-gray-900 focus:border-blue-400 focus:outline-none"
                           onBlur={async (e) => {
                             const val = Number(e.target.value)
                             if (val === (product.sold_count || 0)) return
                             try {
                               const tk = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
                               await api.patch(`/api/admin/products/${product.id}`, { sold_count: val }, { headers: { Authorization: `Bearer ${tk}` } })
-                              product.sold_count = val
+                              setProducts(prev => prev.map(p => p.id === product.id ? { ...p, sold_count: val } : p))
                               toast.success(`판매 수 ${val}으로 변경`)
                             } catch { toast.error('변경 실패') }
                           }}
@@ -468,7 +468,7 @@ export default function AdminProductsPage() {
                           value={adminMemoMap[req.id] || ''}
                           onChange={e => setAdminMemoMap(prev => ({ ...prev, [req.id]: e.target.value }))}
                           rows={2}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
                         />
                         <div className="flex gap-2">
                           <button
@@ -624,7 +624,7 @@ export default function AdminProductsPage() {
                       onChange={e => setFormData({ ...formData, supply_price: e.target.value })}
                       min="0"
                       placeholder="55000"
-                      className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
+                      className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
                     />
                     <p className="text-xs text-purple-600 mt-1">셀러가 샘플 신청 후 승인되면 공급가로 상품을 등록해 판매할 수 있습니다.</p>
                   </div>

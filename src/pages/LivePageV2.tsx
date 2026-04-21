@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
+import SEO from '@/components/SEO'
 import axios from 'axios'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { getUserIdSync as getUserId } from '@/utils/auth'
@@ -1907,6 +1908,7 @@ export default function LivePageV2() {
 
   return (
     <main className="relative h-dvh overflow-hidden bg-black no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+      <SEO title={`${reels[activeIndex]?.stream?.title || '라이브'} - 유어딜`} description="유어딜 라이브 방송을 시청하고 실시간으로 쇼핑하세요" url={`/live/${streamId}`} />
       <TopNav
         viewers={viewerCount}
         sellerName={reels[activeIndex]?.stream?.seller_name || reels[activeIndex]?.stream?.streamerName}

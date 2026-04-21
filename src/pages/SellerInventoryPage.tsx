@@ -169,11 +169,12 @@ export default function SellerInventoryPage() {
     }
   }
 
-  async function handleScan() {
-    if (!scanInput.trim()) return
+  async function handleScan(barcodeValue?: string) {
+    const code = (barcodeValue ?? scanInput).trim()
+    if (!code) return
     try {
       const token = localStorage.getItem('seller_token')
-      const res = await api.get(`/api/inventory/barcode/scan/${scanInput.trim()}`, {
+      const res = await api.get(`/api/inventory/barcode/scan/${code}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.data.success) {
@@ -536,7 +537,7 @@ export default function SellerInventoryPage() {
                       if (val) {
                         setScanInput(val)
                         stopCamera()
-                        handleScan()
+                        handleScan(val)
                       }
                     }
                   }}

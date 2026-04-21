@@ -101,8 +101,8 @@ export default function AdminDealMonitorPage() {
       if (search) params.append('search', search)
       const res = await api.get(`/api/admin/deals/charges?${params}`)
       if (res.data.success) {
-        setCharges(res.data.data)
-        setTotalPages(res.data.pagination.totalPages)
+        setCharges(res.data.data || [])
+        setTotalPages(res.data.pagination?.totalPages || 1)
       }
     } catch { /* handled by interceptor */ } finally {
       setLoading(false)
@@ -202,7 +202,7 @@ export default function AdminDealMonitorPage() {
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
                   placeholder="이름 / 이메일 / 주문번호"
-                  className="pl-9 pr-3 py-2 text-sm border rounded-lg w-56 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="pl-9 pr-3 py-2 text-sm text-gray-900 border rounded-lg w-56 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <button type="submit" className="px-3 py-2 bg-gray-100 text-sm rounded-lg hover:bg-gray-200">
@@ -214,7 +214,7 @@ export default function AdminDealMonitorPage() {
             <select
               value={sort}
               onChange={e => { setSort(e.target.value); setPage(1) }}
-              className="text-sm border rounded-lg px-3 py-2"
+              className="text-sm text-gray-900 border rounded-lg px-3 py-2"
             >
               <option value="total_charged">충전액순</option>
               <option value="total_donated">후원액순</option>

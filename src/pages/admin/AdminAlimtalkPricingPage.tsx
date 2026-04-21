@@ -188,7 +188,7 @@ export default function AdminAlimtalkPricingPage() {
                   placeholder="예) 2,000건"
                   value={newPkg.label}
                   onChange={e => setNewPkg(p => ({ ...p, label: e.target.value }))}
-                  className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -198,7 +198,7 @@ export default function AdminAlimtalkPricingPage() {
                   placeholder="2000"
                   value={newPkg.credits || ''}
                   onChange={e => setNewPkg(p => ({ ...p, credits: Number(e.target.value) }))}
-                  className="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -208,7 +208,7 @@ export default function AdminAlimtalkPricingPage() {
                   placeholder="18000"
                   value={newPkg.price || ''}
                   onChange={e => setNewPkg(p => ({ ...p, price: Number(e.target.value) }))}
-                  className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
               <div className="flex gap-2">
@@ -236,7 +236,7 @@ export default function AdminAlimtalkPricingPage() {
                           type="text"
                           value={editState.label}
                           onChange={e => setEditState(s => ({ ...s, label: e.target.value }))}
-                          className="w-28 px-2 py-1 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="w-28 px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -245,7 +245,7 @@ export default function AdminAlimtalkPricingPage() {
                           type="number"
                           value={editState.credits}
                           onChange={e => setEditState(s => ({ ...s, credits: Number(e.target.value) }))}
-                          className="w-24 px-2 py-1 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="w-24 px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -254,7 +254,7 @@ export default function AdminAlimtalkPricingPage() {
                           type="number"
                           value={editState.price}
                           onChange={e => setEditState(s => ({ ...s, price: Number(e.target.value) }))}
-                          className="w-28 px-2 py-1 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="w-28 px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -263,7 +263,7 @@ export default function AdminAlimtalkPricingPage() {
                           type="number"
                           value={editState.sort_order}
                           onChange={e => setEditState(s => ({ ...s, sort_order: Number(e.target.value) }))}
-                          className="w-16 px-2 py-1 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="w-16 px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
                       <div className="flex items-center gap-1.5 mt-4">

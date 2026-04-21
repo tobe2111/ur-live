@@ -75,7 +75,7 @@ export default function AgencyOrdersPage() {
           <select
             value={filterSeller}
             onChange={e => { setFilterSeller(e.target.value); setPage(1) }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="text-sm text-gray-900 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">전체 셀러</option>
             {sellers.map(s => (

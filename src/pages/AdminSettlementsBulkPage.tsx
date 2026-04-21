@@ -1,16 +1,23 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DollarSign, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AdminSettlementsBulkPage() {
+  const navigate = useNavigate()
   const [pending, setPending] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<number[]>([])
   const [processing, setProcessing] = useState(false)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
   useEffect(() => {
     api.get('/api/admin/tools/settlements/pending', h)
       .then(r => { if (r.data.success) setPending(r.data.data || []) })

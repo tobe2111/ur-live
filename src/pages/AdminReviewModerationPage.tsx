@@ -145,18 +145,18 @@ export default function AdminReviewModerationPage() {
       <div className="bg-white rounded-xl shadow-sm p-4 flex flex-wrap items-center gap-3">
         <Filter className="w-4 h-4 text-gray-400" />
         <select value={filters.status} onChange={e => { setFilters(p => ({ ...p, status: e.target.value })); setPage(1) }}
-          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700">
+          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
           <option value="all">전체</option>
           <option value="visible">표시</option>
           <option value="hidden">숨김</option>
         </select>
         <select value={filters.rating} onChange={e => { setFilters(p => ({ ...p, rating: e.target.value })); setPage(1) }}
-          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700">
+          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
           <option value="">모든 평점</option>
           {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r}점</option>)}
         </select>
         <select value={filters.sort} onChange={e => { setFilters(p => ({ ...p, sort: e.target.value })); setPage(1) }}
-          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700">
+          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
           <option value="newest">최신순</option>
           <option value="oldest">오래된순</option>
           <option value="rating_high">평점 높은순</option>

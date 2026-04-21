@@ -1,15 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { Send, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AdminNoticesPage() {
+  const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [target, setTarget] = useState<'all' | 'sellers' | 'users'>('all')
   const [sending, setSending] = useState(false)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
 
   const send = async () => {
     if (!title.trim() || !message.trim()) { toast.error('제목과 내용을 입력해주세요'); return }

@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { Send, Loader2, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AgencyNoticesPage() {
+  const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [notices, setNotices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
+  const token = localStorage.getItem('agency_token')
+  const headers = { Authorization: `Bearer ${token || ''}` }
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/agency/login', { replace: true })
+    }
+  }, [token, navigate])
 
   useEffect(() => {
     api.get('/api/agency/notices', { headers })

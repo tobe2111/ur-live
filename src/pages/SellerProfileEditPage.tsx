@@ -176,8 +176,14 @@ export default function SellerProfileEditPage() {
 
     try {
       const response = await api.patch('/api/seller/profile', {
-        ...profileData,
-        ...snsData
+        profile_image: formData.profile_image,
+        bio: formData.bio,
+        sns_instagram: formData.sns_instagram,
+        sns_youtube: formData.sns_youtube,
+        sns_facebook: formData.sns_facebook,
+        sns_twitter: formData.sns_twitter,
+        website_url: formData.website_url,
+        kakao_chat_link: formData.kakao_chat_link,
       })
 
       if (response.data.success) {
@@ -330,6 +336,7 @@ export default function SellerProfileEditPage() {
     if (activeTab === 'profile') await handleSaveProfile()
     else if (activeTab === 'business') await handleSaveBusiness()
     else if (activeTab === 'personal') await handleSavePersonal()
+    else if (activeTab === 'password') await handleChangePassword()
   }
 
   if (loading) {

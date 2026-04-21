@@ -112,7 +112,8 @@ export default function SellerYoutubeGrowthPage() {
       }
 
       const { orderId, amount, orderName, clientKey: serverClientKey } = res.data.data
-      const sellerId = token ? JSON.parse(atob(token.split('.')[1])).sellerId || 'seller' : 'seller'
+      let sellerId = 'seller'
+      try { if (token) sellerId = JSON.parse(atob(token.split('.')[1])).sellerId || 'seller' } catch { }
       const tossPayments = await loadTossPayments(serverClientKey || clientKey)
       const sanitizedId = String(sellerId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
       const widgets = tossPayments.widgets({ customerKey: `seller_${sanitizedId}` })

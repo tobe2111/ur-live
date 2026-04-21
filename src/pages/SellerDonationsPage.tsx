@@ -263,7 +263,7 @@ export default function SellerDonationsPage() {
               onChange={e => setBankInfo(e.target.value)}
               placeholder={t('seller.bankAccountPlaceholder')}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-4 focus:border-pink-400 focus:outline-none resize-none"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 mb-4 focus:border-pink-400 focus:outline-none resize-none"
             />
             <div className="flex gap-3">
               <button onClick={() => setSettleModal(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-sm font-medium rounded-xl">{t('common.cancel')}</button>

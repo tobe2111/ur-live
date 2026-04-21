@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Play, ExternalLink, Search, Edit2, X, Check, Youtube } from 'lucide-react'
@@ -14,6 +15,7 @@ interface Seller { id: number; name: string }
 interface Product { id: number; name: string; price: number; image_url?: string }
 
 export default function AdminReplayPage() {
+  const navigate = useNavigate()
   const [streams, setStreams] = useState<Stream[]>([])
   const [sellers, setSellers] = useState<Seller[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -28,6 +30,11 @@ export default function AdminReplayPage() {
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
 
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
   useEffect(() => {
     Promise.all([
       api.get('/api/admin/streams?status=ended', { headers }),

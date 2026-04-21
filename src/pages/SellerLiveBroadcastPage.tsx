@@ -878,9 +878,9 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
           <p className="text-xs font-bold text-amber-800">경매 설정</p>
           <input value={auctionForm.title} onChange={e => setAuctionForm(f => ({ ...f, title: e.target.value }))}
-            placeholder="경매 제목" className="w-full px-2.5 py-2 border border-amber-200 rounded-lg text-xs bg-white" />
+            placeholder="경매 제목" className="w-full px-2.5 py-2 border border-amber-200 rounded-lg text-xs text-gray-900 bg-white" />
           <select value={auctionForm.product_id} onChange={e => setAuctionForm(f => ({ ...f, product_id: Number(e.target.value) }))}
-            className="w-full px-2.5 py-2 border border-amber-200 rounded-lg text-xs bg-white">
+            className="w-full px-2.5 py-2 border border-amber-200 rounded-lg text-xs text-gray-900 bg-white">
             <option value={0}>상품 선택 (선택사항)</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
@@ -889,7 +889,7 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
               <div key={key}>
                 <label className="text-[10px] text-amber-700">{label}</label>
                 <input type="number" value={auctionForm[key]} onChange={e => setAuctionForm(f => ({ ...f, [key]: Number(e.target.value) }))}
-                  className="w-full px-2 py-1.5 border border-amber-200 rounded-lg text-xs bg-white" />
+                  className="w-full px-2 py-1.5 border border-amber-200 rounded-lg text-xs text-gray-900 bg-white" />
               </div>
             ))}
           </div>
@@ -904,7 +904,7 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
         <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
           <p className="text-xs font-bold text-red-700">타임딜 설정</p>
           <select value={dealForm.product_id} onChange={e => setDealForm(f => ({ ...f, product_id: Number(e.target.value) }))}
-            className="w-full px-2.5 py-2 border border-red-200 rounded-lg text-xs bg-white">
+            className="w-full px-2.5 py-2 border border-red-200 rounded-lg text-xs text-gray-900 bg-white">
             <option value={0}>상품 선택</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}원)</option>)}
           </select>
@@ -913,7 +913,7 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
               <div key={key}>
                 <label className="text-[10px] text-red-600">{label}</label>
                 <input type="number" value={dealForm[key]} onChange={e => setDealForm(f => ({ ...f, [key]: Number(e.target.value) }))}
-                  className="w-full px-2 py-1.5 border border-red-200 rounded-lg text-xs bg-white" />
+                  className="w-full px-2 py-1.5 border border-red-200 rounded-lg text-xs text-gray-900 bg-white" />
               </div>
             ))}
           </div>
@@ -929,7 +929,7 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
           <p className="text-xs font-bold text-pink-700">라이브 공구 설정</p>
           <p className="text-[10px] text-pink-600">목표 인원이 모이면 할인이 적용됩니다</p>
           <select value={groupBuyForm.product_id} onChange={e => setGroupBuyForm(f => ({ ...f, product_id: Number(e.target.value) }))}
-            className="w-full px-2.5 py-2 border border-pink-200 rounded-lg text-xs bg-white">
+            className="w-full px-2.5 py-2 border border-pink-200 rounded-lg text-xs text-gray-900 bg-white">
             <option value={0}>상품 선택</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}원)</option>)}
           </select>
@@ -938,7 +938,7 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
               <div key={key}>
                 <label className="text-[10px] text-pink-600">{label}</label>
                 <input type="number" value={groupBuyForm[key]} onChange={e => setGroupBuyForm(f => ({ ...f, [key]: Number(e.target.value) }))}
-                  className="w-full px-2 py-1.5 border border-pink-200 rounded-lg text-xs bg-white" />
+                  className="w-full px-2 py-1.5 border border-pink-200 rounded-lg text-xs text-gray-900 bg-white" />
               </div>
             ))}
           </div>

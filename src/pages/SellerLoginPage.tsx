@@ -158,7 +158,7 @@ export default function SellerLoginPage() {
                     autoComplete="current-password"
                     disabled={loading}
                     placeholder={t('seller.passwordPlaceholder')}
-                    className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-50"
+                    className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-50"
                   />
                   <button
                     type="button"

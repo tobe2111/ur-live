@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { Settings, Save, Loader2 } from 'lucide-react'
@@ -21,11 +22,17 @@ const SETTINGS_FIELDS = [
 ]
 
 export default function AdminPlatformSettingsPage() {
+  const navigate = useNavigate()
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
   useEffect(() => {
     api.get('/api/admin/tools/settings', h)
       .then(r => { if (r.data.success) setSettings(r.data.data || {}) })

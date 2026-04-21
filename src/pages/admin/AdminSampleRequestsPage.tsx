@@ -251,7 +251,7 @@ export default function AdminSampleRequestsPage() {
               onChange={e => setAdminMemo(e.target.value)}
               placeholder="관리자 메모 (선택사항)"
               rows={3}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none mb-4"
+              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none mb-4"
             />
             <div className="flex gap-3">
               <button

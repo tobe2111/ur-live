@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { UserCheck, UserX, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AdminSellerApprovalPage() {
+  const navigate = useNavigate()
   const [sellers, setSellers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
 
   const load = () => {
     setLoading(true)

@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { FileText, Plus, Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AgencyContractsPage() {
+  const navigate = useNavigate()
   const [contracts, setContracts] = useState<any[]>([])
   const [sellers, setSellers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ seller_id: '', start_date: '', end_date: '', terms: '' })
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
+  const token = localStorage.getItem('agency_token')
+  const headers = { Authorization: `Bearer ${token || ''}` }
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/agency/login', { replace: true })
+    }
+  }, [token, navigate])
 
   const load = () => {
     setLoading(true)
@@ -28,14 +37,18 @@ export default function AgencyContractsPage() {
     if (!form.seller_id || !form.start_date || !form.end_date) { toast.error('필수 항목을 입력해주세요'); return }
     try {
       await api.post('/api/agency/contracts', { ...form, seller_id: Number(form.seller_id) }, { headers })
-      toast.success('계약 등록 완료'); setShowForm(false); load()
+      toast.success('계약 등록 완료'); setShowForm(false); setForm({ seller_id: '', start_date: '', end_date: '', terms: '' }); load()
     } catch { toast.error('등록 실패') }
   }
 
   const terminate = async (id: number) => {
     if (!confirm('계약을 종료하시겠습니까?')) return
-    await api.put(`/api/agency/contracts/${id}`, { status: 'terminated' }, { headers })
-    load()
+    try {
+      await api.put(`/api/agency/contracts/${id}`, { status: 'terminated' }, { headers })
+      load()
+    } catch {
+      toast.error('계약 종료에 실패했습니다.')
+    }
   }
 
   const today = new Date().toISOString().slice(0, 10)

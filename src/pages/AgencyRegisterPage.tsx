@@ -20,6 +20,10 @@ export default function AgencyRegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    if (form.password.length < 8) {
+      setError('비밀번호는 8자 이상이어야 합니다.')
+      return
+    }
     if (form.password !== form.password_confirm) {
       setError('비밀번호가 일치하지 않습니다.')
       return
@@ -199,7 +203,7 @@ export default function AgencyRegisterPage() {
                   <input
                     type={showPw ? 'text' : 'password'} required value={form.password_confirm} onChange={update('password_confirm')}
                     placeholder="비밀번호 재입력"
-                    className={`w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       form.password_confirm && form.password !== form.password_confirm
                         ? 'border-red-300 bg-red-50'
                         : 'border-gray-300'

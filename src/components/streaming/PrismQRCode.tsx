@@ -73,7 +73,7 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
                 type="text"
                 value={rtmpUrl}
                 readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono"
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 font-mono"
               />
               <Button
                 size="sm"
@@ -98,7 +98,7 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
                 type="password"
                 value={rtmpKey}
                 readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono"
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 font-mono"
               />
               <Button
                 size="sm"

@@ -241,7 +241,7 @@ export default function SellerStreamNewPage() {
                       type="text"
                       value={youtubeInfo.watchUrl}
                       readOnly
-                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg"
+                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg text-gray-900"
                     />
                     <button
                       onClick={() => copyToClipboard(youtubeInfo.watchUrl, t('seller.watchUrlLabel'))}
@@ -261,7 +261,7 @@ export default function SellerStreamNewPage() {
                       type="password"
                       value={youtubeInfo.streamKey}
                       readOnly
-                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm"
+                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm text-gray-900"
                     />
                     <button
                       onClick={() => copyToClipboard(youtubeInfo.streamKey, t('seller.streamKeyObs'))}
@@ -281,7 +281,7 @@ export default function SellerStreamNewPage() {
                       type="text"
                       value={youtubeInfo.streamUrl}
                       readOnly
-                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm"
+                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm text-gray-900"
                     />
                     <button
                       onClick={() => copyToClipboard(youtubeInfo.streamUrl, t('seller.streamUrlObs'))}
@@ -376,7 +376,7 @@ export default function SellerStreamNewPage() {
                       value={formData.title}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder={t('seller.streamTitlePlaceholder')}
                     />
                   </div>
@@ -391,7 +391,7 @@ export default function SellerStreamNewPage() {
                       value={formData.description}
                       onChange={handleChange}
                       rows={4}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder={t('seller.descPlaceholder')}
                     />
                   </div>
@@ -408,7 +408,7 @@ export default function SellerStreamNewPage() {
                         value={formData.youtubeUrl}
                         onChange={handleChange}
                         required={mode === 'manual'}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         placeholder={t('seller.youtubeTiktokUrlPlaceholder')}
                       />
                       <p className="mt-2 text-sm text-gray-500">
@@ -427,7 +427,7 @@ export default function SellerStreamNewPage() {
                       type="datetime-local"
                       value={formData.scheduledAt}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                     <p className="mt-2 text-sm text-gray-500">
                       {t('seller.scheduledTimeHint')}
@@ -450,7 +450,7 @@ export default function SellerStreamNewPage() {
                           type="text"
                           value={formData.sellerInstagram}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           placeholder={t('seller.instagramPlaceholder')}
                         />
                       </div>
@@ -465,7 +465,7 @@ export default function SellerStreamNewPage() {
                           type="text"
                           value={formData.sellerYoutube}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           placeholder={t('seller.youtubePlaceholder')}
                         />
                       </div>
@@ -480,7 +480,7 @@ export default function SellerStreamNewPage() {
                           type="text"
                           value={formData.sellerFacebook}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           placeholder={t('seller.facebookPlaceholder')}
                         />
                       </div>

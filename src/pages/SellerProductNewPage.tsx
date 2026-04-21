@@ -74,7 +74,7 @@ export default function SellerProductNewPage() {
       })
 
       if (response.data.success) {
-        setLiveStreams(response.data.streams || [])
+        setLiveStreams(response.data.data || [])
       }
     } catch (error) {
       console.error('Failed to load live streams:', error)
@@ -279,7 +279,7 @@ export default function SellerProductNewPage() {
               onChange={handleChange}
               placeholder={t('seller.productNamePlaceholderForm')}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -294,7 +294,7 @@ export default function SellerProductNewPage() {
               onChange={handleChange}
               placeholder={t('seller.descriptionPlaceholder')}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -309,7 +309,7 @@ export default function SellerProductNewPage() {
               onChange={handleChange}
               placeholder="상품의 자세한 설명, 소재, 사용법 등을 작성해주세요"
               rows={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <p className="text-xs text-gray-400 mt-1">상품 상세 페이지에 표시됩니다</p>
           </div>
@@ -330,7 +330,7 @@ export default function SellerProductNewPage() {
                   placeholder="30000"
                   required
                   min="0"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">{t('common.enterInWon')}</p>
@@ -350,7 +350,7 @@ export default function SellerProductNewPage() {
                   placeholder="100"
                   required
                   min="0"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">{t('common.enterInUnits')}</p>
@@ -381,7 +381,7 @@ export default function SellerProductNewPage() {
                   onChange={handleChange}
                   placeholder={t('seller.liveOnlyPricePlaceholder')}
                   min="0"
-                  className="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white"
+                  className="w-full px-3 py-2 border border-orange-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 bg-white"
                 />
                 <p className="text-xs text-orange-600 mt-1">{t('seller.liveOnlyPriceDesc')}</p>
               </div>
@@ -416,7 +416,7 @@ export default function SellerProductNewPage() {
               value={formData.category}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="fashion">{t('common.fashion')}</option>
               <option value="beauty">{t('common.beauty')}</option>
@@ -516,7 +516,7 @@ export default function SellerProductNewPage() {
                   name="live_stream_id"
                   value={formData.live_stream_id}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
                 >
                   <option value="">{t('seller.selectLiveStream')}</option>
                   {liveStreams.map((stream) => (

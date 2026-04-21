@@ -9,11 +9,11 @@ export default function SellerCouponsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ code: '', name: '', type: 'fixed', value: '', min_order: '', max_discount: '', total_count: '100', expires_at: '' })
-  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } }
+  const getAuthHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
 
   const load = () => {
     setLoading(true)
-    api.get('/api/seller/analytics/coupons', h)
+    api.get('/api/seller/analytics/coupons', getAuthHeaders())
       .then(r => { if (r.data.success) setCoupons(r.data.data || []) })
       .catch(() => {}).finally(() => setLoading(false))
   }
@@ -26,7 +26,7 @@ export default function SellerCouponsPage() {
         ...form, value: Number(form.value), min_order: Number(form.min_order) || 0,
         max_discount: Number(form.max_discount) || null, total_count: Number(form.total_count),
         expires_at: form.expires_at || null,
-      }, h)
+      }, getAuthHeaders())
       toast.success('쿠폰 생성됨')
       setShowForm(false); load()
     } catch { toast.error('생성 실패') }
@@ -34,8 +34,12 @@ export default function SellerCouponsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('쿠폰을 비활성화하시겠습니까?')) return
-    await api.delete(`/api/seller/analytics/coupons/${id}`, h)
-    load()
+    try {
+      await api.delete(`/api/seller/analytics/coupons/${id}`, getAuthHeaders())
+      load()
+    } catch {
+      toast.error('쿠폰 삭제에 실패했습니다.')
+    }
   }
 
   return (

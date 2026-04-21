@@ -201,19 +201,19 @@ export default function MyOrdersPage() {
 
 
   return (
-    <div className="min-h-screen bg-[#020202] pb-20">
+    <div className="min-h-screen bg-white pb-20">
       <SEO title="주문내역 - 유어딜" description="주문 내역과 배송 현황을 확인하세요" url="/my-orders" />
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="w-full px-4 sm:px-6">
           <div className="flex h-[52px] items-center justify-between">
             <button
               onClick={() => navigate(-1)}
-              className="text-white"
+              className="text-gray-900"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <h1 className="text-[15px] font-bold text-white">
+            <h1 className="text-[15px] font-bold text-gray-900">
               주문내역
             </h1>
             <div className="w-16"></div>
@@ -222,39 +222,39 @@ export default function MyOrdersPage() {
       </header>
 
       {/* Tab Navigation */}
-      <div className="bg-[#121212] border-b border-[#2A2A2A]">
+      <div className="bg-white border-b border-gray-200">
         <div className="w-full px-4 sm:px-6">
           <div className="flex space-x-1">
             <button
               onClick={() => setActiveTab('cart')}
               className={`
                 flex-1 py-3 px-4 text-[15px] font-medium transition-all relative
-                ${activeTab === 'cart' 
-                  ? 'text-[#007aff]' 
-                  : 'text-gray-500 hover:text-gray-300'
+                ${activeTab === 'cart'
+                  ? 'text-gray-900'
+                  : 'text-gray-400 hover:text-gray-600'
                 }
               `}
             >
               <ShoppingCart className="h-4 w-4 inline mr-2" />
               장바구니
               {activeTab === 'cart' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007aff]"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900"></div>
               )}
             </button>
             <button
               onClick={() => setActiveTab('orders')}
               className={`
                 flex-1 py-3 px-4 text-[15px] font-medium transition-all relative
-                ${activeTab === 'orders' 
-                  ? 'text-[#007aff]' 
-                  : 'text-gray-500 hover:text-gray-300'
+                ${activeTab === 'orders'
+                  ? 'text-gray-900'
+                  : 'text-gray-400 hover:text-gray-600'
                 }
               `}
             >
               <Package className="h-4 w-4 inline mr-2" />
               주문내역
               {activeTab === 'orders' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007aff]"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900"></div>
               )}
             </button>
           </div>
@@ -266,8 +266,8 @@ export default function MyOrdersPage() {
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#007aff] mx-auto mb-4"></div>
-              <p className="text-[17px] text-[#6e6e73]">로딩 중...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+              <p className="text-[17px] text-gray-500">로딩 중...</p>
             </div>
           </div>
         ) : (

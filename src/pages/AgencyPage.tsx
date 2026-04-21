@@ -274,11 +274,21 @@ export default function AgencyPage() {
           </div>
           <div className="flex gap-2">
             {[7, 30, 90].map(d => (
-              <a key={d} href={`/api/agency/report/csv?period=${d}`}
-                onClick={e => { e.preventDefault(); window.open(`/api/agency/report/csv?period=${d}`, '_blank') }}
+              <button key={d}
+                onClick={async () => {
+                  try {
+                    const res = await api.get(`/api/agency/report/csv?period=${d}`, { responseType: 'blob' })
+                    const url = URL.createObjectURL(res.data)
+                    const a = document.createElement('a')
+                    a.href = url; a.download = `agency-report-${d}d.csv`; a.click()
+                    URL.revokeObjectURL(url)
+                  } catch {
+                    toast.error('리포트 다운로드에 실패했습니다.')
+                  }
+                }}
                 className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">
                 <Download className="w-3 h-3 inline mr-1" />{d}일
-              </a>
+              </button>
             ))}
           </div>
         </div>
