@@ -81,6 +81,7 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState('')
   const [couponDiscount, setCouponDiscount] = useState(0)
   const [couponId, setCouponId] = useState<number | null>(null)
+  const [autoCoupon, setAutoCoupon] = useState<{ type: string; value: number; max_discount: number } | null>(null)
   const [dealBalance, setDealBalance] = useState(0)
   const [dealToUse, setDealToUse] = useState(0)
   const [payingWithDeals, setPayingWithDeals] = useState(false)
@@ -93,8 +94,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     api.get('/api/points/balance')
       .then(r => { if (r.data.success) setDealBalance(r.data.data.balance) })
-      .catch(() => {})
-    // 보유 쿠폰 자동 로드 (가장 할인 큰 것 자동 적용)
+      .catch(err => { if (import.meta.env.DEV) console.warn('[Checkout] 딜 잔액 로드 실패:', err) })
     api.get('/api/coupons/my')
       .then(r => {
         if (r.data.success && r.data.data?.length > 0) {
@@ -104,15 +104,27 @@ export default function CheckoutPage() {
           if (best) {
             setCouponCode(best.code as string)
             setCouponId(best.id as number)
-            const discount = (best.type as string) === 'percent'
-              ? Math.round(subtotal * (best.value as number) / 100)
-              : (best.value as number)
-            setCouponDiscount(Math.min(discount, (best.max_discount as number) || discount))
+            setAutoCoupon({
+              type: best.type as string,
+              value: best.value as number,
+              max_discount: best.max_discount as number || 0,
+            })
           }
         }
       })
-      .catch(() => {})
+      .catch(err => { if (import.meta.env.DEV) console.warn('[Checkout] 쿠폰 로드 실패:', err) })
   }, [])
+
+  // Recalculate auto-applied coupon discount when cart items load
+  useEffect(() => {
+    if (!autoCoupon || cartItems.length === 0) return
+    const currentSubtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
+    if (currentSubtotal <= 0) return
+    const discount = autoCoupon.type === 'percent'
+      ? Math.round(currentSubtotal * autoCoupon.value / 100)
+      : autoCoupon.value
+    setCouponDiscount(Math.min(discount, autoCoupon.max_discount || discount))
+  }, [autoCoupon, cartItems])
 
   // 배송지 관련 상태
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
@@ -493,7 +505,9 @@ export default function CheckoutPage() {
             order_id: response.data.data.order_id,
             discount_amount: couponDiscount,
           })
-        } catch {} // 쿠폰 사용 처리 실패해도 결제는 진행
+        } catch (couponErr) {
+          captureError(couponErr as Error, { context: 'CheckoutPage.couponUse', couponId })
+        }
       }
     }
   }

@@ -15,7 +15,7 @@ import SellerLayout from '@/components/SellerLayout'
 
 // recharts lazy load (377KB → 대시보드 진입 시 차트 영역만 지연 로드)
 const LazyChart = lazy(() => import('recharts').then(m => ({
-  default: ({ data }: { data: { date: string; orders: number; sales: number }[] }) => {
+  default: ({ data, salesLabel, ordersLabel }: { data: { date: string; orders: number; sales: number }[]; salesLabel?: string; ordersLabel?: string }) => {
     const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = m
     return (
       <ResponsiveContainer width="100%" height="100%">
@@ -26,8 +26,8 @@ const LazyChart = lazy(() => import('recharts').then(m => ({
           <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="#9ca3af" />
           <Tooltip />
           <Legend />
-          <Line yAxisId="left" type="monotone" dataKey="sales" name={t('seller.sales')} stroke="#3b82f6" strokeWidth={2} dot={false} />
-          <Line yAxisId="right" type="monotone" dataKey="orders" name={t('seller.order')} stroke="#f97316" strokeWidth={2} dot={false} />
+          <Line yAxisId="left" type="monotone" dataKey="sales" name={salesLabel || 'Sales'} stroke="#3b82f6" strokeWidth={2} dot={false} />
+          <Line yAxisId="right" type="monotone" dataKey="orders" name={ordersLabel || 'Orders'} stroke="#f97316" strokeWidth={2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     )
@@ -360,21 +360,21 @@ export default function SellerPage() {
           {/* ── 할 일 목록 ── */}
           {(stats.pendingOrders > 0 || (stats.lowStockCount ?? 0) > 0 || (stats.pendingSettlement ?? 0) > 0) && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <h3 className="text-sm font-bold text-amber-800 mb-2">📋 처리할 항목</h3>
+              <h3 className="text-sm font-bold text-amber-800 mb-2">📋 {t('seller.actionItems')}</h3>
               <div className="flex flex-wrap gap-2">
                 {stats.pendingOrders > 0 && (
                   <Link to="/seller/orders" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-amber-700 border border-amber-200 hover:bg-amber-100">
-                    <ShoppingBag className="w-3.5 h-3.5" /> 미처리 주문 {stats.pendingOrders}건
+                    <ShoppingBag className="w-3.5 h-3.5" /> {t('seller.unprocessedOrderCount', { count: stats.pendingOrders })}
                   </Link>
                 )}
                 {(stats.lowStockCount ?? 0) > 0 && (
                   <Link to="/seller/inventory" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-orange-700 border border-orange-200 hover:bg-orange-100">
-                    <AlertTriangle className="w-3.5 h-3.5" /> 재고 부족 {stats.lowStockCount}건
+                    <AlertTriangle className="w-3.5 h-3.5" /> {t('seller.lowStockCount', { count: stats.lowStockCount })}
                   </Link>
                 )}
                 {(stats.pendingSettlement ?? 0) > 0 && (
                   <Link to="/seller/settlements" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-green-700 border border-green-200 hover:bg-green-100">
-                    <CreditCard className="w-3.5 h-3.5" /> 정산 가능 {stats.pendingSettlement}건
+                    <CreditCard className="w-3.5 h-3.5" /> {t('seller.settlementAvailableCount', { count: stats.pendingSettlement })}
                   </Link>
                 )}
               </div>
@@ -511,7 +511,7 @@ export default function SellerPage() {
 
               {/* 빠른 액션 — 활동 데이터 기반 동적 배치 */}
               <div>
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">빠른 액션</h2>
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('seller.quickActions')}</h2>
                 <div className="space-y-2">
                   {/* 식사권/공구 관련 (식사권 이력 있거나 가게사장님이면 상단) */}
                   {(hasMealVouchers || sellerType === 'store_owner') && (
@@ -521,8 +521,8 @@ export default function SellerPage() {
                         <div className="flex items-center gap-3">
                           <Utensils className="w-4 h-4" />
                           <div>
-                            <p className="text-[13px] font-bold">식사권 등록</p>
-                            <p className="text-[11px] text-gray-400">카카오맵으로 맛집 선택</p>
+                            <p className="text-[13px] font-bold">{t('seller.registerVoucher')}</p>
+                            <p className="text-[11px] text-gray-400">{t('seller.selectOnKakaoMap')}</p>
                           </div>
                         </div>
                         <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -533,8 +533,8 @@ export default function SellerPage() {
                           <div className="flex items-center gap-3">
                             <Gift className="w-4 h-4 text-pink-600" />
                             <div>
-                              <p className="text-[13px] font-bold text-gray-900">공동구매 관리</p>
-                              <p className="text-[11px] text-pink-600">{activeGroupBuys}개 진행중</p>
+                              <p className="text-[13px] font-bold text-gray-900">{t('seller.groupBuyManage')}</p>
+                              <p className="text-[11px] text-pink-600">{t('seller.activeGroupBuyCount', { count: activeGroupBuys })}</p>
                             </div>
                           </div>
                           <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -553,8 +553,8 @@ export default function SellerPage() {
                     <div className="flex items-center gap-3">
                       <Users className={`w-4 h-4 ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-600' : ''}`} />
                       <div>
-                        <p className={`text-[13px] font-bold ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-900' : ''}`}>공동구매 만들기</p>
-                        <p className={`text-[11px] ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-500' : 'text-gray-400'}`}>티어 기반 할인 상품</p>
+                        <p className={`text-[13px] font-bold ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-900' : ''}`}>{t('seller.createGroupBuy')}</p>
+                        <p className={`text-[11px] ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-500' : 'text-gray-400'}`}>{t('seller.tierBasedDiscount')}</p>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -571,8 +571,8 @@ export default function SellerPage() {
                       <div className="flex items-center gap-3">
                         <Radio className={`w-4 h-4 ${hasLiveHistory ? 'text-red-500' : 'text-gray-600'}`} />
                         <div>
-                          <p className="text-[13px] font-bold text-gray-900">라이브 방송</p>
-                          <p className="text-[11px] text-gray-500">{hasLiveHistory ? '이전 방송 이어서' : '첫 라이브 시작'}</p>
+                          <p className="text-[13px] font-bold text-gray-900">{t('seller.live')}</p>
+                          <p className="text-[11px] text-gray-500">{hasLiveHistory ? t('seller.continuePrevious') : t('seller.startFirstLive')}</p>
                         </div>
                       </div>
                       <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -591,7 +591,7 @@ export default function SellerPage() {
                   >
                     <Users className="w-5 h-5 text-pink-600 mx-auto mb-1.5" />
                     <p className="text-lg font-bold text-gray-900">{followerCount}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">팔로워</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('seller.followers')}</p>
                   </Link>
                   <Link
                     to="/seller/products"
@@ -658,7 +658,7 @@ export default function SellerPage() {
                         <span className="text-2xl">🏪</span>
                       </div>
                       <p className="text-sm font-bold text-gray-900">{t('seller.myPublicPage')}</p>
-                      <p className="text-xs text-gray-500 mt-1">탭하여 공개 페이지에서 바로 편집하세요</p>
+                      <p className="text-xs text-gray-500 mt-1">{t('seller.tapToEditPublicPage')}</p>
                     </a>
                   </div>
 
@@ -695,8 +695,8 @@ export default function SellerPage() {
                   </span>
                 </div>
                 <div style={{ width: '100%', height: 220 }}>
-                  <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-400 text-sm">차트 로딩...</div>}>
-                    <LazyChart data={dailyStats} />
+                  <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-400 text-sm">{t('seller.chartLoading')}</div>}>
+                    <LazyChart data={dailyStats} salesLabel={t('seller.sales')} ordersLabel={t('seller.order')} />
                   </Suspense>
                 </div>
               </div>
