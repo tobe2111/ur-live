@@ -35,20 +35,25 @@ export async function handleScheduled(env: Env) {
 
     if (cancelledOrders && cancelledOrders.length > 0) {
       const orderIds = cancelledOrders.map(o => o.id);
-      for (const orderId of orderIds) {
-        // Only restore items whose status isn't already CANCELLED (double-restore guard)
-        const { results: items } = await DB.prepare(
-          "SELECT product_id, quantity FROM order_items WHERE order_id = ? AND (status IS NULL OR status != 'CANCELLED')"
-        ).bind(orderId).all<{ product_id: number; quantity: number }>();
-        if (items) {
-          for (const item of items) {
-            await DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
-              .bind(item.quantity, item.product_id).run();
-          }
-          // Mark items as cancelled so a subsequent run won't double-restore
-          await DB.prepare("UPDATE order_items SET status = 'CANCELLED' WHERE order_id = ?")
-            .bind(orderId).run().catch(() => {});
-        }
+      // ✅ PERF: single IN-query to fetch all items for every cancelled order.
+      const ph = orderIds.map(() => '?').join(',');
+      const { results: items = [] } = await DB.prepare(
+        `SELECT order_id, product_id, quantity FROM order_items
+         WHERE order_id IN (${ph}) AND (status IS NULL OR status != 'CANCELLED')`
+      ).bind(...orderIds).all<{ order_id: number; product_id: number; quantity: number }>();
+
+      if (items.length > 0) {
+        // Batch stock restores + bulk CANCELLED flip in a single atomic D1 batch.
+        const stmts = items.map(it =>
+          DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
+            .bind(it.quantity, it.product_id)
+        );
+        stmts.push(
+          DB.prepare(
+            `UPDATE order_items SET status = 'CANCELLED' WHERE order_id IN (${ph})`
+          ).bind(...orderIds)
+        );
+        try { await DB.batch(stmts); } catch (e) { console.error('[Cron] stock restore batch', e); }
       }
       results.pending_orders_cancelled = cancelledOrders.length;
     }

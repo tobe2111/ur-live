@@ -647,6 +647,8 @@ sellerStreamsRoutes.put('/:id/product-display', async (c) => {
       "UPDATE live_streams SET product_display_mode = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(mode, streamId).run();
 
+    await cacheInvalidate(c.env.SESSION_KV, `stream:${streamId}`);
+
     return c.json({ success: true, data: { mode }, message: mode === 'all' ? '전체 상품이 표시됩니다' : '현재 상품만 표시됩니다' });
   } catch (error: unknown) {
     return c.json({ success: false, error: (error as Error).message }, 500);
@@ -671,6 +673,8 @@ sellerStreamsRoutes.post('/:id/change-product', async (c) => {
     await c.env.DB.prepare(
       "UPDATE live_streams SET current_product_id = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(productId ?? null, streamId).run();
+
+    await cacheInvalidate(c.env.SESSION_KV, `stream:${streamId}`);
 
     return c.json({ success: true, message: '상품이 변경되었습니다' });
   } catch (error: unknown) {

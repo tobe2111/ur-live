@@ -131,6 +131,7 @@ const AdminAuditLogPage = lazy(() => import('./pages/AdminAuditLogPage'))
 const AdminRevenueAnalyticsPage = lazy(() => import('./pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('./pages/AdminAccountsPage'))
 const AdminLiveMonitorPage = lazy(() => import('./pages/AdminLiveMonitorPage'))
+const AdminHealthPage = lazy(() => import('./pages/AdminHealthPage'))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'))
 const AdminReviewModerationPage = lazy(() => import('./pages/AdminReviewModerationPage'))
 // Agency 페이지들
@@ -664,6 +665,11 @@ function AppContent() {
             <Route path="/admin/live-monitor" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminLiveMonitorPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/health" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminHealthPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/users" element={

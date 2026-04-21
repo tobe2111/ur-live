@@ -459,10 +459,27 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     }
   }
 
-  // 3. 재고 복구
+  // 4. 주문 상태 업데이트 (state machine CAS) — 이미 REFUNDED인 경우 false
+  //    중복 승인 시 이중 복구/이중 환불을 차단하기 위해 transition 성공 시에만 재고 복구.
+  const { transitionOrderStatus } = await import('@/worker/utils/state-machine');
+  const transitioned = await transitionOrderStatus(DB, returnRecord.order_id, 'REFUNDED', {
+    extraSets: {
+      refund_status: 'completed',
+      refunded_at: new Date().toISOString(),
+    },
+  });
+
+  if (!transitioned) {
+    // 이미 REFUNDED 등 — return 테이블 상태만 최신화하고 조용히 성공 반환
+    await DB.prepare(`UPDATE returns SET status = 'refunded', refunded_at = datetime('now') WHERE id = ?`)
+      .bind(returnId).run();
+    return c.json({ success: true, message: '이미 환불 처리된 주문입니다' });
+  }
+
+  // 3. 재고 복구 — transition이 성공한 경우에만 실행 (이중 복구 방지)
   try {
     const items = await DB.prepare(
-      'SELECT product_id, quantity FROM order_items WHERE order_id = ?'
+      "SELECT product_id, quantity FROM order_items WHERE order_id = ? AND (status IS NULL OR status != 'CANCELLED')"
     ).bind(returnRecord.order_id).all<{ product_id: number; quantity: number }>();
 
     if (items.results && items.results.length > 0) {
@@ -472,20 +489,17 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
             .bind(item.quantity, item.product_id)
         )
       );
+      await DB.prepare("UPDATE order_items SET status = 'CANCELLED' WHERE order_id = ?")
+        .bind(returnRecord.order_id).run().catch(() => {});
     }
   } catch (err) {
     console.error('재고 복구 실패 (계속 진행):', err);
   }
 
-  // 4. 반품 상태 업데이트
+  // 5. 반품 상태 업데이트
   await DB.prepare(`
     UPDATE returns SET status = 'refunded', refunded_at = datetime('now') WHERE id = ?
   `).bind(returnId).run();
-
-  // 5. 주문 상태 업데이트
-  await DB.prepare(`
-    UPDATE orders SET status = 'REFUNDED', refund_status = 'completed', refunded_at = datetime('now'), updated_at = datetime('now') WHERE id = ?
-  `).bind(returnRecord.order_id).run();
 
   // 6. 소비자에게 환불 완료 알림
   try {

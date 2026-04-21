@@ -27,28 +27,38 @@ export interface CheckoutResult {
 
 /**
  * 재고 확인
+ * ✅ PERF: Single IN query instead of N+1 SELECTs. One D1 request regardless of
+ * cart size. Returns first validation error encountered to match prior behavior.
  */
 export async function validateStock(
   db: D1Database,
   products: Array<{ productId: string; quantity: number }>
 ): Promise<{ valid: boolean; error?: string }> {
-  for (const item of products) {
-    const result = await db
-      .prepare('SELECT stock FROM products WHERE id = ?')
-      .bind(item.productId)
-      .first<{ stock: number }>()
+  if (products.length === 0) return { valid: true }
 
-    if (!result) {
+  const ids = products.map(p => p.productId)
+  const placeholders = ids.map(() => '?').join(',')
+  const { results = [] } = await db
+    .prepare(`SELECT id, stock FROM products WHERE id IN (${placeholders})`)
+    .bind(...ids)
+    .all<{ id: string | number; stock: number }>()
+
+  const stockMap = new Map<string, number>(
+    results.map(r => [String(r.id), Number(r.stock)])
+  )
+
+  for (const item of products) {
+    const stock = stockMap.get(String(item.productId))
+    if (stock === undefined) {
       return {
         valid: false,
         error: `상품을 찾을 수 없습니다: ${item.productId}`,
       }
     }
-
-    if (result.stock < item.quantity) {
+    if (stock < item.quantity) {
       return {
         valid: false,
-        error: `재고가 부족합니다: ${item.productId} (재고: ${result.stock}, 주문: ${item.quantity})`,
+        error: `재고가 부족합니다: ${item.productId} (재고: ${stock}, 주문: ${item.quantity})`,
       }
     }
   }

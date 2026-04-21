@@ -16,6 +16,7 @@ import { openApiSpec } from './openapi';
 import type { Env } from './types/env';
 import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
+import { healthRoutes } from './routes/health.routes';
 import { productsRouter } from './routes/product.routes';
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
@@ -247,6 +248,10 @@ app.get('/api/health', async (c) => {
 
   return c.json(checks, checks.status === 'ok' ? 200 : 503);
 });
+
+// Extended health routes: /api/health/detailed, /api/health/circuits
+// ⚠️ Mounted under a sub-path so it does NOT shadow the inline GET /api/health above.
+app.route('/api/health/detailed', healthRoutes);
 
 // 클라이언트 빌드 버전 확인 — index.html의 스크립트 해시를 서버가 알려줌
 // 프론트가 자신의 번들 해시와 비교해서 불일치 시 자동 리로드
