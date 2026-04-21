@@ -975,7 +975,7 @@ export default function ReelCard({
 
       {/* 예약 방송 UI */}
       {stream.status === 'scheduled' && (
-        <ScheduledOverlayExtracted stream={stream} onGoHome={() => navigate('/')} />
+        <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
       )}
 
       {/* 라이브/종료 방송: 로딩 → 자동재생 → 실패 시 탭 유도 */}
@@ -1077,7 +1077,7 @@ export default function ReelCard({
             {/* Chat + Heart + Donate + Share buttons - right side */}
             <div className="flex flex-col items-center gap-2.5 shrink-0 pb-1 mr-1">
               {/* 하트 반응 */}
-              <HeartReactionExtracted />
+              <HeartReaction />
               <button
                 onClick={() => setChatModalOpen(true)}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"

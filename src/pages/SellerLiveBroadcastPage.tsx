@@ -307,7 +307,7 @@ export default function SellerLiveBroadcastPage() {
             : <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center"><Youtube className="h-4 w-4 text-red-500" /></div>}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{channels[0]?.channel_title}</p>
-            <p className="text-xs text-gray-400">{t('seller.liveBroadcast.subscribers', { count: channels[0]?.subscriber_count?.toLocaleString() })}</p>
+            <p className="text-xs text-gray-400">{t('seller.liveBroadcast.subscribers', { subscribers: channels[0]?.subscriber_count?.toLocaleString() || '0' })}</p>
           </div>
           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
         </div>
