@@ -701,7 +701,7 @@ function AppContent() {
             <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
-            <Route path="/cart" element={<CartPage />} />
+            <Route path="/cart" element={<ErrorBoundary><CartPage /></ErrorBoundary>} />
             <Route path="/checkout" element={
               <ProtectedRoute requireUser>
                 <ErrorBoundary><CheckoutPage /></ErrorBoundary>

@@ -63,8 +63,10 @@ export async function validateDuplicateOrder(
   db: D1Database,
   orderId: string
 ): Promise<{ valid: boolean; error?: string }> {
+  // ✅ SCHEMA FIX: orders.id is INTEGER AUTOINCREMENT; callers pass the
+  // client-generated order_number string as the "orderId" parameter here.
   const existing = await db
-    .prepare('SELECT id FROM orders WHERE id = ?')
+    .prepare('SELECT id FROM orders WHERE order_number = ?')
     .bind(orderId)
     .first()
 
@@ -179,6 +181,33 @@ export async function processCheckout(
     }
 
     // 4. DB 트랜잭션 (재고 차감 + 주문 생성)
+    // ✅ SCHEMA FIX: orders.id is INTEGER AUTOINCREMENT — do not pass id.
+    //    Use order_number to link. order_items requires NOT NULL product_name.
+    //    order_items column is `price` (not `price_snapshot`).
+
+    // Fetch product names (required NOT NULL column on order_items)
+    const productIds = products.map(p => p.productId)
+    const phs = productIds.map(() => '?').join(',')
+    const { results: productRows = [] } = await db
+      .prepare(`SELECT id, name FROM products WHERE id IN (${phs})`)
+      .bind(...productIds)
+      .all<{ id: string | number; name: string }>()
+    const nameMap = new Map<string, string>(
+      productRows.map(p => [String(p.id), String(p.name ?? '')])
+    )
+
+    // Step A: Insert order (id auto-generated). Use order_number for linking.
+    const orderNumber = orderId
+    const orderInsert = await db
+      .prepare(
+        'INSERT INTO orders (order_number, user_id, total_amount, status, payment_key, toss_payment_key, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime("now"))'
+      )
+      .bind(orderNumber, userId, amount, 'PAID', paymentKey, paymentKey)
+      .run()
+
+    const newOrderId = orderInsert.meta.last_row_id as number
+
+    // Step B: Batch remaining (stock deduction + order_items insert)
     await db.batch([
       // 재고 차감
       ...products.map((item) =>
@@ -186,24 +215,24 @@ export async function processCheckout(
           .prepare('UPDATE products SET stock = stock - ? WHERE id = ?')
           .bind(item.quantity, item.productId)
       ),
-      // 주문 생성 (uppercase status)
-      db
-        .prepare(
-          'INSERT INTO orders (id, user_id, total_amount, status, payment_key, toss_payment_key, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime("now"))'
-        )
-        .bind(orderId, userId, amount, 'PAID', paymentKey, paymentKey),
-      // 주문 아이템 생성
+      // 주문 아이템 생성 (schema: order_id, product_id, product_name [NOT NULL], quantity, price)
       ...products.map((item) =>
         db
           .prepare(
-            'INSERT INTO order_items (order_id, product_id, quantity, price_snapshot) VALUES (?, ?, ?, ?)'
+            'INSERT INTO order_items (order_id, product_id, product_name, quantity, price) VALUES (?, ?, ?, ?, ?)'
           )
-          .bind(orderId, item.productId, item.quantity, item.price_snapshot ?? 0)
+          .bind(
+            newOrderId,
+            item.productId,
+            nameMap.get(String(item.productId)) ?? `Product ${item.productId}`,
+            item.quantity,
+            item.price_snapshot ?? 0
+          )
       ),
     ])
 
     // Checkout completed
-    return { success: true, orderId }
+    return { success: true, orderId: String(newOrderId) }
   } catch (error) {
     // 에러 발생 시 롤백
     console.error('❌ 주문 처리 실패:', error)

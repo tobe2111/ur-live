@@ -160,7 +160,8 @@ webhookRouter.post('/', async (c) => {
     if (isProduction || (webhookSecret && webhookSecret.length > 0)) {
       if (!webhookSecret) {
         console.error('[WEBHOOK] ❌ TOSS_WEBHOOK_SECRET not configured in production');
-        return c.json({ received: true, status: 'rejected' }, 200);
+        // Return 401 so Toss retries (misconfig may be transient) and legitimate deliveries are not silently lost
+        return c.json({ received: false, status: 'rejected', error: 'webhook_secret_not_configured' }, 401);
       }
       const signatureHeader = c.req.header('Toss-Signature');
       const isValid = await verifyTossSignature(rawBody, signatureHeader, webhookSecret);
@@ -168,7 +169,8 @@ webhookRouter.post('/', async (c) => {
         console.error('[WEBHOOK] ❌ INVALID_SIGNATURE', {
           ip: c.req.header('CF-Connecting-IP'),
         });
-        return c.json({ received: true, status: 'rejected' }, 200);
+        // Return 401 so Toss retries legitimate deliveries whose signatures failed transiently
+        return c.json({ received: false, status: 'rejected', error: 'invalid_signature' }, 401);
       }
 
       // 3. Timestamp verification (replay attack defense) — BEFORE any logic
@@ -178,7 +180,8 @@ webhookRouter.post('/', async (c) => {
           timestamp: timestampHeader,
           ip: c.req.header('CF-Connecting-IP'),
         });
-        return c.json({ received: true, status: 'rejected' }, 200);
+        // Return 401 — do not silently accept possibly-replayed requests
+        return c.json({ received: false, status: 'rejected', error: 'invalid_timestamp' }, 401);
       }
     } else {
       console.warn('[WEBHOOK] ⚠️ Signature/timestamp verification skipped (non-production, no secret configured)');

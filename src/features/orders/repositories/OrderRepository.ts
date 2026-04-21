@@ -65,10 +65,8 @@ export class OrderRepository {
   
   /**
    * 주문 생성
-   * ✅ BUG #20 FIX: The live DB schema (initial migration 0001) uses `total_price`
-   * as the column name, NOT `total_amount`.  The old INSERT used `total_amount`
-   * which caused a "table orders has no column named total_amount" SQL error,
-   * silently rolling back every order creation in production.
+   * ✅ SCHEMA FIX: Production DB uses `total_amount` (NOT `total_price`).
+   * See src/shared/db/production-schema.ts.
    *
    * ✅ BUG #26 FIX: No idempotency check on order creation meant that a network
    * retry (e.g. slow 3G, page reload on PaymentSuccessPage) would insert a
@@ -87,10 +85,10 @@ export class OrderRepository {
       return existing;
     }
 
-    // ✅ BUG #20 FIX: Use `total_price` to match the actual DB schema column
+    // ✅ SCHEMA FIX: Use `total_amount` to match the actual DB schema column
     const orderResult = await this.db.prepare(`
       INSERT INTO orders (
-        order_number, user_id, seller_id, total_price, status,
+        order_number, user_id, seller_id, total_amount, status,
         payment_method, shipping_address, shipping_name, shipping_phone,
         created_at, updated_at
       ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))
@@ -98,33 +96,49 @@ export class OrderRepository {
       orderNumber,
       data.user_id,
       data.seller_id,
-      data.total_amount,   // OrderCreateInput field stays as total_amount for API compat
+      data.total_amount,
       data.payment_method || null,
       typeof data.shipping_address === 'object' ? JSON.stringify(data.shipping_address) : (data.shipping_address || null),
       data.shipping_name || null,
       data.shipping_phone || null
     ).run();
-    
+
     const orderId = orderResult.meta.last_row_id as number;
-    
+
     // 주문 아이템 생성 (배치 INSERT로 최적화)
+    // ✅ SCHEMA FIX: order_items has NOT NULL product_name — must lookup product names
     if (data.items.length > 0) {
-      const values = data.items.map(() => '(?, ?, ?, ?)').join(', ');
-      const bindings = data.items.flatMap(item => [orderId, item.product_id, item.quantity, item.price]);
+      // Batch-fetch product names for all items (required NOT NULL column)
+      const productIds = data.items.map(i => i.product_id);
+      const placeholders = productIds.map(() => '?').join(',');
+      const { results: productRows = [] } = await this.db
+        .prepare(`SELECT id, name FROM products WHERE id IN (${placeholders})`)
+        .bind(...productIds)
+        .all<{ id: number; name: string }>();
+      const nameMap = new Map<number, string>(productRows.map(p => [Number(p.id), String(p.name ?? '')]));
+
+      const values = data.items.map(() => '(?, ?, ?, ?, ?)').join(', ');
+      const bindings = data.items.flatMap(item => [
+        orderId,
+        item.product_id,
+        nameMap.get(Number(item.product_id)) ?? `Product ${item.product_id}`,
+        item.quantity,
+        item.price,
+      ]);
 
       await this.db.prepare(`
         INSERT INTO order_items (
-          order_id, product_id, quantity, price
+          order_id, product_id, product_name, quantity, price
         ) VALUES ${values}
       `).bind(...bindings).run();
     }
-    
+
     const order = await this.findById(orderId);
-    
+
     if (!order) {
       throw new Error('Failed to create order');
     }
-    
+
     return order;
   }
   

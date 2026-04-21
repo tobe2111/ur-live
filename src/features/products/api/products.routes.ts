@@ -188,10 +188,16 @@ productsRoutes.get('/:id', cors(), async (c) => {
  */
 productsRoutes.post('/', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
-  
+
   try {
+    // Authorization: seller or admin only
+    const user = getCurrentUser(c);
+    if (!user || (user.type !== 'seller' && user.type !== 'admin')) {
+      return c.json({ success: false, error: '셀러 권한이 필요합니다.' }, 403);
+    }
+
     const data: ProductCreateInput = await c.req.json();
-    
+
     // 필수 필드 검증
     if (!data.name || !data.price || data.stock_quantity === undefined) {
       return c.json({
@@ -199,10 +205,15 @@ productsRoutes.post('/', cors(), requireAuth(), async (c) => {
         error: 'Missing required fields: name, price, stock_quantity'
       }, 400);
     }
-    
+
+    // For sellers, force seller_id to the authenticated seller (prevent spoofing)
+    if (user.type === 'seller') {
+      data.seller_id = Number(user.id);
+    }
+
     const service = new ProductService(DB);
     const product = await service.createProduct(data);
-    
+
     return c.json({
       success: true,
       data: product
@@ -223,18 +234,38 @@ productsRoutes.post('/', cors(), requireAuth(), async (c) => {
  */
 productsRoutes.put('/:id', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
-  
+
   try {
+    // Authorization: seller or admin only
+    const user = getCurrentUser(c);
+    if (!user || (user.type !== 'seller' && user.type !== 'admin')) {
+      return c.json({ success: false, error: '셀러 권한이 필요합니다.' }, 403);
+    }
+
     const id = Number(c.req.param('id'));
     const data: ProductUpdateInput = await c.req.json();
-    
+
     if (isNaN(id)) {
       return c.json({
         success: false,
         error: 'Invalid product ID'
       }, 400);
     }
-    
+
+    // Ownership check (admins bypass)
+    if (user.type !== 'admin') {
+      const existing = await DB
+        .prepare('SELECT seller_id FROM products WHERE id = ?')
+        .bind(id)
+        .first<{ seller_id: number }>();
+      if (!existing) {
+        return c.json({ success: false, error: '상품을 찾을 수 없습니다.' }, 404);
+      }
+      if (existing.seller_id !== Number(user.id)) {
+        return c.json({ success: false, error: '다른 셀러의 상품은 수정할 수 없습니다.' }, 403);
+      }
+    }
+
     const service = new ProductService(DB);
     const product = await service.updateProduct(id, data);
     
@@ -266,17 +297,37 @@ productsRoutes.put('/:id', cors(), requireAuth(), async (c) => {
  */
 productsRoutes.delete('/:id', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
-  
+
   try {
+    // Authorization: seller or admin only
+    const user = getCurrentUser(c);
+    if (!user || (user.type !== 'seller' && user.type !== 'admin')) {
+      return c.json({ success: false, error: '셀러 권한이 필요합니다.' }, 403);
+    }
+
     const id = Number(c.req.param('id'));
-    
+
     if (isNaN(id)) {
       return c.json({
         success: false,
         error: 'Invalid product ID'
       }, 400);
     }
-    
+
+    // Ownership check (admins bypass)
+    if (user.type !== 'admin') {
+      const existing = await DB
+        .prepare('SELECT seller_id FROM products WHERE id = ?')
+        .bind(id)
+        .first<{ seller_id: number }>();
+      if (!existing) {
+        return c.json({ success: false, error: '상품을 찾을 수 없습니다.' }, 404);
+      }
+      if (existing.seller_id !== Number(user.id)) {
+        return c.json({ success: false, error: '다른 셀러의 상품은 수정할 수 없습니다.' }, 403);
+      }
+    }
+
     const service = new ProductService(DB);
     await service.deleteProduct(id);
     
