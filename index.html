@@ -53,7 +53,7 @@
       window.youtubeCallbacks = [];
       window.onYouTubeIframeAPIReady = function() {
         window.youtubeCallbacks.forEach(function(cb) { cb(); });
-        window.youtubeCallbacks = [];
+        window.youtubeCallbacks = { push: function(cb) { cb(); } };
       };
     </script>
     <script src="https://www.youtube.com/iframe_api" async></script>

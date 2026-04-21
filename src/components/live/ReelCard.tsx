@@ -250,6 +250,7 @@ export default function ReelCard({
   const playerRef = useRef<YTPlayer | null>(null)
   const [playerReady, setPlayerReady] = useState(false)
   const [showPlayButton, setShowPlayButton] = useState(true)
+  const showPlayButtonRef = useRef(true)
   const [autoplayFailed, setAutoplayFailed] = useState(false)
   const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
 
@@ -406,7 +407,7 @@ export default function ReelCard({
           return
         }
 
-        playerElement.innerHTML = ''
+        while (playerElement.firstChild) playerElement.removeChild(playerElement.firstChild)
 
         // @ts-ignore
         player = new window.YT.Player(`youtube-player-${stream.id}`, {
@@ -440,9 +441,9 @@ export default function ReelCard({
               } catch {
                 // autoplay 실패
               }
-              // 2초 후에도 재생 안 되면 탭 유도 CTA 표시
+              // 2초 후에도 재생 안 되면 탭 유도 CTA 표시 (ref로 stale closure 방지)
               setTimeout(() => {
-                if (isMounted && showPlayButton) {
+                if (isMounted && showPlayButtonRef.current) {
                   setAutoplayFailed(true)
                 }
               }, 2000)
@@ -453,9 +454,11 @@ export default function ReelCard({
                 // @ts-ignore
                 if (event.data === window.YT.PlayerState.PLAYING) {
                   setShowPlayButton(false)
+                  showPlayButtonRef.current = false
                   setAutoplayFailed(false)
                 } else if (event.data === window.YT.PlayerState.PAUSED) {
                   setShowPlayButton(true)
+                  showPlayButtonRef.current = true
                 }
               } catch (e) {
                 // Suppress postMessage errors
@@ -708,8 +711,10 @@ export default function ReelCard({
       
       localStorage.setItem('hasCartItems', 'true')
       
-      // 🎯 장바구니 아이템 추가 이벤트 발생 (아이콘 애니메이션용)
       window.dispatchEvent(new CustomEvent('cartItemAdded'))
+      setNotificationText('장바구니에 추가되었습니다')
+      setShowNotification(true)
+      setTimeout(() => setShowNotification(false), 2000)
       try {
         const g = (window as any).gtag
         if (typeof g === 'function') {
