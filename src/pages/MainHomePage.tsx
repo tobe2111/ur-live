@@ -41,30 +41,13 @@ interface Product {
   restaurant_address?: string
 }
 
-// ── Category (퀵메뉴 통합) ──
-const CATEGORIES = [
-  { key: 'all', label: '전체', icon: '🔥' },
-  { key: 'live', label: '라이브', icon: '📺' },
-  { key: 'meal_voucher', label: '맛집', icon: '🍽️' },
-  { key: 'fashion', label: '패션', icon: '👗' },
-  { key: 'beauty', label: '뷰티', icon: '💄' },
-  { key: 'food', label: '식품', icon: '🍜' },
-  { key: 'living', label: '리빙', icon: '🏠' },
-  { key: 'digital', label: '디지털', icon: '📱' },
-]
-
-// ── 지역 필터 ──
-const REGIONS = [
-  { key: 'all', label: '전체' },
-  { key: '서울', label: '서울' },
-  { key: '경기', label: '경기' },
-  { key: '인천', label: '인천' },
-  { key: '부산', label: '부산' },
-  { key: '대구', label: '대구' },
-  { key: '광주', label: '광주' },
-  { key: '대전', label: '대전' },
-  { key: '울산', label: '울산' },
-  { key: '제주', label: '제주' },
+// ── QuickAccess items ──
+const QUICK_ACCESS = [
+  { key: 'meal_voucher', label: '맛집', icon: '🍽️', path: '/browse?category=meal_voucher' },
+  { key: 'brand', label: '브랜드', icon: '🏪', path: '/browse' },
+  { key: 'group_buy', label: '공구', icon: '🎁', path: '/group-buy' },
+  { key: 'deals', label: '특가', icon: '⚡', path: '/browse?sort=discount' },
+  { key: 'ranking', label: '랭킹', icon: '📊', path: '/browse?sort=popular' },
 ]
 
 // ── Stream thumbnail helper ──
@@ -73,14 +56,14 @@ function getThumb(stream: LiveStream) {
     (stream.youtube_video_id ? `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg` : null)
 }
 
-// ── Live stream card (Grip-style: thumbnail + info separated) ──
+// ── Live stream card (v4: 148px wide, aspect 3/4) ──
 function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void }) {
   const thumb = getThumb(stream)
   const isLive = stream.status === 'live'
 
   return (
-    <button onClick={onClick} className="w-full text-left active:scale-[0.98] transition-transform">
-      {/* 썸네일 영역 */}
+    <button onClick={onClick} className="shrink-0 w-[148px] text-left active:scale-[0.98] transition-transform">
+      {/* Thumbnail */}
       <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-[#1A1A1A]">
         {thumb ? (
           <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
@@ -88,7 +71,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
           <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800" />
         )}
 
-        {/* LIVE / 예정 / 다시보기 배지 */}
+        {/* Badge */}
         {isLive ? (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
             <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
@@ -106,7 +89,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
           </div>
         )}
 
-        {/* 시청자 수 */}
+        {/* Viewer count */}
         {isLive && stream.viewer_count !== undefined && (
           <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-md">
             <Eye className="h-3 w-3 text-white" />
@@ -116,7 +99,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
           </div>
         )}
 
-        {/* 셀러 프로필 (썸네일 하단) */}
+        {/* Seller avatar + name at bottom of thumbnail */}
         {stream.seller_name && (
           <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
             <div className="w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center">
@@ -127,7 +110,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
         )}
       </div>
 
-      {/* 텍스트 정보 영역 (높이 고정) */}
+      {/* Text info below thumbnail */}
       <div className="mt-2 px-0.5 h-[42px]">
         <p className="text-[12px] font-bold text-white leading-tight truncate">
           {stream.title}
@@ -145,61 +128,45 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
   )
 }
 
-// ── 날짜 헬퍼 ──
-function getDayLabel(date: Date): string {
-  const today = new Date()
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
-  const dayNames = ['일', '월', '화', '수', '목', '금', '토']
-
-  if (date.toDateString() === today.toDateString()) return `오늘 (${dayNames[date.getDay()]})`
-  if (date.toDateString() === tomorrow.toDateString()) return `내일 (${dayNames[date.getDay()]})`
-  return `${date.getMonth() + 1}/${date.getDate()} (${dayNames[date.getDay()]})`
-}
-
-// ── 날짜 탭 바 컴포넌트 ──
-function ScheduleDateTabs({ selectedDate, onSelect }: { selectedDate: Date | null; onSelect: (d: Date | null) => void }) {
-  const today = new Date()
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(today); d.setDate(today.getDate() + i); return d
-  })
-  const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+// ── Product card for UR특가 (3-column grid, square) ──
+function ProductCard({ product }: { product: Product }) {
+  const navigate = useNavigate()
+  const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
 
   return (
-    <div className="flex gap-1.5 px-4 overflow-x-auto no-scrollbar pb-1">
-      <button
-        onClick={() => onSelect(null)}
-        className={`flex flex-col items-center shrink-0 px-3 py-2 rounded-xl transition-all ${
-          !selectedDate ? 'bg-red-500 text-white' : 'text-gray-500'
-        }`}
-      >
-        <span className="text-[10px] font-medium">전체</span>
-        <span className={`text-[14px] font-bold ${!selectedDate ? 'text-white' : 'text-gray-300'}`}>ALL</span>
-      </button>
-      {days.map((d, i) => {
-        const isSelected = selectedDate ? d.toDateString() === selectedDate.toDateString() : false
-        const label = i === 0 ? '오늘' : i === 1 ? '내일' : dayNames[d.getDay()]
-        const isWeekend = d.getDay() === 0 || d.getDay() === 6
-        return (
-          <button
-            key={i}
-            onClick={() => onSelect(d)}
-            className={`flex flex-col items-center shrink-0 px-3 py-2 rounded-xl transition-all ${
-              isSelected
-                ? 'bg-red-500 text-white'
-                : isWeekend ? 'text-red-400' : 'text-gray-500'
-            }`}
-          >
-            <span className="text-[10px] font-medium">{label}</span>
-            <span className={`text-[14px] font-bold ${isSelected ? 'text-white' : 'text-gray-300'}`}>{d.getDate()}</span>
-          </button>
-        )
-      })}
+    <div className="cursor-pointer active:scale-[0.98] transition-transform" onClick={() => navigate(`/products/${product.id}`)}>
+      <div className="relative aspect-square overflow-hidden bg-[#1A1A1A] rounded-xl">
+        {product.image_url ? (
+          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+            <ShoppingBag className="w-6 h-6 text-gray-500" />
+          </div>
+        )}
+        {discountRate > 0 && (
+          <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+            {discountRate}%
+          </span>
+        )}
+      </div>
+      <div className="mt-1.5">
+        <p className="text-[11px] text-gray-300 leading-snug line-clamp-1">{product.name}</p>
+        <div className="flex items-baseline gap-1 mt-0.5">
+          {discountRate > 0 && (
+            <span className="text-[12px] font-extrabold text-red-500">{discountRate}%</span>
+          )}
+          <span className="text-[12px] font-extrabold text-white">{product.price.toLocaleString()}원</span>
+        </div>
+        {product.original_price && product.original_price > product.price && (
+          <p className="text-[10px] text-gray-500 line-through mt-0.5">{product.original_price.toLocaleString()}원</p>
+        )}
+      </div>
     </div>
   )
 }
 
-// ── 지금 뜨는 공동구매 섹션 (가로 스크롤 TOP 상품) ──
-function TrendingGroupBuySection() {
+// ── GroupBuyRow card (vertical list) ──
+function GroupBuyRow() {
   const navigate = useNavigate()
   const [items, setItems] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -209,10 +176,9 @@ function TrendingGroupBuySection() {
       .then(r => {
         if (r.data?.success) {
           const list: Product[] = r.data.data || []
-          // 참여자 많은 순 → 상위 10개
           const sorted = [...list].sort(
             (a, b) => ((b.group_buy_current || 0) - (a.group_buy_current || 0))
-          ).slice(0, 10)
+          ).slice(0, 6)
           setItems(sorted)
         }
       })
@@ -226,19 +192,16 @@ function TrendingGroupBuySection() {
   return (
     <section className="px-4 pt-4 pb-2">
       <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="text-[15px] font-bold text-white">🎁 지금 뜨는 공동구매</h2>
-          <p className="text-[11px] text-gray-500 mt-0.5">모일수록 저렴해지는 인기 상품</p>
-        </div>
+        <h2 className="text-[15px] font-bold text-white">🎁 맛집 공구</h2>
         <button
           onClick={() => navigate('/group-buy')}
           className="text-[12px] text-gray-500 flex items-center"
         >
-          더 보기 <ChevronRight className="w-3.5 h-3.5" />
+          전체보기 <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+      <div className="flex flex-col gap-2.5">
         {items.map(item => {
           const target = item.group_buy_target || 0
           const current = item.group_buy_current || 0
@@ -249,199 +212,62 @@ function TrendingGroupBuySection() {
             : 0
 
           return (
-            <button
+            <div
               key={item.id}
               onClick={() => navigate(`/products/${item.id}`)}
-              className="shrink-0 w-36 text-left active:scale-[0.97] transition-transform"
+              className="flex items-center gap-3 p-3 bg-[#141414] rounded-xl cursor-pointer active:scale-[0.99] transition-transform"
+              style={{ border: '1px solid rgba(255,255,255,0.05)' }}
             >
-              <div className="relative aspect-square rounded-xl overflow-hidden bg-[#1A1A1A]">
+              {/* Thumbnail */}
+              <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#1A1A1A] shrink-0">
                 {item.image_url ? (
                   <img src={item.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-pink-900/30 to-rose-900/30" />
                 )}
-                {disc > 0 && (
-                  <span className="absolute top-1.5 left-1.5 bg-pink-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md">
-                    최대 -{disc}%
-                  </span>
-                )}
-                {achieved && (
-                  <span className="absolute top-1.5 right-1.5 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-                    달성
-                  </span>
-                )}
               </div>
 
-              <div className="mt-2">
-                <p className="text-[11px] text-white font-medium line-clamp-1">{item.name}</p>
-                <div className="flex items-baseline gap-1 mt-0.5">
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] text-white font-medium truncate">{item.name}</p>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
                   {disc > 0 && (
-                    <span className="text-[12px] font-extrabold text-pink-400">{disc}%</span>
+                    <span className="text-[12px] font-extrabold text-red-400">{disc}%</span>
                   )}
-                  <span className="text-[12px] font-extrabold text-white">
+                  <span className="text-[13px] font-extrabold text-white">
                     {item.price?.toLocaleString()}원
                   </span>
+                  {item.original_price && item.original_price > item.price && (
+                    <span className="text-[10px] text-gray-500 line-through">{item.original_price.toLocaleString()}</span>
+                  )}
                 </div>
-
                 {target > 0 && (
                   <div className="mt-1.5">
-                    <div className="w-full h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-[#1A1A1A] rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${achieved ? 'bg-emerald-500' : 'bg-pink-500'}`}
+                        className={`h-full rounded-full transition-all ${achieved ? 'bg-emerald-500' : 'bg-pink-500'}`}
                         style={{ width: `${progress}%` }}
                       />
                     </div>
                     <p className="text-[9px] text-gray-500 mt-0.5">
-                      {achieved ? '목표 달성!' : `${current}명 참여중`}
+                      {achieved ? '목표 달성!' : `${current}/${target}명 참여중`}
                     </p>
                   </div>
                 )}
               </div>
-            </button>
+
+              {/* Action button */}
+              <button
+                onClick={(e) => { e.stopPropagation(); navigate(`/products/${item.id}`) }}
+                className="shrink-0 px-3 py-1.5 bg-pink-500 text-white text-[11px] font-bold rounded-lg active:scale-95 transition-transform"
+              >
+                참여
+              </button>
+            </div>
           )
         })}
       </div>
     </section>
-  )
-}
-
-// ── 맛집 공동구매 섹션 (지역 필터 포함) ──
-function GroupBuySection() {
-  const navigate = useNavigate()
-  const [items, setItems] = useState<Product[]>([])
-  const [region, setRegion] = useState('all')
-
-  useEffect(() => {
-    api.get('/api/group-buy/products?status=active')
-      .then(r => { if (r.data.success) setItems(r.data.data || []) })
-      .catch(() => {})
-  }, [])
-
-  // 지역 필터링 (restaurant_address에서 첫 단어 매칭)
-  const filtered = region === 'all' ? items : items.filter(item =>
-    item.restaurant_address?.includes(region)
-  )
-
-  return (
-    <section className="px-4 py-4">
-      {/* 공동구매 배너 */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => navigate('/browse?category=meal_voucher')}
-          className="flex-1 bg-gradient-to-r from-orange-500 via-pink-500 to-red-500 rounded-2xl p-4 text-left active:scale-[0.98] transition-transform"
-        >
-          <p className="text-white text-lg font-extrabold">🍽️ 맛집 공동구매</p>
-          <p className="text-white/80 text-xs mt-1">인플루언서 추천 맛집 식사권</p>
-        </button>
-        <button
-          onClick={() => navigate('/restaurant-map')}
-          className="w-[120px] bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4 text-left active:scale-[0.98] transition-transform shrink-0"
-        >
-          <p className="text-white text-2xl">🗺️</p>
-          <p className="text-white text-xs font-bold mt-1">맛집 지도</p>
-        </button>
-      </div>
-
-      {/* 지역 필터 */}
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-3">
-        {REGIONS.map(r => (
-          <button
-            key={r.key}
-            onClick={() => setRegion(r.key)}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors ${
-              region === r.key ? 'bg-pink-500 text-white' : 'bg-[#1A1A1A] text-gray-500'
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
-
-      {filtered.length === 0 ? (
-        <p className="text-center text-gray-600 text-xs py-4">해당 지역 공동구매가 없습니다</p>
-      ) : (
-      <>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[13px] font-bold text-white">{region === 'all' ? '전체' : region} 맛집 {filtered.length}개</p>
-        <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[12px] text-gray-500 flex items-center">
-          전체보기 <ChevronRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-        {filtered.slice(0, 6).map(item => {
-          const progress = item.group_buy_target ? Math.min(100, ((item.group_buy_current || 0) / item.group_buy_target) * 100) : 0
-          const disc = item.original_price ? Math.round((1 - item.price / item.original_price) * 100) : 0
-          return (
-            <button key={item.id} onClick={() => navigate(`/products/${item.id}`)} className="shrink-0 w-40 text-left active:scale-[0.97]">
-              <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1A1A1A]">
-                {item.image_url && <img src={item.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />}
-                {disc > 0 && (
-                  <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{disc}%</span>
-                )}
-              </div>
-              <div className="mt-2">
-                <p className="text-[11px] text-white font-medium line-clamp-1">{item.name}</p>
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-[13px] font-extrabold text-red-400">{item.price?.toLocaleString()}원</span>
-                  {item.original_price && <span className="text-[10px] text-gray-600 line-through">{item.original_price.toLocaleString()}</span>}
-                </div>
-                {(item.group_buy_target ?? 0) > 0 && (
-                  <div className="mt-1.5">
-                    <div className="w-full bg-[#1A1A1A] rounded-full h-1.5">
-                      <div className="h-full bg-pink-500 rounded-full" style={{ width: `${progress}%` }} />
-                    </div>
-                    <p className="text-[9px] text-gray-500 mt-0.5">{item.group_buy_current || 0}/{item.group_buy_target}명 참여</p>
-                  </div>
-                )}
-              </div>
-            </button>
-          )
-        })}
-      </div>
-      </>
-      )}
-    </section>
-  )
-}
-
-// ── Product card for UR특가 ──
-function ProductCard({ product }: { product: Product }) {
-  const navigate = useNavigate()
-  const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
-
-  return (
-    <div className="cursor-pointer active:scale-[0.98] transition-transform" onClick={() => navigate(`/products/${product.id}`)}>
-      <div className="relative aspect-square overflow-hidden bg-[#1A1A1A] rounded-xl">
-        {product.image_url ? (
-          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-            <ShoppingBag className="w-6 h-6 text-gray-500" />
-          </div>
-        )}
-        {discountRate > 0 && (
-          <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-            {discountRate}%
-          </span>
-        )}
-      </div>
-      <div className="mt-1.5">
-        <p className="text-[11px] text-gray-300 leading-snug line-clamp-1">{product.name}</p>
-        {product.original_price && product.original_price > product.price && (
-          <p className="text-[10px] text-gray-600 line-through mt-0.5">{product.original_price.toLocaleString()}원</p>
-        )}
-        <div className="flex items-baseline gap-1 mt-0.5">
-          {discountRate > 0 && (
-            <span className="text-[12px] font-extrabold text-red-500">{discountRate}%</span>
-          )}
-          <span className="text-[12px] font-extrabold text-white">{product.price.toLocaleString()}원</span>
-        </div>
-        <div className="flex items-center gap-0.5 mt-0.5">
-          <span className="text-yellow-400 text-[9px]">★</span>
-          <span className="text-[9px] text-gray-500">{(product.avg_rating || 4.8).toFixed(1)} ({product.review_count || product.sold_count || 0})</span>
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -451,7 +277,6 @@ export default function MainHomePage() {
 
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
   const [scheduledStreams, setScheduledStreams] = useState<LiveStream[]>([])
-  const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date | null>(null)
   const [endedStreams, setEndedStreams] = useState<LiveStream[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -475,17 +300,16 @@ export default function MainHomePage() {
     }).finally(() => setLoading(false))
   }, [])
 
-  const allStreams = [...liveStreams, ...scheduledStreams, ...endedStreams]
-
   return (
-    <div className="bg-[#121212] min-h-screen pb-16">
+    <div className="bg-[#020202] min-h-screen pb-16">
       <SEO
         title="홈"
         description="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매, 실시간 라이브 쇼핑"
         url="/"
         jsonLd={organizationJsonLd}
       />
-      {/* ── Header (v4) ── */}
+
+      {/* ── Header (v4: sticky, gradient logo) ── */}
       <header className="sticky top-0 z-50 bg-[#020202]/95 backdrop-blur-md border-b border-[#1A1A1A]">
         <div className="flex items-center justify-between h-12 px-4">
           <Link to="/" className="flex items-center gap-1.5">
@@ -520,182 +344,131 @@ export default function MainHomePage() {
       {/* ── Hero Banner ── */}
       <HeroBanner />
 
-      {/* 카카오 채널 추가 */}
-      <div className="mx-4 my-3">
-        <button
-          onClick={() => {
-            const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_AITdn'
-            if (window.Kakao?.Channel) {
-              window.Kakao.Channel.addChannel({ channelPublicId: channelId })
-            } else {
-              window.open(`https://pf.kakao.com/${channelId}/friend`, '_blank')
-            }
-          }}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] rounded-xl text-[#3C1E1E] text-sm font-bold active:scale-[0.98]"
-        >
-          <span role="img" aria-label="chat">💬</span> 카카오 채널 추가하고 혜택 받기
-        </button>
-      </div>
-
-      {/* ── Live Now Section ── */}
-      {liveStreams.length > 0 && (
-        <section className="px-4 pt-5 pb-3">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md">
-                <span className="h-1.5 w-1.5 bg-[#121212] rounded-full animate-pulse" />
-                <span className="text-[10px] font-bold text-white">LIVE</span>
+      {/* ── QuickAccess: 5-column icon grid ── */}
+      <section className="px-4 py-4">
+        <div className="grid grid-cols-5 gap-2">
+          {QUICK_ACCESS.map(item => (
+            <button
+              key={item.key}
+              onClick={() => navigate(item.path)}
+              className="flex flex-col items-center gap-1.5"
+            >
+              <div className="w-12 h-12 rounded-full bg-[#1A1A1A] flex items-center justify-center text-[22px]">
+                {item.icon}
               </div>
-              <h2 className="text-[15px] font-bold text-white">지금 방송 중</h2>
+              <span className="text-[10px] font-medium text-gray-400">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* ── LiveNow: Horizontal scroll cards ── */}
+      {liveStreams.length > 0 && (
+        <section className="pt-2 pb-4">
+          <div className="flex items-center justify-between px-4 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[15px] font-bold text-white flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md">
+                  <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
+                  <span className="text-[10px] font-bold text-white">LIVE</span>
+                </span>
+                지금 라이브
+              </span>
             </div>
             <button onClick={() => navigate('/live')} className="text-[12px] text-gray-500 flex items-center">
-              더보기 <ChevronRight className="w-3.5 h-3.5" />
+              전체보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            {liveStreams.slice(0, 4).map(stream => (
+          <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {liveStreams.map(stream => (
               <LiveCard key={stream.id} stream={stream} onClick={() => navigate(`/live/${stream.id}`)} />
             ))}
           </div>
         </section>
       )}
 
-      {/* ── 카테고리 (v4 원형 아이콘) ── */}
-      <section className="px-4 py-3">
-        <div className="flex gap-3 overflow-x-auto no-scrollbar">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.key}
-              onClick={() => {
-                if (cat.key === 'live') navigate('/live')
-                else if (cat.key === 'all') navigate('/browse')
-                else navigate(`/browse?category=${cat.key}`)
-              }}
-              className="flex flex-col items-center gap-1 shrink-0"
-            >
-              <div className="w-12 h-12 rounded-full bg-[#1A1A1A] flex items-center justify-center text-[22px]">
-                {cat.icon}
-              </div>
-              <span className="text-[10px] font-medium text-gray-400">{cat.label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 라이브 예고 (그립 스타일) ── */}
+      {/* ── Scheduled Streams: Horizontal scroll cards ── */}
       {scheduledStreams.length > 0 && (
         <section className="pb-4">
           <div className="flex items-center justify-between px-4 mb-3">
-            <h2 className="text-[15px] font-bold text-white">라이브 예고</h2>
+            <h2 className="text-[15px] font-bold text-white flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-blue-400" />
+              라이브 예고
+            </h2>
             <button onClick={() => navigate('/live')} className="text-[12px] text-gray-500 flex items-center">
-              더보기 <ChevronRight className="w-3.5 h-3.5" />
+              전체보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {scheduledStreams.map(stream => {
+              const thumb = getThumb(stream)
+              const schedDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null
+              const timeLabel = schedDate ? schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
+              const dateLabel = schedDate ? `${schedDate.getMonth() + 1}/${schedDate.getDate()}` : ''
 
-          {/* 날짜 탭 바 */}
-          <ScheduleDateTabs
-            selectedDate={selectedScheduleDate}
-            onSelect={setSelectedScheduleDate}
-          />
-
-          {/* 예고 카드 가로 스크롤 */}
-          <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1 mt-3" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {scheduledStreams
-              .filter(s => {
-                if (!selectedScheduleDate || !s.scheduled_at) return true
-                const streamDate = new Date(s.scheduled_at).toDateString()
-                return streamDate === selectedScheduleDate.toDateString()
-              })
-              .map(stream => {
-                const schedDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null
-                const dayLabel = schedDate ? getDayLabel(schedDate) : ''
-                const timeLabel = schedDate ? schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
-                const thumb = stream.youtube_video_id
-                  ? `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`
-                  : stream.thumbnail_url || stream.image_url || null
-
-                return (
-                  <button
-                    key={stream.id}
-                    onClick={() => navigate(`/live/${stream.id}`)}
-                    className="flex-shrink-0 w-[220px] bg-[#121212] rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform border border-[#1A1A1A]"
-                  >
-                    {/* 썸네일 */}
-                    <div className="relative aspect-[3/4] bg-[#0A0A0A]">
-                      {thumb ? (
-                        <img src={thumb} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-900/30 to-purple-900/30">
-                          <Play className="w-10 h-10 text-gray-600" />
-                        </div>
-                      )}
-
-                      {/* 셀러명 오버레이 */}
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                          <span className="text-[9px] font-bold text-white">{stream.seller_name?.charAt(0) || '?'}</span>
-                        </div>
-                        <span className="text-[11px] font-bold text-white drop-shadow-lg">{stream.seller_name || '셀러'}</span>
-                      </div>
-
-                      {/* 날짜/시간 오버레이 */}
-                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-3 px-3">
-                        <p className="text-[12px] text-white/80 font-medium">{dayLabel}</p>
-                        <p className="text-[22px] font-black text-white leading-tight">{timeLabel}</p>
-                      </div>
-                    </div>
-
-                    {/* 상품 정보 */}
-                    {stream.current_product && (
-                      <div className="px-3 py-2 flex items-center gap-2 border-t border-[#1A1A1A]">
-                        <div className="w-10 h-10 rounded-lg bg-[#1A1A1A] overflow-hidden shrink-0">
-                          {/* 상품 이미지 대체 */}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] text-gray-400 truncate">{stream.current_product.name}</p>
-                          <p className="text-[11px] font-bold text-white">{stream.current_product.price?.toLocaleString()}원</p>
-                        </div>
+              return (
+                <button
+                  key={stream.id}
+                  onClick={() => navigate(`/live/${stream.id}`)}
+                  className="shrink-0 w-[148px] text-left active:scale-[0.98] transition-transform"
+                >
+                  <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-[#1A1A1A]">
+                    {thumb ? (
+                      <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-blue-900/30 to-purple-900/30 flex items-center justify-center">
+                        <Play className="w-8 h-8 text-gray-600" />
                       </div>
                     )}
 
-                    {/* 제목 */}
-                    <div className="px-3 py-2">
-                      <p className="text-[11px] text-gray-400 line-clamp-2 leading-relaxed">{stream.title}</p>
+                    {/* Scheduled badge */}
+                    <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-500 px-2 py-0.5 rounded-md">
+                      <Clock className="h-2.5 w-2.5 text-white" />
+                      <span className="text-[10px] font-bold text-white">예정</span>
                     </div>
 
-                    {/* 방송 알림 받기 버튼 */}
-                    <div className="px-3 pb-3">
-                      <BroadcastNotifyButton streamId={stream.id} compact />
+                    {/* Date/time overlay at bottom */}
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-10 pb-2 px-2">
+                      <p className="text-[10px] text-white/70">{dateLabel}</p>
+                      <p className="text-[16px] font-black text-white leading-tight">{timeLabel}</p>
                     </div>
-                  </button>
-                )
-              })}
-            {scheduledStreams.filter(s => {
-              if (!selectedScheduleDate || !s.scheduled_at) return true
-              return new Date(s.scheduled_at).toDateString() === selectedScheduleDate.toDateString()
-            }).length === 0 && (
-              <div className="w-full text-center py-8">
-                <p className="text-xs text-gray-600">이 날짜에 예정된 방송이 없습니다</p>
-              </div>
-            )}
+
+                    {/* Seller avatar */}
+                    {stream.seller_name && (
+                      <div className="absolute top-2 right-2">
+                        <div className="w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+                          <span className="text-[9px] font-bold text-white">{stream.seller_name.charAt(0)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 px-0.5">
+                    <p className="text-[12px] font-bold text-white leading-tight truncate">{stream.title}</p>
+                    {stream.seller_name && (
+                      <p className="text-[10px] text-gray-500 mt-0.5">{stream.seller_name}</p>
+                    )}
+                  </div>
+
+                  {/* Notify button */}
+                  <div className="mt-1.5 px-0.5">
+                    <BroadcastNotifyButton streamId={stream.id} compact />
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </section>
       )}
 
-      {/* ── 지금 뜨는 공동구매 (가로 스크롤) ── */}
-      <TrendingGroupBuySection />
+      {/* ── GroupBuyRow: Vertical list cards ── */}
+      <GroupBuyRow />
 
-      {/* ── UR 특가 ── */}
-      {/* ── 맛집 공동구매 섹션 ── */}
-      <GroupBuySection />
-
+      {/* ── ProductGrid: 3-column grid ── */}
       {products.length > 0 && (
-        <section className="px-4 py-4 bg-[#0A0A0A]">
+        <section className="px-4 py-4">
           <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-[15px] font-bold text-white">UR 특가 🔥</h2>
-              <p className="text-[11px] text-gray-500">라이브 없이도 구매 가능한 인기 상품</p>
-            </div>
+            <h2 className="text-[15px] font-bold text-white">UR 특가 🔥</h2>
             <button onClick={() => navigate('/browse')} className="text-[12px] text-gray-500 flex items-center">
               전체보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -710,8 +483,8 @@ export default function MainHomePage() {
 
       {/* ── Ended / Replay streams ── */}
       {endedStreams.length > 0 && (
-        <section className="px-4 py-4">
-          <div className="flex items-center justify-between mb-3">
+        <section className="pt-2 pb-4">
+          <div className="flex items-center justify-between px-4 mb-3">
             <h2 className="text-[15px] font-bold text-white flex items-center gap-1.5">
               <Play className="w-4 h-4 text-gray-500" />
               다시보기
@@ -720,8 +493,8 @@ export default function MainHomePage() {
               더보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            {endedStreams.slice(0, 4).map(stream => (
+          <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {endedStreams.slice(0, 6).map(stream => (
               <LiveCard key={stream.id} stream={stream} onClick={() => navigate(`/live/${stream.id}`)} />
             ))}
           </div>
@@ -743,31 +516,13 @@ export default function MainHomePage() {
         </div>
       )}
 
-      {/* 최근 본 상품 */}
+      {/* Recently viewed */}
       <RecentlyViewed />
 
-      {/* 신규 가입자 친구 초대 유도 */}
+      {/* Invite prompt for new users */}
       <InvitePrompt />
 
       <SiteFooter />
-
-      {/* 카카오 채널 채팅 플로팅 버튼 */}
-      <button
-        onClick={() => {
-          const channelId = import.meta.env.VITE_KAKAO_CHANNEL_ID || '_AITdn'
-          if (window.Kakao?.Channel) {
-            window.Kakao.Channel.chat({ channelPublicId: channelId })
-          } else {
-            window.open(`https://pf.kakao.com/${channelId}/chat`, '_blank')
-          }
-        }}
-        className="fixed bottom-20 right-4 z-40 w-12 h-12 bg-[#FEE500] rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-        aria-label="카카오 채널 채팅"
-      >
-        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#3C1E1E">
-          <path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.88 5.32 4.71 6.73-.16.57-.58 2.07-.67 2.39-.1.39.14.39.3.28.12-.08 1.94-1.31 2.73-1.84.63.09 1.28.14 1.93.14 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
-        </svg>
-      </button>
     </div>
   )
 }
@@ -814,16 +569,16 @@ function RecentlyViewed() {
 
   return (
     <div className="px-4 py-6">
-      <h2 className="text-lg font-bold text-white mb-3">최근 본 상품</h2>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+      <h2 className="text-[15px] font-bold text-white mb-3">최근 본 상품</h2>
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
         {items.map((p) => (
           <div key={p.id} onClick={() => navigate(`/products/${p.id}`)}
-            className="shrink-0 w-28 cursor-pointer">
+            className="shrink-0 w-28 cursor-pointer active:scale-[0.98] transition-transform">
             <div className="aspect-square bg-[#1A1A1A] rounded-xl overflow-hidden">
-              {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" />}
+              {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" loading="lazy" />}
             </div>
-            <p className="text-xs text-gray-300 mt-1.5 truncate">{p.name}</p>
-            <p className="text-xs font-bold text-white">{p.price?.toLocaleString()}원</p>
+            <p className="text-[11px] text-gray-300 mt-1.5 truncate">{p.name}</p>
+            <p className="text-[12px] font-bold text-white">{p.price?.toLocaleString()}원</p>
           </div>
         ))}
       </div>

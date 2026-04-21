@@ -1141,58 +1141,49 @@ export default function ReelCard({
             </div>
           )}
 
-          {/* 하단 바: 현재 상품 + 장바구니 + 구매 */}
-          <div className="flex items-center gap-2 w-full rounded-2xl bg-white px-3 py-2.5 shadow-lg">
-
-            {/* Product info */}
-            <div
-              className="flex flex-col items-start min-w-0 flex-1 text-left animate-fade-in"
+          {/* v4 Cinema: 하단 상품 바 (글래스모피즘) */}
+          <div className="flex items-stretch w-full rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <div className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2.5"
               key={currentProduct?.id || 'default'}
             >
-              <h3 className="text-[13px] font-bold text-gray-900 leading-tight truncate w-full">
-                {safeProduct.name}
-              </h3>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-[15px] font-extrabold text-red-500">
-                  {(safeProduct.price || 0).toLocaleString()}원
-                </span>
-                {(safeProduct.originalPrice || safeProduct.original_price) && (
-                  <span className="text-[10px] text-gray-400 line-through">
-                    {(safeProduct.originalPrice || safeProduct.original_price || 0).toLocaleString()}원
+              {/* Product image */}
+              {(safeProduct.image_url || safeProduct.image) && (
+                <img src={safeProduct.image_url || safeProduct.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-white/60 truncate">지금 소개 중</p>
+                <p className="text-[12px] font-semibold text-white/90 truncate">{safeProduct.name}</p>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  {(safeProduct.originalPrice || safeProduct.original_price || 0) > safeProduct.price && (
+                    <span className="text-[10px] text-white/40 line-through">
+                      {(safeProduct.originalPrice || safeProduct.original_price || 0).toLocaleString()}
+                    </span>
+                  )}
+                  <span className="text-[15px] font-extrabold text-white">
+                    {(safeProduct.price || 0).toLocaleString()}원
                   </span>
-                )}
+                </div>
               </div>
             </div>
-
-            {/* Basket */}
+          </div>
+          {/* v4 Cinema: 구매 버튼 2열 */}
+          <div className="grid grid-cols-2 w-full rounded-2xl overflow-hidden mt-1.5" style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.12)' }}>
             <button
               onClick={handleAddToCart}
               disabled={!product || addingToCart}
-              className={`flex items-center gap-1 shrink-0 rounded-lg bg-gray-900 px-2.5 py-2 transition-all active:scale-95 ${
-                !product || addingToCart ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-              aria-label="Add to cart"
+              className="py-2.5 text-center text-[13px] font-bold text-white active:scale-[0.98] transition-transform disabled:opacity-40"
+              style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}
             >
-              <ShoppingBag className="h-3.5 w-3.5 text-white" />
-              <span className="text-[11px] font-bold text-white">
-                {addingToCart ? '추가 중...' : '담기'}
-              </span>
+              {addingToCart ? '추가 중...' : '장바구니'}
             </button>
-
-            {/* Seller: Change Product / User: Buy */}
             {isSeller && product ? (
               <button
                 onClick={handleChangeProduct}
                 disabled={changingProduct || isCurrentProduct}
-                className={`shrink-0 rounded-lg px-3.5 py-1.5 text-[12px] font-extrabold transition-all active:scale-95 ${
-                  isCurrentProduct
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 cursor-default'
-                    : changingProduct
-                    ? 'bg-gray-500/50 text-white/50 opacity-50 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl'
-                }`}
+                className="py-2.5 text-center text-[13px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-40"
+                style={{ background: 'linear-gradient(90deg, #EF4444, #EC4899)' }}
               >
-                {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 소개 중' : '🔄 변경하기'}
+                {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 소개 중' : '🔄 변경'}
               </button>
             ) : (
               <button
@@ -1201,11 +1192,10 @@ export default function ReelCard({
                   else showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
                 }}
                 disabled={!product}
-                className={`shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95 ${
-                  !product ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                className="py-2.5 text-center text-[13px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-40"
+                style={{ background: 'linear-gradient(90deg, #EF4444, #EC4899)' }}
               >
-                구매하기
+                바로 구매
               </button>
             )}
           </div>

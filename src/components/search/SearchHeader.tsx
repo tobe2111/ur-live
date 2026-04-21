@@ -25,6 +25,7 @@ export default function SearchHeader({
   const navigate = useNavigate()
   const [inputValue, setInputValue] = useState(query)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -72,25 +73,28 @@ export default function SearchHeader({
   }
 
   return (
-    <div className="sticky top-0 z-50 bg-white border-b border-gray-100">
+    <div className="sticky top-0 z-50 bg-white">
       <div className="flex items-center gap-2 px-3 py-2.5">
-        <button onClick={() => navigate(-1)}>
-          <ChevronLeft className="w-5 h-5 text-gray-900" />
+        <button onClick={() => navigate(-1)} className="shrink-0 p-1">
+          <ChevronLeft className="w-6 h-6 text-gray-900" />
         </button>
         <div className="flex-1 relative" ref={searchRef}>
           <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
-              placeholder="상품명, 브랜드명"
-              className="w-full pl-9 pr-8 py-2 bg-gray-100 rounded-full text-[13px] text-gray-900 font-medium focus:outline-none"
+              onFocus={() => { setIsFocused(true); if (suggestions.length > 0) setShowSuggestions(true) }}
+              onBlur={() => setIsFocused(false)}
+              placeholder="상품명, 브랜드, 셀러 검색"
+              className={`w-full pl-10 pr-9 py-2.5 bg-gray-50 rounded-full text-[14px] text-gray-900 font-medium transition-all focus:outline-none ${
+                isFocused ? 'border-2 border-gray-900 bg-white' : 'border-2 border-transparent'
+              }`}
             />
             {inputValue && (
-              <button type="button" onClick={() => { setInputValue(''); setShowSuggestions(false) }} className="absolute right-3 top-1/2 -translate-y-1/2">
-                <X className="w-3.5 h-3.5 text-gray-400" />
+              <button type="button" onClick={() => { setInputValue(''); setShowSuggestions(false) }} className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                <X className="w-4 h-4 text-gray-400" />
               </button>
             )}
           </form>
@@ -112,19 +116,10 @@ export default function SearchHeader({
             </div>
           )}
         </div>
-        <button onClick={() => navigate('/cart')}>
+        <button onClick={() => navigate('/cart')} className="shrink-0 p-1">
           <ShoppingBag className="w-5 h-5 text-gray-900" />
         </button>
       </div>
-      {query && totalResults !== undefined && (
-        <div className="flex items-center justify-between px-4 py-2">
-          <div>
-            <span className="text-[13px] text-gray-900">총 </span>
-            <span className="text-[13px] font-extrabold text-red-500">{totalResults}</span>
-            <span className="text-[13px] text-gray-900">개</span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

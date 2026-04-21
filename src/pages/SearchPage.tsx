@@ -26,14 +26,18 @@ interface SearchSuggestion {
   text: string
 }
 
+const relatedKeywordsMap: Record<string, string[]> = {
+  default: ['인기상품', '신상품', '할인특가', '무료배송', '베스트셀러', '한정판'],
+}
+
 export default function SearchPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const query = searchParams.get('q') || ''
-  
+
   // React Query 훅 사용 (2글자 이상만 검색)
   const { data: searchResult, isLoading: loading, isError } = useSearch(query)
-  
+
   const [error, setError] = useState('')
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
@@ -73,19 +77,19 @@ export default function SearchPage() {
 
   const getSortedAndFilteredProducts = () => {
     if (!searchResult?.products) return []
-    
+
     let filtered = (searchResult.products as Product[]).filter(product => {
       const price = getDiscountedPrice(product.price, product.discount_rate || 0)
       return price >= priceRange.min && price <= priceRange.max
     })
-    
+
     switch (sortBy) {
       case 'price_low':
-        return filtered.sort((a, b) => 
+        return filtered.sort((a, b) =>
           getDiscountedPrice(a.price, a.discount_rate) - getDiscountedPrice(b.price, b.discount_rate)
         )
       case 'price_high':
-        return filtered.sort((a, b) => 
+        return filtered.sort((a, b) =>
           getDiscountedPrice(b.price, b.discount_rate) - getDiscountedPrice(a.price, a.discount_rate)
         )
       case 'newest':
@@ -99,8 +103,10 @@ export default function SearchPage() {
   const hasResults = !!(searchResult && searchResult.total > 0)
   const showResults = !loading && !error && query && hasResults
 
+  const relatedKeywords = relatedKeywordsMap[query] || relatedKeywordsMap.default
+
   return (
-    <div className="bg-white pb-20">
+    <div className="bg-white pb-20 min-h-screen">
       <SEO title={query ? `${query} 검색결과 - 유어딜` : '검색 - 유어딜'} description="유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요." url="/search" />
       {/* Header */}
       <SearchHeader
@@ -112,7 +118,7 @@ export default function SearchPage() {
       />
 
       {/* Content */}
-      <div className="w-full px-4 py-6">
+      <div className="w-full px-4 py-4">
         {/* States: Loading, Error, No Query, No Results */}
         <SearchStates
           loading={loading}
@@ -124,23 +130,43 @@ export default function SearchPage() {
         {/* Results Grid */}
         {showResults && (
           <>
-            {/* Sort and Filter Bar */}
+            {/* Sort and Filter Bar with chips */}
             <SortFilterBar
               totalResults={searchResult.total}
               sortBy={sortBy}
               onSortChange={setSortBy}
             />
-            
-            {/* Product Grid */}
+
+            {/* 2-column Product Grid */}
             <div className="grid grid-cols-2 gap-x-3 gap-y-6">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  highlightQuery={query}
+                />
               ))}
+            </div>
+
+            {/* Related Keywords Section */}
+            <div className="mt-10 pt-8 border-t border-gray-100">
+              <h3 className="text-[15px] font-bold text-gray-900 mb-3">함께 검색된 키워드</h3>
+              <div className="flex flex-wrap gap-2">
+                {relatedKeywords.map((keyword) => (
+                  <button
+                    key={keyword}
+                    onClick={() => handleSearch(keyword)}
+                    className="px-4 py-2 rounded-full border border-gray-200 text-[13px] text-gray-600 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  >
+                    {keyword}
+                  </button>
+                ))}
+              </div>
             </div>
           </>
         )}
       </div>
-      
+
     </div>
   )
 }
