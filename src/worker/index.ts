@@ -587,6 +587,53 @@ app.get('/api/scraper/d1/emails', async (c) => {
   }
 });
 
+// ── 어드민이 키워드 입력 → GitHub Actions 트리거 ──
+app.post('/api/scraper/d1/trigger', async (c) => {
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ error: 'Auth required' }, 401);
+  try {
+    const payload = await import('hono/jwt').then(m => m.verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256'));
+    if ((payload as any).type !== 'admin') return c.json({ error: 'Admin only' }, 403);
+  } catch { return c.json({ error: 'Invalid token' }, 401); }
+
+  const githubToken = (c.env as any).GITHUB_TOKEN;
+  const githubRepo = (c.env as any).GITHUB_REPO || 'tobe2111/ur-live';
+  if (!githubToken) {
+    return c.json({ success: false, error: 'GitHub 토큰이 설정되지 않았습니다. GITHUB_TOKEN 환경변수 필요' }, 503);
+  }
+
+  const { keywords } = await c.req.json<{ keywords: string }>();
+  if (!keywords?.trim()) return c.json({ success: false, error: '키워드를 입력하세요' }, 400);
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${githubRepo}/actions/workflows/naver-scraper.yml/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'User-Agent': 'ur-live-admin',
+        },
+        body: JSON.stringify({
+          ref: 'main',
+          inputs: { keywords: keywords.trim() },
+        }),
+      }
+    );
+
+    if (res.status === 204) {
+      return c.json({ success: true, message: '크롤링이 시작되었습니다. 5-10분 후 결과를 확인하세요.' });
+    }
+
+    const err = await res.text();
+    return c.json({ success: false, error: `GitHub API 실패: ${err}` }, 500);
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message || '크롤링 시작 실패' }, 500);
+  }
+});
+
 app.get('/api/scraper/d1/stats', async (c) => {
   const auth = c.req.header('Authorization');
   if (!auth) return c.json({ error: 'Auth required' }, 401);

@@ -171,13 +171,38 @@ export default function AdminAdScraperPage() {
   async function startScrape() {
     if (!keywords.trim()) return
     setLogs([]); setProgress(0)
-    connectSSE()
-    const res = await fetch(`${API}/api/scrape`, {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ keywords, sessionName: sessionName || undefined, concurrency }),
-    }).then(r => r.json()) as { error?: string }
-    if (res.error) { addLog(res.error, 'error'); setRunning(false) }
+
+    // 1순위: 로컬 스크래퍼 서버 시도
+    try {
+      connectSSE()
+      const res = await fetch(`${API}/api/scrape`, {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ keywords, sessionName: sessionName || undefined, concurrency }),
+      }).then(r => r.json()) as { error?: string }
+      if (!res.error) return
+      addLog(`로컬 스크래퍼 불가: ${res.error} — GitHub Actions로 전환`, 'info')
+    } catch (e: any) {
+      addLog(`로컬 스크래퍼 연결 실패 — GitHub Actions로 전환`, 'info')
+    }
+
+    // 2순위: GitHub Actions 트리거 (프로덕션)
+    try {
+      const res = await fetch(`${API}/d1/trigger`, {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ keywords }),
+      }).then(r => r.json()) as { success: boolean; message?: string; error?: string }
+      if (res.success) {
+        addLog(res.message || '크롤링 시작됨', 'done')
+        addLog('5-10분 후 "D1 결과 조회" 탭에서 확인하세요', 'info')
+      } else {
+        addLog(res.error || '크롤링 시작 실패', 'error')
+      }
+    } catch (e: any) {
+      addLog(`크롤링 시작 실패: ${e.message}`, 'error')
+    }
+    setRunning(false)
   }
 
   async function stopScrape() {
