@@ -206,6 +206,24 @@ productsRoutes.post('/', cors(), requireAuth(), async (c) => {
       }, 400);
     }
 
+    // 숫자 범위 검증 (H10: 음수/초대형/NaN 방지)
+    const price = Number(data.price);
+    const stock = Number(data.stock_quantity);
+    if (!Number.isFinite(price) || price < 0 || price > 100_000_000) {
+      return c.json({
+        success: false,
+        error: '가격은 0~1억원 범위여야 합니다.'
+      }, 400);
+    }
+    if (!Number.isInteger(stock) || stock < 0 || stock > 1_000_000) {
+      return c.json({
+        success: false,
+        error: '재고는 0~100만 정수여야 합니다.'
+      }, 400);
+    }
+    data.price = price;
+    data.stock_quantity = stock;
+
     // For sellers, force seller_id to the authenticated seller (prevent spoofing)
     if (user.type === 'seller') {
       data.seller_id = Number(user.id);

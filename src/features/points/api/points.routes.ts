@@ -85,8 +85,10 @@ pointsRoutes.get('/balance', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
+  // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일하여 TEXT/INTEGER 혼용 방지
+  const userId = String(user.id);
   const row = await DB.prepare('SELECT balance, total_charged, total_donated FROM user_points WHERE user_id = ?')
-    .bind(user.id).first<{ balance: number; total_charged: number; total_donated: number }>();
+    .bind(userId).first<{ balance: number; total_charged: number; total_donated: number }>();
 
   return c.json({
     success: true,
@@ -113,14 +115,15 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const orderId = `DEAL-${user.id}-${Date.now()}`;
+  const userId = String(user.id); // H8: 항상 문자열로 통일
+  const orderId = `DEAL-${userId}-${Date.now()}`;
 
   // pending 트랜잭션 기록
   await DB.prepare(`
     INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
     VALUES (?, 'charge', ?, ?, ?, 0, ?, ?)
   `).bind(
-    user.id, amount, 0, pkg.points, // 충전은 수수료 0 (1:1)
+    userId, amount, 0, pkg.points, // 충전은 수수료 0 (1:1)
     `딜 ${pkg.points.toLocaleString()}개 충전`, orderId
   ).run();
 
@@ -155,9 +158,10 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
   const { DB } = c.env;
 
   // pending 트랜잭션 조회 (금액 검증)
+  const userId = String(user.id); // H8: 항상 문자열로 통일
   const pending = await DB.prepare(
     'SELECT id, amount, points_amount FROM point_transactions WHERE order_id = ? AND user_id = ? AND type = ?'
-  ).bind(orderId, user.id, 'charge').first<{ id: number; amount: number; points_amount: number }>();
+  ).bind(orderId, userId, 'charge').first<{ id: number; amount: number; points_amount: number }>();
 
   if (!pending) return c.json({ success: false, error: '충전 정보를 찾을 수 없습니다' }, 404);
   if (pending.amount !== amount) return c.json({ success: false, error: '금액이 일치하지 않습니다' }, 400);
@@ -191,11 +195,11 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
       balance = balance + ?,
       total_charged = total_charged + ?,
       updated_at = datetime('now')
-  `).bind(user.id, pointsToAdd, pointsToAdd, pointsToAdd, pointsToAdd).run();
+  `).bind(userId, pointsToAdd, pointsToAdd, pointsToAdd, pointsToAdd).run();
 
   // 잔액 조회
   const updated = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
-    .bind(user.id).first<{ balance: number }>();
+    .bind(userId).first<{ balance: number }>();
 
   // 트랜잭션 업데이트
   await DB.prepare(
@@ -239,9 +243,12 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
   const { DB } = c.env;
   await ensureTables(DB);
 
+  // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일
+  const userId = String(user.id);
+
   // 잔액 확인
   const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
-    .bind(user.id).first<{ balance: number }>();
+    .bind(userId).first<{ balance: number }>();
 
   if (!wallet || wallet.balance < amount) {
     return c.json({
@@ -264,11 +271,11 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
   // 포인트 차감 (atomic: balance >= amount 조건으로 race condition 방지)
   const deductResult = await DB.prepare(
     'UPDATE user_points SET balance = balance - ?, total_donated = total_donated + ?, updated_at = datetime(\'now\') WHERE user_id = ? AND balance >= ?'
-  ).bind(amount, amount, user.id, amount).run();
+  ).bind(amount, amount, userId, amount).run();
   if (!deductResult.meta.changes) {
     return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)' }, 400);
   }
-  const updatedWallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(user.id).first<{ balance: number }>();
+  const updatedWallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(userId).first<{ balance: number }>();
   const newBalance = updatedWallet?.balance ?? 0;
 
   // 트랜잭션 기록
@@ -276,7 +283,7 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
     INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, stream_id, seller_id)
     VALUES (?, 'donate', ?, ?, ?, ?, ?, ?)
   `).bind(
-    user.id, amount, amount, newBalance,
+    userId, amount, amount, newBalance,
     `${stream.seller_name ?? '셀러'} 라이브 후원`,
     stream_id, stream.seller_id
   ).run();
@@ -285,13 +292,13 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
   const COMMISSION_RATE = await getDefaultCommissionRate(DB);
   const commissionAmount = Math.round(amount * COMMISSION_RATE);
   const creditAmount = amount - commissionAmount; // 셀러 실수령액
-  const donationOrderId = `DEAL-DON-${user.id}-${stream_id}-${Date.now()}`;
+  const donationOrderId = `DEAL-DON-${userId}-${stream_id}-${Date.now()}`;
   await DB.prepare(`
     INSERT INTO donations (live_stream_id, seller_id, donor_user_id, donor_name, amount,
       commission_amount, credit_amount, commission_rate, order_id, payment_status, message)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?)
   `).bind(
-    stream_id, stream.seller_id, user.id, '후원자',
+    stream_id, stream.seller_id, userId, '후원자',
     amount, commissionAmount, creditAmount, COMMISSION_RATE, donationOrderId, message ?? ''
   ).run();
 
@@ -320,9 +327,11 @@ pointsRoutes.get('/history', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
+  // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일
+  const userId = String(user.id);
   const { results } = await DB.prepare(
     'SELECT id, type, amount, points_amount, balance_after, description, created_at FROM point_transactions WHERE user_id = ? ORDER BY id DESC LIMIT 50'
-  ).bind(user.id).all();
+  ).bind(userId).all();
 
   return c.json({ success: true, data: results ?? [] });
 });

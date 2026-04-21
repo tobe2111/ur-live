@@ -189,12 +189,13 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
   ).bind(body.paymentKey).first<{ id: number }>();
   if (dup) return c.json({ success: false, error: '이미 처리된 결제입니다' }, 409);
 
-  // 토스 결제 승인
+  // 토스 결제 승인 (Idempotency-Key로 중복 승인 방지)
   const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
       'Content-Type': 'application/json',
+      'Idempotency-Key': `alimtalk_${body.orderId}_${body.paymentKey}`,
     },
     body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: body.amount }),
   });
