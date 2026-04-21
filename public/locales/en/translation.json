@@ -1493,5 +1493,44 @@
     "admin": "Admin",
     "live": "Live",
     "search": "Search"
+  },
+  "voucher": {
+    "myVouchers": "My Vouchers",
+    "empty": "No vouchers yet",
+    "emptyHint": "Join a restaurant group buy!",
+    "exploreRestaurants": "Browse Restaurants",
+    "expiresAt": "Expires",
+    "usedAt": "Used on",
+    "until": "",
+    "scan": "Show QR",
+    "copy": "Copy",
+    "showQrAtStore": "Show this QR code at the store",
+    "seoTitle": "My Vouchers - YourDeal",
+    "seoDescription": "View and use your purchased meal vouchers",
+    "status": {
+      "unused": "Available",
+      "used": "Used",
+      "expired": "Expired",
+      "refunded": "Refunded"
+    },
+    "verify": {
+      "title": "Voucher Verification",
+      "subtitle": "Enter the customer's voucher code",
+      "codeLabel": "Voucher Code",
+      "codePlaceholder": "UR-XXXX-XXXX",
+      "qrHint": "Paste QR scan result to auto-extract the code",
+      "lookup": "Look up",
+      "alreadyUsed": "Voucher already used",
+      "expired": "Voucher expired",
+      "lookupAnother": "Look up another voucher",
+      "enterPin": "Verification PIN",
+      "pinPlaceholder": "Enter PIN",
+      "confirm": "Confirm Use",
+      "cancel": "Cancel",
+      "notFound": "Voucher not found",
+      "processingError": "An error occurred while processing",
+      "seoTitle": "Voucher Verification",
+      "seoDescription": "Verify a voucher by QR code"
+    }
   }
 }

@@ -1493,5 +1493,44 @@
     "admin": "관리자",
     "live": "라이브",
     "search": "검색"
+  },
+  "voucher": {
+    "myVouchers": "내 식사권",
+    "empty": "아직 식사권이 없습니다",
+    "emptyHint": "맛집 공동구매에 참여해보세요!",
+    "exploreRestaurants": "맛집 둘러보기",
+    "expiresAt": "유효기간",
+    "usedAt": "사용일",
+    "until": "까지",
+    "scan": "QR 보기",
+    "copy": "복사",
+    "showQrAtStore": "매장에서 이 QR 코드를 보여주세요",
+    "seoTitle": "내 식사권 - 유어딜",
+    "seoDescription": "구매한 식사권을 확인하고 사용하세요",
+    "status": {
+      "unused": "사용 가능",
+      "used": "사용 완료",
+      "expired": "만료됨",
+      "refunded": "환불됨"
+    },
+    "verify": {
+      "title": "식사권 인증",
+      "subtitle": "고객의 바우처 코드를 확인하세요",
+      "codeLabel": "바우처 코드",
+      "codePlaceholder": "UR-XXXX-XXXX",
+      "qrHint": "QR 스캔 결과를 붙여넣기하면 자동으로 코드가 추출됩니다",
+      "lookup": "조회하기",
+      "alreadyUsed": "이미 사용된 바우처",
+      "expired": "만료된 바우처",
+      "lookupAnother": "다른 바우처 조회",
+      "enterPin": "인증 비밀번호",
+      "pinPlaceholder": "비밀번호 입력",
+      "confirm": "사용 확인",
+      "cancel": "취소",
+      "notFound": "바우처를 찾을 수 없습니다",
+      "processingError": "처리 중 오류가 발생했습니다",
+      "seoTitle": "식사권 확인",
+      "seoDescription": "QR 코드로 식사권을 확인합니다"
+    }
   }
 }

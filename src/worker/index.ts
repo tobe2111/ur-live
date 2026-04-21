@@ -839,6 +839,10 @@ app.route('/api/invite', inviteRewardRoutes);
 import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
 app.route('/api/referral-tree', referralTreeRoutes);
 
+// ── CS 신고 (유저 신고 접수) ──
+import { reportsRoutes } from '../features/reports/api/reports.routes';
+app.route('/api/reports', reportsRoutes);
+
 // ── 방송 알림 구독 ──
 import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 app.route('/api/broadcast-notify', broadcastNotifyRoutes);
