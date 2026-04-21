@@ -11,6 +11,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL, ALLOWED_ORIGINS } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
@@ -137,7 +138,7 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
 });
 
 // ── POST /api/points/charge/confirm ──────────────────────────────────
-pointsRoutes.post('/charge/confirm', requireAuth(), async (c) => {
+pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -221,7 +222,7 @@ pointsRoutes.post('/charge/confirm', requireAuth(), async (c) => {
 
 // ── POST /api/points/donate ──────────────────────────────────────────
 // 딜 포인트로 후원 (결제 없이 즉시 차감)
-pointsRoutes.post('/donate', requireAuth(), async (c) => {
+pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -337,7 +338,7 @@ const AD_DAILY_LIMIT = 10;      // 하루 최대 10회
 const AD_REWARD_DESC_PREFIX = '[광고리워드]'; // description 기반 구분
 
 // POST /api/points/ad-reward — 광고 시청 완료 후 딜 지급
-pointsRoutes.post('/ad-reward', requireAuth(), async (c) => {
+pointsRoutes.post('/ad-reward', rateLimit({ action: 'points_ad_reward', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -431,7 +432,7 @@ pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
 });
 
 // ── POST /api/points/pay — 딜로 상품 결제 ───────────────────────────
-pointsRoutes.post('/pay', requireAuth(), async (c) => {
+pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 

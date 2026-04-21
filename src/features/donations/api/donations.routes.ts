@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL } from '@/shared/constants';
 
@@ -22,7 +23,7 @@ donationsRoutes.use('*', cors({
 // ── POST /api/donations/init ─────────────────────────────────────────────────
 // 후원 결제 시작: pending 레코드를 DB에 저장 후 토스 결제 정보 반환
 // confirm 단계에서 DB 저장 금액으로 검증하여 금액 조작을 방지합니다.
-donationsRoutes.post('/init', requireAuth(), async (c) => {
+donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const userId = user.id;
@@ -115,7 +116,7 @@ donationsRoutes.post('/init', requireAuth(), async (c) => {
 
 // ── POST /api/donations/confirm ──────────────────────────────────────────────
 // 토스 결제 완료 → init에서 저장한 pending 레코드 기반으로 금액 검증 후 완료 처리
-donationsRoutes.post('/confirm', requireAuth(), async (c) => {
+donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const userId = user.id;
