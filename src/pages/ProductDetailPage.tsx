@@ -46,7 +46,10 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
   return (
     <div className="mt-3 border border-gray-200 rounded-xl p-4">
       <h3 className="text-sm font-bold text-gray-900 mb-1">리뷰 작성</h3>
-      <p className="text-xs text-pink-500 mb-3 font-medium">🎁 텍스트 50딜 · 사진 100딜 · 영상 200딜 리워드 지급!</p>
+      <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center gap-2 bg-pink-50">
+        <span className="text-sm">🎁</span>
+        <span className="text-[11px] font-semibold text-pink-700">텍스트 50딜 · 사진 100딜 · 영상 200딜 리워드</span>
+      </div>
       {/* 별점 */}
       <div className="flex gap-1 mb-3">
         {[1, 2, 3, 4, 5].map(s => (
@@ -576,24 +579,26 @@ export default function ProductDetailPage() {
           </>
         )}
 
-        {/* 공동구매 진행률 (식사권일 때만) */}
+        {/* v4 공동구매 배너 (다크 카드) */}
         {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
-          <div className="px-5 py-4 bg-white border-b border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-gray-900">공동구매 진행 중</span>
-              <span className="text-xs text-pink-400 font-bold">
-                {product.group_buy_current || 0}/{product.group_buy_target}명
-              </span>
+          <div className="px-5 py-5">
+            <div className="rounded-2xl p-4 bg-gray-900 text-white">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 bg-red-500 text-[9px] font-extrabold tracking-wide mb-2">공동구매 참여하기</span>
+                  <p className="text-[15px] font-bold">추가 15% 할인</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/60" />
+              </div>
+              <div className="flex items-center justify-between mb-1 text-[11px] text-white/70">
+                <span>{product.group_buy_current || 0}명 참여 · {product.group_buy_target}명 목표</span>
+                {product.group_buy_deadline && <GroupBuyCountdown deadline={product.group_buy_deadline} />}
+              </div>
+              <div className="w-full rounded-full overflow-hidden h-1 bg-white/15">
+                <div className="h-full rounded-full bg-gradient-to-r from-red-500 to-pink-500 transition-all duration-500"
+                  style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }} />
+              </div>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-pink-500 to-red-500 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }}
-              />
-            </div>
-            {product.group_buy_deadline && (
-              <GroupBuyCountdown deadline={product.group_buy_deadline} />
-            )}
           </div>
         )}
 
@@ -651,14 +656,12 @@ export default function ProductDetailPage() {
           />
         </div>
 
-        {/* 배송 안내 배너 */}
+        {/* v4 배송 정보 카드 */}
         <div className="px-5 py-3">
-          <div className="bg-blue-50 rounded-xl px-4 py-3 flex items-center gap-3">
-            <span className="text-lg">🚚</span>
-            <div>
-              <p className="text-xs font-bold text-blue-700">무료배송</p>
-              <p className="text-[10px] text-blue-500">50,000원 이상 구매 시 · 주문 후 2~5일 배송</p>
-            </div>
+          <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50">
+            <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            <span className="text-[12px] font-semibold text-gray-900">내일 도착 예정</span>
+            <span className="text-[11px] text-gray-500">· 5만원 이상 무료</span>
           </div>
         </div>
 
