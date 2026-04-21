@@ -50,6 +50,7 @@ interface SettlementStats {
 }
 
 function RevenueCalendar({ dailyData }: { dailyData: { date: string; revenue: number }[] }) {
+  const { t } = useTranslation()
   const today = new Date()
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
   const startDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay()
@@ -61,11 +62,11 @@ function RevenueCalendar({ dailyData }: { dailyData: { date: string; revenue: nu
     <div>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-gray-900">
-          {today.getFullYear()}년 {today.getMonth() + 1}월 수익 캘린더
+          {t('seller.settlements.revenueCalendarTitle', { year: today.getFullYear(), month: today.getMonth() + 1 })}
         </h3>
       </div>
       <div className="grid grid-cols-7 gap-1">
-        {['일', '월', '화', '수', '목', '금', '토'].map(d => (
+        {[t('seller.settlements.sun'), t('seller.settlements.mon'), t('seller.settlements.tue'), t('seller.settlements.wed'), t('seller.settlements.thu'), t('seller.settlements.fri'), t('seller.settlements.sat')].map(d => (
           <div key={d} className="text-center text-[10px] text-gray-500 py-1 font-medium">{d}</div>
         ))}
         {Array.from({ length: startDay }).map((_, i) => <div key={`e-${i}`} />)}
@@ -80,7 +81,7 @@ function RevenueCalendar({ dailyData }: { dailyData: { date: string; revenue: nu
               style={{ backgroundColor: intensity > 0 ? `rgba(236,72,153,${intensity})` : '#f3f4f6' }}
             >
               <span className={rev > 0 ? 'text-white font-bold' : 'text-gray-600'}>{i + 1}</span>
-              {rev > 0 && <span className="text-white text-[8px]">{(rev / 10000).toFixed(0)}만</span>}
+              {rev > 0 && <span className="text-white text-[8px]">{(rev / 10000).toFixed(0)}{t('seller.settlements.tenThousand')}</span>}
             </div>
           )
         })}
@@ -292,10 +293,10 @@ export default function SellerSettlementsPage() {
       <div className="max-w-7xl mx-auto">
         {/* 정산 안내 */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-700">
-          <p className="font-bold mb-1">📋 정산 안내</p>
-          <p>• 정산 주기: <strong>매주 정산</strong> (월~일 매출 → 다음 주 정산)</p>
-          <p>• 구매 확정된 주문만 정산 대상입니다</p>
-          <p>• 플랫폼 수수료 15% 차감 후 정산됩니다</p>
+          <p className="font-bold mb-1">📋 {t('seller.settlements.notice')}</p>
+          <p>• {t('seller.settlements.noticeCycle')}</p>
+          <p>• {t('seller.settlements.noticeConfirmed')}</p>
+          <p>• {t('seller.settlements.noticeCommission')}</p>
         </div>
 
         {/* Bank info warning */}
