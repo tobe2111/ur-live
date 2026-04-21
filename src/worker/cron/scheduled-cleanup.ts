@@ -133,12 +133,14 @@ export async function handleScheduled(env: Env) {
   } catch (e) { console.error('[Cron] token_cleanup error:', e) }
 
   // ── 10. 자동 구매확정: 배송 14일 경과 ──
+  // 프로덕션 DB는 대문자 상태값 사용 ('SHIPPING', 'DELIVERED').
+  // settlement_status는 'completed' 사용 (정산 자동화 스크립트와 일치).
   try {
     const { meta } = await DB.prepare(`
       UPDATE orders
-      SET status = 'delivered', delivered_at = datetime('now'),
-          settlement_status = 'confirmed', updated_at = datetime('now')
-      WHERE status IN ('shipping', 'SHIPPING')
+      SET status = 'DELIVERED', delivered_at = datetime('now'),
+          settlement_status = 'completed', updated_at = datetime('now')
+      WHERE status = 'SHIPPING'
         AND shipped_at < datetime('now', '-14 days')
     `).run();
     results.auto_confirmed = meta.changes ?? 0;
@@ -196,26 +198,39 @@ export async function handleScheduled(env: Env) {
   } catch (e) { console.error('[Cron] pre_notifications error:', e) }
 
   // ── 12. 셀러 재고 품절 임박 알림 (5개 이하) ──
+  // 24시간 시간 윈도우 기반 dedup: 제품명이 title에 포함되는지로 확인.
+  // (dashboard_notifications에 metadata 컬럼 없음 — title LIKE 매칭으로 충분)
   try {
     const { results: lowStock } = await DB.prepare(`
       SELECT p.id, p.name, p.seller_id, COALESCE(p.stock, p.stock_quantity, 0) AS stock
       FROM products p
       WHERE p.is_active = 1 AND COALESCE(p.stock, p.stock_quantity, 0) BETWEEN 1 AND 5
         AND p.seller_id IS NOT NULL
-        AND p.id NOT IN (
-          SELECT CAST(REPLACE(message, '재고 ', '') AS INTEGER) FROM dashboard_notifications
-          WHERE type = 'low_stock' AND created_at > datetime('now', '-24 hours')
-        )
-      LIMIT 20
+      LIMIT 50
     `).all<{ id: number; name: string; seller_id: number; stock: number }>();
 
+    let alertsSent = 0;
     if (lowStock?.length) {
       for (const p of lowStock) {
+        // 24시간 윈도우 dedup: 같은 셀러 + 같은 제품명에 대해 최근 알림 존재 확인
+        const existing = await DB.prepare(`
+          SELECT 1 FROM dashboard_notifications
+          WHERE recipient_type = 'seller'
+            AND recipient_id = ?
+            AND type = 'low_stock'
+            AND title LIKE ?
+            AND created_at > datetime('now', '-24 hours')
+          LIMIT 1
+        `).bind(String(p.seller_id), `%${p.name}%`).first();
+        if (existing) continue;
+
         await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
           VALUES ('seller', ?, 'low_stock', ?, ?, '/seller/products')`)
           .bind(String(p.seller_id), `⚠️ 재고 부족: ${p.name}`, `재고 ${p.stock}개 남음`).run();
+        alertsSent++;
+        if (alertsSent >= 20) break;
       }
-      results.low_stock_alerts = lowStock.length;
+      results.low_stock_alerts = alertsSent;
     }
   } catch (e) { console.error('[Cron] low_stock error:', e) }
 

@@ -174,21 +174,24 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     await DB.prepare(`CREATE TABLE IF NOT EXISTS user_points (user_id TEXT PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0, total_charged INTEGER NOT NULL DEFAULT 0, total_donated INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => {});
     await DB.prepare(`CREATE TABLE IF NOT EXISTS point_transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL, amount INTEGER NOT NULL, commission_amount INTEGER NOT NULL DEFAULT 0, points_amount INTEGER NOT NULL DEFAULT 0, balance_after INTEGER NOT NULL DEFAULT 0, description TEXT, payment_key TEXT, order_id TEXT, stream_id INTEGER, seller_id INTEGER, created_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => {});
 
+    // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일
+    const ptsUserId = String(user.id);
+
     // 잔액 조회 또는 생성
-    const pts = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(user.id).first<{ balance: number }>();
+    const pts = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(ptsUserId).first<{ balance: number }>();
     const currentBalance = pts?.balance ?? 0;
     const newBalance = currentBalance + rewardAmount;
 
     if (pts) {
       await DB.prepare('UPDATE user_points SET balance = ?, total_charged = total_charged + ?, updated_at = datetime(\'now\') WHERE user_id = ?')
-        .bind(newBalance, rewardAmount, user.id).run();
+        .bind(newBalance, rewardAmount, ptsUserId).run();
     } else {
       await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)')
-        .bind(user.id, rewardAmount, rewardAmount).run();
+        .bind(ptsUserId, rewardAmount, rewardAmount).run();
     }
 
     await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(user.id, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc).run();
+      .bind(ptsUserId, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc).run();
 
     // deal_balance도 동기화 (users 테이블)
     await DB.prepare('UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?')
