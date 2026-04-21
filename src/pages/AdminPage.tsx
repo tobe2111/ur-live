@@ -76,6 +76,11 @@ interface Alert {
   message: string
 }
 
+// Inline skeleton placeholder
+const Skel = ({ className }: { className?: string }) => (
+  <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
+)
+
 export default function AdminPage() {
   const navigate = useNavigate()
   const [sellers, setSellers] = useState<Seller[]>([])
@@ -143,6 +148,28 @@ export default function AdminPage() {
       navigate('/admin/login', { replace: true })
       return
     }
+    // sessionStorage 캐시로 즉시 렌더 (5분 TTL)
+    try {
+      const cached = sessionStorage.getItem('admin_dashboard_cache')
+      if (cached) {
+        const c = JSON.parse(cached)
+        if (Date.now() - (c.ts || 0) < 5 * 60 * 1000) {
+          const sellersData = c.sellers || []
+          const streamsData = c.streams || []
+          setSellers(sellersData)
+          setPendingSellers(c.pending || [])
+          setStreams(streamsData)
+          setLiveStreams(c.liveStreams || [])
+          setStats({
+            totalSellers: sellersData.length,
+            activeSellers: sellersData.filter((s: Seller) => s.status === 'approved').length,
+            totalStreams: streamsData.length,
+            activeStreams: streamsData.filter((s: Stream) => s.status === 'live').length,
+          })
+          setLoading(false)
+        }
+      }
+    } catch { /* 파싱 실패 무시 */ }
     loadData()
     loadDashboardStats()
     const interval = setInterval(loadDashboardStats, 5000)
@@ -150,37 +177,52 @@ export default function AdminPage() {
   }, [navigate])
 
   async function loadData() {
-    try {
-      const [sellersRes, pendingRes, streamsRes, liveStreamsRes] = await Promise.all([
-        api.get('/api/admin/sellers'),
-        api.get('/api/admin/sellers/pending'),
-        api.get('/api/streams'),
-        api.get('/api/streams?status=live'),
-      ])
-      const sellersData = sellersRes.data.data || []
-      const pendingData = pendingRes.data.data || []
-      const streamsData = streamsRes.data.data || []
-      const liveStreamsData = liveStreamsRes.data.data || []
-      setLiveStreams(liveStreamsData)
-      setSellers(sellersData)
-      setPendingSellers(pendingData)
-      setStreams(streamsData)
-      setStats({
-        totalSellers: sellersData.length,
-        activeSellers: sellersData.filter((s: Seller) => s.status === 'approved').length,
-        totalStreams: streamsData.length,
-        activeStreams: streamsData.filter((s: Stream) => s.status === 'live').length,
-      })
-      setLoading(false)
-    } catch (err: unknown) {
-      const apiErr = err as ApiError
-      if (apiErr.response?.status === 401) {
+    // Promise.allSettled: 하나 실패해도 나머지 데이터 표시
+    const [sellersRes, pendingRes, streamsRes, liveStreamsRes] = await Promise.allSettled([
+      api.get('/api/admin/sellers'),
+      api.get('/api/admin/sellers/pending'),
+      api.get('/api/streams'),
+      api.get('/api/streams?status=live'),
+    ])
+
+    // 401 체크: 첫 번째 auth 호출 실패 시 로그인으로
+    const firstAuthErr = [sellersRes, pendingRes].find(r => r.status === 'rejected')
+    if (firstAuthErr && firstAuthErr.status === 'rejected') {
+      const apiErr = firstAuthErr.reason as ApiError
+      if (apiErr?.response?.status === 401) {
         localStorage.removeItem('admin_token')
         localStorage.removeItem('user_type')
         navigate('/admin/login')
+        setLoading(false)
+        return
       }
-      setLoading(false)
     }
+
+    const sellersData = sellersRes.status === 'fulfilled' ? (sellersRes.value.data.data || []) : []
+    const pendingData = pendingRes.status === 'fulfilled' ? (pendingRes.value.data.data || []) : []
+    const streamsData = streamsRes.status === 'fulfilled' ? (streamsRes.value.data.data || []) : []
+    const liveStreamsData = liveStreamsRes.status === 'fulfilled' ? (liveStreamsRes.value.data.data || []) : []
+
+    setLiveStreams(liveStreamsData)
+    setSellers(sellersData)
+    setPendingSellers(pendingData)
+    setStreams(streamsData)
+    setStats({
+      totalSellers: sellersData.length,
+      activeSellers: sellersData.filter((s: Seller) => s.status === 'approved').length,
+      totalStreams: streamsData.length,
+      activeStreams: streamsData.filter((s: Stream) => s.status === 'live').length,
+    })
+
+    // sessionStorage 캐시 저장 (5분 TTL)
+    try {
+      sessionStorage.setItem('admin_dashboard_cache', JSON.stringify({
+        ts: Date.now(),
+        sellers: sellersData, pending: pendingData, streams: streamsData, liveStreams: liveStreamsData,
+      }))
+    } catch { /* quota 초과 무시 */ }
+
+    setLoading(false)
   }
 
   async function loadDashboardStats() {
@@ -382,17 +424,6 @@ export default function AdminPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">대시보드 불러오는 중...</p>
-        </div>
-      </div>
-    )
-  }
-
   function fmtPrice(n: number) {
     return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n || 0)
   }
@@ -471,10 +502,14 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* ── 매출 차트 + 활동 피드 ── */}
+      {/* ── 매출 차트 + 활동 피드 (스크롤 진입 시 로드) ── */}
       <div className="grid lg:grid-cols-2 gap-3 sm:gap-4">
-        <AdminRevenueChart />
-        <AdminActivityFeed />
+        <DeferUntilVisible fallback={<ChartSkeleton title="매출 추이" />}>
+          <AdminRevenueChart />
+        </DeferUntilVisible>
+        <DeferUntilVisible fallback={<ChartSkeleton title="최근 활동" />}>
+          <AdminActivityFeed />
+        </DeferUntilVisible>
       </div>
 
       {/* ── 판매자 통계 카드 ── */}
@@ -641,7 +676,15 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {sellers.length === 0 ? (
+              {loading && sellers.length === 0 ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <tr key={`skel-${i}`}>
+                    {Array.from({ length: 8 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3"><Skel className="h-4 w-full" /></td>
+                    ))}
+                  </tr>
+                ))
+              ) : sellers.length === 0 ? (
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">등록된 판매자가 없습니다</td></tr>
               ) : sellers.map(seller => (
                 <tr key={seller.id} className="hover:bg-gray-50">
@@ -705,7 +748,15 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {streams.length === 0 ? (
+              {loading && streams.length === 0 ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <tr key={`skel-s-${i}`}>
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3"><Skel className="h-4 w-full" /></td>
+                    ))}
+                  </tr>
+                ))
+              ) : streams.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">등록된 라이브가 없습니다</td></tr>
               ) : streams.map(stream => (
                 <tr key={stream.id} className="hover:bg-gray-50">
@@ -801,6 +852,47 @@ export default function AdminPage() {
         </div>
       )}
     </AdminLayout>
+  )
+}
+
+/**
+ * 자식을 뷰포트에 들어왔을 때만 마운트 (IntersectionObserver).
+ * 차트/피드 같은 무거운 위젯의 API 호출/렌더를 스크롤 진입 시점까지 지연.
+ */
+function DeferUntilVisible({ children, fallback, rootMargin = '200px' }: { children: React.ReactNode; fallback: React.ReactNode; rootMargin?: string }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    if (visible) return
+    if (typeof IntersectionObserver === 'undefined') { setVisible(true); return }
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) {
+        setVisible(true)
+        observer.disconnect()
+      }
+    }, { rootMargin })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [visible, rootMargin])
+  return <div ref={ref}>{visible ? children : fallback}</div>
+}
+
+function ChartSkeleton({ title }: { title: string }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+      </div>
+      <div className="space-y-2" style={{ minHeight: 160 }}>
+        <Skel className="h-4 w-2/3" />
+        <Skel className="h-4 w-5/6" />
+        <Skel className="h-4 w-1/2" />
+        <Skel className="h-4 w-3/4" />
+        <Skel className="h-4 w-2/3" />
+      </div>
+    </div>
   )
 }
 
