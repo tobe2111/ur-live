@@ -61,6 +61,10 @@ export interface Env {
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
 
+  // ---- Email (Resend) ----
+  RESEND_API_KEY?: string;
+  RESEND_FROM?: string;
+
   // ---- Monitoring ----
   DISCORD_WEBHOOK_URL?: string;
   SENTRY_DSN?: string;
