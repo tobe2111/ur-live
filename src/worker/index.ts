@@ -1193,6 +1193,7 @@ app.onError(errorHandler);
 
 import { handleScheduled } from './cron/scheduled-cleanup';
 import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
+import { runReconciliation } from './cron/reconciliation';
 
 export default {
   fetch: app.fetch,
@@ -1208,6 +1209,11 @@ export default {
     if (cron === '0 18 * * *') {
       ctx.waitUntil(handleAutoSettlement(env));
       ctx.waitUntil(handleExpiredVoucherRefunds(env));
+    }
+
+    // Daily 19:00 UTC (KST 04:00): reconciliation — stuck orders, orphan data, negative stock cleanup
+    if (event.cron === '0 19 * * *' || cron === '0 19 * * *') {
+      ctx.waitUntil(runReconciliation(env));
     }
   },
 };

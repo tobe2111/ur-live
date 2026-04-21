@@ -191,8 +191,23 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
 
   // ── 리뷰 리워드: 딜 포인트 지급 (platform_settings 기반) ──
   try {
-    const hasImages = body.images && body.images.length > 0;
-    const hasVideo = body.images?.some(img => /\.(mp4|webm|mov)$/i.test(img));
+    // ✅ BUG #32 FIX: Prevent review reward farming (POST → DELETE → POST again).
+    // Check if user already received a reward for this product before granting.
+    const existingReward = await DB.prepare(
+      "SELECT 1 FROM point_transactions WHERE user_id = ? AND type = 'charge' AND description LIKE ?"
+    ).bind(String(user.id), `%리뷰리워드%`).first().catch(() => null);
+    // More precise: also check product_id via description or dedicated column
+    // For now, check if there's any review reward for this user+product combo
+    const existingProductReward = await DB.prepare(
+      "SELECT 1 FROM point_transactions WHERE user_id = ? AND description LIKE ? AND description LIKE ?"
+    ).bind(String(user.id), `%리뷰리워드%`, `%${body.product_id}%`).first().catch(() => null);
+
+    if (existingProductReward) {
+      // Skip reward — already earned for this product (even if review was deleted & re-posted)
+    } else {
+      // Reward logic
+      const hasImages = body.images && body.images.length > 0;
+      const hasVideo = body.images?.some((img: string) => /\.(mp4|webm|mov)$/i.test(img));
 
     // platform_settings에서 리뷰 보상 금액 조회
     const rewardKey = hasVideo ? 'review_reward_video' : hasImages ? 'review_reward_image' : 'review_reward_text';
@@ -200,7 +215,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     const settingsRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = ?").bind(rewardKey).first<{ value: string }>().catch(() => null);
     const rewardAmount = settingsRow?.value ? parseInt(settingsRow.value) : defaultReward;
 
-    const rewardDesc = hasVideo ? '[리뷰리워드] 영상 리뷰 작성' : hasImages ? '[리뷰리워드] 사진 리뷰 작성' : '[리뷰리워드] 텍스트 리뷰 작성';
+    const rewardDesc = hasVideo ? `[리뷰리워드] 영상 리뷰 작성 (product:${body.product_id})` : hasImages ? `[리뷰리워드] 사진 리뷰 작성 (product:${body.product_id})` : `[리뷰리워드] 텍스트 리뷰 작성 (product:${body.product_id})`;
 
     // user_points 테이블이 없으면 생성
     await DB.prepare(`CREATE TABLE IF NOT EXISTS user_points (user_id TEXT PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0, total_charged INTEGER NOT NULL DEFAULT 0, total_donated INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => {});
@@ -242,6 +257,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
       `🎁 리뷰 작성 보상으로 ${rewardAmount}딜이 지급되었습니다!`,
       '/user/profile'
     ).run().catch(() => {});
+    } // end else (no existingProductReward)
   } catch { /* 포인트 지급 실패해도 리뷰는 성공 */ }
 
   // 실제 유저 리뷰 → sold_count 2~3 증가
