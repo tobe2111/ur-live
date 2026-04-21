@@ -261,7 +261,7 @@ function AppContent() {
         useAuthWorld.getState().setUser(cred.user)
         useAuthWorld.getState().setAuthReady(true)
       } catch (err) {
-        console.error('[App] Firebase token login failed:', err)
+        if (import.meta.env.DEV) console.error('[App] Firebase token login failed:', err)
       } finally {
         const p = new URLSearchParams(window.location.search)
         p.delete('firebase_token'); p.delete('userName'); p.delete('profileImage')
@@ -311,7 +311,7 @@ function AppContent() {
       try {
         useAuthWorld.getState().initializeAuth()
       } catch (err) {
-        console.error('[App] ❌ 인증 초기화 실패:', err)
+        if (import.meta.env.DEV) console.error('[App] ❌ 인증 초기화 실패:', err)
         useAuthWorld.getState().setAuthReady(true)
       }
     }

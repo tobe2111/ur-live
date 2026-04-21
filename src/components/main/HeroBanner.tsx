@@ -30,7 +30,7 @@ export default function HeroBanner() {
           setBanners(data)
         }
       })
-      .catch(err => console.warn('[HeroBanner] Failed to load banners:', err))
+      .catch(err => { if (import.meta.env.DEV) console.warn('[HeroBanner] Failed to load banners:', err) })
       .finally(() => setLoading(false))
   }, [])
 

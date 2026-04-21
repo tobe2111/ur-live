@@ -517,7 +517,7 @@ export default function UserProfilePage() {
               }
             }
           } catch (e) {
-            console.warn('[UserProfilePage] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
+            if (import.meta.env.DEV) console.warn('[UserProfilePage] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
           }
 
           navigate('/user/profile', { replace: true })

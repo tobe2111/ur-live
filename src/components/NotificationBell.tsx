@@ -43,7 +43,7 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
       
       // 🔧 3번 이상 연속 에러 시 polling 중지 (console에 경고)
       if (errorCount >= 2) {
-        console.warn('[Notifications] ⚠️ Too many errors, stopping auto-refresh')
+        if (import.meta.env.DEV) console.warn('[Notifications] ⚠️ Too many errors, stopping auto-refresh')
       }
     } finally {
       setLoading(false)
@@ -104,7 +104,7 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
   useEffect(() => {
     // 🔧 에러가 3번 이상이면 polling 중지
     if (errorCount >= 3) {
-      console.warn('[Notifications] ⚠️ Polling disabled due to repeated errors')
+      if (import.meta.env.DEV) console.warn('[Notifications] ⚠️ Polling disabled due to repeated errors')
       return
     }
     

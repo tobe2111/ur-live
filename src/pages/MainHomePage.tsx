@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Search, ShoppingCart, Eye, Play, ChevronRight, Clock, ShoppingBag, Bell, MapPin, ChevronDown } from 'lucide-react'
+import { Search, ShoppingCart, Eye, Play, Clock, Bell, MapPin, ChevronDown } from 'lucide-react'
 import api from '@/lib/api'
 import axios from 'axios'
 import SiteFooter from '@/components/main/SiteFooter'

@@ -74,7 +74,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
 
     // 이미 재시도했으면 에러 UI 표시
     if (retryCount > 0) {
-      console.warn('[ChunkErrorBoundary] Already retried, showing error UI');
+      if (import.meta.env.DEV) console.warn('[ChunkErrorBoundary] Already retried, showing error UI');
       return;
     }
 

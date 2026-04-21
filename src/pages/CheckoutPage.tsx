@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'

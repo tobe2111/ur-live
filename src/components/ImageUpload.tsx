@@ -74,7 +74,7 @@ export default function ImageUpload({
             setStorageType(response.data.storage)
             
             if (response.data.warning) {
-              console.warn('[Image Upload]', response.data.warning)
+              if (import.meta.env.DEV) console.warn('[Image Upload]', response.data.warning)
             }
           } else {
             throw new Error(response.data.error || '업로드 실패')

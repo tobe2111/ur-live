@@ -58,7 +58,7 @@ export default function KakaoCallbackPage() {
             useAuthWorld.getState().setUser(cred.user)
             useAuthWorld.getState().setAuthReady(true)
           } catch (e) {
-            console.warn('[KakaoCallback] Firebase failed (세션 쿠키로 진행):', e)
+            if (import.meta.env.DEV) console.warn('[KakaoCallback] Firebase failed (세션 쿠키로 진행):', e)
           }
         }
 
