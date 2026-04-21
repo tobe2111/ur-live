@@ -124,6 +124,15 @@ api.interceptors.request.use(
       // seller_token 없으면 Firebase fallthrough (공개 셀러 API 등)
     }
 
+    // ── Agency API (/api/agency/*) ─────────────────────────────────────────
+    if (url.startsWith('/api/agency/')) {
+      const token = localStorage.getItem('agency_token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+        return config;
+      }
+    }
+
     // ── Admin API (/api/admin/*) ───────────────────────────────────────────
     if (url.startsWith('/api/admin/')) {
       const token = localStorage.getItem('admin_token');
@@ -226,11 +235,12 @@ api.interceptors.response.use(
       // 공개 API 401 무시
       if (isPublicAPI(url)) return Promise.reject(error);
 
-      // ── Seller / Admin: Refresh Token 시도 ────────────────────────────
-      if (url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/')) {
+      // ── Seller / Admin / Agency: Refresh Token 시도 ────────────────────────
+      if (url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/') || url.includes('/api/agency/')) {
         const isSeller = url.includes('/api/seller/') || url.includes('/api/youtube/');
-        const tokenKey = isSeller ? 'seller_token' : 'admin_token';
-        const refreshTokenKey = isSeller ? 'seller_refresh_token' : 'admin_refresh_token';
+        const isAgency = url.includes('/api/agency/');
+        const tokenKey = isAgency ? 'agency_token' : isSeller ? 'seller_token' : 'admin_token';
+        const refreshTokenKey = isAgency ? 'agency_refresh_token' : isSeller ? 'seller_refresh_token' : 'admin_refresh_token';
         const refreshToken = localStorage.getItem(refreshTokenKey);
 
         if (refreshToken) {
@@ -253,11 +263,18 @@ api.interceptors.response.use(
 
         // Refresh 불가 → 강제 로그아웃
         const { clearAuthData } = await import('@/utils/auth');
-        clearAuthData(isSeller ? 'seller' : 'admin');
-        captureError(new Error(`${isSeller ? 'Seller' : 'Admin'} 401: Token expired`), { url });
+        const roleLabel = isAgency ? 'Agency' : isSeller ? 'Seller' : 'Admin';
+        if (isAgency) {
+          localStorage.removeItem('agency_token');
+          localStorage.removeItem('agency_refresh_token');
+        } else {
+          clearAuthData(isSeller ? 'seller' : 'admin');
+        }
+        captureError(new Error(`${roleLabel} 401: Token expired`), { url });
 
-        alert(isSeller ? '셀러 인증이 만료되었습니다.\n다시 로그인해주세요.' : '관리자 인증이 만료되었습니다.\n다시 로그인해주세요.');
-        window.location.href = isSeller ? '/seller/login' : '/admin/login';
+        const loginUrl = isAgency ? '/agency/login' : isSeller ? '/seller/login' : '/admin/login';
+        alert(`${roleLabel === 'Agency' ? '에이전시' : roleLabel === 'Seller' ? '셀러' : '관리자'} 인증이 만료되었습니다.\n다시 로그인해주세요.`);
+        window.location.href = loginUrl;
         return Promise.reject(error);
       }
 

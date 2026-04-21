@@ -7,7 +7,7 @@ export default function AgencySettlementsPage() {
   const [data, setData] = useState<any[]>([])
   const [summary, setSummary] = useState<any>({})
   const [loading, setLoading] = useState(true)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   useEffect(() => {
     api.get('/api/agency/settlements', { headers })

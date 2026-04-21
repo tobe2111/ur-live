@@ -7,7 +7,7 @@ export default function AgencySchedulePage() {
   const [streams, setStreams] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   useEffect(() => {
     api.get('/api/agency/schedule', { headers })

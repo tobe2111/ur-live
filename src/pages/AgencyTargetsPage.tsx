@@ -10,7 +10,7 @@ export default function AgencyTargetsPage() {
   const [loading, setLoading] = useState(true)
   const [editId, setEditId] = useState<number | null>(null)
   const [editValue, setEditValue] = useState('')
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   const load = (m: string) => {
     setLoading(true)

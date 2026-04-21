@@ -42,7 +42,7 @@ interface Order {
 
 function NotificationList() {
   const [notifs, setNotifs] = useState<any[]>([])
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
   useEffect(() => {
     api.get('/api/agency/notifications', { headers })
       .then(r => { if (r.data.success) setNotifs((r.data.data || []).slice(0, 5)) })

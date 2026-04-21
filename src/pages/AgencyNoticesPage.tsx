@@ -10,7 +10,7 @@ export default function AgencyNoticesPage() {
   const [sending, setSending] = useState(false)
   const [notices, setNotices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   useEffect(() => {
     api.get('/api/agency/notices', { headers })

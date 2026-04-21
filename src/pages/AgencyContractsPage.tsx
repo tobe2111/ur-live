@@ -10,7 +10,7 @@ export default function AgencyContractsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ seller_id: '', start_date: '', end_date: '', terms: '' })
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   const load = () => {
     setLoading(true)

@@ -9,7 +9,7 @@ export default function AgencyProfilePage() {
   const [form, setForm] = useState({ name: '', contact_name: '', phone: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   useEffect(() => {
     api.get('/api/agency/profile', { headers })

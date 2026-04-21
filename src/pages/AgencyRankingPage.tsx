@@ -7,7 +7,7 @@ export default function AgencyRankingPage() {
   const [sellers, setSellers] = useState<any[]>([])
   const [metric, setMetric] = useState<'revenue' | 'orders'>('revenue')
   const [loading, setLoading] = useState(true)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   useEffect(() => {
     setLoading(true)

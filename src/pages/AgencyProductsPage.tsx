@@ -15,7 +15,7 @@ export default function AgencyProductsPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState({ name: '', description: '', price: 0, original_price: 0, stock: 100, image_url: '', category: 'general' })
   const [submitting, setSubmitting] = useState(false)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   useEffect(() => {
     if (!sellerId) return
