@@ -560,9 +560,9 @@ export default function MainHomePage() {
         </section>
       )}
 
-      {/* ── 카테고리 (v4 pill 스타일) ── */}
+      {/* ── 카테고리 (v4 원형 아이콘) ── */}
       <section className="px-4 py-3">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex gap-3 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(cat => (
             <button
               key={cat.key}
@@ -571,10 +571,12 @@ export default function MainHomePage() {
                 else if (cat.key === 'all') navigate('/browse')
                 else navigate(`/browse?category=${cat.key}`)
               }}
-              className="flex items-center gap-1.5 shrink-0 px-4 py-2.5 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] active:scale-95 transition-transform"
+              className="flex flex-col items-center gap-1 shrink-0"
             >
-              <span className="text-base">{cat.icon}</span>
-              <span className="text-[12px] font-semibold text-gray-300">{cat.label}</span>
+              <div className="w-12 h-12 rounded-full bg-[#1A1A1A] flex items-center justify-center text-[22px]">
+                {cat.icon}
+              </div>
+              <span className="text-[10px] font-medium text-gray-400">{cat.label}</span>
             </button>
           ))}
         </div>
