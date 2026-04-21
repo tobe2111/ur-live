@@ -10,6 +10,7 @@
 
 import type { Env } from '../types/env';
 import { sendDiscordAlert } from '../utils/discord-alert';
+import { ensureUserPointsTable } from '../utils/ensure-tables';
 
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
@@ -120,16 +121,7 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       // Refund deal points if paid with deal_points — user_points 테이블 사용
       if (voucher.payment_method === 'deal_points' && voucher.user_id && voucher.price) {
         try {
-          await DB.prepare(
-            `CREATE TABLE IF NOT EXISTS user_points (
-              user_id TEXT PRIMARY KEY,
-              balance INTEGER NOT NULL DEFAULT 0,
-              total_charged INTEGER NOT NULL DEFAULT 0,
-              total_donated INTEGER NOT NULL DEFAULT 0,
-              created_at DATETIME DEFAULT (datetime('now')),
-              updated_at DATETIME DEFAULT (datetime('now'))
-            )`
-          ).run();
+          await ensureUserPointsTable(DB);
           const existingPts = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
             .bind(voucher.user_id).first<{ balance: number }>();
           if (existingPts) {

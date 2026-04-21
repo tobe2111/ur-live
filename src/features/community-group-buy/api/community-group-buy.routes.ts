@@ -18,6 +18,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
+import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 
 const communityGroupBuyRoutes = new Hono<{ Bindings: Env }>();
 
@@ -112,18 +113,7 @@ communityGroupBuyRoutes.post('/create', requireAuth(), async (c) => {
   const userId = String(user.id);
 
   // 딜 포인트 차감 (보증금) — user_points 테이블 사용 (production에는 users.deal_balance 없음)
-  try {
-    await DB.prepare(
-      `CREATE TABLE IF NOT EXISTS user_points (
-        user_id TEXT PRIMARY KEY,
-        balance INTEGER NOT NULL DEFAULT 0,
-        total_charged INTEGER NOT NULL DEFAULT 0,
-        total_donated INTEGER NOT NULL DEFAULT 0,
-        created_at DATETIME DEFAULT (datetime('now')),
-        updated_at DATETIME DEFAULT (datetime('now'))
-      )`
-    ).run();
-  } catch { /* ignore */ }
+  await ensureUserPointsTable(DB);
 
   const deductResult = await executeRun(
     DB,
@@ -235,18 +225,7 @@ communityGroupBuyRoutes.post('/join/:code', requireAuth(), async (c) => {
   const depositAmount = group.deposit_per_person;
 
   // 딜 포인트 차감 — user_points 테이블 사용
-  try {
-    await DB.prepare(
-      `CREATE TABLE IF NOT EXISTS user_points (
-        user_id TEXT PRIMARY KEY,
-        balance INTEGER NOT NULL DEFAULT 0,
-        total_charged INTEGER NOT NULL DEFAULT 0,
-        total_donated INTEGER NOT NULL DEFAULT 0,
-        created_at DATETIME DEFAULT (datetime('now')),
-        updated_at DATETIME DEFAULT (datetime('now'))
-      )`
-    ).run();
-  } catch { /* ignore */ }
+  await ensureUserPointsTable(DB);
 
   const deductResult = await executeRun(
     DB,
@@ -573,18 +552,7 @@ communityGroupBuyRoutes.post('/:id/refund', requireAuth(), async (c) => {
   );
 
   // user_points 테이블 보장
-  try {
-    await DB.prepare(
-      `CREATE TABLE IF NOT EXISTS user_points (
-        user_id TEXT PRIMARY KEY,
-        balance INTEGER NOT NULL DEFAULT 0,
-        total_charged INTEGER NOT NULL DEFAULT 0,
-        total_donated INTEGER NOT NULL DEFAULT 0,
-        created_at DATETIME DEFAULT (datetime('now')),
-        updated_at DATETIME DEFAULT (datetime('now'))
-      )`
-    ).run();
-  } catch { /* ignore */ }
+  await ensureUserPointsTable(DB);
 
   let refundCount = 0;
   for (const member of members) {
