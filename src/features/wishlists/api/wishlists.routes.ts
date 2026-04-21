@@ -69,7 +69,7 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
       SELECT w.id, w.user_id, w.product_id, w.created_at,
              p.name as product_name, p.price, p.original_price,
              p.discount_rate, p.image_url, p.stock, p.category,
-             s.display_name as seller_name
+             s.name as seller_name
       FROM wishlists w
       JOIN products p ON w.product_id = p.id
       LEFT JOIN sellers s ON p.seller_id = s.id
@@ -230,12 +230,20 @@ wishlistRoutes.delete('/product/:productId', requireAuth(), async (c) => {
 });
 
 // 사용자별 위시리스트 조회
-wishlistRoutes.get('/:userId', async (c) => {
+wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
   try {
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
     const userId = c.req.param('userId');
+    // ✅ IDOR FIX: Only allow self-access unless admin
+    if (userId !== String(authUser.id) && authUser.type !== 'admin') {
+      return c.json({ success: false, error: 'Forbidden' }, 403);
+    }
+
     const limit = parseInt(c.req.query('limit') || '20');
     const offset = parseInt(c.req.query('offset') || '0');
 
@@ -244,7 +252,7 @@ wishlistRoutes.get('/:userId', async (c) => {
         w.id, w.user_id, w.product_id, w.created_at,
         p.name as product_name, p.price, p.original_price,
         p.discount_rate, p.image_url, p.stock, p.category, p.is_active,
-        s.display_name as seller_name, s.id as seller_id
+        s.name as seller_name, s.id as seller_id
       FROM wishlists w
       JOIN products p ON w.product_id = p.id
       LEFT JOIN sellers s ON p.seller_id = s.id
