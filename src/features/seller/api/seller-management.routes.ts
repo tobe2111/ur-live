@@ -18,6 +18,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types';
 import { ApiError } from '@/shared/types/common';
 import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE, MIN_PASSWORD_LENGTH } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { validateFileMagicBytes } from '@/lib/upload-security';
 
 type Bindings = {
   DB: D1Database;
@@ -1172,17 +1173,22 @@ sellerManagementRoutes.post('/upload-image', cors(), async (c) => {
       return c.json({ success: false, error: '허용되지 않는 파일 확장자입니다.' }, 400);
     }
 
+    // ── Magic-byte validation (MIME + extension can both be spoofed) ─────────
+    const buffer = await file.arrayBuffer();
+    const magicCheck = await validateFileMagicBytes(buffer, file.type);
+    if (!magicCheck.valid) {
+      return c.json({ success: false, error: magicCheck.error || '파일 형식이 올바르지 않습니다' }, 400);
+    }
+
     const imgbbKey = (c.env as unknown as Record<string, string | undefined>).IMGBB_API_KEY;
     if (!imgbbKey) {
-      return c.json({ success: false, error: 'IMGBB_API_KEY 환경변수가 설정되지 않았습니다' }, 500);
+      return c.json({ success: false, error: '이미지 업로드 서비스가 구성되지 않았습니다' }, 500);
     }
 
     // ── Safe filename (no path traversal) ─────────────────────────────────────
     const safeName = `seller_${sellerId}_${Date.now()}${ext}`;
 
-    const base64 = await file.arrayBuffer().then(buf =>
-      btoa(String.fromCharCode(...new Uint8Array(buf)))
-    );
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
     const resp = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

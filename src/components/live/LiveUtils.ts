@@ -34,13 +34,12 @@ export function maskUserName(name: string): string {
     return name
   }
 
-  if (name.length === 1) {
-    return name + '*'
-  } else if (name.length === 2) {
-    return name[0] + '*'
-  } else if (name.length === 3) {
-    return name[0] + '*' + name[2]
-  } else {
-    return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1]
-  }
+  // ✅ Unicode code points (astral emoji-safe): name.length 는 UTF-16 code unit
+  //    기준이라 이모지/서로게이트 쌍이 반으로 잘려 표시 깨짐이 발생함.
+  //    Array.from() 은 code point 단위로 안전하게 분리한다.
+  const chars = Array.from(name)
+  if (chars.length === 1) return chars[0] + '*'
+  if (chars.length === 2) return chars[0] + '*'
+  if (chars.length === 3) return chars[0] + '*' + chars[2]
+  return chars[0] + '*'.repeat(chars.length - 2) + chars[chars.length - 1]
 }

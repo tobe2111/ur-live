@@ -118,7 +118,37 @@ export function validatePassword(password: unknown, options: {
 }
 
 /**
+ * Strip zero-width chars, bidirectional overrides, and ASCII control characters.
+ * Blocks spoofing attacks (RLO/LRO/PDF unicode tricks) and log injection.
+ * Keeps \n (0x0A), \r (0x0D), \t (0x09).
+ *
+ * Ranges stripped:
+ *   - ASCII C0 control chars (0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F) + DEL (0x7F)
+ *   - Zero-width chars: U+200B, U+200C, U+200D, U+FEFF
+ *   - Bidi overrides:   U+202A-U+202E (LRE/RLE/PDF/LRO/RLO),
+ *                       U+2066-U+2069 (LRI/RLI/FSI/PDI)
+ */
+const CONTROL_AND_INVISIBLE_RE = new RegExp(
+  // ASCII C0 control chars (0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F) + DEL (0x7F)
+  '[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]' +
+  // Zero-width chars: U+200B-U+200D (ZWSP/ZWNJ/ZWJ)
+  '|[\\u200B-\\u200D]' +
+  // Byte order mark / zero-width no-break: U+FEFF
+  '|\\uFEFF' +
+  // Bidi overrides: U+202A-U+202E (LRE/RLE/PDF/LRO/RLO), U+2066-U+2069 (LRI/RLI/FSI/PDI)
+  '|[\\u202A-\\u202E\\u2066-\\u2069]',
+  'g'
+);
+
+function stripControlAndInvisibleChars(s: string): string {
+  return s.replace(CONTROL_AND_INVISIBLE_RE, '');
+}
+
+/**
  * Required string validation
+ *
+ * Applies defense-in-depth sanitization: strips control chars, zero-width chars,
+ * and unicode bidirectional overrides before length/content validation.
  */
 export function validateRequiredString(
   value: unknown,
@@ -130,7 +160,7 @@ export function validateRequiredString(
   } = {}
 ): string {
   const { minLength = 1, maxLength = 1000, trim = true } = options;
-  
+
   if (typeof value !== 'string') {
     throw new ValidationError(
       `${fieldName} must be a string`,
@@ -138,9 +168,12 @@ export function validateRequiredString(
       'INVALID_TYPE'
     );
   }
-  
-  const processed = trim ? value.trim() : value;
-  
+
+  // ✅ Sanitize first — invisible / control chars could bypass min-length checks
+  //    (e.g. a string of pure zero-width chars would otherwise pass as "valid").
+  const sanitized = stripControlAndInvisibleChars(value);
+  const processed = trim ? sanitized.trim() : sanitized;
+
   if (!processed) {
     throw new ValidationError(
       `${fieldName} is required`,
@@ -148,7 +181,7 @@ export function validateRequiredString(
       'REQUIRED'
     );
   }
-  
+
   if (processed.length < minLength) {
     throw new ValidationError(
       `${fieldName} must be at least ${minLength} characters`,
@@ -156,7 +189,7 @@ export function validateRequiredString(
       'TOO_SHORT'
     );
   }
-  
+
   if (processed.length > maxLength) {
     throw new ValidationError(
       `${fieldName} must be at most ${maxLength} characters`,
@@ -164,7 +197,7 @@ export function validateRequiredString(
       'TOO_LONG'
     );
   }
-  
+
   return processed;
 }
 
@@ -549,6 +582,27 @@ export function validateInteger(
   if (!Number.isInteger(n)) return `${fieldName}은(는) 정수여야 합니다.`;
   if (n < min || n > max) return `${fieldName}은(는) ${min} 이상 ${max} 이하여야 합니다.`;
   return null;
+}
+
+/**
+ * Validates that a value is an http(s) URL under the allowed length.
+ * Empty strings and undefined are treated as "not provided" (valid: true)
+ * so callers can use this for optional URL fields.
+ */
+export function validateImageUrl(url: unknown): { valid: boolean; error?: string } {
+  if (url === undefined || url === null) return { valid: true };
+  if (typeof url !== 'string') return { valid: false, error: 'URL은 문자열이어야 합니다.' };
+  if (url.length === 0) return { valid: true };
+  if (url.length > MAX_URL_LENGTH) return { valid: false, error: `URL은 ${MAX_URL_LENGTH}자 이하여야 합니다.` };
+  try {
+    const u = new URL(url);
+    if (!['http:', 'https:'].includes(u.protocol)) {
+      return { valid: false, error: 'http/https URL만 허용됩니다.' };
+    }
+    return { valid: true };
+  } catch {
+    return { valid: false, error: '올바른 URL 형식이 아닙니다.' };
+  }
 }
 
 export function validateEmailSoft(email: unknown): string | null {

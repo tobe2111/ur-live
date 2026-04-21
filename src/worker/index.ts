@@ -143,8 +143,10 @@ app.use('*', async (c, next) => {
   await next();
   // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
   // CSP — 공통 script sources (script-src와 script-src-elem에서 공유)
+  // ✅ Security hardening: removed 'unsafe-eval' (no eval()/new Function() in code).
+  //    If a third-party SDK requires it, add a nonce/hash for that specific script.
   const scriptSources = [
-    "'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:",
+    "'self'", "'unsafe-inline'", "blob:",
     "https://*.cloudflare.com", "https://static.cloudflareinsights.com", "https://cloudflareinsights.com",
     "https://*.googletagmanager.com", "https://*.google-analytics.com",
     "https://*.tosspayments.com", "https://js.tosspayments.com",
@@ -182,7 +184,12 @@ app.use('*', async (c, next) => {
     "object-src 'none'; " +
     "base-uri 'self'; " +
     "form-action 'self'; " +
-    "frame-ancestors 'self';"
+    "frame-ancestors 'self'; " +
+    "report-uri /api/csp-report; report-to csp-endpoint;"
+  );
+  c.header(
+    'Report-To',
+    '{"group":"csp-endpoint","max_age":10886400,"endpoints":[{"url":"/api/csp-report"}]}'
   );
   const url = new URL(c.req.url);
   // /embed/ 경로는 외부 사이트에서 iframe으로 임베드 가능하도록 허용
@@ -200,9 +207,23 @@ app.use('*', async (c, next) => {
     c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
   c.header('X-Content-Type-Options', 'nosniff');
-  c.header('X-XSS-Protection', '1; mode=block');
+  // ✅ X-XSS-Protection 제거: deprecated — 일부 브라우저에서 오히려 XSS를 유발 (HSTS/CSP로 대체)
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   c.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self), payment=(self), usb=()');
+});
+
+// ============================================================
+// CSP Violation Report Endpoint
+// Browsers POST violation reports here when CSP blocks a resource.
+// Keep handler minimal and always return 204 to avoid influencing browser behavior.
+// ============================================================
+app.post('/api/csp-report', async (c) => {
+  try {
+    const report = await c.req.json().catch(() => null);
+    if (import.meta.env.DEV && report) console.warn('[CSP violation]', report);
+    // Optionally persist to DB here for later analysis.
+  } catch { /* swallow — never surface parse errors to the browser */ }
+  return c.body(null, 204);
 });
 
 // ============================================================
@@ -475,7 +496,13 @@ app.use('/api/products', rateLimit({ action: 'product_list', max: 60, windowSec:
 // Seller public profile view: prevent enumeration
 app.use('/api/sellers/*', rateLimit({ action: 'seller_view', max: 60, windowSec: 60 }));
 // Chat send: prevent spam; only on POSTs handled inside chatRoutes
-app.use('/api/chat/*/messages', rateLimit({ action: 'chat_send', max: 30, windowSec: 60 }));
+// HIGH-4: lowered from 30/min → 10/min to make message-flood / URL-spam harder.
+app.use('/api/chat/*/messages', rateLimit({ action: 'chat_send', max: 10, windowSec: 60 }));
+
+// HIGH-1: Upload endpoints — prevent abusive image/file uploads.
+// Applied before route mount so it fires for POST/PUT/PATCH alike.
+app.use('/api/seller/upload-image', rateLimit({ action: 'upload', max: 10, windowSec: 60 }));
+app.use('/api/seller/upload-*', rateLimit({ action: 'upload', max: 10, windowSec: 60 }));
 
 // ============================================================
 // Streams Routes  ← /api/streams (공개 조회용)

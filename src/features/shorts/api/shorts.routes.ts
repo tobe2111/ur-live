@@ -277,6 +277,40 @@ shortsRoutes.post('/', requireAuth(), async (c) => {
     return c.json({ success: false, error: '제목과 영상 URL은 필수입니다' }, 400)
   }
 
+  // ── HIGH-5: 입력 검증 ─────────────────────────────────────────────
+  if (typeof video_url !== 'string') {
+    return c.json({ success: false, error: 'video_url은 문자열이어야 합니다' }, 400)
+  }
+  try {
+    const u = new URL(video_url)
+    if (!['http:', 'https:'].includes(u.protocol)) throw new Error('bad protocol')
+  } catch {
+    return c.json({ success: false, error: '유효하지 않은 영상 URL입니다' }, 400)
+  }
+  if (thumbnail_url !== undefined && thumbnail_url !== null && thumbnail_url !== '') {
+    if (typeof thumbnail_url !== 'string') {
+      return c.json({ success: false, error: 'thumbnail_url은 문자열이어야 합니다' }, 400)
+    }
+    try {
+      const u = new URL(thumbnail_url)
+      if (!['http:', 'https:'].includes(u.protocol)) throw new Error('bad protocol')
+    } catch {
+      return c.json({ success: false, error: '유효하지 않은 썸네일 URL입니다' }, 400)
+    }
+  }
+  const durationNum = Number(duration) || 0
+  if (!Number.isInteger(durationNum) || durationNum < 0 || durationNum > 600) {
+    return c.json({ success: false, error: '영상 길이는 0-600초 사이의 정수여야 합니다' }, 400)
+  }
+  if (typeof title !== 'string' || title.length === 0 || title.length > 200) {
+    return c.json({ success: false, error: '제목은 1-200자 사이여야 합니다' }, 400)
+  }
+  if (description !== undefined && description !== null && description !== '') {
+    if (typeof description !== 'string' || description.length > 2000) {
+      return c.json({ success: false, error: '설명은 2000자 이하여야 합니다' }, 400)
+    }
+  }
+
   // seller_id 조회
   const seller = await DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(String(user.id)).first<{ id: number }>()
   if (!seller) return c.json({ success: false, error: '셀러 정보를 찾을 수 없습니다' }, 404)
@@ -284,7 +318,7 @@ shortsRoutes.post('/', requireAuth(), async (c) => {
   const result = await DB.prepare(`
     INSERT INTO shorts (seller_id, title, description, video_url, youtube_video_id, thumbnail_url, duration, product_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(seller.id, title, description || null, video_url, youtube_video_id || null, thumbnail_url || null, duration || 0, product_id || null).run()
+  `).bind(seller.id, title, description || null, video_url, youtube_video_id || null, thumbnail_url || null, durationNum, product_id || null).run()
 
   return c.json({ success: true, data: { id: result.meta.last_row_id }, message: '쇼츠가 등록되었습니다' })
 })

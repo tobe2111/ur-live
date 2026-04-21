@@ -55,10 +55,21 @@ function createErrorResponse(
   code: string = 'INTERNAL_ERROR'
 ): ErrorResponse {
   const errorInfo = ERROR_CODES[code as keyof typeof ERROR_CODES] || ERROR_CODES.INTERNAL_ERROR;
-  
+
+  // ✅ Security: never leak raw internal error strings in production — they
+  //    can disclose stack traces, SQL snippets, or secrets. Only surface
+  //    error.message for 4xx client errors or in DEV builds.
+  const isDev = (() => {
+    try { return !!import.meta.env?.DEV; } catch { return false; }
+  })();
+  const is4xx = errorInfo.status >= 400 && errorInfo.status < 500;
+  const safeMessage = (isDev || is4xx)
+    ? (error.message || errorInfo.message)
+    : errorInfo.message;
+
   return {
     error: errorInfo.code,
-    message: error.message || errorInfo.message,
+    message: safeMessage,
     code: errorInfo.code,
     statusCode: errorInfo.status,
     timestamp: new Date().toISOString(),

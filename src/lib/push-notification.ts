@@ -50,10 +50,22 @@ export async function savePushSubscription(
   userType: 'user' | 'seller' | 'admin',
   subscription: PushSubscription
 ): Promise<void> {
+  // Use ON CONFLICT instead of INSERT OR REPLACE so that:
+  //  1. The row's PRIMARY KEY id is preserved (REPLACE deletes+reinserts, which
+  //     invalidates foreign-key references and `is_active` resets).
+  //  2. The `is_active` column is NOT silently reset to its default.
+  //  3. `created_at` is kept, only `updated_at` bumps.
   await DB.prepare(`
-    INSERT OR REPLACE INTO push_subscriptions 
-    (user_id, user_type, endpoint, p256dh, auth, created_at, updated_at)
+    INSERT INTO push_subscriptions
+      (user_id, user_type, endpoint, p256dh, auth, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    ON CONFLICT(endpoint) DO UPDATE SET
+      user_id    = excluded.user_id,
+      user_type  = excluded.user_type,
+      p256dh     = excluded.p256dh,
+      auth       = excluded.auth,
+      is_active  = 1,
+      updated_at = datetime('now')
   `).bind(
     userId,
     userType,
@@ -108,22 +120,37 @@ export async function deletePushSubscription(
  * web-push 라이브러리 사용 (npm install web-push)
  * Cloudflare Workers에서는 fetch API로 직접 구현
  */
+/**
+ * Result of a push send attempt.
+ * - `'ok'`          : delivered (201/200)
+ * - `'gone'`        : endpoint is dead (410) → caller must delete the subscription
+ * - `'transient'`   : transient failure (network error, 5xx, auth error with
+ *                    unimplemented VAPID, …) → caller must NOT delete the
+ *                    subscription, to avoid cascading wipes
+ */
+export type PushSendResult = 'ok' | 'gone' | 'transient'
+
 export async function sendPushNotification(
   subscription: PushSubscription,
   payload: PushNotificationPayload,
   vapidPublicKey: string,
   vapidPrivateKey: string,
   vapidSubject: string
-): Promise<boolean> {
+): Promise<PushSendResult> {
   try {
     // Web Push Protocol 구현
     // 참고: https://developers.google.com/web/fundamentals/push-notifications/
-    
+    //
+    // NOTE: VAPID JWT signing is NOT yet implemented — most FCM/Mozilla
+    // endpoints will reject the request with 401/403. Do NOT treat that as
+    // a dead endpoint; treat it as transient so the subscription survives
+    // until VAPID signing lands.
+
     const payloadString = JSON.stringify(payload)
-    
+
     // 실제 구현은 web-push 라이브러리 사용 권장
     // 여기서는 개념적 구조만 제시
-    
+
     const response = await fetch(subscription.endpoint, {
       method: 'POST',
       headers: {
@@ -136,17 +163,18 @@ export async function sendPushNotification(
     })
 
     if (response.status === 201 || response.status === 200) {
-      return true
+      return 'ok'
     } else if (response.status === 410) {
-      // 구독 만료
-      return false
+      // 구독 만료 — caller should delete
+      return 'gone'
     } else {
+      // 401/403 (VAPID 미구현), 4xx/5xx, etc → 일시적 실패로 취급. 구독 유지.
       console.error('[Push] Failed to send notification:', response.status)
-      return false
+      return 'transient'
     }
   } catch (error) {
     console.error('[Push] Send failed:', error)
-    return false
+    return 'transient'
   }
 }
 
@@ -167,7 +195,7 @@ export async function notifyUser(
   }
 
   for (const subscription of subscriptions) {
-    const success = await sendPushNotification(
+    const result = await sendPushNotification(
       subscription,
       payload,
       env.VAPID_PUBLIC_KEY,
@@ -175,8 +203,10 @@ export async function notifyUser(
       env.VAPID_SUBJECT
     )
 
-    // 실패한 구독은 삭제
-    if (!success) {
+    // Only delete subscriptions confirmed-dead by the push provider (410 Gone).
+    // Transient failures (e.g. VAPID-not-yet-implemented, 5xx, network) must
+    // keep the subscription so a single bad deploy cannot wipe every user.
+    if (result === 'gone') {
       await deletePushSubscription(DB, subscription.endpoint)
     }
   }

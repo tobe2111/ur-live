@@ -1,5 +1,15 @@
 -- ============================================================
--- Migration 002: Seed Data
+-- !!! DEPRECATED — DO NOT USE !!!
+--
+-- This seed file targets the obsolete schema defined in the now-deprecated
+-- `001_initial.sql` (sellers.user_id, sellers.slug, users.role, etc.).
+-- Production uses `0001_initial_schema.sql` + later migrations where those
+-- columns do NOT exist — running this would fail / corrupt data.
+--
+-- The `.DEPRECATED` extension exists so wrangler ignores the file.
+-- Keep for historical reference only.
+-- ============================================================
+-- Migration 002: Seed Data (HISTORICAL — superseded by production schema)
 -- Test data for development
 -- ============================================================
 

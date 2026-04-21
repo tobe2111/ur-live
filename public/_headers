@@ -5,11 +5,9 @@
   Pragma: no-cache
   Expires: 0
 
-  # CSP — Cloudflare _headers 2000자 제한으로 와일드카드 사용
-  Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https: http:; style-src 'self' 'unsafe-inline' data: https:; font-src 'self' data: https:; img-src 'self' data: blob: https: http:; connect-src 'self' https: wss:; frame-src 'self' https:; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' data: blob: https:; object-src 'none'; base-uri 'self'; form-action 'self' https://kauth.kakao.com;
-
-  # XSS Protection
-  X-XSS-Protection: 1; mode=block
+  # CSP는 Worker (src/worker/index.ts) 에서 동적으로 발급한다.
+  # 여기서 중복 선언하면 정책이 충돌·병합되어 의도치 않게 느슨해질 수 있음.
+  # (하드닝된 CSP · CSP reporting · nonce/hash 정책은 Worker 쪽에서 단일 관리)
 
   # Prevent MIME type sniffing
   X-Content-Type-Options: nosniff

@@ -15,6 +15,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { requireAdmin } from '@/worker/middleware/auth';
+import { validateImageUrl } from '@/worker/utils/validation';
 import type { Env } from '@/worker/types/env';
 
 export const adminBannersRoutes = new Hono<{ Bindings: Env }>();
@@ -45,6 +46,14 @@ adminBannersRoutes.post('/', cors(), async (c) => {
     const { title, image_url, link_url, description, is_active, display_order, start_date, end_date } = await c.req.json();
     if (!title || !image_url) return c.json({ success: false, error: '제목과 이미지 URL은 필수입니다.' }, 400);
 
+    // URL 검증 (XSS/SSRF 방지)
+    const imgCheck = validateImageUrl(image_url);
+    if (!imgCheck.valid) return c.json({ success: false, error: `이미지 URL: ${imgCheck.error}` }, 400);
+    if (link_url) {
+      const linkCheck = validateImageUrl(link_url);
+      if (!linkCheck.valid) return c.json({ success: false, error: `링크 URL: ${linkCheck.error}` }, 400);
+    }
+
     const result = await executeRun(DB,
       `INSERT INTO banners (title, image_url, link_url, description, is_active, display_order, start_date, end_date, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
@@ -66,6 +75,16 @@ adminBannersRoutes.put('/:id', cors(), async (c) => {
     const { title, image_url, link_url, description, is_active, display_order, start_date, end_date } = await c.req.json();
     const rows = await executeQuery<any>(DB, 'SELECT id FROM banners WHERE id = ?', [bannerId]);
     if (rows.length === 0) return c.json({ success: false, error: '배너를 찾을 수 없습니다' }, 404);
+
+    // URL 검증 (XSS/SSRF 방지)
+    if (image_url !== undefined) {
+      const imgCheck = validateImageUrl(image_url);
+      if (!imgCheck.valid) return c.json({ success: false, error: `이미지 URL: ${imgCheck.error}` }, 400);
+    }
+    if (link_url) {
+      const linkCheck = validateImageUrl(link_url);
+      if (!linkCheck.valid) return c.json({ success: false, error: `링크 URL: ${linkCheck.error}` }, 400);
+    }
 
     await executeRun(DB,
       `UPDATE banners SET title=?, image_url=?, link_url=?, description=?, is_active=?,

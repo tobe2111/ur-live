@@ -1,5 +1,20 @@
 -- ============================================================
--- Migration 001: Initial Schema
+-- !!! DEPRECATED — DO NOT USE !!!
+--
+-- This migration describes a different (obsolete) schema than what is
+-- actually deployed in production. Production DB uses `0001_initial_schema.sql`
+-- (note the 4-digit prefix) plus subsequent `0003_*` onward migrations.
+--
+-- Running this file on a fresh environment WILL CORRUPT THE DATA MODEL:
+--   - sellers.id becomes TEXT (production is INTEGER)
+--   - Introduces sellers.user_id / sellers.slug / sellers.logo_url / etc.,
+--     none of which exist in the production schema (see
+--     `src/shared/db/production-schema.ts` for SSOT).
+--
+-- The `.DEPRECATED` extension exists so wrangler ignores the file.
+-- Do not rename back to `.sql`. Keep for historical reference only.
+-- ============================================================
+-- Migration 001: Initial Schema (HISTORICAL — superseded by 0001_initial_schema.sql)
 -- Global Marketplace - Cloudflare D1
 -- Supports: multi-seller, global expansion, idempotency
 -- ============================================================

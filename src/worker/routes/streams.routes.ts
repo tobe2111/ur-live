@@ -217,12 +217,20 @@ streamsRouter.get('/', async (c) => {
     return c.json({ success: true, ...payload });
   } catch (err: unknown) {
     console.error('[Streams] List error:', err);
-    return c.json({
+    // ✅ Security: only expose raw error details in DEV — never leak stack
+    //    traces / SQL fragments to clients in production.
+    const isDev = (() => {
+      try { return !!import.meta.env?.DEV; } catch { return false; }
+    })();
+    const body: Record<string, unknown> = {
       success: false,
-      error: 'Failed to fetch streams',
-      details: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
-    }, 500);
+      error: '스트림 목록을 불러오지 못했습니다.',
+    };
+    if (isDev) {
+      body.details = err instanceof Error ? err.message : String(err);
+      body.stack = err instanceof Error ? err.stack : undefined;
+    }
+    return c.json(body, 500);
   }
 });
 
