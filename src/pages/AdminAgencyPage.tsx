@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle, KeyRound } from 'lucide-react'
 
 interface Agency {
   id: number
@@ -147,6 +147,23 @@ export default function AdminAgencyPage() {
     }
   }
 
+  async function handleResetPassword(a: Agency) {
+    const newPwd = prompt(`"${a.name}" 에이전시의 새 비밀번호 (8자 이상):`, '')
+    if (newPwd === null) return
+    if (!newPwd || newPwd.length < 8) {
+      toast.error('비밀번호는 8자 이상이어야 합니다.')
+      return
+    }
+    try {
+      const r = await api.post(`/api/admin/agencies/${a.id}/reset-password`, { newPassword: newPwd }, { headers })
+      toast.success(r.data?.message || '비밀번호가 재설정되었습니다.')
+      fetchAgencies()
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string } } }
+      toast.error(err_.response?.data?.error || '비밀번호 재설정에 실패했습니다.')
+    }
+  }
+
   async function handleDelete(a: Agency) {
     if (!confirm(`"${a.name}" 에이전시를 삭제하시겠습니까? 소속 셀러 배정도 모두 해제됩니다.`)) return
     try {
@@ -287,6 +304,16 @@ export default function AdminAgencyPage() {
                       : <><XCircle className="w-3.5 h-3.5" /> 거절됨</>
                     }
                   </button>
+                  {a.status === 'active' && (
+                    <button
+                      onClick={() => handleResetPassword(a)}
+                      title="비밀번호 재설정"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      비밀번호 재설정
+                    </button>
+                  )}
                   <button
                     onClick={() => openEdit(a)}
                     className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
