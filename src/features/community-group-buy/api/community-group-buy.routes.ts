@@ -111,15 +111,39 @@ communityGroupBuyRoutes.post('/create', requireAuth(), async (c) => {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const userId = String(user.id);
 
-  // 딜 포인트 차감 (보증금)
+  // 딜 포인트 차감 (보증금) — user_points 테이블 사용 (production에는 users.deal_balance 없음)
+  try {
+    await DB.prepare(
+      `CREATE TABLE IF NOT EXISTS user_points (
+        user_id TEXT PRIMARY KEY,
+        balance INTEGER NOT NULL DEFAULT 0,
+        total_charged INTEGER NOT NULL DEFAULT 0,
+        total_donated INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT (datetime('now')),
+        updated_at DATETIME DEFAULT (datetime('now'))
+      )`
+    ).run();
+  } catch { /* ignore */ }
+
   const deductResult = await executeRun(
     DB,
-    'UPDATE users SET deal_balance = deal_balance - ? WHERE id = ? AND deal_balance >= ?',
-    [depositPerPerson, userId, depositPerPerson],
+    "UPDATE user_points SET balance = balance - ?, total_donated = total_donated + ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
+    [depositPerPerson, depositPerPerson, userId, depositPerPerson],
   );
 
   if (!deductResult.meta.changes) {
     return c.json({ success: false, error: `딜이 부족합니다 (보증금: ${depositPerPerson}딜)`, code: 'INSUFFICIENT_BALANCE' }, 400);
+  }
+
+  // Best-effort sync to legacy users.deal_balance (may not exist in prod)
+  try {
+    await executeRun(
+      DB,
+      'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) - ? WHERE id = ?',
+      [depositPerPerson, userId],
+    );
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn('[deal_balance]', e);
   }
 
   // 공동구매 생성
@@ -210,15 +234,39 @@ communityGroupBuyRoutes.post('/join/:code', requireAuth(), async (c) => {
 
   const depositAmount = group.deposit_per_person;
 
-  // 딜 포인트 차감
+  // 딜 포인트 차감 — user_points 테이블 사용
+  try {
+    await DB.prepare(
+      `CREATE TABLE IF NOT EXISTS user_points (
+        user_id TEXT PRIMARY KEY,
+        balance INTEGER NOT NULL DEFAULT 0,
+        total_charged INTEGER NOT NULL DEFAULT 0,
+        total_donated INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT (datetime('now')),
+        updated_at DATETIME DEFAULT (datetime('now'))
+      )`
+    ).run();
+  } catch { /* ignore */ }
+
   const deductResult = await executeRun(
     DB,
-    'UPDATE users SET deal_balance = deal_balance - ? WHERE id = ? AND deal_balance >= ?',
-    [depositAmount, userId, depositAmount],
+    "UPDATE user_points SET balance = balance - ?, total_donated = total_donated + ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
+    [depositAmount, depositAmount, userId, depositAmount],
   );
 
   if (!deductResult.meta.changes) {
     return c.json({ success: false, error: `딜이 부족합니다 (보증금: ${depositAmount}딜)`, code: 'INSUFFICIENT_BALANCE' }, 400);
+  }
+
+  // Best-effort sync to legacy users.deal_balance
+  try {
+    await executeRun(
+      DB,
+      'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) - ? WHERE id = ?',
+      [depositAmount, userId],
+    );
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn('[deal_balance]', e);
   }
 
   // 멤버 추가
@@ -524,14 +572,56 @@ communityGroupBuyRoutes.post('/:id/refund', requireAuth(), async (c) => {
     [group.id],
   );
 
+  // user_points 테이블 보장
+  try {
+    await DB.prepare(
+      `CREATE TABLE IF NOT EXISTS user_points (
+        user_id TEXT PRIMARY KEY,
+        balance INTEGER NOT NULL DEFAULT 0,
+        total_charged INTEGER NOT NULL DEFAULT 0,
+        total_donated INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT (datetime('now')),
+        updated_at DATETIME DEFAULT (datetime('now'))
+      )`
+    ).run();
+  } catch { /* ignore */ }
+
   let refundCount = 0;
   for (const member of members) {
-    // 딜 포인트 환불
-    await executeRun(
-      DB,
-      'UPDATE users SET deal_balance = deal_balance + ? WHERE id = ?',
-      [member.deposit_amount, member.user_id],
-    );
+    // 딜 포인트 환불 — user_points UPSERT
+    try {
+      const existingPts = await queryFirst<{ balance: number }>(
+        DB,
+        'SELECT balance FROM user_points WHERE user_id = ?',
+        [member.user_id],
+      );
+      if (existingPts) {
+        await executeRun(
+          DB,
+          "UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?",
+          [member.deposit_amount, member.user_id],
+        );
+      } else {
+        await executeRun(
+          DB,
+          'INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)',
+          [member.user_id, member.deposit_amount, member.deposit_amount],
+        );
+      }
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn('[user_points refund]', e);
+    }
+
+    // Best-effort sync to legacy users.deal_balance
+    try {
+      await executeRun(
+        DB,
+        'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?',
+        [member.deposit_amount, member.user_id],
+      );
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn('[deal_balance]', e);
+    }
 
     // 멤버 상태 변경
     await executeRun(

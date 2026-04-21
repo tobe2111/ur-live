@@ -115,8 +115,19 @@ async function resolveReferrerId(DB: D1Database, referrerRef: string): Promise<s
       [referrerRef, referrerRef, referrerRef],
     )
     return row ? String(row.id) : null
-  } catch {
-    return null
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn('[referral] affiliate_ref column missing', e)
+    // Fallback: try without affiliate_ref (production schema may not have it)
+    try {
+      const row = await queryFirst<{ id: string }>(
+        DB,
+        'SELECT id FROM users WHERE id = ? OR firebase_uid = ?',
+        [referrerRef, referrerRef],
+      )
+      return row ? String(row.id) : null
+    } catch {
+      return null
+    }
   }
 }
 

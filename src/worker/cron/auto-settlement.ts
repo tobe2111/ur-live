@@ -113,20 +113,52 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         .bind(voucher.id).run();
       expireCount++;
 
-      // Refund deal points if paid with deal_points
+      // Refund deal points if paid with deal_points — user_points 테이블 사용
       if (voucher.payment_method === 'deal_points' && voucher.user_id && voucher.price) {
-        await DB.prepare("UPDATE users SET deal_balance = deal_balance + ? WHERE id = ?")
-          .bind(voucher.price, voucher.user_id).run();
+        try {
+          await DB.prepare(
+            `CREATE TABLE IF NOT EXISTS user_points (
+              user_id TEXT PRIMARY KEY,
+              balance INTEGER NOT NULL DEFAULT 0,
+              total_charged INTEGER NOT NULL DEFAULT 0,
+              total_donated INTEGER NOT NULL DEFAULT 0,
+              created_at DATETIME DEFAULT (datetime('now')),
+              updated_at DATETIME DEFAULT (datetime('now'))
+            )`
+          ).run();
+          const existingPts = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+            .bind(voucher.user_id).first<{ balance: number }>();
+          if (existingPts) {
+            await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?")
+              .bind(voucher.price, voucher.user_id).run();
+          } else {
+            await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)')
+              .bind(voucher.user_id, voucher.price, voucher.price).run();
+          }
+        } catch (e) {
+          if (import.meta.env?.DEV) console.warn('[auto-settlement user_points]', e);
+        }
+        // Best-effort legacy column sync
+        try {
+          await DB.prepare("UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?")
+            .bind(voucher.price, voucher.user_id).run();
+        } catch (e) {
+          if (import.meta.env?.DEV) console.warn('[deal_balance]', e);
+        }
         refundCount++;
 
-        // Send notification to user
-        await DB.prepare(`
-          INSERT INTO notifications (user_id, type, title, message, created_at, is_read)
-          VALUES (?, 'refund', '바우처 만료 환불', ?, datetime('now'), 0)
-        `).bind(
-          voucher.user_id,
-          `바우처가 만료되어 ${Number(voucher.price).toLocaleString()}딜 포인트가 환불되었습니다 (${voucher.product_name})`
-        ).run();
+        // Send notification to user (production notifications requires user_type)
+        try {
+          await DB.prepare(`
+            INSERT INTO notifications (user_id, user_type, type, title, message, created_at, is_read)
+            VALUES (?, 'user', 'refund', '바우처 만료 환불', ?, datetime('now'), 0)
+          `).bind(
+            voucher.user_id,
+            `바우처가 만료되어 ${Number(voucher.price).toLocaleString()}딜 포인트가 환불되었습니다 (${voucher.product_name})`
+          ).run();
+        } catch (e) {
+          if (import.meta.env?.DEV) console.warn('[notifications insert]', e);
+        }
       }
     }
 

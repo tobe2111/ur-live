@@ -53,11 +53,26 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
   const invitedUserId = body.invited_user_id || String(user.id)
 
   // 1. Find inviter — check users.referred_by (affiliate ref code → inviter user)
-  const invitedUser = await queryFirst<{ id: string; referred_by: string | null }>(
-    DB,
-    'SELECT id, referred_by FROM users WHERE id = ? OR firebase_uid = ?',
-    [invitedUserId, invitedUserId],
-  )
+  // NOTE: production users table may not have `referred_by` column — wrap in try-catch
+  let invitedUser: { id: string; referred_by: string | null } | null = null
+  try {
+    invitedUser = await queryFirst<{ id: string; referred_by: string | null }>(
+      DB,
+      'SELECT id, referred_by FROM users WHERE id = ? OR firebase_uid = ?',
+      [invitedUserId, invitedUserId],
+    )
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn('[invite-reward] referred_by column missing', e)
+    // Fallback: fetch id only
+    try {
+      const row = await queryFirst<{ id: string }>(
+        DB,
+        'SELECT id FROM users WHERE id = ? OR firebase_uid = ?',
+        [invitedUserId, invitedUserId],
+      )
+      invitedUser = row ? { id: row.id, referred_by: null } : null
+    } catch { invitedUser = null }
+  }
   if (!invitedUser) {
     return c.json({ success: false, error: '초대받은 유저를 찾을 수 없습니다' }, 404)
   }
@@ -66,12 +81,26 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
   let inviterUserId: string | null = null
   if (invitedUser.referred_by) {
     // referred_by may be a user_id directly or an affiliate_ref code
-    const inviter = await queryFirst<{ id: string }>(
-      DB,
-      'SELECT id FROM users WHERE id = ? OR firebase_uid = ? OR affiliate_ref = ?',
-      [invitedUser.referred_by, invitedUser.referred_by, invitedUser.referred_by],
-    )
-    if (inviter) inviterUserId = String(inviter.id)
+    // NOTE: affiliate_ref column may not exist in production — wrap in try-catch
+    try {
+      const inviter = await queryFirst<{ id: string }>(
+        DB,
+        'SELECT id FROM users WHERE id = ? OR firebase_uid = ? OR affiliate_ref = ?',
+        [invitedUser.referred_by, invitedUser.referred_by, invitedUser.referred_by],
+      )
+      if (inviter) inviterUserId = String(inviter.id)
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn('[invite-reward] affiliate_ref column missing', e)
+      // Fallback: try without affiliate_ref
+      try {
+        const inviter = await queryFirst<{ id: string }>(
+          DB,
+          'SELECT id FROM users WHERE id = ? OR firebase_uid = ?',
+          [invitedUser.referred_by, invitedUser.referred_by],
+        )
+        if (inviter) inviterUserId = String(inviter.id)
+      } catch { /* ignore */ }
+    }
   }
 
   if (!inviterUserId) {
@@ -112,12 +141,50 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
     }
   } catch { /* use default */ }
 
-  // 5. Grant deal points to inviter
-  await executeRun(
-    DB,
-    'UPDATE users SET deal_balance = deal_balance + ? WHERE id = ?',
-    [rewardAmount, inviterUserId],
-  )
+  // 5. Grant deal points to inviter via user_points table
+  // (production users table doesn't have deal_balance column)
+  try {
+    await DB.prepare(
+      `CREATE TABLE IF NOT EXISTS user_points (
+        user_id TEXT PRIMARY KEY,
+        balance INTEGER NOT NULL DEFAULT 0,
+        total_charged INTEGER NOT NULL DEFAULT 0,
+        total_donated INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT (datetime('now')),
+        updated_at DATETIME DEFAULT (datetime('now'))
+      )`
+    ).run()
+    const existing = await queryFirst<{ balance: number }>(
+      DB,
+      'SELECT balance FROM user_points WHERE user_id = ?',
+      [inviterUserId],
+    )
+    if (existing) {
+      await executeRun(
+        DB,
+        "UPDATE user_points SET balance = balance + ?, total_charged = total_charged + ?, updated_at = datetime('now') WHERE user_id = ?",
+        [rewardAmount, rewardAmount, inviterUserId],
+      )
+    } else {
+      await executeRun(
+        DB,
+        'INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)',
+        [inviterUserId, rewardAmount, rewardAmount],
+      )
+    }
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn('[invite-reward] user_points grant failed', e)
+  }
+  // Best-effort update to users.deal_balance (may not exist in production)
+  try {
+    await executeRun(
+      DB,
+      'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?',
+      [rewardAmount, inviterUserId],
+    )
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn('[deal_balance]', e)
+  }
 
   // 6. Create invite_rewards record
   await executeRun(
