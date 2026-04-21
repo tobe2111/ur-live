@@ -548,6 +548,75 @@ adminApp.route('/cafe24', cafe24Routes);
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 app.route('/api/scraper', scraperProxy);  // /api/admin 밖 — adminApp 미들웨어 간섭 없음
+
+// ── D1에 저장된 스크래핑 결과 조회 (스크래퍼 서버 없이도 작동) ──
+app.get('/api/scraper/d1/emails', async (c) => {
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ error: 'Auth required' }, 401);
+  try {
+    const payload = await import('hono/jwt').then(m => m.verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256'));
+    if ((payload as any).type !== 'admin') return c.json({ error: 'Admin only' }, 403);
+  } catch { return c.json({ error: 'Invalid token' }, 401); }
+
+  const keyword = c.req.query('keyword') || '';
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200);
+  const offset = (page - 1) * limit;
+
+  try {
+    const where = keyword ? `WHERE keyword LIKE ?` : '';
+    const params = keyword ? [`%${keyword}%`] : [];
+
+    const countRow = await c.env.DB.prepare(`SELECT COUNT(*) as total FROM scraped_advertisers ${where}`)
+      .bind(...params).first<{ total: number }>();
+
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, keyword, advertiser_name, site_url, email, phone, description, scraped_at, session_name
+      FROM scraped_advertisers ${where}
+      ORDER BY scraped_at DESC LIMIT ? OFFSET ?
+    `).bind(...params, limit, offset).all();
+
+    return c.json({
+      success: true,
+      data: results || [],
+      total: countRow?.total || 0,
+      page, limit,
+    });
+  } catch (e) {
+    return c.json({ success: true, data: [], total: 0, page, limit });
+  }
+});
+
+app.get('/api/scraper/d1/stats', async (c) => {
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ error: 'Auth required' }, 401);
+  try {
+    const payload = await import('hono/jwt').then(m => m.verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256'));
+    if ((payload as any).type !== 'admin') return c.json({ error: 'Admin only' }, 403);
+  } catch { return c.json({ error: 'Invalid token' }, 401); }
+
+  try {
+    const total = await c.env.DB.prepare('SELECT COUNT(*) as c FROM scraped_advertisers').first<{ c: number }>();
+    const withEmail = await c.env.DB.prepare("SELECT COUNT(*) as c FROM scraped_advertisers WHERE email IS NOT NULL AND email != ''").first<{ c: number }>();
+    const uniqueEmails = await c.env.DB.prepare("SELECT COUNT(DISTINCT email) as c FROM scraped_advertisers WHERE email IS NOT NULL AND email != ''").first<{ c: number }>();
+    const keywords = await c.env.DB.prepare('SELECT COUNT(DISTINCT keyword) as c FROM scraped_advertisers').first<{ c: number }>();
+    const latest = await c.env.DB.prepare('SELECT scraped_at FROM scraped_advertisers ORDER BY scraped_at DESC LIMIT 1').first<{ scraped_at: string }>();
+
+    return c.json({
+      success: true,
+      data: {
+        total: total?.c || 0,
+        withEmail: withEmail?.c || 0,
+        uniqueEmails: uniqueEmails?.c || 0,
+        keywords: keywords?.c || 0,
+        latestScrape: latest?.scraped_at || null,
+      },
+    });
+  } catch {
+    return c.json({ success: true, data: { total: 0, withEmail: 0, uniqueEmails: 0, keywords: 0, latestScrape: null } });
+  }
+});
+
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)
 app.route('/admin/cafe24/callback', cafe24Routes);
