@@ -55,9 +55,25 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     toast.info('카카오 권한 동의 후 다시 시도해주세요')
   }
 
-  const fallbackToIcs = () => {
-    window.open(`/api/kakao-social/calendar/ics/${streamId}`, '_blank')
-    toast.success('📆 캘린더 파일을 다운로드합니다')
+  const fallbackToIcs = async () => {
+    try {
+      const res = await fetch(`/api/kakao-social/calendar/ics/${streamId}`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || '방송 일정이 아직 설정되지 않았습니다')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `live-${streamId}.ics`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('📆 캘린더 파일을 다운로드합니다')
+    } catch {
+      toast.error('캘린더 다운로드에 실패했습니다')
+    }
   }
 
   const handleAddCalendar = async (e: React.MouseEvent) => {
