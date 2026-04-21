@@ -110,7 +110,7 @@ export default function SellerMealVoucherNewPage() {
     try {
       const payload = {
         name: form.name,
-        description: form.description || `${form.restaurant_name} 식사권`,
+        description: form.description || `${form.restaurant_name} ${t('seller.mealVoucher.voucherSuffix')}`,
         price: form.price,
         original_price: form.original_price || form.price,
         image_url: form.image_url,
@@ -298,22 +298,22 @@ export default function SellerMealVoucherNewPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">식사권 이름 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.voucherNameLabel')} *</label>
                 <input
                   value={form.name}
                   onChange={e => update('name', e.target.value)}
-                  placeholder="예: [강남맛집] 2인 코스 식사권"
+                  placeholder={t('seller.mealVoucher.voucherNamePlaceholder')}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.description')}</label>
                 <textarea
                   value={form.description}
                   onChange={e => update('description', e.target.value)}
-                  placeholder="식사권 상세 설명 (메뉴, 이용 조건 등)"
+                  placeholder={t('seller.mealVoucher.descriptionPlaceholder')}
                   rows={3}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none resize-none"
                 />
@@ -321,7 +321,7 @@ export default function SellerMealVoucherNewPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">판매가 (원) *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.sellingPrice')} *</label>
                   <input
                     type="number"
                     value={form.price || ''}
@@ -332,7 +332,7 @@ export default function SellerMealVoucherNewPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">정가 (원)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.originalPrice')}</label>
                   <input
                     type="number"
                     value={form.original_price || ''}
@@ -349,13 +349,13 @@ export default function SellerMealVoucherNewPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Users className="w-5 h-5 text-blue-500" />
-              <h2 className="text-base font-bold text-gray-900">공동구매 설정</h2>
+              <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.groupBuySettings')}</h2>
             </div>
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">목표 인원</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.targetPeople')}</label>
                   <input
                     type="number"
                     value={form.group_buy_target || ''}
@@ -364,10 +364,10 @@ export default function SellerMealVoucherNewPage() {
                     min={0}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   />
-                  <p className="text-[10px] text-gray-400 mt-1">0이면 공동구매 없이 바로 판매</p>
+                  <p className="text-[10px] text-gray-400 mt-1">{t('seller.mealVoucher.zeroMeansDirectSale')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">수량 (식사권 수)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.stockQuantity')}</label>
                   <input
                     type="number"
                     value={form.stock || ''}
@@ -381,7 +381,7 @@ export default function SellerMealVoucherNewPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">공동구매 마감</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.groupBuyDeadline')}</label>
                   <input
                     type="datetime-local"
                     value={form.group_buy_deadline}
@@ -390,7 +390,7 @@ export default function SellerMealVoucherNewPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">식사권 유효기간</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.voucherExpiry')}</label>
                   <input
                     type="date"
                     value={form.voucher_expiry}
@@ -401,11 +401,11 @@ export default function SellerMealVoucherNewPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">이용 조건</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.usageTerms')}</label>
                 <textarea
                   value={form.voucher_terms}
                   onChange={e => update('voucher_terms', e.target.value)}
-                  placeholder="예: 주말 사용 불가, 1인 1매 한정, 다른 쿠폰과 중복 불가"
+                  placeholder={t('seller.mealVoucher.usageTermsPlaceholder')}
                   rows={2}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none resize-none"
                 />
@@ -415,12 +415,12 @@ export default function SellerMealVoucherNewPage() {
 
           {/* 미리보기 */}
           <div className="bg-pink-50 border border-pink-200 rounded-xl p-4">
-            <p className="text-sm font-bold text-pink-700 mb-2">📋 미리보기</p>
+            <p className="text-sm font-bold text-pink-700 mb-2">📋 {t('seller.mealVoucher.preview')}</p>
             <p className="text-xs text-pink-600">
               {form.name || t('seller.mealVoucher.namePlaceholder')} · {form.restaurant_name || t('seller.mealVoucher.restaurantPlaceholder')} ·
               {form.price ? ` ${form.price.toLocaleString()}${t('common.won')}` : ` ${t('seller.mealVoucher.priceUndecided')}`}
-              {form.original_price > form.price && ` (정가 ${form.original_price.toLocaleString()}원, ${Math.round((1 - form.price / form.original_price) * 100)}% 할인)`}
-              {form.group_buy_target > 0 && ` · 목표 ${form.group_buy_target}명`}
+              {form.original_price > form.price && ` (${t('seller.mealVoucher.originalPriceShort')} ${form.original_price.toLocaleString()}${t('common.won')}, ${Math.round((1 - form.price / form.original_price) * 100)}% ${t('seller.mealVoucher.discount')})`}
+              {form.group_buy_target > 0 && ` · ${t('seller.mealVoucher.targetCount', { count: form.group_buy_target })}`}
             </p>
           </div>
 
@@ -431,7 +431,7 @@ export default function SellerMealVoucherNewPage() {
               onClick={() => navigate('/seller/group-buy')}
               className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm"
             >
-              취소
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
