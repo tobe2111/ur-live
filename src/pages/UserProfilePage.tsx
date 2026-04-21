@@ -571,17 +571,11 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      {/* User Info Section */}
-      <UserInfo userName={userName} profileImage={profileImage} />
-
-      {/* 딜 포인트 잔액 */}
+      {/* v4 3-스탯 칩 (딜포인트 통합) */}
       <TeamPointsCard />
 
       {/* 셀러 전환 */}
       <SellerSwitchCard />
-
-      {/* 광고 시청으로 딜 받기 */}
-      <RewardAdCard />
 
       {/* 채팅 이름 설정 */}
       <ChatNameSetting />
@@ -626,8 +620,32 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      {/* Menu List Section */}
-      <MenuList />
+      {/* v4 도움말 섹션 */}
+      <div className="px-4 pt-6">
+        <p className="text-[12px] font-bold text-white mb-3">도움말</p>
+        <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
+          {[
+            { label: '고객센터', sub: '0507-0177-0432', path: '' },
+            { label: '자주 묻는 질문', sub: 'FAQ', path: '' },
+            { label: '이용약관', path: '/terms' },
+            { label: '개인정보 처리방침', path: '/privacy' },
+            { label: '배송 정책', path: '/shipping-policy' },
+          ].map((item, i) => (
+            <button
+              key={item.label}
+              onClick={() => item.path && navigate(item.path)}
+              className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
+              style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+            >
+              <div className="flex-1">
+                <p className="text-[12px] text-white">{item.label}</p>
+                {item.sub && <p className="text-[10px] text-white/45 mt-0.5">{item.sub}</p>}
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-white/30" />
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* v4 로그아웃 */}
       <div className="px-4 py-6">
@@ -641,8 +659,7 @@ export default function UserProfilePage() {
         <p className="text-[10px] text-white/25 text-center mt-3">YourDeal v2.4 · 2026</p>
       </div>
 
-      {/* Footer Section */}
-      <Footer />
+      {/* v4: Footer는 로그아웃 아래 버전 정보로 대체됨 */}
       
     </div>
   )
