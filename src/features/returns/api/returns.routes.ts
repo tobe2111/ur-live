@@ -421,6 +421,21 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     return c.json({ success: false, error: '검수 완료된 반품만 환불 처리할 수 있습니다' }, 400);
   }
 
+  // ── Voucher used-state check ──
+  // 식사권 등 이미 사용된 바우처가 포함된 주문은 환불 불가
+  try {
+    const usedVouchers = await DB.prepare(
+      "SELECT COUNT(*) as n FROM vouchers WHERE order_id = ? AND status = 'used'"
+    ).bind(returnRecord.order_id).first<{ n: number }>();
+
+    if (usedVouchers && usedVouchers.n > 0) {
+      return c.json({
+        success: false,
+        error: `이미 사용된 식사권이 ${usedVouchers.n}개 있어 환불할 수 없습니다. 고객센터에 문의해주세요.`,
+      }, 400);
+    }
+  } catch { /* vouchers table may not exist */ }
+
   // 1. 주문에서 payment_key 조회
   const order = await DB.prepare(
     'SELECT id, toss_payment_key, payment_key, total_amount FROM orders WHERE id = ?'
@@ -500,6 +515,89 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   await DB.prepare(`
     UPDATE returns SET status = 'refunded', refunded_at = datetime('now') WHERE id = ?
   `).bind(returnId).run();
+
+  // ── Reverse referral / affiliate commissions tied to this order ──
+  // Best-effort: never block the refund if ledger updates fail.
+  try {
+    const commissions = await DB.prepare(
+      "SELECT beneficiary_id, commission_amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
+    ).bind(returnRecord.order_id).all<{ beneficiary_id: string; commission_amount: number }>();
+
+    if (commissions.results && commissions.results.length > 0) {
+      for (const row of commissions.results) {
+        await DB.prepare(
+          "UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?"
+        ).bind(row.commission_amount, row.beneficiary_id).run().catch(() => {});
+      }
+
+      await DB.prepare(
+        "UPDATE referral_commissions SET status = 'withdrawn' WHERE order_id = ? AND status = 'granted'"
+      ).bind(returnRecord.order_id).run().catch(() => {});
+    }
+  } catch { /* ledger may not exist */ }
+
+  try {
+    const aff = await DB.prepare(
+      "SELECT referrer_id, commission FROM affiliate_earnings WHERE order_id = ? AND status = 'granted'"
+    ).bind(returnRecord.order_id).all<{ referrer_id: string; commission: number }>();
+
+    if (aff.results && aff.results.length > 0) {
+      for (const row of aff.results) {
+        await DB.prepare(
+          "UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?"
+        ).bind(row.commission, row.referrer_id).run().catch(() => {});
+      }
+      await DB.prepare(
+        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND status = 'granted'"
+      ).bind(returnRecord.order_id).run().catch(() => {});
+    }
+  } catch { /* table may not exist */ }
+
+  // ── Settlement adjustment (restaurant vouchers) ──
+  // If this order was already rolled into a completed settlement, record a clawback
+  // and alert ops so finance can reconcile manually.
+  try {
+    const settlement = await DB.prepare(
+      "SELECT id FROM restaurant_settlements WHERE id IN (SELECT settlement_id FROM vouchers WHERE order_id = ? AND settlement_id IS NOT NULL) AND status = 'completed'"
+    ).bind(returnRecord.order_id).first<{ id: number }>();
+
+    if (settlement) {
+      // Ensure adjustments table exists (idempotent)
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS settlement_adjustments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          settlement_id INTEGER NOT NULL,
+          order_id INTEGER,
+          amount INTEGER NOT NULL,
+          reason TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run().catch(() => {});
+
+      await DB.prepare(
+        "INSERT INTO settlement_adjustments (settlement_id, order_id, amount, reason) VALUES (?, ?, ?, ?)"
+      ).bind(
+        settlement.id,
+        returnRecord.order_id,
+        -(returnRecord.refund_amount || 0),
+        'refund'
+      ).run().catch(() => {});
+
+      try {
+        const { sendAlert } = await import('@/worker/utils/alerts');
+        await sendAlert(c.env, {
+          severity: 'warn',
+          title: 'Settlement clawback: refund after completed settlement',
+          message: `Order ${returnRecord.order_id} refunded after settlement ${settlement.id} was completed. Manual reconciliation required.`,
+          context: {
+            order_id: returnRecord.order_id,
+            settlement_id: settlement.id,
+            refund_amount: returnRecord.refund_amount,
+          },
+        });
+      } catch { /* alert failure is non-fatal */ }
+    }
+  } catch { /* table may not exist */ }
 
   // 6. 소비자에게 환불 완료 알림
   try {

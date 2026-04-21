@@ -16,16 +16,29 @@ export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
 
   try {
+    // Get platform-wide meal voucher commission rate (source of truth: platform_settings).
+    // Default 5% aligns with group-buy DEFAULT_MEAL_VOUCHER_COMMISSION_RATE.
+    let platformRate = 5;
+    try {
+      const settingRow = await DB.prepare(
+        "SELECT value FROM platform_settings WHERE key = 'commission_rate_meal_voucher'"
+      ).first<{ value: string }>();
+      if (settingRow?.value) {
+        const parsed = Number(settingRow.value);
+        if (Number.isFinite(parsed) && parsed >= 0) platformRate = parsed;
+      }
+    } catch { /* platform_settings may not exist — use default 5% */ }
+
     // Find used vouchers not yet in any settlement, used 7+ days ago
     const usedVouchers = await DB.prepare(`
       SELECT v.id, v.product_id, v.order_id, p.price, p.seller_id, p.restaurant_name,
-             COALESCE(p.commission_rate, 15) as commission_rate
+             COALESCE(p.commission_rate, ?) as commission_rate
       FROM vouchers v
       JOIN products p ON v.product_id = p.id
       WHERE v.status = 'used'
         AND v.used_at <= datetime('now', '-7 days')
         AND v.settlement_id IS NULL
-    `).all();
+    `).bind(platformRate).all();
 
     if (!usedVouchers.results?.length) return;
 
@@ -40,7 +53,7 @@ export async function handleAutoSettlement(env: Env) {
     // Create settlement records
     for (const [sellerId, vouchers] of Object.entries(sellerGroups)) {
       const totalRevenue = vouchers.reduce((sum: number, v: any) => sum + (v.price || 0), 0);
-      const commissionRate = vouchers[0]?.commission_rate || 15;
+      const commissionRate = vouchers[0]?.commission_rate ?? platformRate;
       const commissionAmount = Math.floor(totalRevenue * commissionRate / 100);
       const settlementAmount = totalRevenue - commissionAmount;
 

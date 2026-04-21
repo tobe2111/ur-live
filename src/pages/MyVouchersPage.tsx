@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X } from 'lucide-react'
 import api from '@/lib/api'
@@ -18,11 +19,11 @@ interface Voucher {
 }
 
 const STATUS_MAP = {
-  unused: { label: '사용 가능', color: 'bg-green-100 text-green-700', icon: Ticket },
-  used: { label: '사용 완료', color: 'bg-gray-100 text-gray-500', icon: CheckCircle },
-  expired: { label: '만료됨', color: 'bg-red-100 text-red-600', icon: XCircle },
-  refunded: { label: '환불됨', color: 'bg-yellow-100 text-yellow-700', icon: XCircle },
-}
+  unused: { labelKey: 'voucher.status.unused', color: 'bg-green-100 text-green-700', icon: Ticket },
+  used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 text-gray-500', icon: CheckCircle },
+  expired: { labelKey: 'voucher.status.expired', color: 'bg-red-100 text-red-600', icon: XCircle },
+  refunded: { labelKey: 'voucher.status.refunded', color: 'bg-yellow-100 text-yellow-700', icon: XCircle },
+} as const
 
 function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) {
   return (
@@ -37,6 +38,7 @@ function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) 
 }
 
 function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }) {
+  const { t } = useTranslation()
   const qrUrl = `https://live.ur-team.com/v/${voucher.code}`
 
   return (
@@ -55,7 +57,7 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
         <div className="bg-gray-100 rounded-lg px-3 py-2 text-center">
           <code className="text-sm font-mono font-bold text-pink-500">{voucher.code}</code>
         </div>
-        <p className="text-[10px] text-gray-400 text-center mt-2">매장에서 이 QR 코드를 보여주세요</p>
+        <p className="text-[10px] text-gray-400 text-center mt-2">{t('voucher.showQrAtStore')}</p>
       </div>
     </div>
   )
@@ -63,6 +65,7 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
 
 export default function MyVouchersPage() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [loading, setLoading] = useState(true)
   const [qrVoucher, setQrVoucher] = useState<Voucher | null>(null)
@@ -74,16 +77,18 @@ export default function MyVouchersPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
+
   return (
     <div className="min-h-screen bg-white pb-20">
-      <SEO title="내 식사권 - 유어딜" description="구매한 식사권을 확인하고 사용하세요" url="/my-vouchers" />
+      <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" />
       {/* 헤더 */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center px-4 py-3">
           <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
-          <h1 className="flex-1 text-center text-[18px] font-bold text-gray-900 pr-10">내 식사권</h1>
+          <h1 className="flex-1 text-center text-[18px] font-bold text-gray-900 pr-10">{t('voucher.myVouchers')}</h1>
         </div>
       </div>
 
@@ -95,10 +100,10 @@ export default function MyVouchersPage() {
         ) : vouchers.length === 0 ? (
           <div className="text-center py-20">
             <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-900 font-bold mb-1">아직 식사권이 없습니다</p>
-            <p className="text-gray-500 text-sm mb-4">맛집 공동구매에 참여해보세요!</p>
+            <p className="text-gray-900 font-bold mb-1">{t('voucher.empty')}</p>
+            <p className="text-gray-500 text-sm mb-4">{t('voucher.emptyHint')}</p>
             <button onClick={() => navigate('/browse?category=meal_voucher')} className="px-5 py-2.5 bg-pink-500 text-white rounded-full text-sm font-bold">
-              맛집 둘러보기
+              {t('voucher.exploreRestaurants')}
             </button>
           </div>
         ) : (
@@ -116,7 +121,7 @@ export default function MyVouchersPage() {
                       {/* 상태 배지 */}
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${st.color}`}>
                         <st.icon className="w-3 h-3" />
-                        {st.label}
+                        {t(st.labelKey)}
                       </span>
                       {/* 상품명 */}
                       <p className="text-sm font-bold text-gray-900 mt-1.5">{v.product_name}</p>
@@ -136,7 +141,7 @@ export default function MyVouchersPage() {
                               className="text-[10px] text-pink-500 hover:text-pink-600 font-medium flex items-center gap-0.5"
                             >
                               <QrCode className="w-3 h-3" />
-                              QR 보기
+                              {t('voucher.scan')}
                             </button>
                           )}
                           {v.status === 'unused' && (
@@ -144,7 +149,7 @@ export default function MyVouchersPage() {
                               onClick={() => navigator.clipboard?.writeText(v.code)}
                               className="text-[10px] text-gray-500 hover:text-gray-900"
                             >
-                              복사
+                              {t('voucher.copy')}
                             </button>
                           )}
                         </div>
@@ -153,7 +158,9 @@ export default function MyVouchersPage() {
                       {v.expires_at && (
                         <p className="text-[10px] text-gray-600 mt-1.5 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {v.status === 'used' ? `사용일: ${new Date(v.used_at!).toLocaleDateString('ko-KR')}` : `유효기간: ${new Date(v.expires_at).toLocaleDateString('ko-KR')}까지`}
+                          {v.status === 'used'
+                            ? `${t('voucher.usedAt')}: ${new Date(v.used_at!).toLocaleDateString(locale)}`
+                            : `${t('voucher.expiresAt')}: ${new Date(v.expires_at).toLocaleDateString(locale)}${t('voucher.until')}`}
                         </p>
                       )}
                     </div>

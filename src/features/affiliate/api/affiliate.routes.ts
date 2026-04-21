@@ -10,6 +10,7 @@ import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
 
 const DEFAULT_COMMISSION_RATE = 0.02 // 2%
 
@@ -117,12 +118,19 @@ affiliateRoutes.post('/track', requireAuth(), async (c) => {
     String(order.user_id), buyerIp, orderAmount, commission,
   ).run()
 
-  // 딜 포인트 즉시 적립 (deal_balance 컬럼이 없는 환경에서는 silently ignore)
+  // 딜 포인트 즉시 적립 — user_points 테이블 사용 (production users 테이블에 deal_balance 컬럼 없음)
   try {
-    await DB.prepare(
-      'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?'
-    ).bind(commission, String(referrer_id)).run()
-  } catch { /* deal_balance column may not exist */ }
+    await ensureUserPointsTable(DB)
+    await DB.prepare(`
+      INSERT INTO user_points (user_id, balance, total_charged)
+      VALUES (?, ?, 0)
+      ON CONFLICT(user_id) DO UPDATE SET
+        balance = balance + excluded.balance,
+        updated_at = datetime('now')
+    `).bind(String(referrer_id), commission).run()
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn('[affiliate] user_points grant failed', e)
+  }
 
   // 알림
   try {

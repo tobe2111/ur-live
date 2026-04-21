@@ -22,6 +22,7 @@ import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/a
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database'
+import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
 
 // ---------------------------------------------------------------------------
 // Router
@@ -227,6 +228,9 @@ export async function calculateMultiTierCommission(
 
   if (commissions.length === 0) return []
 
+  // Ensure user_points table exists (production users table has no deal_balance column)
+  await ensureUserPointsTable(DB)
+
   // 5. Insert commissions + grant deal points in a single batch (atomic)
   const statements: D1PreparedStatement[] = []
 
@@ -242,19 +246,22 @@ export async function calculateMultiTierCommission(
       ).bind(orderId, orderAmount, c.tier, c.beneficiary_id, beneficiaryType, buyerUserId, c.rate / 100, c.amount),
     )
 
-    // Grant deal points to beneficiary
-    // For sellers, we still credit deal_balance — they can choose bank withdrawal later
+    // Grant deal points to beneficiary via user_points table (Single Source of Truth)
     statements.push(
       DB.prepare(
-        'UPDATE users SET deal_balance = deal_balance + ? WHERE id = ?',
-      ).bind(c.amount, c.beneficiary_id),
+        `INSERT INTO user_points (user_id, balance, total_charged)
+         VALUES (?, ?, 0)
+         ON CONFLICT(user_id) DO UPDATE SET
+           balance = balance + excluded.balance,
+           updated_at = datetime('now')`,
+      ).bind(String(c.beneficiary_id), c.amount),
     )
   }
 
   try {
     await DB.batch(statements)
   } catch (err) {
-    // If batch fails (e.g. user doesn't have deal_balance column), try one-by-one
+    // Fallback to running statements one-by-one if the batch fails
     if (import.meta.env?.DEV) console.error('[ReferralTree] Batch commission failed:', err)
     for (const stmt of statements) {
       try { await stmt.run() } catch { /* individual statement failure is non-fatal */ }

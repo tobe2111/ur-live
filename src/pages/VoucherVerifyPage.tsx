@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Ticket, CheckCircle, XCircle, Loader2, QrCode } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -27,12 +28,15 @@ function parseVoucherCode(input: string): string {
 
 export default function VoucherVerifyPage() {
   const { code: urlCode } = useParams<{ code: string }>()
+  const { t, i18n } = useTranslation()
   const [code, setCode] = useState(urlCode || '')
   const [pin, setPin] = useState('')
   const [voucher, setVoucher] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
 
   // 바우처 조회
   async function lookupVoucher() {
@@ -46,10 +50,10 @@ export default function VoucherVerifyPage() {
       if (res.data.success) {
         setVoucher(res.data.data)
       } else {
-        setResult({ success: false, message: res.data.error || '바우처를 찾을 수 없습니다' })
+        setResult({ success: false, message: res.data.error || t('voucher.verify.notFound') })
       }
     } catch {
-      setResult({ success: false, message: '바우처를 찾을 수 없습니다' })
+      setResult({ success: false, message: t('voucher.verify.notFound') })
     } finally {
       setLoading(false)
     }
@@ -65,7 +69,7 @@ export default function VoucherVerifyPage() {
       if (res.data.success) setVoucher(null)
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      setResult({ success: false, message: err_.response?.data?.error || '처리 중 오류가 발생했습니다' })
+      setResult({ success: false, message: err_.response?.data?.error || t('voucher.verify.processingError') })
     } finally {
       setVerifying(false)
     }
@@ -73,15 +77,15 @@ export default function VoucherVerifyPage() {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-5">
-      <SEO title="식사권 확인" description="QR 코드로 식사권을 확인합니다" url={urlCode ? `/v/${urlCode}` : '/v'} noindex />
+      <SEO title={t('voucher.verify.seoTitle')} description={t('voucher.verify.seoDescription')} url={urlCode ? `/v/${urlCode}` : '/v'} noindex />
       <div className="w-full max-w-sm">
         {/* 로고 */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
             <Ticket className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-xl font-extrabold text-gray-900">식사권 인증</h1>
-          <p className="text-sm text-gray-500 mt-1">고객의 바우처 코드를 확인하세요</p>
+          <h1 className="text-xl font-extrabold text-gray-900">{t('voucher.verify.title')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('voucher.verify.subtitle')}</p>
         </div>
 
         {/* 결과 표시 */}
@@ -95,7 +99,7 @@ export default function VoucherVerifyPage() {
         {!voucher ? (
           /* Step 1: 코드 입력 */
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">바우처 코드</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('voucher.verify.codeLabel')}</label>
             <input
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
@@ -104,29 +108,29 @@ export default function VoucherVerifyPage() {
                 const pasted = e.clipboardData.getData('text')
                 setCode(parseVoucherCode(pasted))
               }}
-              placeholder="UR-XXXX-XXXX"
+              placeholder={t('voucher.verify.codePlaceholder')}
               className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg text-gray-900 font-mono font-bold tracking-widest focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
               maxLength={60}
             />
             <div className="flex items-center gap-1.5 mt-2 justify-center">
               <QrCode className="w-3.5 h-3.5 text-gray-400" />
-              <p className="text-xs text-gray-400">QR 스캔 결과를 붙여넣기하면 자동으로 코드가 추출됩니다</p>
+              <p className="text-xs text-gray-400">{t('voucher.verify.qrHint')}</p>
             </div>
             <button
               onClick={lookupVoucher}
               disabled={!code.trim() || loading}
               className="w-full mt-4 py-3.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold rounded-xl disabled:opacity-40 active:scale-[0.98]"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : '조회하기'}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.lookup')}
             </button>
           </div>
         ) : voucher.status !== 'unused' ? (
           /* 이미 사용/만료된 바우처 */
           <div className="text-center py-8">
             <XCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-900 font-bold">{voucher.status === 'used' ? '이미 사용된 바우처' : '만료된 바우처'}</p>
+            <p className="text-gray-900 font-bold">{voucher.status === 'used' ? t('voucher.verify.alreadyUsed') : t('voucher.verify.expired')}</p>
             <p className="text-sm text-gray-500 mt-1">{voucher.product_name}</p>
-            <button onClick={() => { setVoucher(null); setCode(''); setResult(null) }} className="mt-4 text-sm text-pink-500 font-medium">다른 바우처 조회</button>
+            <button onClick={() => { setVoucher(null); setCode(''); setResult(null) }} className="mt-4 text-sm text-pink-500 font-medium">{t('voucher.verify.lookupAnother')}</button>
           </div>
         ) : (
           /* Step 2: 바우처 확인 + 비밀번호 입력 */
@@ -144,17 +148,17 @@ export default function VoucherVerifyPage() {
                 <code className="text-lg font-mono font-bold text-pink-500">{voucher.code}</code>
               </div>
               {voucher.expires_at && (
-                <p className="text-xs text-gray-400 mt-2 text-center">유효기간: {new Date(voucher.expires_at).toLocaleDateString('ko-KR')}까지</p>
+                <p className="text-xs text-gray-400 mt-2 text-center">{t('voucher.expiresAt')}: {new Date(voucher.expires_at).toLocaleDateString(locale)}{t('voucher.until')}</p>
               )}
             </div>
 
             {/* 비밀번호 입력 */}
-            <label className="block text-sm font-medium text-gray-700 mb-2">인증 비밀번호</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('voucher.verify.enterPin')}</label>
             <input
               value={pin}
               onChange={e => setPin(e.target.value)}
               type="password"
-              placeholder="비밀번호 입력"
+              placeholder={t('voucher.verify.pinPlaceholder')}
               className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-xl text-gray-900 tracking-[0.5em] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
               maxLength={10}
             />
@@ -163,9 +167,9 @@ export default function VoucherVerifyPage() {
               disabled={!pin.trim() || verifying}
               className="w-full mt-4 py-3.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl disabled:opacity-40 active:scale-[0.98]"
             >
-              {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : '사용 확인'}
+              {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.confirm')}
             </button>
-            <button onClick={() => { setVoucher(null); setCode(''); setPin(''); setResult(null) }} className="w-full mt-2 py-2 text-sm text-gray-500">취소</button>
+            <button onClick={() => { setVoucher(null); setCode(''); setPin(''); setResult(null) }} className="w-full mt-2 py-2 text-sm text-gray-500">{t('voucher.verify.cancel')}</button>
           </div>
         )}
       </div>
