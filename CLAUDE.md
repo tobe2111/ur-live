@@ -101,10 +101,15 @@ GitHub Actions (`main.yml`)가 **둘 다** 배포함. Workers를 빠뜨리면 `l
 - 마이페이지(`/user/profile`) → **`UserProfilePage.tsx`**
 - 라우트 확인: `App.tsx`의 `<Route>` 컴포넌트 확인 필수
 
+### 자동 배포 규칙 (필수)
+- feature 브랜치에 push하면 **PostToolUse 훅**이 자동으로 main에 머지 & 푸시
+- 스크립트: `scripts/auto-merge-main.sh`
+- **절대 feature 브랜치에만 두지 말 것** — 모든 변경은 main에 반영되어야 배포됨
+
 ### 변경 후 체크리스트
 1. `npx tsc --noEmit --skipLibCheck` — TS 에러 0개
 2. `npx vite build` — 빌드 성공
-3. `git push origin main` — GitHub Actions가 Workers + Pages 둘 다 배포
+3. `git push origin <branch>` — 훅이 자동으로 main 머지 & 배포
 4. Actions 탭에서 **녹색 성공** 확인
 
 ### 절대 하지 말 것

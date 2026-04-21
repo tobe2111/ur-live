@@ -130,7 +130,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       </div>
 
       {/* Nav - Grouped */}
-      <nav className="flex-1 px-3 py-3 overflow-y-auto">
+      <nav className="flex-1 px-3 py-3 overflow-y-auto scrollbar-hide">
         {filteredNavGroups.map((group, gi) => (
           <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
             {(group.label || group.labelKey) && (

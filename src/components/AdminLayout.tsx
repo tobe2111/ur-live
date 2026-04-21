@@ -142,7 +142,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       </div>
 
       {/* Grouped navigation */}
-      <nav className="flex-1 overflow-y-auto pb-2">
+      <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">
         {NAV_GROUPS.map((group) => (
           <div key={group.title} className="mt-3 first:mt-1">
             <div

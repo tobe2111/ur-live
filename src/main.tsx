@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import './i18n' // ✅ i18n 초기화
-import { initSentry } from './lib/sentry'
 import { logRegionInfo, isKorea } from '@/shared/config/region'
 // ✅ Week 5 Day 2: 런타임 환경 변수 검증
 import { validateEnvForRuntime } from '@/shared/config/env-validator'
@@ -12,8 +11,8 @@ import { initNativeFeatures, isNative } from '@/lib/native'
 // ✅ 런타임 환경 변수 검증 (Week 5 Day 2)
 validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
 
-// Sentry 초기화
-try { initSentry() } catch {}
+// Sentry 초기화 (lazy — 262KB 번들 차단 방지)
+import('./lib/sentry').then(m => m.initSentry()).catch(() => {})
 
 // Region 정보 (개발 환경)
 if (import.meta.env.DEV) logRegionInfo()

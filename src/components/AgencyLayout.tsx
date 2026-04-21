@@ -135,7 +135,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2">
+      <nav className="flex-1 overflow-y-auto scrollbar-hide py-2">
         {NAV_ITEMS.map(({ path, label, icon: Icon, exact, badge, liveBadge }) => {
           const active = isActive(path, exact)
           return (

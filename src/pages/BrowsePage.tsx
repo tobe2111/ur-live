@@ -405,7 +405,7 @@ export default function BrowsePage() {
                       ) : (
                         <div className="w-full h-full bg-gray-100" />
                       )}
-                      {discountRate >= 40 && (
+                      {discountRate > 0 && (
                         <span className="absolute top-1.5 left-1.5 rounded-md px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">
                           -{discountRate}%
                         </span>
@@ -423,6 +423,7 @@ export default function BrowsePage() {
                     </div>
 
                     <div className="mt-2">
+                      {product.seller_name && <p className="text-[10px] text-gray-400">@{product.seller_name}</p>}
                       <p className="text-[12px] text-gray-900 leading-tight line-clamp-2">{product.name}</p>
                       {product.original_price && product.original_price > displayPrice && (
                         <p className="text-[10px] text-gray-400 line-through mt-1">{formatPrice(product.original_price)}</p>
