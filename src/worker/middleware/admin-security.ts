@@ -29,7 +29,10 @@ function isIpAllowed(ip: string, whitelist: string[]): boolean {
 export function adminIpWhitelist() {
   return async (c: Context, next: Next) => {
     const rawList = (c.env as Record<string, unknown>).ADMIN_IP_WHITELIST as string | undefined;
-    if (!rawList) return next(); // not configured → allow all
+    if (!rawList) {
+      console.warn('[Admin] ADMIN_IP_WHITELIST not configured — all IPs allowed. Set this env var in production.');
+      return next();
+    }
 
     const whitelist = rawList.split(',').map(s => s.trim()).filter(Boolean);
     if (whitelist.length === 0) return next();

@@ -403,7 +403,7 @@ ordersRouter.get('/:id', async (c) => {
 
 // POST /api/orders/refund  ← useOrder.ts에서 호출
 // 환불 요청: Toss Cancel API 호출 후 DB 상태 CANCELLED + 재고 복구
-ordersRouter.post('/refund', async (c) => {
+ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowSec: 3600 }), async (c) => {
   try {
     const firebaseUid = String(c.get('user').id);
     const userId = await getUserDbId(c.env.DB, firebaseUid);
@@ -504,7 +504,7 @@ ordersRouter.post('/refund', async (c) => {
 });
 
 // POST /api/orders/:id/cancel
-ordersRouter.post('/:id/cancel', async (c) => {
+ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, windowSec: 3600 }), async (c) => {
   try {
     const firebaseUid = String(c.get('user').id);
     const userId = await getUserDbId(c.env.DB, firebaseUid);
