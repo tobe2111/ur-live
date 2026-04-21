@@ -231,7 +231,8 @@ export class YouTubeAPIService {
             enableEmbed: true,
             latencyPreference: 'low'
           }
-        })
+        }),
+        signal: AbortSignal.timeout(20000)
       }
     )
 
@@ -277,7 +278,8 @@ export class YouTubeAPIService {
             ingestionType: 'rtmp',
             resolution
           }
-        })
+        }),
+        signal: AbortSignal.timeout(20000)
       }
     )
 
@@ -310,7 +312,8 @@ export class YouTubeAPIService {
     const response = await fetch(
       `${YOUTUBE_API_BASE}/liveStreams?part=snippet,cdn,status&id=${streamId}`,
       {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(20000)
       }
     )
 
