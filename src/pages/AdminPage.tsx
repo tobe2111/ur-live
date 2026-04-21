@@ -692,8 +692,8 @@ export default function AdminPage() {
                   <td className="px-4 py-3 text-xs text-gray-900">{seller.email}</td>
                   <td className="px-4 py-3 text-xs text-gray-900">{seller.business_name || seller.company_name || '-'}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => updateCommissionRate(seller.id, seller.commission_rate || 10)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                      {(seller.commission_rate || 10).toFixed(2)}%
+                    <button onClick={() => updateCommissionRate(seller.id, seller.commission_rate ?? 10)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                      {seller.commission_rate != null ? `${seller.commission_rate.toFixed(2)}%` : '-'}
                     </button>
                   </td>
                   <td className="px-4 py-3">

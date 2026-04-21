@@ -231,12 +231,22 @@ const Skel = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
 )
 
+interface Stream {
+  id: number
+  title: string
+  seller_business_name?: string
+  seller_name?: string
+  status: string
+}
+
 export default function AgencyPage() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
   const [sellers, setSellers] = useState<Seller[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [daily, setDaily] = useState<DailyStat[]>([])
+  const [streams, setStreams] = useState<Stream[]>([])
+  const [agencyProfile, setAgencyProfile] = useState<{ commission_rate?: number } | null>(null)
   const [loading, setLoading] = useState(true)
 
   // 월간 매출 목표 (localStorage 저장)
@@ -273,8 +283,10 @@ export default function AgencyPage() {
       api.get('/api/agency/sellers', { headers }),
       api.get('/api/agency/orders?limit=8', { headers }),
       api.get('/api/agency/stats/daily?days=14', { headers }),
+      api.get('/api/agency/streams?status=live', { headers }),
+      api.get('/api/agency/profile', { headers }),
     ])
-      .then(([statsRes, sellersRes, ordersRes, dailyRes]) => {
+      .then(([statsRes, sellersRes, ordersRes, dailyRes, streamsRes, profileRes]) => {
         // 통계 호출이 401로 실패하면 세션 만료 처리
         const authFailed = [statsRes, sellersRes].some(r =>
           r.status === 'rejected' && (r.reason as { response?: { status?: number } })?.response?.status === 401
@@ -289,11 +301,15 @@ export default function AgencyPage() {
         const nextSellers = sellersRes.status === 'fulfilled' ? (sellersRes.value.data.data || []) : []
         const nextOrders = ordersRes.status === 'fulfilled' ? (ordersRes.value.data.data || []) : []
         const nextDaily = dailyRes.status === 'fulfilled' ? (dailyRes.value.data.data || []) : []
+        const nextStreams = streamsRes.status === 'fulfilled' ? (streamsRes.value.data.data || []) : []
+        const nextProfile = profileRes.status === 'fulfilled' && profileRes.value.data.success ? profileRes.value.data.data : null
 
         if (nextStats) setStats(nextStats)
         setSellers(nextSellers)
         setOrders(nextOrders)
         setDaily(nextDaily)
+        setStreams(nextStreams)
+        if (nextProfile) setAgencyProfile(nextProfile)
 
         // sessionStorage 캐시 (5분 TTL)
         try {
@@ -311,7 +327,11 @@ export default function AgencyPage() {
   )
 
   const totalGMV = useMemo(() => sellers.reduce((s, sl) => s + (sl.total_revenue || 0), 0), [sellers])
-  const commission = useMemo(() => Math.round((stats?.revenue_30d ?? 0) * 0.02), [stats])
+  const commissionRate = agencyProfile?.commission_rate ?? 2.0
+  const commission = useMemo(
+    () => Math.round(((stats?.revenue_30d ?? 0) * commissionRate) / 100),
+    [stats, commissionRate]
+  )
 
   // ── Period-over-period 델타 (최근 7일 vs 이전 7일) ─────────────────────────
   const pctDelta = (curr: number, prev: number) => {
@@ -342,29 +362,94 @@ export default function AgencyPage() {
   const currentRev = stats?.revenue_30d ?? 0
   const goalProgress = monthlyGoal > 0 ? (currentRev / monthlyGoal) * 100 : 0
 
-  // 전환 퍼널 (에이전시: 소속 셀러 집계)
-  const totalViewersAgg = useMemo(() => sellers.reduce((s, sl) => s + (sl.active_streams || 0) * 50, 0), [sellers])
+  // 전환 퍼널 (에이전시: 소속 셀러 집계) — 실제 데이터만 표시 (추정값 사용 금지)
   const totalOrdersAgg = stats?.orders_30d ?? 0
-  const funnelViewersBase = totalViewersAgg > 0 ? totalViewersAgg : Math.max(totalOrdersAgg * 40, 100)
-  const funnelProductClicks = Math.round(funnelViewersBase * 0.25)
-  const funnelCartAdds = Math.round(totalOrdersAgg * 2.5)
-  const funnelPct = (v: number) => funnelViewersBase > 0 ? Math.max(0, Math.round((v / funnelViewersBase) * 100)) : 0
-  const funnel = [
-    { label: '방송 시청자', value: funnelViewersBase, pct: 100 },
-    { label: '상품 클릭', value: funnelProductClicks, pct: funnelPct(funnelProductClicks) },
-    { label: '장바구니 추가', value: funnelCartAdds, pct: funnelPct(funnelCartAdds) },
-    { label: '주문 완료', value: totalOrdersAgg, pct: funnelPct(totalOrdersAgg) },
-  ]
 
   const liveScheduleItems = useMemo(() => {
-    return sellers
-      .filter(s => s.active_streams > 0)
-      .map(s => ({
-        sellerName: s.business_name || s.name,
-        title: `${s.business_name || s.name} 라이브 방송`,
+    // 라이브 상태의 실제 스트림에서 제목 사용
+    return streams
+      .filter(st => st.status === 'live')
+      .map(st => ({
+        sellerName: st.seller_business_name || st.seller_name || '',
+        title: st.title,
         isLive: true,
       }))
-  }, [sellers])
+  }, [streams])
+
+  // ── Actionable insights ────────────────────────────────────────────────────
+  // 에이전시 대시보드 데이터로 자동 파생되는 배너
+  type AgencyInsightSeverity = 'high' | 'medium' | 'info'
+  type AgencyInsightIcon = typeof AlertTriangle | typeof TrendingUp | typeof UserCheck | typeof Radio
+  interface AgencyInsight {
+    severity: AgencyInsightSeverity
+    icon: AgencyInsightIcon
+    title: string
+    description?: string
+    action?: { label: string; path: string }
+  }
+  const insights: AgencyInsight[] = useMemo(() => {
+    const list: AgencyInsight[] = []
+
+    // 1) 비활성 셀러 ≥ 1
+    // proxy: 승인 상태이면서 총 주문 0건이고 현재 라이브 없음
+    const inactiveSellers = sellers.filter(s =>
+      s.status === 'approved' && (s.total_orders || 0) === 0 && (s.active_streams || 0) === 0
+    ).length
+    if (inactiveSellers >= 1) {
+      list.push({
+        severity: 'medium',
+        icon: AlertTriangle,
+        title: `${inactiveSellers}개 셀러가 주문/라이브 활동이 없어요`,
+        description: '모집 이후 활동 이력이 없습니다',
+        action: { label: '셀러 관리', path: '/agency/sellers' },
+      })
+    }
+
+    // 2) 이번 주 매출 < 지난 주 * 0.8 (일일 데이터 기반: 최근 7일 vs 이전 7일)
+    if (daily && daily.length >= 4) {
+      const half = Math.max(1, Math.floor(daily.length / 2))
+      const prev = daily.slice(0, half)
+      const curr = daily.slice(-half)
+      const prevRev = prev.reduce((s, d) => s + (d.revenue || 0), 0)
+      const currRev = curr.reduce((s, d) => s + (d.revenue || 0), 0)
+      if (prevRev > 0 && currRev < prevRev * 0.8) {
+        const dropPct = Math.round(((prevRev - currRev) / prevRev) * 100)
+        list.push({
+          severity: 'high',
+          icon: TrendingUp,
+          title: `이번 주 매출 ${dropPct}% 하락`,
+          description: '긴급 점검 필요',
+        })
+      }
+    }
+
+    // 3) 승인 대기 셀러 ≥ 1
+    const pendingSellers = sellers.filter(s => s.status === 'pending').length
+    if (pendingSellers >= 1) {
+      list.push({
+        severity: 'info',
+        icon: UserCheck,
+        title: `승인 대기 셀러 ${pendingSellers}명`,
+        description: '검토 후 승인 처리해주세요',
+        action: { label: '관리', path: '/agency/sellers' },
+      })
+    }
+
+    // 4) 진행중 라이브 0 && 승인 셀러 > 0
+    const liveStreams = stats?.active_streams ?? 0
+    const activeSellers = sellers.filter(s => s.status === 'approved').length
+    if (liveStreams === 0 && activeSellers > 0) {
+      list.push({
+        severity: 'info',
+        icon: Radio,
+        title: '오늘 진행 중인 라이브가 없습니다',
+        description: `${activeSellers}명의 활성 셀러에게 편성 안내를 보내보세요`,
+        action: { label: '편성 보기', path: '/agency/schedule' },
+      })
+    }
+
+    return list
+  }, [sellers, stats, daily])
 
   const showStatsSkeleton = loading && !stats
 
@@ -477,6 +562,28 @@ export default function AgencyPage() {
         ))}
       </div>
 
+      {/* 1.5 Actionable insights callouts */}
+      {insights.length > 0 && (
+        <div className="space-y-2">
+          {insights.map((insight, i) => (
+            <div key={i} className={`rounded-xl p-3 flex items-start gap-3 ${insight.severity === 'high' ? 'bg-red-50 border border-red-200' : insight.severity === 'medium' ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'}`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${insight.severity === 'high' ? 'bg-red-100' : insight.severity === 'medium' ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                <insight.icon className={`w-4 h-4 ${insight.severity === 'high' ? 'text-red-600' : insight.severity === 'medium' ? 'text-amber-600' : 'text-blue-600'}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-extrabold text-gray-900">{insight.title}</p>
+                {insight.description && <p className="text-[11px] text-gray-600 mt-0.5">{insight.description}</p>}
+              </div>
+              {insight.action && (
+                <button onClick={() => navigate(insight.action!.path)} className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 shrink-0">
+                  {insight.action.label}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* 2. Commission Banner */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 text-white">
         <div className="flex items-center justify-between">
@@ -485,7 +592,7 @@ export default function AgencyPage() {
             <p className="text-2xl font-extrabold mt-1">
               {commission.toLocaleString()}원
             </p>
-            <p className="text-xs opacity-60 mt-1">매출 대비 2% · 확정 후 정산 신청 가능</p>
+            <p className="text-xs opacity-60 mt-1">매출 대비 {commissionRate}% · 확정 후 정산 신청 가능</p>
           </div>
           <button
             onClick={() => navigate('/agency/settlements')}
@@ -496,33 +603,31 @@ export default function AgencyPage() {
         </div>
       </div>
 
-      {/* 2.5 전환 퍼널 (소속 셀러 집계) */}
+      {/* 2.5 전환 퍼널 — 실제 데이터만 표시 (추정값 사용 금지) */}
       <div className="bg-white rounded-2xl p-5 border border-[#E8EAEE]">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[14px] font-extrabold text-gray-900">전환 퍼널 (소속 셀러 집계, 30일)</h3>
-          <span className="text-[10px] text-gray-400">방송 → 클릭 → 장바구니 → 주문</span>
+          <h3 className="text-[14px] font-extrabold text-gray-900">주문 현황 (30일)</h3>
+          <span className="text-[10px] text-gray-400">소속 셀러 집계</span>
         </div>
-        <div className="space-y-3">
-          {funnel.map((s, i) => (
-            <div key={i}>
+        {totalOrdersAgg === 0 ? (
+          <p className="text-[12px] text-gray-500 py-4 text-center">
+            주문 데이터가 아직 없습니다
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-semibold text-gray-700">{s.label}</span>
+                <span className="text-[12px] font-semibold text-gray-700">주문 완료</span>
                 <span className="text-[12px] font-extrabold text-gray-900">
-                  {s.value.toLocaleString()}<span className="text-[10px] text-gray-500 ml-1">({s.pct}%)</span>
+                  {totalOrdersAgg.toLocaleString()}건
                 </span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-gray-100">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.min(s.pct, 100)}%`,
-                    background: i === funnel.length - 1 ? '#10B981' : '#8B5CF6'
-                  }}
-                />
+                <div className="h-full rounded-full" style={{ width: '100%', background: '#10B981' }} />
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Quick Actions */}
