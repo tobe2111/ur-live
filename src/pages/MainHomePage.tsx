@@ -89,6 +89,8 @@ export default function MainHomePage() {
   const navigate = useNavigate()
   const [region, setRegion] = useState(REGIONS[0])
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
+  const [scheduledStreams, setScheduledStreams] = useState<LiveStream[]>([])
+  const [endedStreams, setEndedStreams] = useState<LiveStream[]>([])
   const [mealProducts, setMealProducts] = useState<Product[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -97,16 +99,28 @@ export default function MainHomePage() {
     document.title = '유어딜 - 라이브 커머스'
     Promise.allSettled([
       axios.get('/api/streams?status=live'),
+      axios.get('/api/streams?status=scheduled'),
+      axios.get('/api/streams?status=ended&limit=6'),
       api.get('/api/group-buy/products?status=active'),
       api.get('/api/products?limit=12&sort=popular&featured=true'),
-    ]).then(([liveRes, mealRes, prodRes]) => {
+    ]).then(([liveRes, schedRes, endedRes, mealRes, prodRes]) => {
       if (liveRes.status === 'fulfilled' && liveRes.value.data.success) setLiveStreams(liveRes.value.data.data || [])
+      if (schedRes.status === 'fulfilled' && schedRes.value.data.success) setScheduledStreams(schedRes.value.data.data || [])
+      if (endedRes.status === 'fulfilled' && endedRes.value.data.success) setEndedStreams(endedRes.value.data.data || [])
       if (mealRes.status === 'fulfilled' && mealRes.value.data.success) setMealProducts(mealRes.value.data.data || [])
       if (prodRes.status === 'fulfilled' && prodRes.value.data.success) setProducts(prodRes.value.data.data || [])
     }).finally(() => setLoading(false))
   }, [])
 
-  const featured = mealProducts[0]
+  // Nearby 지역 필터링
+  const filteredMeals = mealProducts.filter(m => {
+    if (region === REGIONS[0]) return true
+    const regionKey = region.split(' ')[0]
+    return m.restaurant_address?.includes(regionKey)
+  })
+  const displayMeals = filteredMeals.length > 0 ? filteredMeals : mealProducts
+
+  const featured = displayMeals[0]
   const featuredDisc = featured ? disc(featured.price, featured.original_price) : 0
 
   return (
@@ -131,6 +145,9 @@ export default function MainHomePage() {
             <button onClick={() => navigate('/notifications')} className="p-1.5 relative">
               <Bell className="h-5 w-5" strokeWidth={1.5} />
               <span className="absolute top-1 right-1 rounded-full w-1.5 h-1.5 bg-[#EF4444]" />
+            </button>
+            <button onClick={() => navigate('/cart')} className="p-1.5 relative">
+              <ShoppingCart className="h-5 w-5" strokeWidth={1.5} />
             </button>
           </div>
         </div>
@@ -186,7 +203,7 @@ export default function MainHomePage() {
               <span className="text-[9px] text-yellow-200 font-extrabold tracking-widest">MEAL</span>
             </div>
             <p className="text-[12px] text-white font-extrabold">오늘의 식사권딜</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">{mealProducts.length}개 모집 중</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{displayMeals.length}개 모집 중</p>
           </button>
           <button onClick={() => navigate('/browse')} className="rounded-xl p-2.5 text-left bg-blue-400/[0.08] border border-blue-400/25">
             <div className="flex items-center gap-1 mb-0.5">
@@ -208,13 +225,13 @@ export default function MainHomePage() {
               <span className="text-[10px] font-extrabold text-[#FBBF24] tracking-[0.14em]">NEARBY · 내 주변</span>
             </div>
             <p className="text-[18px] font-extrabold text-white" style={{ letterSpacing: '-0.03em' }}>{region.split(' ')[0]} 맛집 식사권</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{mealProducts.length}개 · 인기순</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{displayMeals.length}개 · 인기순</p>
           </div>
           <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[11px] text-gray-400 pb-1">전체 →</button>
         </div>
 
         <div className="space-y-2">
-          {mealProducts.slice(0, 5).map((m, i) => {
+          {displayMeals.slice(0, 5).map((m, i) => {
             const pct = m.group_buy_target ? Math.min(100, Math.round((m.group_buy_current || 0) / m.group_buy_target * 100)) : 0
             const d = disc(m.price, m.original_price)
             const isClosing = m.group_buy_deadline && (new Date(m.group_buy_deadline).getTime() - Date.now()) < 3600000
@@ -286,6 +303,74 @@ export default function MainHomePage() {
                       <span className="text-[13px] font-extrabold text-red-400">{s.current_product.price.toLocaleString()}원</span>
                     </div>
                   )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ 예정 방송 ═══ */}
+      {scheduledStreams.length > 0 && (
+        <div className="px-4 pt-6">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <p className="text-[10px] font-extrabold text-blue-400 tracking-[0.14em]">🔔 UPCOMING</p>
+              <p className="text-[15px] font-extrabold text-white mt-0.5">예정 방송</p>
+            </div>
+            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">전체 →</button>
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+            {scheduledStreams.slice(0, 6).map(s => {
+              const thumb = getThumb(s)
+              const schedDate = s.scheduled_at ? new Date(s.scheduled_at) : null
+              const timeLabel = schedDate ? schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
+              return (
+                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] text-left">
+                  <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1A1A1A]">
+                    {thumb && <img src={thumb} alt="" className="w-full h-full object-cover" />}
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.9) 100%)' }} />
+                    <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-500 px-2 py-0.5 rounded-md">
+                      <Clock className="h-2.5 w-2.5 text-white" />
+                      <span className="text-[10px] font-bold text-white">예정</span>
+                    </div>
+                    <div className="absolute bottom-2 left-2 right-2">
+                      {timeLabel && <p className="text-[18px] font-black text-white">{timeLabel}</p>}
+                      <p className="text-[10px] text-white/70 truncate">@{s.seller_name || '셀러'}</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ 다시보기 ═══ */}
+      {endedStreams.length > 0 && (
+        <div className="px-4 pt-6">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <p className="text-[10px] font-extrabold text-gray-500 tracking-[0.14em]">▶ REPLAY</p>
+              <p className="text-[15px] font-extrabold text-white mt-0.5">다시보기</p>
+            </div>
+            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">전체 →</button>
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+            {endedStreams.slice(0, 6).map(s => {
+              const thumb = getThumb(s)
+              return (
+                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[150px] text-left">
+                  <div className="relative rounded-xl overflow-hidden bg-[#1A1A1A]" style={{ aspectRatio: '16/9' }}>
+                    {thumb && <img src={thumb} alt="" className="w-full h-full object-cover brightness-[0.85]" />}
+                    <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
+                      <Play className="h-2.5 w-2.5 text-white" />
+                      <span className="text-[9px] font-bold text-white">다시보기</span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
+                  <p className="text-[9px] text-gray-500 mt-0.5">@{s.seller_name || '셀러'}</p>
                 </button>
               )
             })}
