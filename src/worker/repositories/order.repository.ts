@@ -414,11 +414,14 @@ export class OrderRepository {
 
   /**
    * Find order by idempotency key
+   * ✅ BUG #43 FIX: Idempotency keys are per-user — scope the lookup to user_id
+   * so user A can't accidentally (or maliciously) retrieve user B's order by
+   * colliding on a guessable key. Callers must pass their own user_id.
    */
-  async findByIdempotencyKey(key: string): Promise<Order | null> {
+  async findByIdempotencyKey(key: string, userId: string): Promise<Order | null> {
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      'SELECT * FROM orders WHERE idempotency_key = ?',
-      [key]
+      'SELECT * FROM orders WHERE idempotency_key = ? AND user_id = ?',
+      [key, userId]
     );
     if (!row) return null;
     return this.mapOrder(row, []);

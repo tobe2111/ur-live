@@ -87,7 +87,8 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     const productRepo = new ProductRepository(c.env.DB);
 
     // Idempotency check - return existing order if already created
-    const existingOrder = await orderRepo.findByIdempotencyKey(request.idempotency_key);
+    // ✅ BUG #43 FIX: Scope to current user to prevent cross-user idempotency collisions.
+    const existingOrder = await orderRepo.findByIdempotencyKey(request.idempotency_key, userId);
     if (existingOrder) {
       console.log('[ORDERS] Idempotent request, returning existing order:', existingOrder.id);
       return c.json({ success: true, data: existingOrder }, 200);

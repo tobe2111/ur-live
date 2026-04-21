@@ -20,6 +20,13 @@ type Bindings = {
   FIREBASE_PRIVATE_KEY: string;
   FIREBASE_CLIENT_EMAIL: string;
   DELIVERY_TRACKER_API_KEY?: string;
+  /**
+   * ✅ BUG #49: Shared secret used by cron workers to call `/internal/*` routes.
+   * TODO: Set INTERNAL_CRON_TOKEN in production secrets (`wrangler secret put`).
+   * Falls back to the legacy hardcoded value so existing cron deployments keep
+   * working until the secret is provisioned.
+   */
+  INTERNAL_CRON_TOKEN?: string;
 };
 
 export const ordersRoutes = new Hono<{ Bindings: Bindings }>();
@@ -438,7 +445,10 @@ ordersRoutes.post('/:id/confirm', cors(), requireAuth(), async (c) => {
  * X-Internal-Token: cron-sync-deliveries 헤더 필요
  */
 ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
-  if (c.req.header('X-Internal-Token') !== 'cron-sync-deliveries') {
+  // ✅ BUG #49 FIX: prefer INTERNAL_CRON_TOKEN secret; fall back to legacy literal.
+  // TODO: provision INTERNAL_CRON_TOKEN in production secrets.
+  const expectedToken = c.env.INTERNAL_CRON_TOKEN || 'cron-sync-deliveries';
+  if (c.req.header('X-Internal-Token') !== expectedToken) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }
 
@@ -463,7 +473,10 @@ ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
  * X-Internal-Token: cron-sync-deliveries 헤더 필요
  */
 ordersRoutes.post('/internal/sync-deliveries', cors(), async (c) => {
-  if (c.req.header('X-Internal-Token') !== 'cron-sync-deliveries') {
+  // ✅ BUG #49 FIX: prefer INTERNAL_CRON_TOKEN secret; fall back to legacy literal.
+  // TODO: provision INTERNAL_CRON_TOKEN in production secrets.
+  const expectedToken = c.env.INTERNAL_CRON_TOKEN || 'cron-sync-deliveries';
+  if (c.req.header('X-Internal-Token') !== expectedToken) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }
 

@@ -93,7 +93,7 @@ sellerAnalyticsRoutes.get('/reviews', requireAuth(), async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT r.id, r.product_id, r.rating, r.content, r.image_urls, r.created_at,
       r.seller_reply, r.seller_reply_at,
-      p.name AS product_name, u.display_name AS user_name
+      p.name AS product_name, u.name AS user_name
     FROM reviews r
     JOIN products p ON r.product_id = p.id
     LEFT JOIN users u ON r.user_id = u.id

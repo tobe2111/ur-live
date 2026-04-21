@@ -13,6 +13,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 
@@ -211,7 +212,9 @@ shortsRoutes.get('/:id', async (c) => {
 })
 
 // ── POST /api/shorts/:id/view — 조회수 증가 ────────────────────────
-shortsRoutes.post('/:id/view', async (c) => {
+// ✅ BUG #21 FIX: Rate-limit per IP to stop a script from trivially inflating
+// view counts (was unauthenticated with no throttle).
+shortsRoutes.post('/:id/view', rateLimit({ action: 'shorts_view', max: 10, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   const id = c.req.param('id')
   await DB.prepare('UPDATE shorts SET view_count = view_count + 1 WHERE id = ?').bind(id).run()
@@ -229,19 +232,27 @@ shortsRoutes.post('/:id/like', requireAuth(), async (c) => {
 
   await ensureTables(DB)
 
-  const existing = await DB.prepare(
-    'SELECT id FROM shorts_likes WHERE shorts_id = ? AND user_id = ?'
-  ).bind(shortsId, userId).first()
+  // ✅ BUG #20 FIX: Atomic toggle via INSERT OR IGNORE / DELETE.
+  // Previous SELECT-then-INSERT-then-UPDATE was racy under concurrent double-clicks.
+  const insertResult = await DB.prepare(
+    'INSERT OR IGNORE INTO shorts_likes (shorts_id, user_id) VALUES (?, ?)'
+  ).bind(shortsId, userId).run()
 
-  if (existing) {
-    await DB.prepare('DELETE FROM shorts_likes WHERE shorts_id = ? AND user_id = ?').bind(shortsId, userId).run()
-    await DB.prepare('UPDATE shorts SET like_count = MAX(0, like_count - 1) WHERE id = ?').bind(shortsId).run()
-    return c.json({ success: true, data: { liked: false } })
-  } else {
-    await DB.prepare('INSERT INTO shorts_likes (shorts_id, user_id) VALUES (?, ?)').bind(shortsId, userId).run()
+  if ((insertResult.meta?.changes ?? 0) > 0) {
+    // First like — increment counter
     await DB.prepare('UPDATE shorts SET like_count = like_count + 1 WHERE id = ?').bind(shortsId).run()
     return c.json({ success: true, data: { liked: true } })
   }
+
+  // Row already existed — this request is the "unlike"
+  const deleteResult = await DB.prepare(
+    'DELETE FROM shorts_likes WHERE shorts_id = ? AND user_id = ?'
+  ).bind(shortsId, userId).run()
+
+  if ((deleteResult.meta?.changes ?? 0) > 0) {
+    await DB.prepare('UPDATE shorts SET like_count = MAX(0, like_count - 1) WHERE id = ?').bind(shortsId).run()
+  }
+  return c.json({ success: true, data: { liked: false } })
 })
 
 // ── POST /api/shorts — 셀러: 쇼츠 등록 ─────────────────────────────

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
@@ -37,15 +37,34 @@ couponRoutes.post('/apply', rateLimit({ action: 'coupon_apply', max: 10, windowS
 })
 
 // 쿠폰 사용 확정 (결제 완료 시)
+// ✅ BUG #23 FIX: Never trust client-supplied discount_amount. Recompute from
+// the coupon row + actual order_amount. Caller may pass `order_amount` so we
+// can recompute percent discounts; otherwise we fall back to the fixed value.
 couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
-  const { coupon_id, order_id, discount_amount } = await c.req.json<{ coupon_id: number; order_id: number; discount_amount: number }>()
+  const { coupon_id, order_id, order_amount } = await c.req.json<{ coupon_id: number; order_id: number; order_amount?: number }>()
 
-  await DB.prepare("INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, ?, ?)").bind(coupon_id, String(user.id), order_id, discount_amount).run()
-  await DB.prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?").bind(coupon_id).run()
-  return c.json({ success: true })
+  const coupon = await DB.prepare(
+    'SELECT type, value, max_discount FROM coupons WHERE id = ? AND is_active = 1'
+  ).bind(coupon_id).first<{ type: string; value: number; max_discount: number | null }>()
+  if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 404)
+
+  const amountBase = Number(order_amount ?? 0)
+  let computed = coupon.type === 'percent'
+    ? Math.round(amountBase * coupon.value / 100)
+    : coupon.value
+  if (coupon.max_discount && computed > coupon.max_discount) {
+    computed = coupon.max_discount
+  }
+  if (computed < 0) computed = 0
+
+  await DB.prepare(
+    'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, ?, ?)'
+  ).bind(coupon_id, String(user.id), order_id, computed).run()
+  await DB.prepare('UPDATE coupons SET used_count = used_count + 1 WHERE id = ?').bind(coupon_id).run()
+  return c.json({ success: true, data: { discount_amount: computed } })
 })
 
 // 내 쿠폰 목록
@@ -64,7 +83,9 @@ couponRoutes.get('/my', requireAuth(), async (c) => {
 })
 
 // 쿠폰 시드 생성 (배포 후 1회 호출: GET /api/coupons/seed)
-couponRoutes.get('/seed', async (c) => {
+// ✅ BUG #34 FIX: Require admin auth — previously open to anyone, allowing
+// unauthenticated seeding of coupons.
+couponRoutes.get('/seed', requireAdmin(), async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
