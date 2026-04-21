@@ -222,7 +222,7 @@ export default function CheckoutPage() {
     const paramsToClean = ['access_token', 'refresh_token', 'userId', 'userEmail', 'firebase_token', 'userName', 'login', 'session']
     
     if (paramsToClean.some(param => searchParams.has(param))) {
-      console.warn('[CheckoutPage] 🧹 URL 파라미터 정리 중...', {
+      if (import.meta.env.DEV) console.warn('[CheckoutPage] 🧹 URL 파라미터 정리 중...', {
         params: Array.from(searchParams.keys())
       })
       window.history.replaceState({}, '', window.location.pathname)

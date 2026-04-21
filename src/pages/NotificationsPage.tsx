@@ -18,12 +18,14 @@ export default function NotificationsPage() {
   useEffect(() => {
     api.get('/api/social/notifications')
       .then(r => { if (r.data.success) setNotifications(r.data.data || []) })
-      .catch(() => { setLoading(false); setError('알림을 불러오지 못했습니다') })
+      .catch(() => { setError('알림을 불러오지 못했습니다') }).finally(() => setLoading(false))
   }, [])
 
   async function markAllRead() {
-    await api.put('/api/social/notifications/read-all')
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))
+    try {
+      await api.put('/api/social/notifications/read-all')
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))
+    } catch { /* silent */ }
   }
 
   return (

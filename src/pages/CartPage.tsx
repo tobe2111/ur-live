@@ -166,7 +166,7 @@ function CartPageContent() {
     const hasJwtTokens = jwtParams.some(param => searchParams.has(param))
     
     if (hasJwtTokens) {
-      console.warn('[CartPage] ⚠️ JWT 토큰 URL 파라미터 감지 - 자동 정리')
+      if (import.meta.env.DEV) console.warn('[CartPage] ⚠️ JWT 토큰 URL 파라미터 감지 - 자동 정리')
       setSearchParams(new URLSearchParams(), { replace: true })
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')

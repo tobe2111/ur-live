@@ -122,9 +122,9 @@ export default function AffiliatePage() {
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <p className="text-[15px] font-bold text-gray-900">추천 내역</p>
-              <span className="text-xs text-gray-400">{data.recent.length}건</span>
+              <span className="text-xs text-gray-400">{(data.recent || []).length}건</span>
             </div>
-            {data.recent.length === 0 ? (
+            {(data.recent || []).length === 0 ? (
               <div className="py-12 text-center">
                 <TrendingUp className="w-10 h-10 text-gray-200 mx-auto mb-3" />
                 <p className="text-sm text-gray-400">아직 추천 내역이 없습니다</p>
@@ -132,7 +132,7 @@ export default function AffiliatePage() {
               </div>
             ) : (
               <div className="divide-y divide-gray-50">
-                {data.recent.map((r: { product_name?: string; created_at: string; commission: number; order_amount: number }, i: number) => (
+                {(data.recent || []).map((r: { product_name?: string; created_at: string; commission: number; order_amount: number }, i: number) => (
                   <div key={i} className="flex items-center justify-between px-4 py-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-900 truncate">{r.product_name || '상품'}</p>
