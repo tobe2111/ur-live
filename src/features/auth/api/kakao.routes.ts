@@ -21,6 +21,7 @@ type Bindings = {
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_DATABASE_URL: string;
   JWT_SECRET: string;
+  FRONTEND_URL?: string;
 };
 
 export const kakaoRoutes = new Hono<{ Bindings: Bindings }>();
@@ -93,7 +94,14 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       }
 
       const stateUrl = new URL(state, 'https://dummy.com');
-      stateUrl.searchParams.set('firebase_token', customToken);
+      // 한국: 세션 쿠키로 인증하므로 firebase_token 불필요
+      // 글로벌: Firebase customToken 필요
+      const isKR = c.env.FRONTEND_URL?.includes('live.ur-team.com') || c.req.header('host')?.includes('live.ur-team.com');
+      if (!isKR) {
+        stateUrl.searchParams.set('firebase_token', customToken);
+      }
+      stateUrl.searchParams.set('login', 'success');
+      stateUrl.searchParams.set('userId', String(user.id));
       stateUrl.searchParams.set('userName', user.name);
       if (user.profile_image) {
         stateUrl.searchParams.set('profileImage', user.profile_image);
