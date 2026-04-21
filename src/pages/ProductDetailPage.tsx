@@ -623,6 +623,39 @@ export default function ProductDetailPage() {
           </AccordionSection>
         )}
 
+        {/* v4 옵션 선택 */}
+        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <section className="px-5 py-5">
+          <p className="text-[13px] font-bold text-gray-900 mb-3">옵션 선택</p>
+          {options.length > 0 ? (
+            <div className="space-y-2">
+              {options.map((opt: ProductOption) => (
+                <button key={opt.id} onClick={() => setSelectedOptions({ option: Number(opt.id) })}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
+                    selectedOptions.option === opt.id ? 'border-gray-900 bg-gray-50' : 'border-gray-200'
+                  }`}>
+                  <span className="text-[12px] text-gray-900">{opt.option_value}</span>
+                  {opt.price_adjustment !== 0 && (
+                    <span className="text-[11px] text-red-500 font-bold">
+                      {(opt.price_adjustment || 0) > 0 ? '+' : ''}{(opt.price_adjustment || 0).toLocaleString()}원
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200">
+              <span className="text-[12px] text-gray-500">옵션을 선택해주세요</span>
+              <svg className="w-3.5 h-3.5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+          )}
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-[11px] text-gray-400">포인트 적립</span>
+            <span className="text-[11px] font-bold text-pink-500">최대 {Math.round(displayPrice * 0.03).toLocaleString()}딜</span>
+          </div>
+        </section>
+        <div style={{ height: 8, background: '#F9FAFB' }} />
+
         {/* 상품 정보 — 아코디언 */}
         <AccordionSection title="상품 정보">
           <ProductInfoGrid items={[
@@ -632,7 +665,7 @@ export default function ProductDetailPage() {
           ]} />
         </AccordionSection>
 
-        {/* 공유 + 추천 링크 (가격 바로 아래) */}
+        {/* 공유 + 추천 링크 */}
         <div className="px-5 py-3 space-y-2">
           {isLoggedIn && (
             <button
