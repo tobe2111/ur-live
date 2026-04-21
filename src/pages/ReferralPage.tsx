@@ -180,18 +180,18 @@ export default function ReferralPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <SEO title="공동구매 - 유어딜" description="친구와 함께 공동구매로 더 싸게 구매하세요" url="/referral" />
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between px-4 py-3">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
+      {/* v4 Header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-100">
+        <div className="flex items-center justify-between px-3 py-3">
+          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
-          <h1 className="text-[18px] font-bold text-gray-900">공동구매</h1>
-          <div className="w-10" />
+          <h1 className="text-[16px] font-extrabold text-gray-900">공동구매</h1>
+          <div className="w-9" />
         </div>
       </div>
 
-      <div className="px-4 py-5 space-y-4 pb-32">
+      <div className="px-4 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100vh - 48px)' }}>
         {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
         <section className="bg-white rounded-2xl p-4 border border-gray-200">
           {product && (
@@ -454,43 +454,28 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   const { days, hours, minutes, seconds, isExpired } = useCountdown(new Date(expiresAt))
   if (isExpired) return null
 
-  const isUrgent = days === 0 && hours < 1
-
   return (
-    <div className="text-center">
-      <div className="flex items-center justify-center gap-1.5 mb-2">
-        <Clock className={`w-4 h-4 ${isUrgent ? 'text-pink-500' : 'text-gray-500'}`} />
-        <span className={`text-xs font-medium ${isUrgent ? 'text-pink-500' : 'text-gray-500'}`}>
-          {isUrgent ? '마감 임박!' : '남은 시간'}
-        </span>
-      </div>
+    <div className="pt-4 text-center">
+      <p className="text-[11px] text-pink-500 font-bold mb-2">⏰ 남은 시간</p>
       <div className="flex items-center justify-center gap-1.5">
-        {days > 0 && (
-          <>
-            <TimeBlock value={days} label="일" urgent={isUrgent} />
-            <Colon />
-          </>
-        )}
-        <TimeBlock value={hours} label="시간" urgent={isUrgent} />
-        <Colon />
-        <TimeBlock value={minutes} label="분" urgent={isUrgent} />
-        <Colon />
-        <TimeBlock value={seconds} label="초" urgent={isUrgent} />
+        {[
+          { v: days, l: '일' },
+          { v: hours, l: '시간' },
+          { v: minutes, l: '분' },
+          { v: seconds, l: '초' },
+        ].filter((t, i) => i > 0 || t.v > 0).map((t, i, arr) => (
+          <span key={t.l} className="contents">
+            <div className="rounded-lg px-2.5 py-1.5 bg-pink-50">
+              <span className="text-[16px] font-extrabold text-pink-700" style={{ fontFamily: 'ui-monospace, monospace' }}>
+                {String(t.v).padStart(2, '0')}
+              </span>
+              <span className="text-[9px] block leading-none mt-0.5 text-pink-700">{t.l}</span>
+            </div>
+            {i < arr.length - 1 && <span className="text-[14px] text-gray-300 font-extrabold">:</span>}
+          </span>
+        ))}
       </div>
     </div>
   )
-}
-
-function TimeBlock({ value, label, urgent }: { value: number; label: string; urgent: boolean }) {
-  return (
-    <div className={`px-2.5 py-1.5 rounded-lg ${urgent ? 'bg-pink-50 text-pink-600' : 'bg-gray-100 text-gray-900'}`}>
-      <span className="text-base font-mono font-bold">{String(value).padStart(2, '0')}</span>
-      <span className="text-[10px] block leading-none mt-0.5">{label}</span>
-    </div>
-  )
-}
-
-function Colon() {
-  return <span className="text-base font-bold text-gray-400">:</span>
 }
 
