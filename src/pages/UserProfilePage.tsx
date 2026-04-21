@@ -485,17 +485,14 @@ export default function UserProfilePage() {
 
   // ✅ 사용자 이름 + 프로필 이미지 설정
   useEffect(() => {
-    if (user) {
-      const name = user?.displayName || localStorage.getItem('user_name') || '사용자'
-      setUserName(name)
-      const image = user.photoURL || getUserProfileImage() || undefined
-      setProfileImage(image)
-      
-    }
+    const name = user?.displayName || localStorage.getItem('user_name') || '사용자'
+    setUserName(name)
+    const image = user?.photoURL || getUserProfileImage() || undefined
+    setProfileImage(image)
   }, [user])
 
-  // 🔄 로딩 중
-  if (!isAuthReady || isProcessingToken) {
+  // 🔄 로딩 중 (한국: localStorage 인증이므로 isAuthReady 무시)
+  if ((!isAuthReady && !isKorea()) || isProcessingToken) {
     return (
       <div className="min-h-screen bg-[#020202] flex items-center justify-center">
         <div className="text-center">
@@ -508,8 +505,10 @@ export default function UserProfilePage() {
     )
   }
 
-  // 🚫 로그인 안 됨 - firebase_token 처리 중이거나 토큰이 있으면 대기
-  if (!user) {
+  // 🚫 로그인 안 됨
+  // 한국: localStorage 기반 인증이므로 Zustand user 없어도 OK
+  const isLoggedInViaLocalStorage = localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
+  if (!user && !isLoggedInViaLocalStorage) {
     const firebaseToken = searchParams.get('firebase_token')
     
     // firebase_token이 있거나 처리 중이면 대기 (리다이렉트 방지)
