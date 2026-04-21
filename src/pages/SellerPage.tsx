@@ -383,8 +383,17 @@ export default function SellerPage() {
                     {card.icon}
                   </div>
                 </div>
-                <p className="text-lg sm:text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
-                {card.sub && <p className="text-[10px] sm:text-xs text-gray-400">{card.sub}</p>}
+                {loading ? (
+                  <>
+                    <Skel className="h-6 w-2/3 mb-1" />
+                    <Skel className="h-3 w-1/2" />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg sm:text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
+                    {card.sub && <p className="text-[10px] sm:text-xs text-gray-400">{card.sub}</p>}
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -718,7 +727,7 @@ export default function SellerPage() {
           {/* ── Chart ── */}
           {dailyStats.length > 0 && (
             <div className="grid lg:grid-cols-3 gap-3 sm:gap-5">
-              {/* Sales chart */}
+              {/* Sales chart — 스크롤 진입 시 recharts 번들 로드 */}
               <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-sm font-semibold text-gray-900">{t('seller.dailySalesTrend')}</h2>
@@ -761,4 +770,27 @@ export default function SellerPage() {
 
     </SellerLayout>
   )
+}
+
+/**
+ * 자식을 뷰포트에 들어왔을 때만 마운트 (IntersectionObserver).
+ */
+function DeferUntilVisible({ children, fallback, rootMargin = '200px' }: { children: React.ReactNode; fallback: React.ReactNode; rootMargin?: string }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    if (visible) return
+    if (typeof IntersectionObserver === 'undefined') { setVisible(true); return }
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) {
+        setVisible(true)
+        observer.disconnect()
+      }
+    }, { rootMargin })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [visible, rootMargin])
+  return <div ref={ref} style={{ width: '100%', height: '100%' }}>{visible ? children : fallback}</div>
 }
