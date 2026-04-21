@@ -58,7 +58,7 @@ export default function SellerReviewsPage() {
                 ) : replyId === r.id ? (
                   <div className="mt-3 flex gap-2">
                     <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="답글 작성..."
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
                     <button onClick={() => submitReply(r.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold">등록</button>
                     <button onClick={() => setReplyId(null)} className="px-3 py-2 text-gray-500 text-sm">취소</button>
                   </div>

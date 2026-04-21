@@ -54,7 +54,7 @@ export default function AgencyContractsPage() {
         {showForm && (
           <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
             <select value={form.seller_id} onChange={e => setForm(f => ({ ...f, seller_id: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900">
               <option value="">셀러 선택</option>
               {sellers.map((s: { id: number; name: string; email: string }) => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
             </select>
@@ -62,17 +62,17 @@ export default function AgencyContractsPage() {
               <div>
                 <label className="text-xs text-gray-500">계약 시작일</label>
                 <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div>
                 <label className="text-xs text-gray-500">계약 종료일</label>
                 <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
             </div>
             <textarea value={form.terms} onChange={e => setForm(f => ({ ...f, terms: e.target.value }))}
               placeholder="계약 조건 (선택)" rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none" />
             <button onClick={handleCreate} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold">등록</button>
           </div>
         )}

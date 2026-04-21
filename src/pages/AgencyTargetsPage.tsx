@@ -38,7 +38,7 @@ export default function AgencyTargetsPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-gray-900">셀러 매출 목표</h1>
           <input type="month" value={month} onChange={e => setMonth(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
         </div>
 
         {loading ? (
@@ -59,7 +59,7 @@ export default function AgencyTargetsPage() {
                     {editId === t.seller_id ? (
                       <div className="flex items-center gap-2">
                         <input type="number" value={editValue} onChange={e => setEditValue(e.target.value)}
-                          placeholder="목표 금액" className="w-32 px-3 py-1.5 border border-gray-300 rounded-lg text-sm" />
+                          placeholder="목표 금액" className="w-32 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
                         <button onClick={() => handleSave(t.seller_id)} className="p-1.5 bg-blue-600 text-white rounded-lg">
                           <Check className="w-4 h-4" />
                         </button>

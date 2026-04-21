@@ -261,7 +261,7 @@ export default function SellerInventoryPage() {
               onChange={e => setScanInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleScan()}
               placeholder={t('seller.barcodeScanInput')}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>
           <button
@@ -438,14 +438,14 @@ export default function SellerInventoryPage() {
                     onChange={e => setQuantity(parseInt(e.target.value) || 0)}
                     placeholder={stockAction === 'adjust' ? t('common.quantity') : t('common.quantity')}
                     min={0}
-                    className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                   <input
                     type="text"
                     value={reason}
                     onChange={e => setReason(e.target.value)}
                     placeholder={t('seller.reasonOptional')}
-                    className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
                 <button
@@ -529,7 +529,7 @@ export default function SellerInventoryPage() {
                 <input
                   type="text"
                   placeholder={t('seller.enterBarcodeManual')}
-                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
                       const val = (e.target as HTMLInputElement).value.trim()

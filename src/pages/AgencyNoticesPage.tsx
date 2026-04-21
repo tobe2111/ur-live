@@ -44,12 +44,12 @@ export default function AgencyNoticesPage() {
           <input
             value={title} onChange={e => setTitle(e.target.value)}
             placeholder="공지 제목" maxLength={100}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm mb-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 mb-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <textarea
             value={message} onChange={e => setMessage(e.target.value)}
             placeholder="공지 내용을 입력하세요" rows={4} maxLength={500}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm mb-3 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 mb-3 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <button onClick={handleSend} disabled={sending}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">

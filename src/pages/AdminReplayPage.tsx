@@ -145,7 +145,7 @@ export default function AdminReplayPage() {
                   <select
                     value={form.seller_id}
                     onChange={e => setForm(f => ({ ...f, seller_id: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
                     disabled={!!editingId}
                   >
                     <option value={0}>셀러를 선택하세요</option>
@@ -159,7 +159,7 @@ export default function AdminReplayPage() {
                     value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                     placeholder="다시보기 제목"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
                   />
                 </div>
 
@@ -170,7 +170,7 @@ export default function AdminReplayPage() {
                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                     placeholder="방송 설명"
                     rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none"
                   />
                 </div>
 
@@ -181,7 +181,7 @@ export default function AdminReplayPage() {
                       value={form.youtube_url}
                       onChange={e => setForm(f => ({ ...f, youtube_url: e.target.value }))}
                       placeholder="https://youtube.com/watch?v=... 또는 https://youtube.com/live/..."
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
                     />
                     {videoPreviewId && (
                       <a href={`https://youtube.com/watch?v=${videoPreviewId}`} target="_blank" rel="noopener"
@@ -211,7 +211,7 @@ export default function AdminReplayPage() {
                     value={productSearch}
                     onChange={e => setProductSearch(e.target.value)}
                     placeholder="상품 검색..."
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
                   />
                 </div>
 

@@ -547,11 +547,11 @@ function D1ResultsPanel() {
   const [stats, setStats] = useState<{ total: number; withEmail: number; uniqueEmails: number; keywords: number; latestScrape: string | null } | null>(null)
 
   const token = localStorage.getItem('admin_token') || ''
-  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+  const hdrs: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
 
   async function loadStats() {
     try {
-      const res = await fetch('/api/scraper/d1/stats', { headers }).then(r => r.json()) as any
+      const res = await fetch('/api/scraper/d1/stats', { headers: hdrs }).then(r => r.json()) as any
       if (res.success) setStats(res.data)
     } catch {}
   }
@@ -560,7 +560,7 @@ function D1ResultsPanel() {
     setLoading(true)
     try {
       const qs = search ? `&keyword=${encodeURIComponent(search)}` : ''
-      const res = await fetch(`/api/scraper/d1/emails?page=${p}&limit=50${qs}`, { headers }).then(r => r.json()) as any
+      const res = await fetch(`/api/scraper/d1/emails?page=${p}&limit=50${qs}`, { headers: hdrs }).then(r => r.json()) as any
       if (res.success) {
         setData(res.data || [])
         setTotal(res.total || 0)

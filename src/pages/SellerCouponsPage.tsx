@@ -53,28 +53,28 @@ export default function SellerCouponsPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <input placeholder="쿠폰 코드 (예: SUMMER2026)" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               <input placeholder="쿠폰 이름" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900">
                 <option value="fixed">정액 할인</option>
                 <option value="percent">퍼센트 할인</option>
               </select>
               <input placeholder={form.type === 'fixed' ? '할인금액 (원)' : '할인율 (%)'} type="number" value={form.value}
-                onChange={e => setForm(f => ({ ...f, value: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                onChange={e => setForm(f => ({ ...f, value: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               <input placeholder="최소 주문금액" type="number" value={form.min_order}
-                onChange={e => setForm(f => ({ ...f, min_order: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                onChange={e => setForm(f => ({ ...f, min_order: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <input placeholder="최대할인 (원)" type="number" value={form.max_discount}
-                onChange={e => setForm(f => ({ ...f, max_discount: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                onChange={e => setForm(f => ({ ...f, max_discount: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               <input placeholder="발급 수량" type="number" value={form.total_count}
-                onChange={e => setForm(f => ({ ...f, total_count: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                onChange={e => setForm(f => ({ ...f, total_count: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               <input type="date" value={form.expires_at} onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
             </div>
             <button onClick={handleCreate} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold">생성</button>
           </div>
