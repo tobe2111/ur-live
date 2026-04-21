@@ -4,7 +4,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
+import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight, Store, CreditCard, Smartphone, Wallet } from 'lucide-react'
 import { getUserIdSync } from '@/utils/auth'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'

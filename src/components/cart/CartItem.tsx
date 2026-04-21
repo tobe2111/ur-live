@@ -1,6 +1,5 @@
 import React from 'react'
-import { Minus, Plus, X, Settings } from 'lucide-react'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Minus, Plus, X } from 'lucide-react'
 
 interface CartItem {
   id: number
@@ -41,18 +40,37 @@ export const CartItemComponent = React.memo(function CartItemComponent({
   const isLowStock = stock !== undefined && stock > 0 && stock <= 5
 
   return (
-    <div className={`flex gap-3 p-4 bg-white rounded-xl border ${isOutOfStock ? 'border-gray-100 opacity-60' : 'border-gray-200'}`}>
-      <Checkbox
-        checked={isSelected}
-        onCheckedChange={() => onToggleSelect(item.id)}
-        className="mt-0.5 shrink-0"
-        disabled={isOutOfStock}
-      />
+    <div className={`flex gap-3 ${isOutOfStock ? 'opacity-50' : ''}`}>
+      {/* v4 pink checkbox */}
+      <span
+        onClick={() => !isOutOfStock && onToggleSelect(item.id)}
+        className={`mt-1 w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
+          isSelected
+            ? 'bg-pink-500 border-pink-500'
+            : 'bg-white border-gray-300'
+        } ${isOutOfStock ? 'cursor-not-allowed' : ''}`}
+      >
+        {isSelected && (
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </span>
 
-      {item.image_url && (
-        <img src={item.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-gray-100 shrink-0" />
+      {/* v4: 72x72 rounded-lg image */}
+      {item.image_url ? (
+        <img
+          src={item.image_url}
+          alt=""
+          className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 shrink-0"
+        />
+      ) : (
+        <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 shrink-0 flex items-center justify-center">
+          <span className="text-gray-300 text-[10px]">No img</span>
+        </div>
       )}
 
+      {/* Product info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <h3 className={`text-[14px] font-medium leading-tight line-clamp-2 ${isOutOfStock ? 'text-gray-400' : 'text-gray-900'}`}>
@@ -67,44 +85,56 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           </button>
         </div>
 
+        {/* v4: option pill button */}
         {item.option_value && (
           <button
             onClick={() => onOpenOption(item)}
             disabled={isUpdating}
-            className="mt-1 text-[12px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded"
+            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full hover:bg-gray-50 transition-colors"
           >
-            {item.option_value} ›
+            {item.option_value}
+            <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
         )}
 
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => onUpdateQuantity(item.id, -1)}
-              disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
-              className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded text-gray-600 disabled:opacity-30"
-            >
-              <Minus size={12} />
-            </button>
-            <span className="w-7 text-center text-[13px] font-semibold text-gray-900">
-              {item.quantity}
-            </span>
-            <button
-              onClick={() => onUpdateQuantity(item.id, 1)}
-              disabled={isUpdating || isOutOfStock || isAtStockLimit}
-              className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded text-gray-600 disabled:opacity-30"
-            >
-              <Plus size={12} />
-            </button>
-          </div>
+        {/* Price row */}
+        <div className="mt-2">
           <p className={`text-[15px] font-bold ${isOutOfStock ? 'text-gray-400' : 'text-gray-900'}`}>
             {fmt(item.price_snapshot * item.quantity)}원
           </p>
         </div>
 
-        {isOutOfStock && <p className="text-[11px] text-red-500 mt-1">품절</p>}
-        {!isOutOfStock && isAtStockLimit && <p className="text-[11px] text-orange-500 mt-1">최대 수량 (재고 {stock}개)</p>}
-        {!isOutOfStock && !isAtStockLimit && isLowStock && <p className="text-[11px] text-orange-400 mt-1">재고 {stock}개 남음</p>}
+        {/* v4: quantity +/- buttons (border rounded-lg) */}
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+            <button
+              onClick={() => onUpdateQuantity(item.id, -1)}
+              disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
+              className="w-8 h-8 flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-50 transition-colors"
+            >
+              <Minus size={14} />
+            </button>
+            <span className="w-8 text-center text-[13px] font-semibold text-gray-900 border-x border-gray-200">
+              {item.quantity}
+            </span>
+            <button
+              onClick={() => onUpdateQuantity(item.id, 1)}
+              disabled={isUpdating || isOutOfStock || isAtStockLimit}
+              className="w-8 h-8 flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-50 transition-colors"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+
+          {/* Stock warnings */}
+          <div className="text-right">
+            {isOutOfStock && <p className="text-[11px] text-red-500 font-medium">품절</p>}
+            {!isOutOfStock && isAtStockLimit && <p className="text-[11px] text-orange-500">최대 수량 ({stock}개)</p>}
+            {!isOutOfStock && !isAtStockLimit && isLowStock && <p className="text-[11px] text-orange-400">재고 {stock}개</p>}
+          </div>
+        </div>
       </div>
     </div>
   )

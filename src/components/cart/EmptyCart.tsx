@@ -6,22 +6,22 @@ export const EmptyCart = React.memo(function EmptyCart() {
   const navigate = useNavigate()
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-        <ShoppingBag size={48} className="text-gray-400" />
+    <div className="flex flex-col items-center justify-center py-20 px-4 bg-white">
+      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-5">
+        <ShoppingBag size={36} className="text-gray-300" />
       </div>
-      
-      <h2 className="text-xl font-bold text-gray-900 mb-2">
+
+      <h2 className="text-[16px] font-bold text-gray-900 mb-1.5">
         장바구니가 비어있습니다
       </h2>
-      
-      <p className="text-gray-600 text-center mb-6">
+
+      <p className="text-[13px] text-gray-500 text-center mb-6">
         마음에 드는 상품을 담아보세요
       </p>
-      
+
       <button
         onClick={() => navigate('/')}
-        className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+        className="px-8 py-3 bg-gray-900 text-white text-[14px] font-bold rounded-xl hover:bg-gray-800 transition-colors active:scale-[0.98]"
       >
         쇼핑 계속하기
       </button>

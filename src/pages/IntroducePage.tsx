@@ -1,261 +1,257 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Play, ShoppingBag, Utensils, Users, Zap, Bell, Gift, MapPin, Star, Heart, Trophy, Gavel, Timer, Share2, ArrowRight, ChevronDown } from 'lucide-react'
-import SEO, { organizationJsonLd } from '@/components/SEO'
+import { Play, ChevronDown, ChevronRight, Check, Star, Users, ShoppingBag, Radio, MapPin, Zap, Phone, Mail, Clock } from 'lucide-react'
+import SEO from '@/components/SEO'
+import api from '@/lib/api'
 
-const FEATURES = [
-  {
-    icon: Play, color: 'from-red-500 to-pink-500',
-    title: '라이브 커머스',
-    desc: '인플루언서 라이브 방송에서 실시간 소통하며 구매. 채팅으로 질문하고 바로 결제.',
-  },
-  {
-    icon: Utensils, color: 'from-orange-500 to-red-500',
-    title: '맛집 공동구매',
-    desc: '인플루언서 추천 맛집 식사권을 최대 70% 할인. 바우처 코드로 간편 사용.',
-  },
-  {
-    icon: Gavel, color: 'from-amber-500 to-orange-500',
-    title: '라이브 경매',
-    desc: '라이브 방송 중 실시간 입찰. 다른 시청자와 경쟁하며 최저가 낙찰.',
-  },
-  {
-    icon: Zap, color: 'from-pink-500 to-red-500',
-    title: '타임딜',
-    desc: '방송 중 불시에 등장하는 한정 수량 초특가. 10초 안에 잡아야 내 것.',
-  },
-  {
-    icon: Users, color: 'from-blue-500 to-purple-500',
-    title: '친구 초대 할인',
-    desc: '카카오로 친구를 초대하면 함께 할인! 3명 모이면 10% 추가 할인.',
-  },
-  {
-    icon: MapPin, color: 'from-green-500 to-emerald-500',
-    title: '맛집 지도',
-    desc: '바우처 사용 가능 맛집을 카카오맵에서 탐색. 내 주변 맛집 한눈에.',
-  },
-  {
-    icon: Heart, color: 'from-pink-400 to-rose-500',
-    title: '후원 & 서포터',
-    desc: '좋아하는 셀러에게 딜 포인트로 후원. Top 서포터 👑💎⭐ 뱃지 획득.',
-  },
-  {
-    icon: Gift, color: 'from-violet-500 to-purple-500',
-    title: '리뷰 리워드',
-    desc: '리뷰 작성하면 딜 포인트 지급. 텍스트 50딜, 사진 100딜, 영상 200딜.',
-  },
-  {
-    icon: Bell, color: 'from-cyan-500 to-blue-500',
-    title: '방송 알림',
-    desc: '관심 셀러 방송 시작 시 즉시 알림. 카카오 알림톡 + 인앱 알림.',
-  },
-]
-
-const SELLER_FEATURES = [
-  { icon: '📺', title: 'YouTube 연동', desc: 'YouTube 계정만 있으면 바로 라이브 방송 시작' },
-  { icon: '🏪', title: '내 스토어', desc: '/profile/내이름 으로 자기만의 브랜드 페이지' },
-  { icon: '📊', title: '대시보드', desc: '매출/주문/재고 실시간 통계 + 정산 관리' },
-  { icon: '🎯', title: '경매 & 타임딜', desc: '라이브 중 경매/타임딜로 시청자 참여 극대화' },
-  { icon: '📱', title: '알림톡', desc: '팬들에게 직접 카카오 알림톡 마케팅' },
-  { icon: '🌍', title: '6개국 언어', desc: '한국어/영어/일본어/중국어/스페인어/프랑스어' },
-]
+interface LiveStream { id: number; title: string; seller_name?: string; viewer_count?: number; thumbnail_url?: string; image_url?: string; youtube_video_id?: string }
+interface Product { id: number; name: string; price: number; original_price?: number; image_url?: string; discount_rate?: number; group_buy_current?: number; group_buy_target?: number }
 
 export default function IntroducePage() {
   const navigate = useNavigate()
+  const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
+  const [deals, setDeals] = useState<Product[]>([])
+  const [faqOpen, setFaqOpen] = useState<number | null>(0)
+
+  useEffect(() => {
+    api.get('/api/streams?status=live').then(r => { if (r.data.success) setLiveStreams(r.data.data?.slice(0, 4) || []) }).catch(() => {})
+    api.get('/api/group-buy/products?status=active').then(r => { if (r.data.success) setDeals(r.data.data?.slice(0, 6) || []) }).catch(() => {})
+  }, [])
+
+  const faqs = [
+    { q: '꼭 앱을 설치해야 하나요?', a: '네, 웹에서도 라이브 시청과 구매 모두 가능합니다. 단, 라이브 알림·쿠폰 등 기능은 앱에서 더 편하게 이용하실 수 있어요.' },
+    { q: '식사권을 샀는데 환불 되나요?', a: '구매일로부터 7일 이내·미사용 쿠폰은 100% 환불 가능합니다. 유효기간 내에만 사용하시면 되고, 양도도 자유롭게 하실 수 있어요.' },
+    { q: '공구 목표 인원이 안 모이면?', a: '공구가 성사되지 않으면 자동으로 결제가 취소되고 전액 환불됩니다.' },
+    { q: '라이브는 언제 볼 수 있나요?', a: '홈 상단의 "지금 라이브"에서 바로 시청 가능하고, 예정된 라이브는 편성표에서 확인할 수 있어요.' },
+    { q: '셀러 입점 조건은?', a: '사업자 등록이 된 식당·브랜드라면 누구나 신청 가능합니다. 입점 수수료는 없고 판매 수수료만 부담합니다.' },
+    { q: '결제는 어떤 방법이 가능한가요?', a: '신용카드·체크카드·계좌이체·간편결제(카카오페이/토스) 모두 지원합니다.' },
+  ]
 
   return (
-    <div className="min-h-screen bg-[#020202] text-white overflow-x-hidden">
-      <SEO
-        title="서비스 소개"
-        description="유어딜 - 인플루언서 라이브 방송으로 최저가 맛집 식사권과 특가 상품을 공동구매하세요. 실시간 경매, 타임딜, 친구 초대 할인."
-        url="/introduce"
-        jsonLd={organizationJsonLd}
-      />
-      {/* ═══ Hero ═══ */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        {/* 배경 그라데이션 */}
-        <div className="absolute inset-0 bg-gradient-to-b from-pink-500/10 via-transparent to-transparent" />
-        <div className="absolute top-20 left-1/4 w-72 h-72 bg-pink-500/20 rounded-full blur-[120px]" />
-        <div className="absolute bottom-32 right-1/4 w-96 h-96 bg-purple-500/15 rounded-full blur-[150px]" />
+    <div className="bg-white min-h-screen">
+      <SEO title="유어딜 - 라이브 커머스 맛집 공동구매" description="사장님이 직접 켜는 라이브커머스. 우리 동네 맛집을 특가로 만나는 가장 빠른 방법." url="/introduce" />
 
-        <div className="relative z-10 max-w-3xl mx-auto">
-          {/* 로고 */}
-          <div className="mb-8">
-            <h1 className="text-5xl sm:text-7xl font-black tracking-tight">
-              <span className="bg-gradient-to-r from-pink-500 via-red-500 to-orange-500 bg-clip-text text-transparent">유어딜</span>
+      {/* ═══ NAV ═══ */}
+      <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-md border-b border-gray-100">
+        <div className="max-w-[1280px] mx-auto flex items-center justify-between px-6 h-16">
+          <button onClick={() => navigate('/')} className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
+              <Play className="h-3.5 w-3.5 text-white fill-white" />
+            </div>
+            <span className="text-[20px] font-black italic text-gray-900" style={{ letterSpacing: '-0.04em' }}>UR·DEAL</span>
+          </button>
+          <nav className="hidden md:flex items-center gap-1">
+            {['지금 라이브', '인기 공구', '어떻게 쓰나요', '셀러 입점'].map(t => (
+              <a key={t} href={`#${t}`} className="px-3 py-2 text-[14px] font-semibold text-gray-600 hover:text-black">{t}</a>
+            ))}
+          </nav>
+          <button onClick={() => navigate('/login')} className="px-4 py-2 rounded-full text-[13px] font-extrabold text-white bg-gray-900">시작하기</button>
+        </div>
+      </header>
+
+      {/* ═══ HERO ═══ */}
+      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #FFF 0%, #FFF5F7 100%)' }}>
+        <div className="max-w-[1280px] mx-auto px-6 py-20 grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-50 mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[12px] font-extrabold text-red-500">지금 {liveStreams.length || '0'}명이 라이브 시청 중</span>
+            </div>
+            <h1 className="text-[clamp(36px,5vw,64px)] font-black leading-[1.05] text-gray-900" style={{ letterSpacing: '-0.035em' }}>
+              지금 <span className="text-red-500">라이브</span>로<br/>맛집 만나고,<br/><span className="italic text-red-500">특가</span>로 먹자.
             </h1>
-            <p className="text-lg sm:text-xl text-gray-400 mt-3 font-medium">YOUR DEAL — Live Commerce</p>
-          </div>
-
-          {/* 메인 카피 */}
-          <h2 className="text-2xl sm:text-4xl font-extrabold leading-tight mb-6">
-            인플루언서 라이브 방송으로<br/>
-            <span className="text-pink-500">최저가 맛집 · 특가 상품</span>을<br/>
-            공동구매하세요
-          </h2>
-
-          <p className="text-gray-400 text-base sm:text-lg max-w-lg mx-auto mb-10 leading-relaxed">
-            실시간 소통 · 라이브 경매 · 타임딜 · 친구 초대 할인<br/>
-            지금까지 없던 쇼핑 경험
-          </p>
-
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => navigate('/')}
-              className="px-8 py-4 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-pink-500/25 active:scale-[0.97] transition-transform"
-            >
-              지금 시작하기
-            </button>
-            <button
-              onClick={() => navigate('/seller/register')}
-              className="px-8 py-4 bg-white/10 backdrop-blur border border-white/20 text-white rounded-2xl font-bold text-lg active:scale-[0.97] transition-transform"
-            >
-              셀러로 입점하기
-            </button>
-          </div>
-
-          {/* 플랫폼 뱃지 */}
-          <div className="flex items-center justify-center gap-4 mt-8 text-xs text-gray-500">
-            <span className="flex items-center gap-1">🌐 웹</span>
-            <span className="flex items-center gap-1">📱 iOS</span>
-            <span className="flex items-center gap-1">🤖 Android</span>
-          </div>
-        </div>
-
-        {/* 스크롤 유도 */}
-        <div className="absolute bottom-8 animate-bounce">
-          <ChevronDown className="w-6 h-6 text-gray-500" />
-        </div>
-      </section>
-
-      {/* ═══ 핵심 가치 ═══ */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-pink-500 font-bold text-sm mb-2">WHY 유어딜?</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold">쇼핑의 새로운 기준</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map((f, i) => (
-              <div key={i} className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors group">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <f.icon className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-lg font-bold mb-2">{f.title}</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
+            <p className="text-[16px] text-gray-500 mt-6 max-w-[480px] leading-relaxed">
+              우리 동네 맛집 사장님이 직접 라이브 방송을 켭니다. 실시간 소통하며 식사권·밀키트를 최대 50% 할인가로 공구하세요.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 mt-8">
+              <button onClick={() => navigate('/')} className="flex items-center gap-2 px-6 py-3.5 rounded-2xl text-white text-[15px] font-extrabold bg-gray-900 shadow-lg">
+                <Play className="w-4 h-4 fill-white" /> 지금 시작하기
+              </button>
+              <button onClick={() => navigate('/browse')} className="px-5 py-3.5 text-[14px] font-bold text-gray-600 flex items-center gap-1">
+                둘러보기 <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-5 mt-8 text-[12px] text-gray-500">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-gray-400" />
+                <span><b className="text-gray-900">240만+</b> 명이 쓰고 있어요</span>
               </div>
-            ))}
+              <span className="text-gray-300">|</span>
+              <div className="flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                <span><b className="text-gray-900">4.8</b> App Store</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* ═══ 서비스 흐름 ═══ */}
-      <section className="py-20 px-6 bg-gradient-to-b from-transparent via-pink-500/5 to-transparent">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-pink-500 font-bold text-sm mb-2">HOW IT WORKS</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold">이렇게 쇼핑해요</h2>
-          </div>
-
-          <div className="space-y-8">
-            {[
-              { step: '01', title: '라이브 방송 시청', desc: '좋아하는 인플루언서의 라이브 방송에 입장. 실시간 채팅으로 상품 질문.', emoji: '📺' },
-              { step: '02', title: '경매 · 타임딜 참여', desc: '방송 중 등장하는 실시간 경매와 한정 타임딜에 참여. 최저가 도전!', emoji: '⚡' },
-              { step: '03', title: '친구와 함께 할인', desc: '카카오로 친구를 초대하면 3명 달성 시 10% 추가 할인 적용.', emoji: '👫' },
-              { step: '04', title: '간편 결제 & 배송', desc: '토스페이먼츠로 원클릭 결제. 맛집 바우처는 코드로 즉시 사용.', emoji: '💳' },
-            ].map((item, i) => (
-              <div key={i} className="flex gap-5 items-start">
-                <div className="shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center text-2xl shadow-lg shadow-pink-500/20">
-                  {item.emoji}
+          <div className="hidden md:flex justify-center">
+            <div className="w-[280px] h-[560px] bg-gray-900 rounded-[40px] p-2 shadow-2xl">
+              <div className="w-full h-full rounded-[32px] bg-gradient-to-br from-red-900/30 to-pink-900/30 relative overflow-hidden">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[90px] h-[24px] bg-black rounded-2xl z-20" />
+                <div className="absolute top-14 left-4 flex items-center gap-1 px-2 py-1 rounded-md bg-red-500 z-10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  <span className="text-[10px] font-bold text-white">LIVE · 1.2K</span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-mono text-pink-500">STEP {item.step}</span>
+                <div className="absolute bottom-3 left-3 right-3 rounded-2xl p-3 bg-black/80 backdrop-blur-md border border-white/10 z-10">
+                  <p className="text-[11px] font-bold text-white truncate">수제 돈카츠 3팩 · 30%</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-[10px] font-extrabold text-red-400">30%</span>
+                    <span className="text-[12px] font-extrabold text-white">18,900원</span>
                   </div>
-                  <h3 className="text-xl font-bold mb-1">{item.title}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ═══ 셀러 섹션 ═══ */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-orange-500 font-bold text-sm mb-2">FOR SELLERS</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold">셀러라면, 유어딜</h2>
-            <p className="text-gray-400 mt-3">YouTube 계정 하나로 바로 판매 시작</p>
-          </div>
+      {/* ═══ NUMBERS ═══ */}
+      <section className="max-w-[1280px] mx-auto px-6 py-16">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { n: '240만+', l: '누적 사용자' }, { n: '38만+', l: '누적 거래 건수' },
+            { n: '4,200+', l: '입점 식당·브랜드' }, { n: '4.8점', l: 'App Store 평점 ★' },
+          ].map(s => (
+            <div key={s.l} className="p-6 rounded-2xl bg-gray-50">
+              <p className="text-[28px] md:text-[36px] font-black text-gray-900 leading-none">{s.n}</p>
+              <p className="text-[13px] font-bold text-gray-600 mt-2">{s.l}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            {SELLER_FEATURES.map((f, i) => (
-              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
-                <span className="text-3xl block mb-3">{f.icon}</span>
-                <h3 className="font-bold text-sm mb-1">{f.title}</h3>
-                <p className="text-xs text-gray-500">{f.desc}</p>
+      {/* ═══ LIVE PREVIEW ═══ */}
+      <section id="지금 라이브" className="max-w-[1280px] mx-auto px-6 py-16">
+        <div className="mb-8">
+          <p className="text-[12px] font-extrabold text-red-500 tracking-widest mb-2">● LIVE NOW</p>
+          <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-gray-900" style={{ letterSpacing: '-0.03em' }}>지금 켜져 있는 라이브</h2>
+          <p className="text-[16px] text-gray-500 mt-3">사장님이 지금 방송 중이에요. 바로 시청하고 실시간으로 소통해보세요.</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {(liveStreams.length > 0 ? liveStreams : [{id:0,title:'곧 라이브가 시작됩니다',seller_name:'유어딜'} as LiveStream]).map(s => (
+            <button key={s.id} onClick={() => s.id && navigate(`/live/${s.id}`)} className="block rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow">
+              <div className="aspect-[4/5] relative bg-gradient-to-br from-gray-800 to-gray-900">
+                {(s.thumbnail_url || s.youtube_video_id) && (
+                  <img src={s.thumbnail_url || `https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg`} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                )}
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.5), transparent 30%, rgba(0,0,0,0.9))' }} />
+                {s.viewer_count != null && (
+                  <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-md bg-red-500">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    <span className="text-[10px] font-bold text-white">LIVE</span>
+                  </div>
+                )}
+                <div className="absolute bottom-3 left-3 right-3">
+                  <p className="text-[13px] font-bold text-white line-clamp-2">{s.title}</p>
+                  <p className="text-[11px] text-white/70 mt-1">{s.seller_name || '셀러'}</p>
+                </div>
               </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-10">
-            <button
-              onClick={() => navigate('/seller/register')}
-              className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-500/25 active:scale-[0.97] transition-transform"
-            >
-              무료로 셀러 등록 <ArrowRight className="w-5 h-5 inline ml-1" />
             </button>
-            <p className="text-xs text-gray-500 mt-3">가입 즉시 판매 시작 · 기본 수수료 15%</p>
-          </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══ HOW IT WORKS ═══ */}
+      <section id="어떻게 쓰나요" className="max-w-[1280px] mx-auto px-6 py-16">
+        <p className="text-[12px] font-extrabold text-red-500 tracking-widest mb-2">어떻게 쓰나요</p>
+        <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-gray-900 mb-12" style={{ letterSpacing: '-0.03em' }}>라이브 켜고, 보고, 사고, 먹기.</h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { step: '1', emoji: '👀', title: '라이브 시청', desc: '홈에서 지금 방송 중인 사장님 라이브를 바로 시청하세요. 실시간 채팅으로 질문도 하고, 메뉴 추천도 받을 수 있어요.' },
+            { step: '2', emoji: '🛒', title: '식사권 공구', desc: '라이브 중 소개된 식사권·밀키트를 최대 50% 할인가로. 공구 인원이 모일수록 할인폭이 커져요.' },
+            { step: '3', emoji: '🍽', title: '매장 방문·사용', desc: '구매한 쿠폰을 매장에서 제시하고 맛있게 드세요. 배송 상품은 집에서 바로 받아볼 수 있어요.' },
+          ].map(s => (
+            <div key={s.step} className="p-8 rounded-3xl relative overflow-hidden bg-pink-50">
+              <div className="absolute -top-6 -right-6 text-[120px] font-black opacity-10 text-red-500">{s.step}</div>
+              <p className="text-[32px] mb-4">{s.emoji}</p>
+              <h3 className="text-[22px] font-black text-gray-900 mb-2">{s.title}</h3>
+              <p className="text-[15px] text-gray-600 leading-relaxed">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══ SELLER ═══ */}
+      <section id="셀러 입점" className="max-w-[1280px] mx-auto px-6 py-16">
+        <p className="text-[12px] font-extrabold text-red-500 tracking-widest mb-2">📢 셀러 입점 안내</p>
+        <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-gray-900 mb-8" style={{ letterSpacing: '-0.03em' }}>우리 가게, 오늘부터<br/>라이브커머스 맛집.</h2>
+        <div className="space-y-4 max-w-[600px]">
+          {[
+            { t: '입점 수수료 0원, 판매 수수료만', d: '판매되는 만큼만 부담해요. 가입비·월 고정비 없습니다.' },
+            { t: '에이전시 매칭으로 방송 대행까지', d: '직접 방송하기 어렵다면 검증된 에이전시가 도와줘요.' },
+            { t: '당일 정산, 셀러 대시보드 제공', d: '실시간 KPI · 주문 모니터링 · 리뷰 관리까지 한 곳에서.' },
+          ].map(b => (
+            <div key={b.t} className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
+                <Check className="w-4 h-4 text-red-500" strokeWidth={3} />
+              </div>
+              <div>
+                <p className="text-[16px] font-extrabold text-gray-900">{b.t}</p>
+                <p className="text-[14px] text-gray-500 mt-1">{b.d}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 flex gap-3">
+          <button onClick={() => navigate('/seller/register')} className="px-6 py-3.5 rounded-2xl text-white text-[14px] font-extrabold bg-red-500">입점 신청하기 →</button>
+          <button onClick={() => navigate('/seller/login')} className="px-6 py-3.5 rounded-2xl text-[14px] font-extrabold text-gray-900 bg-gray-100">셀러 로그인</button>
+        </div>
+      </section>
+
+      {/* ═══ FAQ ═══ */}
+      <section className="max-w-[820px] mx-auto px-6 py-16">
+        <p className="text-[12px] font-extrabold text-red-500 tracking-widest mb-2">자주 묻는 질문</p>
+        <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-gray-900 mb-8" style={{ letterSpacing: '-0.03em' }}>궁금한 거 다 풀어드려요.</h2>
+        <div>
+          {faqs.map((f, i) => (
+            <div key={i} className="border-b border-gray-200 py-5">
+              <button onClick={() => setFaqOpen(faqOpen === i ? null : i)} className="w-full flex items-center justify-between text-left">
+                <span className="text-[16px] font-bold text-gray-900">{f.q}</span>
+                <span className="text-[20px] text-gray-400 transition-transform" style={{ transform: faqOpen === i ? 'rotate(45deg)' : 'none' }}>＋</span>
+              </button>
+              {faqOpen === i && <p className="mt-3 text-[15px] text-gray-600 leading-relaxed">{f.a}</p>}
+            </div>
+          ))}
         </div>
       </section>
 
       {/* ═══ CTA ═══ */}
-      <section className="py-24 px-6">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-5xl font-extrabold leading-tight mb-6">
-            라이브 쇼핑의 미래,<br/>
-            <span className="bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent">지금 시작하세요</span>
-          </h2>
-          <p className="text-gray-400 mb-10">소비자도, 셀러도, 맛집도 모두 환영합니다</p>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => navigate('/')}
-              className="px-10 py-4 bg-white text-gray-900 rounded-2xl font-bold text-lg active:scale-[0.97] transition-transform"
-            >
-              쇼핑하러 가기
-            </button>
-            <button
-              onClick={() => navigate('/seller/register')}
-              className="px-10 py-4 bg-white/10 border border-white/20 rounded-2xl font-bold text-lg active:scale-[0.97] transition-transform"
-            >
-              셀러 입점 신청
+      <section className="max-w-[1280px] mx-auto px-6 py-16">
+        <div className="rounded-[32px] p-12 md:p-16 relative overflow-hidden bg-gray-900">
+          <div className="relative max-w-[600px]">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[12px] font-extrabold text-white">앱에서 진짜 시작돼요</span>
+            </div>
+            <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white leading-tight mb-4" style={{ letterSpacing: '-0.03em' }}>
+              지금 시작하면<br/>첫 라이브 시청 시<br/><span className="text-red-500">5,000원 쿠폰</span> 🎁
+            </h2>
+            <p className="text-[16px] text-white/70 mb-8 leading-relaxed">전화번호만 있으면 3초 만에 시작할 수 있어요.</p>
+            <button onClick={() => navigate('/login')} className="px-8 py-4 rounded-2xl text-[15px] font-extrabold bg-white text-gray-900">
+              지금 시작하기 →
             </button>
           </div>
         </div>
       </section>
 
-      {/* ═══ Footer ═══ */}
-      <footer className="border-t border-white/10 py-12 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div>
-              <p className="text-xl font-black bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent">유어딜</p>
-              <p className="text-xs text-gray-600 mt-1">리스터코퍼레이션 | 대표: 이준의</p>
+      {/* ═══ FOOTER ═══ */}
+      <footer className="bg-gray-900 text-white mt-16">
+        <div className="max-w-[1280px] mx-auto px-6 py-16">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
+              <Play className="h-3.5 w-3.5 text-white fill-white" />
             </div>
-            <div className="flex gap-6 text-sm text-gray-500">
-              <a href="/terms" className="hover:text-white transition-colors">이용약관</a>
-              <a href="/privacy" className="hover:text-white transition-colors">개인정보처리방침</a>
-              <a href="/shipping-policy" className="hover:text-white transition-colors">배송정책</a>
-              <a href="/faq" className="hover:text-white transition-colors">FAQ</a>
-            </div>
+            <span className="text-[22px] font-black italic text-white" style={{ letterSpacing: '-0.04em' }}>UR·DEAL</span>
           </div>
-          <div className="mt-8 pt-6 border-t border-white/5 text-center text-xs text-gray-600">
-            © 2026 유어딜 (UR-Deal). All rights reserved. Powered by 리스터코퍼레이션
+          <p className="text-[13px] text-white/50 leading-relaxed mb-8 max-w-[360px]">사장님이 직접 켜는 라이브커머스. 우리 동네 맛집을 특가로 만나는 가장 빠른 방법.</p>
+          <div className="pt-8 text-[11px] text-white/40 leading-relaxed border-t border-white/10">
+            <p className="mb-2"><b className="text-white/70">리스터코퍼레이션</b> · 대표: 정지원 · 사업자등록번호: 479-09-02930</p>
+            <p className="mb-4">부산광역시 금정구 놀이마당로26 1402 · 고객센터: 0507-0177-0432 (평일 09:00~18:00)</p>
+            <div className="flex gap-4">
+              <button onClick={() => navigate('/terms')} className="text-white/50 hover:text-white">이용약관</button>
+              <button onClick={() => navigate('/privacy')} className="text-white/50 hover:text-white font-bold">개인정보처리방침</button>
+              <button onClick={() => navigate('/refund')} className="text-white/50 hover:text-white">배송/환불</button>
+            </div>
+            <p className="mt-4 text-white/30">© 2026 리스터코퍼레이션. All rights reserved.</p>
           </div>
         </div>
       </footer>
