@@ -281,11 +281,14 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
-  const { stream_id, amount, message } = await c.req.json<{
+  const body = await c.req.json<{
     stream_id: number;
     amount: number;
     message?: string;
+    /** Optional idempotency key — protects against double-click / retry. */
+    idempotency_key?: string;
   }>();
+  const { stream_id, amount, message } = body;
 
   if (!stream_id || !amount || amount < 500) {
     return c.json({ success: false, error: '후원 금액은 최소 500딜입니다' }, 400);
@@ -297,6 +300,42 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
   // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일
   const userId = String(user.id);
 
+  // ✅ IDEMPOTENCY: if the client supplied a key, guard the whole handler.
+  if (body.idempotency_key) {
+    const { idempotentWrite, IdempotencyConflictError } = await import('@/worker/utils/idempotency');
+    try {
+      const result = await idempotentWrite<{ status: number; body: any }>(
+        DB,
+        `donate:${body.idempotency_key}`,
+        userId,
+        () => executeDonate(DB, userId, stream_id, amount, message),
+        { ttlSeconds: 6 * 60 * 60 },
+      );
+      return c.json(result.body, result.status as any);
+    } catch (e) {
+      if (e instanceof IdempotencyConflictError) {
+        return c.json({ success: false, error: e.message }, 409);
+      }
+      throw e;
+    }
+  }
+
+  const result = await executeDonate(DB, userId, stream_id, amount, message);
+  return c.json(result.body, result.status as any);
+});
+
+/**
+ * Core donate logic, extracted so it can be wrapped by idempotentWrite.
+ * Returns a { status, body } object instead of a Response because the
+ * idempotency cache needs to serialize it.
+ */
+async function executeDonate(
+  DB: D1Database,
+  userId: string,
+  stream_id: number,
+  amount: number,
+  message: string | undefined,
+): Promise<{ status: number; body: any }> {
   // 잔액 확인
   const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
     .bind(userId).first<{ balance: number }>();
@@ -610,15 +649,23 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       .bind(userId).first<{ balance: number }>();
     const newBalance = afterWallet?.balance ?? 0;
 
-    // ✅ Reserve stock atomically (decrement per item, guard on stock >= qty)
-    for (const item of normalizedItems) {
-      const stockRes = await DB.prepare(
+    // ✅ PERF: batch all stock reservations in a single D1 round-trip.
+    // Each UPDATE is still atomic per row thanks to `stock >= ?` guard.
+    const stockStmts = normalizedItems.map(item =>
+      DB.prepare(
         'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ? AND is_active = 1'
-      ).bind(item.quantity, item.product_id, item.quantity).run();
-      if (!stockRes.meta.changes) {
-        throw new Error(`재고 부족 (동시 결제 충돌): ${item.product_name}`);
+      ).bind(item.quantity, item.product_id, item.quantity)
+    );
+    const stockResults = await DB.batch(stockStmts);
+    for (let i = 0; i < stockResults.length; i++) {
+      const changes = stockResults[i]?.meta?.changes ?? 0;
+      if (changes === 0) {
+        throw new Error(`재고 부족 (동시 결제 충돌): ${normalizedItems[i].product_name}`);
       }
-      stockReserved.push({ product_id: item.product_id, quantity: item.quantity });
+      stockReserved.push({
+        product_id: normalizedItems[i].product_id,
+        quantity: normalizedItems[i].quantity,
+      });
     }
 
     // Transaction record
@@ -628,12 +675,14 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     ).bind(userId, authoritativeTotal, authoritativeTotal, newBalance, `상품 구매 (${normalizedItems.length}건)`, order_number).run();
 
     // Create orders per seller
+    // ✅ PERF: use INSERT meta.last_row_id (avoids a separate SELECT per order)
+    //         and batch all order_items per order into a single multi-row INSERT.
     for (const [sellerId, groupItems] of sellerGroups) {
       const groupSubtotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
       const shippingFee = groupSubtotal >= 50000 ? 0 : 3000;
       const sellerOrderNumber = `${order_number}_s${sellerId}`;
 
-      await DB.prepare(`
+      const orderInsert = await DB.prepare(`
         INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo)
         VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
       `).bind(
@@ -643,16 +692,22 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
         JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' })
       ).run();
 
-      const orderRow = await DB.prepare('SELECT id FROM orders WHERE order_number = ? ORDER BY id DESC LIMIT 1')
-        .bind(sellerOrderNumber).first<{ id: number }>();
+      const orderId = orderInsert.meta.last_row_id as number | undefined;
 
-      if (orderRow) {
-        for (const item of groupItems) {
-          await DB.prepare(`
-            INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `).bind(orderRow.id, item.product_id, item.product_name, item.price, item.price, item.quantity, item.price * item.quantity).run();
-        }
+      if (orderId && groupItems.length > 0) {
+        const values = groupItems.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
+        const bindings = groupItems.flatMap(item => [
+          orderId,
+          item.product_id,
+          item.product_name,
+          item.price,
+          item.price,
+          item.quantity,
+          item.price * item.quantity,
+        ]);
+        await DB.prepare(
+          `INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal) VALUES ${values}`
+        ).bind(...bindings).run();
       }
     }
 

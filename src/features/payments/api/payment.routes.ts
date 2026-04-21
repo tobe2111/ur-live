@@ -257,24 +257,29 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
       console.warn('[Payment] order_refunds record skipped:', e);
     }
 
-    // 주문 상태 업데이트
-    await db.prepare(
-      'UPDATE orders SET status = ?, cancel_reason = ?, updated_at = ? WHERE id = ?'
-    ).bind('CANCELLED', cancelReason, new Date().toISOString(), orderData.id).run();
+    // 주문 상태 업데이트 — state machine CAS (이미 CANCELLED이면 false)
+    const { transitionOrderStatus } = await import('@/worker/utils/state-machine');
+    const transitioned = await transitionOrderStatus(db, orderData.id as any, 'CANCELLED', {
+      extraSets: {
+        cancel_reason: cancelReason,
+      },
+    });
 
-    // order_items 재고 복구
-    const items = await db.prepare(
-      'SELECT product_id, quantity FROM order_items WHERE order_id = ? AND status != ?'
-    ).bind(String(orderData.id), 'CANCELLED').all<{ product_id: string; quantity: number }>();
+    // order_items 재고 복구 — transition이 성공한 경우에만 실행 (이중 복구 방지)
+    if (transitioned) {
+      const items = await db.prepare(
+        'SELECT product_id, quantity FROM order_items WHERE order_id = ? AND status != ?'
+      ).bind(String(orderData.id), 'CANCELLED').all<{ product_id: string; quantity: number }>();
 
-    if (items.results.length > 0) {
-      for (const item of items.results) {
-        await db.prepare(
-          'UPDATE products SET stock = stock + ? WHERE id = ?'
-        ).bind(item.quantity, item.product_id).run();
+      if (items.results.length > 0) {
+        for (const item of items.results) {
+          await db.prepare(
+            'UPDATE products SET stock = stock + ? WHERE id = ?'
+          ).bind(item.quantity, item.product_id).run();
+        }
+        await db.prepare('UPDATE order_items SET status = ? WHERE order_id = ?')
+          .bind('CANCELLED', String(orderData.id)).run();
       }
-      await db.prepare('UPDATE order_items SET status = ? WHERE order_id = ?')
-        .bind('CANCELLED', String(orderData.id)).run();
     }
 
     // 업데이트된 주문 조회

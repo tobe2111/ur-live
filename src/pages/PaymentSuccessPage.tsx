@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, Package, AlertCircle } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
+import { addBreadcrumb, captureError } from '@/lib/sentry'
 
 export default function PaymentSuccessPage() {
   
@@ -111,6 +112,11 @@ export default function PaymentSuccessPage() {
         return
       }
 
+      addBreadcrumb('payment', 'confirm start', {
+        orderId,
+        amount: parsedAmount,
+      })
+
       const response = await api.post('/api/payments/confirm', {
         paymentKey,
         orderId,
@@ -118,9 +124,15 @@ export default function PaymentSuccessPage() {
       })
 
       if (!response.data.success) {
+        addBreadcrumb('payment', 'confirm failed', {
+          orderId,
+          error: response.data.error,
+        }, 'error')
         setError(response.data.error || '결제 승인에 실패했습니다.')
         return
       }
+
+      addBreadcrumb('payment', 'confirm success', { orderId })
 
       const paymentData = response.data.data
       setOrderInfo(paymentData)
@@ -150,6 +162,7 @@ export default function PaymentSuccessPage() {
 
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
+      captureError(err as Error, { flow: 'payment_confirm', orderId })
       setError(axiosErr.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)

@@ -57,10 +57,14 @@ export async function handleAutoSettlement(env: Env) {
       ).run();
 
       // Mark vouchers as settled
-      if (result.meta?.last_row_id) {
-        for (const v of vouchers) {
-          await DB.prepare("UPDATE vouchers SET settlement_id = ? WHERE id = ?")
-            .bind(result.meta.last_row_id, v.id).run();
+      // ✅ PERF: single UPDATE ... WHERE id IN (...) instead of N UPDATE statements.
+      if (result.meta?.last_row_id && vouchers.length > 0) {
+        const voucherIds = vouchers.map((v: any) => Number(v.id)).filter(Number.isFinite);
+        if (voucherIds.length > 0) {
+          const placeholders = voucherIds.map(() => '?').join(',');
+          await DB.prepare(
+            `UPDATE vouchers SET settlement_id = ? WHERE id IN (${placeholders})`
+          ).bind(result.meta.last_row_id, ...voucherIds).run();
         }
       }
     }
