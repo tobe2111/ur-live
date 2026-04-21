@@ -53,55 +53,33 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
   const body = await c.req.json<{ invited_user_id?: string }>().catch(() => ({ invited_user_id: undefined }))
   const invitedUserId = body.invited_user_id || String(user.id)
 
-  // 1. Find inviter — check users.referred_by (affiliate ref code → inviter user)
-  // NOTE: production users table may not have `referred_by` column — wrap in try-catch
-  let invitedUser: { id: string; referred_by: string | null } | null = null
+  // 1. Confirm invited user exists (production users schema has no referred_by column)
+  let invitedUser: { id: string } | null = null
   try {
-    invitedUser = await queryFirst<{ id: string; referred_by: string | null }>(
+    const row = await queryFirst<{ id: string }>(
       DB,
-      'SELECT id, referred_by FROM users WHERE id = ? OR firebase_uid = ?',
+      'SELECT id FROM users WHERE id = ? OR firebase_uid = ?',
       [invitedUserId, invitedUserId],
     )
-  } catch (e) {
-    if (import.meta.env?.DEV) console.warn('[invite-reward] referred_by column missing', e)
-    // Fallback: fetch id only
-    try {
-      const row = await queryFirst<{ id: string }>(
-        DB,
-        'SELECT id FROM users WHERE id = ? OR firebase_uid = ?',
-        [invitedUserId, invitedUserId],
-      )
-      invitedUser = row ? { id: row.id, referred_by: null } : null
-    } catch { invitedUser = null }
+    invitedUser = row ? { id: String(row.id) } : null
+  } catch {
+    invitedUser = null
   }
   if (!invitedUser) {
     return c.json({ success: false, error: '초대받은 유저를 찾을 수 없습니다' }, 404)
   }
 
-  // Find inviter via referred_by (stores inviter's affiliate_ref code or user_id)
+  // Find inviter via referral_tree (source of truth — users.referred_by does not exist in production)
   let inviterUserId: string | null = null
-  if (invitedUser.referred_by) {
-    // referred_by may be a user_id directly or an affiliate_ref code
-    // NOTE: affiliate_ref column may not exist in production — wrap in try-catch
-    try {
-      const inviter = await queryFirst<{ id: string }>(
-        DB,
-        'SELECT id FROM users WHERE id = ? OR firebase_uid = ? OR affiliate_ref = ?',
-        [invitedUser.referred_by, invitedUser.referred_by, invitedUser.referred_by],
-      )
-      if (inviter) inviterUserId = String(inviter.id)
-    } catch (e) {
-      if (import.meta.env?.DEV) console.warn('[invite-reward] affiliate_ref column missing', e)
-      // Fallback: try without affiliate_ref
-      try {
-        const inviter = await queryFirst<{ id: string }>(
-          DB,
-          'SELECT id FROM users WHERE id = ? OR firebase_uid = ?',
-          [invitedUser.referred_by, invitedUser.referred_by],
-        )
-        if (inviter) inviterUserId = String(inviter.id)
-      } catch { /* ignore */ }
-    }
+  try {
+    const tree = await queryFirst<{ parent_id: string | null }>(
+      DB,
+      'SELECT parent_id FROM referral_tree WHERE user_id = ?',
+      [String(invitedUser.id)],
+    )
+    if (tree?.parent_id) inviterUserId = String(tree.parent_id)
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn('[invite-reward] referral_tree lookup failed', e)
   }
 
   if (!inviterUserId) {
