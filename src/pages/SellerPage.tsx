@@ -85,6 +85,11 @@ interface LiveStream {
   youtube_video_id: string
 }
 
+// Inline skeleton placeholder
+const Skel = ({ className }: { className?: string }) => (
+  <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
+)
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 const STATUS_CONFIG_BASE: Record<string, { labelKey: string; color: string; bg: string; icon: React.ReactNode }> = {
   PENDING:   { labelKey: 'seller.statusPending',   color: '#D97706', bg: '#FEF3C7', icon: <Clock className="w-3 h-3" /> },
@@ -141,6 +146,26 @@ export default function SellerPage() {
       redirectToLogin(navigate)
       return
     }
+    // sessionStorage 캐시로 즉시 렌더 (5분 TTL)
+    try {
+      const cached = sessionStorage.getItem(`seller_dashboard_cache_${period}`)
+      if (cached) {
+        const c = JSON.parse(cached)
+        if (Date.now() - (c.ts || 0) < 5 * 60 * 1000) {
+          if (c.stats) setStats(c.stats)
+          if (c.dailyStats) setDailyStats(c.dailyStats)
+          if (c.topProducts) setTopProducts(c.topProducts)
+          if (c.streams) setStreams(c.streams)
+          if (typeof c.stockAlertCount === 'number') setStockAlertCount(c.stockAlertCount)
+          if (typeof c.followerCount === 'number') setFollowerCount(c.followerCount)
+          if (typeof c.hasLiveHistory === 'boolean') setHasLiveHistory(c.hasLiveHistory)
+          if (typeof c.hasMealVouchers === 'boolean') setHasMealVouchers(c.hasMealVouchers)
+          if (typeof c.mealVoucherCount === 'number') setMealVoucherCount(c.mealVoucherCount)
+          if (typeof c.activeGroupBuys === 'number') setActiveGroupBuys(c.activeGroupBuys)
+          setLoading(false)
+        }
+      }
+    } catch { /* 파싱 실패 무시 */ }
     loadDashboardData()
   }, [navigate, period])
 
@@ -186,7 +211,6 @@ export default function SellerPage() {
   // ── Dashboard data ─────────────────────────────────────────────────────────
   async function loadDashboardData() {
     try {
-      setLoading(true)
       const token = getSellerToken()
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
@@ -198,9 +222,13 @@ export default function SellerPage() {
         api.get('/api/seller/products', { headers }),
       ])
 
+      // 캐시 저장용 스냅샷
+      const snapshot: Record<string, unknown> = { ts: Date.now() }
+
+      let nextStats: DashboardStats | null = null
       if (dashRes.status === 'fulfilled' && dashRes.value.data.success) {
         const d = dashRes.value.data.data
-        setStats({
+        nextStats = {
           totalRevenue:    d.summary?.total_sales      || 0,
           totalOrders:     d.summary?.total_orders     || 0,
           activeStreams:    0,
@@ -211,42 +239,62 @@ export default function SellerPage() {
           avgOrderValue:   d.summary?.avg_order_value  || 0,
           lowStockCount:   d.summary?.low_stock_count  || 0,
           pendingSettlement: d.summary?.pending_settlement || 0,
-        })
+        }
         setDailyStats(d.daily || [])
         setTopProducts(d.topProducts || [])
+        snapshot.dailyStats = d.daily || []
+        snapshot.topProducts = d.topProducts || []
       }
 
       if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
         const s: LiveStream[] = streamsRes.value.data.data || []
         setStreams(s)
-        setStats(prev => ({
-          ...prev,
-          activeStreams: s.filter(x => x.status === 'live').length,
-          totalViewers:  s.reduce((sum, x) => sum + (x.viewer_count || 0), 0),
-        }))
+        if (nextStats) {
+          nextStats.activeStreams = s.filter(x => x.status === 'live').length
+          nextStats.totalViewers = s.reduce((sum, x) => sum + (x.viewer_count || 0), 0)
+        }
+        snapshot.streams = s
+      }
+      if (nextStats) {
+        setStats(nextStats)
+        snapshot.stats = nextStats
       }
 
       if (stockRes.status === 'fulfilled' && stockRes.value.data?.success) {
         const alerts = stockRes.value.data.data || []
-        setStockAlertCount(Array.isArray(alerts) ? alerts.length : 0)
+        const count = Array.isArray(alerts) ? alerts.length : 0
+        setStockAlertCount(count)
+        snapshot.stockAlertCount = count
       }
       if (followerRes.status === 'fulfilled' && followerRes.value.data?.success) {
-        setFollowerCount(followerRes.value.data.data?.count || 0)
+        const count = followerRes.value.data.data?.count || 0
+        setFollowerCount(count)
+        snapshot.followerCount = count
       }
 
       // 활동 데이터 분석: 라이브 이력 + 식사권 상품
       if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
         const allStreams: LiveStream[] = streamsRes.value.data.data || []
-        setHasLiveHistory(allStreams.length > 0)
+        const hasHistory = allStreams.length > 0
+        setHasLiveHistory(hasHistory)
+        snapshot.hasLiveHistory = hasHistory
       }
       if (productsRes.status === 'fulfilled' && productsRes.value.data?.success) {
         const prods = productsRes.value.data.data || []
         type ProdEntry = { category?: string; group_buy_status?: string }
         const vouchers = (prods as ProdEntry[]).filter(p => p.category === 'meal_voucher' || p.category === 'group_buy')
-        setHasMealVouchers(vouchers.length > 0)
+        const hasVouchers = vouchers.length > 0
+        const activeBuys = vouchers.filter(p => p.group_buy_status === 'active' || p.group_buy_status === 'achieved').length
+        setHasMealVouchers(hasVouchers)
         setMealVoucherCount(vouchers.length)
-        setActiveGroupBuys(vouchers.filter(p => p.group_buy_status === 'active' || p.group_buy_status === 'achieved').length)
+        setActiveGroupBuys(activeBuys)
+        snapshot.hasMealVouchers = hasVouchers
+        snapshot.mealVoucherCount = vouchers.length
+        snapshot.activeGroupBuys = activeBuys
       }
+
+      // sessionStorage 캐시 (5분 TTL)
+      try { sessionStorage.setItem(`seller_dashboard_cache_${period}`, JSON.stringify(snapshot)) } catch { /* quota 무시 */ }
     } catch {
       // silent fail
     } finally {
@@ -269,22 +317,6 @@ export default function SellerPage() {
     if (s < 3600) return t('seller.minutesAgo', { count: Math.floor(s / 60) })
     return date.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
   }
-  // ── Loading ─────────────────────────────────────────────────────────────────
-  const sellerName = localStorage.getItem('seller_name') || 'Seller'
-
-  if (loading) {
-    return (
-      <SellerLayout title={t('seller.dashboard')}>
-        <div className="flex items-center justify-center py-32">
-          <div className="text-center">
-            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-500">{t('seller.loadingDashboard')}</p>
-          </div>
-        </div>
-      </SellerLayout>
-    )
-  }
-
   // ── Render ──────────────────────────────────────────────────────────────────
   const headerRight = (
     <div className="flex items-center gap-2">
