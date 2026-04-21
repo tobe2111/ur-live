@@ -171,26 +171,34 @@ export default function SellerLoginPage() {
               </div>
 
               {/* {t('seller.rememberEmail')} */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRememberMe(v => !v)}
-                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
-                    rememberMe ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'
-                  }`}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRememberMe(v => !v)}
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                      rememberMe ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'
+                    }`}
+                  >
+                    {rememberMe && (
+                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                        <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                  <span
+                    onClick={() => setRememberMe(v => !v)}
+                    className="text-sm text-gray-600 cursor-pointer select-none"
+                  >
+                    {t('seller.rememberEmail')}
+                  </span>
+                </div>
+                <Link
+                  to="/seller/forgot-password"
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  {rememberMe && (
-                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
-                      <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-                <span
-                  onClick={() => setRememberMe(v => !v)}
-                  className="text-sm text-gray-600 cursor-pointer select-none"
-                >
-                  {t('seller.rememberEmail')}
-                </span>
+                  비밀번호를 잊으셨나요?
+                </Link>
               </div>
 
               {/* 로그인 버튼 */}
