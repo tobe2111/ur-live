@@ -64,7 +64,7 @@ export default function OptionSelectModal({
         setError('옵션을 불러올 수 없습니다.')
       }
     } catch (err: any) {
-      console.error('Failed to load options:', err)
+      if (import.meta.env.DEV) console.error('Failed to load options:', err)
       setError('옵션 조회 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)

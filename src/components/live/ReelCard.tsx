@@ -463,7 +463,7 @@ export default function ReelCard({
             },
             onError: (event: YTPlayerEvent) => {
               if (!isMounted) return
-              console.error(`[ReelCard] YouTube player error for video ${stream.youtube_video_id}:`, event.data)
+              if (import.meta.env.DEV) console.error(`[ReelCard] YouTube player error for video ${stream.youtube_video_id}:`, event.data)
               // Error codes: 2=invalid ID, 5=HTML5 error, 100=not found, 101/150=embedding disabled
               setShowPlayButton(true)
             },
@@ -472,7 +472,7 @@ export default function ReelCard({
       } catch (error) {
         // Only log critical errors, suppress postMessage
         if (error instanceof Error && !error.message.includes('postMessage')) {
-          console.error('[ReelCard] YouTube player error:', error.message)
+          if (import.meta.env.DEV) console.error('[ReelCard] YouTube player error:', error.message)
         }
       }
     }
@@ -568,7 +568,7 @@ export default function ReelCard({
         setIsMuted(false)
         setShowPlayButton(false)
       } catch (error) {
-        console.error('[ReelCard] Failed to start video:', error)
+        if (import.meta.env.DEV) console.error('[ReelCard] Failed to start video:', error)
       }
     }
   }
@@ -601,7 +601,7 @@ export default function ReelCard({
 
           }
         } catch (error) {
-          console.error('[WS] Error loading new product:', error)
+          if (import.meta.env.DEV) console.error('[WS] Error loading new product:', error)
         }
       }
 
@@ -643,7 +643,7 @@ export default function ReelCard({
           setCurrentProduct(null)
         }
       } catch (error) {
-        console.error('[InitialProduct] Error loading:', error)
+        if (import.meta.env.DEV) console.error('[InitialProduct] Error loading:', error)
       }
     }
 
@@ -658,7 +658,7 @@ export default function ReelCard({
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
     } catch (error) {
-      console.error('[Login] Exception:', error)
+      if (import.meta.env.DEV) console.error('[Login] Exception:', error)
       showAlert('로그인 페이지로 이동 중 오류가 발생했습니다.', 'error', '오류 발생')
     }
   }
@@ -732,9 +732,9 @@ export default function ReelCard({
         // 시스템 메시지 전송 실패는 무시
       }
     } catch (error: unknown) {
-      console.error('[handleAddToCart] ❌ Error:', error)
+      if (import.meta.env.DEV) console.error('[handleAddToCart] ❌ Error:', error)
       const apiErr = isApiError(error) ? error : undefined
-      console.error('[handleAddToCart] ❌ Error details:', {
+      if (import.meta.env.DEV) console.error('[handleAddToCart] ❌ Error details:', {
         status: apiErr?.response?.status,
         statusText: apiErr?.response?.statusText,
         data: apiErr?.response?.data,
@@ -803,7 +803,7 @@ export default function ReelCard({
       })
       
     } catch (error: unknown) {
-      console.error('Failed to add product to cart:', error)
+      if (import.meta.env.DEV) console.error('Failed to add product to cart:', error)
       const apiErr = isApiError(error) ? error : undefined
       const errorMessage = apiErr?.response?.data?.error || apiErr?.message || '상품 담기에 실패했습니다.'
       showAlert(errorMessage, 'error', '결제 실패')
@@ -832,7 +832,7 @@ export default function ReelCard({
         setStreamProducts(sorted)
       }
     } catch (error) {
-      console.error('Failed to load stream products:', error)
+      if (import.meta.env.DEV) console.error('Failed to load stream products:', error)
     } finally {
       setLoadingProducts(false)
     }
@@ -871,7 +871,7 @@ export default function ReelCard({
       setTimeout(() => setShowNotification(false), 2000)
 
     } catch (error: unknown) {
-      console.error('[Seller] Failed to change product:', error)
+      if (import.meta.env.DEV) console.error('[Seller] Failed to change product:', error)
       const apiErr = isApiError(error) ? error : undefined
       showAlert(apiErr?.response?.data?.error || '상품 전환에 실패했습니다.', 'error', '전환 실패')
     } finally {
@@ -921,7 +921,7 @@ export default function ReelCard({
       setChatMessage('')
       setChatModalOpen(false)
     } catch (error) {
-      console.error('Failed to send message:', error)
+      if (import.meta.env.DEV) console.error('Failed to send message:', error)
       showAlert('메시지 전송에 실패했습니다.', 'error', '전송 실패')
     } finally {
       setSendingMessage(false)

@@ -96,7 +96,7 @@ export default function HomePage() {
         setUser({ name: userName, email: '' })
       }
     } catch (error) {
-      console.error('[HomePage] Failed to load user info:', error)
+      if (import.meta.env.DEV) console.error('[HomePage] Failed to load user info:', error)
     }
   }
 
@@ -115,7 +115,7 @@ export default function HomePage() {
         setBanners(response.data.data || [])
       }
     } catch (error) {
-      console.error('[HomePage] Failed to load banners:', error)
+      if (import.meta.env.DEV) console.error('[HomePage] Failed to load banners:', error)
     }
   }
 
@@ -128,7 +128,7 @@ export default function HomePage() {
         setProducts([])
       }
     } catch (error) {
-      console.error('[HomePage] Failed to load products:', error)
+      if (import.meta.env.DEV) console.error('[HomePage] Failed to load products:', error)
       setProducts([
         { id: 1, name: '프리미엄 무선 헤드폰', price: 89000, current_price: 89000, original_price: 149000, discount_rate: 40, image_url: '', seller_name: 'Nike', is_popular: true, sold_count: 0, stock: 10 },
         { id: 2, name: '클래식 화이트 스니커즈', price: 120000, current_price: 120000, discount_rate: 0, image_url: '', seller_name: 'Adidas', sold_count: 0, stock: 10 },

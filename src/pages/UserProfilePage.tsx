@@ -476,7 +476,7 @@ export default function UserProfilePage() {
           setIsProcessingToken(false)
         })
         .catch((error) => {
-          console.error('[UserProfilePage] ❌ 토큰 처리 실패:', error)
+          if (import.meta.env.DEV) console.error('[UserProfilePage] ❌ 토큰 처리 실패:', error)
           setIsProcessingToken(false)
           navigate('/login', { replace: true })
         })
@@ -534,7 +534,7 @@ export default function UserProfilePage() {
       await logout()
       navigate('/', { replace: true })
     } catch (error) {
-      console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
+      if (import.meta.env.DEV) console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
     }
   }
 

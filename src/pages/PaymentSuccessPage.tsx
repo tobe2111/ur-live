@@ -70,7 +70,7 @@ export default function PaymentSuccessPage() {
           })
         }
       } catch (e) {
-        console.error('[PaymentSuccess] Firebase auth wait error:', e);
+        if (import.meta.env.DEV) console.error('[PaymentSuccess] Firebase auth wait error:', e);
       }
     }
     confirmPayment()

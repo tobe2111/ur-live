@@ -84,7 +84,7 @@ export default function KakaoCallbackPage() {
 
       } catch (err: unknown) {
         const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string };
-        console.error('[KakaoCallback] 실패:', err)
+        if (import.meta.env.DEV) console.error('[KakaoCallback] 실패:', err)
         toast.error(err_.response?.data?.error || err_.message || '로그인 실패')
         navigate('/login', { replace: true })
       }

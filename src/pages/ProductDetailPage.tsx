@@ -315,7 +315,7 @@ export default function ProductDetailPage() {
         const referrerPath = new URL(referrer).pathname
         sessionStorage.setItem('productDetailReferrer', referrerPath)
       } catch (e) {
-        console.error('Failed to parse referrer URL:', e)
+        if (import.meta.env.DEV) console.error('Failed to parse referrer URL:', e)
       }
     }
   }, [id])
@@ -386,7 +386,7 @@ export default function ProductDetailPage() {
     } catch (err: unknown) {
       const err_ = err as { message?: string };
       if (import.meta.env.DEV) {
-        console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
+        if (import.meta.env.DEV) console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
       }
       const errorMessage = err instanceof Error ? err.message : '장바구니 추가에 실패했습니다.'
       showToast(errorMessage, 'error')
@@ -481,7 +481,7 @@ export default function ProductDetailPage() {
         ? JSON.parse(product.detail_images)
         : product.detail_images
     } catch (e) {
-      console.error('Failed to parse detail images:', e)
+      if (import.meta.env.DEV) console.error('Failed to parse detail images:', e)
       detailImages = []
     }
   }

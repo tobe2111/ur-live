@@ -192,7 +192,7 @@ export default function WebStreaming({
     }
 
     ws.onerror = (err) => {
-      console.error('[WebSocket] Error:', err)
+      if (import.meta.env.DEV) console.error('[WebSocket] Error:', err)
     }
 
     wsRef.current = ws
@@ -223,7 +223,7 @@ export default function WebStreaming({
       setStatus('live')
       onStatusChange?.('live')
     } catch (err: any) {
-      console.error('[Streaming] Error:', err)
+      if (import.meta.env.DEV) console.error('[Streaming] Error:', err)
       setError(err.message)
       setStatus('error')
       onStatusChange?.('error')

@@ -132,7 +132,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
         mapRef.current.setBounds(bounds)
       }
     } catch (e) {
-      console.error('[KakaoMapPicker] search failed:', e)
+      if (import.meta.env.DEV) console.error('[KakaoMapPicker] search failed:', e)
     } finally {
       setLoading(false)
     }

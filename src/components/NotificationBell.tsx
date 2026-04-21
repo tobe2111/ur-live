@@ -38,7 +38,7 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
         setErrorCount(0) // 🔧 성공 시 에러 카운트 리셋
       }
     } catch (err) {
-      console.error('[Notifications] Load error:', err)
+      if (import.meta.env.DEV) console.error('[Notifications] Load error:', err)
       setErrorCount(prev => prev + 1) // 🔧 에러 카운트 증가
       
       // 🔧 3번 이상 연속 에러 시 polling 중지 (console에 경고)
@@ -61,7 +61,7 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
       )
       setUnreadCount(prev => Math.max(0, prev - 1))
     } catch (err) {
-      console.error('[Notifications] Mark as read error:', err)
+      if (import.meta.env.DEV) console.error('[Notifications] Mark as read error:', err)
     }
   }
 
@@ -75,7 +75,7 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
       )
       setUnreadCount(0)
     } catch (err) {
-      console.error('[Notifications] Mark all as read error:', err)
+      if (import.meta.env.DEV) console.error('[Notifications] Mark all as read error:', err)
     }
   }
 

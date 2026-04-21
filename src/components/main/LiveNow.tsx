@@ -72,7 +72,7 @@ export default function LiveNow() {
         ])
       }
     } catch (error) {
-      console.error('Failed to load live streams:', error)
+      if (import.meta.env.DEV) console.error('Failed to load live streams:', error)
       // Use demo data on error
       setLiveStreams([
         {

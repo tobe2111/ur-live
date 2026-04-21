@@ -58,7 +58,7 @@ export function ProtectedRoute({
   if (requireSeller) {
     const sellerToken = localStorage.getItem('seller_token')
     const ok = !!sellerToken
-    if (DEBUG) console.log('[ProtectedRoute] Seller 체크:', { ok, path: location.pathname })
+    if (DEBUG) if (import.meta.env.DEV) console.log('[ProtectedRoute] Seller 체크:', { ok, path: location.pathname })
     if (!ok) return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
     return <>{children}</>
   }
@@ -73,10 +73,10 @@ export function ProtectedRoute({
   // 한국: localStorage만 체크. 끝.
   if (isKorea()) {
     if (isUserLoggedIn()) {
-      if (DEBUG) console.log('[ProtectedRoute] ✅ KR 세션 로그인')
+      if (DEBUG) if (import.meta.env.DEV) console.log('[ProtectedRoute] ✅ KR 세션 로그인')
       return <>{children}</>
     }
-    if (DEBUG) console.log('[ProtectedRoute] ❌ KR 미인증 → /login')
+    if (DEBUG) if (import.meta.env.DEV) console.log('[ProtectedRoute] ❌ KR 미인증 → /login')
     return <Navigate to={makeLoginUrl(location.pathname, location.search)} replace />
   }
 
@@ -141,7 +141,7 @@ export function PublicRoute({
   if (forSeller) {
     const sellerToken = localStorage.getItem('seller_token')
     if (sellerToken) {
-      if (DEBUG) console.log('[PublicRoute] Seller 이미 로그인됨 → /seller')
+      if (DEBUG) if (import.meta.env.DEV) console.log('[PublicRoute] Seller 이미 로그인됨 → /seller')
       return <Navigate to="/seller" replace />
     }
     return <>{children}</>
@@ -157,7 +157,7 @@ export function PublicRoute({
     const searchParams = new URLSearchParams(location.search)
     const returnUrl = searchParams.get('returnUrl')
     const destination = returnUrl ? decodeURIComponent(returnUrl) : redirectTo
-    if (DEBUG) console.log('[PublicRoute] ✅ 이미 로그인됨 →', destination)
+    if (DEBUG) if (import.meta.env.DEV) console.log('[PublicRoute] ✅ 이미 로그인됨 →', destination)
     return <Navigate to={destination} replace />
   }
 

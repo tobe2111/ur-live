@@ -55,7 +55,7 @@ export default function RestaurantMapPage() {
       ensureKakaoMaps()
         .then(() => setSdkLoaded(true))
         .catch((e) => {
-          console.error('[RestaurantMap] Kakao Maps load failed:', e)
+          if (import.meta.env.DEV) console.error('[RestaurantMap] Kakao Maps load failed:', e)
           setSdkLoaded(false)
           setMapView(false)
         })

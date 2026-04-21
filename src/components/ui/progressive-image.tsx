@@ -47,7 +47,7 @@ export function ProgressiveImage({
     }
 
     img.onerror = () => {
-      console.error(`[Image] Failed to load: ${src}`)
+      if (import.meta.env.DEV) console.error(`[Image] Failed to load: ${src}`)
       setImageSrc(src) // Fallback to original
     }
 

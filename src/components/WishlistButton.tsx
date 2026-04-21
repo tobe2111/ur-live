@@ -55,7 +55,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
         setWishlistId(response.data.data.wishlistId)
       }
     } catch (error) {
-      console.error('[WishlistButton] Check status error:', error)
+      if (import.meta.env.DEV) console.error('[WishlistButton] Check status error:', error)
     }
   }
 
@@ -107,7 +107,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
         onToggle(!isWishlisted)
       }
     } catch (error: any) {
-      console.error('[WishlistButton] Toggle error:', error)
+      if (import.meta.env.DEV) console.error('[WishlistButton] Toggle error:', error)
       
       // 에러 메시지 표시
       if (error.response?.data?.error) {

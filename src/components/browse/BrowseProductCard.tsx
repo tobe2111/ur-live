@@ -40,7 +40,7 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
           setSaved(response.data.data.isWishlisted || response.data.data.isSaved)
         }
       } catch (err) {
-        console.error('위시리스트 확인 실패:', err)
+        if (import.meta.env.DEV) console.error('위시리스트 확인 실패:', err)
       }
     }
     checkWishlist()
@@ -77,7 +77,7 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
         setSaved(true)
       }
     } catch (err) {
-      console.error('위시리스트 처리 실패:', err)
+      if (import.meta.env.DEV) console.error('위시리스트 처리 실패:', err)
       alert('저장 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)

@@ -41,7 +41,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
       actualError.message.includes('Importing a module script failed') ||
       actualError.message.includes('error loading dynamically imported module');
 
-    console.error('[ChunkErrorBoundary] Error caught:', {
+    if (import.meta.env.DEV) console.error('[ChunkErrorBoundary] Error caught:', {
       message: actualError.message,
       isChunkError,
       errorType: actualError.constructor.name,
@@ -55,7 +55,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[ChunkErrorBoundary] Component stack:', errorInfo.componentStack);
+    if (import.meta.env.DEV) console.error('[ChunkErrorBoundary] Component stack:', errorInfo.componentStack);
 
     // 청크 로딩 실패 시 자동 복구 시도
     if (this.state.isChunkError) {

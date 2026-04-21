@@ -103,7 +103,7 @@ export default function LiveControlPanel({
     }
 
     ws.onerror = (err) => {
-      console.error('[WebSocket] Error:', err)
+      if (import.meta.env.DEV) console.error('[WebSocket] Error:', err)
     }
 
     ws.onclose = () => {
@@ -157,7 +157,7 @@ export default function LiveControlPanel({
         })
       }
     } catch (error) {
-      console.error('[Chat] Failed to fetch:', error)
+      if (import.meta.env.DEV) console.error('[Chat] Failed to fetch:', error)
     }
   }
 
@@ -186,7 +186,7 @@ export default function LiveControlPanel({
         message
       })
     } catch (error) {
-      console.error('[Chat] Failed to send reply:', error)
+      if (import.meta.env.DEV) console.error('[Chat] Failed to send reply:', error)
     }
   }
 

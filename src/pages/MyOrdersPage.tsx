@@ -78,7 +78,7 @@ export default function MyOrdersPage() {
       const uid = userId || getUserIdSync()
       
       if (!uid) {
-        console.error('No user ID available')
+        if (import.meta.env.DEV) console.error('No user ID available')
         return
       }
       
@@ -96,7 +96,7 @@ export default function MyOrdersPage() {
         }
       }
     } catch (error) {
-      console.error('Failed to load data:', error)
+      if (import.meta.env.DEV) console.error('Failed to load data:', error)
     } finally {
       setLoading(false)
       isLoadingRef.current = false
@@ -111,7 +111,7 @@ export default function MyOrdersPage() {
         loadData()
       }
     } catch (error) {
-      console.error('Failed to update quantity:', error)
+      if (import.meta.env.DEV) console.error('Failed to update quantity:', error)
       toast.error('수량 변경에 실패했습니다.')
     }
   }
@@ -124,7 +124,7 @@ export default function MyOrdersPage() {
         loadData()
       }
     } catch (error) {
-      console.error('Failed to remove item:', error)
+      if (import.meta.env.DEV) console.error('Failed to remove item:', error)
       toast.error('삭제에 실패했습니다.')
     }
   }
@@ -192,7 +192,7 @@ export default function MyOrdersPage() {
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('Failed to cancel order:', error)
+      if (import.meta.env.DEV) console.error('Failed to cancel order:', error)
       toast.error(error_.response?.data?.error || '주문 취소 중 오류가 발생했습니다.')
     } finally {
       setProcessing(false)

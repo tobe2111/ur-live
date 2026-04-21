@@ -48,7 +48,7 @@ export default function YouTubeCallbackPage() {
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string };
-      console.error('OAuth callback error:', error)
+      if (import.meta.env.DEV) console.error('OAuth callback error:', error)
       setStatus('error')
       setMessage(error_.response?.data?.error || error_.message || 'YouTube 연동에 실패했습니다.')
       setTimeout(() => navigate('/seller/live-broadcast'), 3000)

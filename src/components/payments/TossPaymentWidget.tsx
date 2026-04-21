@@ -72,7 +72,7 @@ export function TossPaymentWidget({
         hasInitialized.current = true
       } catch (err: unknown) {
         if (cancelled) return
-        console.error('[TossPayments] 초기화 실패:', err)
+        if (import.meta.env.DEV) console.error('[TossPayments] 초기화 실패:', err)
         const errMsg = err instanceof Error ? err.message : ''
         const msg = errMsg.includes('network')
           ? '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.'
@@ -139,7 +139,7 @@ export function TossPaymentWidget({
         setIsRendered(true)
         setLoadingState('ready')
       } catch (err: unknown) {
-        console.error('[TossPayments] 렌더링 실패:', err)
+        if (import.meta.env.DEV) console.error('[TossPayments] 렌더링 실패:', err)
         const msg = t('payment.renderError') || 'UI 렌더링 실패'
         setErrorMessage(msg)
         setLoadingState('error')
@@ -155,7 +155,7 @@ export function TossPaymentWidget({
     if (!widgets || !isRendered) return
     const finalAmount = Math.round(totalAmount + shippingFee)
     widgets.setAmount({ currency: 'KRW', value: finalAmount }).catch((err: unknown) => {
-      console.error('[TossPayments] 금액 업데이트 실패:', err)
+      if (import.meta.env.DEV) console.error('[TossPayments] 금액 업데이트 실패:', err)
     })
   }, [totalAmount, shippingFee, isRendered, widgets])
 
@@ -189,7 +189,7 @@ export function TossPaymentWidget({
 
       // 리다이렉트 방식이므로 이 아래 코드는 실행되지 않음
     } catch (err: unknown) {
-      console.error('[TossPayments] 결제 요청 실패:', err)
+      if (import.meta.env.DEV) console.error('[TossPayments] 결제 요청 실패:', err)
       setIsProcessing(false)
       const errObj = err as Record<string, unknown> | undefined
       // 사용자가 결제를 직접 취소한 경우 에러 표시하지 않음

@@ -302,7 +302,7 @@ export default function CheckoutPage() {
           }
         }
       } catch (err) {
-        console.error('[CheckoutPage] ❌ API 에러:', err)
+        if (import.meta.env.DEV) console.error('[CheckoutPage] ❌ API 에러:', err)
         captureError(err as Error, { context: 'CheckoutPage.loadData', userId: uid })
         handleApiError(err)
         setError('데이터를 불러올 수 없습니다.')
@@ -406,7 +406,7 @@ export default function CheckoutPage() {
         })
       }
     } catch (err) {
-      console.error('[CheckoutPage] ❌ 배송지 저장 실패:', err)
+      if (import.meta.env.DEV) console.error('[CheckoutPage] ❌ 배송지 저장 실패:', err)
       handleApiError(err)
     }
   }
@@ -837,7 +837,7 @@ export default function CheckoutPage() {
                       navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
                     }}
                     onPaymentError={(error) => {
-                      console.error('[CheckoutPage] 결제 실패:', error)
+                      if (import.meta.env.DEV) console.error('[CheckoutPage] 결제 실패:', error)
                       showErrorToast(error)
                     }}
                   />
@@ -859,7 +859,7 @@ export default function CheckoutPage() {
                       navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
                     }}
                     onPaymentError={(error) => {
-                      console.error('[CheckoutPage] Payment failed:', error)
+                      if (import.meta.env.DEV) console.error('[CheckoutPage] Payment failed:', error)
                       showErrorToast(error)
                     }}
                   />
