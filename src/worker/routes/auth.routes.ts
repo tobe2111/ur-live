@@ -236,6 +236,23 @@ authRouter.patch('/profile', authMiddleware, async (c) => {
   const db = c.env.DB;
   try {
     const body = await c.req.json<{ name?: string; phone?: string }>();
+
+    // Defensive validation: bounded string sizes, basic phone shape
+    if (body.name !== undefined) {
+      if (typeof body.name !== 'string' || body.name.length === 0 || body.name.length > 100) {
+        return c.json({ success: false, error: '이름은 1자 이상 100자 이하여야 합니다' }, 400);
+      }
+    }
+    if (body.phone !== undefined && body.phone !== null && body.phone !== '') {
+      if (typeof body.phone !== 'string' || body.phone.length > 20) {
+        return c.json({ success: false, error: '전화번호 형식이 올바르지 않습니다' }, 400);
+      }
+      const cleanedPhone = body.phone.replace(/[-\s]/g, '');
+      if (!/^[0-9+]+$/.test(cleanedPhone) || cleanedPhone.length < 9 || cleanedPhone.length > 15) {
+        return c.json({ success: false, error: '전화번호 형식이 올바르지 않습니다' }, 400);
+      }
+    }
+
     const fields: string[] = [];
     const values: (string | null)[] = [];
     if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }

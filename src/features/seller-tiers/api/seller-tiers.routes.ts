@@ -59,7 +59,9 @@ sellerTiersRoutes.get('/', async (c) => {
     success: true,
     data: (results ?? []).map((t: any) => ({
       ...t,
-      benefits: JSON.parse(t.benefits || '[]'),
+      benefits: (() => {
+        try { return JSON.parse(t.benefits || '[]'); } catch { return []; }
+      })(),
     })),
   });
 });
@@ -117,7 +119,9 @@ sellerTiersRoutes.get('/my', requireAuth(), async (c) => {
       tier: {
         name: tier?.name ?? '브론즈',
         commission_rate: tier?.commission_rate ?? 12.0,
-        benefits: JSON.parse(tier?.benefits || '[]'),
+        benefits: (() => {
+          try { return JSON.parse(tier?.benefits || '[]'); } catch { return []; }
+        })(),
       },
       next_tier: nextTier ? {
         name: nextTier.name,

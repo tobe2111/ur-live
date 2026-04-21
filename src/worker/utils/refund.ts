@@ -141,14 +141,21 @@ export async function processRefund(
       return { success: false, error: refundResult.error }
     }
 
-    // 3. 재고 복구
-    await restoreStock(db, orderId)
+    // 4. 주문 상태 업데이트 — state machine로 원자적 CAS
+    //    이미 REFUNDED/CANCELLED인 경우 transition 실패 → 재고 복구도 건너뜀
+    const { transitionOrderStatus } = await import('./state-machine')
+    const transitioned = await transitionOrderStatus(db, orderId, 'REFUNDED', {
+      extraSets: {
+        refund_status: 'completed',
+        refunded_at: new Date().toISOString(),
+      },
+    })
+    if (!transitioned) {
+      return { success: false, error: '이미 환불 처리된 주문이거나 상태 전환이 불가능합니다.' }
+    }
 
-    // 4. 주문 상태 업데이트 (DB constraint는 uppercase)
-    await db
-      .prepare('UPDATE orders SET status = ?, refund_status = ?, refunded_at = datetime("now"), updated_at = datetime("now") WHERE id = ?')
-      .bind('REFUNDED', 'completed', orderId)
-      .run()
+    // 3. 재고 복구 (transition이 성공한 경우에만 실행 → 이중 복구 방지)
+    await restoreStock(db, orderId)
 
     // 5. 환불 내역 기록
     const orderAmount = order.total_amount ?? order.amount ?? 0

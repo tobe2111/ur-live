@@ -175,11 +175,21 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
 
     const db = c.env.DB;
 
-    // 소유권 확인과 상태 변경을 원자적으로 처리 (order_number 또는 id 모두 지원)
+    // ✅ CONCURRENCY: enforce state machine so a seller cannot regress
+    // a DELIVERED order back to PREPARING (or skip steps like PAID → DELIVERED).
+    const { statusesThatCanReach } = await import('@/worker/utils/state-machine');
+    const allowedPrev = statusesThatCanReach(dbStatus);
+    if (allowedPrev.length === 0) {
+      return c.json({ success: false, error: `Invalid status transition to ${dbStatus}` }, 400);
+    }
+    const prevPh = allowedPrev.map(() => '?').join(',');
+
+    // 소유권 확인 + 상태 변경 + 전이 검증을 원자적으로 처리
     const result = await db.prepare(
       `UPDATE orders SET status = ?, updated_at = datetime('now')
-       WHERE (id = ? OR order_number = ?) AND seller_id = ?`
-    ).bind(dbStatus, orderId, orderId, sellerId).run();
+       WHERE (id = ? OR order_number = ?) AND seller_id = ?
+         AND UPPER(status) IN (${prevPh})`
+    ).bind(dbStatus, orderId, orderId, sellerId, ...allowedPrev).run();
 
     // ── 유저에게 인앱 알림 발송 ──
     if (result.meta.changes) {
@@ -202,13 +212,19 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
     }
 
     if (!result.meta.changes) {
-      // 주문이 없거나 다른 셀러의 주문
-      const exists = await db.prepare(
-        `SELECT 1 FROM orders WHERE id = ? OR order_number = ? LIMIT 1`
-      ).bind(orderId, orderId).first();
-      return exists
-        ? c.json({ success: false, error: 'Forbidden' }, 403)
-        : c.json({ success: false, error: 'Order not found' }, 404);
+      // 주문이 없거나, 다른 셀러의 주문이거나, 상태 전환 불가
+      const current = await db.prepare(
+        `SELECT seller_id, status FROM orders WHERE (id = ? OR order_number = ?) LIMIT 1`
+      ).bind(orderId, orderId).first<{ seller_id: number; status: string }>();
+      if (!current) return c.json({ success: false, error: 'Order not found' }, 404);
+      if (String(current.seller_id) !== String(sellerId)) {
+        return c.json({ success: false, error: 'Forbidden' }, 403);
+      }
+      return c.json({
+        success: false,
+        error: `상태 전환 불가: ${current.status} → ${dbStatus}`,
+        code: 'INVALID_STATUS_TRANSITION',
+      }, 409);
     }
 
     // ── 주문 취소 알림톡 (fire-and-forget) ──

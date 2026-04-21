@@ -13,9 +13,16 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import {
+  MAX_REVIEW_LENGTH,
+  validateInteger,
+  validateString,
+  sanitizeString,
+} from '@/worker/utils/validation';
 
 const reviewsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -72,7 +79,10 @@ reviewsRoutes.get('/product/:productId', async (c) => {
     data: {
       reviews: (results ?? []).map((r) => ({
         ...r,
-        images: JSON.parse((r as Record<string, unknown>).images as string || '[]'),
+        images: (() => {
+        try { return JSON.parse((r as Record<string, unknown>).images as string || '[]'); }
+        catch { return []; }
+      })(),
       })),
       total: total?.cnt ?? 0,
       page,
@@ -105,6 +115,16 @@ reviewsRoutes.get('/product/:productId/summary', async (c) => {
 
 // POST /api/reviews — 리뷰 작성
 reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
+  // Kill switch: disable review submission during traffic spikes
+  const flags = await getFeatureFlags((c.env as Env).SESSION_KV);
+  if (!flags.enable_reviews) {
+    c.header('Retry-After', '300');
+    return c.json(
+      { success: false, error: '리뷰 기능이 일시 중단되었습니다.', retry_after: 300 },
+      503,
+    );
+  }
+
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -121,6 +141,18 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
 
   if (!body.product_id || !body.rating || body.rating < 1 || body.rating > 5) {
     return c.json({ success: false, error: '상품 ID와 평점(1-5)은 필수입니다' }, 400);
+  }
+
+  // Defensive: reject oversized review text (DoS prevention) and strip
+  // control characters that could break downstream displays.
+  if (body.content !== undefined && body.content !== null && body.content !== '') {
+    const err = validateString(body.content, MAX_REVIEW_LENGTH, '리뷰 내용');
+    if (err) return c.json({ success: false, error: err }, 400);
+    body.content = sanitizeString(body.content);
+  }
+  // Cap images array to prevent oversized JSON blobs
+  if (Array.isArray(body.images) && body.images.length > 10) {
+    return c.json({ success: false, error: '이미지는 최대 10개까지 첨부할 수 있습니다' }, 400);
   }
 
   // 중복 리뷰 체크
@@ -237,6 +269,20 @@ reviewsRoutes.put('/:id', requireAuth(), async (c) => {
   if (!review) return c.json({ success: false, error: '리뷰를 찾을 수 없습니다' }, 404);
   if (review.user_id !== user.id) return c.json({ success: false, error: '본인의 리뷰만 수정할 수 있습니다' }, 403);
 
+  // Defensive: validate rating/content size before writing
+  if (body.rating !== undefined) {
+    const rErr = validateInteger(body.rating, 1, 5, '평점');
+    if (rErr) return c.json({ success: false, error: rErr }, 400);
+  }
+  if (body.content !== undefined && body.content !== null && body.content !== '') {
+    const cErr = validateString(body.content, MAX_REVIEW_LENGTH, '리뷰 내용');
+    if (cErr) return c.json({ success: false, error: cErr }, 400);
+    body.content = sanitizeString(body.content);
+  }
+  if (Array.isArray(body.images) && body.images.length > 10) {
+    return c.json({ success: false, error: '이미지는 최대 10개까지 첨부할 수 있습니다' }, 400);
+  }
+
   const updates: string[] = ['updated_at = datetime(\'now\')'];
   const params: (string | number)[] = [];
 
@@ -291,7 +337,10 @@ reviewsRoutes.get('/my', requireAuth(), async (c) => {
     success: true,
     data: (results ?? []).map((r) => ({
       ...r,
-      images: JSON.parse((r as Record<string, unknown>).images as string || '[]'),
+      images: (() => {
+        try { return JSON.parse((r as Record<string, unknown>).images as string || '[]'); }
+        catch { return []; }
+      })(),
     })),
   });
 });

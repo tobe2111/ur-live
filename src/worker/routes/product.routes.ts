@@ -8,13 +8,13 @@ import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { ProductRepository } from '../repositories/product.repository';
 import type { AuthVariables } from '../middleware/auth.middleware';
+import { cacheGet, buildCacheKey } from '../utils/cache';
 
 const productsRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
 // GET /api/products
 productsRouter.get('/', async (c) => {
   try {
-    const repo = new ProductRepository(c.env.DB);
     const {
       seller_id,
       category_id,
@@ -23,28 +23,62 @@ productsRouter.get('/', async (c) => {
       limit = '20',
     } = c.req.query();
 
-    const { products, total } = await repo.findMany({
-      seller_id,
-      category_id,
-      status: 'ACTIVE',
-      search,
-      page: parseInt(page, 10),
-      limit: Math.min(parseInt(limit, 10), 100),
-    });
-
     const pageNum = parseInt(page, 10);
     const limitNum = Math.min(parseInt(limit, 10), 100);
 
-    return c.json({
-      success: true,
-      data: {
-        items: products,
-        total,
-        page: pageNum,
-        limit: limitNum,
-        has_next: pageNum * limitNum < total,
-      },
+    // Only cache anonymous, non-search listings — searches have too much key cardinality
+    const cacheable = !search;
+    const cacheKey = buildCacheKey('products', {
+      page: pageNum,
+      limit: limitNum,
+      seller: seller_id,
+      category: category_id,
     });
+
+    const payload = await (cacheable
+      ? cacheGet(
+          c.env.SESSION_KV,
+          cacheKey,
+          async () => {
+            const repo = new ProductRepository(c.env.DB);
+            const { products, total } = await repo.findMany({
+              seller_id,
+              category_id,
+              status: 'ACTIVE',
+              search,
+              page: pageNum,
+              limit: limitNum,
+            });
+            return {
+              items: products,
+              total,
+              page: pageNum,
+              limit: limitNum,
+              has_next: pageNum * limitNum < total,
+            };
+          },
+          { ttl: 60, staleWhileRevalidate: 30 }
+        )
+      : (async () => {
+          const repo = new ProductRepository(c.env.DB);
+          const { products, total } = await repo.findMany({
+            seller_id,
+            category_id,
+            status: 'ACTIVE',
+            search,
+            page: pageNum,
+            limit: limitNum,
+          });
+          return {
+            items: products,
+            total,
+            page: pageNum,
+            limit: limitNum,
+            has_next: pageNum * limitNum < total,
+          };
+        })());
+
+    return c.json({ success: true, data: payload });
   } catch (err) {
     console.error('[PRODUCTS] List error:', err);
     return c.json({ success: false, error: 'Failed to fetch products' }, 500);
@@ -54,8 +88,16 @@ productsRouter.get('/', async (c) => {
 // GET /api/products/:id
 productsRouter.get('/:id', async (c) => {
   try {
-    const repo = new ProductRepository(c.env.DB);
-    const product = await repo.findById(c.req.param('id'));
+    const id = c.req.param('id');
+    const product = await cacheGet(
+      c.env.SESSION_KV,
+      `product:${id}`,
+      async () => {
+        const repo = new ProductRepository(c.env.DB);
+        return repo.findById(id);
+      },
+      { ttl: 60, staleWhileRevalidate: 60 }
+    );
 
     if (!product) {
       return c.json({ success: false, error: 'Product not found' }, 404);

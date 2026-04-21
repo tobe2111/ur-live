@@ -11,6 +11,7 @@ import type { Env } from '../types/env';
 import { QueryBuilder } from '../repositories/query-builder';
 import type { AuthVariables } from '../middleware/auth.middleware';
 import type { Seller } from '../../shared/types';
+import { cacheGet } from '../utils/cache';
 
 const sellersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -86,14 +87,23 @@ sellersRouter.get('/:id', async (c) => {
 // GET /api/sellers/:id/public — 셀러 공개 프로필 (비인증, ID/username/slug 지원)
 sellersRouter.get('/:id/public', async (c) => {
   try {
-    const qb = new QueryBuilder(c.env.DB);
     const param = c.req.param('id');
 
-    // 숫자면 ID, 아니면 slug 또는 username으로 조회
-    const isNumeric = /^\d+$/.test(param);
-    const seller = isNumeric
-      ? await qb.queryOne('SELECT * FROM sellers WHERE id = ?', [param])
-      : await qb.queryOne('SELECT * FROM sellers WHERE slug = ? OR username = ?', [param, param]);
+    // Seller profile changes infrequently — 5 min TTL with 2 min SWR.
+    // Key uses the lookup param directly (id/username/slug) so independent
+    // callers that hit different keys stay cache-correct.
+    const seller = await cacheGet(
+      c.env.SESSION_KV,
+      `seller:${param}`,
+      async () => {
+        const qb = new QueryBuilder(c.env.DB);
+        const isNumeric = /^\d+$/.test(param);
+        return isNumeric
+          ? await qb.queryOne('SELECT * FROM sellers WHERE id = ?', [param])
+          : await qb.queryOne('SELECT * FROM sellers WHERE slug = ? OR username = ?', [param, param]);
+      },
+      { ttl: 300, staleWhileRevalidate: 120 }
+    );
 
     if (!seller) {
       return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);

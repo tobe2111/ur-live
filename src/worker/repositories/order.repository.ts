@@ -15,6 +15,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { QueryBuilder } from './query-builder';
 import type { Order, OrderItem, OrderStatus, CreateOrderRequest } from '../../shared/types';
 import { safeJsonParse } from '../../shared/utils';
+import { statusesThatCanReach } from '../utils/state-machine';
 
 export class OrderRepository {
   protected qb: QueryBuilder;
@@ -260,11 +261,24 @@ export class OrderRepository {
     // ✅ SCHEMA FIX: webhook_processed_at / webhook_event_id columns don't
     // exist on `orders`. Idempotency is tracked in the `webhook_events` table.
 
+    // ✅ CONCURRENCY: enforce state machine via `status IN (allowed_prev)` so
+    // two concurrent transitions (e.g. webhook + cron) cannot rewrite each
+    // other's work. If the transition is illegal we silently no-op (same
+    // behaviour as before but without corrupting the order).
+    const allowedPrev = statusesThatCanReach(String(status));
+    if (allowedPrev.length === 0) {
+      // No source state can reach `status` — abort silently.
+      return;
+    }
+    const prevPlaceholders = allowedPrev.map(() => '?').join(',');
+
     params.push(orderNumber);
 
     await this.qb.execute(
-      `UPDATE orders SET ${setFields.join(', ')} WHERE order_number = ?`,
-      params
+      `UPDATE orders SET ${setFields.join(', ')}, updated_at = datetime('now')
+       WHERE order_number = ?
+         AND UPPER(status) IN (${prevPlaceholders})`,
+      [...params, ...allowedPrev],
     );
   }
 
@@ -303,11 +317,18 @@ export class OrderRepository {
     }
     // ✅ SCHEMA FIX: webhook_processed_at / webhook_event_id columns don't exist.
 
+    // ✅ CONCURRENCY: enforce state machine (see updateStatus for rationale).
+    const allowedPrev = statusesThatCanReach(String(status));
+    if (allowedPrev.length === 0) return;
+    const prevPlaceholders = allowedPrev.map(() => '?').join(',');
+
     params.push(orderId);
 
     await this.qb.execute(
-      `UPDATE orders SET ${setFields.join(', ')} WHERE id = ?`,
-      params
+      `UPDATE orders SET ${setFields.join(', ')}, updated_at = datetime('now')
+       WHERE id = ?
+         AND UPPER(status) IN (${prevPlaceholders})`,
+      [...params, ...allowedPrev],
     );
   }
 

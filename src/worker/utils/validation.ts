@@ -491,13 +491,125 @@ export function validateRequired(
   requiredFields: string[]
 ): string[] {
   const missing: string[] = [];
-  
+
   for (const field of requiredFields) {
     const value = data[field];
     if (value === undefined || value === null || value === '') {
       missing.push(field);
     }
   }
-  
+
   return missing;
+}
+
+// ============================================================
+// Defensive Input Validation (non-throwing helpers)
+//
+// These helpers return an error string when invalid and null when valid.
+// They are intended for endpoints that want to surface validation errors
+// as JSON responses without raising ValidationError exceptions.
+// Length caps are tuned to prevent DoS via oversized payloads.
+// ============================================================
+
+export const MAX_NAME_LENGTH = 100;
+export const MAX_EMAIL_LENGTH = 254;
+export const MAX_PHONE_LENGTH = 20;
+export const MAX_ADDRESS_LENGTH = 500;
+export const MAX_TEXT_FIELD_LENGTH = 2000;
+export const MAX_TITLE_LENGTH = 200;
+export const MAX_URL_LENGTH = 2048;
+export const MAX_REVIEW_LENGTH = 5000;
+export const MAX_CHAT_MESSAGE_LENGTH = 500;
+export const MAX_SEARCH_QUERY_LENGTH = 200;
+
+export const MAX_PRICE = 100_000_000;
+export const MAX_STOCK = 1_000_000;
+export const MAX_QUANTITY = 1_000;
+export const MAX_PAGINATION_LIMIT = 100;
+
+export function validateString(
+  value: unknown,
+  maxLength: number,
+  fieldName: string
+): string | null {
+  if (typeof value !== 'string') return `${fieldName}은(는) 문자열이어야 합니다.`;
+  if (value.length === 0) return `${fieldName}은(는) 비어있을 수 없습니다.`;
+  if (value.length > maxLength) return `${fieldName}은(는) ${maxLength}자 이하여야 합니다.`;
+  return null;
+}
+
+export function validateInteger(
+  value: unknown,
+  min: number,
+  max: number,
+  fieldName: string
+): string | null {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return `${fieldName}은(는) 유효한 숫자여야 합니다.`;
+  if (!Number.isInteger(n)) return `${fieldName}은(는) 정수여야 합니다.`;
+  if (n < min || n > max) return `${fieldName}은(는) ${min} 이상 ${max} 이하여야 합니다.`;
+  return null;
+}
+
+export function validateEmailSoft(email: unknown): string | null {
+  if (typeof email !== 'string') return '이메일은 문자열이어야 합니다.';
+  if (email.length > MAX_EMAIL_LENGTH) return '이메일이 너무 깁니다.';
+  const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!pattern.test(email)) return '올바른 이메일 형식이 아닙니다.';
+  return null;
+}
+
+export function validatePhoneSoft(phone: unknown): string | null {
+  if (typeof phone !== 'string') return '전화번호는 문자열이어야 합니다.';
+  const clean = phone.replace(/[-\s]/g, '');
+  if (!/^[0-9+]+$/.test(clean)) return '전화번호에는 숫자만 허용됩니다.';
+  if (clean.length < 9 || clean.length > 15) return '전화번호 길이가 올바르지 않습니다.';
+  return null;
+}
+
+export function validateUrlSoft(url: unknown): string | null {
+  if (typeof url !== 'string') return 'URL은 문자열이어야 합니다.';
+  if (url.length > MAX_URL_LENGTH) return 'URL이 너무 깁니다.';
+  try {
+    const u = new URL(url);
+    if (!['http:', 'https:'].includes(u.protocol)) return 'URL은 http:// 또는 https://로 시작해야 합니다.';
+    return null;
+  } catch {
+    return '올바른 URL 형식이 아닙니다.';
+  }
+}
+
+/**
+ * Remove null bytes and ASCII control characters (except \n and \t).
+ * Protects downstream consumers from strings that can truncate logs or
+ * break protocol framing.
+ */
+export function sanitizeString(s: string): string {
+  // Strip chars 0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F, and 0x7F (DEL).
+  // Allow 0x09 (\t), 0x0A (\n), 0x0D (\r).
+  // eslint-disable-next-line no-control-regex
+  return s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+}
+
+export function validatePagination(
+  limit: unknown,
+  offset: unknown
+): { limit: number; offset: number } {
+  const l = Math.min(Math.max(1, Number(limit) || 20), MAX_PAGINATION_LIMIT);
+  const o = Math.max(0, Number(offset) || 0);
+  return { limit: l, offset: o };
+}
+
+/**
+ * Safe JSON.parse — returns fallback on any error (SyntaxError, circular, etc.)
+ * Use when parsing user-supplied JSON where a malformed payload must not crash
+ * the request handler.
+ */
+export function safeJsonParse<T = unknown>(input: unknown, fallback: T): T {
+  if (typeof input !== 'string' || input.length === 0) return fallback;
+  try {
+    return JSON.parse(input) as T;
+  } catch {
+    return fallback;
+  }
 }

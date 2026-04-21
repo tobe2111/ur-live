@@ -13,11 +13,14 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
+import type { KVNamespace } from '@cloudflare/workers-types';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { cacheInvalidate } from '@/worker/utils/cache';
 
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
+  SESSION_KV?: KVNamespace;
 };
 
 type StreamCreateRequest = {
@@ -331,6 +334,9 @@ sellerStreamsRoutes.put('/:id', async (c) => {
     if (!result.success) {
       throw new Error('Failed to update stream');
     }
+
+    // Invalidate cached stream detail (list entries expire within 30s TTL)
+    await cacheInvalidate(c.env.SESSION_KV, `stream:${streamId}`);
 
     // ── 방송 시작 시 구독자에게 알림 발송 ──
     if (body.status === 'live') {

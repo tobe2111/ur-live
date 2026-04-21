@@ -12,6 +12,11 @@ import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { handleChatSSE, handleLiveStreamSSE } from '../../lib/sse-realtime'
 import { optionalAuth, getCurrentUser, requireSellerOrAdmin } from '../middleware/auth'
+import {
+  MAX_CHAT_MESSAGE_LENGTH,
+  MAX_NAME_LENGTH,
+  sanitizeString,
+} from '../utils/validation'
 
 export const liveSseRoutes = new Hono<{ Bindings: Env }>()
 export const chatRoutes = new Hono<{ Bindings: Env }>()
@@ -155,6 +160,22 @@ chatRoutes.post('/:liveId/messages', optionalAuth(), async (c) => {
     return c.json({ error: 'message and userName are required' }, 400)
   }
 
+  // Defensive: type checks + length caps + control-char sanitization
+  if (typeof message !== 'string' || typeof userName !== 'string') {
+    return c.json({ error: 'message and userName must be strings' }, 400)
+  }
+  if (message.length > MAX_CHAT_MESSAGE_LENGTH) {
+    return c.json({ error: `메시지는 ${MAX_CHAT_MESSAGE_LENGTH}자 이하여야 합니다.` }, 400)
+  }
+  if (userName.length > MAX_NAME_LENGTH) {
+    return c.json({ error: `사용자명은 ${MAX_NAME_LENGTH}자 이하여야 합니다.` }, 400)
+  }
+  const cleanMessage = sanitizeString(message).trim()
+  const cleanUserName = sanitizeString(userName).trim()
+  if (!cleanMessage || !cleanUserName) {
+    return c.json({ error: 'message and userName are required' }, 400)
+  }
+
   // isSeller/isAdmin은 인증 토큰에서만 결정 — 클라이언트 입력 무시
   const authUser = getCurrentUser(c)
   const isSeller = authUser?.type === 'seller'
@@ -171,8 +192,8 @@ chatRoutes.post('/:liveId/messages', optionalAuth(), async (c) => {
     `).bind(
       liveId,
       userId ?? null,
-      userName,
-      message.trim(),
+      cleanUserName,
+      cleanMessage,
       isSeller ? 1 : 0,
       isAdmin ? 1 : 0,
     ).run()
@@ -196,8 +217,8 @@ chatRoutes.post('/:liveId/messages', optionalAuth(), async (c) => {
           data: {
             id: insertedId,
             user_id: userId ?? null,
-            user_name: userName,
-            message: message.trim(),
+            user_name: cleanUserName,
+            message: cleanMessage,
             is_seller: isSeller || false,
             is_admin: isAdmin || false,
             created_at: new Date().toISOString(),
