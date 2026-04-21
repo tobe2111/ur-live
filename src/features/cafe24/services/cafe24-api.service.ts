@@ -131,6 +131,40 @@ export async function saveTokens(
   }
 }
 
+/**
+ * Compare-and-swap token save.
+ *
+ * Used when refreshing an expired access token. Concurrent refresh callers
+ * would both issue a `refresh_token` grant against the same stored token —
+ * the first to hit Cafe24 gets new tokens (and invalidates the old
+ * refresh_token); the second call fails with `invalid_grant`. If BOTH then
+ * naively called `saveTokens`, the losing caller's stale `refresh_token`
+ * would overwrite the winner's valid one, breaking the integration until
+ * the next manual re-auth.
+ *
+ * This helper only updates the row if the stored `refresh_token` is still
+ * `expectedOldRefresh` — i.e., nobody else has raced ahead. Returns `true`
+ * if the write was applied, `false` if someone else won the race (in which
+ * case the caller should re-read and use the newer tokens).
+ */
+export async function saveTokensCAS(
+  db: D1Database,
+  mallId: string,
+  expectedOldRefresh: string,
+  tokens: Cafe24OAuthTokens,
+): Promise<boolean> {
+  const scopes = Array.isArray(tokens.scopes) ? tokens.scopes.join(',') : (tokens.scopes ?? '');
+  const result = await db
+    .prepare(
+      `UPDATE cafe24_auth
+       SET access_token = ?, refresh_token = ?, expires_at = ?, scopes = ?, updated_at = datetime('now')
+       WHERE mall_id = ? AND refresh_token = ?`,
+    )
+    .bind(tokens.access_token, tokens.refresh_token, tokens.expires_at, scopes, mallId, expectedOldRefresh)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}
+
 export async function getStoredTokens(
   db: D1Database,
   mallId: string,
@@ -143,6 +177,12 @@ export async function getStoredTokens(
 
 /**
  * Returns a valid access token, refreshing if expired.
+ *
+ * Race-safe: `saveTokensCAS` only persists the refreshed tokens if the
+ * stored `refresh_token` still matches the one we used for the refresh
+ * call. If a concurrent caller already refreshed, we re-read the row and
+ * use their fresh access_token instead of overwriting with a
+ * now-invalid refresh_token.
  */
 export async function getValidAccessToken(
   db: D1Database,
@@ -161,8 +201,13 @@ export async function getValidAccessToken(
 
   // Refresh
   const newTokens = await refreshAccessToken(mallId, clientId, clientSecret, stored.refresh_token);
-  await saveTokens(db, mallId, newTokens);
-  return newTokens.access_token;
+  const won = await saveTokensCAS(db, mallId, stored.refresh_token, newTokens);
+  if (won) return newTokens.access_token;
+
+  // Lost the race — somebody else refreshed first. Re-read and return their tokens.
+  const fresh = await getStoredTokens(db, mallId);
+  if (!fresh) throw new Error('Cafe24 tokens disappeared during concurrent refresh.');
+  return fresh.access_token;
 }
 
 // ── Product API ────────────────────────────────────────────────────

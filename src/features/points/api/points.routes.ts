@@ -15,6 +15,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL, ALLOWED_ORIGINS } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -43,19 +44,10 @@ const CHARGE_AMOUNTS = [
 ];
 
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
+// user_points는 shared helper 사용; point_transactions는 이 파일에만 필요한
+// CHECK 제약(type IN ('charge','donate','refund','ad_reward'))이 있어 로컬 유지.
 async function ensureTables(DB: D1Database) {
-  try {
-    await DB.prepare(`
-      CREATE TABLE IF NOT EXISTS user_points (
-        user_id TEXT PRIMARY KEY,
-        balance INTEGER NOT NULL DEFAULT 0,
-        total_charged INTEGER NOT NULL DEFAULT 0,
-        total_donated INTEGER NOT NULL DEFAULT 0,
-        created_at DATETIME DEFAULT (datetime('now')),
-        updated_at DATETIME DEFAULT (datetime('now'))
-      )
-    `).run();
-  } catch { /* 이미 존재 */ }
+  await ensureUserPointsTable(DB);
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS point_transactions (

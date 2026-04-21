@@ -35,5 +35,29 @@
 
 ## 주의사항
 - 마이그레이션 파일을 삭제/이동하지 마세요 (wrangler가 추적합니다)
-- 새 마이그레이션은 0135부터 시작
+- 새 마이그레이션은 0202부터 시작 (마지막 적용: 0200_add_performance_indexes.sql, 0151_add_seller_switching.sql)
 - 테이블 자동 생성(ensureTable)이 있어 마이그레이션 없이도 동작하지만, 인덱스는 수동 적용 필요
+
+## ⚠️ 중복된 번호의 히스토리컬 마이그레이션 (리네임 금지)
+아래 번호들은 이력상 여러 파일이 공존합니다. 이미 프로덕션에 모두 적용되었으며
+파일명을 바꾸면 wrangler가 재적용을 시도해 ALTER TABLE 충돌로 배포 실패합니다.
+**새 파일은 반드시 위 "마지막 적용" 번호 다음부터 사용하세요.**
+
+| 번호 | 공존 파일 |
+|---|---|
+| 0003 | `add_admin_seller.sql`, `add_performance_indexes.sql` |
+| 0004 | `add_product_detail_images.sql`, `improve_orders.sql` |
+| 0007 | `add_settlements.sql`, `add_thumbnail_url.sql` |
+| 0008 | `add_admin_seller_tobe.sql`, `add_seller_columns.sql`, `add_tiktok_video_type.sql` |
+| 0010 | `add_order_tracking.sql`, `admin_dashboard_backend.sql` |
+| 0020 | `add_order_cancellation.sql`, `create_live_stream_products.sql` |
+| 0122 | `add_alimtalk_credits.sql`, `add_cafe24_integration.sql` |
+| 0123 | `add_alimtalk_packages.sql`, `add_donations.sql` |
+
+## 🚫 DEPRECATED 파일
+아래는 **구 스키마**(sellers.id=TEXT, sellers.user_id, sellers.slug 등)를 생성하므로
+프로덕션과 호환되지 않습니다. `.DEPRECATED` 확장자로 wrangler가 무시합니다.
+절대 `.sql`로 되돌리지 마세요.
+- `001_initial.sql.DEPRECATED`
+- `001_initial_no_pragma.sql.DEPRECATED`
+- `002_seed.sql.DEPRECATED`

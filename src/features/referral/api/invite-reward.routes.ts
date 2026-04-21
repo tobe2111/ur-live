@@ -11,6 +11,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database'
+import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
 
 const inviteRewardRoutes = new Hono<{ Bindings: Env }>()
 
@@ -147,16 +148,7 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
   // 5. Grant deal points to inviter via user_points table
   // (production users table doesn't have deal_balance column)
   try {
-    await DB.prepare(
-      `CREATE TABLE IF NOT EXISTS user_points (
-        user_id TEXT PRIMARY KEY,
-        balance INTEGER NOT NULL DEFAULT 0,
-        total_charged INTEGER NOT NULL DEFAULT 0,
-        total_donated INTEGER NOT NULL DEFAULT 0,
-        created_at DATETIME DEFAULT (datetime('now')),
-        updated_at DATETIME DEFAULT (datetime('now'))
-      )`
-    ).run()
+    await ensureUserPointsTable(DB)
     const existing = await queryFirst<{ balance: number }>(
       DB,
       'SELECT balance FROM user_points WHERE user_id = ?',

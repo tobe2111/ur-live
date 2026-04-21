@@ -23,6 +23,7 @@ import {
   validateString,
   sanitizeString,
 } from '@/worker/utils/validation';
+import { ensurePointsTables } from '@/worker/utils/ensure-tables';
 
 const reviewsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -243,9 +244,8 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
 
     const rewardDesc = hasVideo ? `[리뷰리워드] 영상 리뷰 작성 (product:${body.product_id})` : hasImages ? `[리뷰리워드] 사진 리뷰 작성 (product:${body.product_id})` : `[리뷰리워드] 텍스트 리뷰 작성 (product:${body.product_id})`;
 
-    // user_points 테이블이 없으면 생성
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_points (user_id TEXT PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0, total_charged INTEGER NOT NULL DEFAULT 0, total_donated INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => {});
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS point_transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL, amount INTEGER NOT NULL, commission_amount INTEGER NOT NULL DEFAULT 0, points_amount INTEGER NOT NULL DEFAULT 0, balance_after INTEGER NOT NULL DEFAULT 0, description TEXT, payment_key TEXT, order_id TEXT, stream_id INTEGER, seller_id INTEGER, created_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => {});
+    // user_points / point_transactions 테이블 보장 (마이그레이션 미적용 환경 대비)
+    await ensurePointsTables(DB);
 
     // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일
     const ptsUserId = String(user.id);
