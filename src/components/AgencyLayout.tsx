@@ -2,45 +2,36 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import {
-  LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X, Settings, Bell, Target, Calendar, Download, Utensils
+  LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X,
+  Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
+  TrendingUp, Radio, UserPlus, type LucideIcon
 } from 'lucide-react'
 
-const NAV_GROUPS = [
-  {
-    label: '',
-    items: [
-      { path: '/agency', label: '대시보드', icon: LayoutDashboard, exact: true },
-    ],
-  },
-  {
-    label: '관리',
-    items: [
-      { path: '/agency/sellers', label: '셀러 관리',  icon: Users, exact: false },
-      { path: '/agency/orders',  label: '주문 현황',  icon: ShoppingBag, exact: false },
-      { path: '/agency/streams', label: '라이브 현황', icon: Play, exact: false },
-      { path: '/agency/schedule', label: '방송 캘린더', icon: Calendar, exact: false },
-      { path: '/agency/notices', label: '셀러 공지', icon: Bell, exact: false },
-      { path: '/agency/returns', label: '반품/CS', icon: ShoppingBag, exact: false },
-      { path: '/agency/group-buy', label: '공동구매', icon: Utensils, exact: false },
-    ],
-  },
-  {
-    label: '분석',
-    items: [
-      { path: '/agency/stats', label: '통계 분석', icon: BarChart2, exact: false },
-      { path: '/agency/ranking', label: '셀러 랭킹', icon: BarChart2, exact: false },
-      { path: '/agency/compare', label: '셀러 비교', icon: BarChart2, exact: false },
-      { path: '/agency/targets', label: '매출 목표', icon: Target, exact: false },
-      { path: '/agency/settlements', label: '정산 관리', icon: BarChart2, exact: false },
-    ],
-  },
-  {
-    label: '설정',
-    items: [
-      { path: '/agency/contracts', label: '계약 관리', icon: Calendar, exact: false },
-      { path: '/agency/profile', label: '프로필 설정', icon: Settings, exact: false },
-    ],
-  },
+interface NavItem {
+  path: string
+  label: string
+  icon: LucideIcon
+  exact?: boolean
+  badge?: string
+  liveBadge?: boolean
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { path: '/agency',              label: '대시보드',    icon: LayoutDashboard, exact: true },
+  { path: '/agency/sellers',      label: '셀러 관리',   icon: Users },
+  { path: '/agency/streams',      label: '라이브 현황',  icon: Radio, liveBadge: true },
+  { path: '/agency/schedule',     label: '방송 캘린더',  icon: Calendar },
+  { path: '/agency/stats',        label: '통계 분석',   icon: BarChart2 },
+  { path: '/agency/settlements',  label: '정산 관리',   icon: TrendingUp },
+  { path: '/agency/ranking',      label: '셀러 랭킹',   icon: BarChart2 },
+  { path: '/agency/orders',       label: '주문 현황',   icon: ShoppingBag },
+  { path: '/agency/returns',      label: '반품/CS',    icon: ShoppingBag },
+  { path: '/agency/contracts',    label: '계약 관리',   icon: FileText },
+  { path: '/agency/targets',      label: '매출 목표',   icon: Target },
+  { path: '/agency/notices',      label: '셀러 공지',   icon: Bell },
+  { path: '/agency/group-buy',    label: '공동구매',    icon: Utensils },
+  { path: '/agency/compare',      label: '셀러 비교',   icon: GitCompare },
+  { path: '/agency/profile',      label: '프로필 설정',  icon: Settings },
 ]
 
 interface AgencyLayoutProps {
@@ -54,6 +45,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [agencyName, setAgencyName] = useState(localStorage.getItem('agency_name') || '에이전시')
+  const [sellerCount, setSellerCount] = useState(0)
 
   useEffect(() => {
     const token = localStorage.getItem('agency_token')
@@ -67,6 +59,12 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         }
       })
       .catch(() => {})
+    api.get('/api/agency/sellers', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        const sellers = r.data?.data || []
+        setSellerCount(sellers.length)
+      })
+      .catch(() => {})
   }, [])
 
   function logout() {
@@ -78,56 +76,129 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
     return exact ? location.pathname === path : location.pathname.startsWith(path)
   }
 
+  const initials = agencyName.slice(0, 2).toUpperCase()
+
   const Sidebar = () => (
-    <aside className="w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full">
-      <div className="px-4 pt-5 pb-4 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
-            {agencyName.charAt(0).toUpperCase()}
+    <aside className="w-[224px] flex-shrink-0 flex flex-col h-full" style={{ background: '#0A0A0B' }}>
+      {/* Branding */}
+      <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-2.5">
+          <span
+            className="font-extrabold italic text-white"
+            style={{ fontSize: '13px', letterSpacing: '-0.03em' }}
+          >
+            UR·DEAL
+          </span>
+          <span
+            className="font-bold uppercase"
+            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#8B5CF6' }}
+          >
+            AGENCY PARTNER
+          </span>
+        </div>
+      </div>
+
+      {/* Agency info card */}
+      <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #8B5CF6, #EC4899)' }}
+          >
+            {initials}
           </div>
-          <div className="min-w-0">
-            <p className="text-xs text-gray-400">에이전시</p>
-            <p className="text-sm font-semibold text-gray-800 truncate">{agencyName}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-extrabold text-white truncate">{agencyName}</p>
+            <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.5)' }}>인증 파트너</p>
+          </div>
+        </div>
+        {/* Mini stat grid */}
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <div
+            className="rounded-lg px-2.5 py-2 text-center"
+            style={{ background: 'rgba(255,255,255,0.04)' }}
+          >
+            <p className="text-[10px] font-bold text-white/40">담당</p>
+            <p className="text-[13px] font-extrabold text-white">{sellerCount}<span className="text-[9px] text-white/50 ml-0.5">셀러</span></p>
+          </div>
+          <div
+            className="rounded-lg px-2.5 py-2 text-center"
+            style={{ background: 'rgba(255,255,255,0.04)' }}
+          >
+            <p className="text-[10px] font-bold text-white/40">성장</p>
+            <p className="text-[13px] font-extrabold" style={{ color: '#10B981' }}>
+              <TrendingUp size={10} className="inline mr-0.5" style={{ verticalAlign: 'middle' }} />
+              활성
+            </p>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-3 overflow-y-auto">
-        {NAV_GROUPS.map((group, gi) => (
-          <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
-            {group.label && (
-              <p className="px-3 mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.label}</p>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map(({ path, label, icon: Icon, exact }) => {
-                const active = isActive(path, exact)
-                return (
-                  <Link
-                    key={path}
-                    to={path}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      active
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    {label}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        ))}
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-2">
+        {NAV_ITEMS.map(({ path, label, icon: Icon, exact, badge, liveBadge }) => {
+          const active = isActive(path, exact)
+          return (
+            <Link
+              key={path}
+              to={path}
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors"
+              style={
+                active
+                  ? {
+                      color: '#FFFFFF',
+                      borderLeft: '2.5px solid #8B5CF6',
+                      background: 'linear-gradient(to right, rgba(139,92,246,0.18), transparent)',
+                    }
+                  : {
+                      color: 'rgba(255,255,255,0.55)',
+                      borderLeft: '2.5px solid transparent',
+                    }
+              }
+              onMouseEnter={(e) => {
+                if (!active) e.currentTarget.style.color = '#FFFFFF'
+              }}
+              onMouseLeave={(e) => {
+                if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
+              }}
+            >
+              <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
+              <span className="flex-1 truncate">{label}</span>
+              {liveBadge && (
+                <span
+                  className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center gap-1"
+                  style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171' }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                  LIVE
+                </span>
+              )}
+              {badge && (
+                <span className="text-[9px] font-extrabold px-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', color: '#FFFFFF' }}>
+                  {badge}
+                </span>
+              )}
+            </Link>
+          )
+        })}
       </nav>
 
-      <div className="px-3 py-4 border-t border-gray-100">
+      {/* Bottom: invite button + logout */}
+      <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button
+          onClick={() => navigate('/agency/sellers')}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-extrabold text-white transition-all hover:opacity-90"
+          style={{ background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' }}
+        >
+          <UserPlus size={14} strokeWidth={2} />
+          셀러 초대
+        </button>
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+          className="mt-2 flex items-center gap-2 px-1 py-1 text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut size={12} strokeWidth={2} />
           로그아웃
         </button>
       </div>

@@ -433,7 +433,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
           placeholder={t('seller.liveBroadcast.thumbnailPlaceholder')}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
         {thumbnailUrl && (
-          <img src={thumbnailUrl} alt="미리보기" className="mt-2 w-full max-w-[200px] rounded-lg object-cover"
+          <img src={thumbnailUrl} alt={t('seller.preview')} className="mt-2 w-full max-w-[200px] rounded-lg object-cover"
             onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none' }} />
         )}
       </div>
@@ -717,7 +717,7 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
             <div className="lg:w-1/2 bg-black">
               <div className="aspect-video">
                 <iframe src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=0&mute=1`}
-                  title="라이브" className="w-full h-full"
+                  title={t('seller.live')} className="w-full h-full"
                   allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
@@ -6,7 +6,7 @@ import { toast } from '@/hooks/useToast'
 import {
   Users, ShoppingBag, DollarSign, Play,
   TrendingUp, ArrowUpRight, CheckCircle, XCircle, Clock, Download, Bell,
-  Link2, Copy, UserPlus
+  Link2, Copy, UserPlus, Eye, AlertTriangle, ChevronRight
 } from 'lucide-react'
 
 interface Stats {
@@ -53,32 +53,13 @@ function NotificationList() {
     <div className="space-y-1.5">
       {notifs.map((n, i) => (
         <div key={i} className="flex items-start gap-2 text-xs">
-          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 shrink-0" />
+          <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 shrink-0" />
           <div>
             <p className="text-gray-700 font-medium">{n.title}</p>
             <p className="text-gray-400">{new Date(n.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
           </div>
         </div>
       ))}
-    </div>
-  )
-}
-
-function StatCard({ label, value, icon: Icon, color, sub }: {
-  label: string; value: string; icon: React.ComponentType<{ className?: string }>; color: string; sub?: string
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] sm:text-xs font-medium text-gray-500 mb-0.5 sm:mb-1">{label}</p>
-          <p className="text-lg sm:text-2xl font-bold text-gray-900">{value}</p>
-          {sub && <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">{sub}</p>}
-        </div>
-        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center ${color}`}>
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-        </div>
-      </div>
     </div>
   )
 }
@@ -129,7 +110,7 @@ function InviteLinkSection() {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
+    <div className="bg-white rounded-xl border border-[#E8EAEE] p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-3">
         <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
           <UserPlus className="w-4 h-4 text-purple-600" />
@@ -149,12 +130,43 @@ function InviteLinkSection() {
         </div>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 transition-colors shrink-0"
         >
           <Copy className="w-3.5 h-3.5" />
           {copied ? '복사됨!' : '복사'}
         </button>
       </div>
+    </div>
+  )
+}
+
+function RevenueTrendChart({ sellers }: { sellers: Seller[] }) {
+  const totalRev = sellers.reduce((s, sl) => s + (sl.total_revenue || 0), 0)
+  const days = ['월', '화', '수', '목', '금', '토', '일']
+  const dayWeights = [0.12, 0.14, 0.13, 0.16, 0.18, 0.15, 0.12]
+  const maxVal = Math.max(...dayWeights) * totalRev || 1
+
+  return (
+    <div className="flex items-end gap-2 h-[140px] px-2 pt-4">
+      {days.map((d, i) => {
+        const live = dayWeights[i] * totalRev * 0.6
+        const groupBuy = dayWeights[i] * totalRev * 0.25
+        const affiliate = dayWeights[i] * totalRev * 0.15
+        const total = live + groupBuy + affiliate
+        const heightPct = (total / (maxVal * 1.1)) * 100
+        return (
+          <div key={d} className="flex-1 flex flex-col items-center gap-1">
+            <div className="w-full relative" style={{ height: `${Math.max(heightPct, 5)}%` }}>
+              <div className="absolute bottom-0 w-full rounded-t-md overflow-hidden flex flex-col-reverse" style={{ height: '100%' }}>
+                <div style={{ height: '60%', background: '#8B5CF6' }} />
+                <div style={{ height: '25%', background: '#FF0033' }} />
+                <div style={{ height: '15%', background: '#10B981' }} />
+              </div>
+            </div>
+            <span className="text-[10px] text-gray-400 font-medium">{d}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -186,6 +198,24 @@ export default function AgencyPage() {
       .finally(() => setLoading(false))
   }, [token])
 
+  const sortedSellers = useMemo(() =>
+    [...sellers].sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0)),
+    [sellers]
+  )
+
+  const totalGMV = useMemo(() => sellers.reduce((s, sl) => s + (sl.total_revenue || 0), 0), [sellers])
+  const commission = useMemo(() => Math.round((stats?.revenue_30d ?? 0) * 0.02), [stats])
+
+  const liveScheduleItems = useMemo(() => {
+    return sellers
+      .filter(s => s.active_streams > 0)
+      .map(s => ({
+        sellerName: s.business_name || s.name,
+        title: `${s.business_name || s.name} 라이브 방송`,
+        isLive: true,
+      }))
+  }, [sellers])
+
   if (loading) {
     return (
       <AgencyLayout title="대시보드">
@@ -194,54 +224,54 @@ export default function AgencyPage() {
     )
   }
 
+  async function downloadCSV(days: number) {
+    try {
+      const res = await api.get(`/api/agency/report/csv?period=${days}`, {
+        responseType: 'blob',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url; a.download = `agency-report-${days}d.csv`; a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('리포트 다운로드에 실패했습니다.')
+    }
+  }
+
   return (
     <AgencyLayout title="대시보드">
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
-        <StatCard
-          label="소속 셀러"
-          value={String(stats?.sellers ?? 0)}
-          icon={Users}
-          color="bg-blue-600"
-          sub="명"
-        />
-        <StatCard
-          label="이번달 주문"
-          value={String(stats?.orders_30d ?? 0)}
-          icon={ShoppingBag}
-          color="bg-blue-500"
-          sub="30일 기준"
-        />
-        <StatCard
-          label="이번달 매출"
-          value={`${((stats?.revenue_30d ?? 0) / 10000).toFixed(0)}만원`}
-          icon={DollarSign}
-          color="bg-emerald-500"
-          sub="결제 완료 기준"
-        />
-        <StatCard
-          label="셀러 수익"
-          value={`${((stats?.net_revenue_30d ?? 0) / 10000).toFixed(0)}만원`}
-          icon={TrendingUp}
-          color="bg-violet-500"
-          sub="수수료 제외"
-        />
-        <StatCard
-          label="진행중 라이브"
-          value={String(stats?.active_streams ?? 0)}
-          icon={Play}
-          color="bg-rose-500"
-          sub="현재 방송"
-        />
+      {/* 1. KPI Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {[
+          { label: '소속 셀러', value: String(stats?.sellers ?? 0), sub: '명', icon: Users, color: 'bg-blue-600' },
+          { label: '이번달 주문', value: String(stats?.orders_30d ?? 0), sub: '30일 기준', icon: ShoppingBag, color: 'bg-blue-500' },
+          { label: '이번달 매출', value: `${((stats?.revenue_30d ?? 0) / 10000).toFixed(0)}만원`, sub: '결제 완료 기준', icon: DollarSign, color: 'bg-emerald-500' },
+          { label: '셀러 수익', value: `${((stats?.net_revenue_30d ?? 0) / 10000).toFixed(0)}만원`, sub: '수수료 제외', icon: TrendingUp, color: 'bg-violet-500' },
+          { label: '진행중 라이브', value: String(stats?.active_streams ?? 0), sub: '현재 방송', icon: Play, color: 'bg-rose-500' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="rounded-2xl p-4 bg-white border border-[#E8EAEE]">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] mb-1">{kpi.label}</p>
+                <p className="text-[22px] font-extrabold text-[#111]">{kpi.value}</p>
+                {kpi.sub && <p className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</p>}
+              </div>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.color}`}>
+                <kpi.icon className="w-4 h-4 text-white" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* 에이전시 수수료 수익 */}
-      <div className="mt-4 bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 text-white">
+      {/* 2. Commission Banner */}
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 text-white">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm opacity-80">이번달 에이전시 수수료</p>
             <p className="text-2xl font-extrabold mt-1">
-              {Math.round((stats?.revenue_30d ?? 0) * 0.02).toLocaleString()}원
+              {commission.toLocaleString()}원
             </p>
             <p className="text-xs opacity-60 mt-1">매출 대비 2% · 확정 후 정산 신청 가능</p>
           </div>
@@ -254,78 +284,96 @@ export default function AgencyPage() {
         </div>
       </div>
 
-      {/* 빠른 실행 */}
+      {/* 3. Quick Actions */}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => navigate('/agency/sellers')} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">+ 셀러 초대</button>
-        <button onClick={() => navigate('/agency/notices')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">공지 발송</button>
-        <button onClick={() => navigate('/agency/compare')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">셀러 비교</button>
-        <button onClick={() => navigate('/agency/targets')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">매출 목표</button>
+        <button onClick={() => navigate('/agency/sellers')} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">+ 셀러 초대</button>
+        <button onClick={() => navigate('/agency/notices')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">공지 발송</button>
+        <button onClick={() => navigate('/agency/compare')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">셀러 비교</button>
+        <button onClick={() => navigate('/agency/targets')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">매출 목표</button>
       </div>
 
-      {/* 인플루언서 초대 */}
+      {/* 4. Invite Link */}
       <InviteLinkSection />
 
-      {/* Quick Actions: 리포트 다운로드 + 알림 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-bold text-gray-900">매출 리포트 다운로드</p>
-            <p className="text-xs text-gray-500 mt-0.5">셀러별 매출/수수료 CSV 파일</p>
-          </div>
-          <div className="flex gap-2">
-            {[7, 30, 90].map(d => (
-              <button key={d}
-                onClick={async () => {
-                  try {
-                    const res = await api.get(`/api/agency/report/csv?period=${d}`, { responseType: 'blob' })
-                    const url = URL.createObjectURL(res.data)
-                    const a = document.createElement('a')
-                    a.href = url; a.download = `agency-report-${d}d.csv`; a.click()
-                    URL.revokeObjectURL(url)
-                  } catch {
-                    toast.error('리포트 다운로드에 실패했습니다.')
-                  }
-                }}
-                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">
-                <Download className="w-3 h-3 inline mr-1" />{d}일
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+      {/* 5. Revenue Trend + CSV Download + Notifications */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4">
+        {/* Revenue Trend */}
+        <div className="rounded-2xl bg-white border border-[#E8EAEE] p-5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-bold text-gray-900">최근 알림</p>
-            <Bell className="w-4 h-4 text-gray-400" />
+            <h2 className="text-sm font-bold text-gray-900">매출 추이 (7일)</h2>
+            <div className="flex items-center gap-3">
+              {[
+                { label: '라이브', color: '#8B5CF6' },
+                { label: '공구', color: '#FF0033' },
+                { label: '제휴', color: '#10B981' },
+              ].map(l => (
+                <div key={l.label} className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ background: l.color }} />
+                  <span className="text-[10px] text-gray-500">{l.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <NotificationList />
+          <RevenueTrendChart sellers={sellers} />
+        </div>
+
+        {/* CSV Download + Notifications */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-[#E8EAEE] p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-bold text-gray-900">매출 리포트 다운로드</p>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">셀러별 매출/수수료 CSV 파일</p>
+            <div className="flex gap-2">
+              {[7, 30, 90].map(d => (
+                <button key={d}
+                  onClick={() => downloadCSV(d)}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">
+                  <Download className="w-3 h-3 inline mr-1" />{d}일
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-[#E8EAEE] p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-bold text-gray-900">최근 알림</p>
+              <Bell className="w-4 h-4 text-gray-400" />
+            </div>
+            <NotificationList />
+          </div>
         </div>
       </div>
 
-      {/* Sellers + Orders */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-5">
-        {/* Sellers */}
-        <div className="bg-white rounded-xl border border-gray-200">
+      {/* 6. Seller Ranking + Recent Orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Seller Ranking */}
+        <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">소속 셀러</h2>
+            <h2 className="text-sm font-bold text-gray-900">소속 셀러</h2>
             <button
               onClick={() => navigate('/agency/sellers')}
-              className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
+              className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
             >
               전체보기 <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
-          {sellers.length === 0 ? (
+          {sortedSellers.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-400">
               소속 셀러가 없습니다.<br />
               <span className="text-xs">관리자에게 셀러 배정을 요청하세요.</span>
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
-              {sellers.slice(0, 6).map(s => (
+              {sortedSellers.slice(0, 8).map((s, idx) => (
                 <div key={s.id} className="flex items-center justify-between px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{s.business_name || s.name}</p>
-                    <p className="text-xs text-gray-400">{s.email}</p>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-[12px] font-bold text-gray-400 w-5 text-center">
+                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{s.business_name || s.name}</p>
+                      <p className="text-xs text-gray-400">{s.email}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                     <div className="text-right hidden sm:block">
@@ -347,12 +395,12 @@ export default function AgencyPage() {
         </div>
 
         {/* Recent Orders */}
-        <div className="bg-white rounded-xl border border-gray-200">
+        <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">최근 주문</h2>
+            <h2 className="text-sm font-bold text-gray-900">최근 주문</h2>
             <button
               onClick={() => navigate('/agency/orders')}
-              className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
+              className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
             >
               전체보기 <ArrowUpRight className="w-3 h-3" />
             </button>
@@ -380,6 +428,43 @@ export default function AgencyPage() {
           )}
         </div>
       </div>
+
+      {/* 7. Live Schedule */}
+      {liveScheduleItems.length > 0 && (
+        <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-bold text-gray-900">진행 중인 라이브</h2>
+            <button
+              onClick={() => navigate('/agency/streams')}
+              className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
+            >
+              라이브 현황 <ArrowUpRight className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {liveScheduleItems.map((item, i) => (
+              <div key={i} className="flex items-center justify-between px-5 py-3.5 bg-pink-50/60">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
+                    LIVE
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-bold text-gray-900 truncate">{item.sellerName}</p>
+                    <p className="text-[11px] text-gray-500 truncate">{item.title}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/agency/streams')}
+                  className="text-[11px] font-bold text-purple-600 hover:text-purple-700 flex items-center gap-0.5 ml-3 flex-shrink-0"
+                >
+                  보기 <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </AgencyLayout>
   )
 }

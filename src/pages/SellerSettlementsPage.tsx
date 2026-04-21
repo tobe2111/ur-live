@@ -181,7 +181,7 @@ export default function SellerSettlementsPage() {
       return
     }
     if (!hasBankInfo) {
-      toast.error(t('seller.bankInfoRequired', '정산 계좌 정보가 등록되지 않았습니다. 프로필에서 계좌 정보를 먼저 등록해주세요.'))
+      toast.error(t('seller.bankInfoRequired'))
       return
     }
     if (!confirm(t('seller.confirmSettlementRequest', { amount: pendingAmount.toLocaleString() }))) return
@@ -302,13 +302,13 @@ export default function SellerSettlementsPage() {
         {/* Bank info warning */}
         {!hasBankInfo && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-700">
-            <p className="font-bold mb-1">{t('seller.bankInfoMissing', '⚠️ 정산 계좌 미등록')}</p>
-            <p>{t('seller.bankInfoMissingDesc', '정산 신청을 위해 프로필에서 계좌 정보를 등록해주세요.')}</p>
+            <p className="font-bold mb-1">{t('seller.bankInfoMissing')}</p>
+            <p>{t('seller.bankInfoMissingDesc')}</p>
             <button
               onClick={() => navigate('/seller/profile?tab=business')}
               className="mt-2 px-4 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700"
             >
-              {t('seller.registerBankInfo', '계좌 정보 등록하기')}
+              {t('seller.registerBankInfo')}
             </button>
           </div>
         )}
@@ -382,7 +382,7 @@ export default function SellerSettlementsPage() {
               }`}
             >
               <Table className="w-4 h-4" />
-              {t('seller.settlementTableView', '정산 내역')}
+              {t('seller.settlementTableView')}
             </button>
             <button
               onClick={() => setViewMode('calendar')}
@@ -393,7 +393,7 @@ export default function SellerSettlementsPage() {
               }`}
             >
               <BarChart3 className="w-4 h-4" />
-              {t('seller.revenueCalendar', '수익 캘린더')}
+              {t('seller.revenueCalendar')}
             </button>
           </div>
         </div>

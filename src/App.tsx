@@ -364,7 +364,7 @@ function AppContent() {
             <Route path="/group-buy" element={<GroupBuyListPage />} />
             <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
-            <Route path="/products/:id" element={<ProductDetailPage />} />
+            <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}
             <Route path="/product/:id" element={<ProductRedirect />} />
             <Route path="/s/:sellerId" element={<SellerPublicPage />} />
@@ -777,8 +777,8 @@ function AppContent() {
 
             {/* 임베드 위젯 (외부 서비스용) */}
             <Route path="/embed/live/:streamId" element={<EmbedLivePage />} />
-            <Route path="/payment/success" element={<PaymentSuccessPage />} />
-            <Route path="/success" element={<PaymentSuccessPage />} />
+            <Route path="/payment/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
+            <Route path="/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
             <Route path="/payment/fail" element={<PaymentFailPage />} />
 
             {/* 딜 포인트 충전 */}

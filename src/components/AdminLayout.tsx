@@ -3,42 +3,75 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Star, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
-  BarChart3, Shield, UserCog, Radio, Users, MessageSquare
+  BarChart3, Shield, UserCog, Radio, Users, MessageSquare,
+  type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
 import DashboardNotificationBell from './DashboardNotificationBell'
 
-const NAV_ITEMS = [
-  // 핵심
-  { path: '/admin',               label: '대시보드',    icon: LayoutDashboard, exact: true },
-  { path: '/admin/revenue',       label: '매출 분석',   icon: BarChart3 },
-  { path: '/admin/live-monitor',  label: '라이브 모니터', icon: Radio },
-  { path: '/admin/orders',        label: '주문 관리',   icon: ShoppingBag },
-  { path: '/admin/products',      label: '상품 관리',   icon: Package },
-  // 유저/셀러
-  { path: '/admin/users',         label: '유저 관리',   icon: Users },
-  { path: '/admin/seller-approval', label: '셀러 승인', icon: UserCheck },
-  { path: '/admin/agencies',     label: '에이전시 관리', icon: Building2 },
-  // 정산/매출
-  { path: '/admin/settlement',    label: '정산',        icon: DollarSign },
-  { path: '/admin/settlements-bulk', label: '정산 일괄', icon: CreditCard },
-  { path: '/admin/deals',        label: '딜 모니터링',  icon: Gift },
-  // 콘텐츠
-  { path: '/admin/review-moderation', label: '리뷰 관리', icon: MessageSquare },
-  { path: '/admin/banners',       label: '배너 관리',   icon: Image },
-  { path: '/admin/coupons',      label: '쿠폰 관리',   icon: Ticket },
-  { path: '/admin/replay',       label: '다시보기 관리', icon: Play },
-  { path: '/admin/blog',         label: '블로그 관리',  icon: BookOpen },
-  { path: '/admin/notices',     label: '공지사항',    icon: Send },
-  // 시스템
-  { path: '/admin/accounts',     label: '관리자 계정',  icon: UserCog },
-  { path: '/admin/audit-log',    label: '감사 로그',   icon: Shield },
-  { path: '/admin/platform-settings', label: '플랫폼 설정', icon: Settings },
-  { path: '/admin/alimtalk',      label: '브랜드메시지', icon: Bell },
-  { path: '/admin/sample-requests', label: '샘플 신청', icon: ClipboardList },
-  { path: '/admin/kv-monitoring', label: 'KV 모니터링', icon: Monitor },
-  { path: '/admin/cafe24',       label: 'Cafe24 연동', icon: Store },
-  { path: '/admin/ad-scraper',   label: '광고주 이메일', icon: Search },
+interface NavItem {
+  path: string
+  label: string
+  icon: LucideIcon
+  exact?: boolean
+}
+
+interface NavGroup {
+  title: string
+  items: NavItem[]
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: '운영',
+    items: [
+      { path: '/admin',               label: '대시보드',      icon: LayoutDashboard, exact: true },
+      { path: '/admin/revenue',       label: '매출 분석',     icon: BarChart3 },
+      { path: '/admin/live-monitor',  label: '라이브 모니터', icon: Radio },
+    ],
+  },
+  {
+    title: '파트너',
+    items: [
+      { path: '/admin/users',           label: '유저 관리',     icon: Users },
+      { path: '/admin/seller-approval', label: '셀러 승인',     icon: UserCheck },
+      { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
+    ],
+  },
+  {
+    title: '거래',
+    items: [
+      { path: '/admin/orders',           label: '주문 관리',     icon: ShoppingBag },
+      { path: '/admin/products',         label: '상품 관리',     icon: Package },
+      { path: '/admin/settlement',       label: '정산',          icon: DollarSign },
+      { path: '/admin/settlements-bulk', label: '정산 일괄',     icon: CreditCard },
+      { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
+      { path: '/admin/coupons',          label: '쿠폰 관리',    icon: Ticket },
+    ],
+  },
+  {
+    title: '콘텐츠',
+    items: [
+      { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
+      { path: '/admin/banners',           label: '배너 관리',     icon: Image },
+      { path: '/admin/replay',            label: '다시보기 관리', icon: Play },
+      { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
+      { path: '/admin/notices',           label: '공지사항',      icon: Send },
+    ],
+  },
+  {
+    title: '시스템',
+    items: [
+      { path: '/admin/accounts',          label: '관리자 계정',   icon: UserCog },
+      { path: '/admin/audit-log',         label: '감사 로그',     icon: Shield },
+      { path: '/admin/platform-settings', label: '플랫폼 설정',   icon: Settings },
+      { path: '/admin/alimtalk',          label: '브랜드메시지',  icon: Bell },
+      { path: '/admin/sample-requests',   label: '샘플 신청',     icon: ClipboardList },
+      { path: '/admin/kv-monitoring',     label: 'KV 모니터링',   icon: Monitor },
+      { path: '/admin/cafe24',            label: 'Cafe24 연동',   icon: Store },
+      { path: '/admin/ad-scraper',        label: '광고주 이메일', icon: Search },
+    ],
+  },
 ]
 
 interface AdminLayoutProps {
@@ -65,53 +98,122 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   }
 
   const Sidebar = () => (
-    <aside className="w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full">
-      <div className="px-4 pt-5 pb-4 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
-            {adminName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-gray-400">워크스페이스</p>
-            <p className="text-sm font-semibold text-gray-800 truncate">관리자</p>
-          </div>
+    <aside className="w-[232px] flex-shrink-0 flex flex-col h-full" style={{ background: '#0A0A0B' }}>
+      {/* Branding */}
+      <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-2.5">
+          <span
+            className="font-extrabold italic text-white"
+            style={{ fontSize: '13px', letterSpacing: '-0.03em' }}
+          >
+            UR·DEAL
+          </span>
+          <span
+            className="font-bold uppercase text-white"
+            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#FCD34D' }}
+          >
+            ADMIN CONSOLE
+          </span>
+          <span
+            className="ml-auto font-extrabold rounded px-1.5 py-0.5"
+            style={{ fontSize: '9px', background: '#FCD34D', color: '#0A0A0B' }}
+          >
+            PROD
+          </span>
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ path, label, icon: Icon, exact }) => {
-          const active = isActive(path, exact)
-          return (
-            <Link
-              key={path}
-              to={path}
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
+      {/* Global search bar (UI only) */}
+      <div className="px-4 py-3">
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-lg"
+          style={{ background: 'rgba(255,255,255,0.05)' }}
+        >
+          <Search size={13} strokeWidth={2} className="text-white/40 flex-shrink-0" />
+          <span className="text-white/40 text-[11px] flex-1 truncate">
+            주문/유저/셀러 전역 검색…
+          </span>
+          <kbd
+            className="text-[9px] text-white/30 border border-white/10 rounded px-1 py-0.5 font-mono"
+          >
+            ⌘K
+          </kbd>
+        </div>
+      </div>
+
+      {/* Grouped navigation */}
+      <nav className="flex-1 overflow-y-auto pb-2">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.title} className="mt-3 first:mt-1">
+            <div
+              className="px-4 py-1.5 font-extrabold uppercase text-white/30"
+              style={{ fontSize: '9px', letterSpacing: '0.12em' }}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-              {label === '주문 관리' && pendingCount > 0 && (
-                <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                  active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {pendingCount}
-                </span>
-              )}
-            </Link>
-          )
-        })}
+              {group.title}
+            </div>
+            {group.items.map(({ path, label, icon: Icon, exact }) => {
+              const active = isActive(path, exact)
+              return (
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors"
+                  style={
+                    active
+                      ? {
+                          color: '#FFFFFF',
+                          borderLeft: '2.5px solid #FCD34D',
+                          background: 'linear-gradient(to right, rgba(252,211,77,0.12), transparent)',
+                        }
+                      : {
+                          color: 'rgba(255,255,255,0.55)',
+                          borderLeft: '2.5px solid transparent',
+                        }
+                  }
+                  onMouseEnter={(e) => {
+                    if (!active) e.currentTarget.style.color = '#FFFFFF'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
+                  }}
+                >
+                  <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
+                  <span className="flex-1 truncate">{label}</span>
+                  {label === '주문 관리' && pendingCount > 0 && (
+                    <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-white/10 text-white">
+                      {pendingCount}
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
-      <div className="px-3 py-4 border-t border-gray-100">
+      {/* Bottom user profile */}
+      <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #FCD34D, #F59E0B)',
+              color: '#0A0A0B',
+            }}
+          >
+            {adminName.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-extrabold text-white truncate">{adminName}</p>
+            <p className="text-[9px] text-white/50">플랫폼 운영팀 · Super Admin</p>
+          </div>
+        </div>
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+          className="mt-2.5 flex items-center gap-2 px-1 py-1 text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut size={12} strokeWidth={2} />
           로그아웃
         </button>
       </div>
