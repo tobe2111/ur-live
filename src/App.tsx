@@ -206,7 +206,24 @@ function AppContent() {
       window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
     } else if (urlParams.has('firebase_token')) {
       if (isKorea()) {
-        // 한국: firebase_token 무시, URL만 정리
+        // 한국: firebase_token에서 claims를 디코딩하여 localStorage 설정
+        const token = urlParams.get('firebase_token')!
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]))
+          const claims = payload.claims || {}
+          localStorage.setItem('user_type', 'user')
+          if (claims.userId) localStorage.setItem('user_id', String(claims.userId))
+          if (claims.userName) localStorage.setItem('user_name', claims.userName)
+          if (claims.email) localStorage.setItem('user_email', claims.email)
+          if (claims.profileImage) localStorage.setItem('user_profile_image', claims.profileImage.replace(/^http:\/\//, 'https://'))
+          localStorage.setItem('session_login', 'true')
+        } catch { /* JWT decode failed — ignore */ }
+        // URL에서 userName/profileImage도 체크
+        const urlUserName = urlParams.get('userName')
+        const urlProfileImage = urlParams.get('profileImage')
+        if (urlUserName) localStorage.setItem('user_name', urlUserName)
+        if (urlProfileImage) localStorage.setItem('user_profile_image', urlProfileImage.replace(/^http:\/\//, 'https://'))
+        // URL 정리
         urlParams.delete('firebase_token'); urlParams.delete('userName'); urlParams.delete('profileImage')
         const clean = urlParams.toString()
         window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
