@@ -213,25 +213,25 @@ export default function BrowsePage() {
         </div>
       </div>
 
-      {/* 카테고리 탭 */}
+      {/* 카테고리 탭 (v4 Editorial) */}
       <div className="bg-white border-b border-gray-100 overflow-x-auto scrollbar-hide">
-        <div className="flex px-4 gap-1 py-2">
+        <div className="flex px-4 gap-1.5 pb-2.5">
           {[
-            { key: 'all', label: '전체', emoji: '🔥' },
-            { key: 'fashion', label: '패션', emoji: '👗' },
-            { key: 'beauty', label: '뷰티', emoji: '💄' },
-            { key: 'food', label: '식품', emoji: '🍜' },
-            { key: 'living', label: '리빙', emoji: '🏠' },
-            { key: 'digital', label: '디지털', emoji: '📱' },
-            { key: 'meal_voucher', label: '식사권', emoji: '🎫' },
+            { key: 'all', label: '전체' },
+            { key: 'fashion', label: '패션' },
+            { key: 'beauty', label: '뷰티' },
+            { key: 'food', label: '식품' },
+            { key: 'living', label: '리빙' },
+            { key: 'digital', label: '디지털' },
+            { key: 'meal_voucher', label: '식사권' },
           ].map(c => (
             <button key={c.key}
               onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
-              className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap ${
                 category === c.key || (c.key === 'all' && category === 'all')
-                  ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
+                  ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'
               }`}>
-              {c.emoji} {c.label}
+              {c.label}
             </button>
           ))}
         </div>
@@ -243,16 +243,24 @@ export default function BrowsePage() {
           <h1 className="text-xl font-extrabold text-gray-900">{category === 'all' ? '오늘의 핫딜' : `${({'fashion':'패션','beauty':'뷰티','food':'식품','living':'리빙','digital':'디지털','meal_voucher':'식사권'} as Record<string, string>)[category] || category}`}</h1>
         </div>
 
-        {/* 배너 */}
-        <div className="bg-gradient-to-r from-red-500 via-pink-500 to-rose-500 rounded-2xl px-5 py-3.5 mb-5">
-          <p className="text-center text-white text-sm font-bold tracking-wide">매일 달라지는 초특가 상품</p>
+        {/* v4 배너 (Editorial Grid) */}
+        <div className="rounded-2xl p-4 flex items-center justify-between relative overflow-hidden mb-5"
+          style={{ background: 'linear-gradient(135deg, #4C1D95 0%, #6B21A8 50%, #BE185D 100%)' }}>
+          <div>
+            <p className="text-[10px] font-bold tracking-widest text-white/75">TODAY'S DEAL</p>
+            <p className="text-[16px] font-extrabold text-white mt-0.5">매일 바뀌는 초특가</p>
+            <p className="text-[11px] text-white/85 mt-1">최대 70% OFF · 오늘만</p>
+          </div>
+          <div className="flex items-center gap-1 text-[11px] font-bold text-white">
+            전체 보기 <ChevronRight className="w-3 h-3" />
+          </div>
         </div>
 
         {/* 필터 + 정렬 */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <button onClick={() => setShowFilter(v => !v)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${showFilter ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200'}`}>
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-gray-900 text-white'}`}>
               <SlidersHorizontal className="w-3 h-3" /> 필터
             </button>
             <span className="text-xs text-gray-500">{sorted.length}개</span>
@@ -322,16 +330,18 @@ export default function BrowsePage() {
           </div>
         )}
 
-        {/* 상품 그리드 (3열) */}
+        {/* v4 Editorial Grid — hero + 2열 */}
         {loading ? (
-          <div className="grid grid-cols-3 gap-x-3 gap-y-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i}>
-                <div className="aspect-square bg-gray-100 animate-pulse rounded-lg" />
-                <div className="mt-2 h-3 bg-gray-100 rounded animate-pulse w-full" />
-                <div className="mt-1 h-3 bg-gray-100 rounded animate-pulse w-2/3" />
-              </div>
-            ))}
+          <div className="space-y-4">
+            <div className="aspect-[4/3] bg-gray-100 animate-pulse rounded-2xl" />
+            <div className="grid grid-cols-2 gap-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i}>
+                  <div className="aspect-square bg-gray-100 animate-pulse rounded-xl" />
+                  <div className="mt-2 h-3 bg-gray-100 rounded animate-pulse w-full" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-16">
@@ -339,8 +349,46 @@ export default function BrowsePage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-x-3 gap-y-6">
-              {displayed.map(product => {
+            {/* v4 Hero product (첫 번째 상품 풀폭) */}
+            {displayed.length > 0 && (() => {
+              const hero = displayed[0]
+              const heroDiscount = hero.discount_rate || (hero.original_price ? Math.round((1 - hero.price / hero.original_price) * 100) : 0)
+              const heroPrice = hero.current_price || hero.price
+              return (
+                <button
+                  onClick={() => navigate(`/products/${hero.id}`)}
+                  className="block w-full text-left mb-6"
+                >
+                  <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '4/3', background: '#F9FAFB' }}>
+                    {hero.image_url && <img src={hero.image_url} alt="" className="w-full h-full object-cover" />}
+                    <div className="absolute top-2 left-2 flex gap-1">
+                      {heroDiscount > 0 && (
+                        <span className="rounded-md px-2 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">-{heroDiscount}%</span>
+                      )}
+                    </div>
+                    <div className="absolute bottom-2 right-2 rounded-full p-2 bg-white/90 backdrop-blur-sm">
+                      <Heart className="w-4 h-4 text-gray-300" strokeWidth={1.5} />
+                    </div>
+                  </div>
+                  <div className="mt-2.5">
+                    {hero.seller_name && <p className="text-[10px] text-gray-400">@{hero.seller_name}</p>}
+                    <p className="text-[14px] text-gray-900 font-medium mt-0.5 line-clamp-1">{hero.name}</p>
+                    <div className="flex items-baseline gap-1.5 mt-1">
+                      {hero.original_price && hero.original_price > heroPrice && (
+                        <span className="text-[11px] text-gray-400 line-through">{formatPrice(hero.original_price)}</span>
+                      )}
+                      {heroDiscount > 0 && <span className="text-[18px] font-extrabold text-red-500">{heroDiscount}%</span>}
+                      <span className="text-[18px] font-extrabold text-gray-900">{formatPrice(heroPrice)}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-1">⭐ {hero.sold_count || 0}명 구매 · 🚚 무료배송</p>
+                  </div>
+                </button>
+              )
+            })()}
+
+            {/* 2열 그리드 (나머지 상품) */}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6">
+              {displayed.slice(1).map(product => {
                 const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
                 const displayPrice = product.current_price || product.price
 
@@ -350,58 +398,45 @@ export default function BrowsePage() {
                     onClick={() => navigate(`/products/${product.id}`)}
                     className="text-left active:scale-[0.98] transition-transform"
                   >
-                    {/* 썸네일 */}
-                    <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-xl">
+                    <div className="relative aspect-square overflow-hidden bg-gray-50 rounded-xl">
                       {product.image_url ? (
                         <img src={product.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className="w-full h-full bg-gray-100" />
                       )}
-                      {/* 관심 등록 (식사권만) / 하트 (일반) */}
-                      <div className="absolute bottom-2 right-2">
+                      {discountRate >= 40 && (
+                        <span className="absolute top-1.5 left-1.5 rounded-md px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">
+                          -{discountRate}%
+                        </span>
+                      )}
+                      <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white/85 backdrop-blur-sm">
                         {isMealVoucher ? (
-                          <button
-                            onClick={(e) => toggleInterest(e, product.id, product.name)}
-                            className="w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
-                            aria-label="관심 등록"
-                          >
-                            <Bell
-                              className={`w-3.5 h-3.5 ${interestedIds.has(product.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`}
-                            />
-                          </button>
+                          <Bell
+                            onClick={(e: React.MouseEvent) => toggleInterest(e, product.id, product.name)}
+                            className={`w-3 h-3 ${interestedIds.has(product.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-300'}`}
+                          />
                         ) : (
-                          <Heart className="w-5 h-5 text-gray-300" strokeWidth={1.5} />
+                          <Heart className="w-3 h-3 text-gray-300" strokeWidth={1.5} />
                         )}
-                      </div>
+                      </span>
                     </div>
 
-                    {/* 상품 정보 */}
                     <div className="mt-2">
-                      {product.seller_name && (
-                        <p className="text-[10px] text-gray-400 mb-0.5">@{product.seller_name}</p>
-                      )}
-                      <p className="text-[12px] text-gray-900 leading-tight line-clamp-2">
-                        {product.name}
-                      </p>
+                      <p className="text-[12px] text-gray-900 leading-tight line-clamp-2">{product.name}</p>
                       {product.original_price && product.original_price > displayPrice && (
-                        <p className="text-[11px] text-gray-400 line-through mt-1">
-                          {formatPrice(product.original_price)}
-                        </p>
+                        <p className="text-[10px] text-gray-400 line-through mt-1">{formatPrice(product.original_price)}</p>
                       )}
                       <div className="flex items-baseline gap-1 mt-0.5">
                         {discountRate > 0 && (
                           <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
                         )}
-                        <span className="text-[13px] font-extrabold text-gray-900">
-                          {formatPrice(displayPrice)}
-                        </span>
+                        <span className="text-[13px] font-extrabold text-gray-900">{formatPrice(displayPrice)}</span>
                       </div>
-                      {(product.sold_count ?? 0) > 0 && (
-                        <p className="text-[10px] text-gray-400 mt-0.5">{product.sold_count}명 구매</p>
-                      )}
-                      <div className="flex items-center gap-1 mt-1">
-                        <Truck className="w-3 h-3 text-gray-400" />
-                        <span className="text-[10px] text-gray-400">무료배송</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-gray-400">⭐ {product.sold_count || 0}</span>
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 font-semibold">
+                          <Truck className="w-2.5 h-2.5" /> 무료
+                        </span>
                       </div>
                     </div>
                   </button>
