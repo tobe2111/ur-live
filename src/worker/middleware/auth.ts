@@ -355,28 +355,35 @@ export function requireUserType(...types: UserType[]) {
   return async (c: Context, next: Next) => {
     // First check if user is authenticated
     const user = c.get('user') as AuthUser | undefined;
-    
+
     if (!user) {
-      // Run requireAuth middleware first
+      // Run requireAuth middleware first and capture any error response (401/503)
       const authMiddleware = requireAuth();
-      await authMiddleware(c, async () => {});
-      
+      const authErrorResponse = await authMiddleware(c, async () => {
+        // no-op; we only care about whether user was set
+      });
+
+      // If requireAuth returned a Response (401/503), propagate it
+      if (authErrorResponse) {
+        return authErrorResponse;
+      }
+
       // Check again after authentication
       const authenticatedUser = c.get('user') as AuthUser | undefined;
       if (!authenticatedUser) {
         return c.json(unauthorizedResponse('Authentication required'), 401);
       }
     }
-    
+
     const currentUser = c.get('user') as AuthUser;
-    
+
     if (!types.includes(currentUser.type)) {
       return c.json(
         forbiddenResponse(`Access denied. Required user type: ${types.join(' or ')}`),
         403
       );
     }
-    
+
     return next();
   };
 }

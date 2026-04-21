@@ -7,9 +7,7 @@ export interface Order {
   order_number: string;
   user_id: number;
   seller_id: number;
-  // ✅ BUG #20 NOTE: The actual DB column is `total_price` (see schema).
-  // The application layer uses `total_amount` in TypeScript interfaces for API
-  // consistency; the repository maps it to `total_price` on INSERT/SELECT.
+  // ✅ SCHEMA: Production DB column is `total_amount` (see production-schema.ts).
   total_amount: number;
   status: 'pending' | 'paid' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   payment_method?: string;
