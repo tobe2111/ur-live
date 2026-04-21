@@ -143,6 +143,15 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch (e) { console.error('[Cron] token_cleanup error:', e) }
 
+  // ── 9b. 만료된 idempotency 키 정리 (테이블이 존재할 때만) ──
+  // idempotentWrite() 유틸리티가 저장하는 결과 캐시를 주기적으로 청소한다.
+  // 테이블이 없는 환경(신규 배포)에서는 조용히 건너뛴다.
+  try {
+    await DB.prepare(
+      "DELETE FROM idempotency_keys WHERE expires_at < datetime('now')"
+    ).run();
+  } catch { /* table may not exist yet — skip silently */ }
+
   // ── 10. 자동 구매확정: 배송 14일 경과 ──
   // 프로덕션 DB는 대문자 상태값 사용 ('SHIPPING', 'DELIVERED').
   // settlement_status는 'completed' 사용 (정산 자동화 스크립트와 일치).

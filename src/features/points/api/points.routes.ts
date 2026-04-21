@@ -341,11 +341,14 @@ async function executeDonate(
     .bind(userId).first<{ balance: number }>();
 
   if (!wallet || wallet.balance < amount) {
-    return c.json({
-      success: false,
-      error: `딜이 부족합니다. (보유: ${wallet?.balance ?? 0}딜, 필요: ${amount}딜)`,
-      code: 'INSUFFICIENT_POINTS',
-    }, 400);
+    return {
+      status: 400,
+      body: {
+        success: false,
+        error: `딜이 부족합니다. (보유: ${wallet?.balance ?? 0}딜, 필요: ${amount}딜)`,
+        code: 'INSUFFICIENT_POINTS',
+      },
+    };
   }
 
   // 스트림 + 셀러 정보
@@ -356,14 +359,14 @@ async function executeDonate(
      WHERE ls.id = ?`
   ).bind(stream_id).first<{ id: number; title: string; seller_id: number; seller_name: string }>();
 
-  if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
+  if (!stream) return { status: 404, body: { success: false, error: '스트림을 찾을 수 없습니다' } };
 
   // 포인트 차감 (atomic: balance >= amount 조건으로 race condition 방지)
   const deductResult = await DB.prepare(
     'UPDATE user_points SET balance = balance - ?, total_donated = total_donated + ?, updated_at = datetime(\'now\') WHERE user_id = ? AND balance >= ?'
   ).bind(amount, amount, userId, amount).run();
   if (!deductResult.meta.changes) {
-    return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)' }, 400);
+    return { status: 400, body: { success: false, error: '딜이 부족합니다 (동시 결제 충돌)' } };
   }
   const updatedWallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(userId).first<{ balance: number }>();
   const newBalance = updatedWallet?.balance ?? 0;
@@ -398,16 +401,19 @@ async function executeDonate(
   // 후원 발생 → 어드민 알림
   createDashboardNotification(DB, 'admin', null, 'donation_received', '후원 발생', `${amount}딜 후원`, '/admin/settlement').catch(() => {});
 
-  return c.json({
-    success: true,
-    data: {
-      amount,
-      balance: newBalance,
-      seller_name: stream.seller_name,
+  return {
+    status: 200,
+    body: {
+      success: true,
+      data: {
+        amount,
+        balance: newBalance,
+        seller_name: stream.seller_name,
+      },
+      message: `${amount.toLocaleString()}딜을 후원했습니다!`,
     },
-    message: `${amount.toLocaleString()}딜을 후원했습니다!`,
-  });
-});
+  };
+}
 
 // ── GET /api/points/history ──────────────────────────────────────────
 pointsRoutes.get('/history', requireAuth(), async (c) => {
@@ -562,6 +568,29 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   if (!order_number || !items?.length || !shipping?.name) {
     return c.json({ success: false, error: '필수 항목이 누락되었습니다' }, 400);
   }
+
+  // ✅ IDEMPOTENCY: client-supplied `order_number` doubles as the idempotency
+  //   key. If a row already exists with this order_number *for this user*,
+  //   return it — DO NOT re-deduct deals or re-reserve stock.
+  try {
+    const existingOrder = await DB.prepare(
+      'SELECT id, order_number, total_amount FROM orders WHERE order_number LIKE ? AND user_id = ? LIMIT 1'
+    ).bind(`${order_number}%`, userId).first<{ id: number; order_number: string; total_amount: number }>();
+    if (existingOrder) {
+      const wallet2 = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+        .bind(userId).first<{ balance: number }>();
+      return c.json({
+        success: true,
+        data: {
+          order_number,
+          amount_paid: existingOrder.total_amount,
+          balance: wallet2?.balance ?? 0,
+          payment_method: 'deal_points',
+        },
+        message: '이미 처리된 결제입니다',
+      });
+    }
+  } catch { /* ignore — defensive */ }
 
   // ✅ Server-side price lookup: fetch actual price + seller_id from DB
   const productIds = Array.from(new Set(items.map(i => Number(i.product_id)))).filter(n => !isNaN(n));

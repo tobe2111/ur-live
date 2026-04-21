@@ -14,6 +14,8 @@ import { webhookRouter } from './webhook.routes';
 import { TOSS_PAYMENT_URL } from '../../shared/constants';
 import { sendSellerAlimtalk } from '../../features/alimtalk/send';
 import { buildOrderConfirmMessage } from '../../features/alimtalk/aligo';
+import { withCircuitBreaker } from '../utils/circuit-breaker';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
@@ -114,19 +116,34 @@ paymentsRouter.post('/confirm', async (c) => {
     }
 
     // Idempotency-Key: paymentKey 기반으로 설정 (동일 결제의 중복 승인 요청 방지)
-    const tossResponse = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(tossSecretKey + ':')}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': paymentKey,
-      },
-      body: JSON.stringify({
-        paymentKey,
-        orderId: orderNumber,
-        amount: totalAmount,  // DB 검증된 금액 사용
-      }),
-    });
+    // ⚠️ 결제는 critical path — fallback 없이, 회로가 열리면 명확한 사용자 메시지와 함께 거부.
+    logInfo('toss.confirm.start', { orderId: orderNumber, amount: totalAmount, endpoint: '/api/payments/confirm' });
+    let tossResponse: Response;
+    try {
+      tossResponse = await withCircuitBreaker(
+        { name: 'toss-confirm', maxFailures: 10, resetTimeoutMs: 60_000 },
+        () => fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${btoa(tossSecretKey + ':')}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': paymentKey,
+          },
+          body: JSON.stringify({
+            paymentKey,
+            orderId: orderNumber,
+            amount: totalAmount,  // DB 검증된 금액 사용
+          }),
+        }),
+      );
+    } catch (e) {
+      logError('toss.confirm.circuit_open', { orderId: orderNumber, error: (e as Error).message });
+      return c.json({
+        success: false,
+        error: 'Toss 결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.',
+        code: 'CIRCUIT_OPEN',
+      }, 503);
+    }
 
     if (!tossResponse.ok) {
       const tossError = await tossResponse.json() as { code?: string; message?: string };
