@@ -56,10 +56,11 @@ type StreamMethod = 'youtube' | 'obs' | 'prism' | 'quick'
 
 // ── 스텝 인디케이터 ────────────────────────────────────────────────
 function StepIndicator({ step }: { step: WizardStep }) {
+  const { t } = useTranslation()
   const steps: { key: WizardStep; label: string }[] = [
-    { key: 'info', label: '방송 정보' },
-    { key: 'setup', label: '연결 설정' },
-    { key: 'live', label: '라이브 중' },
+    { key: 'info', label: t('seller.liveBroadcast.stepInfo') },
+    { key: 'setup', label: t('seller.liveBroadcast.stepSetup') },
+    { key: 'live', label: t('seller.liveBroadcast.stepLive') },
   ]
   const idx = steps.findIndex(s => s.key === step)
   return (
@@ -152,7 +153,7 @@ export default function SellerLiveBroadcastPage() {
       try {
         const res = await api.get(`/api/seller/youtube/live/${currentStream.id}/status`)
         if (res.data?.success && res.data.data?.synced && res.data.data?.status === 'live') {
-          toast.success('방송이 시작되었습니다!')
+          toast.success(t('seller.liveBroadcast.broadcastStartedAuto'))
           setCurrentStream(s => s ? { ...s, status: 'live' } : s)
           setStep('live')
         }
@@ -176,7 +177,7 @@ export default function SellerLiveBroadcastPage() {
         setProducts(prRes.value.data.data || [])
       if (stRes.status === 'fulfilled' && stRes.value.data?.success)
         setStreams(stRes.value.data.data || [])
-    } catch { setLoadError('데이터를 불러오지 못했습니다.') }
+    } catch { setLoadError(t('seller.liveBroadcast.dataLoadFailed')) }
     finally { setLoading(false) }
   }
 
@@ -186,14 +187,14 @@ export default function SellerLiveBroadcastPage() {
       const res = await api.get('/api/seller/youtube/auth-url')
       if (res.data.success && res.data.data?.authUrl)
         window.location.href = res.data.data.authUrl
-      else toast.error('YouTube API가 설정되지 않았습니다.')
-    } catch { toast.error('YouTube 연동에 실패했습니다.') }
+      else toast.error(t('seller.liveBroadcast.youtubeApiNotSet'))
+    } catch { toast.error(t('seller.liveBroadcast.youtubeConnectFailed')) }
     finally { setConnectingYouTube(false) }
   }
 
   async function createBroadcast() {
-    if (!title.trim()) { toast.error('방송 제목을 입력해주세요.'); return }
-    if (selectedProducts.length === 0) { toast.error('판매 상품을 1개 이상 선택해주세요.'); return }
+    if (!title.trim()) { toast.error(t('seller.liveBroadcast.enterTitle')); return }
+    if (selectedProducts.length === 0) { toast.error(t('seller.liveBroadcast.selectOneProduct')); return }
     try {
       setCreating(true)
       let scheduledStartTime = new Date().toISOString()
@@ -219,13 +220,13 @@ export default function SellerLiveBroadcastPage() {
         })
         setStep('setup')
       } else {
-        if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
-        else toast.error(res.data?.error || '방송 생성에 실패했습니다.')
+        if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error(t('seller.liveBroadcast.youtubeReauthRequired'))
+        else toast.error(res.data?.error || t('seller.liveBroadcast.createFailed'))
       }
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error_code?: string; error?: string } } }
-      if (axiosErr.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
-      else toast.error(axiosErr.response?.data?.error || '방송 생성에 실패했습니다.')
+      if (axiosErr.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error(t('seller.liveBroadcast.youtubeReauthRequired'))
+      else toast.error(axiosErr.response?.data?.error || t('seller.liveBroadcast.createFailed'))
     } finally { setCreating(false) }
   }
 
@@ -235,12 +236,12 @@ export default function SellerLiveBroadcastPage() {
       await api.post(`/api/seller/youtube/live/${currentStream.id}/start`)
       setCurrentStream(s => s ? { ...s, status: 'live' } : s)
       setStep('live')
-      toast.success('라이브가 시작되었습니다!')
-    } catch { toast.error('방송 시작에 실패했습니다.') }
+      toast.success(t('seller.liveBroadcast.liveStarted'))
+    } catch { toast.error(t('seller.liveBroadcast.startFailed')) }
   }
 
   async function endStream() {
-    if (!currentStream || !confirm('방송을 종료하시겠습니까?')) return
+    if (!currentStream || !confirm(t('seller.liveBroadcast.confirmEnd'))) return
     try {
       await api.post(`/api/seller/youtube/live/${currentStream.id}/end`)
       toast.success('방송이 종료되었습니다.')
