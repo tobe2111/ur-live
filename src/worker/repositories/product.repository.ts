@@ -15,8 +15,9 @@ export class ProductRepository {
   }
 
   async findById(id: string): Promise<Product | null> {
+    // Production `sellers` uses `username` instead of `slug`
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      `SELECT p.*, s.name as seller_name, s.slug as seller_slug
+      `SELECT p.*, s.name as seller_name, s.username as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
        WHERE p.id = ? AND p.is_active = 1`,
@@ -44,7 +45,8 @@ export class ProductRepository {
       queryParams.push(seller_id);
     }
     if (category_id) {
-      conditions.push('p.category_id = ?');
+      // Production uses `category` (TEXT), not `category_id`
+      conditions.push('p.category = ?');
       queryParams.push(category_id);
     }
     if (status) {
@@ -65,7 +67,7 @@ export class ProductRepository {
     const total = countRow?.count ?? 0;
 
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT p.*, s.name as seller_name, s.slug as seller_slug,
+      `SELECT p.*, s.name as seller_name, s.username as seller_slug,
               (SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id) as avg_rating,
               (SELECT COUNT(*) FROM product_reviews WHERE product_id = p.id) as review_count
        FROM products p
@@ -83,7 +85,7 @@ export class ProductRepository {
     if (ids.length === 0) return [];
     const placeholders = ids.map(() => '?').join(', ');
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT p.*, s.name as seller_name, s.slug as seller_slug
+      `SELECT p.*, s.name as seller_name, s.username as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
        WHERE p.id IN (${placeholders}) AND (p.is_active = 1 OR p.status = 'ACTIVE')`,
