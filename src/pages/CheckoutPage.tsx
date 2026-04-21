@@ -554,20 +554,18 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
       <SEO title="주문/결제 - 유어딜" description="주문 정보를 확인하고 안전하게 결제하세요" url="/checkout" />
-      {/* 헤더 */}
+      {/* v4 Breakdown 헤더 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="mx-auto max-w-md px-4 py-3">
-          <div className="flex items-center justify-between">
-            <button onClick={() => navigate('/cart')} className="p-1">
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
-            </button>
-            <h1 className="text-[16px] font-bold text-gray-900">결제하기</h1>
-            <div className="w-7" />
-          </div>
+        <div className="mx-auto max-w-md flex items-center justify-between px-3 py-3">
+          <button onClick={() => navigate('/cart')} className="w-9 h-9 flex items-center justify-center">
+            <ArrowLeft className="w-5 h-5 text-gray-900" />
+          </button>
+          <h1 className="text-[15px] font-extrabold text-gray-900">주문 · 결제</h1>
+          <div className="w-9" />
         </div>
       </div>
 
-      <main className="mx-auto max-w-md pb-52">
+      <main className="mx-auto max-w-md pb-52" style={{ background: '#F4F4F4' }}>
         <div className="flex flex-col">
 
           {/* Left column */}
