@@ -148,7 +148,7 @@ export default function SellerSettlementsPage() {
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('Failed to load settlements:', error)
+      if (import.meta.env.DEV) console.error('Failed to load settlements:', error)
       setError(t('seller.settlementLoadFailed'))
       if (error_.response?.status === 401) {
         navigate('/seller/login')

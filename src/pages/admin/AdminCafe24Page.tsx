@@ -57,7 +57,7 @@ export default function AdminCafe24Page() {
       })
       setStatus(res.data.data)
     } catch (err) {
-      console.error('[Cafe24] Status load failed:', err)
+      if (import.meta.env.DEV) console.error('[Cafe24] Status load failed:', err)
       setStatus({ connected: false })
     } finally {
       setLoading(false)
@@ -74,7 +74,7 @@ export default function AdminCafe24Page() {
       const { authUrl } = res.data.data
       window.location.href = authUrl
     } catch (err) {
-      console.error('[Cafe24] Connect failed:', err)
+      if (import.meta.env.DEV) console.error('[Cafe24] Connect failed:', err)
       toast.error('연동 시작 실패: 환경변수를 확인해주세요.')
       setConnecting(false)
     }
@@ -92,7 +92,7 @@ export default function AdminCafe24Page() {
       await loadStatus()
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('[Cafe24] Sync failed:', err)
+      if (import.meta.env.DEV) console.error('[Cafe24] Sync failed:', err)
       toast.error(`동기화 실패: ${err_.response?.data?.error || '알 수 없는 오류'}`)
     } finally {
       setSyncing(false)
@@ -110,7 +110,7 @@ export default function AdminCafe24Page() {
       toast.success('Cafe24 연동 해제 완료')
       setStatus({ connected: false })
     } catch (err) {
-      console.error('[Cafe24] Disconnect failed:', err)
+      if (import.meta.env.DEV) console.error('[Cafe24] Disconnect failed:', err)
       toast.error('연동 해제 실패')
     } finally {
       setDisconnecting(false)

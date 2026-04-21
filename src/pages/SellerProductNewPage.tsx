@@ -77,7 +77,7 @@ export default function SellerProductNewPage() {
         setLiveStreams(response.data.data || [])
       }
     } catch (error) {
-      console.error('Failed to load live streams:', error)
+      if (import.meta.env.DEV) console.error('Failed to load live streams:', error)
       // Continue without live streams
     }
   }

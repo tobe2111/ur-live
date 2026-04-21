@@ -126,7 +126,7 @@ export default function SellerOrdersPage() {
         setOrders(response.data.data || response.data.orders || [])
       }
     } catch (error: unknown) {
-      console.error('Failed to load orders:', error)
+      if (import.meta.env.DEV) console.error('Failed to load orders:', error)
       setError(t('seller.orderListLoadFailed'))
     } finally {
       setLoading(false)
@@ -236,7 +236,7 @@ export default function SellerOrdersPage() {
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('Failed to update status:', error)
+      if (import.meta.env.DEV) console.error('Failed to update status:', error)
       setError(error_.response?.data?.error || t('seller.statusChangeFailed'))
     } finally {
       setUpdating(false)
@@ -265,7 +265,7 @@ export default function SellerOrdersPage() {
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('Failed to update tracking:', error)
+      if (import.meta.env.DEV) console.error('Failed to update tracking:', error)
       setError(error_.response?.data?.error || t('seller.trackingRegisterFailed'))
     } finally {
       setUpdating(false)

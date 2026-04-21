@@ -86,7 +86,7 @@ export default function AdminAdScraperPage() {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as Record<string, string>
-        console.error('[Scraper] auth fail', res.status, body, 'token present:', !!token, 'token prefix:', token.slice(0, 20))
+        if (import.meta.env.DEV) console.error('[Scraper] auth fail', res.status, body, 'token present:', !!token, 'token prefix:', token.slice(0, 20))
         setServerOk(false)
         return
       }
@@ -94,7 +94,7 @@ export default function AdminAdScraperPage() {
       setServerOk(true)
       if (data.running) { setRunning(true); connectSSE() }
     } catch (e) {
-      console.error('[Scraper] checkServer error:', e)
+      if (import.meta.env.DEV) console.error('[Scraper] checkServer error:', e)
       setServerOk(false)
     }
   }

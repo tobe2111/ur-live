@@ -1,4 +1,3 @@
-import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
