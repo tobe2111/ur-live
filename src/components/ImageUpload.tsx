@@ -226,7 +226,7 @@ export default function ImageUpload({
             value={value.startsWith('http') ? value : ''}
             onChange={(e) => onChange(e.target.value)}
             placeholder="https://example.com/image.jpg"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <p className="text-xs text-gray-500 mt-1">
             Unsplash, Pexels 등의 이미지 URL을 입력할 수 있습니다
