@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
+import { Mail, Lock, Eye, EyeOff, Shield, BarChart2, Settings } from 'lucide-react'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
@@ -11,8 +12,9 @@ export default function AdminLoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPw, setShowPw] = useState(false)
 
-  // ✅ Remember Me 이메일 불러오기 (리다이렉트는 PublicRoute(forAdmin)에서 처리)
+  // Remember Me 이메일 불러오기 (리다이렉트는 PublicRoute(forAdmin)에서 처리)
   useEffect(() => {
     const savedEmail = localStorage.getItem('admin_remember_email')
     if (savedEmail) {
@@ -27,7 +29,7 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      // ✅ User 세션 정리 (동기) + Firebase signOut (비동기, 타임아웃 3초)
+      // User 세션 정리 (동기) + Firebase signOut (비동기, 타임아웃 3초)
       clearAuthData('user')
       clearFirebaseTokenCache()
       // Firebase signOut은 비동기로 실행 (hang 방지 - 3초 타임아웃)
@@ -39,43 +41,40 @@ export default function AdminLoginPage() {
         ])
       } catch (_) {} // non-critical: best-effort signOut before admin login
 
-      // 🔐 JWT-based Login (NO Firebase!)
+      // JWT-based Login (NO Firebase!)
       const response = await api.post('/api/admin/login', {
         email,
         password
       })
 
       if (response.data.success) {
-        // ✅ Save email if "Remember Me" is checked
+        // Save email if "Remember Me" is checked
         if (rememberMe) {
           localStorage.setItem('admin_remember_email', email)
         } else {
           localStorage.removeItem('admin_remember_email')
         }
-        
-        // ✅ 선택적 삭제: Admin 관련 키만 삭제 (User 세션 보호)
+
+        // 선택적 삭제: Admin 관련 키만 삭제 (User 세션 보호)
         clearAuthData('admin')
-        
+
         const { admin, accessToken, refreshToken } = response.data.data
 
-        // ✅ Store JWT tokens (PRIMARY: admin_token)
+        // Store JWT tokens (PRIMARY: admin_token)
         localStorage.setItem('admin_token', accessToken)
         localStorage.setItem('access_token', accessToken) // Fallback compatibility
         localStorage.setItem('admin_refresh_token', refreshToken)
-        
+
         // Store user info
         localStorage.setItem('user_type', 'admin')
         localStorage.setItem('admin_id', admin.id.toString())
-        // ❌ user_id, user_name 삭제: User 세션과 충돌 방지
-        // localStorage.setItem('user_id', admin.id.toString())
-        // localStorage.setItem('user_name', admin.name || admin.email)
         localStorage.setItem('admin_name', admin.name || '')
         localStorage.setItem('admin_email', admin.email || '')
-        
+
         navigate('/admin', { replace: true })
       }
     } catch (err: any) {
-      if (import.meta.env.DEV) console.error('[AdminLogin] ❌ Error:', err)
+      if (import.meta.env.DEV) console.error('[AdminLogin] Error:', err)
       setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
     } finally {
       setLoading(false)
@@ -83,93 +82,145 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">👨‍💼</h1>
-          <h2 className="text-2xl font-bold text-gray-900">관리자 로그인</h2>
-          <p className="text-gray-600 mt-2">리스터코퍼레이션 관리자 대시보드</p>
+    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex">
+      {/* Left branding panel (desktop) */}
+      <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
+        <div className="px-10 pt-10">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-extrabold text-white tracking-tight">UR·DEAL</span>
+            <span className="text-xs font-bold tracking-widest text-[#FCD34D] uppercase">Admin Console</span>
+          </div>
         </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <form onSubmit={handleLogin} className="space-y-6">
+        <div className="flex-1 flex flex-col justify-center px-10">
+          <h1 className="text-3xl font-bold text-white leading-tight mb-3">
+            플랫폼 운영<br />관리 콘솔
+          </h1>
+          <p className="text-gray-400 text-base mb-10">
+            유어딜 플랫폼의 전체 운영을 관리하는 관리자 전용 대시보드입니다.
+          </p>
+
+          <div className="space-y-5">
+            {[
+              { icon: Shield, title: '보안 관리', desc: '플랫폼 보안 및 사용자 권한 관리' },
+              { icon: BarChart2, title: '운영 통계', desc: '매출, 사용자, 트래픽 실시간 분석' },
+              { icon: Settings, title: '시스템 설정', desc: '플랫폼 설정 및 정책 관리' },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#FCD34D]/10 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-5 h-5 text-[#FCD34D]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">{title}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-10 pb-8">
+          <p className="text-xs text-gray-600">&copy; 2026 유어딜. 관리자 전용</p>
+        </div>
+      </div>
+
+      {/* Right login panel */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-3 mb-8">
+            <span className="text-2xl font-extrabold text-gray-900 tracking-tight">UR·DEAL</span>
+            <span className="text-xs font-bold tracking-widest text-[#F59E0B] uppercase">Admin</span>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">관리자 로그인</h2>
+            <p className="text-gray-500 text-sm mb-8">관리자 계정으로 로그인하세요</p>
+
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
                 {error}
               </div>
             )}
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                이메일
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
-                placeholder="관리자 이메일을 입력하세요"
-              />
-            </div>
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                    placeholder="관리자 이메일을 입력하세요"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                비밀번호
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
-                placeholder="••••••••"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    id="password"
+                    type={showPw ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="비밀번호 입력"
+                    className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
 
-            {/* Remember Me */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="adminRememberMe"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer rounded"
-              />
-              <label 
-                htmlFor="adminRememberMe" 
-                className="ml-2 text-sm text-gray-700 cursor-pointer select-none"
+              {/* Remember Me */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="adminRememberMe"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 border-gray-300 text-[#F59E0B] focus:ring-[#F59E0B] cursor-pointer rounded"
+                />
+                <label
+                  htmlFor="adminRememberMe"
+                  className="text-sm text-gray-600 cursor-pointer select-none"
+                >
+                  이메일 기억하기
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-gradient-to-r from-[#FCD34D] to-[#F59E0B] hover:opacity-90 disabled:opacity-50 text-[#0A0A0B] font-semibold rounded-xl text-sm transition-all"
               >
-                이메일 기억하기
-              </label>
-            </div>
+                {loading ? '로그인 중...' : '로그인'}
+              </button>
+            </form>
+          </div>
 
+          {/* Back to Home */}
+          <div className="text-center mt-6">
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => navigate('/')}
+              className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
             >
-              {loading ? '로그인 중...' : '로그인'}
+              &larr; 홈으로 돌아가기
             </button>
-          </form>
-
-
-        </div>
-
-        {/* Back to Home */}
-        <div className="text-center mt-6">
-          <button
-            onClick={() => navigate('/')}
-            className="text-gray-600 hover:text-gray-900 text-sm"
-          >
-            ← 홈으로 돌아가기
-          </button>
+          </div>
         </div>
       </div>
     </div>
