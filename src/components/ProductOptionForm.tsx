@@ -96,7 +96,7 @@ export default function ProductOptionForm({
                       value={option.option_type}
                       onChange={(e) => handleUpdateOption(index, 'option_type', e.target.value)}
                       disabled={disabled}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                       placeholder="예: 색상"
                     />
                   </div>
@@ -109,7 +109,7 @@ export default function ProductOptionForm({
                       value={option.option_value}
                       onChange={(e) => handleUpdateOption(index, 'option_value', e.target.value)}
                       disabled={disabled}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                       placeholder="예: 블랙"
                     />
                   </div>
@@ -122,7 +122,7 @@ export default function ProductOptionForm({
                       value={option.price_adjustment}
                       onChange={(e) => handleUpdateOption(index, 'price_adjustment', Number(e.target.value))}
                       disabled={disabled}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                       placeholder="0"
                     />
                   </div>
@@ -135,7 +135,7 @@ export default function ProductOptionForm({
                       value={option.stock}
                       onChange={(e) => handleUpdateOption(index, 'stock', Number(e.target.value))}
                       disabled={disabled}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                       placeholder="0"
                       min="0"
                     />
@@ -171,7 +171,7 @@ export default function ProductOptionForm({
                 value={newOption.option_type}
                 onChange={(e) => setNewOption({ ...newOption, option_type: e.target.value })}
                 disabled={disabled}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                 placeholder="예: 색상, 사이즈"
               />
               <p className="text-[10px] text-gray-500 mt-1">
@@ -187,7 +187,7 @@ export default function ProductOptionForm({
                 value={newOption.option_value}
                 onChange={(e) => setNewOption({ ...newOption, option_value: e.target.value })}
                 disabled={disabled}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                 placeholder="예: 블랙, M"
               />
             </div>
@@ -203,7 +203,7 @@ export default function ProductOptionForm({
                 value={newOption.price_adjustment}
                 onChange={(e) => setNewOption({ ...newOption, price_adjustment: Number(e.target.value) })}
                 disabled={disabled}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                 placeholder="0"
               />
               <p className="text-[10px] text-gray-500 mt-1">
@@ -219,7 +219,7 @@ export default function ProductOptionForm({
                 value={newOption.stock}
                 onChange={(e) => setNewOption({ ...newOption, stock: Number(e.target.value) })}
                 disabled={disabled}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                 placeholder="0"
                 min="0"
               />

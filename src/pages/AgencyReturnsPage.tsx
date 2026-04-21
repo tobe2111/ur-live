@@ -6,7 +6,7 @@ import { RotateCcw, Loader2 } from 'lucide-react'
 export default function AgencyReturnsPage() {
   const [returns, setReturns] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   useEffect(() => {
     api.get('/api/agency/returns', { headers })

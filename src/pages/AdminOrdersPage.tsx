@@ -292,30 +292,30 @@ export default function AdminOrdersPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><Filter className="w-3.5 h-3.5 inline mr-1" />주문 상태</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="ALL">전체</option>
               {Object.entries(STATUS_STYLES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><User className="w-3.5 h-3.5 inline mr-1" />판매자</label>
-            <select value={sellerFilter} onChange={e => setSellerFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={sellerFilter} onChange={e => setSellerFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="ALL">전체 판매자</option>
               {sellers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />시작일</label>
-            <input type="date" value={dateFilter.start} onChange={e => setDateFilter({ ...dateFilter, start: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="date" value={dateFilter.start} onChange={e => setDateFilter({ ...dateFilter, start: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />종료일</label>
-            <input type="date" value={dateFilter.end} onChange={e => setDateFilter({ ...dateFilter, end: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="date" value={dateFilter.end} onChange={e => setDateFilter({ ...dateFilter, end: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
         <div className="mt-3">
           <label className="block text-xs font-medium text-gray-500 mb-1.5"><Search className="w-3.5 h-3.5 inline mr-1" />검색</label>
-          <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="주문번호, 고객명, 전화번호, 이메일" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="주문번호, 고객명, 전화번호, 이메일" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         {(statusFilter !== 'ALL' || sellerFilter !== 'ALL' || searchQuery || dateFilter.start || dateFilter.end) && (
           <button onClick={() => { setStatusFilter('ALL'); setSellerFilter('ALL'); setSearchQuery(''); setDateFilter({ start: '', end: '' }) }} className="mt-3 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
@@ -497,11 +497,11 @@ export default function AdminOrdersPage() {
                     const number = (form.elements.namedItem('tracking') as HTMLInputElement).value
                     if (company && number) updateTracking(selectedOrder.order_number, number, company)
                   }} className="flex gap-2">
-                    <select name="courier" defaultValue={selectedOrder.courier || ''} className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-shrink-0">
+                    <select name="courier" defaultValue={selectedOrder.courier || ''} className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 flex-shrink-0">
                       <option value="">택배사 선택</option>
                       {COURIER_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </select>
-                    <input name="tracking" type="text" defaultValue={selectedOrder.tracking_number || ''} placeholder="운송장 번호" className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1" />
+                    <input name="tracking" type="text" defaultValue={selectedOrder.tracking_number || ''} placeholder="운송장 번호" className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 flex-1" />
                     <button type="submit" className="px-4 py-2 text-xs font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 flex-shrink-0">
                       <Truck className="w-3.5 h-3.5 inline mr-1" />등록
                     </button>

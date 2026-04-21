@@ -13,7 +13,7 @@ export default function PaymentFailPage() {
   const orderId = searchParams.get('orderId')
 
   useEffect(() => {
-    console.error('[PaymentFail] 결제 실패:', { code, message, orderId })
+    document.title = '결제 실패 - 유어딜'
     // 결제 실패 시 주문은 아직 DB에 생성되지 않은 상태이므로
     // 별도 롤백이 필요하지 않습니다. (주문 생성은 PaymentSuccessPage에서 처리)
   }, [code, message, orderId])

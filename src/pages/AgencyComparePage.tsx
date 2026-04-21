@@ -7,7 +7,7 @@ export default function AgencyComparePage() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('30')
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
+  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
 
   useEffect(() => {
     setLoading(true)
