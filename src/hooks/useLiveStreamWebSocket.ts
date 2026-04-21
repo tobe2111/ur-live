@@ -121,7 +121,7 @@ export function useLiveStreamWebSocket(
         setMessages(formatted)
       }
     } catch (e) {
-      console.error('[WS] Initial messages fetch failed:', e)
+      if (import.meta.env.DEV) console.error('[WS] Initial messages fetch failed:', e)
     }
   }, [streamId, replay])
 
@@ -213,7 +213,7 @@ export function useLiveStreamWebSocket(
             setLastDonation(msg.data as DonationEvent)
           }
         } catch (e) {
-          console.error('[WS] Message parse error:', e)
+          if (import.meta.env.DEV) console.error('[WS] Message parse error:', e)
         }
       }
 
@@ -237,7 +237,7 @@ export function useLiveStreamWebSocket(
         // WebSocket unavailable (no Durable Objects) — silently fall back to polling
       }
     } catch (e) {
-      console.error('[WS] Failed to create WebSocket:', e)
+      if (import.meta.env.DEV) console.error('[WS] Failed to create WebSocket:', e)
       setError('WebSocket 연결 실패')
     }
   }, [streamId, enabled, fetchInitialMessages])

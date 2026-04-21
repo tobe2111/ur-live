@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2 } from 'lucide-react'
 import axios from 'axios'
@@ -345,6 +345,15 @@ export default function ReelCard({
     lastDonation,
   } = useLiveStreamWebSocket(stream.id, true, stream.status === 'ended')
 
+  // 채팅 메시지 병합 메모이제이션 (flicker 방지)
+  const mergedChatMessages = useMemo(() =>
+    [
+      ...chatMessages.map(m => ({ ...m, source: m.source || 'kakao' as const })),
+      ...ytChatMessages,
+    ].sort((a, b) => a.timestamp - b.timestamp).slice(-8),
+    [chatMessages, ytChatMessages]
+  )
+
   // Handle incoming donation events from WebSocket
   useEffect(() => {
     if (!lastDonation) return
@@ -516,35 +525,44 @@ export default function ReelCard({
     }
   }, [isActive, stream.id])
 
-  // View tracking: record view when user watches this stream
+  // View tracking: 2초 디바운스하여 빠른 스크롤 시 중복 join 방지
   useEffect(() => {
     if (!isActive || !stream.id) return
-    const sessionId = `view-${stream.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-    let watchSeconds = 0
-    const heartbeatInterval = setInterval(() => {
-      watchSeconds += 30
+    const joinTimer = setTimeout(() => {
+      const sessionId = `view-${stream.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      let watchSeconds = 0
+      const heartbeatInterval = setInterval(() => {
+        watchSeconds += 30
+        fetch(`/api/live/${stream.id}/view`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, action: 'heartbeat', watchDuration: watchSeconds }),
+        }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
+      }, 30000)
       fetch(`/api/live/${stream.id}/view`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, action: 'heartbeat', watchDuration: watchSeconds }),
+        body: JSON.stringify({ sessionId, action: 'join', deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop' }),
       }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
-    }, 30000)
-
-    // Initial join
-    fetch(`/api/live/${stream.id}/view`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, action: 'join', deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop' }),
-    }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
-
+      // @ts-ignore - store cleanup on ref-like closure
+      ;(window as any).__viewTrackCleanup__ = () => {
+        clearInterval(heartbeatInterval)
+        fetch(`/api/live/${stream.id}/view`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, action: 'leave', watchDuration: watchSeconds }),
+        }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
+      }
+    }, 2000)
     return () => {
-      clearInterval(heartbeatInterval)
-      // Leave
-      fetch(`/api/live/${stream.id}/view`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, action: 'leave', watchDuration: watchSeconds }),
-      }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
+      clearTimeout(joinTimer)
+      // @ts-ignore
+      const cleanup = (window as any).__viewTrackCleanup__
+      if (typeof cleanup === 'function') {
+        cleanup()
+        // @ts-ignore
+        delete (window as any).__viewTrackCleanup__
+      }
     }
   }, [isActive, stream.id])
 
@@ -1071,10 +1089,7 @@ export default function ReelCard({
             {/* Live chat feed - left side, wide */}
             <div className="min-w-0 flex-1">
               <LiveChat
-                messages={[
-                  ...chatMessages.map(m => ({ ...m, source: m.source || 'kakao' as const })),
-                  ...ytChatMessages,
-                ].sort((a, b) => a.timestamp - b.timestamp).slice(-8)}
+                messages={mergedChatMessages}
                 onChatClick={() => setChatModalOpen(true)}
               />
             </div>
@@ -1155,7 +1170,8 @@ export default function ReelCard({
             </div>
           )}
 
-          {/* v4 Cinema: 하단 상품 바 (글래스모피즘) */}
+          {/* v4 Cinema: 하단 상품 바 (글래스모피즘) — 상품 있을 때만 표시 */}
+          {currentProduct && (
           <div className="flex items-stretch w-full rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.12)' }}>
             <div className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2.5"
               key={currentProduct?.id || 'default'}
@@ -1180,7 +1196,9 @@ export default function ReelCard({
               </div>
             </div>
           </div>
-          {/* v4 Cinema: 구매 버튼 2열 */}
+          )}
+          {/* v4 Cinema: 구매 버튼 2열 — 상품 있을 때만 표시 */}
+          {currentProduct && (
           <div className="grid grid-cols-2 w-full rounded-2xl overflow-hidden mt-1.5" style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.12)' }}>
             <button
               onClick={handleAddToCart}
@@ -1213,6 +1231,7 @@ export default function ReelCard({
               </button>
             )}
           </div>
+          )}
         </div>
       </div>
 

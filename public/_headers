@@ -14,8 +14,8 @@
   # Prevent MIME type sniffing
   X-Content-Type-Options: nosniff
 
-  # Clickjacking Protection
-  X-Frame-Options: DENY
+  # Clickjacking Protection (SAMEORIGIN — live 페이지 임베드 허용)
+  X-Frame-Options: SAMEORIGIN
 
   # Referrer Policy
   Referrer-Policy: strict-origin-when-cross-origin
