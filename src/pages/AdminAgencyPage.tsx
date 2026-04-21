@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -27,6 +28,7 @@ type ModalMode = 'create' | 'edit' | null
 const initForm = { name: '', contact_name: '', email: '', password: '', phone: '', status: 'active' }
 
 export default function AdminAgencyPage() {
+  const navigate = useNavigate()
   const [agencies, setAgencies] = useState<Agency[]>([])
   const [unassigned, setUnassigned] = useState<Seller[]>([])
   const [agencySellers, setAgencySellers] = useState<Record<number, Seller[]>>({})
@@ -40,6 +42,12 @@ export default function AdminAgencyPage() {
 
   const token = localStorage.getItem('admin_token')
   const headers = { Authorization: `Bearer ${token}` }
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
 
   async function fetchAgencies() {
     const r = await api.get('/api/admin/agencies', { headers })

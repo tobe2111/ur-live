@@ -62,7 +62,10 @@ export interface Stream {
   current_product_id?: number | null
   seller_id?: number
   current_product?: Product | null
+  scheduled_at?: string
+  seller_name?: string
   created_at?: string
+  product_display_mode?: 'current_only' | 'all'
 }
 
 export interface Product {

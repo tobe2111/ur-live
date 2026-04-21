@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Play, ExternalLink, Search, Edit2, X, Check, Youtube } from 'lucide-react'
@@ -28,6 +29,7 @@ export default function AdminReplayPage() {
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
 
+  useEffect(() => { if (!localStorage.getItem("admin_token")) { navigate("/admin/login", { replace: true }); return } }, [navigate])
   useEffect(() => {
     Promise.all([
       api.get('/api/admin/streams?status=ended', { headers }),

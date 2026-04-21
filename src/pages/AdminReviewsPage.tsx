@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Star, Loader2, Trash2, Sparkles, FileText } from 'lucide-react'
@@ -9,6 +10,7 @@ interface Product {
 }
 
 export default function AdminReviewsPage() {
+  const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null)
   const [count, setCount] = useState(50)
@@ -20,6 +22,12 @@ export default function AdminReviewsPage() {
   const [progress, setProgress] = useState('')
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
 
   useEffect(() => {
     api.get('/api/admin/products', { headers })

@@ -244,7 +244,7 @@ export default function BrowsePage() {
         </div>
 
         {/* 배너 */}
-        <div className="bg-gradient-to-r from-indigo-900 via-purple-800 to-pink-700 rounded-2xl px-5 py-3.5 mb-5">
+        <div className="bg-gradient-to-r from-red-500 via-pink-500 to-rose-500 rounded-2xl px-5 py-3.5 mb-5">
           <p className="text-center text-white text-sm font-bold tracking-wide">매일 달라지는 초특가 상품</p>
         </div>
 
@@ -351,7 +351,7 @@ export default function BrowsePage() {
                     className="text-left active:scale-[0.98] transition-transform"
                   >
                     {/* 썸네일 */}
-                    <div className="relative aspect-square overflow-hidden bg-gray-50 rounded-lg">
+                    <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-xl">
                       {product.image_url ? (
                         <img src={product.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                       ) : (
@@ -377,7 +377,10 @@ export default function BrowsePage() {
 
                     {/* 상품 정보 */}
                     <div className="mt-2">
-                      <p className="text-[12px] text-gray-800 leading-tight line-clamp-2">
+                      {product.seller_name && (
+                        <p className="text-[10px] text-gray-400 mb-0.5">@{product.seller_name}</p>
+                      )}
+                      <p className="text-[12px] text-gray-900 leading-tight line-clamp-2">
                         {product.name}
                       </p>
                       {product.original_price && product.original_price > displayPrice && (

@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { Trophy, Star, Users, ShoppingBag, TrendingUp, Loader2 } from 'lucide-react'
 
 export default function AgencyRankingPage() {
+  const navigate = useNavigate()
   const [sellers, setSellers] = useState<any[]>([])
   const [metric, setMetric] = useState<'revenue' | 'orders'>('revenue')
   const [loading, setLoading] = useState(true)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
+  const token = localStorage.getItem('agency_token')
+  const headers = { Authorization: `Bearer ${token || ''}` }
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/agency/login', { replace: true })
+    }
+  }, [token, navigate])
 
   useEffect(() => {
     setLoading(true)

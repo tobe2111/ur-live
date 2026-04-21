@@ -11,6 +11,7 @@ export default function AdminSettlementsBulkPage() {
   const [processing, setProcessing] = useState(false)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
+  useEffect(() => { if (!localStorage.getItem("admin_token")) { navigate("/admin/login", { replace: true }); return } }, [navigate])
   useEffect(() => {
     api.get('/api/admin/tools/settlements/pending', h)
       .then(r => { if (r.data.success) setPending(r.data.data || []) })

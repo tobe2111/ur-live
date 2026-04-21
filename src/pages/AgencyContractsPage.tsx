@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { FileText, Plus, Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AgencyContractsPage() {
+  const navigate = useNavigate()
   const [contracts, setContracts] = useState<any[]>([])
   const [sellers, setSellers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ seller_id: '', start_date: '', end_date: '', terms: '' })
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
+  const token = localStorage.getItem('agency_token')
+  const headers = { Authorization: `Bearer ${token || ''}` }
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/agency/login', { replace: true })
+    }
+  }, [token, navigate])
 
   const load = () => {
     setLoading(true)

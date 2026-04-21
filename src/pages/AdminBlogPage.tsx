@@ -56,6 +56,12 @@ export default function AdminBlogPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
+
   // 폼 상태
   const [form, setForm] = useState({
     id: 0,

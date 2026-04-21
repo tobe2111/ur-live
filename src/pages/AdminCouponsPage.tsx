@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Ticket, Copy, Send, X } from 'lucide-react'
@@ -14,6 +15,7 @@ interface Coupon {
 type Segment = 'all' | 'vip' | 'new' | 'dormant' | 'active'
 
 export default function AdminCouponsPage() {
+  const navigate = useNavigate()
   const [coupons, setCoupons] = useState<Coupon[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -30,6 +32,12 @@ export default function AdminCouponsPage() {
   const [sendingSegment, setSendingSegment] = useState(false)
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
 
   useEffect(() => { loadCoupons() }, [])
 
