@@ -83,6 +83,32 @@
 ## 한국 인증 (KR Auth)
 
 - 한국(live.ur-team.com): 카카오 세션 쿠키 **전용**. Firebase 호출 0.
+- 카카오 콜백: `login=success&userId=...` 파라미터로 인증. firebase_token 사용 안 함.
 - ProtectedRoute: `localStorage(user_type + user_id)` 동기 체크만
 - 글로벌: Firebase Auth (Google/Apple 로그인) 유지
 - `isKorea()` 분기로 Firebase 코드 건너뜀
+
+## 배포 아키텍처 (필수 이해)
+
+⚠️ **두 개의 배포 대상이 있음**:
+- `live.ur-team.com` → **Cloudflare Workers** (`wrangler deploy`) — 백엔드 API + 프론트엔드
+- `ur-live.pages.dev` → **Cloudflare Pages** (`wrangler pages deploy`) — 프론트엔드만
+
+GitHub Actions (`main.yml`)가 **둘 다** 배포함. Workers를 빠뜨리면 `live.ur-team.com`에 변경사항이 미반영.
+
+### 파일-라우트 매핑 (실수 방지)
+- 홈(`/`) → **`MainHomePage.tsx`** (NOT ~~HomePage.tsx~~ — 삭제됨)
+- 마이페이지(`/user/profile`) → **`UserProfilePage.tsx`**
+- 라우트 확인: `App.tsx`의 `<Route>` 컴포넌트 확인 필수
+
+### 변경 후 체크리스트
+1. `npx tsc --noEmit --skipLibCheck` — TS 에러 0개
+2. `npx vite build` — 빌드 성공
+3. `git push origin main` — GitHub Actions가 Workers + Pages 둘 다 배포
+4. Actions 탭에서 **녹색 성공** 확인
+
+### 절대 하지 말 것
+- ❌ Service Worker 등록 (`navigator.serviceWorker.register`) — sw.js 배포 누락 위험
+- ❌ `_redirects`에 `/* /index.html 200` — Workers에서 무한 루프
+- ❌ `_headers`에 2000자 초과 줄 — Workers 배포 실패
+- ❌ `wrangler.toml`에서 `new_classes` 사용 — free plan은 `new_sqlite_classes` 필요
