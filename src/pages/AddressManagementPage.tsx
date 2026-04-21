@@ -169,25 +169,25 @@ export default function AddressManagementPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020202] flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#020202] pb-20">
+    <div className="min-h-screen bg-white pb-20">
       <SEO title="배송지 관리 - 유어딜" description="배송지를 추가하고 관리하세요" url="/mypage/addresses" />
       {/* Daum Postcode Script */}
       <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
+      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} className="text-white">
+          <button onClick={() => navigate(-1)} className="text-gray-900">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-white font-bold text-[15px]">배송지 관리</h1>
+          <h1 className="text-gray-900 font-bold text-[15px]">배송지 관리</h1>
           <div className="w-6" />
         </div>
       </div>
@@ -196,7 +196,7 @@ export default function AddressManagementPage() {
         {/* 새 배송지 추가 버튼 */}
         <button
           onClick={openAddForm}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#2A2A2A] bg-[#121212] py-4 text-[15px] font-semibold text-gray-400 transition-all hover:border-pink-500/50 hover:text-pink-400 mb-5 active:scale-[0.98] touch-manipulation"
+          className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-4 text-[15px] font-semibold text-gray-500 transition-all hover:border-pink-500/50 hover:text-pink-500 mb-5 active:scale-[0.98] touch-manipulation"
         >
           <Plus className="w-5 h-5" />
           <span>새 배송지 추가</span>
@@ -205,8 +205,8 @@ export default function AddressManagementPage() {
         {/* 배송지 목록 */}
         {addresses.length === 0 ? (
           <div className="text-center py-16">
-            <MapPin className="w-14 h-14 text-gray-600 mx-auto mb-4" />
-            <p className="text-[15px] text-gray-400">등록된 배송지가 없습니다.</p>
+            <MapPin className="w-14 h-14 text-gray-300 mx-auto mb-4" />
+            <p className="text-[15px] text-gray-900">등록된 배송지가 없습니다.</p>
             <p className="text-[13px] text-gray-500 mt-1">배송지를 추가해주세요.</p>
           </div>
         ) : (
@@ -216,33 +216,33 @@ export default function AddressManagementPage() {
                 key={address.id}
                 className={`border rounded-2xl p-4 transition-all ${
                   address.is_default === 1
-                    ? 'border-pink-500/50 bg-[#121212]'
-                    : 'border-[#2A2A2A] bg-[#121212]'
+                    ? 'border-pink-500/40 bg-pink-50/30'
+                    : 'border-gray-200 bg-white'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
-                      <p className="text-[15px] font-semibold text-white">{address.recipient_name}</p>
+                      <p className="text-[15px] font-semibold text-gray-900">{address.recipient_name}</p>
                       {address.is_default === 1 && (
-                        <span className="rounded-full bg-pink-500/20 px-2 py-0.5 text-[11px] font-semibold text-pink-400">
+                        <span className="rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-semibold text-pink-500">
                           기본
                         </span>
                       )}
                     </div>
-                    <p className="text-[14px] text-gray-400 mb-1">{address.phone}</p>
-                    <p className="text-[14px] text-gray-300 leading-relaxed">
+                    <p className="text-[14px] text-gray-500 mb-1">{address.phone}</p>
+                    <p className="text-[14px] text-gray-700 leading-relaxed">
                       [{address.postal_code}] {address.address}
                     </p>
                     {address.address_detail && (
-                      <p className="text-[14px] text-gray-300 leading-relaxed mt-0.5">
+                      <p className="text-[14px] text-gray-700 leading-relaxed mt-0.5">
                         {address.address_detail}
                       </p>
                     )}
                     {address.is_default === 0 && (
                       <button
                         onClick={() => handleSetDefault(address.id)}
-                        className="mt-2 text-[13px] font-semibold text-pink-400 hover:text-pink-300 transition-colors"
+                        className="mt-2 text-[13px] font-semibold text-pink-500 hover:text-pink-600 transition-colors"
                       >
                         기본으로 설정
                       </button>
@@ -252,13 +252,13 @@ export default function AddressManagementPage() {
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={() => openEditForm(address)}
-                      className="p-2 text-gray-500 hover:text-white transition-colors rounded-xl hover:bg-[#1A1A1A]"
+                      className="p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-xl hover:bg-gray-50"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteAddress(address.id)}
-                      className="p-2 text-gray-500 hover:text-red-400 transition-colors rounded-xl hover:bg-[#1A1A1A]"
+                      className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-gray-50"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

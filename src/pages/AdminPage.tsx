@@ -398,7 +398,7 @@ export default function AdminPage() {
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="예: 사업자등록증 확인 불가"
               rows={3}
-              className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
             />
             <div className="flex gap-2 mt-4">
               <button

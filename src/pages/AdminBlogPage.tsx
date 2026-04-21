@@ -276,7 +276,7 @@ export default function AdminBlogPage() {
               value={form.title}
               onChange={e => handleTitleChange(e.target.value)}
               placeholder="블로그 글 제목"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base text-gray-900 font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -353,7 +353,7 @@ export default function AdminBlogPage() {
             value={form.content}
             onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
             placeholder={`## 소제목\n\n본문 내용을 마크다운으로 작성하세요.\n\n- 목록 항목\n- 목록 항목\n\n**굵게**, *기울임*, \`코드\`\n\n> 인용구`}
-            className="w-full px-5 py-4 text-sm font-mono leading-relaxed resize-none focus:outline-none"
+            className="w-full px-5 py-4 text-sm text-gray-900 font-mono leading-relaxed resize-none focus:outline-none"
             style={{ minHeight: 480 }}
           />
         </div>

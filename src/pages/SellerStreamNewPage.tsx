@@ -241,7 +241,7 @@ export default function SellerStreamNewPage() {
                       type="text"
                       value={youtubeInfo.watchUrl}
                       readOnly
-                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg"
+                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg text-gray-900"
                     />
                     <button
                       onClick={() => copyToClipboard(youtubeInfo.watchUrl, t('seller.watchUrlLabel'))}
@@ -261,7 +261,7 @@ export default function SellerStreamNewPage() {
                       type="password"
                       value={youtubeInfo.streamKey}
                       readOnly
-                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm"
+                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm text-gray-900"
                     />
                     <button
                       onClick={() => copyToClipboard(youtubeInfo.streamKey, t('seller.streamKeyObs'))}
@@ -281,7 +281,7 @@ export default function SellerStreamNewPage() {
                       type="text"
                       value={youtubeInfo.streamUrl}
                       readOnly
-                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm"
+                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm text-gray-900"
                     />
                     <button
                       onClick={() => copyToClipboard(youtubeInfo.streamUrl, t('seller.streamUrlObs'))}

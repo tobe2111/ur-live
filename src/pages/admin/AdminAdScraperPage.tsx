@@ -308,7 +308,7 @@ export default function AdminAdScraperPage() {
                 onChange={e => setKeywords(e.target.value)}
                 rows={5}
                 placeholder={'키워드를 입력하세요\n줄바꿈 또는 쉼표로 구분\n\n예) 골프용품\n테니스\n스포츠의류'}
-                className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
               />
               <p className="mt-1 text-xs text-gray-400">키워드당 최대 20개 광고주 수집</p>
             </div>
@@ -320,7 +320,7 @@ export default function AdminAdScraperPage() {
                 value={sessionName}
                 onChange={e => setSessionName(e.target.value)}
                 placeholder="스포츠업체_2024"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
               />
             </div>
 
@@ -329,7 +329,7 @@ export default function AdminAdScraperPage() {
               <select
                 value={concurrency}
                 onChange={e => setConcurrency(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-400"
               >
                 <option value="2">2개 (안전)</option>
                 <option value="3">3개 (기본)</option>

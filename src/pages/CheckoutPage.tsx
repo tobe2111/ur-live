@@ -1126,7 +1126,7 @@ export default function CheckoutPage() {
                 inputMode="numeric"
                 value={newAddress.postal_code}
                 readOnly
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-[15px] text-gray-400"
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
                 placeholder="우편번호"
               />
               <button
@@ -1155,7 +1155,7 @@ export default function CheckoutPage() {
               type="text"
               value={newAddress.address}
               readOnly
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-[15px] text-gray-400"
+              className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
               placeholder="주소 검색 후 자동 입력됩니다"
             />
           </div>

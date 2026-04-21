@@ -199,7 +199,7 @@ export default function AgencyRegisterPage() {
                   <input
                     type={showPw ? 'text' : 'password'} required value={form.password_confirm} onChange={update('password_confirm')}
                     placeholder="비밀번호 재입력"
-                    className={`w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       form.password_confirm && form.password !== form.password_confirm
                         ? 'border-red-300 bg-red-50'
                         : 'border-gray-300'

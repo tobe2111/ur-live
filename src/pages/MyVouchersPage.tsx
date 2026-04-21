@@ -80,7 +80,7 @@ export default function MyVouchersPage() {
       {/* 헤더 */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center px-4 py-3">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10">
+          <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
           <h1 className="flex-1 text-center text-[18px] font-bold text-gray-900 pr-10">내 식사권</h1>
@@ -94,7 +94,7 @@ export default function MyVouchersPage() {
           </div>
         ) : vouchers.length === 0 ? (
           <div className="text-center py-20">
-            <Ticket className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-900 font-bold mb-1">아직 식사권이 없습니다</p>
             <p className="text-gray-500 text-sm mb-4">맛집 공동구매에 참여해보세요!</p>
             <button onClick={() => navigate('/browse?category=meal_voucher')} className="px-5 py-2.5 bg-pink-500 text-white rounded-full text-sm font-bold">

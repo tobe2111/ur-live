@@ -134,7 +134,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="메시지 입력..."
-          className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-blue-400"
+          className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-400"
           disabled={sending}
         />
         <button

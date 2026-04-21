@@ -20,7 +20,7 @@ export default function SortFilterBar({ sortBy, onSortChange }: SortFilterBarPro
         <select
           value={sortBy}
           onChange={(e) => onSortChange(e.target.value as typeof sortBy)}
-          className="appearance-none pr-6 pl-3 py-1.5 text-[12px] font-semibold text-gray-700 bg-transparent focus:outline-none cursor-pointer"
+          className="appearance-none pr-6 pl-3 py-1.5 text-[12px] font-semibold text-gray-900 bg-transparent focus:outline-none cursor-pointer"
         >
           <option value="relevance">관련도순</option>
           <option value="price_low">낮은가격</option>

@@ -521,7 +521,7 @@ export default function SellerOrdersPage() {
                       <select
                         value={bulkStatus}
                         onChange={e => setBulkStatus(e.target.value)}
-                        className="text-sm border border-blue-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="text-sm border border-blue-300 rounded-lg px-2 py-1.5 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">{t('common.status')}</option>
                         <option value="PREPARING">{t('seller.statusPreparing')}</option>

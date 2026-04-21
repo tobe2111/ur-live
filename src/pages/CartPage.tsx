@@ -95,7 +95,7 @@ export default function CartPage() {
           </div>
           <button
             onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/cart')}`)}
-            className="w-full max-w-xs rounded-lg bg-blue-600 py-3 text-sm font-bold text-gray-900 hover:bg-blue-700"
+            className="w-full max-w-xs rounded-lg bg-gray-900 py-3 text-sm font-bold text-white hover:bg-gray-800"
           >
             로그인하기
           </button>

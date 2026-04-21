@@ -130,7 +130,7 @@ export default function PointsChargePage() {
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="mx-auto max-w-lg px-5 py-4 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-white/10">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
           <h1 className="text-[18px] font-bold text-gray-900">딜 충전</h1>
@@ -168,7 +168,7 @@ export default function PointsChargePage() {
               ))}
             </div>
             <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-              <p className="text-xs text-amber-400 font-medium">충전된 딜은 환불이 불가합니다.</p>
+              <p className="text-xs text-amber-700 font-medium">충전된 딜은 환불이 불가합니다.</p>
               <p className="text-xs text-amber-600 mt-0.5">충전 전 금액을 확인해주세요. 딜은 라이브 방송 후원 및 상품 결제에만 사용 가능합니다.</p>
             </div>
           </div>
@@ -183,7 +183,7 @@ export default function PointsChargePage() {
             </div>
             <div id="charge-payment-method" className="min-h-[200px] bg-white rounded-xl border border-gray-200 p-2" />
             <div id="charge-agreement" className="min-h-[80px] bg-white rounded-xl border border-gray-200 p-2" />
-            <p className="text-xs text-center text-amber-400 font-medium">결제 완료 시 충전된 딜은 환불이 불가합니다.</p>
+            <p className="text-xs text-center text-amber-700 font-medium">결제 완료 시 충전된 딜은 환불이 불가합니다.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => { setShowWidget(false); widgetsRef.current = null; orderRef.current = null }}

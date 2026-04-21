@@ -624,7 +624,7 @@ export default function AdminProductsPage() {
                       onChange={e => setFormData({ ...formData, supply_price: e.target.value })}
                       min="0"
                       placeholder="55000"
-                      className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
+                      className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
                     />
                     <p className="text-xs text-purple-600 mt-1">셀러가 샘플 신청 후 승인되면 공급가로 상품을 등록해 판매할 수 있습니다.</p>
                   </div>
