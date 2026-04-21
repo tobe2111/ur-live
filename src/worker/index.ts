@@ -31,6 +31,7 @@ import { globalErrorHandler as errorHandler } from './middleware/error-handler';
 import { accountRoutes } from '../features/account/api/account.routes';
 import { adminManagementRoutes, adminBannersRoutes } from '../features/admin/api/index';
 import { scraperProxy } from '../features/admin/api/scraper-proxy.routes';
+import { naverScraper } from '../features/scraper/api/naver-scraper.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
@@ -548,6 +549,123 @@ adminApp.route('/cafe24', cafe24Routes);
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 app.route('/api/scraper', scraperProxy);  // /api/admin 밖 — adminApp 미들웨어 간섭 없음
+app.route('/api/naver-scraper', naverScraper);  // Worker 직접 크롤링 (브라우저 없음)
+
+// ── D1에 저장된 스크래핑 결과 조회 (스크래퍼 서버 없이도 작동) ──
+app.get('/api/scraper/d1/emails', async (c) => {
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ error: 'Auth required' }, 401);
+  try {
+    const payload = await import('hono/jwt').then(m => m.verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256'));
+    if ((payload as any).type !== 'admin') return c.json({ error: 'Admin only' }, 403);
+  } catch { return c.json({ error: 'Invalid token' }, 401); }
+
+  const keyword = c.req.query('keyword') || '';
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200);
+  const offset = (page - 1) * limit;
+
+  try {
+    const where = keyword ? `WHERE keyword LIKE ?` : '';
+    const params = keyword ? [`%${keyword}%`] : [];
+
+    const countRow = await c.env.DB.prepare(`SELECT COUNT(*) as total FROM scraped_advertisers ${where}`)
+      .bind(...params).first<{ total: number }>();
+
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, keyword, advertiser_name, site_url, email, phone, description, scraped_at, session_name
+      FROM scraped_advertisers ${where}
+      ORDER BY scraped_at DESC LIMIT ? OFFSET ?
+    `).bind(...params, limit, offset).all();
+
+    return c.json({
+      success: true,
+      data: results || [],
+      total: countRow?.total || 0,
+      page, limit,
+    });
+  } catch (e) {
+    return c.json({ success: true, data: [], total: 0, page, limit });
+  }
+});
+
+// ── 어드민이 키워드 입력 → GitHub Actions 트리거 ──
+app.post('/api/scraper/d1/trigger', async (c) => {
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ error: 'Auth required' }, 401);
+  try {
+    const payload = await import('hono/jwt').then(m => m.verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256'));
+    if ((payload as any).type !== 'admin') return c.json({ error: 'Admin only' }, 403);
+  } catch { return c.json({ error: 'Invalid token' }, 401); }
+
+  const githubToken = (c.env as any).GITHUB_TOKEN;
+  const githubRepo = (c.env as any).GITHUB_REPO || 'tobe2111/ur-live';
+  if (!githubToken) {
+    return c.json({ success: false, error: 'GitHub 토큰이 설정되지 않았습니다. GITHUB_TOKEN 환경변수 필요' }, 503);
+  }
+
+  const { keywords } = await c.req.json<{ keywords: string }>();
+  if (!keywords?.trim()) return c.json({ success: false, error: '키워드를 입력하세요' }, 400);
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${githubRepo}/actions/workflows/naver-scraper.yml/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'User-Agent': 'ur-live-admin',
+        },
+        body: JSON.stringify({
+          ref: 'main',
+          inputs: { keywords: keywords.trim() },
+        }),
+      }
+    );
+
+    if (res.status === 204) {
+      return c.json({ success: true, message: '크롤링이 시작되었습니다. 5-10분 후 결과를 확인하세요.' });
+    }
+
+    const err = await res.text();
+    return c.json({ success: false, error: `GitHub API 실패: ${err}` }, 500);
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message || '크롤링 시작 실패' }, 500);
+  }
+});
+
+app.get('/api/scraper/d1/stats', async (c) => {
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ error: 'Auth required' }, 401);
+  try {
+    const payload = await import('hono/jwt').then(m => m.verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256'));
+    if ((payload as any).type !== 'admin') return c.json({ error: 'Admin only' }, 403);
+  } catch { return c.json({ error: 'Invalid token' }, 401); }
+
+  try {
+    const total = await c.env.DB.prepare('SELECT COUNT(*) as c FROM scraped_advertisers').first<{ c: number }>();
+    const withEmail = await c.env.DB.prepare("SELECT COUNT(*) as c FROM scraped_advertisers WHERE email IS NOT NULL AND email != ''").first<{ c: number }>();
+    const uniqueEmails = await c.env.DB.prepare("SELECT COUNT(DISTINCT email) as c FROM scraped_advertisers WHERE email IS NOT NULL AND email != ''").first<{ c: number }>();
+    const keywords = await c.env.DB.prepare('SELECT COUNT(DISTINCT keyword) as c FROM scraped_advertisers').first<{ c: number }>();
+    const latest = await c.env.DB.prepare('SELECT scraped_at FROM scraped_advertisers ORDER BY scraped_at DESC LIMIT 1').first<{ scraped_at: string }>();
+
+    return c.json({
+      success: true,
+      data: {
+        total: total?.c || 0,
+        withEmail: withEmail?.c || 0,
+        uniqueEmails: uniqueEmails?.c || 0,
+        keywords: keywords?.c || 0,
+        latestScrape: latest?.scraped_at || null,
+      },
+    });
+  } catch {
+    return c.json({ success: true, data: { total: 0, withEmail: 0, uniqueEmails: 0, keywords: 0, latestScrape: null } });
+  }
+});
+
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)
 app.route('/admin/cafe24/callback', cafe24Routes);

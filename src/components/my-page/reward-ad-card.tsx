@@ -169,7 +169,7 @@ export function RewardAdCard() {
         <div className="mt-3 bg-white/10 rounded-full h-1.5 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500"
-            style={{ width: `${(status.todayCount / status.dailyLimit) * 100}%` }}
+            style={{ width: `${status.dailyLimit > 0 ? (status.todayCount / status.dailyLimit) * 100 : 0}%` }}
           />
         </div>
         <p className="text-[10px] text-gray-400 mt-1 text-right">
@@ -180,7 +180,7 @@ export function RewardAdCard() {
         {rewarded && (
           <div className="mt-2 text-center animate-fade-in">
             <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">
-              +{rewarded}딜 적립 완료! (잔액: {newBalance?.toLocaleString()}딜)
+              +{rewarded}딜 적립 완료! (잔액: {(newBalance ?? 0).toLocaleString()}딜)
             </span>
           </div>
         )}

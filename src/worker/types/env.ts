@@ -70,6 +70,8 @@ export interface Env {
 
   // ---- Naver Ad Scraper ----
   SCRAPER_URL?: string; // 스크래퍼 서버 URL (dev: http://localhost:3456)
+  GITHUB_TOKEN?: string; // GitHub workflow dispatch용 (prod에서 스크래퍼 실행)
+  GITHUB_REPO?: string;  // owner/repo 형식 (예: tobe2111/ur-live)
 
   // ---- Naver Search API (식당 이미지 등) ----
   NAVER_CLIENT_ID?: string;

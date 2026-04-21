@@ -1,0 +1,140 @@
+# 네이버 광고주 이메일 수집 — 매일 자동 실행
+# GitHub Actions + Playwright + Cloudflare D1
+#
+# 흐름:
+# 1. GitHub Actions에서 Playwright + Chromium 실행
+# 2. 네이버 검색광고 크롤링 → 로컬 SQLite에 저장
+# 3. 결과를 Cloudflare D1에 업로드
+#
+# 필요한 GitHub Secrets:
+# - CLOUDFLARE_API_TOKEN: Cloudflare API 토큰 (D1 write 권한)
+# - CLOUDFLARE_ACCOUNT_ID: Cloudflare 계정 ID
+# - CF_D1_DATABASE_ID: D1 데이터베이스 ID
+# - SCRAPER_KEYWORDS: 크롤링 키워드 (예: "골프,테니스,헬스,필라테스")
+
+name: Naver Ad Scraper (Daily)
+
+on:
+  # 어드민 대시보드에서 키워드 입력 → API 호출로 트리거됨
+  workflow_dispatch:
+    inputs:
+      keywords:
+        description: '크롤링 키워드 (쉼표 구분)'
+        required: true
+        default: '골프,테니스'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install scraper dependencies
+        working-directory: naver-ad-scraper
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: naver-ad-scraper
+        run: npx playwright install chromium --with-deps
+
+      - name: Create data directory
+        run: mkdir -p naver-ad-scraper/data
+
+      - name: Run scraper
+        working-directory: naver-ad-scraper
+        env:
+          KEYWORDS: ${{ github.event.inputs.keywords }}
+        run: |
+          node src/cli/index.js scrape \
+            --keywords "$KEYWORDS" \
+            --session "auto_$(date +%Y-%m-%d)" \
+            --concurrency 2
+
+      - name: Export results to CSV
+        working-directory: naver-ad-scraper
+        run: |
+          # 가장 최근 세션의 결과를 CSV로 export
+          LATEST_SESSION=$(node -e "
+            import { AdDatabase } from './src/storage/database.js';
+            const db = new AdDatabase('./data/ads.db');
+            const sessions = db.listSessions();
+            console.log(sessions[0]?.id || '');
+          ")
+          if [ -n "$LATEST_SESSION" ]; then
+            node src/cli/index.js export --session-id "$LATEST_SESSION" --output data/latest-results.csv
+            echo "SESSION_ID=$LATEST_SESSION" >> $GITHUB_ENV
+          fi
+
+      - name: Upload results to Cloudflare D1
+        if: env.SESSION_ID != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
+        run: |
+          # D1에 scraped_advertisers 테이블 생성 (존재하지 않으면)
+          npx wrangler d1 execute ur-live-db --command "
+            CREATE TABLE IF NOT EXISTS scraped_advertisers (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              keyword TEXT,
+              advertiser_name TEXT,
+              site_url TEXT,
+              email TEXT,
+              phone TEXT,
+              description TEXT,
+              scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              session_name TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_scraped_email ON scraped_advertisers(email);
+            CREATE INDEX IF NOT EXISTS idx_scraped_keyword ON scraped_advertisers(keyword);
+          " --remote
+
+          # 로컬 SQLite에서 결과 읽어서 D1에 INSERT
+          node -e "
+            import Database from 'better-sqlite3';
+            import { execSync } from 'child_process';
+
+            const db = new Database('./naver-ad-scraper/data/ads.db');
+            const rows = db.prepare(\`
+              SELECT a.keyword, a.advertiser_name, a.site_url, a.email, a.phone, a.description, a.created_at, s.name as session_name
+              FROM advertisers a
+              LEFT JOIN sessions s ON a.session_id = s.id
+              WHERE a.session_id = ${process.env.SESSION_ID}
+                AND a.email IS NOT NULL AND a.email != ''
+            \`).all();
+
+            console.log('Uploading', rows.length, 'records to D1...');
+
+            // 50개씩 배치 INSERT
+            for (let i = 0; i < rows.length; i += 50) {
+              const batch = rows.slice(i, i + 50);
+              const values = batch.map(r =>
+                \`('\${(r.keyword||'').replace(/'/g,\"''\")}', '\${(r.advertiser_name||'').replace(/'/g,\"''\")}', '\${(r.site_url||'').replace(/'/g,\"''\")}', '\${(r.email||'').replace(/'/g,\"''\")}', '\${(r.phone||'').replace(/'/g,\"''\")}', '\${(r.description||'').replace(/'/g,\"''\")}', '\${r.created_at || new Date().toISOString()}', '\${(r.session_name||'').replace(/'/g,\"''\")}' )\`
+              ).join(',');
+
+              const sql = \`INSERT INTO scraped_advertisers (keyword, advertiser_name, site_url, email, phone, description, scraped_at, session_name) VALUES \${values}\`;
+
+              try {
+                execSync(\`npx wrangler d1 execute ur-live-db --command \"\${sql.replace(/\"/g, '\\\\\"')}\" --remote\`, { stdio: 'inherit' });
+              } catch (e) {
+                console.error('Batch insert failed:', e.message);
+              }
+            }
+            console.log('Upload complete!');
+          "
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-results-${{ github.run_number }}
+          path: |
+            naver-ad-scraper/data/latest-results.csv
+            naver-ad-scraper/data/ads.db
+          retention-days: 30
