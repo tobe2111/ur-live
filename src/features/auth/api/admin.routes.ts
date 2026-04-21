@@ -61,10 +61,10 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     
     const admin = admins[0];
     const passwordHash = admin.password_hash as string;
-    const isValid = await verifyPassword(password, passwordHash);
-    
-    if (!isValid) {
-      console.warn('[Admin Login] Invalid password for:', email);
+    const { valid } = await verifyPassword(password, passwordHash);
+
+    if (!valid) {
+      if (import.meta.env.DEV) console.warn('[Admin Login] Invalid password');
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401);
     }
     

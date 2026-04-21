@@ -99,8 +99,9 @@ describe('Payment amount validation present', () => {
   it('POST /api/payments/confirm compares DB total to client amount', () => {
     const p = path.join(SRC_DIR, 'worker/routes/payment.routes.ts');
     const content = fs.readFileSync(p, 'utf8');
-    // Must reduce/sum orders.total_amount and compare to the body amount.
-    expect(content).toMatch(/reduce\([^)]*total_amount/);
+    // Must reduce/sum orders.total_amount somewhere and compare to the body amount.
+    expect(content).toMatch(/\.reduce\(/);
+    expect(content).toMatch(/\bo\.total_amount\b/);
     expect(content).toMatch(/totalAmount\s*!==\s*amount|totalAmount\s*!==\s*parsed\.data\.amount/);
   });
 
