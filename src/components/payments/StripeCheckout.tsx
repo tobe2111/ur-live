@@ -78,7 +78,7 @@ function CheckoutForm({
       })
 
       if (error) {
-        console.error('[Stripe] ❌ 결제 실패:', error)
+        if (import.meta.env.DEV) console.error('[Stripe] ❌ 결제 실패:', error)
         onPaymentError(error.message || t('payment.requestError') || '결제 요청 실패')
         setIsProcessing(false)
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
@@ -86,7 +86,7 @@ function CheckoutForm({
         onPaymentSuccess(orderId, paymentIntent.id, totalAmount + shippingFee)
       }
     } catch (err: any) {
-      console.error('[Stripe] ❌ 결제 요청 실패:', err)
+      if (import.meta.env.DEV) console.error('[Stripe] ❌ 결제 요청 실패:', err)
       setIsProcessing(false)
       onPaymentError(err?.message || t('payment.requestError') || '결제 요청 실패')
     }
@@ -152,7 +152,7 @@ export function StripeCheckout(props: StripeCheckoutProps) {
           throw new Error(data.error || 'Failed to create payment intent')
         }
       } catch (err: any) {
-        console.error('[Stripe] Payment Intent 생성 실패:', err)
+        if (import.meta.env.DEV) console.error('[Stripe] Payment Intent 생성 실패:', err)
         props.onPaymentError(err?.message || t('payment.initError'))
       }
     }

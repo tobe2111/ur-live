@@ -83,7 +83,7 @@ export default function AddressManagementPage() {
         setAddresses(response.data.data || [])
       }
     } catch (error) {
-      console.error('Failed to load addresses:', error)
+      if (import.meta.env.DEV) console.error('Failed to load addresses:', error)
       toast.error('배송지 목록을 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
@@ -111,7 +111,7 @@ export default function AddressManagementPage() {
       closeForm()
       loadAddresses()
     } catch (error) {
-      console.error('Failed to save address:', error)
+      if (import.meta.env.DEV) console.error('Failed to save address:', error)
       toast.error('배송지 저장에 실패했습니다.')
     }
   }
@@ -122,7 +122,7 @@ export default function AddressManagementPage() {
       await api.delete(`/api/shipping-addresses/${id}`)
       loadAddresses()
     } catch (error) {
-      console.error('Failed to delete address:', error)
+      if (import.meta.env.DEV) console.error('Failed to delete address:', error)
       toast.error('배송지 삭제에 실패했습니다.')
     }
   }
@@ -134,7 +134,7 @@ export default function AddressManagementPage() {
       await api.put(`/api/shipping-addresses/${id}`, { ...address, is_default: 1 })
       loadAddresses()
     } catch (error) {
-      console.error('Failed to set default:', error)
+      if (import.meta.env.DEV) console.error('Failed to set default:', error)
       toast.error('기본 배송지 설정에 실패했습니다.')
     }
   }

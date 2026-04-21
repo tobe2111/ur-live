@@ -273,7 +273,7 @@ export default function SellerInventoryPage() {
           >
             <Camera className="w-4 h-4" />
           </button>
-          <button onClick={handleScan} className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+          <button onClick={() => handleScan()} className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
             {t('seller.lookupButton')}
           </button>
         </div>

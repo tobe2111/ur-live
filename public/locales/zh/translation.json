@@ -19,6 +19,13 @@
     "add": "添加",
     "remove": "移除",
     "select": "选择",
+    "sun": "日",
+    "mon": "一",
+    "tue": "二",
+    "wed": "三",
+    "thu": "四",
+    "fri": "五",
+    "sat": "六",
     "all": "全部",
     "required": "必填",
     "optional": "选填",
@@ -1148,6 +1155,14 @@
       "minOrder": "{{amount}}元以上",
       "usage": "已使用 {{used}}/{{total}}"
     },
+    "layout": {
+      "broadcast": "直播",
+      "sales": "销售",
+      "revenue": "收入",
+      "settings": "设置",
+      "backToMain": "返回主页",
+      "backToUser": "返回用户模式"
+    },
     "reviews": {
       "title": "评价管理",
       "empty": "暂无收到的评价",
@@ -1177,6 +1192,15 @@
       "empty": "聊天开始后消息将显示在这里",
       "inputPlaceholder": "输入消息...",
       "seller": "卖家"
+    }
+    ,
+    "layout": {
+      "broadcast": "直播",
+      "sales": "销售",
+      "revenue": "收入",
+      "settings": "设置",
+      "backToMain": "返回主页",
+      "backToUser": "返回用户模式"
     }
   },
   "nav": {

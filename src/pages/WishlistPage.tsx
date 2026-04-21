@@ -58,7 +58,7 @@ const WishlistPage: React.FC = () => {
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('[Wishlist] Load error:', err)
+      if (import.meta.env.DEV) console.error('[Wishlist] Load error:', err)
       setError(err_.response?.data?.error || '위시리스트를 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
@@ -90,7 +90,7 @@ const WishlistPage: React.FC = () => {
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('[Wishlist] Add to cart error:', error)
+      if (import.meta.env.DEV) console.error('[Wishlist] Add to cart error:', error)
       toast.error(error_.response?.data?.error || '장바구니 추가에 실패했습니다.')
     }
   }

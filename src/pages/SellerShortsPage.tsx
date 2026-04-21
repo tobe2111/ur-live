@@ -142,15 +142,15 @@ export default function SellerShortsPage() {
           <button
             onClick={async () => {
               try {
-                toast.success('YouTube 쇼츠 동기화 중...')
+                toast.success(t('seller.shortsSync.syncing'))
                 const res = await api.get('/api/seller/youtube/shorts/sync', { headers })
                 if (res.data.success) {
-                  toast.success(res.data.message || '동기화 완료')
+                  toast.success(res.data.message || t('seller.shortsSync.syncComplete'))
                   loadData()
                 } else {
-                  toast.error(res.data.error || '동기화 실패')
+                  toast.error(res.data.error || t('seller.shortsSync.syncFailed'))
                 }
-              } catch { toast.error('YouTube 연동이 필요합니다') }
+              } catch { toast.error(t('seller.shortsSync.youtubeRequired')) }
             }}
             className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.98]"
           >

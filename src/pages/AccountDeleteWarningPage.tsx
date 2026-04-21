@@ -92,7 +92,7 @@ export default function AccountDeleteWarningPage() {
       navigate('/account/deleted', { replace: true });
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string };
-      console.error('[Account Delete] 탈퇴 실패:', error);
+      if (import.meta.env.DEV) console.error('[Account Delete] 탈퇴 실패:', error);
 
       // Axios 에러 처리
       let errorMessage = '탈퇴 처리 중 오류가 발생했습니다.';

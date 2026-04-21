@@ -13,12 +13,12 @@ export default function NotificationsPage() {
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     api.get('/api/social/notifications')
       .then(r => { if (r.data.success) setNotifications(r.data.data || []) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      .catch(() => { setLoading(false); setError('알림을 불러오지 못했습니다') })
   }, [])
 
   async function markAllRead() {
@@ -44,6 +44,12 @@ export default function NotificationsPage() {
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-white font-bold">{error}</p>
+            <p className="text-sm text-gray-500 mt-1">잠시 후 다시 시도해 주세요</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="text-center py-20">

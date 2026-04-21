@@ -307,7 +307,7 @@ export default function SellerLiveBroadcastPage() {
             : <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center"><Youtube className="h-4 w-4 text-red-500" /></div>}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{channels[0]?.channel_title}</p>
-            <p className="text-xs text-gray-400">{t('seller.liveBroadcast.subscribers', { count: channels[0]?.subscriber_count?.toLocaleString() })}</p>
+            <p className="text-xs text-gray-400">{t('seller.liveBroadcast.subscribers', { subscribers: channels[0]?.subscriber_count?.toLocaleString() || '0' })}</p>
           </div>
           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
         </div>
@@ -440,7 +440,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
 
       {/* 공개 설정 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">YouTube 공개 설정</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">{t('seller.liveBroadcast.privacySetting')}</label>
         <div className="grid grid-cols-3 gap-2">
           {privacyOptions.map(opt => (
             <button key={opt.key} onClick={() => setPrivacy(opt.key)}
@@ -456,8 +456,8 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
       {/* 예약 */}
       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
         <div>
-          <p className="text-sm font-medium text-gray-900">방송 예약</p>
-          <p className="text-xs text-gray-500">{isScheduled ? '예약 시간에 방송 시작' : '바로 방송 시작'}</p>
+          <p className="text-sm font-medium text-gray-900">{t('seller.liveBroadcast.scheduleBroadcast')}</p>
+          <p className="text-xs text-gray-500">{isScheduled ? t('seller.liveBroadcast.startAtScheduled') : t('seller.liveBroadcast.startNow')}</p>
         </div>
         <button onClick={() => setIsScheduled((v: boolean) => !v)}
           className={`relative w-11 h-6 rounded-full transition-colors ${isScheduled ? 'bg-blue-600' : 'bg-gray-300'}`}>
@@ -477,13 +477,13 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
       {/* 상품 선택 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          판매 상품 <span className="text-red-500">*</span>
-          {selectedProducts.length > 0 && <span className="ml-1 text-xs text-blue-600 font-normal">{selectedProducts.length}개 선택됨</span>}
+          {t('seller.liveBroadcast.saleProducts')} <span className="text-red-500">*</span>
+          {selectedProducts.length > 0 && <span className="ml-1 text-xs text-blue-600 font-normal">{t('seller.liveBroadcast.selectedCount', { count: selectedProducts.length })}</span>}
         </label>
         {sellableProducts.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-500 mb-2">등록된 상품이 없습니다</p>
-            <button onClick={() => navigate('/seller/products/new')} className="text-sm text-blue-600 font-medium">상품 등록하기 →</button>
+            <p className="text-sm text-gray-500 mb-2">{t('seller.liveBroadcast.noProducts')}</p>
+            <button onClick={() => navigate('/seller/products/new')} className="text-sm text-blue-600 font-medium">{t('seller.liveBroadcast.registerProduct')}</button>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto">
@@ -501,7 +501,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
 
       {/* 방송 방식 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">방송 방식</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">{t('seller.liveBroadcast.broadcastMethod')}</label>
         <div className="grid grid-cols-3 gap-3">
           {methodOptions.map(m => (
             <button key={m.key} onClick={() => setMethod(m.key)}
@@ -519,7 +519,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
       <Button onClick={onCreate} disabled={creating || !title.trim() || selectedProducts.length === 0}
         className="w-full h-12 bg-red-600 hover:bg-red-700 text-white text-base font-semibold">
         {creating ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Radio className="h-5 w-5 mr-2" />}
-        {creating ? '방송 생성 중...' : '방송 만들기 →'}
+        {creating ? t('seller.liveBroadcast.creating') : t('seller.liveBroadcast.createBroadcast')}
       </Button>
     </div>
   )
@@ -533,17 +533,19 @@ interface StepSetupProps {
 }
 
 function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, onBack }: StepSetupProps) {
+  const { t } = useTranslation()
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-bold text-gray-900">방송 연결 설정</h2>
+          <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.connectionSetup')}</h2>
           <p className="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{stream.title}</p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full font-medium">
           <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-          연결 대기 중
+          {t('seller.liveBroadcast.waitingConnection')}
+
         </div>
       </div>
 
@@ -554,11 +556,11 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
               <Play className="w-4 h-4 text-pink-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">바로 방송 시작</p>
-              <p className="text-xs text-gray-500">제목과 상품을 설정하면 YouTube 방송이 자동 생성됩니다</p>
+              <p className="text-sm font-semibold text-gray-900">{t('seller.liveBroadcast.quickStartTitle')}</p>
+              <p className="text-xs text-gray-500">{t('seller.liveBroadcast.quickStartTitleDesc')}</p>
             </div>
           </div>
-          {['위에서 방송 제목과 상품을 설정하세요', '"방송 생성" 클릭 → YouTube 방송이 자동 생성됩니다', 'YouTube Studio가 열리면 "라이브 시작"만 누르세요', '유어딜이 자동으로 감지하고 시청자에게 알림을 보냅니다 ✓'].map((s, i) => (
+          {[t('seller.liveBroadcast.quickStep1'), t('seller.liveBroadcast.quickStep2'), t('seller.liveBroadcast.quickStep3'), t('seller.liveBroadcast.quickStep4')].map((s, i) => (
             <div key={i} className="flex items-start gap-2 text-sm text-gray-700">
               <span className="w-5 h-5 rounded-full bg-pink-100 text-pink-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
               {s}
@@ -570,12 +572,12 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
             if (vid) {
               window.open(`https://studio.youtube.com/video/${vid}/livestreaming`, '_blank')
             } else {
-              toast.info('먼저 방송을 생성해주세요')
+              toast.info(t('seller.liveBroadcast.createFirst'))
             }
           }} className="w-full bg-pink-600 hover:bg-pink-700 text-white mt-2">
-            <Play className="w-4 h-4 mr-2" /> 방송 생성 & YouTube Studio 열기
+            <Play className="w-4 h-4 mr-2" /> {t('seller.liveBroadcast.createAndOpenStudio')}
           </Button>
-          <p className="text-[10px] text-gray-400 text-center">YouTube API가 방송을 자동 생성합니다. 별도 설정이 필요 없습니다.</p>
+          <p className="text-[10px] text-gray-400 text-center">{t('seller.liveBroadcast.youtubeApiAutoNote')}</p>
         </div>
       )}
 
@@ -586,11 +588,11 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
               <Youtube className="w-4 h-4 text-red-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">YouTube Studio에서 방송 시작</p>
-              <p className="text-xs text-gray-500">스튜디오를 열고 라이브를 시작하세요</p>
+              <p className="text-sm font-semibold text-gray-900">{t('seller.liveBroadcast.ytStudioTitle')}</p>
+              <p className="text-xs text-gray-500">{t('seller.liveBroadcast.ytStudioDesc')}</p>
             </div>
           </div>
-          {['YouTube 스튜디오 열기 클릭', '좌측 메뉴 → 라이브 스트리밍 선택', '스트림 시작 클릭', '유어딜이 자동으로 감지합니다 ✓'].map((s, i) => (
+          {[t('seller.liveBroadcast.ytStep1'), t('seller.liveBroadcast.ytStep2'), t('seller.liveBroadcast.ytStep3'), t('seller.liveBroadcast.ytStep4')].map((s, i) => (
             <div key={i} className="flex items-start gap-2 text-sm text-gray-700">
               <span className="w-5 h-5 rounded-full bg-red-100 text-red-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
               {s}
@@ -601,7 +603,7 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
             const vid = stream.youtube_video_id || stream.youtube_broadcast_id
             window.open(vid ? `https://studio.youtube.com/video/${vid}/livestreaming` : 'https://studio.youtube.com/channel/UC/livestreaming', '_blank')
           }} className="w-full bg-red-600 hover:bg-red-700 text-white mt-2">
-            <ExternalLink className="w-4 h-4 mr-2" /> YouTube Studio 열기
+            <ExternalLink className="w-4 h-4 mr-2" /> {t('seller.liveBroadcast.openYtStudio')}
           </Button>
         </div>
       )}
@@ -612,8 +614,8 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-green-800">RTMP 설정 완료</p>
-                <p className="text-xs text-green-700">OBS에서 방송 시작 버튼만 클릭하면 됩니다</p>
+                <p className="text-sm font-semibold text-green-800">{t('seller.liveBroadcast.rtmpSetupDone')}</p>
+                <p className="text-xs text-green-700">{t('seller.liveBroadcast.obsJustStart')}</p>
               </div>
             </div>
           ) : (
@@ -624,11 +626,11 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
                     <VideoIcon className="w-4 h-4 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">OBS Studio RTMP 설정</p>
-                    <p className="text-xs text-gray-500">최초 1회만 설정하면 이후엔 자동입니다</p>
+                    <p className="text-sm font-semibold text-gray-900">{t('seller.liveBroadcast.obsRtmpSetup')}</p>
+                    <p className="text-xs text-gray-500">{t('seller.liveBroadcast.obsRtmpSetupDesc')}</p>
                   </div>
                 </div>
-                {['OBS → 설정 → 방송 탭', '서비스: 사용자 지정 선택', '아래 URL과 키 붙여넣기', '확인 후 방송 시작 클릭'].map((s, i) => (
+                {[t('seller.liveBroadcast.obsStep1'), t('seller.liveBroadcast.obsStep2'), t('seller.liveBroadcast.obsStep3'), t('seller.liveBroadcast.obsStep4')].map((s, i) => (
                   <div key={i} className="flex items-start gap-2 text-sm text-gray-700">
                     <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
                     {s}
@@ -638,10 +640,10 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
               {stream.rtmp_url && (
                 <div className="space-y-2">
                   <RtmpBlock label="RTMP URL" value={stream.rtmp_url} fieldKey="rtmp_url" copiedField={copiedField} onCopy={onCopy} />
-                  {stream.rtmp_key && <RtmpBlock label="스트림 키" value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
+                  {stream.rtmp_key && <RtmpBlock label={t('seller.liveBroadcast.streamKey')} value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
                   <button onClick={() => onCopy(`URL: ${stream.rtmp_url}\nKey: ${stream.rtmp_key}`, 'all')}
                     className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors">
-                    {copiedField === 'all' ? '✓ 복사 완료!' : 'URL + 키 전체 복사'}
+                    {copiedField === 'all' ? t('seller.liveBroadcast.copyDone') : t('seller.liveBroadcast.copyAll')}
                   </button>
                 </div>
               )}
@@ -656,8 +658,8 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-green-800">RTMP 설정 완료</p>
-                <p className="text-xs text-green-700">프리즘에서 방송 시작 버튼만 누르세요</p>
+                <p className="text-sm font-semibold text-green-800">{t('seller.liveBroadcast.rtmpSetupDone')}</p>
+                <p className="text-xs text-green-700">{t('seller.liveBroadcast.prismJustStart')}</p>
               </div>
             </div>
           ) : stream.rtmp_url && stream.rtmp_key ? (
@@ -668,11 +670,11 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
 
       <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700">
-          <ArrowLeft className="w-4 h-4" /> 취소
+          <ArrowLeft className="w-4 h-4" /> {t('common.cancel')}
         </button>
         <div className="flex-1" />
         <Button onClick={onGoLive} className="bg-red-600 hover:bg-red-700 text-white">
-          <Radio className="w-4 h-4 mr-2" /> 라이브 시작
+          <Radio className="w-4 h-4 mr-2" /> {t('seller.liveBroadcast.goLive')}
         </Button>
       </div>
     </div>
@@ -686,6 +688,7 @@ interface StepLiveProps {
 }
 
 function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLiveProps) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       {/* 상태 바 */}
@@ -703,7 +706,7 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
               <ExternalLink className="w-3.5 h-3.5" /> YouTube
             </a>
           )}
-          <Button onClick={onEndStream} size="sm" variant="destructive">방송 종료</Button>
+          <Button onClick={onEndStream} size="sm" variant="destructive">{t('seller.liveBroadcast.endBroadcast')}</Button>
         </div>
       </div>
 
@@ -728,7 +731,7 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
       {/* 상품 전환 + 경매/타임딜 */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-4">
         <div>
-          <p className="text-xs font-semibold text-gray-700 mb-2">소개 상품 전환 <span className="text-gray-400 font-normal">(탭하여 전환)</span></p>
+          <p className="text-xs font-semibold text-gray-700 mb-2">{t('seller.liveBroadcast.switchProduct')} <span className="text-gray-400 font-normal">({t('seller.liveBroadcast.tapToSwitch')})</span></p>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {products.map((p: Product) => {
               const isCurrent = stream.current_product_id === p.id
@@ -740,8 +743,8 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
                         { productId: p.id },
                         { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
                       onChangeProduct(p.id)
-                      toast.success(`${p.name} 소개 중`)
-                    } catch { toast.error('상품 전환 실패') }
+                      toast.success(`${p.name} ${t('seller.liveBroadcast.nowShowing')}`)
+                    } catch { toast.error(t('seller.liveBroadcast.switchFailed')) }
                   }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium shrink-0 transition-all active:scale-95 ${
                     isCurrent ? 'border-red-500 bg-red-50 text-red-600 shadow-sm' : 'border-gray-200 text-gray-700 hover:border-blue-300'
@@ -766,6 +769,7 @@ interface StreamListProps {
 }
 
 function StreamList({ streams, onManage }: StreamListProps) {
+  const { t } = useTranslation()
   const active = streams.filter((s: LiveStream) => s.status !== 'ended')
   const ended = streams.filter((s: LiveStream) => s.status === 'ended')
   if (streams.length === 0) return null
@@ -773,21 +777,21 @@ function StreamList({ streams, onManage }: StreamListProps) {
     <div className="mt-6 space-y-4">
       {active.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-bold text-gray-700">진행 중인 방송</h3>
+          <h3 className="text-sm font-bold text-gray-700">{t('seller.liveBroadcast.activeBroadcasts')}</h3>
           {active.map((s: LiveStream) => (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${s.status === 'live' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
-                {s.status === 'live' ? '● LIVE' : '예정'}
+                {s.status === 'live' ? '● LIVE' : t('common.scheduled')}
               </span>
               <p className="text-sm font-medium text-gray-900 truncate flex-1">{s.title}</p>
-              <button onClick={() => onManage(s)} className="text-xs text-blue-600 font-medium shrink-0">관리 →</button>
+              <button onClick={() => onManage(s)} className="text-xs text-blue-600 font-medium shrink-0">{t('common.manage')} →</button>
             </div>
           ))}
         </div>
       )}
       {ended.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-bold text-gray-700">최근 방송</h3>
+          <h3 className="text-sm font-bold text-gray-700">{t('seller.liveBroadcast.recentBroadcasts')}</h3>
           {ended.slice(0, 5).map((s: LiveStream) => (
             <div key={s.id} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-3">
               <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
@@ -797,7 +801,7 @@ function StreamList({ streams, onManage }: StreamListProps) {
                 <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
                 <p className="text-xs text-gray-500">{s.ended_at ? formatKSTDate(s.ended_at) : ''}</p>
               </div>
-              <a href={`/seller/live-analytics/${s.id}`} className="text-xs text-blue-600 font-medium shrink-0">분석</a>
+              <a href={`/seller/live-analytics/${s.id}`} className="text-xs text-blue-600 font-medium shrink-0">{t('seller.analytics')}</a>
             </div>
           ))}
         </div>
@@ -808,6 +812,7 @@ function StreamList({ streams, onManage }: StreamListProps) {
 
 // ── 경매 / 타임딜 컨트롤 ─────────────────────────────────────────
 function AuctionTimeDealControls({ streamId, products }: { streamId: number; products: Product[] }) {
+  const { t } = useTranslation()
   const [showAuction, setShowAuction] = useState(false)
   const [showTimeDeal, setShowTimeDeal] = useState(false)
   const [showGroupBuy, setShowGroupBuy] = useState(false)
@@ -818,29 +823,29 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
   const token = localStorage.getItem('seller_token')
 
   async function createAuction() {
-    if (!auctionForm.title || !auctionForm.start_price) { toast.error('제목과 시작가를 입력해주세요'); return }
+    if (!auctionForm.title || !auctionForm.start_price) { toast.error(t('seller.liveBroadcast.enterTitleAndPrice')); return }
     setSubmitting(true)
     try {
       const res = await api.post('/api/auction/create', { stream_id: streamId, ...auctionForm }, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.data.success) { toast.success('경매가 시작되었습니다!'); setShowAuction(false) }
+      if (res.data.success) { toast.success(t('seller.liveBroadcast.auctionStarted')); setShowAuction(false) }
       else toast.error(res.data.error)
-    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e?.response?.data?.error || '경매 생성 실패') }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e?.response?.data?.error || t('seller.liveBroadcast.auctionCreateFailed')) }
     finally { setSubmitting(false) }
   }
 
   async function createTimeDeal() {
-    if (!dealForm.product_id) { toast.error('상품을 선택해주세요'); return }
+    if (!dealForm.product_id) { toast.error(t('seller.liveBroadcast.selectProduct')); return }
     setSubmitting(true)
     try {
       const res = await api.post('/api/timedeal/create', { stream_id: streamId, ...dealForm }, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.data.success) { toast.success(`타임딜 시작! ${dealForm.duration_seconds}초`); setShowTimeDeal(false) }
+      if (res.data.success) { toast.success(t('seller.liveBroadcast.timeDealStarted', { seconds: dealForm.duration_seconds })); setShowTimeDeal(false) }
       else toast.error(res.data.error)
-    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e?.response?.data?.error || '타임딜 생성 실패') }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e?.response?.data?.error || t('seller.liveBroadcast.timeDealCreateFailed')) }
     finally { setSubmitting(false) }
   }
 
   async function createGroupBuy() {
-    if (!groupBuyForm.product_id) { toast.error('상품을 선택해주세요'); return }
+    if (!groupBuyForm.product_id) { toast.error(t('seller.liveBroadcast.selectProduct')); return }
     setSubmitting(true)
     try {
       const res = await api.post('/api/timedeal/create', {
@@ -853,9 +858,9 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
         target_participants: groupBuyForm.target_participants,
         bonus_discount_percent: groupBuyForm.bonus_discount_percent,
       }, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.data.success) { toast.success('🎁 라이브 공구가 시작되었습니다!'); setShowGroupBuy(false) }
+      if (res.data.success) { toast.success(t('seller.liveBroadcast.groupBuyStarted')); setShowGroupBuy(false) }
       else toast.error(res.data.error)
-    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e?.response?.data?.error || '라이브 공구 생성 실패') }
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e?.response?.data?.error || t('seller.liveBroadcast.groupBuyCreateFailed')) }
     finally { setSubmitting(false) }
   }
 
@@ -864,30 +869,30 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
       <div className="flex gap-2">
         <button onClick={() => { setShowAuction(!showAuction); setShowTimeDeal(false); setShowGroupBuy(false) }}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showAuction ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-          <Gavel className="w-3.5 h-3.5" /> 경매
+          <Gavel className="w-3.5 h-3.5" /> {t('seller.liveBroadcast.auction')}
         </button>
         <button onClick={() => { setShowTimeDeal(!showTimeDeal); setShowAuction(false); setShowGroupBuy(false) }}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showTimeDeal ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-          <Zap className="w-3.5 h-3.5" /> 타임딜
+          <Zap className="w-3.5 h-3.5" /> {t('seller.liveBroadcast.timeDeal')}
         </button>
         <button onClick={() => { setShowGroupBuy(!showGroupBuy); setShowAuction(false); setShowTimeDeal(false) }}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showGroupBuy ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-600 border border-pink-200'}`}>
-          <Users className="w-3.5 h-3.5" /> 라이브 공구
+          <Users className="w-3.5 h-3.5" /> {t('seller.liveBroadcast.liveGroupBuy')}
         </button>
       </div>
 
       {showAuction && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
-          <p className="text-xs font-bold text-amber-800">경매 설정</p>
+          <p className="text-xs font-bold text-amber-800">{t('seller.liveBroadcast.auctionSetup')}</p>
           <input value={auctionForm.title} onChange={e => setAuctionForm(f => ({ ...f, title: e.target.value }))}
-            placeholder="경매 제목" className="w-full px-2.5 py-2 border border-amber-200 rounded-lg text-xs text-gray-900 bg-white" />
+            placeholder={t('seller.liveBroadcast.auctionTitlePlaceholder')} className="w-full px-2.5 py-2 border border-amber-200 rounded-lg text-xs text-gray-900 bg-white" />
           <select value={auctionForm.product_id} onChange={e => setAuctionForm(f => ({ ...f, product_id: Number(e.target.value) }))}
             className="w-full px-2.5 py-2 border border-amber-200 rounded-lg text-xs text-gray-900 bg-white">
-            <option value={0}>상품 선택 (선택사항)</option>
+            <option value={0}>{t('seller.liveBroadcast.selectProductOptional')}</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           <div className="grid grid-cols-3 gap-2">
-            {([['start_price', '시작가'], ['min_increment', '최소증가'], ['duration_seconds', '시간(초)']] as const).map(([key, label]) => (
+            {([['start_price', t('seller.liveBroadcast.startPrice')], ['min_increment', t('seller.liveBroadcast.minIncrement')], ['duration_seconds', t('seller.liveBroadcast.durationSec')]] as const).map(([key, label]) => (
               <div key={key}>
                 <label className="text-[10px] text-amber-700">{label}</label>
                 <input type="number" value={auctionForm[key]} onChange={e => setAuctionForm(f => ({ ...f, [key]: Number(e.target.value) }))}
@@ -897,21 +902,21 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
           </div>
           <button onClick={createAuction} disabled={submitting}
             className="w-full py-2 bg-amber-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
-            {submitting ? '생성 중...' : '경매 시작하기'}
+            {submitting ? t('common.creating') : t('seller.liveBroadcast.startAuction')}
           </button>
         </div>
       )}
 
       {showTimeDeal && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
-          <p className="text-xs font-bold text-red-700">타임딜 설정</p>
+          <p className="text-xs font-bold text-red-700">{t('seller.liveBroadcast.timeDealSetup')}</p>
           <select value={dealForm.product_id} onChange={e => setDealForm(f => ({ ...f, product_id: Number(e.target.value) }))}
             className="w-full px-2.5 py-2 border border-red-200 rounded-lg text-xs text-gray-900 bg-white">
-            <option value={0}>상품 선택</option>
-            {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}원)</option>)}
+            <option value={0}>{t('seller.liveBroadcast.selectProductRequired')}</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}{t('common.won')})</option>)}
           </select>
           <div className="grid grid-cols-3 gap-2">
-            {([['discount_percent', '할인율(%)'], ['max_claims', '수량'], ['duration_seconds', '시간(초)']] as const).map(([key, label]) => (
+            {([['discount_percent', t('seller.liveBroadcast.discountPercent')], ['max_claims', t('common.quantity')], ['duration_seconds', t('seller.liveBroadcast.durationSec')]] as const).map(([key, label]) => (
               <div key={key}>
                 <label className="text-[10px] text-red-600">{label}</label>
                 <input type="number" value={dealForm[key]} onChange={e => setDealForm(f => ({ ...f, [key]: Number(e.target.value) }))}
@@ -921,22 +926,22 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
           </div>
           <button onClick={createTimeDeal} disabled={submitting || !dealForm.product_id}
             className="w-full py-2 bg-red-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
-            {submitting ? '생성 중...' : `타임딜 시작 (${dealForm.duration_seconds}초)`}
+            {submitting ? t('common.creating') : t('seller.liveBroadcast.startTimeDeal', { seconds: dealForm.duration_seconds })}
           </button>
         </div>
       )}
 
       {showGroupBuy && (
         <div className="bg-pink-50 border border-pink-200 rounded-xl p-3 space-y-2">
-          <p className="text-xs font-bold text-pink-700">라이브 공구 설정</p>
-          <p className="text-[10px] text-pink-600">목표 인원이 모이면 할인이 적용됩니다</p>
+          <p className="text-xs font-bold text-pink-700">{t('seller.liveBroadcast.groupBuySetup')}</p>
+          <p className="text-[10px] text-pink-600">{t('seller.liveBroadcast.groupBuySetupDesc')}</p>
           <select value={groupBuyForm.product_id} onChange={e => setGroupBuyForm(f => ({ ...f, product_id: Number(e.target.value) }))}
             className="w-full px-2.5 py-2 border border-pink-200 rounded-lg text-xs text-gray-900 bg-white">
-            <option value={0}>상품 선택</option>
-            {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}원)</option>)}
+            <option value={0}>{t('seller.liveBroadcast.selectProductRequired')}</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}{t('common.won')})</option>)}
           </select>
           <div className="grid grid-cols-3 gap-2">
-            {([['target_participants', '목표 인원'], ['bonus_discount_percent', '할인율(%)'], ['duration_minutes', '시간(분)']] as const).map(([key, label]) => (
+            {([['target_participants', t('seller.liveBroadcast.targetParticipants')], ['bonus_discount_percent', t('seller.liveBroadcast.discountPercent')], ['duration_minutes', t('seller.liveBroadcast.durationMin')]] as const).map(([key, label]) => (
               <div key={key}>
                 <label className="text-[10px] text-pink-600">{label}</label>
                 <input type="number" value={groupBuyForm[key]} onChange={e => setGroupBuyForm(f => ({ ...f, [key]: Number(e.target.value) }))}
@@ -946,7 +951,7 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
           </div>
           <button onClick={createGroupBuy} disabled={submitting || !groupBuyForm.product_id}
             className="w-full py-2 bg-pink-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
-            {submitting ? '생성 중...' : '라이브 공구 시작'}
+            {submitting ? t('common.creating') : t('seller.liveBroadcast.startGroupBuy')}
           </button>
         </div>
       )}

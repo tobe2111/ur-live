@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Eye } from 'lucide-react'
 import SEO from '@/components/SEO'
+import axios from 'axios'
 import api from '@/lib/api'
 import { formatViewers } from '@/components/live/LiveUtils'
 import ReelCard from '@/components/live/ReelCard'
@@ -121,7 +122,7 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
             <span className="text-xs font-bold text-white/90 truncate">{sellerName}</span>
             <button onClick={handleFollow}
               className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${following ? 'bg-white/20 text-white/70' : 'bg-pink-500 text-white'}`}>
-              {following ? '팔로잉' : '팔로우'}
+              {following ? 'Following' : 'Follow'}
             </button>
           </div>
         )}
@@ -263,7 +264,7 @@ export default function LivePageV2() {
               streams = [singleStreamResponse.data.data]
             }
           } catch (error) {
-            console.error('[LivePageV2] Single stream API failed:', error)
+            if (import.meta.env.DEV) console.error('[LivePageV2] Single stream API failed:', error)
           }
         } else {
           // HOMEPAGE LINK: Load ALL active streams
@@ -274,7 +275,7 @@ export default function LivePageV2() {
               streams = streamsResponse.data.data
             }
           } catch (error) {
-            console.error('[LivePageV2] Streams API failed:', error)
+            if (import.meta.env.DEV) console.error('[LivePageV2] Streams API failed:', error)
             throw error
           }
         }
@@ -315,7 +316,7 @@ export default function LivePageV2() {
         
         setLoading(false)
       } catch (error) {
-        console.error('[LivePageV2] Fatal error loading reels:', error)
+        if (import.meta.env.DEV) console.error('[LivePageV2] Fatal error loading reels:', error)
         
         // Show error state instead of demo data
         setReels([])
@@ -377,7 +378,7 @@ export default function LivePageV2() {
           headers: { 'X-Session-ID': sessionId }
         })
       } catch (error) {
-        console.error('[LivePageV2] Failed to join viewer:', error)
+        if (import.meta.env.DEV) console.error('[LivePageV2] Failed to join viewer:', error)
       }
     }
 
@@ -389,7 +390,7 @@ export default function LivePageV2() {
           setViewerCount(response.data.data.viewer_count)
         }
       } catch (error) {
-        console.error('[LivePageV2] Failed to fetch viewer count:', error)
+        if (import.meta.env.DEV) console.error('[LivePageV2] Failed to fetch viewer count:', error)
       }
     }
 

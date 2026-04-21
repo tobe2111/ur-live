@@ -80,7 +80,7 @@ export default function ImageUpload({
             throw new Error(response.data.error || '업로드 실패')
           }
         } catch (apiError: any) {
-          console.error('API upload error:', apiError)
+          if (import.meta.env.DEV) console.error('API upload error:', apiError)
           throw new Error(apiError.response?.data?.error || apiError.message || '업로드 실패')
         } finally {
           setUploading(false)
@@ -92,7 +92,7 @@ export default function ImageUpload({
       reader.readAsDataURL(compressedFile)
 
     } catch (err: any) {
-      console.error('Image upload error:', err)
+      if (import.meta.env.DEV) console.error('Image upload error:', err)
       setError(err.message || '이미지 업로드에 실패했습니다.')
       setUploading(false)
     }

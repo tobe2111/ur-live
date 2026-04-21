@@ -67,7 +67,7 @@ export default function SearchPage() {
         setSuggestions(response.data.data.suggestions || [])
       }
     } catch (error) {
-      console.error('Failed to load suggestions:', error)
+      if (import.meta.env.DEV) console.error('Failed to load suggestions:', error)
     }
   }
 

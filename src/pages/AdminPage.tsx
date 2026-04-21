@@ -109,7 +109,7 @@ export default function AdminPage() {
           if (target) setSalesTarget(Number(target.value) || 1000000)
         }
       })
-      .catch(() => {})
+      .catch(() => { toast.error('설정 데이터를 불러오지 못했습니다') })
   }, [])
 
   // 매출 목표 달성 알림
@@ -794,7 +794,7 @@ function AdminRevenueChart() {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   useEffect(() => {
     api.get(`/api/admin/tools/chart/revenue?days=${days}`, h)
-      .then(r => { if (r.data.success) setData(r.data.data || []) }).catch(() => {})
+      .then(r => { if (r.data.success) setData(r.data.data || []) }).catch(() => { /* empty chart is shown on error */ })
   }, [days])
   const max = Math.max(...data.map(d => d.revenue), 1)
   return (
@@ -837,7 +837,7 @@ function AdminActivityFeed() {
         }
         lastCountRef.current = list.length
         if (r.data.success) setOrders(list)
-      }).catch(() => {})
+      }).catch(() => { /* empty activity list is shown on error */ })
   }
   useEffect(() => {
     fetchOrders()

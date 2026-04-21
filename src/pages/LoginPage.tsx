@@ -105,7 +105,7 @@ export default function LoginPage() {
     import('@/lib/kakao-sdk').then(({ ensureKakaoSdk }) => {
       ensureKakaoSdk()
         .then(() => setKakaoReady(true))
-        .catch((e) => console.error('[LoginPage] Kakao SDK init failed:', e))
+        .catch((e) => { if (import.meta.env.DEV) console.error('[LoginPage] Kakao SDK init failed:', e) })
     })
   }, [searchParams, isKR])
 
@@ -132,7 +132,7 @@ export default function LoginPage() {
       const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
 
       if (!KAKAO_REST_API_KEY) {
-        console.error('[Kakao Login] ❌ VITE_KAKAO_REST_API_KEY 환경 변수가 설정되지 않았습니다')
+        if (import.meta.env.DEV) console.error('[Kakao Login] ❌ VITE_KAKAO_REST_API_KEY 환경 변수가 설정되지 않았습니다')
         setError('카카오 로그인 설정 오류입니다. 관리자에게 문의하세요. (KOE101)')
         setLoading(false)
         return
@@ -150,7 +150,7 @@ export default function LoginPage() {
       window.location.href = kakaoAuthUrl
 
     } catch (err: unknown) {
-      console.error('[Kakao Login] ❌ 오류 발생:', err)
+      if (import.meta.env.DEV) console.error('[Kakao Login] ❌ 오류 발생:', err)
       setError(t('auth.kakaoLoginError'))
       setLoading(false)
     }
@@ -192,10 +192,10 @@ export default function LoginPage() {
                 idToken, ''
               )
             } catch (e) {
-              console.error('[Login] useAuthStore sync error:', e);
+              if (import.meta.env.DEV) console.error('[Login] useAuthStore sync error:', e);
             }
           } catch (e) {
-            console.error('[Login] Firebase failed:', e)
+            if (import.meta.env.DEV) console.error('[Login] Firebase failed:', e)
             useAuthWorld.getState().setAuthReady(true)
           }
         }
@@ -207,7 +207,7 @@ export default function LoginPage() {
         throw new Error(response.data.error || t('auth.loginError'))
       }
     } catch (err: unknown) {
-      console.error('[Kakao Login] ❌ 실패:', err)
+      if (import.meta.env.DEV) console.error('[Kakao Login] ❌ 실패:', err)
       setError(t('auth.kakaoLoginError'))
       setLoading(false)
     }
@@ -241,7 +241,7 @@ export default function LoginPage() {
         navigate(returnUrl, { replace: true })
       }
     } catch (err: unknown) {
-      console.error('[Email Login] Error:', err)
+      if (import.meta.env.DEV) console.error('[Email Login] Error:', err)
       setError(t('auth.invalidCredentials'))
     } finally {
       setLoading(false)
@@ -304,7 +304,7 @@ export default function LoginPage() {
       navigate(returnUrl, { replace: true })
 
     } catch (error: unknown) {
-      console.error('[Google Login] ❌ 실패:', error)
+      if (import.meta.env.DEV) console.error('[Google Login] ❌ 실패:', error)
       const firebaseError = error as { code?: string }
       if (firebaseError?.code === 'auth/popup-closed-by-user') {
         // 사용자가 팝업을 닫은 경우 — 에러 표시하지 않음

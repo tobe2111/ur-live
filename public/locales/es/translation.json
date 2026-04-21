@@ -19,6 +19,13 @@
     "add": "Add",
     "remove": "Remove",
     "select": "Select",
+    "sun": "Dom",
+    "mon": "Lun",
+    "tue": "Mar",
+    "wed": "Mié",
+    "thu": "Jue",
+    "fri": "Vie",
+    "sat": "Sáb",
     "all": "All",
     "required": "Required",
     "optional": "Optional",
@@ -1094,6 +1101,15 @@
       "empty": "Los mensajes aparecerán aquí cuando comience el chat",
       "inputPlaceholder": "Escribir mensaje...",
       "seller": "Vendedor"
+    }
+    ,
+    "layout": {
+      "broadcast": "Transmisión",
+      "sales": "Ventas",
+      "revenue": "Ingresos",
+      "settings": "Configuración",
+      "backToMain": "Volviendo al inicio",
+      "backToUser": "Volver a usuario"
     }
   },
   "nav": {

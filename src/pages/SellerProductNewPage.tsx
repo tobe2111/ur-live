@@ -87,10 +87,10 @@ export default function SellerProductNewPage() {
     setError('')
 
     // 유효성 검사
-    if (!formData.name?.trim()) { setError('상품명을 입력해주세요'); return }
-    if (!formData.price || Number(formData.price) <= 0) { setError('가격은 0원보다 커야 합니다'); return }
-    if (Number(formData.price) > 100000000) { setError('가격이 너무 높습니다 (1억 이하)'); return }
-    if (Number(formData.stock) < 0) { setError('재고는 0 이상이어야 합니다'); return }
+    if (!formData.name?.trim()) { setError(t('seller.products.enterProductName')); return }
+    if (!formData.price || Number(formData.price) <= 0) { setError(t('seller.products.priceAboveZero')); return }
+    if (Number(formData.price) > 100000000) { setError(t('seller.products.priceTooHigh')); return }
+    if (Number(formData.stock) < 0) { setError(t('seller.products.stockAboveZero')); return }
 
     setLoading(true)
 
@@ -208,7 +208,7 @@ export default function SellerProductNewPage() {
           <div className="mt-3 flex items-center gap-3">
             <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
               <FileText className="w-4 h-4" />
-              CSV 대량등록
+              {t('seller.products.csvBulkUpload')}
               <input
                 type="file"
                 accept=".csv"
@@ -219,7 +219,7 @@ export default function SellerProductNewPage() {
                   try {
                     const text = await file.text()
                     const lines = text.split('\n').filter(l => l.trim())
-                    if (lines.length < 2) { toast.error('데이터가 없습니다'); return }
+                    if (lines.length < 2) { toast.error(t('common.noData')); return }
 
                     const headers = lines[0].split(',').map(h => h.trim())
                     const token = localStorage.getItem('seller_token')
@@ -243,14 +243,14 @@ export default function SellerProductNewPage() {
                       } catch { fail++ }
                     }
 
-                    toast.success(`${success}개 등록 완료${fail > 0 ? `, ${fail}개 실패` : ''}`)
+                    toast.success(t('seller.products.bulkResult', { success, fail }))
                     if (success > 0) navigate('/seller/products')
-                  } catch { toast.error('CSV 파일을 읽을 수 없습니다') }
+                  } catch { toast.error(t('seller.products.csvReadFailed')) }
                   e.target.value = ''
                 }}
               />
             </label>
-            <p className="text-xs text-gray-500">템플릿을 다운로드 후 작성하여 업로드하세요</p>
+            <p className="text-xs text-gray-500">{t('seller.products.bulkUploadHint')}</p>
           </div>
         </div>
 
@@ -301,17 +301,17 @@ export default function SellerProductNewPage() {
           {/* Long Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              상세 설명 (선택)
+              {t('seller.products.longDescription')}
             </label>
             <textarea
               name="long_description"
               value={formData.long_description}
               onChange={handleChange}
-              placeholder="상품의 자세한 설명, 소재, 사용법 등을 작성해주세요"
+              placeholder={t('seller.products.longDescPlaceholder')}
               rows={6}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
-            <p className="text-xs text-gray-400 mt-1">상품 상세 페이지에 표시됩니다</p>
+            <p className="text-xs text-gray-400 mt-1">{t('seller.products.longDescHint')}</p>
           </div>
 
           {/* Price & Stock */}
@@ -423,7 +423,7 @@ export default function SellerProductNewPage() {
               <option value="food">{t('common.food')}</option>
               <option value="electronics">{t('common.electronics')}</option>
               <option value="lifestyle">{t('common.lifestyle')}</option>
-              <option value="meal_voucher">🍽️ 식사권 (공동구매)</option>
+              <option value="meal_voucher">{t('seller.products.mealVoucherCategory')}</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">{t('seller.selectCategoryDesc')}</p>
           </div>
@@ -431,49 +431,49 @@ export default function SellerProductNewPage() {
           {/* 식사권 전용 필드 */}
           {formData.category === 'meal_voucher' && (
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
-              <h3 className="text-sm font-bold text-orange-800">🍽️ 식사권 / 공동구매 정보</h3>
+              <h3 className="text-sm font-bold text-orange-800">{t('seller.products.mealVoucherInfo')}</h3>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">식당명 *</label>
-                <input name="restaurant_name" onChange={handleChange} placeholder="예) 강남 OO식당"
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.restaurantName')} *</label>
+                <input name="restaurant_name" onChange={handleChange} placeholder={t('seller.products.restaurantNamePlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">식당 주소</label>
-                <input name="restaurant_address" onChange={handleChange} placeholder="서울시 강남구..."
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.restaurantAddress')}</label>
+                <input name="restaurant_address" onChange={handleChange} placeholder={t('seller.products.restaurantAddressPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">식당 전화번호</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.restaurantPhone')}</label>
                 <input name="restaurant_phone" onChange={handleChange} placeholder="02-1234-5678"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">이용 조건</label>
-                <input name="voucher_terms" onChange={handleChange} placeholder="평일 런치만 / 주말 포함 등"
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.voucherTerms')}</label>
+                <input name="voucher_terms" onChange={handleChange} placeholder={t('seller.products.voucherTermsPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">유효기간</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.expiryDate')}</label>
                   <input type="date" name="voucher_expiry" onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">공동구매 목표 인원</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyTarget')}</label>
                   <input type="number" name="group_buy_target" onChange={handleChange} placeholder="50"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">공동구매 마감일</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyDeadline')}</label>
                 <input type="datetime-local" name="group_buy_deadline" onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">식당 인증 비밀번호 *</label>
-                <input name="store_verify_pin" onChange={handleChange} placeholder="식당 사장에게 전달할 비밀번호"
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.storeVerifyPin')} *</label>
+                <input name="store_verify_pin" onChange={handleChange} placeholder={t('seller.products.storeVerifyPinPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-                <p className="text-xs text-gray-400 mt-1">식당 사장이 바우처 사용 시 입력할 비밀번호입니다. 식당 사장에게 전달해주세요.</p>
+                <p className="text-xs text-gray-400 mt-1">{t('seller.products.storeVerifyPinDesc')}</p>
               </div>
             </div>
           )}

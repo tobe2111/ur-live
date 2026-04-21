@@ -39,6 +39,7 @@ export default function RestaurantMapPage() {
   const [region, setRegion] = useState('')
   const [search, setSearch] = useState('')
   const [sdkLoaded, setSdkLoaded] = useState(false)
+  const [sdkError, setSdkError] = useState(false)
   const [listExpanded, setListExpanded] = useState(false)
   const [mapView, setMapView] = useState(true)
 
@@ -55,8 +56,9 @@ export default function RestaurantMapPage() {
       ensureKakaoMaps()
         .then(() => setSdkLoaded(true))
         .catch((e) => {
-          console.error('[RestaurantMap] Kakao Maps load failed:', e)
+          if (import.meta.env.DEV) console.error('[RestaurantMap] Kakao Maps load failed:', e)
           setSdkLoaded(false)
+          setSdkError(true)
           setMapView(false)
         })
     })
@@ -250,8 +252,17 @@ export default function RestaurantMapPage() {
         ) : (
           <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center">
             <MapPin className="w-12 h-12 text-gray-300 mb-3" />
-            <p className="text-sm text-gray-500 font-medium">지도를 불러오는 중...</p>
-            <p className="text-xs text-gray-400 mt-1">카카오맵 SDK 로딩 중</p>
+            {sdkError ? (
+              <>
+                <p className="text-sm text-gray-500 font-medium">지도를 불러올 수 없습니다</p>
+                <p className="text-xs text-gray-400 mt-1">아래 목록에서 맛집을 확인하세요</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500 font-medium">지도를 불러오는 중...</p>
+                <p className="text-xs text-gray-400 mt-1">카카오맵 SDK 로딩 중</p>
+              </>
+            )}
           </div>
         )}
 
