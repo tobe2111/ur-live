@@ -178,10 +178,10 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     
     // 3. 비밀번호 검증
     const passwordHash = seller.password_hash as string;
-    const isValid = await verifyPassword(password, passwordHash);
-    
-    if (!isValid) {
-      console.warn('[Seller Login] Invalid password for:', email);
+    const { valid } = await verifyPassword(password, passwordHash);
+
+    if (!valid) {
+      if (import.meta.env.DEV) console.warn('[Seller Login] Invalid password');
       return c.json<AuthResponse>({ 
         success: false, 
         error: '이메일 또는 비밀번호가 올바르지 않습니다.' 

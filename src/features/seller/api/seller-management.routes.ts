@@ -1122,8 +1122,8 @@ sellerManagementRoutes.post('/change-password', async (c) => {
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     // 현재 비밀번호 검증
     const { hashPassword: hp, verifyPassword } = await import('@/lib/password');
-    const isValid = await verifyPassword(currentPassword, seller.password_hash);
-    if (!isValid) return c.json({ success: false, error: '현재 비밀번호가 올바르지 않습니다' }, 400);
+    const { valid } = await verifyPassword(currentPassword, seller.password_hash);
+    if (!valid) return c.json({ success: false, error: '현재 비밀번호가 올바르지 않습니다' }, 400);
     const newHash = await hp(newPassword);
     await db.prepare("UPDATE sellers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").bind(newHash, sellerId).run();
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
