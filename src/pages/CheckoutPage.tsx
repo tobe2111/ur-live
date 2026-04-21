@@ -991,17 +991,19 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            <div className="my-5 h-px bg-[#333]" />
-
-            <div className="flex items-end justify-between">
-              <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
-              <div className="flex items-baseline gap-0.5">
-                <span className="text-[26px] font-bold tracking-tight text-gray-900">
-                  {Math.max(0, totalAmount).toLocaleString()}
-                </span>
-                <span className="text-[15px] font-semibold text-gray-900">원</span>
-              </div>
+            <div className="flex items-end justify-between pt-3 mt-3 border-t border-gray-100">
+              <span className="text-[14px] font-extrabold text-gray-900">총 결제 금액</span>
+              <span className="text-[20px] font-black text-red-500" style={{ letterSpacing: '-0.03em' }}>
+                {Math.max(0, totalAmount).toLocaleString()}원
+              </span>
             </div>
+            {totalAmount > 0 && (
+              <div className="flex justify-end mt-1">
+                <span className="rounded-md px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold">
+                  결제 시 {Math.round(Math.max(0, totalAmount) * 0.03).toLocaleString()}딜 적립 예정
+                </span>
+              </div>
+            )}
           </section>
         </div>
       </main>
