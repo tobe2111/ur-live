@@ -59,7 +59,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     try {
       const res = await fetch(`/api/kakao-social/calendar/ics/${streamId}`)
       if (!res.ok) {
-        const data = await res.json().catch(() => null)
+        const data = await res.json().catch(() => null) as { error?: string } | null
         toast.error(data?.error || '방송 일정이 아직 설정되지 않았습니다')
         return
       }
