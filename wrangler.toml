@@ -46,7 +46,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["LiveStreamDurableObject"]
+new_sqlite_classes = ["LiveStreamDurableObject"]
 
 # ============================================================
 # Development Variables
