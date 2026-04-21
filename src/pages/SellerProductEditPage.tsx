@@ -157,7 +157,7 @@ export default function SellerProductEditPage() {
       })
 
       if (response.data.success) {
-        setLiveStreams(response.data.data)
+        setLiveStreams(response.data.data || [])
       }
     } catch (error) {
       console.error('Failed to load live streams:', error)

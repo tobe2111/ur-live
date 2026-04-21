@@ -34,8 +34,12 @@ export default function SellerCouponsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('쿠폰을 비활성화하시겠습니까?')) return
-    await api.delete(`/api/seller/analytics/coupons/${id}`, getAuthHeaders())
-    load()
+    try {
+      await api.delete(`/api/seller/analytics/coupons/${id}`, getAuthHeaders())
+      load()
+    } catch {
+      toast.error('쿠폰 삭제에 실패했습니다.')
+    }
   }
 
   return (

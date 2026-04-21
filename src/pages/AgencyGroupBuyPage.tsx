@@ -65,13 +65,19 @@ function ConfirmModal({ groupBuy, onClose, onConfirm }: {
   const [discount, setDiscount] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const p = Number(price)
     const d = Number(discount)
     if (!p || p <= 0) { toast.error('확정 가격을 입력해주세요.'); return }
     if (!d || d <= 0 || d > 100) { toast.error('할인율을 1~100% 범위로 입력해주세요.'); return }
     setSubmitting(true)
-    onConfirm(p, d)
+    try {
+      await onConfirm(p, d)
+    } catch {
+      // error handled by parent
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -227,7 +233,7 @@ export default function AgencyGroupBuyPage() {
 
   const confirmDeal = (id: number, confirmed_price: number, confirmed_discount_percent: number) => {
     if (!token) return
-    api.patch(`/api/community-group-buy/${id}/confirm`, { confirmed_price, confirmed_discount_percent }, { headers })
+    return api.patch(`/api/community-group-buy/${id}/confirm`, { confirmed_price, confirmed_discount_percent }, { headers })
       .then(() => {
         toast.success('딜이 확정되었습니다!')
         setConfirmTarget(null)

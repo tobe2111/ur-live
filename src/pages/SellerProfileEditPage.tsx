@@ -336,6 +336,7 @@ export default function SellerProfileEditPage() {
     if (activeTab === 'profile') await handleSaveProfile()
     else if (activeTab === 'business') await handleSaveBusiness()
     else if (activeTab === 'personal') await handleSavePersonal()
+    else if (activeTab === 'password') await handleChangePassword()
   }
 
   if (loading) {
