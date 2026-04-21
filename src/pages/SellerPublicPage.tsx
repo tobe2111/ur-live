@@ -184,8 +184,8 @@ export default function SellerPublicPage() {
   return (
     <div className={`min-h-screen ${T.bg}`}>
       <SEO
-        title={seller.name || '셀러'}
-        description={seller.bio || `${seller.name || '셀러'} - 유어딜에서 라이브 방송과 상품을 만나보세요`}
+        title={seller.name || t('product.seller')}
+        description={seller.bio || `${seller.name || t('product.seller')} - Ur Deal`}
         image={seller.profile_image}
         url={`/profile/${seller.username || seller.slug || seller.id}`}
       />
@@ -486,10 +486,10 @@ export default function SellerPublicPage() {
                         <div className="mt-1.5">
                           <div className="w-full bg-gray-700 rounded-full h-1.5"><div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
                           <div className="flex items-center justify-between mt-0.5">
-                            <p className="text-[10px] text-gray-500">{p.group_buy_current || 0}/{p.group_buy_target}명 참여</p>
+                            <p className="text-[10px] text-gray-500">{p.group_buy_current || 0}/{p.group_buy_target}{t('common.person')}</p>
                             {p.group_buy_current && p.group_buy_target && p.group_buy_current >= p.group_buy_target
-                              ? <span className="text-[10px] text-green-400 font-bold">🎉 목표 달성!</span>
-                              : <span className="text-[10px] text-pink-400 font-medium">공구 참여 →</span>
+                              ? <span className="text-[10px] text-green-400 font-bold">{t('seller.publicPage.achieved')}</span>
+                              : <span className="text-[10px] text-pink-400 font-medium">{t('seller.publicPage.joinGroupBuy')}</span>
                             }
                           </div>
                         </div>
