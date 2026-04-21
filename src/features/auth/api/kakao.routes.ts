@@ -26,26 +26,137 @@ type Bindings = {
 
 export const kakaoRoutes = new Hono<{ Bindings: Bindings }>();
 
+// ────────────────────────────────────────────────────────────
+// OAuth state & redirect path safety helpers (CSRF / open redirect)
+// ────────────────────────────────────────────────────────────
+
+const OAUTH_STATE_COOKIE = 'kakao_oauth_state';
+
+/**
+ * Only accept internal paths as redirect target:
+ *  - must start with "/"
+ *  - must NOT start with "//" (protocol-relative URL)
+ */
+function safeRedirect(path: string | null | undefined): string {
+  if (!path || typeof path !== 'string') return '/';
+  if (!path.startsWith('/')) return '/';
+  if (path.startsWith('//')) return '/';
+  if (path.includes('\\')) return '/';
+  return path;
+}
+
+/** Extract a named cookie value from a Cookie header string. */
+function readCookie(cookieHeader: string | null | undefined, name: string): string | null {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return match?.[1] ?? null;
+}
+
+/**
+ * Parse the oauth state cookie: "<state>|<base64url(redirectPath)>"
+ * The redirect path is sanitized before use.
+ */
+function parseStateCookie(value: string | null): { state: string; redirect: string } | null {
+  if (!value) return null;
+  const parts = value.split('|');
+  if (parts.length !== 2) return null;
+  const [state, encoded] = parts;
+  if (!state || !encoded) return null;
+  try {
+    const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=');
+    const redirect = decodeURIComponent(atob(padded));
+    return { state, redirect: safeRedirect(redirect) };
+  } catch {
+    return null;
+  }
+}
+
+/** Clear the oauth state cookie. */
+function clearStateCookieHeader(): string {
+  return `${OAUTH_STATE_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
+}
+
+/**
+ * GET /auth/kakao/start?redirect=/path
+ * Initiates OAuth: generates random state, stores signed short-lived cookie,
+ * and redirects to Kakao authorize URL. This is the CSRF-safe entry point.
+ */
+kakaoRoutes.get('/start', async (c) => {
+  const redirectRaw = c.req.query('redirect') || '/';
+  const redirect = safeRedirect(redirectRaw);
+
+  const kakaoRestKey = c.env.KAKAO_REST_API_KEY;
+  if (!kakaoRestKey) {
+    return c.json({ success: false, error: 'Kakao not configured' }, 500);
+  }
+
+  const state = crypto.randomUUID();
+  const b64Redirect = btoa(encodeURIComponent(redirect))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  const cookieValue = `${state}|${b64Redirect}`;
+
+  c.header(
+    'Set-Cookie',
+    `${OAUTH_STATE_COOKIE}=${cookieValue}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`
+  );
+
+  const origin = new URL(c.req.url).origin;
+  const redirectUri = `${origin}/auth/kakao/sync/callback`;
+  const authUrl = new URL('https://kauth.kakao.com/oauth/authorize');
+  authUrl.searchParams.set('client_id', kakaoRestKey);
+  authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('state', state);
+
+  return c.redirect(authUrl.toString(), 302);
+});
+
 /**
  * GET /auth/kakao/sync/callback
  * 카카오싱크 OAuth 리다이렉트 콜백
  */
 kakaoRoutes.get('/sync/callback', async (c) => {
   const { DB } = c.env;
-  
+
+  // Extract & verify OAuth state (CSRF protection) ─────────────
+  const receivedState = c.req.query('state') || '';
+  const cookieHeader = c.req.header('Cookie') || '';
+  const stateCookie = parseStateCookie(readCookie(cookieHeader, OAUTH_STATE_COOKIE));
+
+  // Resolve redirect target: only trust the path stored in our signed cookie.
+  // Backward compat: if no cookie (legacy frontend flow), accept a sanitized
+  // internal path from the ?state= param. Never blindly use raw state.
+  let redirectTarget = '/';
+  let stateMatched = false;
+  if (stateCookie) {
+    redirectTarget = stateCookie.redirect;
+    stateMatched = !!receivedState && receivedState === stateCookie.state;
+  } else {
+    redirectTarget = safeRedirect(receivedState);
+  }
+
   try {
     const code = c.req.query('code');
-    const state = c.req.query('state') || '/';
     const error = c.req.query('error');
-    
+
     if (error) {
       console.error('[Kakao Sync] OAuth error:', error);
-      return c.redirect(`${state}?error=kakao_oauth_${error}`);
+      c.header('Set-Cookie', clearStateCookieHeader());
+      return c.redirect(`${redirectTarget}?error=kakao_oauth_${error}`);
     }
-    
+
     if (!code) {
       console.error('[Kakao Sync] No authorization code');
-      return c.redirect(`${state}?error=no_code`);
+      c.header('Set-Cookie', clearStateCookieHeader());
+      return c.redirect(`${redirectTarget}?error=no_code`);
+    }
+
+    // If a state cookie exists but doesn't match, reject (CSRF guard)
+    if (stateCookie && !stateMatched) {
+      console.error('[Kakao Sync] OAuth state mismatch');
+      c.header('Set-Cookie', clearStateCookieHeader());
+      return c.redirect(`${redirectTarget}?error=oauth_state_mismatch`);
     }
     
     const KAKAO_REDIRECT_URI = `${new URL(c.req.url).origin}/auth/kakao/sync/callback`;
@@ -93,7 +204,7 @@ kakaoRoutes.get('/sync/callback', async (c) => {
         console.error('[Kakao Sync] Session cookie creation failed:', e);
       }
 
-      const stateUrl = new URL(state, 'https://dummy.com');
+      const stateUrl = new URL(redirectTarget, 'https://dummy.com');
       // 한국: 세션 쿠키로 인증하므로 firebase_token 불필요
       // 글로벌: Firebase customToken 필요
       const isKR = c.env.FRONTEND_URL?.includes('live.ur-team.com') || c.req.header('host')?.includes('live.ur-team.com');
@@ -109,26 +220,28 @@ kakaoRoutes.get('/sync/callback', async (c) => {
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;
       // 302 명시: Set-Cookie 헤더가 일부 브라우저에서 303에 무시되는 문제 회피
+      c.header('Set-Cookie', clearStateCookieHeader());
       return c.redirect(redirectUrl, 302);
-      
+
     } catch (serviceError) {
       console.error('[Kakao Sync] Service error:', serviceError);
       const errorMsg = (serviceError as Error).message || 'Unknown error';
-      
+      c.header('Set-Cookie', clearStateCookieHeader());
+
       if (errorMsg.includes('Firebase')) {
-        return c.redirect(`${state}?error=firebase_config_error&detail=${encodeURIComponent(errorMsg)}`);
+        return c.redirect(`${redirectTarget}?error=firebase_config_error&detail=${encodeURIComponent(errorMsg)}`);
       }
       if (errorMsg.includes('Database')) {
-        return c.redirect(`${state}?error=database_error&detail=${encodeURIComponent(errorMsg)}`);
+        return c.redirect(`${redirectTarget}?error=database_error&detail=${encodeURIComponent(errorMsg)}`);
       }
-      return c.redirect(`${state}?error=kakao_auth_failed&detail=${encodeURIComponent(errorMsg)}`);
+      return c.redirect(`${redirectTarget}?error=kakao_auth_failed&detail=${encodeURIComponent(errorMsg)}`);
     }
-    
+
   } catch (error) {
     console.error('[Kakao Sync] Unexpected error:', error);
-    const state = c.req.query('state') || '/';
     const errorMsg = encodeURIComponent((error as Error).message || 'unknown');
-    return c.redirect(`${state}?error=kakao_sync_failed&detail=${errorMsg}`);
+    c.header('Set-Cookie', clearStateCookieHeader());
+    return c.redirect(`${redirectTarget}?error=kakao_sync_failed&detail=${errorMsg}`);
   }
 });
 
@@ -274,24 +387,9 @@ kakaoRoutes.post('/firebase', cors(), async (c) => {
   }
 });
 
-/**
- * GET /api/users/role
- * Get user role from Firebase Auth token
- */
-kakaoRoutes.get('/users/role', cors(), async (c) => {
-  try {
-    const authHeader = c.req.header('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ success: true, data: { role: 'user' }, message: 'Default role' });
-    }
-    
-    return c.json({ success: true, data: { role: 'user' }, message: 'User role retrieved' });
-    
-  } catch (err) {
-    console.error('[/api/users/role] Error:', err);
-    return c.json({ success: true, data: { role: 'user' }, message: 'Fallback role' });
-  }
-});
+// NOTE: A legacy `/users/role` route previously lived here that returned
+// `{role:'user'}` without verifying the caller's token. It was a security
+// smell (misleading callers into thinking role was verified) and has been
+// removed. Real role resolution lives in `/api/users/role` (usersRouter).
 
 export default kakaoRoutes;

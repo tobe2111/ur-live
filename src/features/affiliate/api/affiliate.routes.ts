@@ -45,24 +45,51 @@ async function getCommissionRate(DB: D1Database): Promise<number> {
 }
 
 // ── POST /api/affiliate/track — 주문 완료 시 추천인 수수료 기록 ──
-affiliateRoutes.post('/track', async (c) => {
+// ✅ SECURITY FIX (Payment C1): requireAuth + server-side order lookup.
+// Previously unauthenticated and trusted client-supplied referrer_id / order_id /
+// order_amount, allowing anyone to credit unlimited points to any account.
+affiliateRoutes.post('/track', requireAuth(), async (c) => {
+  const authUser = getCurrentUser(c)
+  if (!authUser) return c.json({ success: false, error: '로그인 필요' }, 401)
+
   const { DB } = c.env
   await ensureTable(DB)
-  const { referrer_id, order_id, product_id, product_name, buyer_id, order_amount } = await c.req.json<any>()
+  const { referrer_id, order_id, product_id, product_name } = await c.req.json<any>()
   const buyerIp = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || ''
 
-  if (!referrer_id || !order_id || !order_amount) {
+  if (!referrer_id || !order_id) {
     return c.json({ success: false, error: '필수 정보 없음' }, 400)
   }
-  // 자기 자신 추천 방지
-  if (referrer_id === buyer_id) {
+
+  // ✅ Look up actual order from DB — trust nothing from client
+  const order = await DB.prepare(
+    'SELECT id, user_id, total_amount, status FROM orders WHERE id = ?'
+  ).bind(order_id).first<{ id: number; user_id: string | number; total_amount: number; status: string }>()
+
+  if (!order) {
+    return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+  }
+
+  // ✅ Caller must be the buyer (prevents random attackers from triggering tracking)
+  if (String(order.user_id) !== String(authUser.id)) {
+    return c.json({ success: false, error: '주문의 구매자만 추천 수수료를 기록할 수 있습니다' }, 403)
+  }
+
+  // ✅ Only allow tracking once payment is confirmed
+  const orderStatus = (order.status || '').toUpperCase()
+  if (!['DONE', 'PAID'].includes(orderStatus)) {
+    return c.json({ success: false, error: '결제 완료된 주문만 수수료 대상입니다' }, 400)
+  }
+
+  // ✅ Self-referral prevention (server-side comparison using DB user_id)
+  if (String(referrer_id) === String(order.user_id)) {
     return c.json({ success: false, error: '본인 추천 불가' }, 400)
   }
 
   // 중복 방지
   const existing = await DB.prepare(
     'SELECT id FROM affiliate_earnings WHERE referrer_id = ? AND order_id = ?'
-  ).bind(referrer_id, order_id).first()
+  ).bind(String(referrer_id), order.id).first()
   if (existing) return c.json({ success: true, message: '이미 기록됨' })
 
   // 부정 방지: 같은 IP에서 같은 추천인으로 24시간 내 3건 이상이면 차단
@@ -70,26 +97,31 @@ affiliateRoutes.post('/track', async (c) => {
     const recentFromIp = await DB.prepare(`
       SELECT COUNT(*) AS cnt FROM affiliate_earnings
       WHERE referrer_id = ? AND buyer_ip = ? AND created_at > datetime('now', '-24 hours')
-    `).bind(referrer_id, buyerIp).first<{ cnt: number }>()
+    `).bind(String(referrer_id), buyerIp).first<{ cnt: number }>()
     if (recentFromIp && recentFromIp.cnt >= 3) {
       return c.json({ success: false, error: '비정상 패턴 감지' }, 400)
     }
   }
 
+  // ✅ Use server-side total_amount (ignore client order_amount)
+  const orderAmount = Number(order.total_amount) || 0
   const rate = await getCommissionRate(DB)
-  const commission = Math.round(order_amount * rate)
+  const commission = Math.round(orderAmount * rate)
 
   // 수수료 기록
   await DB.prepare(`
     INSERT INTO affiliate_earnings (referrer_id, order_id, product_id, product_name, buyer_id, buyer_ip, order_amount, commission)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(referrer_id, order_id, product_id || null, product_name || null, buyer_id || null, buyerIp, order_amount, commission).run()
+  `).bind(
+    String(referrer_id), order.id, product_id || null, product_name || null,
+    String(order.user_id), buyerIp, orderAmount, commission,
+  ).run()
 
   // 딜 포인트 즉시 적립 (deal_balance 컬럼이 없는 환경에서는 silently ignore)
   try {
     await DB.prepare(
       'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?'
-    ).bind(commission, referrer_id).run()
+    ).bind(commission, String(referrer_id)).run()
   } catch { /* deal_balance column may not exist */ }
 
   // 알림
@@ -97,7 +129,7 @@ affiliateRoutes.post('/track', async (c) => {
     await DB.prepare(`
       INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
       VALUES (?, 'affiliate_earning', ?, ?, '/user/affiliate', datetime('now'))
-    `).bind(referrer_id, '💰 추천 수수료 적립!', `${commission}딜이 적립되었습니다`).run()
+    `).bind(String(referrer_id), '💰 추천 수수료 적립!', `${commission}딜이 적립되었습니다`).run()
   } catch {}
 
   return c.json({ success: true, data: { commission } })

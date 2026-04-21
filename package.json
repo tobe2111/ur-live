@@ -16,6 +16,7 @@
     "app:android": "npm run app:sync && npx cap open android",
     "app:ios": "npm run app:sync && npx cap open ios",
     "test": "vitest run",
+    "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "db:migrate": "wrangler d1 execute toss-live-commerce-db --local --file=migrations/001_initial.sql",

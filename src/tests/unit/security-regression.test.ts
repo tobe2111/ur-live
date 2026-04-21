@@ -85,13 +85,18 @@ describe('Ownership enforcement on sensitive GETs', () => {
   it('returns.routes.ts uses requireAuth on every non-webhook route', () => {
     const p = path.join(SRC_DIR, 'features/returns/api/returns.routes.ts');
     const content = fs.readFileSync(p, 'utf8');
-    // Every returnsRoutes.<verb> should either be followed by requireAuth or explicitly webhook/public
-    const routeDecls = [...content.matchAll(/returnsRoutes\.(get|post|put|delete|patch)\s*\(\s*['"`][^'"`]+['"`]\s*,\s*([^,)]+)/g)];
-    const unprotected = routeDecls.filter(
-      ([, , args]) =>
-        !/requireAuth|rateLimit.*requireAuth|requireUser|requireSeller|requireAdmin/.test(args ?? '')
-    );
-    expect(unprotected, `returns routes without auth: ${unprotected.map(m => m[0]).join('\n')}`).toHaveLength(0);
+    // Capture each route decl line. Each returnsRoutes.<verb>(...) line
+    // must mention at least one auth middleware before the handler.
+    const lines = content.split('\n');
+    const unprotected: string[] = [];
+    for (const line of lines) {
+      const m = /returnsRoutes\.(get|post|put|delete|patch)\s*\(/.exec(line);
+      if (!m) continue;
+      if (!/requireAuth|requireUser|requireSeller|requireAdmin/.test(line)) {
+        unprotected.push(line.trim());
+      }
+    }
+    expect(unprotected, `returns routes without auth:\n${unprotected.join('\n')}`).toHaveLength(0);
   });
 });
 

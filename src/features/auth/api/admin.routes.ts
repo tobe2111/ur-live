@@ -25,6 +25,14 @@ type AdminLoginRequest = {
   password: string;
 };
 
+/** 로그 노출 방지: 이메일을 "a***@domain" 형태로 마스킹. */
+function maskEmail(e: string | undefined | null): string {
+  if (!e || typeof e !== 'string') return '***';
+  const [local, domain] = e.split('@');
+  if (!local || !domain) return '***';
+  return (local[0] ?? '*') + '***@' + domain;
+}
+
 export const adminRoutes = new Hono<{ Bindings: Bindings }>();
 
 /**
@@ -55,16 +63,16 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     );
     
     if (admins.length === 0) {
-      console.warn('[Admin Login] Admin not found:', email);
+      if (import.meta.env.DEV) console.warn('[Admin Login] Admin not found:', maskEmail(email));
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401);
     }
-    
+
     const admin = admins[0];
     const passwordHash = admin.password_hash as string;
     const { valid } = await verifyPassword(password, passwordHash);
 
     if (!valid) {
-      if (import.meta.env.DEV) console.warn('[Admin Login] Invalid password');
+      if (import.meta.env.DEV) console.warn('[Admin Login] Invalid password for:', maskEmail(email));
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401);
     }
     

@@ -42,6 +42,11 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
   if (body.amount < 1000 || body.amount % 100 !== 0) {
     return c.json({ success: false, error: '후원 금액은 최소 1,000원이며 100원 단위여야 합니다' }, 400);
   }
+  // ✅ SECURITY FIX (H1): Upper bound on donation amount (prevent overflow /
+  //    abuse via oversized values).
+  if (body.amount > 10_000_000) {
+    return c.json({ success: false, error: '후원 금액은 최대 1천만원입니다' }, 400);
+  }
 
   const { DB } = c.env;
 
@@ -144,7 +149,12 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
   ).bind(body.orderId, userId).first<DonationRow>().catch(() => null);
 
   if (!pending) return c.json({ success: false, error: '후원 정보를 찾을 수 없습니다. 다시 시도해주세요.' }, 404);
-  if (pending.payment_status === 'completed') return c.json({ success: false, error: '이미 처리된 결제입니다' }, 409);
+  // ✅ SECURITY FIX (H8): Only allow 'pending' → 'completed' transition.
+  //    Without this guard a failed/refunded donation could be re-confirmed
+  //    from the client side, reviving a canceled transaction.
+  if (pending.payment_status !== 'pending') {
+    return c.json({ success: false, error: '이미 처리된 후원입니다.' }, 409);
+  }
 
   // 클라이언트가 보낸 amount를 DB 저장값으로 검증 (금액 조작 방지)
   if (pending.amount !== body.amount) {

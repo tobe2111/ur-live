@@ -38,26 +38,49 @@ couponRoutes.post('/apply', rateLimit({ action: 'coupon_apply', max: 10, windowS
 
 // 쿠폰 사용 확정 (결제 완료 시)
 // ✅ BUG #23 FIX: Never trust client-supplied discount_amount. Recompute from
-// the coupon row + actual order_amount. Caller may pass `order_amount` so we
-// can recompute percent discounts; otherwise we fall back to the fixed value.
+// the coupon row + actual order_amount.
+// ✅ SECURITY FIX (Payment C5): Verify the order belongs to the caller and use
+// server-side total_amount. Also require max_discount cap for percent coupons.
 couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
-  const { coupon_id, order_id, order_amount } = await c.req.json<{ coupon_id: number; order_id: number; order_amount?: number }>()
+  const { coupon_id, order_id } = await c.req.json<{ coupon_id: number; order_id: number; order_amount?: number }>()
+
+  if (!coupon_id || !order_id) {
+    return c.json({ success: false, error: 'coupon_id / order_id 필수' }, 400)
+  }
+
+  // ✅ Fetch order server-side and verify ownership
+  const order = await DB.prepare(
+    'SELECT user_id, total_amount FROM orders WHERE id = ?'
+  ).bind(order_id).first<{ user_id: string | number; total_amount: number }>()
+  if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+  if (String(order.user_id) !== String(user.id)) {
+    return c.json({ success: false, error: 'Forbidden' }, 403)
+  }
 
   const coupon = await DB.prepare(
     'SELECT type, value, max_discount FROM coupons WHERE id = ? AND is_active = 1'
   ).bind(coupon_id).first<{ type: string; value: number; max_discount: number | null }>()
   if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 404)
 
-  const amountBase = Number(order_amount ?? 0)
+  // ✅ Use authoritative order.total_amount (ignore any client-supplied order_amount)
+  const amountBase = Number(order.total_amount) || 0
   let computed = coupon.type === 'percent'
     ? Math.round(amountBase * coupon.value / 100)
     : coupon.value
-  if (coupon.max_discount && computed > coupon.max_discount) {
+
+  // ✅ Percent coupons MUST have a max_discount cap; fall back to order amount
+  //    to prevent excessive discounts on manipulated / large orders.
+  if (coupon.type === 'percent') {
+    const cap = coupon.max_discount ?? amountBase
+    if (computed > cap) computed = cap
+  } else if (coupon.max_discount && computed > coupon.max_discount) {
     computed = coupon.max_discount
   }
+  // Never exceed the order total
+  if (computed > amountBase) computed = amountBase
   if (computed < 0) computed = 0
 
   await DB.prepare(

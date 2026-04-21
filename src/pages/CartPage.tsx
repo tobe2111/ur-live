@@ -184,12 +184,10 @@ function CartPageContent() {
   }, [])
 
   // 🔄 장바구니 데이터 로딩 시 선택 상태 초기화
+  // ✅ UX H14 FIX: localStorage hasCartItems 제거 (React Query 캐시가 신뢰 가능 소스)
   useEffect(() => {
     if (cartItems.length > 0) {
       setSelectedIds(new Set(cartItems.map((item: CartItem) => item.id as string | number)))
-      localStorage.setItem('hasCartItems', 'true')
-    } else {
-      localStorage.setItem('hasCartItems', 'false')
     }
   }, [cartItems])
 

@@ -44,6 +44,8 @@ export default function MyOrdersPage() {
   const [cancelReason, setCancelReason] = useState('')
   const [isPartialCancel, setIsPartialCancel] = useState(false)
   const [cancelAmount, setCancelAmount] = useState('')
+  // ✅ UX C5 FIX: 에러 상태로 재시도 UI 제공 (리다이렉트 루프 방지)
+  const [error, setError] = useState<string | null>(null)
 
   // Check login status (통합 인증 사용)
   const userId = getUserIdSync()
@@ -57,15 +59,20 @@ export default function MyOrdersPage() {
 
   useEffect(() => { document.title = '주문내역 - 유어딜' }, [])
 
+  // ✅ UX C5 FIX: 로그인 체크는 최초 마운트 시에만 (activeTab 변경 시 리다이렉트 루프 방지)
   useEffect(() => {
-    // Redirect to login if not logged in (통합 인증 체크)
     if (!isLoggedInSync() || !userId) {
       requireLogin(navigate, '로그인이 필요합니다.')
-      return
     }
-    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ✅ UX C5 FIX: 데이터 로드는 activeTab 변경 시. 401 시 리다이렉트 대신 에러 표시.
+  useEffect(() => {
+    if (!isLoggedInSync() || !userId) return
     loadData()
-  }, [activeTab, userId, navigate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, userId])
 
   async function loadData() {
     // ✅ BUG #25 FIX: Guard against concurrent calls
@@ -74,14 +81,15 @@ export default function MyOrdersPage() {
     }
     isLoadingRef.current = true
     setLoading(true)
+    setError(null)
     try {
       const uid = userId || getUserIdSync()
-      
+
       if (!uid) {
         if (import.meta.env.DEV) console.error('No user ID available')
         return
       }
-      
+
       if (activeTab === 'cart') {
         const response = await api.get('/api/cart')
         if (response.data.success) {
@@ -95,8 +103,14 @@ export default function MyOrdersPage() {
           setOrders(Array.isArray(d) ? d : (d?.items || d?.orders || []))
         }
       }
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Failed to load data:', error)
+    } catch (err: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to load data:', err)
+      const e = err as { response?: { status?: number } }
+      if (e?.response?.status === 401) {
+        setError('세션이 만료되었습니다. 다시 로그인해주세요.')
+      } else {
+        setError(activeTab === 'cart' ? '장바구니를 불러올 수 없습니다.' : '주문 목록을 불러올 수 없습니다.')
+      }
     } finally {
       setLoading(false)
       isLoadingRef.current = false
@@ -268,6 +282,20 @@ export default function MyOrdersPage() {
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
               <p className="text-[17px] text-gray-500">로딩 중...</p>
+            </div>
+          </div>
+        ) : error ? (
+          /* ✅ UX C5 FIX: 에러 상태 + 재시도 버튼 (리다이렉트 루프 방지) */
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <p className="text-[15px] text-gray-900 mb-4">{error}</p>
+              <button
+                onClick={() => loadData()}
+                className="px-6 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold"
+              >
+                다시 시도
+              </button>
             </div>
           </div>
         ) : (

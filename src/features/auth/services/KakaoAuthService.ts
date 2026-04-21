@@ -45,6 +45,7 @@ export class KakaoAuthService {
         redirect_uri: redirectUri,
         code: code,
       }),
+      signal: AbortSignal.timeout(15000), // 15s timeout
     });
     
     if (!response.ok) {
@@ -75,6 +76,7 @@ export class KakaoAuthService {
         redirect_uri: redirectUri,
         code,
       }),
+      signal: AbortSignal.timeout(15000), // 15s timeout
     });
 
     if (!response.ok) {
@@ -97,6 +99,7 @@ export class KakaoAuthService {
         client_id: this.kakaoRestApiKey,
         refresh_token: refreshToken,
       }),
+      signal: AbortSignal.timeout(15000), // 15s timeout
     });
 
     if (!response.ok) {
@@ -119,6 +122,7 @@ export class KakaoAuthService {
         'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
       },
       body: 'property_keys=["kakao_account.profile","kakao_account.email","properties.nickname","properties.profile_image"]',
+      signal: AbortSignal.timeout(15000), // 15s timeout
     });
     
     if (!response.ok) {
@@ -156,6 +160,7 @@ export class KakaoAuthService {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
+        signal: AbortSignal.timeout(15000), // 15s timeout
       });
       
       if (!response.ok) {

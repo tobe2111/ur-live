@@ -9,7 +9,7 @@ import {
   Trash2,
   ChevronLeft,
 } from 'lucide-react'
-import { getUserId } from '@/utils/auth'
+import { getUserIdSync } from '@/utils/auth'
 import { CustomModal } from '@/components/CustomModal'
 import { toast } from '@/hooks/useToast'
 
@@ -45,7 +45,9 @@ export default function AddressManagementPage() {
   const [formData, setFormData] = useState(EMPTY_FORM)
 
   useEffect(() => {
-    const userId = getUserId()
+    // ✅ UX C4 FIX: getUserId()는 Promise를 반환 (truthy check always passes).
+    // 동기 체크를 위해 getUserIdSync() 사용.
+    const userId = getUserIdSync()
     if (!userId) {
       toast.info('로그인이 필요합니다.')
       navigate('/login')
@@ -53,6 +55,19 @@ export default function AddressManagementPage() {
     }
     loadAddresses()
   }, [navigate])
+
+  // ✅ UX H15 FIX: Daum Postcode SDK 1회만 로드 (JSX <script> 중복 등록 방지)
+  useEffect(() => {
+    const DAUM_SRC = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    if (document.querySelector(`script[src="${DAUM_SRC}"]`)) return
+    const s = document.createElement('script')
+    s.src = DAUM_SRC
+    s.async = true
+    document.head.appendChild(s)
+    return () => {
+      s.remove()
+    }
+  }, [])
 
   // Daum 우편번호 팝업 — 모달 내 embedded 방식
   useEffect(() => {
@@ -178,8 +193,7 @@ export default function AddressManagementPage() {
   return (
     <div className="min-h-screen bg-white pb-20">
       <SEO title="배송지 관리 - 유어딜" description="배송지를 추가하고 관리하세요" url="/mypage/addresses" />
-      {/* Daum Postcode Script */}
-      <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+      {/* ✅ UX H15 FIX: Daum Postcode script는 useEffect에서 1회만 로드 */}
 
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">

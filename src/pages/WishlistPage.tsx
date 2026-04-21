@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import axios from 'axios'
+import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { isLoggedInSync, getUserIdSync } from '@/utils/auth'
 import WishlistButton from '../components/WishlistButton'
@@ -46,10 +47,11 @@ const WishlistPage: React.FC = () => {
     }
   }, [navigate])
 
-  const loadWishlists = async (uid: number) => {
+  const loadWishlists = async (_uid: number) => {
     try {
       setLoading(true)
-      const response = await axios.get(`/api/wishlists/${uid}`)
+      // ✅ UX C3 FIX: auth-implicit endpoint (IDOR 방지, URL에 userId 노출 금지)
+      const response = await axios.get('/api/wishlists')
 
       if (response.data.success) {
         setWishlists(response.data.data.items)
@@ -78,11 +80,11 @@ const WishlistPage: React.FC = () => {
     }
 
     try {
-      const response = await axios.post('/api/cart', {
-        userId,
-        productId: item.product_id,
+      // ✅ UX C3 FIX: snake_case + userId 미포함 (서버 미들웨어가 세션에서 추출)
+      const response = await api.post('/api/cart', {
+        product_id: item.product_id,
         quantity: 1,
-        priceSnapshot: item.price
+        price_snapshot: item.price,
       })
 
       if (response.data.success) {

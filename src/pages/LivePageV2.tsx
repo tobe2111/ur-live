@@ -177,34 +177,21 @@ export default function LivePageV2() {
   // 실시간 시청자 수
   const [viewerCount, setViewerCount] = useState<number>(0)
 
-  // URL 파라미터에서 로그인 세션 정보 체크 및 localStorage 저장
+  // ✅ UX C12 FIX: Session fixation 취약점 제거 (URL-param → localStorage 블록 삭제).
+  // 인증 세션은 /auth/kakao/*/callback 라우트에서 중앙 처리됨. 임의의 URL에서
+  // login=success&userId=...&session=... 파라미터를 받아 localStorage에 저장하는
+  // 블록은 공격자가 임의 세션을 주입할 수 있게 하므로 제거.
+  // 혹시 이전 링크로 진입한 경우를 대비해 URL 파라미터만 정리하고 무시.
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
-    const loginSuccess = urlParams.get('login')
-    const session = urlParams.get('session')
-    const userId = urlParams.get('userId')
-    const userName = urlParams.get('userName')
-
-    if (loginSuccess === 'success' && session && userId) {
-      localStorage.setItem('user_session_token', session)
-      localStorage.setItem('user_id', userId)
-
-      const existingUserType = localStorage.getItem('user_type')
-      if (existingUserType !== 'seller' && existingUserType !== 'admin') {
-        localStorage.setItem('user_type', 'user')
-      }
-
-      if (userName) {
-        localStorage.setItem('user_name', decodeURIComponent(userName))
-      }
-
-      localStorage.removeItem('session')
-
+    const hasLoginParams =
+      urlParams.has('login') || urlParams.has('session') ||
+      urlParams.has('userId') || urlParams.has('userName')
+    if (hasLoginParams) {
       urlParams.delete('login')
       urlParams.delete('session')
       urlParams.delete('userId')
       urlParams.delete('userName')
-
       const newSearch = urlParams.toString()
       const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '')
       window.history.replaceState({}, '', newUrl)

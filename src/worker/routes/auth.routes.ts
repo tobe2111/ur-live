@@ -16,7 +16,7 @@ import { authMiddleware, createJwt, type AuthVariables } from '../middleware/aut
 import { generateId } from '../../shared/utils';
 import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/constants';
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
-import { hashPassword, verifyPassword } from '../../lib/password';
+import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../lib/password';
 import { parseSessionCookie, clearSessionCookie } from '../utils/session';
 
 const authRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -42,6 +42,12 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
       return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400);
     }
     const { email, password, name, phone } = parsed.data;
+
+    // ── 비밀번호 복잡도 검증 (신규 가입 전용) ────────────────
+    const complexity = validatePasswordComplexity(password);
+    if (!complexity.ok) {
+      return c.json({ success: false, error: complexity.error }, 400);
+    }
 
     const qb = new QueryBuilder(c.env.DB);
 

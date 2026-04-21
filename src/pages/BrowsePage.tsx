@@ -39,6 +39,8 @@ export default function BrowsePage() {
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  // ✅ UX M17 FIX: 에러 상태 + 재시도 버튼
+  const [error, setError] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
   const category = searchParams.get('category') || 'all'
   const [sortBy, setSortBy] = useState<SortOption>(
@@ -153,16 +155,30 @@ export default function BrowsePage() {
     if (hasMarkers) mapInstanceRef.current.setBounds(bounds)
   }
 
-  useEffect(() => {
+  const loadProducts = useCallback(() => {
     setLoading(true)
+    setError(null)
     const url = category === 'all'
       ? '/api/products?limit=100'
       : `/api/products?category=${encodeURIComponent(category)}&limit=100`
     api.get(url)
-      .then(r => { if (r.data.success) setProducts(r.data.data || []) })
-      .catch(() => {})
+      .then(r => {
+        if (r.data.success) {
+          setProducts(r.data.data || [])
+        } else {
+          setError('상품을 불러올 수 없습니다.')
+        }
+      })
+      .catch(() => {
+        // ✅ UX M17 FIX: 에러 상태 설정 (무시 금지)
+        setError('상품을 불러올 수 없습니다. 다시 시도해주세요.')
+      })
       .finally(() => setLoading(false))
   }, [category])
+
+  useEffect(() => {
+    loadProducts()
+  }, [loadProducts])
 
   useEffect(() => {
     const handler = () => setShowSortDropdown(false)

@@ -118,12 +118,15 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
   }
 
   // 3. Check this is the invited user's FIRST order
+  // ✅ SECURITY FIX (H7): Exclude REFUNDED orders too (refund reversal double-
+  //    rewarding). Also require cnt === 1 (strict first-order) so no reward
+  //    if a second/repeat order sneaks in.
   const orderCount = await queryFirst<{ cnt: number }>(
     DB,
-    "SELECT COUNT(*) as cnt FROM orders WHERE user_id = ? AND status NOT IN ('CANCELLED','FAILED')",
+    "SELECT COUNT(*) as cnt FROM orders WHERE user_id = ? AND status NOT IN ('CANCELLED','FAILED','REFUNDED')",
     [String(invitedUser.id)],
   )
-  if (!orderCount || orderCount.cnt > 1) {
+  if (!orderCount || orderCount.cnt !== 1) {
     return c.json({ success: false, error: '첫 구매 보상은 첫 번째 주문에만 적용됩니다' }, 400)
   }
 
