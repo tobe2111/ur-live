@@ -114,72 +114,113 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     return exact ? location.pathname === path : location.pathname.startsWith(path)
   }
 
+  const sellerTypeLabel = sellerType === 'influencer'
+    ? 'Influencer'
+    : sellerType === 'store_owner'
+    ? 'Store Owner'
+    : 'Influencer + Store'
+
   const Sidebar = () => (
-    <aside className="w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full">
-      {/* Workspace */}
-      <div className="px-4 pt-5 pb-4 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
-            {sellerName.charAt(0)}
+    <aside className="w-[232px] flex-shrink-0 flex flex-col h-full" style={{ background: '#0A0A0B' }}>
+      {/* Branding */}
+      <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-2.5">
+          <span
+            className="font-extrabold italic text-white"
+            style={{ fontSize: '13px', letterSpacing: '-0.03em' }}
+          >
+            UR·DEAL
+          </span>
+          <span
+            className="font-bold uppercase"
+            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#FF0033' }}
+          >
+            SELLER STUDIO
+          </span>
+        </div>
+        {/* Seller profile */}
+        <div className="flex items-center gap-2.5 mt-3">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #FF0033, #FF6B35)' }}
+          >
+            {sellerName.charAt(0).toUpperCase()}
           </div>
-          <div className="min-w-0">
-            <p className="text-xs text-gray-400">{t('seller.workspace')}</p>
-            <p className="text-sm font-semibold text-gray-800 truncate">{sellerName}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-extrabold text-white truncate">{sellerName}</p>
+            <p className="text-white/50" style={{ fontSize: '9px' }}>{sellerTypeLabel}</p>
           </div>
         </div>
       </div>
 
-      {/* Nav - Grouped */}
-      <nav className="flex-1 px-3 py-3 overflow-y-auto scrollbar-hide">
+      {/* Grouped navigation */}
+      <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">
         {filteredNavGroups.map((group, gi) => (
-          <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
+          <div key={gi} className="mt-3 first:mt-1">
             {(group.label || group.labelKey) && (
-              <p className="px-3 mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.labelKey ? t(group.labelKey) : group.label}</p>
+              <div
+                className="px-4 py-1.5 font-extrabold uppercase text-white/30"
+                style={{ fontSize: '9px', letterSpacing: '0.12em' }}
+              >
+                {group.labelKey ? t(group.labelKey) : group.label}
+              </div>
             )}
-            <div className="space-y-0.5">
-              {group.items.map(({ path, labelKey, icon: Icon, ...rest }) => {
-                const exact = (rest as any).exact as boolean | undefined
-                const highlight = (rest as any).highlight as boolean | undefined
-                const active = isActive(path, exact)
-                const label = t(labelKey)
-                return (
-                  <Link
-                    key={path}
-                    to={path}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      active
-                        ? 'bg-blue-600 text-white'
-                        : highlight && !active
-                        ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 flex-shrink-0 ${highlight && !active ? 'text-red-500' : ''}`} />
-                    {label}
-                    {highlight && !active && <span className="ml-auto h-2 w-2 bg-red-500 rounded-full animate-pulse" />}
-                    {labelKey === 'seller.orders' && pendingOrders > 0 && (
-                      <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                        active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {pendingOrders}
-                      </span>
-                    )}
-                  </Link>
-                )
-              })}
-            </div>
+            {group.items.map(({ path, labelKey, icon: Icon, ...rest }) => {
+              const exact = (rest as any).exact as boolean | undefined
+              const highlight = (rest as any).highlight as boolean | undefined
+              const active = isActive(path, exact)
+              const label = t(labelKey)
+              return (
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors ${
+                    highlight && !active ? 'bg-red-500/20 border-l-2 border-red-500' : ''
+                  }`}
+                  style={
+                    active
+                      ? {
+                          color: '#FFFFFF',
+                          borderLeft: '2.5px solid #FF0033',
+                          background: 'linear-gradient(to right, rgba(255,0,51,0.15), transparent)',
+                        }
+                      : highlight && !active
+                      ? {}
+                      : {
+                          color: 'rgba(255,255,255,0.55)',
+                          borderLeft: '2.5px solid transparent',
+                        }
+                  }
+                  onMouseEnter={(e) => {
+                    if (!active) e.currentTarget.style.color = '#FFFFFF'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active && !highlight) e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
+                  }}
+                >
+                  <Icon size={14} strokeWidth={2} className={`flex-shrink-0 ${highlight && !active ? 'text-red-400' : ''}`} />
+                  <span className={`flex-1 truncate ${highlight && !active ? 'text-red-400' : ''}`}>{label}</span>
+                  {highlight && !active && <span className="ml-auto h-2 w-2 bg-red-500 rounded-full animate-pulse" />}
+                  {labelKey === 'seller.orders' && pendingOrders > 0 && (
+                    <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-white/10 text-white">
+                      {pendingOrders}
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
           </div>
         ))}
       </nav>
 
       {/* Bottom */}
-      <div className="px-3 py-4 border-t border-gray-100 space-y-0.5">
+      <div className="px-4 py-3 space-y-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <Link
           to={`/profile/${localStorage.getItem('seller_username') || localStorage.getItem('seller_id') || ''}`}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
         >
-          <Settings className="w-4 h-4" />
+          <Settings size={13} strokeWidth={2} />
           {t('seller.settings')}
         </Link>
         {localStorage.getItem('user_id') && (
@@ -188,17 +229,17 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
               toast.success(t('seller.layout.backToMain'))
               navigate('/')
             }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+            className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-blue-400 hover:text-blue-300 transition-colors"
           >
-            <Globe className="w-4 h-4" />
+            <Globe size={13} strokeWidth={2} />
             {t('seller.layout.backToUser')}
           </button>
         )}
         <button
           onClick={() => logoutSeller(navigate)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+          className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut size={13} strokeWidth={2} />
           {t('common.logout')}
         </button>
       </div>
