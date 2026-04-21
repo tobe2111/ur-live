@@ -79,9 +79,8 @@ export const ALLOWED_ORIGINS = [
   'https://live.ur-team.com',
   'https://ur-team.com',
   'https://www.ur-team.com',
-  'http://localhost:5173',
-  'http://localhost:3000',
-] as const;
+  ...(typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production' ? ['http://localhost:5173', 'http://localhost:3000'] : []),
+] as string[];
 
 // ============================================================
 // 비즈니스 상수

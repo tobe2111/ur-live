@@ -15,6 +15,12 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 
 // Redirect component for old product URL
+function AgencyAuthGuard({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('agency_token')
+  if (!token) return <Navigate to="/agency/login" replace />
+  return <>{children}</>
+}
+
 function ProductRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={`/products/${id}`} replace />;
@@ -667,25 +673,25 @@ function AppContent() {
               </ProtectedRoute>
             } />
 
-            {/* Agency 대시보드 */}
+            {/* Agency 대시보드 — login/register는 공개, 나머지는 인증 필요 */}
             <Route path="/agency/login" element={<AgencyLoginPage />} />
             <Route path="/agency/register" element={<AgencyRegisterPage />} />
-            <Route path="/agency" element={<AgencyPage />} />
-            <Route path="/agency/sellers" element={<AgencySellersPage />} />
-            <Route path="/agency/orders" element={<AgencyOrdersPage />} />
-            <Route path="/agency/streams" element={<AgencyStreamsPage />} />
-            <Route path="/agency/stats" element={<AgencyStatsPage />} />
-            <Route path="/agency/settlements" element={<AgencySettlementsPage />} />
-            <Route path="/agency/ranking" element={<AgencyRankingPage />} />
-            <Route path="/agency/schedule" element={<AgencySchedulePage />} />
-            <Route path="/agency/returns" element={<AgencyReturnsPage />} />
-            <Route path="/agency/sellers/:sellerId/products" element={<AgencyProductsPage />} />
-            <Route path="/agency/notices" element={<AgencyNoticesPage />} />
-            <Route path="/agency/compare" element={<AgencyComparePage />} />
-            <Route path="/agency/contracts" element={<AgencyContractsPage />} />
-            <Route path="/agency/targets" element={<AgencyTargetsPage />} />
-            <Route path="/agency/profile" element={<AgencyProfilePage />} />
-            <Route path="/agency/group-buy" element={<AgencyGroupBuyPage />} />
+            <Route path="/agency" element={<AgencyAuthGuard><AgencyPage /></AgencyAuthGuard>} />
+            <Route path="/agency/sellers" element={<AgencyAuthGuard><AgencySellersPage /></AgencyAuthGuard>} />
+            <Route path="/agency/orders" element={<AgencyAuthGuard><AgencyOrdersPage /></AgencyAuthGuard>} />
+            <Route path="/agency/streams" element={<AgencyAuthGuard><AgencyStreamsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/stats" element={<AgencyAuthGuard><AgencyStatsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/settlements" element={<AgencyAuthGuard><AgencySettlementsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/ranking" element={<AgencyAuthGuard><AgencyRankingPage /></AgencyAuthGuard>} />
+            <Route path="/agency/schedule" element={<AgencyAuthGuard><AgencySchedulePage /></AgencyAuthGuard>} />
+            <Route path="/agency/returns" element={<AgencyAuthGuard><AgencyReturnsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/sellers/:sellerId/products" element={<AgencyAuthGuard><AgencyProductsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/notices" element={<AgencyAuthGuard><AgencyNoticesPage /></AgencyAuthGuard>} />
+            <Route path="/agency/compare" element={<AgencyAuthGuard><AgencyComparePage /></AgencyAuthGuard>} />
+            <Route path="/agency/contracts" element={<AgencyAuthGuard><AgencyContractsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/targets" element={<AgencyAuthGuard><AgencyTargetsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
+            <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<CartPage />} />
@@ -776,7 +782,7 @@ function AppContent() {
             <Route path="/payment/fail" element={<PaymentFailPage />} />
 
             {/* 딜 포인트 충전 */}
-            <Route path="/points/charge" element={<PointsChargePage />} />
+            <Route path="/points/charge" element={<ProtectedRoute requireUser><PointsChargePage /></ProtectedRoute>} />
             <Route path="/points/charge/success" element={<PointsChargeSuccessPage />} />
             <Route path="/points/charge/fail" element={<PaymentFailPage />} />
             <Route path="/fail" element={<PaymentFailPage />} />

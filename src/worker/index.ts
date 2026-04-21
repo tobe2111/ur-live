@@ -973,8 +973,17 @@ app.get('/api/image/resize', async (c) => {
 
   if (!url) return c.json({ error: 'url required' }, 400);
 
-  // Cloudflare Image Resizing (available on paid plans)
-  // For free plan, just proxy with cache headers
+  // SSRF 방어: 허용된 도메인만 프록시
+  const ALLOWED_HOSTS = ['firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com', 'live.ur-team.com', 'ur-live.pages.dev']
+  try {
+    const parsed = new URL(url)
+    if (!ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) {
+      return c.json({ error: 'domain not allowed' }, 403)
+    }
+  } catch {
+    return c.json({ error: 'invalid url' }, 400)
+  }
+
   try {
     const response = await fetch(url, {
       cf: {
@@ -986,14 +995,12 @@ app.get('/api/image/resize', async (c) => {
       } as any
     });
 
-    // If image resizing not available, just proxy with cache
     const headers = new Headers(response.headers);
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     headers.set('Content-Type', response.headers.get('Content-Type') || 'image/webp');
 
     return new Response(response.body, { headers });
   } catch {
-    // Fallback: redirect to original
     return c.redirect(url);
   }
 });
