@@ -186,6 +186,24 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
       return c.json(badRequestResponse('Cannot cancel delivered order'), 400);
     }
 
+    // ✅ SECURITY FIX (H2): Cumulative partial-refund guard. Track previous
+    //    refunds so the caller cannot loop partial refunds past total_amount.
+    //    order_refunds may not exist in every environment — fall back to
+    //    Toss EXCEED_CANCEL_AMOUNT via try/catch.
+    if (cancelAmount !== undefined) {
+      try {
+        const refunded = await db.prepare(
+          'SELECT COALESCE(SUM(refund_amount), 0) AS total FROM order_refunds WHERE order_id = ?'
+        ).bind(String(orderData.id)).first<{ total: number }>();
+        const prevRefunded = Number(refunded?.total ?? 0);
+        if (prevRefunded + cancelAmount > Number(orderData.total_amount)) {
+          return c.json(badRequestResponse('환불 가능 금액 초과'), 400);
+        }
+      } catch {
+        // order_refunds 테이블이 없는 경우 Toss의 EXCEED_CANCEL_AMOUNT 에 위임
+      }
+    }
+
     // Toss Payments API 호출
     const tossSecretKey = c.env.TOSS_SECRET_KEY;
     if (!tossSecretKey) {
@@ -199,6 +217,26 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
       cancelAmount,
       tossSecretKey
     );
+
+    // ✅ H2 cont'd: Record the refund so future partial refunds can be bounded
+    try {
+      await db.prepare(
+        `CREATE TABLE IF NOT EXISTS order_refunds (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           order_id TEXT NOT NULL,
+           refund_amount INTEGER NOT NULL,
+           reason TEXT,
+           payment_key TEXT,
+           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+         )`
+      ).run();
+      const recordedAmount = cancelAmount ?? Number(orderData.total_amount);
+      await db.prepare(
+        'INSERT INTO order_refunds (order_id, refund_amount, reason, payment_key) VALUES (?, ?, ?, ?)'
+      ).bind(String(orderData.id), recordedAmount, cancelReason, paymentKey).run();
+    } catch (e) {
+      console.warn('[Payment] order_refunds record skipped:', e);
+    }
 
     // 주문 상태 업데이트
     await db.prepare(

@@ -2,6 +2,7 @@ import { useEffect, useState, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Users, Gift, Clock, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { getUserId } from '@/utils/auth'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -77,12 +78,13 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
                 onSubmitted()
                 if (res.data.reward) setShowSharePrompt(true)
               } else {
-                alert(res.data.error || '리뷰 작성 실패')
+                // ✅ UX H11 FIX: native alert() → toast 헬퍼
+                toast.error(res.data.error || '리뷰 작성 실패')
               }
             } catch (err: unknown) {
-              const err_ = err as { message?: string };
               const msg = err instanceof Error ? err.message : '리뷰 작성에 실패했습니다'
-              alert(msg)
+              // ✅ UX H11 FIX: native alert() → toast 헬퍼
+              toast.error(msg)
             } finally { setSubmitting(false) }
           }}
           className="flex-[2] py-2 bg-blue-600 text-white text-sm rounded-lg font-bold disabled:opacity-40"
@@ -374,15 +376,13 @@ export default function ProductDetailPage() {
         price_snapshot: product!.price,
         options: Object.values(selectedOptions)[0] ? JSON.stringify(selectedOptions) : null
       })
-      showToast('장바구니에 추가되었습니다.', 'success')
-      localStorage.setItem('hasCartItems', 'true')
+      showToast('장바구니에 추가되었습니다. 상단의 장바구니에서 확인하세요.', 'success')
       try {
         const g = (window as any).gtag
         if (typeof g === 'function') g('event', 'add_to_cart', { currency: 'KRW', value: product!.price, items: [{ item_id: product!.id, item_name: product!.name }] })
       } catch {}
-      
-      // ✅ 장바구니 페이지로 이동
-      navigate('/cart')
+      // ✅ UX H10 FIX: 자동 이동 제거 — 사용자가 계속 쇼핑할 수 있도록 상세 페이지 유지.
+      // ✅ UX H14 FIX: localStorage hasCartItems 더티 스토어 제거 (React Query 캐시에 의존).
     } catch (err: unknown) {
       const err_ = err as { message?: string };
       if (import.meta.env.DEV) {

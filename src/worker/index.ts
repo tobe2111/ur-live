@@ -386,6 +386,21 @@ app.get('/api/admin/optimize-db', requireAdmin(), async (c) => {
 });
 
 // ============================================================
+// CSRF Token Endpoint + Protection for session-cookie routes
+// ============================================================
+// - GET /api/csrf-token issues a double-submit CSRF token
+// - CSRF middleware only fires when the request uses session-cookie auth
+//   (Bearer-token requests are skipped inside csrfProtection() itself).
+app.get('/api/csrf-token', csrfTokenHandler);
+
+// Session-cookie-authenticated mutation endpoints (Kakao/user flows).
+// Admin/seller/Bearer-auth routes are intentionally NOT listed here — they use
+// Authorization: Bearer headers which aren't cross-site-set-able.
+app.use('/api/auth/logout', csrfProtection());
+app.use('/api/auth/profile', csrfProtection());
+app.use('/api/auth/change-password', csrfProtection());
+
+// ============================================================
 // Auth Routes
 // ============================================================
 

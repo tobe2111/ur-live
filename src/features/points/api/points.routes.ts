@@ -172,11 +172,28 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
   // pending 트랜잭션 조회 (금액 검증)
   const userId = String(user.id); // H8: 항상 문자열로 통일
   const pending = await DB.prepare(
-    'SELECT id, amount, points_amount FROM point_transactions WHERE order_id = ? AND user_id = ? AND type = ?'
-  ).bind(orderId, userId, 'charge').first<{ id: number; amount: number; points_amount: number }>();
+    'SELECT id, amount, points_amount, payment_key, balance_after FROM point_transactions WHERE order_id = ? AND user_id = ? AND type = ?'
+  ).bind(orderId, userId, 'charge').first<{ id: number; amount: number; points_amount: number; payment_key: string | null; balance_after: number }>();
 
   if (!pending) return c.json({ success: false, error: '충전 정보를 찾을 수 없습니다' }, 404);
   if (pending.amount !== amount) return c.json({ success: false, error: '금액이 일치하지 않습니다' }, 400);
+
+  // ✅ SECURITY FIX (Payment C6): If this transaction has already been credited
+  // (payment_key populated), return existing balance WITHOUT re-crediting.
+  // Without this guard, a retry after Toss returned ALREADY_PROCESSED_PAYMENT
+  // would double-credit points every call.
+  if (pending.payment_key) {
+    const current = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+      .bind(userId).first<{ balance: number }>();
+    return c.json({
+      success: true,
+      data: {
+        points_added: 0,
+        balance: current?.balance ?? pending.balance_after ?? 0,
+      },
+      message: '이미 처리된 충전입니다',
+    });
+  }
 
   // 토스 결제 승인
   const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
@@ -194,12 +211,34 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
     if (err.code !== 'ALREADY_PROCESSED_PAYMENT') {
       return c.json({ success: false, error: err.message ?? '결제 승인 실패' }, 400);
     }
+    // ALREADY_PROCESSED_PAYMENT: double-check CAS didn't already credit
+    // (race between two concurrent confirm calls).
   }
 
   // 포인트 적립
   const pointsToAdd = pending.points_amount;
 
-  // user_points UPSERT
+  // ✅ CAS (compare-and-swap) FIX for Payment C6: only credit if payment_key
+  // is still NULL. If another concurrent request already won the race, skip.
+  const casResult = await DB.prepare(
+    'UPDATE point_transactions SET payment_key = ? WHERE id = ? AND payment_key IS NULL'
+  ).bind(paymentKey, pending.id).run();
+
+  if (!casResult.meta.changes) {
+    // Another request already credited — return current balance untouched
+    const current = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+      .bind(userId).first<{ balance: number }>();
+    return c.json({
+      success: true,
+      data: {
+        points_added: 0,
+        balance: current?.balance ?? 0,
+      },
+      message: '이미 처리된 충전입니다',
+    });
+  }
+
+  // user_points UPSERT — only runs once per transaction thanks to CAS above
   await DB.prepare(`
     INSERT INTO user_points (user_id, balance, total_charged)
     VALUES (?, ?, ?)
@@ -213,10 +252,10 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
   const updated = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
     .bind(userId).first<{ balance: number }>();
 
-  // 트랜잭션 업데이트
+  // 트랜잭션의 balance_after 업데이트 (payment_key는 CAS에서 이미 기록됨)
   await DB.prepare(
-    'UPDATE point_transactions SET payment_key = ?, balance_after = ? WHERE id = ?'
-  ).bind(paymentKey, updated?.balance ?? pointsToAdd, pending.id).run();
+    'UPDATE point_transactions SET balance_after = ? WHERE id = ?'
+  ).bind(updated?.balance ?? pointsToAdd, pending.id).run();
 
   // 딜 충전 → 어드민 알림
   createDashboardNotification(

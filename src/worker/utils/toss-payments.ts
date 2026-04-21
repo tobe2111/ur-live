@@ -148,6 +148,7 @@ export async function tossGetPayment(
       headers: {
         'Authorization': makeTossAuthHeader(secretKey),
       },
+      signal: AbortSignal.timeout(10000), // 10s timeout (critical path)
     });
   } catch (networkErr) {
     return {
@@ -191,6 +192,7 @@ export async function tossGetPaymentByOrderId(
       headers: {
         'Authorization': makeTossAuthHeader(secretKey),
       },
+      signal: AbortSignal.timeout(10000), // 10s timeout (critical path)
     });
   } catch (networkErr) {
     return {

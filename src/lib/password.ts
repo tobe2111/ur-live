@@ -18,6 +18,33 @@ const PBKDF2_HASH = 'SHA-256';
 const PBKDF2_BITS = 256;
 
 /**
+ * 비밀번호 복잡도 검증 — 신규 가입/비번 변경 시에만 적용.
+ * 기존 사용자의 로그인은 차단하지 않는다.
+ *
+ * 조건:
+ *  - 10 <= length <= 128
+ *  - 대문자 1+ / 소문자 1+ / 숫자 1+ 포함
+ */
+export function validatePasswordComplexity(password: string): { ok: true } | { ok: false; error: string } {
+  if (typeof password !== 'string') {
+    return { ok: false, error: '비밀번호가 올바르지 않습니다.' };
+  }
+  if (password.length < 10) {
+    return { ok: false, error: '비밀번호는 10자 이상이어야 합니다.' };
+  }
+  if (password.length > 128) {
+    return { ok: false, error: '비밀번호는 128자 이하여야 합니다.' };
+  }
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNum = /[0-9]/.test(password);
+  if (!hasUpper || !hasLower || !hasNum) {
+    return { ok: false, error: '비밀번호는 대문자, 소문자, 숫자를 모두 포함해야 합니다.' };
+  }
+  return { ok: true };
+}
+
+/**
  * PBKDF2로 비밀번호 해싱
  * @returns "base64(salt)$base64(hash)" 형식
  */
@@ -87,16 +114,12 @@ async function verifyLegacyHash(password: string, storedHash: string): Promise<b
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 
-  if (hex1 === storedHash) return true;
-
   // 시도 2: password + salt (일부 변형)
   const attempt2 = encoder.encode(password + LEGACY_STATIC_SALT);
   const hash2 = await crypto.subtle.digest('SHA-256', attempt2);
   const hex2 = Array.from(new Uint8Array(hash2))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
-
-  if (hex2 === storedHash) return true;
 
   // 시도 3: password만 (salt 없이)
   const attempt3 = encoder.encode(password);
@@ -105,7 +128,12 @@ async function verifyLegacyHash(password: string, storedHash: string): Promise<b
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 
-  return hex3 === storedHash;
+  // ⚠️ constant-time 비교 (timing attack 방지)
+  // 세 가지 후보를 모두 검사하고 OR로 결합해도 단일 비교 비용은 일정.
+  const m1 = timingSafeEqual(hex1, storedHash);
+  const m2 = timingSafeEqual(hex2, storedHash);
+  const m3 = timingSafeEqual(hex3, storedHash);
+  return m1 || m2 || m3;
 }
 
 /**

@@ -203,6 +203,22 @@ referralRoutes.post('/join/:code', requireAuth(), async (c) => {
   );
   if (existing) return c.json({ success: false, error: '이미 참여 중입니다' }, 409);
 
+  // ✅ SECURITY FIX (H6): Prevent socket-puppet group-buy abuse — reject if
+  //    this user has already joined any group for the same product within
+  //    the last 30 days. Without this guard a user can join many dummy
+  //    groups and unlock higher discount tiers alone.
+  const recent = await queryFirst<{ id: number }>(
+    DB,
+    `SELECT rg.id FROM referral_groups rg
+     JOIN referral_members rgm ON rgm.group_id = rg.id
+     WHERE rg.product_id = ? AND rgm.user_id = ? AND rg.created_at > datetime('now', '-30 days')
+     LIMIT 1`,
+    [group.product_id, user.id],
+  );
+  if (recent) {
+    return c.json({ success: false, error: '이미 참여한 공구 상품입니다 (30일 이내)' }, 409);
+  }
+
   await executeRun(
     DB,
     'INSERT INTO referral_members (group_id, user_id, user_name) VALUES (?, ?, ?)',

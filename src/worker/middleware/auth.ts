@@ -79,12 +79,13 @@ async function verifyJWT(
   secret: string
 ): Promise<JwtPayload | null> {
   try {
-    const isValid = await jwt.verify(token, secret);
-    
+    // Pin HS256 to defeat alg-confusion attacks (e.g. "none" or RS→HS swap).
+    const isValid = await jwt.verify(token, secret, { algorithm: 'HS256' });
+
     if (!isValid) {
       return null;
     }
-    
+
     const decoded = jwt.decode(token);
     return decoded.payload as unknown as JwtPayload;
   } catch (error) {
@@ -430,7 +431,12 @@ export function requireSellerOrAdmin() {
 export function optionalAuth() {
   return async (c: Context, next: Next) => {
     const jwtSecret = c.env.JWT_SECRET;
-    if (!jwtSecret) return next(); // optional auth — skip if misconfigured
+    if (!jwtSecret) {
+      // optional auth — continue unauthenticated, but LOUDLY log misconfiguration
+      // so it cannot silently fail-open in production.
+      console.error('[Auth] JWT_SECRET not configured (optionalAuth fail-open)');
+      return next();
+    }
 
     // ── 1. Try httpOnly session cookie (user login) ─────────────────────
     const cookieHeader = c.req.header('Cookie');
