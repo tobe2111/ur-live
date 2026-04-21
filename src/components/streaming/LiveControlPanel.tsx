@@ -294,7 +294,7 @@ export default function LiveControlPanel({
               <div className="flex-1">
                 <h5 className="font-bold text-sm">{currentProduct.name}</h5>
                 <p className="text-lg font-bold text-green-600">
-                  ₩{currentProduct.price.toLocaleString()}
+                  ₩{(currentProduct.price || 0).toLocaleString()}
                 </p>
               </div>
               <Button size="sm" className="bg-blue-500 hover:bg-blue-600">

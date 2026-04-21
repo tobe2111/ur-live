@@ -123,7 +123,7 @@ export default function WebStreaming({
 
     ctx.font = 'bold 32px sans-serif'
     ctx.fillStyle = '#00ff00'
-    ctx.fillText(`₩${product.price.toLocaleString()}`, overlayX + imgSize + 30, overlayY + 80)
+    ctx.fillText(`₩${(product.price || 0).toLocaleString()}`, overlayX + imgSize + 30, overlayY + 80)
 
     if (product.discount_rate) {
       ctx.font = 'bold 20px sans-serif'

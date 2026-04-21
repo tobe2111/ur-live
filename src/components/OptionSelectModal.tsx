@@ -179,7 +179,7 @@ export default function OptionSelectModal({
                           
                           {option.price_adjustment !== 0 && (
                             <span className="text-[10px] text-gray-500 mt-1">
-                              {option.price_adjustment > 0 ? '+' : ''}{option.price_adjustment.toLocaleString()}원
+                              {(option.price_adjustment || 0) > 0 ? '+' : ''}{(option.price_adjustment || 0).toLocaleString()}원
                             </span>
                           )}
                           
