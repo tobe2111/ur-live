@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Bell } from 'lucide-react'
+import api from '@/lib/api'
 
 interface Notification {
   id: number
@@ -35,18 +36,14 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
   const ref = useRef<HTMLDivElement>(null)
 
   const fetchNotifications = useCallback(async () => {
-    const token = localStorage.getItem(tokenKey)
-    if (!token) return
+    if (!localStorage.getItem(tokenKey)) return
     try {
-      const res = await fetch('/api/dashboard-notifications?unread_only=false&limit=10', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json() as { notifications: Notification[]; unread_count: number }
-        setNotifications(data.notifications)
-        setUnreadCount(data.unread_count)
+      const res = await api.get('/api/dashboard-notifications?unread_only=false&limit=10')
+      if (res.data?.notifications) {
+        setNotifications(res.data.notifications)
+        setUnreadCount(res.data.unread_count || 0)
       }
-    } catch { /* ignore */ }
+    } catch { /* 네트워크 에러 무시 — 30초 후 재시도 */ }
   }, [tokenKey])
 
   useEffect(() => {
@@ -67,26 +64,18 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
   }, [])
 
   async function markAllRead() {
-    const token = localStorage.getItem(tokenKey)
-    if (!token) return
+    if (!localStorage.getItem(tokenKey)) return
     try {
-      await fetch('/api/dashboard-notifications/read-all', {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      await api.put('/api/dashboard-notifications/read-all')
       setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))
       setUnreadCount(0)
     } catch { /* ignore */ }
   }
 
   async function markRead(id: number) {
-    const token = localStorage.getItem(tokenKey)
-    if (!token) return
+    if (!localStorage.getItem(tokenKey)) return
     try {
-      await fetch(`/api/dashboard-notifications/${id}/read`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      await api.put(`/api/dashboard-notifications/${id}/read`)
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n))
       setUnreadCount(prev => Math.max(0, prev - 1))
     } catch { /* ignore */ }

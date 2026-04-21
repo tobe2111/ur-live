@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
           signOutPromise,
           new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
         ])
-      } catch (_) {}
+      } catch (_) {} // non-critical: best-effort signOut before admin login
 
       // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/admin/login', {

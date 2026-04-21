@@ -95,7 +95,7 @@ export const useAuthWorld = create<AuthWorldState>()(
           try {
             const { signOut } = await import('@/lib/firebase-auth');
             await signOut().catch(() => {});
-          } catch (_) {}
+          } catch (_) {} // non-critical: best-effort Firebase signOut during logout
 
           const { clearAuthData } = await import('@/utils/auth');
           clearAuthData('user');
@@ -108,13 +108,13 @@ export const useAuthWorld = create<AuthWorldState>()(
           try {
             const { useAuthStore } = await import('@/client/stores/auth.store');
             useAuthStore.getState().clearAuth();
-          } catch (_) {}
+          } catch (_) {} // non-critical: best-effort auth store cleanup
 
           // ✅ api.ts 의 Firebase 토큰 캐시도 정리
           try {
             const { clearFirebaseTokenCache } = await import('@/lib/api');
             clearFirebaseTokenCache();
-          } catch (_) {}
+          } catch (_) {} // non-critical: best-effort token cache cleanup
 
           set({ user: null, userRole: null, isLoading: false, isAuthReady: true });
           setTimeout(() => { window.location.href = '/'; }, 50);

@@ -235,7 +235,9 @@ export const useAuthKR = create<AuthKRState>()(
                 idToken,
                 ''
               );
-            } catch (_) {}
+            } catch (e) {
+              console.error('[AuthKR] useAuthStore sync error during login:', e);
+            }
 
             // ✅ user를 즉시 store에 설정 — navigate 전에 ProtectedRoute가 user를 확인할 수 있도록
             // (이전: onAuthStateChanged에 위임 → navigate 시점에 user=null → /login 리다이렉트)
@@ -302,7 +304,7 @@ export const useAuthKR = create<AuthKRState>()(
           try {
             const { signOut } = await import('@/lib/firebase-auth');
             await signOut().catch(() => {});
-          } catch (_) {}
+          } catch (_) {} // non-critical: best-effort Firebase signOut during logout
 
           // user 세션 selective clear
           const { clearAuthData } = await import('@/utils/auth');
@@ -317,13 +319,13 @@ export const useAuthKR = create<AuthKRState>()(
           try {
             const { useAuthStore } = await import('@/client/stores/auth.store');
             useAuthStore.getState().clearAuth();
-          } catch (_) {}
+          } catch (_) {} // non-critical: best-effort auth store cleanup
 
           // ✅ api.ts 의 Firebase 토큰 캐시도 정리
           try {
             const { clearFirebaseTokenCache } = await import('@/lib/api');
             clearFirebaseTokenCache();
-          } catch (_) {}
+          } catch (_) {} // non-critical: best-effort token cache cleanup
 
           set({ user: null, userRole: null, tokenCache: null, isLoading: false, isAuthReady: true });
           setTimeout(() => { window.location.href = '/'; }, 50);
@@ -419,13 +421,13 @@ export const useAuthKR = create<AuthKRState>()(
                             try {
                               const { updateProfile } = await import('firebase/auth');
                               await updateProfile(firebaseUser, { displayName: claimsUserName });
-                            } catch (_) {}
+                            } catch (_) {} // non-critical: best-effort displayName update
                           }
                         }
                         if (claimsProfileImage) {
                           localStorage.setItem('user_profile_image', claimsProfileImage);
                         }
-                      } catch (_) {}
+                      } catch (_) {} // non-critical: best-effort claims extraction
 
                       // accessToken 저장
                       try {
@@ -461,7 +463,9 @@ export const useAuthKR = create<AuthKRState>()(
                           { id: firebaseUser.uid, email: firebaseUser.email || '', name: firebaseUser.displayName || '', role: 'user' },
                           idTokenFallback, ''
                         );
-                      } catch (_) {}
+                      } catch (e) {
+                        console.error('[AuthKR] Fallback token save error:', e);
+                      }
                     }
                   })();
                 } else {

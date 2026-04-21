@@ -191,7 +191,9 @@ export default function LoginPage() {
                 { id: credential.user.uid, email: kakaoUser.email || '', name: kakaoUser.name, role: 'user' },
                 idToken, ''
               )
-            } catch (_) {}
+            } catch (e) {
+              console.error('[Login] useAuthStore sync error:', e);
+            }
           } catch (e) {
             console.error('[Login] Firebase failed:', e)
             useAuthWorld.getState().setAuthReady(true)

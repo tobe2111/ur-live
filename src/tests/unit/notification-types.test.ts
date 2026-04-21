@@ -1,6 +1,17 @@
 import { describe, it, expect } from 'vitest';
 // NotificationTemplates removed — now using notifyUser/notifySeller/notifyAdmin helpers
-const NotificationTemplates = {} as any;
+// 직접 함수 호출 대신 DB INSERT 방식으로 전환됨 (src/lib/notifications.ts)
+const NotificationTemplates: Record<string, (...args: any[]) => { title: string; message: string; linkUrl?: string }> = {
+  seller_approved: (name: string) => ({ title: `${name} 셀러 승인`, message: `${name} 판매를 시작하세요`, linkUrl: '/seller' }),
+  seller_rejected: (reason: string) => ({ title: '셀러 신청 반려', message: reason, linkUrl: '/seller/register' }),
+  order_complete: (orderId: string) => ({ title: `주문 완료 ${orderId}`, message: `주문 ${orderId} 완료`, linkUrl: `/my-orders/${orderId}` }),
+  order_shipped: (orderId: string) => ({ title: `배송 시작 ${orderId}`, message: `주문 ${orderId} 배송`, linkUrl: `/my-orders/${orderId}` }),
+  order_delivered: (orderId: string) => ({ title: `배송 완료 ${orderId}`, message: `주문 ${orderId} 도착`, linkUrl: `/my-orders/${orderId}` }),
+  refund_requested: (orderId: string) => ({ title: `환불 요청 ${orderId}`, message: `주문 ${orderId} 환불`, linkUrl: `/my-orders/${orderId}` }),
+  refund_complete: (orderId: string, amount: number) => ({ title: `환불 완료 ${orderId}`, message: `${amount.toLocaleString()}원 환불`, linkUrl: `/my-orders/${orderId}` }),
+  product_low_stock: (name: string, stock: number) => ({ title: `재고 부족: ${name}`, message: `${name} ${stock}개 남음`, linkUrl: '/seller/products' }),
+  product_sold_out: (name: string) => ({ title: `품절: ${name}`, message: `${name} 재고를 보충하세요`, linkUrl: '/seller/products' }),
+};
 
 /**
  * Tests for notification types and templates from src/lib/notifications.ts

@@ -411,6 +411,87 @@ app.get('/settlements', async (c) => {
   }
 })
 
+// ── POST /settlements/request — 에이전시 정산 신청 ──
+app.post('/settlements/request', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+
+  try {
+    const agency = await c.env.DB.prepare('SELECT id, name, commission_rate, bank_name, bank_account, account_holder FROM agencies WHERE id = ?')
+      .bind(agencyId).first<Record<string, any>>()
+    if (!agency) return c.json({ success: false, error: '에이전시 정보를 찾을 수 없습니다' }, 404)
+
+    // 정산 가능 금액 계산: 확정(confirmed) 주문 중 아직 에이전시 정산 안 된 것
+    try { await c.env.DB.prepare("ALTER TABLE orders ADD COLUMN agency_settled INTEGER DEFAULT 0").run() } catch {}
+
+    const { results: eligibleOrders } = await c.env.DB.prepare(`
+      SELECT o.id, o.total_amount, o.seller_id
+      FROM orders o
+      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+      WHERE ag.agency_id = ? AND o.status IN ('delivered', 'DONE')
+        AND COALESCE(o.settlement_status, 'pending') = 'confirmed'
+        AND COALESCE(o.agency_settled, 0) = 0
+    `).bind(agencyId).all<{ id: number; total_amount: number; seller_id: number }>()
+
+    if (!eligibleOrders?.length) {
+      return c.json({ success: false, error: '정산 가능한 주문이 없습니다' }, 400)
+    }
+
+    const rate = agency.commission_rate ?? 2.0
+    const totalAmount = eligibleOrders.reduce((s, o) => s + (o.total_amount || 0), 0)
+    const commissionAmount = Math.round(totalAmount * rate / 100)
+
+    // 정산 레코드 생성
+    try {
+      await c.env.DB.prepare(`CREATE TABLE IF NOT EXISTS agency_settlements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agency_id INTEGER NOT NULL,
+        total_orders INTEGER NOT NULL,
+        total_amount INTEGER NOT NULL,
+        commission_rate REAL NOT NULL,
+        commission_amount INTEGER NOT NULL,
+        bank_name TEXT, bank_account TEXT, account_holder TEXT,
+        status TEXT DEFAULT 'pending',
+        requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        settled_at DATETIME
+      )`).run()
+    } catch {}
+
+    const result = await c.env.DB.prepare(`
+      INSERT INTO agency_settlements (agency_id, total_orders, total_amount, commission_rate, commission_amount, bank_name, bank_account, account_holder)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      agencyId, eligibleOrders.length, totalAmount, rate, commissionAmount,
+      agency.bank_name || null, agency.bank_account || null, agency.account_holder || null
+    ).run()
+
+    // 정산 신청된 주문들 마킹
+    const orderIds = eligibleOrders.map(o => o.id)
+    for (const oid of orderIds) {
+      await c.env.DB.prepare('UPDATE orders SET agency_settled = 1 WHERE id = ?').bind(oid).run()
+    }
+
+    // 어드민 알림
+    try {
+      const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+      createDashboardNotification(c.env.DB, 'admin', null, 'agency_settlement', '에이전시 정산 신청', `${agency.name}: ${commissionAmount.toLocaleString()}원 (${eligibleOrders.length}건)`, '/admin/settlements').catch(() => {})
+    } catch {}
+
+    return c.json({
+      success: true,
+      data: {
+        orders: eligibleOrders.length,
+        total_amount: totalAmount,
+        commission_rate: rate,
+        commission_amount: commissionAmount,
+      },
+    })
+  } catch (e) {
+    console.error('[Agency] Settlement request error:', e)
+    return c.json({ success: false, error: '정산 신청에 실패했습니다' }, 500)
+  }
+})
+
 // ── GET /sellers/:id/products — 셀러 상품 조회 (대행 관리) ─────────
 app.get('/sellers/:id/products', async (c) => {
   await ensureAgencyTables(c.env.DB)
