@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Send } from 'lucide-react'
 import api from '@/lib/api'
-import axios from 'axios'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken } from '@/lib/seller-auth'
 
@@ -15,6 +15,7 @@ interface ChatMsg {
 }
 
 export default function LiveChatPanel({ streamId }: { streamId: number }) {
+  const { t } = useTranslation()
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -28,7 +29,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
     const poll = async () => {
       // YouTube 채팅
       try {
-        const res = await axios.get(`/api/youtube/chat/chat/${streamId}`)
+        const res = await api.get(`/api/youtube/chat/chat/${streamId}`)
         if (res.data.success && res.data.data?.messages) {
           const ytMsgs: ChatMsg[] = res.data.data.messages.map((m: any) => ({
             id: `yt-${m.id}`,
@@ -67,7 +68,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
     setSending(true)
     try {
       // WebSocket DO에 메시지 전송
-      const sellerName = localStorage.getItem('seller_name') || '셀러'
+      const sellerName = localStorage.getItem('seller_name') || t('seller.liveChat.seller')
       const msg: ChatMsg = {
         id: `seller-${Date.now()}`,
         author: sellerName,
@@ -94,14 +95,14 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
     <div className="flex flex-col h-[300px] lg:h-auto">
       {/* 채팅 헤더 */}
       <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
-        <span className="text-xs font-bold text-gray-900">실시간 채팅</span>
-        <span className="text-[10px] text-gray-500">{messages.length}개 메시지</span>
+        <span className="text-xs font-bold text-gray-900">{t('seller.liveChat.title')}</span>
+        <span className="text-[10px] text-gray-500">{t('seller.liveChat.messageCount', { count: messages.length })}</span>
       </div>
 
       {/* 메시지 목록 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 min-h-0">
         {messages.length === 0 ? (
-          <p className="text-center text-xs text-gray-400 py-8">채팅이 시작되면 여기에 표시됩니다</p>
+          <p className="text-center text-xs text-gray-400 py-8">{t('seller.liveChat.empty')}</p>
         ) : (
           messages.map(msg => (
             <div key={msg.id} className="flex items-start gap-1.5">
@@ -133,7 +134,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder="메시지 입력..."
+          placeholder={t('seller.liveChat.inputPlaceholder')}
           className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-400"
           disabled={sending}
         />

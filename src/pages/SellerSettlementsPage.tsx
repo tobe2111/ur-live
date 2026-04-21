@@ -106,6 +106,19 @@ export default function SellerSettlementsPage() {
       navigate('/seller/login')
       return
     }
+    // Populate bank info from seller profile if not already in localStorage
+    if (!localStorage.getItem('seller_bank_name')) {
+      api.get('/api/seller/profile', {
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
+      }).then(res => {
+        if (res.data.success && res.data.data) {
+          const seller = res.data.data
+          if (seller.bank_name) localStorage.setItem('seller_bank_name', seller.bank_name)
+          if (seller.bank_account) localStorage.setItem('seller_account_number', seller.bank_account)
+          if (seller.account_holder) localStorage.setItem('seller_account_holder', seller.account_holder)
+        }
+      }).catch(() => { /* profile fetch is best-effort */ })
+    }
     loadSettlements()
   }, [selectedPeriod])
 
@@ -148,7 +161,7 @@ export default function SellerSettlementsPage() {
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('Failed to load settlements:', error)
+      if (import.meta.env.DEV) console.error('Failed to load settlements:', error)
       setError(t('seller.settlementLoadFailed'))
       if (error_.response?.status === 401) {
         navigate('/seller/login')
@@ -158,17 +171,22 @@ export default function SellerSettlementsPage() {
     }
   }
 
+  const hasBankInfo = !!(localStorage.getItem('seller_bank_name') && localStorage.getItem('seller_account_number'))
+
   async function requestSettlement() {
     const pendingAmount = stats?.pending_amount || 0
     if (pendingAmount <= 0) {
       toast.error(t('seller.noSettlementAmount'))
       return
     }
+    if (!hasBankInfo) {
+      toast.error(t('seller.bankInfoRequired', '정산 계좌 정보가 등록되지 않았습니다. 프로필에서 계좌 정보를 먼저 등록해주세요.'))
+      return
+    }
     if (!confirm(t('seller.confirmSettlementRequest', { amount: pendingAmount.toLocaleString() }))) return
 
     try {
       const sessionToken = localStorage.getItem('seller_token')
-      // Retrieve seller bank info from localStorage or profile
       const sellerBankName = localStorage.getItem('seller_bank_name') || ''
       const sellerAccountNumber = localStorage.getItem('seller_account_number') || ''
       const sellerAccountHolder = localStorage.getItem('seller_account_holder') || localStorage.getItem('seller_name') || ''
@@ -279,6 +297,20 @@ export default function SellerSettlementsPage() {
           <p>• 구매 확정된 주문만 정산 대상입니다</p>
           <p>• 플랫폼 수수료 15% 차감 후 정산됩니다</p>
         </div>
+
+        {/* Bank info warning */}
+        {!hasBankInfo && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-700">
+            <p className="font-bold mb-1">{t('seller.bankInfoMissing', '⚠️ 정산 계좌 미등록')}</p>
+            <p>{t('seller.bankInfoMissingDesc', '정산 신청을 위해 프로필에서 계좌 정보를 등록해주세요.')}</p>
+            <button
+              onClick={() => navigate('/seller/profile?tab=business')}
+              className="mt-2 px-4 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700"
+            >
+              {t('seller.registerBankInfo', '계좌 정보 등록하기')}
+            </button>
+          </div>
+        )}
 
         {/* Statistics Cards */}
         {stats && (

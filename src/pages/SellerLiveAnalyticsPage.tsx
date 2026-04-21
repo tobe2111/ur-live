@@ -80,7 +80,7 @@ function AnalyticsSummary() {
     setLoading(true)
     api.get(`/api/seller/streams/analytics/summary?period=${period}`)
       .then(r => { if (r.data?.success) setData(r.data.data) })
-      .catch(console.error)
+      .catch((err: unknown) => { if (import.meta.env.DEV) console.error(err) })
       .finally(() => setLoading(false))
   }, [period])
 
@@ -225,7 +225,7 @@ function StreamAnalyticsDetail({ streamId }: { streamId: string }) {
   useEffect(() => {
     api.get(`/api/seller/streams/${streamId}/analytics`)
       .then(r => { if (r.data?.success) setData(r.data.data) })
-      .catch(console.error)
+      .catch((err: unknown) => { if (import.meta.env.DEV) console.error(err) })
       .finally(() => setLoading(false))
   }, [streamId])
 

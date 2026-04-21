@@ -1040,7 +1040,61 @@
     "daysFilter90": "90 dias",
     "salesUnit": "K",
     "ordersUnit": "pedidos",
-    "persons": "personas"
+    "persons": "personas",
+    "coupons": {
+      "title": "Gestión de cupones",
+      "create": "Crear cupón",
+      "createBtn": "Crear",
+      "fillRequired": "Por favor ingrese el código, nombre y valor de descuento",
+      "created": "Cupón creado",
+      "createFailed": "Error al crear el cupón",
+      "confirmDeactivate": "¿Desea desactivar este cupón?",
+      "deleteFailed": "Error al eliminar el cupón.",
+      "codePlaceholder": "Código de cupón (ej: SUMMER2026)",
+      "namePlaceholder": "Nombre del cupón",
+      "fixedDiscount": "Descuento fijo",
+      "percentDiscount": "Descuento porcentual",
+      "discountAmountPlaceholder": "Monto de descuento (KRW)",
+      "discountRatePlaceholder": "Tasa de descuento (%)",
+      "minOrderAmount": "Monto mínimo de pedido",
+      "maxDiscountPlaceholder": "Descuento máximo (KRW)",
+      "totalCountPlaceholder": "Cantidad de emisión",
+      "empty": "No hay cupones creados",
+      "percentOff": "{{value}}% de descuento",
+      "fixedOff": "{{value}} KRW de descuento",
+      "minOrder": "{{amount}} KRW o más",
+      "usage": "Usado {{used}}/{{total}}"
+    },
+    "reviews": {
+      "title": "Gestión de reseñas",
+      "empty": "No hay reseñas recibidas",
+      "customer": "Cliente",
+      "sellerReply": "Respuesta del vendedor",
+      "replyPlaceholder": "Escribir respuesta...",
+      "replySubmitted": "Respuesta enviada",
+      "replyFailed": "Error al enviar la respuesta",
+      "writeReply": "Escribir respuesta"
+    },
+    "groupBuy": {
+      "active": "En progreso",
+      "achieved": "Meta alcanzada",
+      "totalParticipants": "Total de participantes",
+      "noVouchers": "No hay vales de comida registrados",
+      "noVouchersDesc": "Registre un vale de comida e inicie una compra grupal",
+      "registerVoucher": "Registrar vale de comida",
+      "closed": "Cerrado",
+      "participantCount": "{{current}}/{{target}} personas",
+      "deadline": "Fecha límite",
+      "storeOwnerStatsLink": "Enlace de estadísticas del dueño",
+      "linkCopied": "¡Enlace copiado! Compártelo con el dueño de la tienda."
+    },
+    "liveChat": {
+      "title": "Chat en vivo",
+      "messageCount": "{{count}} mensajes",
+      "empty": "Los mensajes aparecerán aquí cuando comience el chat",
+      "inputPlaceholder": "Escribir mensaje...",
+      "seller": "Vendedor"
+    }
   },
   "nav": {
     "home": "Inicio",

@@ -56,10 +56,11 @@ type StreamMethod = 'youtube' | 'obs' | 'prism' | 'quick'
 
 // ── 스텝 인디케이터 ────────────────────────────────────────────────
 function StepIndicator({ step }: { step: WizardStep }) {
+  const { t } = useTranslation()
   const steps: { key: WizardStep; label: string }[] = [
-    { key: 'info', label: '방송 정보' },
-    { key: 'setup', label: '연결 설정' },
-    { key: 'live', label: '라이브 중' },
+    { key: 'info', label: t('seller.liveBroadcast.stepInfo') },
+    { key: 'setup', label: t('seller.liveBroadcast.stepSetup') },
+    { key: 'live', label: t('seller.liveBroadcast.stepLive') },
   ]
   const idx = steps.findIndex(s => s.key === step)
   return (
@@ -152,7 +153,7 @@ export default function SellerLiveBroadcastPage() {
       try {
         const res = await api.get(`/api/seller/youtube/live/${currentStream.id}/status`)
         if (res.data?.success && res.data.data?.synced && res.data.data?.status === 'live') {
-          toast.success('방송이 시작되었습니다!')
+          toast.success(t('seller.liveBroadcast.broadcastStartedAuto'))
           setCurrentStream(s => s ? { ...s, status: 'live' } : s)
           setStep('live')
         }
@@ -176,7 +177,7 @@ export default function SellerLiveBroadcastPage() {
         setProducts(prRes.value.data.data || [])
       if (stRes.status === 'fulfilled' && stRes.value.data?.success)
         setStreams(stRes.value.data.data || [])
-    } catch { setLoadError('데이터를 불러오지 못했습니다.') }
+    } catch { setLoadError(t('seller.liveBroadcast.dataLoadFailed')) }
     finally { setLoading(false) }
   }
 
@@ -186,14 +187,14 @@ export default function SellerLiveBroadcastPage() {
       const res = await api.get('/api/seller/youtube/auth-url')
       if (res.data.success && res.data.data?.authUrl)
         window.location.href = res.data.data.authUrl
-      else toast.error('YouTube API가 설정되지 않았습니다.')
-    } catch { toast.error('YouTube 연동에 실패했습니다.') }
+      else toast.error(t('seller.liveBroadcast.youtubeApiNotSet'))
+    } catch { toast.error(t('seller.liveBroadcast.youtubeConnectFailed')) }
     finally { setConnectingYouTube(false) }
   }
 
   async function createBroadcast() {
-    if (!title.trim()) { toast.error('방송 제목을 입력해주세요.'); return }
-    if (selectedProducts.length === 0) { toast.error('판매 상품을 1개 이상 선택해주세요.'); return }
+    if (!title.trim()) { toast.error(t('seller.liveBroadcast.enterTitle')); return }
+    if (selectedProducts.length === 0) { toast.error(t('seller.liveBroadcast.selectOneProduct')); return }
     try {
       setCreating(true)
       let scheduledStartTime = new Date().toISOString()
@@ -219,13 +220,13 @@ export default function SellerLiveBroadcastPage() {
         })
         setStep('setup')
       } else {
-        if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
-        else toast.error(res.data?.error || '방송 생성에 실패했습니다.')
+        if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error(t('seller.liveBroadcast.youtubeReauthRequired'))
+        else toast.error(res.data?.error || t('seller.liveBroadcast.createFailed'))
       }
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error_code?: string; error?: string } } }
-      if (axiosErr.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error('YouTube 재인증이 필요합니다.')
-      else toast.error(axiosErr.response?.data?.error || '방송 생성에 실패했습니다.')
+      if (axiosErr.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error(t('seller.liveBroadcast.youtubeReauthRequired'))
+      else toast.error(axiosErr.response?.data?.error || t('seller.liveBroadcast.createFailed'))
     } finally { setCreating(false) }
   }
 
@@ -235,19 +236,19 @@ export default function SellerLiveBroadcastPage() {
       await api.post(`/api/seller/youtube/live/${currentStream.id}/start`)
       setCurrentStream(s => s ? { ...s, status: 'live' } : s)
       setStep('live')
-      toast.success('라이브가 시작되었습니다!')
-    } catch { toast.error('방송 시작에 실패했습니다.') }
+      toast.success(t('seller.liveBroadcast.liveStarted'))
+    } catch { toast.error(t('seller.liveBroadcast.startFailed')) }
   }
 
   async function endStream() {
-    if (!currentStream || !confirm('방송을 종료하시겠습니까?')) return
+    if (!currentStream || !confirm(t('seller.liveBroadcast.confirmEnd'))) return
     try {
       await api.post(`/api/seller/youtube/live/${currentStream.id}/end`)
-      toast.success('방송이 종료되었습니다.')
+      toast.success(t('seller.liveBroadcast.ended'))
       setCurrentStream(null); setStep('info')
       setTitle(''); setDescription(''); setSelectedProducts([])
       await loadData()
-    } catch { toast.error('방송 종료에 실패했습니다.') }
+    } catch { toast.error(t('seller.liveBroadcast.endFailed')) }
   }
 
   function copyField(value: string, key: string) {
@@ -281,12 +282,12 @@ export default function SellerLiveBroadcastPage() {
           <Youtube className="h-8 w-8 text-red-600" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">YouTube 계정 연동 필요</h2>
-          <p className="text-sm text-gray-500">라이브 방송을 시작하려면 YouTube 계정을 연동하세요</p>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">{t('seller.liveBroadcast.youtubeRequired')}</h2>
+          <p className="text-sm text-gray-500">{t('seller.liveBroadcast.youtubeRequiredDesc')}</p>
         </div>
         <Button onClick={connectYouTube} disabled={connectingYouTube} className="bg-red-600 hover:bg-red-700 text-white w-full">
           {connectingYouTube ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Youtube className="h-4 w-4 mr-2" />}
-          YouTube 계정 연동하기
+          {t('seller.liveBroadcast.connectYoutube')}
         </Button>
       </div>
     </SellerLayout>
@@ -306,9 +307,9 @@ export default function SellerLiveBroadcastPage() {
             : <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center"><Youtube className="h-4 w-4 text-red-500" /></div>}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{channels[0]?.channel_title}</p>
-            <p className="text-xs text-gray-400">구독자 {channels[0]?.subscriber_count?.toLocaleString()}명</p>
+            <p className="text-xs text-gray-400">{t('seller.liveBroadcast.subscribers', { count: channels[0]?.subscriber_count?.toLocaleString() })}</p>
           </div>
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">연동됨</span>
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
         </div>
 
         <StepIndicator step={step} />
@@ -390,45 +391,46 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
   isScheduled, setIsScheduled, scheduledDate, setScheduledDate, scheduledTime, setScheduledTime,
   sellableProducts, selectedProducts, toggleProduct, method, setMethod, creating, onCreate, navigate
 }: StepInfoProps) {
+  const { t } = useTranslation()
   const privacyOptions: { key: 'public' | 'unlisted' | 'private'; icon: typeof Globe; label: string; desc: string }[] = [
-    { key: 'public', icon: Globe, label: '공개', desc: '모든 사람' },
-    { key: 'unlisted', icon: EyeOff, label: '미등록', desc: '링크 공유' },
-    { key: 'private', icon: Lock, label: '비공개', desc: '나만 보기' },
+    { key: 'public', icon: Globe, label: t('seller.liveBroadcast.public'), desc: t('seller.liveBroadcast.publicDesc') },
+    { key: 'unlisted', icon: EyeOff, label: t('seller.liveBroadcast.unlisted'), desc: t('seller.liveBroadcast.unlistedDesc') },
+    { key: 'private', icon: Lock, label: t('seller.liveBroadcast.private'), desc: t('seller.liveBroadcast.privateDesc') },
   ]
   const methodOptions = [
-    { key: 'quick' as const, icon: Play, label: '바로 방송', desc: '원클릭 시작 (추천)', active: 'border-pink-400 bg-pink-50', iconActive: 'text-pink-600' },
-    { key: 'youtube' as const, icon: Youtube, label: 'YouTube Studio', desc: '웹 브라우저', active: 'border-red-400 bg-red-50', iconActive: 'text-red-600' },
-    { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: 'PC 방송', active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600' },
-    { key: 'prism' as const, icon: Smartphone, label: '네이버 프리즘', desc: '모바일', active: 'border-green-400 bg-green-50', iconActive: 'text-green-600' },
+    { key: 'quick' as const, icon: Play, label: t('seller.liveBroadcast.quickStart'), desc: t('seller.liveBroadcast.quickStartDesc'), active: 'border-pink-400 bg-pink-50', iconActive: 'text-pink-600' },
+    { key: 'youtube' as const, icon: Youtube, label: 'YouTube Studio', desc: t('seller.liveBroadcast.webBrowser'), active: 'border-red-400 bg-red-50', iconActive: 'text-red-600' },
+    { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.pcBroadcast'), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600' },
+    { key: 'prism' as const, icon: Smartphone, label: t('seller.liveBroadcast.naverPrism'), desc: t('seller.liveBroadcast.mobile'), active: 'border-green-400 bg-green-50', iconActive: 'text-green-600' },
   ]
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
       <div>
-        <h2 className="text-base font-bold text-gray-900">방송 정보 입력</h2>
-        <p className="text-xs text-gray-500 mt-0.5">방송 제목과 판매 상품을 설정하세요</p>
+        <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.enterBroadcastInfo')}</h2>
+        <p className="text-xs text-gray-500 mt-0.5">{t('seller.liveBroadcast.enterBroadcastInfoDesc')}</p>
       </div>
 
       {/* 제목 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">방송 제목 <span className="text-red-500">*</span></label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.broadcastTitle')} <span className="text-red-500">*</span></label>
         <input value={title} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-          placeholder="예) 오늘만 이 가격! 신상 맛집 라이브" maxLength={100}
+          placeholder={t('seller.liveBroadcast.broadcastTitlePlaceholder')} maxLength={100}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
       </div>
 
       {/* 설명 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">설명 <span className="text-xs text-gray-400 font-normal">(선택)</span></label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.description')} <span className="text-xs text-gray-400 font-normal">({t('common.optional')})</span></label>
         <textarea value={description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-          placeholder="방송 내용을 간단히 소개해주세요" rows={2} maxLength={500}
+          placeholder={t('seller.liveBroadcast.descriptionPlaceholder')} rows={2} maxLength={500}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" />
       </div>
 
       {/* 썸네일 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">썸네일 이미지 <span className="text-xs text-gray-400 font-normal">(선택)</span></label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.thumbnail')} <span className="text-xs text-gray-400 font-normal">({t('common.optional')})</span></label>
         <input value={thumbnailUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setThumbnailUrl(e.target.value)}
-          placeholder="이미지 URL (없으면 YouTube 썸네일 자동 사용)"
+          placeholder={t('seller.liveBroadcast.thumbnailPlaceholder')}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
         {thumbnailUrl && (
           <img src={thumbnailUrl} alt="미리보기" className="mt-2 w-full max-w-[200px] rounded-lg object-cover"

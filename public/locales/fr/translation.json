@@ -1040,7 +1040,61 @@
     "daysFilter90": "90 jours",
     "salesUnit": "K",
     "ordersUnit": "commandes",
-    "persons": "personnes"
+    "persons": "personnes",
+    "coupons": {
+      "title": "Gestion des coupons",
+      "create": "Créer un coupon",
+      "createBtn": "Créer",
+      "fillRequired": "Veuillez saisir le code, le nom et la valeur de réduction",
+      "created": "Coupon créé",
+      "createFailed": "Echec de la creation du coupon",
+      "confirmDeactivate": "Voulez-vous désactiver ce coupon ?",
+      "deleteFailed": "Échec de la suppression du coupon.",
+      "codePlaceholder": "Code coupon (ex : SUMMER2026)",
+      "namePlaceholder": "Nom du coupon",
+      "fixedDiscount": "Reduction fixe",
+      "percentDiscount": "Réduction en pourcentage",
+      "discountAmountPlaceholder": "Montant de réduction (KRW)",
+      "discountRatePlaceholder": "Taux de réduction (%)",
+      "minOrderAmount": "Montant minimum de commande",
+      "maxDiscountPlaceholder": "Réduction maximale (KRW)",
+      "totalCountPlaceholder": "Quantité à émettre",
+      "empty": "Aucun coupon créé",
+      "percentOff": "{{value}}% de réduction",
+      "fixedOff": "{{value}} KRW de réduction",
+      "minOrder": "{{amount}} KRW ou plus",
+      "usage": "Utilisé {{used}}/{{total}}"
+    },
+    "reviews": {
+      "title": "Gestion des avis",
+      "empty": "Aucun avis reçu",
+      "customer": "Client",
+      "sellerReply": "Réponse du vendeur",
+      "replyPlaceholder": "Écrire une réponse...",
+      "replySubmitted": "Réponse envoyée",
+      "replyFailed": "Échec de l'envoi de la réponse",
+      "writeReply": "Écrire une réponse"
+    },
+    "groupBuy": {
+      "active": "En cours",
+      "achieved": "Objectif atteint",
+      "totalParticipants": "Total des participants",
+      "noVouchers": "Aucun bon repas enregistré",
+      "noVouchersDesc": "Enregistrez un bon repas et lancez un achat groupé",
+      "registerVoucher": "Enregistrer un bon repas",
+      "closed": "Fermé",
+      "participantCount": "{{current}}/{{target}} personnes",
+      "deadline": "Date limite",
+      "storeOwnerStatsLink": "Lien statistiques du propriétaire",
+      "linkCopied": "Lien copié ! Partagez-le avec le propriétaire du restaurant."
+    },
+    "liveChat": {
+      "title": "Chat en direct",
+      "messageCount": "{{count}} messages",
+      "empty": "Les messages apparaîtront ici lorsque le chat commencera",
+      "inputPlaceholder": "Saisir un message...",
+      "seller": "Vendeur"
+    }
   },
   "nav": {
     "home": "Accueil",

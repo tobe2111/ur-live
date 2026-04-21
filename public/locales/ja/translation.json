@@ -1123,7 +1123,61 @@
     "daysFilter90": "90日",
     "salesUnit": "万",
     "ordersUnit": "件",
-    "persons": "名"
+    "persons": "名",
+    "coupons": {
+      "title": "クーポン管理",
+      "create": "クーポン作成",
+      "createBtn": "作成",
+      "fillRequired": "コード、名前、割引値を入力してください",
+      "created": "クーポンが作成されました",
+      "createFailed": "作成に失敗しました",
+      "confirmDeactivate": "このクーポンを無効にしますか？",
+      "deleteFailed": "クーポンの削除に失敗しました。",
+      "codePlaceholder": "クーポンコード（例：SUMMER2026）",
+      "namePlaceholder": "クーポン名",
+      "fixedDiscount": "定額割引",
+      "percentDiscount": "パーセント割引",
+      "discountAmountPlaceholder": "割引金額（円）",
+      "discountRatePlaceholder": "割引率（%）",
+      "minOrderAmount": "最低注文金額",
+      "maxDiscountPlaceholder": "最大割引（円）",
+      "totalCountPlaceholder": "発行数量",
+      "empty": "作成されたクーポンはありません",
+      "percentOff": "{{value}}%オフ",
+      "fixedOff": "{{value}}円オフ",
+      "minOrder": "{{amount}}円以上",
+      "usage": "使用 {{used}}/{{total}}"
+    },
+    "reviews": {
+      "title": "レビュー管理",
+      "empty": "受信したレビューはありません",
+      "customer": "お客様",
+      "sellerReply": "セラー返信",
+      "replyPlaceholder": "返信を入力...",
+      "replySubmitted": "返信が登録されました",
+      "replyFailed": "返信の登録に失敗しました",
+      "writeReply": "返信を書く"
+    },
+    "groupBuy": {
+      "active": "進行中",
+      "achieved": "達成完了",
+      "totalParticipants": "全参加者",
+      "noVouchers": "登録された食事券はありません",
+      "noVouchersDesc": "食事券を登録して共同購入を始めましょう",
+      "registerVoucher": "食事券を登録",
+      "closed": "締切",
+      "participantCount": "{{current}}/{{target}}名",
+      "deadline": "締切",
+      "storeOwnerStatsLink": "店舗オーナー統計リンク",
+      "linkCopied": "リンクがコピーされました！店舗オーナーに共有してください。"
+    },
+    "liveChat": {
+      "title": "リアルタイムチャット",
+      "messageCount": "{{count}}件のメッセージ",
+      "empty": "チャットが始まるとここに表示されます",
+      "inputPlaceholder": "メッセージを入力...",
+      "seller": "セラー"
+    }
   },
   "nav": {
     "home": "ホーム",

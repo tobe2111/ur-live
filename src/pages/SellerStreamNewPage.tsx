@@ -109,8 +109,8 @@ export default function SellerStreamNewPage() {
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string };
-      console.error('Stream creation error:', err)
-      console.error('Error response:', err_.response?.data)
+      if (import.meta.env.DEV) console.error('Stream creation error:', err)
+      if (import.meta.env.DEV) console.error('Error response:', err_.response?.data)
       const errorMessage = err_.response?.data?.error || err_.response?.data?.message || err_.message || t('seller.creationFailed')
       setError(errorMessage)
     } finally {

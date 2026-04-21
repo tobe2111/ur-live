@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -234,9 +234,8 @@ export default function AdminAuditLogPage() {
               </thead>
               <tbody>
                 {logs.map(log => (
-                  <>
+                  <Fragment key={log.id}>
                     <tr
-                      key={log.id}
                       className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
                       onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
                     >
@@ -264,7 +263,7 @@ export default function AdminAuditLogPage() {
                       </td>
                     </tr>
                     {expandedId === log.id && (
-                      <tr key={`${log.id}-detail`} className="bg-gray-50">
+                      <tr className="bg-gray-50">
                         <td colSpan={6} className="px-4 py-4">
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <div>
@@ -283,7 +282,7 @@ export default function AdminAuditLogPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>

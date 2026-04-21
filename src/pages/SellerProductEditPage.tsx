@@ -139,7 +139,7 @@ export default function SellerProductEditPage() {
         }
       }
     } catch (error: unknown) {
-      console.error('Failed to load product:', error)
+      if (import.meta.env.DEV) console.error('Failed to load product:', error)
       setError(t('common.productLoadFailed'))
     } finally {
       setLoading(false)
@@ -160,7 +160,7 @@ export default function SellerProductEditPage() {
         setLiveStreams(response.data.data || [])
       }
     } catch (error) {
-      console.error('Failed to load live streams:', error)
+      if (import.meta.env.DEV) console.error('Failed to load live streams:', error)
     }
   }
 
@@ -215,7 +215,7 @@ export default function SellerProductEditPage() {
             headers: { 'Authorization': `Bearer ${sessionToken}` }
           })
         } catch (optError: unknown) {
-          console.error('Failed to save options:', optError)
+          if (import.meta.env.DEV) console.error('Failed to save options:', optError)
           toast.error(t('common.productSavedOptionsFailed'))
         }
         
@@ -224,7 +224,7 @@ export default function SellerProductEditPage() {
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('Failed to update product:', error)
+      if (import.meta.env.DEV) console.error('Failed to update product:', error)
       setError(error_.response?.data?.error || t('common.productUpdateFailed'))
     } finally {
       setSubmitting(false)

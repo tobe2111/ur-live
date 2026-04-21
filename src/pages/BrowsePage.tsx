@@ -95,7 +95,7 @@ export default function BrowsePage() {
       return
     }
 
-    const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
+    const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || ''
 
     const initMap = () => {
       if (!mapContainerRef.current) return

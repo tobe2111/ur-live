@@ -106,7 +106,7 @@ export default function SellerBusinessInfoPage() {
       if (error_.response?.status === 404) {
         // Business info not yet registered
       } else {
-        console.error('Failed to load business info:', error)
+        if (import.meta.env.DEV) console.error('Failed to load business info:', error)
         setError(t('seller.businessInfoLoadFailed'))
       }
     } finally {
@@ -138,7 +138,7 @@ export default function SellerBusinessInfoPage() {
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      console.error('Failed to save business info:', error)
+      if (import.meta.env.DEV) console.error('Failed to save business info:', error)
       setError(error_.response?.data?.error || t('seller.businessInfoSaveFailed'))
     } finally {
       setSubmitting(false)

@@ -75,7 +75,7 @@ export default function AdminLoginPage() {
         navigate('/admin', { replace: true })
       }
     } catch (err: any) {
-      console.error('[AdminLogin] ❌ Error:', err)
+      if (import.meta.env.DEV) console.error('[AdminLogin] ❌ Error:', err)
       setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
     } finally {
       setLoading(false)

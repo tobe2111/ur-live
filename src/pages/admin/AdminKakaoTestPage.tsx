@@ -6,6 +6,20 @@ import { toast } from '@/hooks/useToast'
 const TEST_REST_API_KEY = '594661da7d2be9005172fb9a252f8ca4'
 const TEST_REDIRECT_URI = 'https://live.ur-team.com/admin/kakao-test/callback'
 
+const badgeBgMap: Record<string, string> = {
+  blue: 'bg-blue-500',
+  green: 'bg-green-500',
+  orange: 'bg-orange-500',
+  purple: 'bg-purple-500',
+}
+
+const btnBgMap: Record<string, string> = {
+  blue: 'bg-blue-600',
+  green: 'bg-green-600',
+  orange: 'bg-orange-600',
+  purple: 'bg-purple-600',
+}
+
 export default function AdminKakaoTestPage() {
   const navigate = useNavigate()
   const [accessToken, setAccessToken] = useState(localStorage.getItem('kakao_test_token') || '')
@@ -212,12 +226,12 @@ export default function AdminKakaoTestPage() {
         ].map(({ num, color, title, desc, fn }) => (
           <div key={num} className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className={`w-6 h-6 rounded-full bg-${color}-500 text-white text-xs font-bold flex items-center justify-center`}>{num}</span>
+              <span className={`w-6 h-6 rounded-full ${badgeBgMap[color]} text-white text-xs font-bold flex items-center justify-center`}>{num}</span>
               <h2 className="text-sm font-bold text-gray-900">{title}</h2>
             </div>
             <p className="text-xs text-gray-500 mb-3">{desc}</p>
             <button onClick={fn} disabled={!accessToken || loading}
-              className={`w-full py-2.5 bg-${color}-600 text-white rounded-xl text-sm font-bold disabled:opacity-40 active:scale-[0.97]`}>
+              className={`w-full py-2.5 ${btnBgMap[color]} text-white rounded-xl text-sm font-bold disabled:opacity-40 active:scale-[0.97]`}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : title}
             </button>
           </div>
