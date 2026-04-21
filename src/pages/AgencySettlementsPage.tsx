@@ -1,25 +1,70 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
-import { DollarSign, CheckCircle, Clock, Loader2 } from 'lucide-react'
+import { DollarSign, CheckCircle, Clock, Loader2, ArrowRight, Banknote } from 'lucide-react'
 
 export default function AgencySettlementsPage() {
   const [data, setData] = useState<any[]>([])
   const [summary, setSummary] = useState<any>({})
   const [loading, setLoading] = useState(true)
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
+  const [requesting, setRequesting] = useState(false)
 
-  useEffect(() => {
-    api.get('/api/agency/settlements', { headers })
+  function load() {
+    api.get('/api/agency/settlements')
       .then(r => { if (r.data.success) { setData(r.data.data || []); setSummary(r.data.summary || {}) } })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { load() }, [])
+
+  const payableAmount = summary.total_agency_commission || 0
+  const confirmedCount = summary.confirmed || 0
+
+  async function requestPayout() {
+    if (confirmedCount === 0) { toast.error('정산 가능한 주문이 없습니다'); return }
+    if (!confirm(`${payableAmount.toLocaleString()}원 정산을 신청하시겠습니까?`)) return
+    setRequesting(true)
+    try {
+      const res = await api.post('/api/agency/settlements/request')
+      if (res.data.success) {
+        toast.success(`정산 신청 완료! ${res.data.data.commission_amount.toLocaleString()}원`)
+        load()
+      } else {
+        toast.error(res.data.error || '정산 신청 실패')
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || '정산 신청에 실패했습니다')
+    } finally { setRequesting(false) }
+  }
 
   return (
     <AgencyLayout title="정산 관리">
       <div className="p-6">
         <h1 className="text-xl font-bold text-gray-900 mb-4">정산 관리</h1>
+
+        {/* 정산 신청 CTA */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 mb-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm opacity-80">정산 가능 금액</p>
+              <p className="text-3xl font-extrabold mt-1">{payableAmount.toLocaleString()}원</p>
+              <p className="text-xs opacity-70 mt-2">확정 주문 {confirmedCount}건 · 수수료율 {summary.agency_commission_rate || 2}%</p>
+            </div>
+            <button
+              onClick={requestPayout}
+              disabled={requesting || confirmedCount === 0}
+              className="flex items-center gap-2 px-6 py-3 bg-white text-blue-700 font-bold rounded-xl text-sm disabled:opacity-50 active:scale-95 transition-all"
+            >
+              <Banknote className="w-5 h-5" />
+              {requesting ? '신청 중...' : '정산 신청'}
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* 통계 카드 */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
             { label: '전체', value: summary.total || 0, icon: DollarSign, color: 'text-gray-700', bg: 'bg-gray-50' },
@@ -33,10 +78,6 @@ export default function AgencySettlementsPage() {
               <p className="text-xs text-gray-500">{s.label}</p>
             </div>
           ))}
-        </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-          <p className="text-sm font-bold text-blue-800">에이전시 수수료율: {summary.agency_commission_rate || 2}%</p>
-          <p className="text-xs text-blue-600 mt-1">총 정산 대상: {(summary.total_amount || 0).toLocaleString()}원 · 에이전시 수수료: {(summary.total_agency_commission || 0).toLocaleString()}원</p>
         </div>
 
         {loading ? (
