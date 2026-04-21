@@ -70,7 +70,9 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [agencyName, setAgencyName] = useState(localStorage.getItem('agency_name') || '에이전시')
+  const [agencyStatus, setAgencyStatus] = useState<string | null>(null)
   const [sellerCount, setSellerCount] = useState(0)
+  const [revenue30d, setRevenue30d] = useState<number | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('agency_token')
@@ -78,10 +80,12 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
     api.get('/api/agency/profile', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
         const name = r.data?.data?.name
+        const status = r.data?.data?.status
         if (name) {
           setAgencyName(name)
           localStorage.setItem('agency_name', name)
         }
+        if (status) setAgencyStatus(status)
       })
       .catch(() => {})
     api.get('/api/agency/sellers', { headers: { Authorization: `Bearer ${token}` } })
@@ -90,7 +94,18 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         setSellerCount(sellers.length)
       })
       .catch(() => {})
+    api.get('/api/agency/stats', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        const rev = r.data?.data?.revenue_30d
+        if (typeof rev === 'number') setRevenue30d(rev)
+      })
+      .catch(() => {})
   }, [])
+
+  // 인증 파트너 라벨은 status === 'approved'일 때만 표시 (그 외엔 일반 파트너)
+  const isVerifiedPartner = agencyStatus === 'approved'
+  // 성장 활성 라벨은 최근 30일 매출이 있을 때만 표시
+  const hasActiveGrowth = revenue30d != null && revenue30d > 0
 
   function logout() {
     ['agency_token', 'agency_id', 'agency_name', 'agency_email'].forEach(k => localStorage.removeItem(k))
@@ -134,7 +149,9 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[12px] font-extrabold text-white truncate">{agencyName}</p>
-            <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.5)' }}>인증 파트너</p>
+            <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              {isVerifiedPartner ? '인증 파트너' : '파트너'}
+            </p>
           </div>
         </div>
         {/* Mini stat grid */}
@@ -150,11 +167,17 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
             className="rounded-lg px-2.5 py-2 text-center"
             style={{ background: 'rgba(255,255,255,0.04)' }}
           >
-            <p className="text-[10px] font-bold text-white/40">성장</p>
-            <p className="text-[13px] font-extrabold" style={{ color: '#10B981' }}>
-              <TrendingUp size={10} className="inline mr-0.5" style={{ verticalAlign: 'middle' }} />
-              활성
-            </p>
+            <p className="text-[10px] font-bold text-white/40">30일 매출</p>
+            {revenue30d == null ? (
+              <p className="text-[13px] font-extrabold text-white/50">—</p>
+            ) : hasActiveGrowth ? (
+              <p className="text-[13px] font-extrabold" style={{ color: '#10B981' }}>
+                <TrendingUp size={10} className="inline mr-0.5" style={{ verticalAlign: 'middle' }} />
+                활성
+              </p>
+            ) : (
+              <p className="text-[13px] font-extrabold text-white/60">휴면</p>
+            )}
           </div>
         </div>
       </div>
