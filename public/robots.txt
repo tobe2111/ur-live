@@ -9,5 +9,6 @@ Disallow: /checkout
 Disallow: /payment/
 Disallow: /account/
 Disallow: /embed/
+Disallow: /debug/
 
 Sitemap: https://live.ur-team.com/sitemap.xml

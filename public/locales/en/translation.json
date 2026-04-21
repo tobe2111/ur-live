@@ -1476,6 +1476,12 @@
       "reviews": "Reviews",
       "coupons": "Coupons",
       "liveBroadcast": "Live Broadcast"
+    },
+    "shortsSync": {
+      "syncComplete": "Sync complete",
+      "syncFailed": "Sync failed",
+      "syncing": "Syncing...",
+      "youtubeRequired": "YouTube channel required"
     }
   },
   "nav": {

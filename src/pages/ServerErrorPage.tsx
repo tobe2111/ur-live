@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Home, RefreshCw, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import SEO from '@/components/SEO'
 
 export default function ServerErrorPage() {
   const handleRefresh = () => {
@@ -9,6 +10,7 @@ export default function ServerErrorPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center px-4">
+      <SEO title="일시적인 오류" description="일시적인 오류가 발생했습니다" url="/500" noindex />
       <div className="max-w-lg w-full text-center">
         {/* Error Icon */}
         <div className="mb-8 smooth-appear">

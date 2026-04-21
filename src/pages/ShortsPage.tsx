@@ -148,6 +148,30 @@ export default function ShortsPage() {
     })
   }, [activeIndex, muted])
 
+  // 메모리 누수 방지: 활성 인덱스 기준 ±2 범위 밖 플레이어 파괴
+  useEffect(() => {
+    playerRefs.current.forEach((player, key) => {
+      // key format: `shorts-player-${index}`
+      const match = key.match(/shorts-player-(\d+)/)
+      if (!match) return
+      const idx = Number(match[1])
+      if (Math.abs(idx - activeIndex) > 2) {
+        try { player.destroy?.() } catch { /* ignore */ }
+        playerRefs.current.delete(key)
+      }
+    })
+  }, [activeIndex])
+
+  // 언마운트 시 모든 플레이어 파괴
+  useEffect(() => {
+    return () => {
+      playerRefs.current.forEach(p => {
+        try { p.destroy?.() } catch { /* ignore */ }
+      })
+      playerRefs.current.clear()
+    }
+  }, [])
+
   // 좋아요 토글
   async function handleLike(item: ShortItem) {
     if (typeof item.id !== 'number') return

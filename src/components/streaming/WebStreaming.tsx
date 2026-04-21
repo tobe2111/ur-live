@@ -38,6 +38,8 @@ export default function WebStreaming({
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number>(0)
   const wsRef = useRef<WebSocket | null>(null)
+  const intentionalCloseRef = useRef<boolean>(false)
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     return () => {
@@ -183,7 +185,7 @@ export default function WebStreaming({
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      
+
       if (data.type === 'switch_product') {
         setCurrentProductIndex(data.productIndex)
       } else if (data.type === 'chat_message') {
@@ -193,6 +195,14 @@ export default function WebStreaming({
 
     ws.onerror = (err) => {
       if (import.meta.env.DEV) console.error('[WebSocket] Error:', err)
+    }
+
+    ws.onclose = () => {
+      // Reconnect after 3s if not intentionally closed
+      if (!intentionalCloseRef.current) {
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = setTimeout(() => connectWebSocket(), 3000)
+      }
     }
 
     wsRef.current = ws
@@ -206,6 +216,7 @@ export default function WebStreaming({
       setStatus('starting')
       setError(null)
       onStatusChange?.('starting')
+      intentionalCloseRef.current = false
 
       // Step 1: Capture media
       const stream = await startMediaCapture()
@@ -271,7 +282,12 @@ export default function WebStreaming({
       cancelAnimationFrame(animationFrameRef.current)
     }
 
-    // Close WebSocket
+    // Cancel any pending reconnect and close WebSocket intentionally
+    intentionalCloseRef.current = true
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
     if (wsRef.current) {
       wsRef.current.close()
       wsRef.current = null

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, XCircle, AlertCircle, Copy, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import SEO from '@/components/SEO'
 
 interface CheckResult {
   name: string
@@ -117,6 +118,7 @@ export default function KakaoDebugPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <SEO title="Debug" noindex />
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <Card>

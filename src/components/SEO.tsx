@@ -42,6 +42,11 @@ export default function SEO({
       <meta property="og:url" content={fullUrl} />
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:locale" content="ko_KR" />
+      <meta property="og:locale:alternate" content="en_US" />
+      <meta property="og:locale:alternate" content="ja_JP" />
+      <meta property="og:locale:alternate" content="zh_CN" />
+      <meta property="og:locale:alternate" content="es_ES" />
+      <meta property="og:locale:alternate" content="fr_FR" />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />

@@ -351,6 +351,9 @@ function AppContent() {
 
   return (
     <>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-0 focus:left-0 focus:z-[100] focus:bg-white focus:text-gray-900 focus:px-4 focus:py-2 focus:rounded-br focus:shadow">
+        본문으로 건너뛰기
+      </a>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
           <div className={fullScreen ? 'min-h-dvh' : 'max-w-[430px] mx-auto bg-white min-h-dvh'}>
@@ -358,6 +361,7 @@ function AppContent() {
           <OfflineBanner />
           <ScrollToTop />
           <PushNotificationSetup />
+          <main id="main-content">
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
@@ -835,6 +839,7 @@ function AppContent() {
             <Route path="/500" element={<ServerErrorPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </main>
           </div>
           {!hideBottomNav && <BottomNav />}
           {!fullScreen && <SideBanner />}
