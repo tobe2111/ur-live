@@ -296,8 +296,12 @@ export function requireAuth() {
       const jwtPayload = await verifyJWT(token, jwtSecret);
 
       if (jwtPayload) {
+        const jwtId = jwtPayload.userId ?? jwtPayload.sub;
+        if (!jwtId) {
+          return c.json(unauthorizedResponse('Invalid token: missing user identifier'), 401);
+        }
         const user: AuthUser = {
-          id: (jwtPayload.userId || jwtPayload.sub) as string,
+          id: jwtId as string,
           email: jwtPayload.email as string,
           name: jwtPayload.name,
           type: (jwtPayload.type || 'user') as UserType,
@@ -313,8 +317,12 @@ export function requireAuth() {
       if (firebaseProjectId) {
         const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
         if (firebasePayload) {
+          const firebaseId = firebasePayload.sub ?? firebasePayload.user_id;
+          if (!firebaseId) {
+            return c.json(unauthorizedResponse('Invalid token: missing user identifier'), 401);
+          }
           const user: AuthUser = {
-            id: (firebasePayload.sub || firebasePayload.user_id) as string,
+            id: firebaseId as string,
             email: firebasePayload.email as string,
             name: firebasePayload.name,
             type: 'user',
