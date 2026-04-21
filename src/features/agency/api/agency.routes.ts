@@ -23,6 +23,7 @@ import { sign, verify } from 'hono/jwt'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Context, Next } from 'hono'
 import { verifyPassword, hashPassword } from '@/lib/password'
+import { sendEmail } from '@/services/email'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 
@@ -61,6 +62,52 @@ async function ensureAgencyTables(DB: D1Database) {
       UNIQUE(agency_id, seller_id)
     )
   `).run().catch(() => {})
+}
+
+// ── 비밀번호 재설정 토큰 테이블 보장 ─────────────────────────
+async function ensurePasswordResetTable(DB: D1Database) {
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_type TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run().catch(() => {})
+  await DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)'
+  ).run().catch(() => {})
+}
+
+/** 32자 hex 토큰 생성 (Web Crypto) */
+function generateResetToken(): string {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** 비밀번호 재설정 이메일 HTML */
+function getPasswordResetEmailHTML(resetUrl: string): string {
+  return `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1d1d1f;">
+      <h2 style="font-size:20px;margin:0 0 16px;">유어딜 비밀번호 재설정</h2>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+        아래 링크를 클릭하여 새 비밀번호를 설정하세요. (1시간 유효)
+      </p>
+      <p style="margin:24px 0;">
+        <a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
+          비밀번호 재설정하기
+        </a>
+      </p>
+      <p style="font-size:13px;color:#666;line-height:1.6;margin-top:24px;">
+        요청하지 않았다면 이 이메일을 무시하세요.<br>
+        링크가 동작하지 않을 경우 아래 URL을 복사해 주소창에 붙여넣으세요:<br>
+        <span style="word-break:break-all;color:#2563eb;">${resetUrl}</span>
+      </p>
+    </div>
+  `
 }
 
 // ── JWT 헬퍼 ─────────────────────────────────────────────────
@@ -144,6 +191,118 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
     token,
     agency: { id: agency.id, name: agency.name, contact_name: agency.contact_name, email: agency.email },
   })
+})
+
+// ── POST /forgot-password (공개) ──────────────────────────────
+app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password', max: 5, windowSec: 600 }), async (c) => {
+  const { DB, RESEND_API_KEY, RESEND_FROM, FRONTEND_URL } = c.env as any
+
+  try {
+    const body = await c.req.json<{ email: string }>()
+    const email = (body?.email || '').trim()
+    if (!email) return c.json({ success: false, error: '이메일을 입력해주세요.' }, 400)
+
+    await ensureAgencyTables(DB)
+    await ensurePasswordResetTable(DB)
+
+    const agency = await DB.prepare('SELECT id, email, name FROM agencies WHERE email = ?')
+      .bind(email).first<{ id: number; email: string; name: string }>()
+
+    if (agency) {
+      const token = generateResetToken()
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+
+      await DB.prepare(`
+        INSERT INTO password_reset_tokens (user_type, user_id, token, expires_at)
+        VALUES ('agency', ?, ?, ?)
+      `).bind(agency.id, token, expiresAt).run()
+
+      const baseUrl = FRONTEND_URL || 'https://live.ur-team.com'
+      const resetUrl = `${baseUrl}/agency/reset-password?token=${token}`
+
+      if (RESEND_API_KEY) {
+        await sendEmail(
+          {
+            to: agency.email,
+            subject: '[유어딜] 에이전시 비밀번호 재설정 안내',
+            html: getPasswordResetEmailHTML(resetUrl),
+          },
+          RESEND_API_KEY,
+          RESEND_FROM
+        ).catch((e) => console.error('[Agency ForgotPassword] Email send failed:', e))
+      } else {
+        console.warn('[Agency ForgotPassword] RESEND_API_KEY not configured; skipping email. resetUrl=', resetUrl)
+      }
+    } else {
+      console.info('[Agency ForgotPassword] Unknown email (silent):', email)
+    }
+
+    return c.json({
+      success: true,
+      message: '입력하신 이메일로 비밀번호 재설정 링크를 발송했습니다. 이메일을 확인해주세요.'
+    })
+  } catch (error) {
+    console.error('[Agency ForgotPassword] Error:', error)
+    return c.json({
+      success: true,
+      message: '입력하신 이메일로 비밀번호 재설정 링크를 발송했습니다. 이메일을 확인해주세요.'
+    })
+  }
+})
+
+// ── POST /reset-password (공개) ───────────────────────────────
+app.post('/reset-password', cors(), rateLimit({ action: 'agency_reset_password', max: 10, windowSec: 600 }), async (c) => {
+  const { DB } = c.env
+
+  try {
+    const body = await c.req.json<{ token: string; newPassword: string }>()
+    const token = (body?.token || '').trim()
+    const newPassword = body?.newPassword || ''
+
+    if (!token || !newPassword) return c.json({ success: false, error: '토큰과 새 비밀번호를 입력해주세요.' }, 400)
+    if (newPassword.length < 8) return c.json({ success: false, error: '비밀번호는 8자 이상이어야 합니다.' }, 400)
+
+    await ensurePasswordResetTable(DB)
+
+    const row = await DB.prepare(`
+      SELECT id, user_id, expires_at
+      FROM password_reset_tokens
+      WHERE token = ? AND user_type = 'agency'
+    `).bind(token).first<{ id: number; user_id: number; expires_at: string }>()
+
+    if (!row) {
+      return c.json({
+        success: false,
+        error: '유효하지 않은 토큰입니다. 비밀번호 재설정을 다시 요청해주세요.',
+        code: 'INVALID_RESET_TOKEN'
+      }, 400)
+    }
+
+    const expiresAt = new Date(row.expires_at).getTime()
+    if (isNaN(expiresAt) || Date.now() > expiresAt) {
+      await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(() => {})
+      return c.json({
+        success: false,
+        error: '토큰이 만료되었습니다. 비밀번호 재설정을 다시 요청해주세요.',
+        code: 'EXPIRED_RESET_TOKEN'
+      }, 400)
+    }
+
+    const hash = await hashPassword(newPassword)
+    await DB.prepare(`
+      UPDATE agencies SET password_hash = ?, updated_at = datetime('now') WHERE id = ?
+    `).bind(hash, row.user_id).run()
+
+    await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(() => {})
+
+    return c.json({
+      success: true,
+      message: '비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.'
+    })
+  } catch (error) {
+    console.error('[Agency ResetPassword] Error:', error)
+    return c.json({ success: false, error: '비밀번호 재설정 중 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // ── 이하 인증 필요 ────────────────────────────────────────────
