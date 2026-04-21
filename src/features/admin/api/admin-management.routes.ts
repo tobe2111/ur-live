@@ -3231,11 +3231,6 @@ adminManagementRoutes.get('/users', cors(), async (c) => {
       conditions.push('(u.name LIKE ? OR u.email LIKE ?)');
       params.push(`%${search}%`, `%${search}%`);
     }
-    if (status) {
-      conditions.push('u.status = ?');
-      params.push(status);
-    }
-
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const countRows = await executeQuery<CountRow>(DB,
@@ -3244,8 +3239,7 @@ adminManagementRoutes.get('/users', cors(), async (c) => {
     const total = countRows[0]?.count || 0;
 
     const users = await executeQuery<UserRow>(DB,
-      `SELECT u.id, u.name, u.email, u.phone, u.provider, u.status,
-              u.created_at, u.deal_balance
+      `SELECT u.id, u.name, u.email, u.phone, u.created_at
        FROM users u
        ${where}
        ORDER BY u.created_at DESC
@@ -3304,7 +3298,7 @@ adminManagementRoutes.get('/users/:id', cors(), async (c) => {
     const userId = c.req.param('id');
 
     const users = await executeQuery<UserRow>(DB,
-      `SELECT id, name, email, phone, provider, status, created_at, deal_balance
+      `SELECT id, name, email, phone, created_at
        FROM users WHERE id = ?`, [userId]
     );
     if (users.length === 0) {
