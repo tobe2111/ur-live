@@ -77,11 +77,15 @@ export function startVersionCheck() {
   if (import.meta.env.DEV) return
 
   // MIME 에러 감지: 스크립트가 text/html로 로드됐으면 즉시 캐시 클리어
-  // (서버에서 옛 번들 대신 index.html을 반환한 경우)
+  // sw.js MIME 에러는 무시 (배포 시 일시적으로 발생 가능)
   window.addEventListener('error', (e) => {
-    if (e.message?.includes('MIME type') || e.message?.includes('text/html')) {
-      console.warn('[VersionCheck] MIME mismatch detected — clearing cache')
-      forceReload()
+    const msg = e.message || ''
+    if ((msg.includes('MIME type') || msg.includes('text/html')) && !msg.includes('sw.js')) {
+      const alreadyReloaded = sessionStorage.getItem('mime_reload')
+      if (!alreadyReloaded) {
+        sessionStorage.setItem('mime_reload', '1')
+        forceReload()
+      }
     }
   })
 
