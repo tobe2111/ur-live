@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom'
-import { Package } from 'lucide-react'
+import { Heart } from 'lucide-react'
 
 interface Product {
   id: number
   name: string
   price: number
+  original_price?: number
   discount_rate: number
   image_url: string
   stock: number
@@ -17,84 +18,60 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const getDiscountedPrice = (price: number, discountRate: number) => {
-    return Math.floor(price * (1 - discountRate / 100))
-  }
-
-  const discountedPrice = getDiscountedPrice(product.price, product.discount_rate)
+  const discountedPrice = Math.floor(product.price * (1 - (product.discount_rate || 0) / 100))
+  const discount = product.discount_rate || 0
 
   return (
-    <Link
-      to={`/product/${product.id}`}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all"
-    >
-      {/* 상품 이미지 */}
-      <div className="relative aspect-square overflow-hidden bg-[#f5f5f7]">
+    <Link to={`/products/${product.id}`} className="block text-left">
+      <div className="relative rounded-xl overflow-hidden" style={{ aspectRatio: '1', background: '#F9FAFB' }}>
         {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Package className="w-12 h-12 text-[#6e6e73]" />
+          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+            <span className="text-gray-300 text-2xl">📦</span>
           </div>
         )}
-        
-        {/* 품절 오버레이 */}
+
+        {discount > 0 && product.stock > 0 && (
+          <span className="absolute top-1.5 left-1.5 rounded-md px-1.5 py-0.5"
+            style={{ background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800 }}>
+            -{discount}%
+          </span>
+        )}
+
         {product.stock === 0 && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="text-white text-[15px] font-bold">품절</span>
+            <span className="text-white text-[13px] font-bold">품절</span>
           </div>
         )}
-        
-        {/* 할인율 배지 */}
-        {product.discount_rate > 0 && product.stock > 0 && (
-          <div className="absolute top-2 left-2 bg-[#ff3b30] text-white px-2 py-1 rounded-lg">
-            <span className="text-[12px] font-bold">{product.discount_rate}%</span>
-          </div>
-        )}
+
+        <button className="absolute bottom-1.5 right-1.5 rounded-full p-1.5"
+          style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(6px)' }}
+          onClick={(e) => e.preventDefault()}>
+          <Heart className="w-3 h-3 text-gray-300" />
+        </button>
       </div>
 
-      {/* 상품 정보 */}
-      <div className="p-3">
-        {/* 판매자명 */}
-        <p className="text-[11px] text-[#6e6e73] mb-1 line-clamp-1">
-          {product.seller_name || product.seller_username}
-        </p>
-        
-        {/* 상품명 */}
-        <h3 className="text-[14px] font-semibold text-[#1d1d1f] mb-2 line-clamp-2 min-h-[40px]">
+      <div className="mt-2">
+        <p style={{ fontSize: 10, color: '#9CA3AF' }}>@{product.seller_name || product.seller_username}</p>
+        <p style={{ fontSize: 12, color: '#111827', lineHeight: 1.3, marginTop: 2 }} className="line-clamp-2">
           {product.name}
-        </h3>
-
-        {/* 가격 */}
-        <div className="flex flex-col gap-1">
-          {product.discount_rate > 0 ? (
-            <>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[#ff3b30] text-[14px] font-bold">
-                  {product.discount_rate}%
-                </span>
-                <span className="text-[#1d1d1f] text-[16px] font-bold">
-                  {discountedPrice.toLocaleString()}원
-                </span>
-              </div>
-              <span className="text-[#8e8e93] text-[12px] line-through">
-                {product.price.toLocaleString()}원
-              </span>
-            </>
-          ) : (
-            <span className="text-[#1d1d1f] text-[16px] font-bold">
-              {product.price.toLocaleString()}원
-            </span>
+        </p>
+        {product.price > discountedPrice && (
+          <p style={{ fontSize: 10, color: '#9CA3AF', textDecoration: 'line-through', marginTop: 3 }}>
+            {product.price.toLocaleString()}원
+          </p>
+        )}
+        <div className="flex items-baseline gap-1 mt-0.5">
+          {discount > 0 && (
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{discount}%</span>
           )}
+          <span style={{ fontSize: 13, fontWeight: 800, color: '#111827' }}>
+            {discountedPrice.toLocaleString()}원
+          </span>
         </div>
-
-        {/* 재고 경고 */}
         {product.stock > 0 && product.stock <= 10 && (
-          <p className="text-[11px] text-[#ff9500] font-semibold mt-2">
+          <p style={{ fontSize: 10, color: '#F59E0B', fontWeight: 600, marginTop: 4 }}>
             재고 {product.stock}개
           </p>
         )}
