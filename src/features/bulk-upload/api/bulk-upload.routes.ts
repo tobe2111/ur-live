@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { validateImageUrl } from '@/worker/utils/validation';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 
@@ -125,17 +126,27 @@ bulkUploadRoutes.post('/upload', requireAuth(), async (c) => {
       const optionValues = p['옵션값(예:블랙,화이트,네이비)'] || p['option_values'] || '';
       const minStockAlert = parseInt(p['최소재고알림'] || p['min_stock_alert'] || '5');
 
-      // 이미지 수집
+      // 이미지 수집 — http/https URL만 허용, 길이/형식 검증
       const mainImages: string[] = [];
       for (let j = 1; j <= 4; j++) {
         const url = p[`메인이미지URL${j}`] || p[`main_image_${j}`] || '';
-        if (url.startsWith('http')) mainImages.push(url);
+        if (!url) continue;
+        const check = validateImageUrl(url);
+        if (!check.valid) {
+          throw new Error(`메인이미지URL${j}: ${check.error}`);
+        }
+        mainImages.push(url);
       }
 
       const detailImages: string[] = [];
       for (let j = 1; j <= 5; j++) {
         const url = p[`상세이미지URL${j}`] || p[`detail_image_${j}`] || '';
-        if (url.startsWith('http')) detailImages.push(url);
+        if (!url) continue;
+        const check = validateImageUrl(url);
+        if (!check.valid) {
+          throw new Error(`상세이미지URL${j}: ${check.error}`);
+        }
+        detailImages.push(url);
       }
 
       if (!name || !price) {

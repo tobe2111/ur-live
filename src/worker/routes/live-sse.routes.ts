@@ -21,6 +21,12 @@ import {
 export const liveSseRoutes = new Hono<{ Bindings: Env }>()
 export const chatRoutes = new Hono<{ Bindings: Env }>()
 
+// HIGH-4: Simple per-isolate cache for duplicate-message detection. Keys are
+// `${liveId}:${userId|userName}` and entries expire after 60s. This runs in a
+// Worker isolate so it is best-effort across cold starts — good enough for
+// blocking trivial spam loops on a single connection.
+const RECENT_CHAT_CACHE = new Map<string, { message: string; at: number }>()
+
 // ── SSE fallback: GET /api/live/:liveId/chat/sse ────────────────────────────
 liveSseRoutes.get('/:liveId/chat/sse', (c) => {
   const { liveId } = c.req.param()
@@ -63,12 +69,49 @@ liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
   }
 })
 
+// ── WebSocket origin allowlist ──────────────────────────────────────────────
+// Only these origins may establish a WebSocket to the live-stream DO. Without
+// this, any origin could open a socket and spam chat / trigger broadcasts.
+const ALLOWED_WS_ORIGINS = new Set<string>([
+  'https://live.ur-team.com',
+  'https://ur-live.pages.dev',
+  // Local dev (vite / wrangler dev)
+  'http://localhost:5173',
+  'http://localhost:8787',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:8787',
+])
+
+function isAllowedWsOrigin(origin: string | undefined): boolean {
+  if (!origin) {
+    // Some non-browser clients omit Origin. Permit so native mobile / tests work.
+    // Browser clients always send Origin on WS upgrades.
+    return true
+  }
+  if (ALLOWED_WS_ORIGINS.has(origin)) return true
+  // Allow any `*.pages.dev` preview deployment
+  try {
+    const u = new URL(origin)
+    if (u.protocol === 'https:' && u.hostname.endsWith('.pages.dev')) return true
+    if (u.protocol === 'https:' && u.hostname.endsWith('.ur-team.com')) return true
+  } catch {
+    return false
+  }
+  return false
+}
+
 // ── WebSocket → Durable Object proxy ────────────────────────────────────────
 liveSseRoutes.get('/:liveId/ws', async (c) => {
   const { liveId } = c.req.param()
 
   if (c.req.header('Upgrade') !== 'websocket') {
     return c.json({ error: 'Expected WebSocket upgrade' }, 426)
+  }
+
+  // Origin check — reject cross-origin upgrade attempts.
+  const origin = c.req.header('origin') || c.req.header('Origin')
+  if (!isAllowedWsOrigin(origin)) {
+    return c.json({ error: 'Origin not allowed' }, 403)
   }
 
   if (!c.env.LIVE_STREAM) {

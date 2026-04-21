@@ -496,7 +496,13 @@ app.use('/api/products', rateLimit({ action: 'product_list', max: 60, windowSec:
 // Seller public profile view: prevent enumeration
 app.use('/api/sellers/*', rateLimit({ action: 'seller_view', max: 60, windowSec: 60 }));
 // Chat send: prevent spam; only on POSTs handled inside chatRoutes
-app.use('/api/chat/*/messages', rateLimit({ action: 'chat_send', max: 30, windowSec: 60 }));
+// HIGH-4: lowered from 30/min → 10/min to make message-flood / URL-spam harder.
+app.use('/api/chat/*/messages', rateLimit({ action: 'chat_send', max: 10, windowSec: 60 }));
+
+// HIGH-1: Upload endpoints — prevent abusive image/file uploads.
+// Applied before route mount so it fires for POST/PUT/PATCH alike.
+app.use('/api/seller/upload-image', rateLimit({ action: 'upload', max: 10, windowSec: 60 }));
+app.use('/api/seller/upload-*', rateLimit({ action: 'upload', max: 10, windowSec: 60 }));
 
 // ============================================================
 // Streams Routes  ← /api/streams (공개 조회용)

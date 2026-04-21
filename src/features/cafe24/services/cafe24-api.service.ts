@@ -253,9 +253,16 @@ export async function syncProductsToLocal(
         .bind(cp.product_no, mallId)
         .first<{ product_id: number }>();
 
-      const price = parseFloat(cp.price) || 0;
-      const supplyPrice = cp.supply_price ? parseFloat(cp.supply_price) : 0;
-      const retailPrice = cp.retail_price ? parseFloat(cp.retail_price) : null;
+      // ✅ Defensive numeric parse: NaN / Infinity / 음수 → 0 으로 정규화.
+      //    parseFloat 만으로는 'abc' 같은 손상 입력이 NaN → DB 저장 시 오류를 일으킴.
+      const rawPrice = parseFloat(cp.price);
+      const price = Number.isFinite(rawPrice) && rawPrice >= 0 ? Math.round(rawPrice) : 0;
+      const rawSupply = cp.supply_price ? parseFloat(cp.supply_price) : 0;
+      const supplyPrice = Number.isFinite(rawSupply) && rawSupply >= 0 ? Math.round(rawSupply) : 0;
+      const rawRetail = cp.retail_price ? parseFloat(cp.retail_price) : null;
+      const retailPrice = rawRetail !== null && Number.isFinite(rawRetail) && rawRetail >= 0
+        ? Math.round(rawRetail)
+        : null;
       const stock = cp.stock_quantity ?? 0;
       const imageUrl = cp.detail_image || cp.list_image || '';
       const description = cp.summary_description || cp.description || '';

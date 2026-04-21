@@ -150,9 +150,27 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     if (err) return c.json({ success: false, error: err }, 400);
     body.content = sanitizeString(body.content);
   }
-  // Cap images array to prevent oversized JSON blobs
-  if (Array.isArray(body.images) && body.images.length > 10) {
-    return c.json({ success: false, error: '이미지는 최대 10개까지 첨부할 수 있습니다' }, 400);
+  // ── 이미지 URL 검증 (XSS / 파밍 방지) ─────────────────────────────
+  if (body.images !== undefined && body.images !== null) {
+    if (!Array.isArray(body.images)) {
+      return c.json({ success: false, error: '이미지 필드는 배열이어야 합니다' }, 400);
+    }
+    if (body.images.length > 10) {
+      return c.json({ success: false, error: '이미지는 최대 10개까지 첨부할 수 있습니다' }, 400);
+    }
+    for (const img of body.images) {
+      if (typeof img !== 'string' || img.length === 0 || img.length > 2048) {
+        return c.json({ success: false, error: '이미지 URL이 유효하지 않습니다' }, 400);
+      }
+      try {
+        const u = new URL(img);
+        if (!['http:', 'https:'].includes(u.protocol)) {
+          return c.json({ success: false, error: '이미지 URL 프로토콜 오류' }, 400);
+        }
+      } catch {
+        return c.json({ success: false, error: '이미지 URL 형식 오류' }, 400);
+      }
+    }
   }
 
   // 중복 리뷰 체크
@@ -164,14 +182,17 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     return c.json({ success: false, error: '이미 리뷰를 작성하셨습니다' }, 409);
   }
 
-  // 구매 확인 (order_id가 있는 경우)
+  // 구매 확인 — 보상 지급 여부는 order_id 소유/배송 상태에 따라 결정
+  // order_id가 없어도 리뷰 자체는 저장되지만 보상은 지급되지 않음 (HIGH-3)
+  let canGetReward = !!body.order_id;
   if (body.order_id) {
     const order = await DB.prepare(
       'SELECT id FROM orders WHERE id = ? AND user_id = ? AND status IN (?, ?)'
     ).bind(body.order_id, user.id, 'DONE', 'DELIVERED').first();
 
     if (!order) {
-      return c.json({ success: false, error: '구매 확인이 되지 않았습니다' }, 400);
+      // order_id가 제공되었으나 본인 소유/배송완료가 아닐 경우 보상 거부
+      canGetReward = false;
     }
   }
 
@@ -190,7 +211,12 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
   }
 
   // ── 리뷰 리워드: 딜 포인트 지급 (platform_settings 기반) ──
+  // HIGH-3: 구매 확인이 되지 않은 리뷰(order_id 없음/불일치)는 보상 지급 금지
   try {
+    if (!canGetReward) {
+      // skip reward logic entirely
+      throw new Error('__skip_reward__');
+    }
     // ✅ BUG #32 FIX: Prevent review reward farming (POST → DELETE → POST again).
     // Check if user already received a reward for this product before granting.
     const existingReward = await DB.prepare(
@@ -266,7 +292,11 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     await DB.prepare('UPDATE products SET sold_count = COALESCE(sold_count, 0) + ? WHERE id = ?').bind(inc, body.product_id).run();
   } catch {}
 
-  return c.json({ success: true, message: '리뷰가 등록되었습니다', reward: true }, 201);
+  return c.json({
+    success: true,
+    message: canGetReward ? '리뷰가 등록되었습니다' : '리뷰가 등록되었습니다 (구매 확인되지 않아 보상은 지급되지 않았습니다)',
+    reward: canGetReward,
+  }, 201);
 });
 
 // PUT /api/reviews/:id — 리뷰 수정
@@ -295,8 +325,26 @@ reviewsRoutes.put('/:id', requireAuth(), async (c) => {
     if (cErr) return c.json({ success: false, error: cErr }, 400);
     body.content = sanitizeString(body.content);
   }
-  if (Array.isArray(body.images) && body.images.length > 10) {
-    return c.json({ success: false, error: '이미지는 최대 10개까지 첨부할 수 있습니다' }, 400);
+  if (body.images !== undefined && body.images !== null) {
+    if (!Array.isArray(body.images)) {
+      return c.json({ success: false, error: '이미지 필드는 배열이어야 합니다' }, 400);
+    }
+    if (body.images.length > 10) {
+      return c.json({ success: false, error: '이미지는 최대 10개까지 첨부할 수 있습니다' }, 400);
+    }
+    for (const img of body.images) {
+      if (typeof img !== 'string' || img.length === 0 || img.length > 2048) {
+        return c.json({ success: false, error: '이미지 URL이 유효하지 않습니다' }, 400);
+      }
+      try {
+        const u = new URL(img);
+        if (!['http:', 'https:'].includes(u.protocol)) {
+          return c.json({ success: false, error: '이미지 URL 프로토콜 오류' }, 400);
+        }
+      } catch {
+        return c.json({ success: false, error: '이미지 URL 형식 오류' }, 400);
+      }
+    }
   }
 
   const updates: string[] = ['updated_at = datetime(\'now\')'];

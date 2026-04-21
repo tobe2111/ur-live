@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { compress } from 'hono/compress';
 import { serveStatic } from 'hono/cloudflare-workers';
+import { ALLOWED_ORIGINS } from '../shared/constants';
 
 type Bindings = {
   ASSETS: Fetcher;
@@ -18,8 +19,13 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>();
 
 // CORS
+// ✅ SECURITY FIX: origin:'*' + credentials:true 는 브라우저가 거부하는 잘못된 조합.
+//    allowlist 기반으로 한정하고 알 수 없는 origin 은 반사하지 않음.
 app.use('*', cors({
-  origin: '*',
+  origin: (origin) => {
+    if (!origin) return '';
+    return ALLOWED_ORIGINS.includes(origin) ? origin : '';
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true
