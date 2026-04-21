@@ -31,6 +31,7 @@ import { globalErrorHandler as errorHandler } from './middleware/error-handler';
 import { accountRoutes } from '../features/account/api/account.routes';
 import { adminManagementRoutes, adminBannersRoutes } from '../features/admin/api/index';
 import { scraperProxy } from '../features/admin/api/scraper-proxy.routes';
+import { naverScraper } from '../features/scraper/api/naver-scraper.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
@@ -548,6 +549,7 @@ adminApp.route('/cafe24', cafe24Routes);
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 app.route('/api/scraper', scraperProxy);  // /api/admin 밖 — adminApp 미들웨어 간섭 없음
+app.route('/api/naver-scraper', naverScraper);  // Worker 직접 크롤링 (브라우저 없음)
 
 // ── D1에 저장된 스크래핑 결과 조회 (스크래퍼 서버 없이도 작동) ──
 app.get('/api/scraper/d1/emails', async (c) => {

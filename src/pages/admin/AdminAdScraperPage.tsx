@@ -171,38 +171,51 @@ export default function AdminAdScraperPage() {
   async function startScrape() {
     if (!keywords.trim()) return
     setLogs([]); setProgress(0)
+    setRunning(true)
 
-    // 1순위: 로컬 스크래퍼 서버 시도
-    try {
-      connectSSE()
-      const res = await fetch(`${API}/api/scrape`, {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ keywords, sessionName: sessionName || undefined, concurrency }),
-      }).then(r => r.json()) as { error?: string }
-      if (!res.error) return
-      addLog(`로컬 스크래퍼 불가: ${res.error} — GitHub Actions로 전환`, 'info')
-    } catch (e: any) {
-      addLog(`로컬 스크래퍼 연결 실패 — GitHub Actions로 전환`, 'info')
-    }
+    // 1순위: Worker 직접 크롤링 (브라우저 없음, 즉시 결과)
+    // 키워드를 쉼표로 분리해서 각각 크롤링
+    const keywordList = keywords.split(',').map(k => k.trim()).filter(Boolean)
+    addLog(`${keywordList.length}개 키워드 크롤링 시작...`, 'info')
 
-    // 2순위: GitHub Actions 트리거 (프로덕션)
-    try {
-      const res = await fetch(`${API}/d1/trigger`, {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ keywords }),
-      }).then(r => r.json()) as { success: boolean; message?: string; error?: string }
-      if (res.success) {
-        addLog(res.message || '크롤링 시작됨', 'done')
-        addLog('5-10분 후 "D1 결과 조회" 탭에서 확인하세요', 'info')
-      } else {
-        addLog(res.error || '크롤링 시작 실패', 'error')
+    let totalFound = 0
+    let totalEmails = 0
+
+    for (let i = 0; i < keywordList.length; i++) {
+      const kw = keywordList[i]
+      setProgress(Math.round((i / keywordList.length) * 100))
+      addLog(`[${i + 1}/${keywordList.length}] "${kw}" 크롤링 중...`, 'info')
+
+      try {
+        const res = await fetch('/api/naver-scraper/scrape', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ keyword: kw }),
+        }).then(r => r.json()) as {
+          success: boolean
+          data?: { keyword: string; found: number; emails: number; saved: number; duration: number; results: any[] }
+          error?: string
+        }
+
+        if (res.success && res.data) {
+          totalFound += res.data.found
+          totalEmails += res.data.emails
+          addLog(`✓ "${kw}": 광고주 ${res.data.found}개 / 이메일 ${res.data.emails}개 (${res.data.duration}ms)`, 'found')
+        } else {
+          addLog(`✗ "${kw}": ${res.error || '실패'}`, 'error')
+        }
+      } catch (e: any) {
+        addLog(`✗ "${kw}": ${e.message}`, 'error')
       }
-    } catch (e: any) {
-      addLog(`크롤링 시작 실패: ${e.message}`, 'error')
     }
+
+    setProgress(100)
+    addLog(`완료! 총 광고주 ${totalFound}개, 이메일 ${totalEmails}개 수집`, 'done')
+    addLog('"D1 결과 조회" 탭에서 전체 결과 확인', 'info')
     setRunning(false)
+
+    // 세션 목록 자동 갱신
+    loadSessions()
   }
 
   async function stopScrape() {
