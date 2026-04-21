@@ -44,11 +44,11 @@ export default function SellerGroupBuyPage() {
   }
 
   if (loading) {
-    return <SellerLayout title={t('seller.mealVoucher')}><div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" /></div></SellerLayout>
+    return <SellerLayout title={t('seller.nav.mealVoucher')}><div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" /></div></SellerLayout>
   }
 
   return (
-    <SellerLayout title={t('seller.mealVoucher')}>
+    <SellerLayout title={t('seller.nav.mealVoucher')}>
       <div className="max-w-3xl mx-auto space-y-5">
 
         {/* 요약 카드 */}

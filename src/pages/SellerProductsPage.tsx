@@ -151,14 +151,14 @@ export default function SellerProductsPage() {
   }
 
   return (
-    <SellerLayout title={t('seller.products')}>
+    <SellerLayout title={t('seller.nav.products')}>
       <div className="max-w-7xl mx-auto">
         {/* Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <div>
             <div className="flex items-center gap-2 sm:gap-3 mb-2">
               <Package className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-blue-600" />
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{t('seller.products')}</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{t('seller.nav.products')}</h1>
             </div>
             <p className="text-sm sm:text-base text-gray-600">
               {t('seller.manageProducts')}

@@ -43,12 +43,12 @@ const NAV_GROUPS: {
   {
     labelKey: 'seller.layout.sales',
     items: [
-      { path: '/seller/products', labelKey: 'seller.products', icon: Package },
-      { path: '/seller/group-buy', labelKey: 'seller.mealVoucher', icon: Ticket },
+      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package },
+      { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket },
       { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag },
       { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3 },
-      { path: '/seller/reviews', labelKey: 'seller.reviews', icon: Star },
-      { path: '/seller/coupons', labelKey: 'seller.coupons', icon: Ticket },
+      { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star },
+      { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket },
     ],
   },
   {

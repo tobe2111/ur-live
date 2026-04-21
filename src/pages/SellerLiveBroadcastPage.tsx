@@ -265,7 +265,7 @@ export default function SellerLiveBroadcastPage() {
   )
 
   if (loadError) return (
-    <SellerLayout title={t('seller.liveBroadcast')}>
+    <SellerLayout title={t('seller.nav.liveBroadcast')}>
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <AlertCircle className="h-10 w-10 text-red-500" />
         <p className="text-gray-700">{loadError}</p>
@@ -276,7 +276,7 @@ export default function SellerLiveBroadcastPage() {
 
   // ── YouTube 미연동 ────────────────────────────────────────────
   if (channels.length === 0) return (
-    <SellerLayout title={t('seller.liveBroadcast')}>
+    <SellerLayout title={t('seller.nav.liveBroadcast')}>
       <div className="max-w-md mx-auto py-16 text-center space-y-6">
         <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto">
           <Youtube className="h-8 w-8 text-red-600" />
@@ -297,7 +297,7 @@ export default function SellerLiveBroadcastPage() {
 
   // ── 메인 렌더 (위저드) ────────────────────────────────────────
   return (
-    <SellerLayout title={t('seller.liveBroadcast')}>
+    <SellerLayout title={t('seller.nav.liveBroadcast')}>
       <div className="max-w-2xl mx-auto">
 
         {/* 연동 채널 */}
@@ -307,7 +307,7 @@ export default function SellerLiveBroadcastPage() {
             : <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center"><Youtube className="h-4 w-4 text-red-500" /></div>}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{channels[0]?.channel_title}</p>
-            <p className="text-xs text-gray-400">{t('seller.liveBroadcast.subscribers', { subscribers: channels[0]?.subscriber_count?.toLocaleString() || '0' })}</p>
+            <p className="text-xs text-gray-400">{String(t('seller.liveBroadcast.subscribers', { count: channels[0]?.subscriber_count?.toLocaleString() || '0' } as Record<string, string>))}</p>
           </div>
           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
         </div>
