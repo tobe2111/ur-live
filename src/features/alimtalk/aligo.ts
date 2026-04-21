@@ -7,6 +7,31 @@
 
 const ALIGO_API_BASE = 'https://kakaoapi.aligo.in/akv10';
 
+/**
+ * Fetch with retry (exp. backoff) for Aligo API.
+ * Retries on network error or HTTP 5xx. Does not retry on HTTP 4xx.
+ */
+async function aligoFetchWithRetry(url: string, body: string, maxRetries = 2): Promise<Response> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+        signal: AbortSignal.timeout(15000), // 15s timeout
+      });
+      if (res.ok) return res;
+      if (res.status < 500 || attempt === maxRetries) return res;
+    } catch (e) {
+      lastErr = e;
+      if (attempt === maxRetries) throw e;
+    }
+    await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+  }
+  throw lastErr instanceof Error ? lastErr : new Error('Aligo request failed');
+}
+
 // ── 친구톡 (브랜드메시지) 발송 ─────────────────────────────────────────────────
 
 export interface AligoFriendParams {
@@ -32,11 +57,7 @@ export async function sendFriendTalk(params: AligoFriendParams): Promise<AligoSe
     if (v !== undefined && v !== null) body.append(k, String(v));
   });
 
-  const res = await fetch(`${ALIGO_API_BASE}/friend/send/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
-  });
+  const res = await aligoFetchWithRetry(`${ALIGO_API_BASE}/friend/send/`, body.toString());
 
   const json = await res.json<{ code: number; message: string; info?: any }>();
   return {
@@ -84,11 +105,7 @@ export async function sendAlimtalk(params: AligoSendParams): Promise<AligoSendRe
     if (v !== undefined && v !== null) body.append(k, String(v));
   });
 
-  const res = await fetch(`${ALIGO_API_BASE}/alimtalk/send/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
-  });
+  const res = await aligoFetchWithRetry(`${ALIGO_API_BASE}/alimtalk/send/`, body.toString());
 
   const json = await res.json<{ code: number; message: string; info?: any }>();
   return {

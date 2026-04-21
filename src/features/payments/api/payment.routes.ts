@@ -70,6 +70,11 @@ interface PaymentRollbackRequest {
   paymentKey: string;
   cancelReason: string;
   cancelAmount?: number;
+  refundReceiveAccount?: {
+    bank: string;
+    accountNumber: string;
+    holderName: string;
+  };
 }
 
 export const paymentRoutes = new Hono<{ Bindings: Bindings }>();
@@ -104,13 +109,25 @@ async function cancelTossPayment(
   paymentKey: string,
   cancelReason: string,
   cancelAmount: number | undefined,
-  secretKey: string
+  secretKey: string,
+  refundReceiveAccount?: { bank: string; accountNumber: string; holderName: string }
 ): Promise<TossPaymentResponse> {
-  const body: { cancelReason: string; cancelAmount?: number } = { cancelReason };
+  const body: {
+    cancelReason: string;
+    cancelAmount?: number;
+    refundReceiveAccount?: { bank: string; accountNumber: string; holderName: string };
+  } = { cancelReason };
   if (cancelAmount !== undefined) {
     body.cancelAmount = cancelAmount;
   }
+  // ✅ FIX (M4): Forward refundReceiveAccount for virtual-account refunds
+  if (refundReceiveAccount) {
+    body.refundReceiveAccount = refundReceiveAccount;
+  }
 
+  // ✅ FIX (H2): Include amount + timestamp in Idempotency-Key so each partial
+  // refund is treated as a unique request. Full cancels use amount='full'.
+  const amountKey = cancelAmount !== undefined ? String(cancelAmount) : 'full';
   const response = await fetch(
     `${TOSS_PAYMENT_URL}/payments/${encodeURIComponent(paymentKey)}/cancel`,
     {
@@ -118,9 +135,10 @@ async function cancelTossPayment(
       headers: {
         'Authorization': `Basic ${btoa(secretKey + ':')}`,
         'Content-Type': 'application/json',
-        'Idempotency-Key': `cancel-${paymentKey}`,
+        'Idempotency-Key': `cancel-${paymentKey}-${amountKey}-${Date.now().toString(36)}`,
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10000), // 10s timeout (critical)
     }
   );
 
@@ -215,7 +233,8 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
       paymentKey,
       cancelReason,
       cancelAmount,
-      tossSecretKey
+      tossSecretKey,
+      body.refundReceiveAccount
     );
 
     // ✅ H2 cont'd: Record the refund so future partial refunds can be bounded
