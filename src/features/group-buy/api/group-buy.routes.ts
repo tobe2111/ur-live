@@ -183,7 +183,7 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
     // 주문 생성
     await DB.prepare(`
       INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method)
-      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'paid', ?)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', ?)
     `).bind(orderNumber, userId, product.seller_id, totalAmount, totalAmount, payment_method === 'deal' ? 'deal_points' : 'toss').run()
 
     // 정산 기록 (셀러 수령액 = 총액 - 10% 수수료)
@@ -204,9 +204,9 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
 
     if (order) {
       await DB.prepare(`
-        INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, subtotal)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).bind(order.id, productId, product.name, product.price, qty, totalAmount).run()
+        INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(order.id, productId, product.name, product.price, product.price, qty, totalAmount).run()
 
       // 바우처 발급
       for (let i = 0; i < qty; i++) {

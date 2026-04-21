@@ -206,21 +206,23 @@ export class KakaoAuthService {
         ).run();
         
       } else {
-        // 새 사용자 생성
+        // 새 사용자 생성 (toss_user_id NOT NULL 이므로 kakao_id 기반 유니크 값 사용)
         const result = await this.db.prepare(`
           INSERT INTO users (
-            kakao_id, 
-            name, 
-            email, 
+            toss_user_id,
+            kakao_id,
+            name,
+            email,
             profile_image,
             created_at,
             last_login_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+          ) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
         `).bind(
-          kakaoUser.kakaoId, 
-          kakaoUser.name, 
-          kakaoUser.email || null, 
+          `kakao_${kakaoUser.kakaoId}`,
+          kakaoUser.kakaoId,
+          kakaoUser.name,
+          kakaoUser.email || null,
           kakaoUser.profileImage || null
         ).run();
         

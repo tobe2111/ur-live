@@ -506,7 +506,7 @@ pointsRoutes.post('/pay', requireAuth(), async (c) => {
 
       await DB.prepare(`
         INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo)
-        VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'paid', 'deal_points', ?, ?, ?, '')
+        VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
       `).bind(
         order_number, userId, sellerId === '0' ? null : sellerId,
         groupTotal, shippingFee, groupTotal + shippingFee,
@@ -521,9 +521,9 @@ pointsRoutes.post('/pay', requireAuth(), async (c) => {
       if (orderRow) {
         for (const item of groupItems) {
           await DB.prepare(`
-            INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, subtotal)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).bind(orderRow.id, item.product_id, item.product_name, item.price, item.quantity, item.price * item.quantity).run();
+            INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).bind(orderRow.id, item.product_id, item.product_name, item.price, item.price, item.quantity, item.price * item.quantity).run();
         }
       }
     }

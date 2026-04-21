@@ -329,7 +329,7 @@ app.get('/sellers', async (c) => {
       s.id, s.name, s.email, s.business_name, s.phone,
       s.status, s.commission_rate, s.created_at,
       (SELECT COUNT(*) FROM orders o WHERE o.seller_id = s.id) AS total_orders,
-      (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.seller_id = s.id AND o.payment_status = 'approved') AS total_revenue,
+      (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE')) AS total_revenue,
       (SELECT COUNT(*) FROM live_streams ls WHERE ls.seller_id = s.id AND ls.status = 'live') AS active_streams
     FROM sellers s
     INNER JOIN agency_sellers ag ON ag.seller_id = s.id
@@ -365,10 +365,10 @@ app.get('/sellers/:id/stats', async (c) => {
         COALESCE(SUM(total_amount), 0) AS revenue,
         COALESCE(SUM(seller_amount), 0) AS net_revenue
       FROM orders
-      WHERE seller_id = ? AND payment_status = 'approved' AND created_at >= ?
+      WHERE seller_id = ? AND status IN ('PAID','DONE') AND created_at >= ?
     `).bind(sellerId, since).first<{ order_count: number; revenue: number; net_revenue: number }>(),
     c.env.DB.prepare(`
-      SELECT COUNT(*) AS stream_count, COALESCE(SUM(viewer_count), 0) AS total_viewers
+      SELECT COUNT(*) AS stream_count, COALESCE(SUM(current_viewers), 0) AS total_viewers
       FROM live_streams WHERE seller_id = ? AND created_at >= ?
     `).bind(sellerId, since).first<{ stream_count: number; total_viewers: number }>(),
   ])
@@ -399,7 +399,7 @@ app.get('/stats', async (c) => {
         COALESCE(SUM(o.seller_amount), 0) AS net_revenue
       FROM orders o
       INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
-      WHERE ag.agency_id = ? AND o.payment_status = 'approved'
+      WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE')
         AND o.created_at >= date('now', '-30 days')
     `).bind(agencyId).first<{ order_count: number; total_revenue: number; net_revenue: number }>(),
     c.env.DB.prepare(`
@@ -440,14 +440,14 @@ app.get('/stats/batch', async (c) => {
         COALESCE(SUM(o.seller_amount), 0) AS net_revenue
       FROM orders o
       INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
-      WHERE ag.agency_id = ? AND o.payment_status = 'approved' AND o.created_at >= ?
+      WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?
       GROUP BY o.seller_id
     `).bind(agencyId, since).all<{ seller_id: number; order_count: number; revenue: number; net_revenue: number }>(),
     c.env.DB.prepare(`
       SELECT
         ls.seller_id,
         COUNT(*) AS stream_count,
-        COALESCE(SUM(ls.viewer_count), 0) AS total_viewers
+        COALESCE(SUM(ls.current_viewers), 0) AS total_viewers
       FROM live_streams ls
       INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
       WHERE ag.agency_id = ? AND ls.created_at >= ?
@@ -507,7 +507,7 @@ app.get('/streams', async (c) => {
   const { id: agencyId } = c.get('agency') as { id: number }
 
   const streams = await c.env.DB.prepare(`
-    SELECT ls.id, ls.title, ls.status, ls.viewer_count, ls.scheduled_at, ls.created_at, ls.seller_id,
+    SELECT ls.id, ls.title, ls.status, ls.current_viewers, ls.scheduled_at, ls.created_at, ls.seller_id,
            s.business_name AS seller_business_name, s.name AS seller_name
     FROM live_streams ls
     INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
@@ -702,8 +702,8 @@ app.get('/ranking', async (c) => {
 
     const { results } = await c.env.DB.prepare(`
       SELECT s.id, s.name, s.business_name, s.profile_image,
-        (SELECT COUNT(*) FROM orders o WHERE o.seller_id = s.id AND o.payment_status = 'approved') AS total_orders,
-        (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.seller_id = s.id AND o.payment_status = 'approved') AS total_revenue,
+        (SELECT COUNT(*) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE')) AS total_orders,
+        (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE')) AS total_revenue,
         (SELECT COUNT(*) FROM product_reviews r JOIN products p ON r.product_id = p.id WHERE p.seller_id = s.id) AS total_reviews,
         (SELECT COUNT(*) FROM seller_follows f WHERE f.seller_id = s.id) AS total_followers,
         (SELECT COALESCE(AVG(r.rating), 0) FROM product_reviews r JOIN products p ON r.product_id = p.id WHERE p.seller_id = s.id) AS avg_rating

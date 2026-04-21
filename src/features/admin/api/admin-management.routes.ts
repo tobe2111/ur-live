@@ -427,7 +427,7 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
                COALESCE(o.courier, o.tracking_company, '') as courier,
                COALESCE(o.tracking_number,'') as tracking_number,
                o.created_at, o.updated_at,
-               COALESCE(u.name, u.display_name, '') as user_name,
+               COALESCE(u.name, '') as user_name,
                COALESCE(u.email, '') as user_email,
                COALESCE(s.business_name, s.name, '') as seller_name
         FROM orders o
@@ -539,7 +539,7 @@ adminManagementRoutes.get('/orders/:orderNumber', cors(), async (c) => {
                COALESCE(o.courier, o.tracking_company, '') as courier,
                COALESCE(o.tracking_number, '') as tracking_number,
                o.created_at, o.updated_at,
-               COALESCE(u.name, u.display_name, '') as user_name,
+               COALESCE(u.name, '') as user_name,
                COALESCE(u.email, '') as user_email,
                COALESCE(s.business_name, s.name, '') as seller_name
         FROM orders o
@@ -2718,8 +2718,8 @@ adminManagementRoutes.get('/admins', cors(), async (c) => {
 adminManagementRoutes.post('/admins', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const { email, password, name, role } = await c.req.json<{
-      email: string; password: string; name: string; role: string;
+    const { email, password, name, role, username } = await c.req.json<{
+      email: string; password: string; name: string; role: string; username?: string;
     }>();
 
     if (!email || !password || !name || !role) {
@@ -2737,11 +2737,14 @@ adminManagementRoutes.post('/admins', cors(), async (c) => {
       return c.json({ success: false, error: '이미 존재하는 이메일입니다' }, 409);
     }
 
+    // username is NOT NULL — derive from email local part if not provided
+    const resolvedUsername = (username && username.trim()) || email.split('@')[0];
+
     const passwordHash = await hashPassword(password);
     await executeRun(DB,
-      `INSERT INTO admins (email, password_hash, name, role, created_at)
-       VALUES (?, ?, ?, ?, datetime('now'))`,
-      [email, passwordHash, name, role]
+      `INSERT INTO admins (username, email, password_hash, name, role, created_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+      [resolvedUsername, email, passwordHash, name, role]
     );
 
     await writeAuditLog(c, {

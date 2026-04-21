@@ -953,57 +953,57 @@ sellerManagementRoutes.get('/stats', async (c) => {
       WHERE seller_id = ?
     `).bind(sellerId).first();
 
-    // 주문 통계
+    // 주문 통계 — production orders.status uses uppercase values
+    // orders.product_id doesn't exist; must JOIN through order_items
     const ordersStats = await db.prepare(`
-      SELECT 
+      SELECT
         COUNT(*) as total_orders,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_orders,
-        SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed_orders,
-        SUM(CASE WHEN status = 'shipped' THEN 1 ELSE 0 END) as shipped_orders,
-        SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered_orders,
-        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders
+        SUM(CASE WHEN o.status = 'PAID' THEN 1 ELSE 0 END) as pending_orders,
+        SUM(CASE WHEN o.status = 'DONE' THEN 1 ELSE 0 END) as confirmed_orders,
+        SUM(CASE WHEN o.status = 'SHIPPING' THEN 1 ELSE 0 END) as shipped_orders,
+        SUM(CASE WHEN o.status = 'DELIVERED' THEN 1 ELSE 0 END) as delivered_orders,
+        SUM(CASE WHEN o.status = 'CANCELLED' THEN 1 ELSE 0 END) as cancelled_orders
       FROM orders o
-      JOIN products p ON o.product_id = p.id
-      WHERE p.seller_id = ?
+      WHERE o.seller_id = ?
     `).bind(sellerId).first();
 
     // 매출 통계
     const revenueStats = await db.prepare(`
-      SELECT 
-        COALESCE(SUM(o.total_price), 0) as total_revenue,
-        COALESCE(SUM(CASE WHEN o.status = 'delivered' THEN o.total_price ELSE 0 END), 0) as confirmed_revenue,
-        COALESCE(SUM(CASE WHEN DATE(o.created_at) = DATE('now') THEN o.total_price ELSE 0 END), 0) as today_revenue,
-        COALESCE(SUM(CASE WHEN DATE(o.created_at) >= DATE('now', '-30 days') THEN o.total_price ELSE 0 END), 0) as month_revenue
+      SELECT
+        COALESCE(SUM(o.total_amount), 0) as total_revenue,
+        COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN o.total_amount ELSE 0 END), 0) as confirmed_revenue,
+        COALESCE(SUM(CASE WHEN DATE(o.created_at) = DATE('now') THEN o.total_amount ELSE 0 END), 0) as today_revenue,
+        COALESCE(SUM(CASE WHEN DATE(o.created_at) >= DATE('now', '-30 days') THEN o.total_amount ELSE 0 END), 0) as month_revenue
       FROM orders o
-      JOIN products p ON o.product_id = p.id
-      WHERE p.seller_id = ? AND o.status != 'cancelled'
+      WHERE o.seller_id = ? AND o.status IN ('PAID','DONE','SHIPPING','DELIVERED')
     `).bind(sellerId).first();
 
     // 최근 7일 매출 추이
     const recentRevenue = await db.prepare(`
-      SELECT 
+      SELECT
         DATE(o.created_at) as date,
         COUNT(*) as order_count,
-        SUM(o.total_price) as revenue
+        SUM(o.total_amount) as revenue
       FROM orders o
-      JOIN products p ON o.product_id = p.id
-      WHERE p.seller_id = ? 
-        AND o.status != 'cancelled'
+      WHERE o.seller_id = ?
+        AND o.status IN ('PAID','DONE','SHIPPING','DELIVERED')
         AND DATE(o.created_at) >= DATE('now', '-7 days')
       GROUP BY DATE(o.created_at)
       ORDER BY date DESC
     `).bind(sellerId).all();
 
-    // 인기 상품 TOP 5
+    // 인기 상품 TOP 5 — JOIN via order_items since orders.product_id doesn't exist
     const topProducts = await db.prepare(`
-      SELECT 
+      SELECT
         p.id,
         p.name,
         p.price,
-        COUNT(o.id) as order_count,
-        SUM(o.total_price) as total_revenue
+        COUNT(DISTINCT o.id) as order_count,
+        COALESCE(SUM(oi.subtotal), 0) as total_revenue
       FROM products p
-      LEFT JOIN orders o ON p.id = o.product_id AND o.status != 'cancelled'
+      LEFT JOIN order_items oi ON oi.product_id = p.id
+      LEFT JOIN orders o ON o.id = oi.order_id
+        AND o.status IN ('PAID','DONE','SHIPPING','DELIVERED')
       WHERE p.seller_id = ?
       GROUP BY p.id, p.name, p.price
       ORDER BY order_count DESC
@@ -1489,8 +1489,8 @@ sellerManagementRoutes.post('/products/:id/options', async (c) => {
 
     for (const opt of options) {
       await DB.prepare(
-        `INSERT INTO product_options (product_id, option_type, option_value, price_adjustment, stock_quantity, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        `INSERT INTO product_options (product_id, option_type, option_value, price_adjustment, stock_quantity, created_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'))`
       ).bind(productId, opt.option_type, opt.option_value, opt.price_adjustment ?? 0, opt.stock_quantity ?? 0).run();
     }
 

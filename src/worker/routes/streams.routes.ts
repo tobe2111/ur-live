@@ -395,7 +395,7 @@ streamsRouter.put('/:id/viewer-count', async (c) => {
 
     if (manual_count !== null) {
       await c.env.DB.prepare(
-        "UPDATE live_streams SET viewer_count = ?, updated_at = datetime('now') WHERE id = ?"
+        "UPDATE live_streams SET current_viewers = ?, updated_at = datetime('now') WHERE id = ?"
       ).bind(manual_count, streamId).run();
     }
 
@@ -415,7 +415,7 @@ streamsRouter.post('/:id/viewer/join', async (c) => {
     await db
       .prepare(
         `UPDATE live_streams
-         SET viewer_count = COALESCE(viewer_count, 0) + 1,
+         SET current_viewers = COALESCE(current_viewers, 0) + 1,
              updated_at   = datetime('now')
          WHERE id = ?`
       )
