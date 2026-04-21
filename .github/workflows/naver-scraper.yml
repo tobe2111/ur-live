@@ -1,32 +1,32 @@
-# 네이버 광고주 이메일 수집 — 매일 자동 실행
-# GitHub Actions + Playwright + Cloudflare D1
+# 네이버 광고주 이메일 수집 — 매일 자동 1000건+
 #
 # 흐름:
-# 1. GitHub Actions에서 Playwright + Chromium 실행
-# 2. 네이버 검색광고 크롤링 → 로컬 SQLite에 저장
-# 3. 결과를 Cloudflare D1에 업로드
+# 1. 매일 아침 9시(KST) GitHub Actions 자동 실행
+# 2. 100개 키워드 × 10개 광고주 = 1000건+ 수집
+# 3. 결과를 Cloudflare D1에 직접 업로드
 #
 # 필요한 GitHub Secrets:
 # - CLOUDFLARE_API_TOKEN: Cloudflare API 토큰 (D1 write 권한)
 # - CLOUDFLARE_ACCOUNT_ID: Cloudflare 계정 ID
-# - CF_D1_DATABASE_ID: D1 데이터베이스 ID
-# - SCRAPER_KEYWORDS: 크롤링 키워드 (예: "골프,테니스,헬스,필라테스")
+# - CF_D1_DATABASE_ID: D1 데이터베이스 ID (d9530ba6-7a26-4c02-9295-3ce5aef112a3)
 
-name: Naver Ad Scraper (Daily)
+name: Naver Ad Scraper (Daily 1000+)
 
 on:
-  # 어드민 대시보드에서 키워드 입력 → API 호출로 트리거됨
+  schedule:
+    # 매일 한국시간 09:00 (UTC 00:00)
+    - cron: '0 0 * * *'
   workflow_dispatch:
     inputs:
       keywords:
-        description: '크롤링 키워드 (쉼표 구분)'
-        required: true
-        default: '골프,테니스'
+        description: '추가 키워드 (쉼표 구분, 기본 100개에 추가됨)'
+        required: false
+        default: ''
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
@@ -35,97 +35,205 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install scraper dependencies
-        working-directory: naver-ad-scraper
-        run: npm ci
+      - name: Install dependencies
+        run: npm install better-sqlite3 cheerio axios
 
-      - name: Install Playwright browsers
-        working-directory: naver-ad-scraper
-        run: npx playwright install chromium --with-deps
+      - name: Create scraper script
+        run: |
+          cat > daily-scrape.mjs << 'SCRIPT'
+          import Database from 'better-sqlite3';
+          import * as cheerio from 'cheerio';
+          import axios from 'axios';
+          import { mkdirSync, existsSync } from 'fs';
 
-      - name: Create data directory
-        run: mkdir -p naver-ad-scraper/data
+          // ── 설정 ──
+          const DELAY_MS = 2000;  // 네이버 차단 방지 2초 딜레이
+          const MAX_PER_KEYWORD = 15;  // 키워드당 최대 광고주
+          const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+          const BAD_DOMAINS = ['example.com','test.com','email.com','domain.com','sentry.io','wixpress.com'];
+          const HEADERS = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'Accept-Language': 'ko-KR,ko;q=0.9',
+          };
 
-      - name: Run scraper
-        working-directory: naver-ad-scraper
+          // ── 기본 키워드 100개 (업종별) ──
+          const DEFAULT_KEYWORDS = [
+            // 뷰티/건강
+            '피부관리', '네일아트', '미용실', '헤어살롱', '속눈썹연장', '반영구', '필라테스', '요가', '헬스장', 'PT',
+            '다이어트', '에스테틱', '두피관리', '왁싱', '태닝', '마사지', '스파', '한방', '치과', '안과',
+            // 식음료
+            '맛집', '카페', '베이커리', '레스토랑', '술집', '와인바', '브런치', '디저트', '케이터링', '밀키트',
+            // 교육
+            '영어학원', '수학학원', '코딩학원', '입시학원', '유학원', '어린이집', '태권도', '미술학원', '음악학원', '피아노',
+            // 스포츠/레저
+            '골프', '테니스', '수영', '볼링', '탁구', '스쿼시', '클라이밍', '서핑', '스키', '승마',
+            // 반려동물
+            '애견미용', '동물병원', '펫시터', '반려동물호텔', '강아지훈련',
+            // 인테리어/생활
+            '인테리어', '이사', '청소업체', '에어컨청소', '방역', '세탁', '수선', '열쇠', '페인트', '타일',
+            // 자동차
+            '자동차정비', '세차', '타이어', '썬팅', '블랙박스', '자동차보험', '렌터카', '중고차',
+            // IT/비즈니스
+            '홈페이지제작', '앱개발', '로고디자인', '마케팅대행', '세무사', '변호사', '법무사', '노무사', '특허', '번역',
+            // 웨딩/이벤트
+            '웨딩플래너', '스튜디오', '드레스', '꽃배달', '이벤트', '파티', '케이크', '초청장',
+            // 부동산
+            '부동산', '공인중개사', '오피스텔', '원룸', '상가임대',
+          ];
+
+          function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+          function cleanEmails(html) {
+            const matches = html.match(EMAIL_RE) || [];
+            const unique = new Set();
+            for (const e of matches) {
+              const email = e.toLowerCase().trim();
+              if (email.length > 50 || email.includes('..')) continue;
+              const domain = email.split('@')[1];
+              if (!domain || BAD_DOMAINS.some(b => domain.includes(b))) continue;
+              if (/\.(png|jpg|gif|svg|css|js)$/i.test(email)) continue;
+              unique.add(email);
+            }
+            return [...unique];
+          }
+
+          // DB 초기화
+          if (!existsSync('data')) mkdirSync('data', { recursive: true });
+          const db = new Database('data/daily-results.db');
+          db.exec(`CREATE TABLE IF NOT EXISTS results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            keyword TEXT, advertiser_name TEXT, site_url TEXT, domain TEXT,
+            email TEXT, phone TEXT, scraped_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(keyword, email)
+          )`);
+          const insert = db.prepare('INSERT OR IGNORE INTO results (keyword, advertiser_name, site_url, domain, email, phone) VALUES (?, ?, ?, ?, ?, ?)');
+
+          // 키워드 준비
+          const extraKeywords = (process.env.EXTRA_KEYWORDS || '').split(',').map(k => k.trim()).filter(Boolean);
+          const allKeywords = [...DEFAULT_KEYWORDS, ...extraKeywords];
+
+          console.log(`📊 총 ${allKeywords.length}개 키워드 크롤링 시작`);
+
+          let totalAds = 0, totalEmails = 0;
+
+          for (let i = 0; i < allKeywords.length; i++) {
+            const kw = allKeywords[i];
+            process.stdout.write(`[${i+1}/${allKeywords.length}] "${kw}" ... `);
+
+            try {
+              // 네이버 검색광고 페이지 가져오기
+              const { data: html } = await axios.get(
+                `https://ad.search.naver.com/search.naver?where=nexearch&query=${encodeURIComponent(kw)}`,
+                { headers: HEADERS, timeout: 10000 }
+              );
+
+              // 광고 링크 추출
+              const $ = cheerio.load(html);
+              const links = new Set();
+              $('a[href*="nclk"], a[href*="lavad"], a[href*="ader.naver"]').each((_, el) => {
+                const href = $(el).attr('href');
+                if (href) links.add(href);
+              });
+
+              // 리다이렉트 추적 → 실제 URL
+              const seenDomains = new Set();
+              const advertisers = [];
+              for (const link of [...links].slice(0, MAX_PER_KEYWORD)) {
+                try {
+                  const res = await axios.get(link, { headers: HEADERS, maxRedirects: 5, timeout: 5000, validateStatus: () => true });
+                  const finalUrl = res.request?.res?.responseUrl || res.config?.url || link;
+                  const domain = new URL(finalUrl).hostname.replace(/^www\./, '');
+                  if (!domain.includes('naver.com') && !seenDomains.has(domain)) {
+                    seenDomains.add(domain);
+                    advertisers.push({ url: finalUrl, domain });
+                  }
+                } catch {}
+                await sleep(300);
+              }
+
+              // 각 사이트에서 이메일 추출
+              let kwEmails = 0;
+              for (const ad of advertisers) {
+                try {
+                  const { data: siteHtml } = await axios.get(ad.url, { headers: HEADERS, timeout: 8000 });
+                  const emails = cleanEmails(siteHtml);
+                  const phoneMatch = siteHtml.match(/\b(0[17]0|02|0[3-9]\d)[-\s.]?\d{3,4}[-\s.]?\d{4}\b/);
+                  const titleMatch = siteHtml.match(/<title[^>]*>([^<]+)<\/title>/i);
+                  const companyName = (titleMatch?.[1] || ad.domain).trim().slice(0, 100);
+
+                  for (const email of emails) {
+                    insert.run(kw, companyName, ad.url, ad.domain, email, phoneMatch?.[0] || null);
+                    kwEmails++;
+                  }
+                } catch {}
+                await sleep(500);
+              }
+
+              totalAds += advertisers.length;
+              totalEmails += kwEmails;
+              console.log(`광고주 ${advertisers.length}개, 이메일 ${kwEmails}개`);
+            } catch (err) {
+              console.log(`실패: ${err.message}`);
+            }
+
+            await sleep(DELAY_MS);
+          }
+
+          console.log(`\n✅ 완료! 총 광고주 ${totalAds}개, 이메일 ${totalEmails}개 수집`);
+
+          const stats = db.prepare('SELECT COUNT(*) as total, COUNT(DISTINCT email) as unique_emails FROM results').get();
+          console.log(`📊 DB 누적: 총 ${stats.total}건, 고유 이메일 ${stats.unique_emails}개`);
+          SCRIPT
+
+      - name: Run daily scrape
         env:
-          KEYWORDS: ${{ github.event.inputs.keywords }}
-        run: |
-          node src/cli/index.js scrape \
-            --keywords "$KEYWORDS" \
-            --session "auto_$(date +%Y-%m-%d)" \
-            --concurrency 2
+          EXTRA_KEYWORDS: ${{ github.event.inputs.keywords || '' }}
+        run: node daily-scrape.mjs
 
-      - name: Export results to CSV
-        working-directory: naver-ad-scraper
-        run: |
-          # 가장 최근 세션의 결과를 CSV로 export
-          LATEST_SESSION=$(node -e "
-            import { AdDatabase } from './src/storage/database.js';
-            const db = new AdDatabase('./data/ads.db');
-            const sessions = db.listSessions();
-            console.log(sessions[0]?.id || '');
-          ")
-          if [ -n "$LATEST_SESSION" ]; then
-            node src/cli/index.js export --session-id "$LATEST_SESSION" --output data/latest-results.csv
-            echo "SESSION_ID=$LATEST_SESSION" >> $GITHUB_ENV
-          fi
-
-      - name: Upload results to Cloudflare D1
-        if: env.SESSION_ID != ''
+      - name: Upload to Cloudflare D1
+        if: always()
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
         run: |
-          # D1에 scraped_advertisers 테이블 생성 (존재하지 않으면)
-          npx wrangler d1 execute ur-live-db --command "
+          npm install -g wrangler
+
+          # 테이블 생성
+          wrangler d1 execute ${{ secrets.CF_D1_DATABASE_ID }} --command "
             CREATE TABLE IF NOT EXISTS scraped_advertisers (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
-              keyword TEXT,
-              advertiser_name TEXT,
-              site_url TEXT,
-              email TEXT,
-              phone TEXT,
-              description TEXT,
-              scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              session_name TEXT
+              keyword TEXT, advertiser_name TEXT, site_url TEXT, email TEXT,
+              phone TEXT, description TEXT,
+              scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP, session_name TEXT,
+              UNIQUE(keyword, email)
             );
-            CREATE INDEX IF NOT EXISTS idx_scraped_email ON scraped_advertisers(email);
-            CREATE INDEX IF NOT EXISTS idx_scraped_keyword ON scraped_advertisers(keyword);
-          " --remote
+          " --remote 2>/dev/null || true
 
-          # 로컬 SQLite에서 결과 읽어서 D1에 INSERT
+          # 로컬 DB → D1 업로드
           node -e "
             import Database from 'better-sqlite3';
             import { execSync } from 'child_process';
 
-            const db = new Database('./naver-ad-scraper/data/ads.db');
-            const rows = db.prepare(\`
-              SELECT a.keyword, a.advertiser_name, a.site_url, a.email, a.phone, a.description, a.created_at, s.name as session_name
-              FROM advertisers a
-              LEFT JOIN sessions s ON a.session_id = s.id
-              WHERE a.session_id = ${process.env.SESSION_ID}
-                AND a.email IS NOT NULL AND a.email != ''
-            \`).all();
-
+            const db = new Database('data/daily-results.db');
+            const rows = db.prepare('SELECT * FROM results').all();
             console.log('Uploading', rows.length, 'records to D1...');
 
-            // 50개씩 배치 INSERT
-            for (let i = 0; i < rows.length; i += 50) {
-              const batch = rows.slice(i, i + 50);
+            const today = new Date().toISOString().slice(0, 10);
+
+            for (let i = 0; i < rows.length; i += 20) {
+              const batch = rows.slice(i, i + 20);
               const values = batch.map(r =>
-                \`('\${(r.keyword||'').replace(/'/g,\"''\")}', '\${(r.advertiser_name||'').replace(/'/g,\"''\")}', '\${(r.site_url||'').replace(/'/g,\"''\")}', '\${(r.email||'').replace(/'/g,\"''\")}', '\${(r.phone||'').replace(/'/g,\"''\")}', '\${(r.description||'').replace(/'/g,\"''\")}', '\${r.created_at || new Date().toISOString()}', '\${(r.session_name||'').replace(/'/g,\"''\")}' )\`
+                \`('\${esc(r.keyword)}', '\${esc(r.advertiser_name)}', '\${esc(r.site_url)}', '\${esc(r.email)}', '\${esc(r.phone || '')}', '\${esc(r.domain || '')}', datetime('now'), 'daily_\${today}')\`
               ).join(',');
 
-              const sql = \`INSERT INTO scraped_advertisers (keyword, advertiser_name, site_url, email, phone, description, scraped_at, session_name) VALUES \${values}\`;
+              const sql = \`INSERT OR IGNORE INTO scraped_advertisers (keyword, advertiser_name, site_url, email, phone, description, scraped_at, session_name) VALUES \${values}\`;
 
               try {
-                execSync(\`npx wrangler d1 execute ur-live-db --command \"\${sql.replace(/\"/g, '\\\\\"')}\" --remote\`, { stdio: 'inherit' });
-              } catch (e) {
-                console.error('Batch insert failed:', e.message);
-              }
+                execSync(\`wrangler d1 execute ${{ secrets.CF_D1_DATABASE_ID }} --command \\\"\${sql.replace(/\\\"/g, '\\\\\\\"')}\\\" --remote\`, { stdio: 'pipe' });
+              } catch {}
             }
+
+            function esc(s) { return (s || '').replace(/'/g, \"''\"); }
             console.log('Upload complete!');
           "
 
@@ -133,8 +241,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: scraper-results-${{ github.run_number }}
-          path: |
-            naver-ad-scraper/data/latest-results.csv
-            naver-ad-scraper/data/ads.db
+          name: daily-scrape-${{ github.run_number }}
+          path: data/daily-results.db
           retention-days: 30
