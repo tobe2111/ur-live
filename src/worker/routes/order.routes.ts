@@ -305,46 +305,6 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
   }
 });
 
-// POST /api/orders/debug-update-stream — 임시: 스트림 SNS 링크 업데이트
-ordersRouter.post('/debug-update-stream', async (c) => {
-  try {
-    const db = c.env.DB;
-    const { stream_id, seller_youtube, seller_instagram, seller_tiktok } = await c.req.json();
-    // seller_tiktok 컬럼 없으면 추가
-    try { await db.prepare('ALTER TABLE live_streams ADD COLUMN seller_tiktok TEXT').run(); } catch { /* exists */ }
-    await db.prepare(
-      'UPDATE live_streams SET seller_youtube = ?, seller_instagram = ?, seller_tiktok = ? WHERE id = ?'
-    ).bind(seller_youtube || null, seller_instagram || null, seller_tiktok || null, stream_id).run();
-    return c.json({ success: true });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// GET /api/orders/debug-schema — 임시 디버그용 (DB 스키마 확인)
-ordersRouter.get('/debug-schema', async (c) => {
-  try {
-    const db = c.env.DB;
-    const ordersSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='orders'").first<{ sql: string }>();
-    const orderItemsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='order_items'").first<{ sql: string }>();
-    const productsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='products'").first<{ sql: string }>();
-    const donationsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='donations'").first<{ sql: string }>();
-    const liveStreamsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='live_streams'").first<{ sql: string }>();
-    const recentOrder = await db.prepare("SELECT id, seller_id, typeof(seller_id) as sid_type FROM orders ORDER BY rowid DESC LIMIT 1").first();
-    return c.json({
-      success: true,
-      orders_schema: ordersSchema?.sql,
-      order_items_schema: orderItemsSchema?.sql,
-      products_schema: productsSchema?.sql?.substring(0, 500),
-      donations_schema: donationsSchema?.sql,
-      live_streams_schema: liveStreamsSchema?.sql?.substring(0, 500),
-      recent_order_seller_id: recentOrder,
-    });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
 // GET /api/orders
 ordersRouter.get('/', async (c) => {
   try {
