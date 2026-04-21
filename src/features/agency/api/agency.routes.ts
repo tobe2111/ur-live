@@ -313,7 +313,7 @@ app.get('/profile', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id } = c.get('agency') as { id: number; email: string }
   const agency = await c.env.DB.prepare(
-    'SELECT id, name, contact_name, email, phone, status, created_at FROM agencies WHERE id = ?'
+    'SELECT id, name, contact_name, email, phone, status, commission_rate, created_at FROM agencies WHERE id = ?'
   ).bind(id).first()
   if (!agency) return c.json({ success: false, error: 'Not found' }, 404)
   return c.json({ success: true, data: agency })

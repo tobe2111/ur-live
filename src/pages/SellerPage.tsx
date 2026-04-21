@@ -739,43 +739,59 @@ export default function SellerPage() {
             {/* ── Right panel (col-span-1) ── */}
             <div className="space-y-4">
 
-              {/* 전환 퍼널 (기존 "오늘의 매출" 대체) */}
+              {/* 전환 퍼널 — 실제 데이터만 표시 (추정값 사용 금지) */}
               {(() => {
-                const viewersBase = stats.totalViewers > 0 ? stats.totalViewers : Math.max(stats.totalOrders * 40, 100)
-                const productClicks = Math.round(viewersBase * 0.25)
-                const cartAdds = Math.round(stats.totalOrders * 2.5)
+                const hasViewerData = stats.totalViewers > 0
                 const orderCount = stats.totalOrders || 0
-                const pct = (v: number) => viewersBase > 0 ? Math.max(0, Math.round((v / viewersBase) * 100)) : 0
-                const funnel = [
-                  { label: '방송 시청자', value: viewersBase, pct: 100 },
-                  { label: '상품 클릭', value: productClicks, pct: pct(productClicks) },
-                  { label: '장바구니 추가', value: cartAdds, pct: pct(cartAdds) },
-                  { label: '주문 완료', value: orderCount, pct: pct(orderCount) },
-                ]
+                const viewerCount = stats.totalViewers || 0
+                // 시청자 기준 전환율 (실제 데이터 있을 때만)
+                const orderPct = hasViewerData && viewerCount > 0
+                  ? Math.max(0, Math.round((orderCount / viewerCount) * 100))
+                  : 0
                 return (
                   <div className="bg-white rounded-2xl p-5 border border-[#E8EAEE]">
                     <h3 className="text-[14px] font-extrabold text-gray-900 mb-3">전환 퍼널 (7일)</h3>
-                    <div className="space-y-3">
-                      {funnel.map((s, i) => (
-                        <div key={i}>
+                    {!hasViewerData && orderCount === 0 ? (
+                      <p className="text-[12px] text-gray-500 py-4 text-center">
+                        시청자 데이터가 아직 없습니다
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {hasViewerData && (
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[12px] font-semibold text-gray-700">방송 시청자</span>
+                              <span className="text-[12px] font-extrabold text-gray-900">
+                                {viewerCount.toLocaleString()}<span className="text-[10px] text-gray-500 ml-1">(100%)</span>
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-gray-100">
+                              <div className="h-full rounded-full" style={{ width: '100%', background: '#FF0033' }} />
+                            </div>
+                          </div>
+                        )}
+                        <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-[12px] font-semibold text-gray-700">{s.label}</span>
+                            <span className="text-[12px] font-semibold text-gray-700">주문 완료</span>
                             <span className="text-[12px] font-extrabold text-gray-900">
-                              {s.value.toLocaleString()}<span className="text-[10px] text-gray-500 ml-1">({s.pct}%)</span>
+                              {orderCount.toLocaleString()}
+                              {hasViewerData && (
+                                <span className="text-[10px] text-gray-500 ml-1">({orderPct}%)</span>
+                              )}
                             </span>
                           </div>
                           <div className="w-full h-1.5 rounded-full bg-gray-100">
                             <div
                               className="h-full rounded-full"
                               style={{
-                                width: `${Math.min(s.pct, 100)}%`,
-                                background: i === funnel.length - 1 ? '#10B981' : '#FF0033'
+                                width: `${hasViewerData ? Math.min(orderPct, 100) : 100}%`,
+                                background: '#10B981'
                               }}
                             />
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )
               })()}
@@ -885,7 +901,7 @@ export default function SellerPage() {
                     className="bg-green-50 rounded-xl p-3 text-center hover:bg-green-100 transition-colors block"
                   >
                     <CreditCard className="w-5 h-5 text-green-600 mx-auto mb-1.5" />
-                    <p className="text-lg font-bold text-gray-900">{fmtShort(stats.totalRevenue)}</p>
+                    <p className="text-lg font-bold text-gray-900">{fmtShort(stats.pendingSettlement ?? Math.round(stats.totalRevenue * 0.85))}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{t('seller.expectedSettlement')}</p>
                   </Link>
                 </div>
