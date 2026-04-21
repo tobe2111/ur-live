@@ -237,6 +237,12 @@
     "inventory": "재고 관리",
     "supply": "공급 상품",
     "shorts": "쇼츠 관리",
+    "shortsSync": {
+      "syncing": "YouTube 쇼츠 동기화 중...",
+      "syncComplete": "동기화 완료",
+      "syncFailed": "동기화 실패",
+      "youtubeRequired": "YouTube 연동이 필요합니다"
+    },
     "donations": "후원 내역",
     "youtubeGrowth": "구독자 늘리기",
     "liveAnalytics": "라이브 분석",
@@ -1317,7 +1323,11 @@
       "requiredFields": "식사권 이름, 가격, 맛집 이름은 필수입니다",
       "registered": "식사권이 등록되었습니다!",
       "registerFailed": "식사권 등록에 실패했습니다",
-      "registerSubmit": "식사권 등록하기"
+      "registerSubmit": "식사권 등록하기",
+      "imageSelected": "이미지가 선택되었습니다",
+      "namePlaceholder": "식사권 이름",
+      "restaurantPlaceholder": "맛집 이름",
+      "priceUndecided": "가격 미정"
     },
     "products": {
       "enterProductName": "상품명을 입력해주세요",

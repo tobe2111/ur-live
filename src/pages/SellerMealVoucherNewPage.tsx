@@ -274,7 +274,7 @@ export default function SellerMealVoucherNewPage() {
                         <button
                           key={i}
                           type="button"
-                          onClick={() => { update('image_url', url); toast.success('이미지가 선택되었습니다') }}
+                          onClick={() => { update('image_url', url); toast.success(t('seller.mealVoucher.imageSelected')) }}
                           className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
                             form.image_url === url ? 'border-pink-500 ring-2 ring-pink-200' : 'border-gray-200 hover:border-gray-400'
                           }`}
@@ -417,8 +417,8 @@ export default function SellerMealVoucherNewPage() {
           <div className="bg-pink-50 border border-pink-200 rounded-xl p-4">
             <p className="text-sm font-bold text-pink-700 mb-2">📋 미리보기</p>
             <p className="text-xs text-pink-600">
-              {form.name || '식사권 이름'} · {form.restaurant_name || '맛집 이름'} ·
-              {form.price ? ` ${form.price.toLocaleString()}원` : ' 가격 미정'}
+              {form.name || t('seller.mealVoucher.namePlaceholder')} · {form.restaurant_name || t('seller.mealVoucher.restaurantPlaceholder')} ·
+              {form.price ? ` ${form.price.toLocaleString()}${t('common.won')}` : ` ${t('seller.mealVoucher.priceUndecided')}`}
               {form.original_price > form.price && ` (정가 ${form.original_price.toLocaleString()}원, ${Math.round((1 - form.price / form.original_price) * 100)}% 할인)`}
               {form.group_buy_target > 0 && ` · 목표 ${form.group_buy_target}명`}
             </p>
