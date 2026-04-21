@@ -225,6 +225,30 @@ chatRoutes.post('/:liveId/messages', optionalAuth(), async (c) => {
   const isAdmin = authUser?.type === 'admin'
   const userId = authUser ? String(authUser.id) : (bodyUserId ?? null)
 
+  // ── HIGH-4: Chat moderation ─────────────────────────────────────────────
+  // 1) URL 포함 메시지 차단 (셀러/어드민은 공지/링크 공유 가능하므로 예외)
+  if (!isSeller && !isAdmin) {
+    const hasUrl = /https?:\/\/|www\./i.test(cleanMessage)
+    if (hasUrl) {
+      return c.json({ error: '채팅에 링크를 포함할 수 없습니다.' }, 400)
+    }
+  }
+
+  // 2) 10초 이내 동일 유저의 중복 메시지 차단
+  const dupKey = `${liveId}:${userId ?? cleanUserName}`
+  const nowMs = Date.now()
+  const prevEntry = RECENT_CHAT_CACHE.get(dupKey)
+  if (prevEntry && prevEntry.message === cleanMessage && nowMs - prevEntry.at < 10_000) {
+    return c.json({ error: '동일한 메시지를 반복할 수 없습니다.' }, 429)
+  }
+  RECENT_CHAT_CACHE.set(dupKey, { message: cleanMessage, at: nowMs })
+  // Bound memory in long-lived isolates
+  if (RECENT_CHAT_CACHE.size > 500) {
+    for (const [k, v] of RECENT_CHAT_CACHE) {
+      if (nowMs - v.at > 60_000) RECENT_CHAT_CACHE.delete(k)
+    }
+  }
+
   let insertedId: number | null = null
 
   // Save to D1
