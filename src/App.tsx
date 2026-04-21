@@ -7,6 +7,7 @@ import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
 import PushNotificationSetup from './components/PushNotificationSetup'
+import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
 import SideBanner from '@/components/SideBanner'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -354,6 +355,7 @@ function AppContent() {
         <Suspense fallback={<PageLoader />}>
           <div className={fullScreen ? 'min-h-dvh' : 'max-w-[430px] mx-auto bg-white min-h-dvh'}>
           <div className="flex-1">
+          <OfflineBanner />
           <ScrollToTop />
           <PushNotificationSetup />
           <Routes>
