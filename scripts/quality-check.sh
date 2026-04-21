@@ -99,6 +99,31 @@ else
   ERRORS=$((ERRORS + 1))
 fi
 
+# 6. 입력 필드 text-gray-900 누락 (화이트 테마)
+echo ""
+echo "6️⃣  입력 필드 텍스트 색상 확인..."
+# 다크 테마 페이지 제외
+DARK_PAGES="LivePage|ShortsPage|MainHomePage|UserProfilePage|SellerPublicPage|NotificationsPage"
+INPUT_ISSUES=0
+for f in $(find src/pages src/components -name "*.tsx" | sort); do
+  # 다크 테마 페이지 스킵
+  if echo "$f" | grep -qE "$DARK_PAGES"; then continue; fi
+  # border가 있는 input/textarea/select에 text-gray-900이 없는 경우
+  MISSING=$(grep -nE '<(input|textarea|select)[^>]+className="[^"]*border[^"]*"' "$f" 2>/dev/null \
+    | grep -v 'text-gray-[789]00' | grep -v 'text-white' | grep -v 'text-black' \
+    | grep -v 'bg-\[#' | grep -v 'type="hidden"' | grep -v 'type="file"' | grep -v 'type="checkbox"' | grep -v 'type="radio"')
+  if [ -n "$MISSING" ]; then
+    echo -e "   ${YELLOW}⚠️  $f${NC}"
+    echo "$MISSING" | head -3 | sed 's/^/      /'
+    INPUT_ISSUES=$((INPUT_ISSUES + 1))
+  fi
+done
+if [ "$INPUT_ISSUES" -gt 0 ]; then
+  echo -e "   ${YELLOW}⚠️  ${INPUT_ISSUES}개 파일에서 text-gray-900 누락${NC}"
+else
+  echo -e "   ${GREEN}✅ 모든 입력 필드 텍스트 색상 정상${NC}"
+fi
+
 # 결과
 echo ""
 echo "========================="
