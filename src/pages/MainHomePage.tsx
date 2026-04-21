@@ -485,16 +485,13 @@ export default function MainHomePage() {
         url="/"
         jsonLd={organizationJsonLd}
       />
-      {/* ── Header (1줄) ── */}
-      <header className="sticky top-0 z-50 bg-[#020202] border-b border-[#1A1A1A]">
+      {/* ── Header (v4) ── */}
+      <header className="sticky top-0 z-50 bg-[#020202]/95 backdrop-blur-md border-b border-[#1A1A1A]">
         <div className="flex items-center justify-between h-12 px-4">
           <Link to="/" className="flex items-center gap-1.5">
-            <svg viewBox="0 0 40 36" fill="none" className="h-7 w-auto">
-              <path d="M8 8h2l1.5 3H34a1 1 0 01.96 1.28l-3.5 12A1 1 0 0130.5 25H14.5a1 1 0 01-.96-.72L9.8 10H8V8z" stroke="#EF4444" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="16" cy="31" r="2.5" fill="#EF4444"/>
-              <circle cx="29" cy="31" r="2.5" fill="#EF4444"/>
-              <path d="M19.5 13.5v8l6-4z" fill="#EF4444"/>
-            </svg>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
+              <Play className="h-3.5 w-3.5 text-white fill-white" />
+            </div>
             <span className="text-[15px] font-extrabold text-white tracking-tight">유어딜</span>
           </Link>
           <div className="flex items-center gap-1">
@@ -563,9 +560,9 @@ export default function MainHomePage() {
         </section>
       )}
 
-      {/* ── 카테고리 (원형 아이콘) ── */}
+      {/* ── 카테고리 (v4 pill 스타일) ── */}
       <section className="px-4 py-3">
-        <div className="flex gap-3 overflow-x-auto no-scrollbar">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(cat => (
             <button
               key={cat.key}
@@ -574,12 +571,10 @@ export default function MainHomePage() {
                 else if (cat.key === 'all') navigate('/browse')
                 else navigate(`/browse?category=${cat.key}`)
               }}
-              className="flex flex-col items-center gap-1 shrink-0"
+              className="flex items-center gap-1.5 shrink-0 px-4 py-2.5 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] active:scale-95 transition-transform"
             >
-              <div className="w-12 h-12 rounded-full bg-[#1A1A1A] flex items-center justify-center text-xl">
-                {cat.icon}
-              </div>
-              <span className="text-[10px] font-medium text-gray-400">{cat.label}</span>
+              <span className="text-base">{cat.icon}</span>
+              <span className="text-[12px] font-semibold text-gray-300">{cat.label}</span>
             </button>
           ))}
         </div>
