@@ -805,7 +805,7 @@ export default function CheckoutPage() {
                       })
                       if (res.data.success) {
                         if (couponId && couponDiscount > 0) {
-                          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => {})
+                          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => { toast.error('쿠폰 적용에 실패했습니다') })
                         }
                         navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
                       }

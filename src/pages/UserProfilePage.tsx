@@ -27,7 +27,7 @@ function TeamPointsCard() {
     import('@/lib/api').then(({ default: api }) => {
       api.get('/api/points/balance')
         .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
-        .catch(() => {})
+        .catch(() => { setLoading(false) })
         .finally(() => setLoading(false))
     })
   }

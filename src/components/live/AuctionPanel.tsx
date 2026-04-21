@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Gavel, TrendingUp, Crown, Timer } from 'lucide-react'
@@ -10,6 +11,7 @@ interface AuctionData {
 }
 
 export default function AuctionPanel({ streamId }: { streamId: string | number }) {
+  const navigate = useNavigate()
   const [auction, setAuction] = useState<AuctionData | null>(null)
   const [bidAmount, setBidAmount] = useState(0)
   const [bidding, setBidding] = useState(false)
@@ -60,7 +62,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
                 if (res.data.success) {
                   const d = res.data.data
                   // 낙찰가로 바로 결제 페이지 이동
-                  window.location.href = `/checkout?auction=${auction.id}&product=${d.product_id}&price=${d.auction_price}`
+                  navigate(`/checkout?auction=${auction.id}&product=${d.product_id}&price=${d.auction_price}`)
                 } else {
                   toast.error(res.data.error)
                 }

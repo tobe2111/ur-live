@@ -109,7 +109,7 @@ export default function AdminPage() {
           if (target) setSalesTarget(Number(target.value) || 1000000)
         }
       })
-      .catch(() => {})
+      .catch(() => { toast.error('설정 데이터를 불러오지 못했습니다') })
   }, [])
 
   // 매출 목표 달성 알림
