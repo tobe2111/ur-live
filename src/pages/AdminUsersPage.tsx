@@ -254,8 +254,9 @@ export default function AdminUsersPage() {
                         <td className="px-4 py-3 text-gray-700">{user.email || '-'}</td>
                         <td className="px-4 py-3 text-gray-700">{user.phone || '-'}</td>
                         <td className="px-4 py-3 text-gray-700">{getProviderLabel(user.provider)}</td>
-                        <td className="px-4 py-3 text-right text-gray-900 font-medium">
-                          {(user.deal_balance || 0).toLocaleString()}
+                        <td className="px-4 py-3 text-right text-gray-500 font-medium">
+                          {/* deal_balance는 users 테이블에 없음 — user_points 조회 필요 */}
+                          -
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${badge.color} ${badge.bg}`}>
