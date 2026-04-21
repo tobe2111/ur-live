@@ -206,7 +206,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-extrabold text-white truncate">{adminName}</p>
-            <p className="text-[9px] text-white/50">플랫폼 운영팀 · Super Admin</p>
+            <p className="text-[9px] text-white/50">플랫폼 운영팀 · 관리자</p>
           </div>
         </div>
         <button
