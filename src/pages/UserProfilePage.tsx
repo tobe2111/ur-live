@@ -104,6 +104,54 @@ function ChatNameSetting() {
   )
 }
 
+function OrderStatusBar() {
+  const navigate = useNavigate()
+  const [counts, setCounts] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    import('@/lib/api').then(({ default: api }) => {
+      api.get('/api/orders').then(r => {
+        if (r.data.success) {
+          const orders = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || r.data.data?.orders || [])
+          const c: Record<string, number> = {}
+          orders.forEach((o: { status?: string }) => {
+            const s = (o.status || '').toUpperCase()
+            if (s === 'PAID' || s === 'DONE') c.paid = (c.paid || 0) + 1
+            else if (s === 'PREPARING') c.preparing = (c.preparing || 0) + 1
+            else if (s === 'SHIPPING') c.shipping = (c.shipping || 0) + 1
+            else if (s === 'DELIVERED') c.delivered = (c.delivered || 0) + 1
+          })
+          setCounts(c)
+        }
+      }).catch(() => {})
+    })
+  }, [])
+
+  const items = [
+    { label: '결제완료', key: 'paid', path: '/my-orders' },
+    { label: '배송준비', key: 'preparing', path: '/my-orders' },
+    { label: '배송중', key: 'shipping', path: '/my-orders' },
+    { label: '배송완료', key: 'delivered', path: '/my-orders' },
+    { label: '리뷰', key: 'review', path: '/my-orders' },
+  ]
+
+  return (
+    <div className="px-4 pt-3">
+      <p className="text-[12px] font-bold text-white mb-3">주문 현황</p>
+      <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-white/[0.04]">
+        {items.map(o => (
+          <button key={o.label} onClick={() => navigate(o.path)} className="flex-1 text-center">
+            <p className={`text-[18px] font-extrabold ${counts[o.key] ? 'text-pink-400' : 'text-white/20'}`} style={{ letterSpacing: '-0.02em' }}>
+              {counts[o.key] || 0}
+            </p>
+            <p className="text-[9px] text-white/55 mt-0.5">{o.label}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function SellerApplyModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [form, setForm] = useState({
     business_name: '',
@@ -582,23 +630,7 @@ export default function UserProfilePage() {
       <ChatNameSetting />
 
       {/* v4 주문 현황 */}
-      <div className="px-4 pt-3">
-        <p className="text-[12px] font-bold text-white mb-3">주문 현황</p>
-        <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-white/[0.04]">
-          {[
-            { label: '결제완료', path: '/my-orders?status=paid' },
-            { label: '배송준비', path: '/my-orders?status=preparing' },
-            { label: '배송중', path: '/my-orders?status=shipping' },
-            { label: '배송완료', path: '/my-orders?status=delivered' },
-            { label: '리뷰대기', path: '/my-orders?status=review' },
-          ].map(o => (
-            <button key={o.label} onClick={() => navigate(o.path)} className="flex-1 text-center">
-              <p className="text-[18px] font-extrabold text-white/30" style={{ letterSpacing: '-0.02em' }}>-</p>
-              <p className="text-[9px] text-white/55 mt-0.5">{o.label}</p>
-            </button>
-          ))}
-        </div>
-      </div>
+      <OrderStatusBar />
 
       {/* v4 바로가기 그리드 */}
       <div className="px-4 pt-4">
@@ -626,15 +658,15 @@ export default function UserProfilePage() {
         <p className="text-[12px] font-bold text-white mb-3">도움말</p>
         <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
           {[
-            { label: '고객센터', sub: '0507-0177-0432', path: '' },
-            { label: '자주 묻는 질문', sub: 'FAQ', path: '' },
+            { label: '고객센터', sub: '0507-0177-0432', path: '', action: () => window.open('tel:0507-0177-0432') },
+            { label: '자주 묻는 질문', sub: 'FAQ', path: '/faq' },
             { label: '이용약관', path: '/terms' },
             { label: '개인정보 처리방침', path: '/privacy' },
             { label: '배송 정책', path: '/shipping-policy' },
           ].map((item, i) => (
             <button
               key={item.label}
-              onClick={() => item.path && navigate(item.path)}
+              onClick={() => (item as any).action ? (item as any).action() : item.path && navigate(item.path)}
               className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
               style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
             >
