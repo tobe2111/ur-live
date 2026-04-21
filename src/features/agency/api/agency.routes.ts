@@ -422,6 +422,28 @@ app.get('/stats', async (c) => {
   })
 })
 
+// ── GET /stats/daily — 일별 매출 추이 (RevenueTrendChart 용) ───
+app.get('/stats/daily', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const days = Number(c.req.query('days') || 7)
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT date(o.created_at) AS date,
+        COALESCE(SUM(CASE WHEN o.status IN ('PAID','DONE','SHIPPING','DELIVERED') THEN o.total_amount END), 0) AS revenue,
+        COUNT(*) AS orders
+      FROM orders o
+      JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+      WHERE ag.agency_id = ?
+        AND o.created_at > datetime('now', '-' || ? || ' days')
+      GROUP BY date(o.created_at)
+      ORDER BY date ASC
+    `).bind(agencyId, days).all()
+    return c.json({ success: true, data: results || [] })
+  } catch {
+    return c.json({ success: true, data: [] })
+  }
+})
+
 // ── GET /stats/batch — 셀러별 일괄 통계 (N+1 방지) ─────────────
 app.get('/stats/batch', async (c) => {
   await ensureAgencyTables(c.env.DB)

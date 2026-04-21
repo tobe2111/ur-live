@@ -26,37 +26,30 @@ usersRouter.get('/role', optionalAuth(), async (c) => {
 
     const firebaseUid = String(authUser.id);
     const numericId = parseInt(firebaseUid, 10);
+    const email = authUser.email ?? null;
     const db = c.env.DB;
 
-    // DB에서 역할 조회 (sellers / admin 계정 체크)
-    // Session cookie users have numeric DB IDs; Firebase users have string UIDs
-    const seller = Number.isFinite(numericId)
-      ? await db
-          .prepare('SELECT id FROM sellers WHERE firebase_uid = ? OR user_id = ? LIMIT 1')
-          .bind(firebaseUid, numericId)
-          .first()
-          .catch(() => null)
-      : await db
-          .prepare('SELECT id FROM sellers WHERE firebase_uid = ? LIMIT 1')
-          .bind(firebaseUid)
-          .first()
-          .catch(() => null);
+    // DB에서 역할 조회 — production sellers/admins 테이블은 firebase_uid/user_id 컬럼이 없음.
+    // username(=이메일) 또는 id(숫자 JWT sub) 기준으로 조회.
+    const seller = await db
+      .prepare(
+        'SELECT id FROM sellers WHERE (? IS NOT NULL AND (username = ? OR email = ?)) OR (? IS NOT NULL AND id = ?) LIMIT 1'
+      )
+      .bind(email, email, email, Number.isFinite(numericId) ? numericId : null, Number.isFinite(numericId) ? numericId : null)
+      .first()
+      .catch(() => null);
 
     if (seller) {
       return c.json({ success: true, role: 'seller', data: { role: 'seller' } });
     }
 
-    const admin = Number.isFinite(numericId)
-      ? await db
-          .prepare('SELECT id FROM admins WHERE firebase_uid = ? OR user_id = ? LIMIT 1')
-          .bind(firebaseUid, numericId)
-          .first()
-          .catch(() => null)
-      : await db
-          .prepare("SELECT id FROM admins WHERE firebase_uid = ? LIMIT 1")
-          .bind(firebaseUid)
-          .first()
-          .catch(() => null);
+    const admin = await db
+      .prepare(
+        'SELECT id FROM admins WHERE (? IS NOT NULL AND (username = ? OR email = ?)) OR (? IS NOT NULL AND id = ?) LIMIT 1'
+      )
+      .bind(email, email, email, Number.isFinite(numericId) ? numericId : null, Number.isFinite(numericId) ? numericId : null)
+      .first()
+      .catch(() => null);
 
     if (admin) {
       return c.json({ success: true, role: 'admin', data: { role: 'admin' } });
