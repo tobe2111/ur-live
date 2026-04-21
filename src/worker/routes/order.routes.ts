@@ -380,7 +380,7 @@ ordersRouter.get('/:id', async (c) => {
   try {
     const firebaseUid = String(c.get('user').id);
     const userId = await getUserDbId(c.env.DB, firebaseUid);
-    const orderId = c.req.param('id');
+    const orderId = c.req.param('id')!;
     const orderRepo = new OrderRepository(c.env.DB);
 
     const order = await orderRepo.findById(orderId);
@@ -508,14 +508,13 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
   try {
     const firebaseUid = String(c.get('user').id);
     const userId = await getUserDbId(c.env.DB, firebaseUid);
-    const orderId = c.req.param('id');
+    const orderId = c.req.param('id')!;
     const body = await c.req.json<{ reason?: string; cancel_amount?: number }>();
     const reason = body.reason ?? '고객 요청';
-    const cancelAmount = body.cancel_amount; // 부분 취소 금액 (미입력 시 전액)
+    const cancelAmount = body.cancel_amount;
 
     const orderRepo = new OrderRepository(c.env.DB);
 
-    // ── 1. 주문 조회 ──────────────────────────────────────────
     const order = await orderRepo.findById(orderId);
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);

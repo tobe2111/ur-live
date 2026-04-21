@@ -9,10 +9,10 @@ export default function SellerReviewsPage() {
   const [loading, setLoading] = useState(true)
   const [replyId, setReplyId] = useState<number | null>(null)
   const [replyText, setReplyText] = useState('')
-  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } }
+  const getAuthHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
 
   useEffect(() => {
-    api.get('/api/seller/analytics/reviews', h)
+    api.get('/api/seller/analytics/reviews', getAuthHeaders())
       .then(r => { if (r.data.success) setReviews(r.data.data || []) })
       .catch(() => {}).finally(() => setLoading(false))
   }, [])
@@ -20,7 +20,7 @@ export default function SellerReviewsPage() {
   const submitReply = async (reviewId: number) => {
     if (!replyText.trim()) return
     try {
-      await api.post(`/api/seller/analytics/reviews/${reviewId}/reply`, { reply: replyText.trim() }, h)
+      await api.post(`/api/seller/analytics/reviews/${reviewId}/reply`, { reply: replyText.trim() }, getAuthHeaders())
       toast.success('답글이 등록되었습니다')
       setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, seller_reply: replyText.trim(), seller_reply_at: new Date().toISOString() } : r))
       setReplyId(null); setReplyText('')

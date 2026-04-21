@@ -385,7 +385,7 @@ export default function AdminProductsPage() {
                             try {
                               const tk = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
                               await api.patch(`/api/admin/products/${product.id}`, { sold_count: val }, { headers: { Authorization: `Bearer ${tk}` } })
-                              product.sold_count = val
+                              setProducts(prev => prev.map(p => p.id === product.id ? { ...p, sold_count: val } : p))
                               toast.success(`판매 수 ${val}으로 변경`)
                             } catch { toast.error('변경 실패') }
                           }}

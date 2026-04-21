@@ -231,10 +231,10 @@ export default function AdminOrdersPage() {
 
   const orderStats = {
     total: filteredOrders.length,
-    pending: filteredOrders.filter(o => o.status === 'pending').length,
-    shipped: filteredOrders.filter(o => o.status === 'shipped').length,
-    delivered: filteredOrders.filter(o => o.status === 'delivered').length,
-    cancelled: filteredOrders.filter(o => o.status === 'cancelled').length,
+    pending: filteredOrders.filter(o => o.status?.toUpperCase() === 'PENDING').length,
+    shipped: filteredOrders.filter(o => o.status?.toUpperCase() === 'SHIPPING').length,
+    delivered: filteredOrders.filter(o => o.status?.toUpperCase() === 'DELIVERED').length,
+    cancelled: filteredOrders.filter(o => o.status?.toUpperCase() === 'CANCELLED').length,
     totalAmount: filteredOrders.reduce((s, o) => s + o.total_amount, 0),
   }
 

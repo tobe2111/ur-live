@@ -101,8 +101,8 @@ export default function AdminDealMonitorPage() {
       if (search) params.append('search', search)
       const res = await api.get(`/api/admin/deals/charges?${params}`)
       if (res.data.success) {
-        setCharges(res.data.data)
-        setTotalPages(res.data.pagination.totalPages)
+        setCharges(res.data.data || [])
+        setTotalPages(res.data.pagination?.totalPages || 1)
       }
     } catch { /* handled by interceptor */ } finally {
       setLoading(false)

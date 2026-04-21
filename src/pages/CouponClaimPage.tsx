@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import SEO from '@/components/SEO'
 import { Gift, CheckCircle, XCircle, Loader2, ShoppingBag } from 'lucide-react'
 
 function ConfettiCanvas() {
@@ -139,6 +140,7 @@ export default function CouponClaimPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center px-4">
+      <SEO title="쿠폰 발급 - 유어딜" description="유어딜 할인 쿠폰을 받아보세요" url={`/coupon/${code}`} />
       {status === 'success' && <ConfettiCanvas />}
 
       <div className="w-full max-w-sm text-center relative z-10">

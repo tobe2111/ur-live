@@ -19,13 +19,12 @@ export default function SellerAnalyticsPage() {
   const [detailedData, setDetailedData] = useState<DetailedAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(30)
-  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } }
+  const getAuthHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
 
   useEffect(() => { load() }, [tab, days])
 
-  // Load detailed analytics once
   useEffect(() => {
-    api.get('/api/seller/analytics/detailed', h)
+    api.get('/api/seller/analytics/detailed', getAuthHeaders())
       .then(r => { if (r.data.success) setDetailedData(r.data.data) })
       .catch(() => {})
   }, [])
@@ -35,7 +34,7 @@ export default function SellerAnalyticsPage() {
     const url = tab === 'revenue' ? `/api/seller/analytics/chart/revenue?days=${days}`
       : tab === 'customers' ? '/api/seller/analytics/customers'
       : '/api/seller/analytics/products/performance'
-    api.get(url, h).then(r => { if (r.data.success) setData(r.data.data) }).catch(() => {}).finally(() => setLoading(false))
+    api.get(url, getAuthHeaders()).then(r => { if (r.data.success) setData(r.data.data) }).catch(() => {}).finally(() => setLoading(false))
   }
 
   return (

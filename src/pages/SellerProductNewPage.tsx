@@ -74,7 +74,7 @@ export default function SellerProductNewPage() {
       })
 
       if (response.data.success) {
-        setLiveStreams(response.data.streams || [])
+        setLiveStreams(response.data.data || [])
       }
     } catch (error) {
       console.error('Failed to load live streams:', error)

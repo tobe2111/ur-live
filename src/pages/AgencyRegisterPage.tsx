@@ -20,6 +20,10 @@ export default function AgencyRegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    if (form.password.length < 8) {
+      setError('비밀번호는 8자 이상이어야 합니다.')
+      return
+    }
     if (form.password !== form.password_confirm) {
       setError('비밀번호가 일치하지 않습니다.')
       return
