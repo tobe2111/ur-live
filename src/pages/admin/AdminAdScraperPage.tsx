@@ -183,14 +183,14 @@ export default function AdminAdScraperPage() {
       const kw = keywordList[i]
       setProgress(Math.round((i / keywordList.length) * 100))
 
-      // 1단계: 광고주 URL 수집 (최대 30개)
+      // 1단계: 광고주 URL 수집 (최대 5페이지 = ~50개)
       addLog(`[${i + 1}/${keywordList.length}] "${kw}" 광고주 수집 중...`, 'info')
       let advertisers: Array<{ url: string; title: string; domain: string }> = []
       try {
         const collectRes = await fetch('/api/naver-scraper/collect', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ keyword: kw, pages: 3 }),
+          body: JSON.stringify({ keyword: kw, pages: 5 }),
         }).then(r => r.json()) as any
         if (collectRes.success) {
           advertisers = collectRes.data.advertisers || []
@@ -206,7 +206,7 @@ export default function AdminAdScraperPage() {
         continue
       }
 
-      // 2단계: 10개씩 배치로 이메일 추출
+      // 2단계: 10개씩 배치로 이메일 추출 (배치 간 2초 딜레이 — 네이버 차단 방지)
       let keywordEmails = 0
       for (let batch = 0; batch < advertisers.length; batch += 10) {
         const chunk = advertisers.slice(batch, batch + 10)
@@ -222,6 +222,11 @@ export default function AdminAdScraperPage() {
             keywordEmails += extractRes.data.totalEmails || 0
           }
         } catch {}
+
+        // 배치 간 2초 대기 (네이버 차단 방지)
+        if (batch + 10 < advertisers.length) {
+          await new Promise(r => setTimeout(r, 2000))
+        }
       }
 
       totalFound += advertisers.length
@@ -525,7 +530,173 @@ export default function AdminAdScraperPage() {
             )}
           </div>
         </div>
+
+        {/* ══ D1 수집 결과 (전체 이력) ══ */}
+        <D1ResultsPanel />
       </div>
     </AdminLayout>
+  )
+}
+
+function D1ResultsPanel() {
+  const [data, setData] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [stats, setStats] = useState<{ total: number; withEmail: number; uniqueEmails: number; keywords: number; latestScrape: string | null } | null>(null)
+
+  const token = localStorage.getItem('admin_token') || ''
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/scraper/d1/stats', { headers }).then(r => r.json()) as any
+      if (res.success) setStats(res.data)
+    } catch {}
+  }
+
+  async function loadData(p: number = 1) {
+    setLoading(true)
+    try {
+      const qs = search ? `&keyword=${encodeURIComponent(search)}` : ''
+      const res = await fetch(`/api/scraper/d1/emails?page=${p}&limit=50${qs}`, { headers }).then(r => r.json()) as any
+      if (res.success) {
+        setData(res.data || [])
+        setTotal(res.total || 0)
+        setPage(p)
+      }
+    } catch {}
+    setLoading(false)
+  }
+
+  function exportCSV() {
+    if (data.length === 0) return
+    const headers = ['키워드', '광고주', '이메일', '전화번호', '사이트', '수집일시']
+    const rows = data.map((r: any) => [
+      r.keyword, r.advertiser_name, r.email, r.phone || '', r.site_url, r.scraped_at
+    ])
+    const csv = [headers.join(','), ...rows.map(r => r.map((c: string) => `"${(c || '').replace(/"/g, '""')}"`).join(','))].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `naver-ads-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+  }
+
+  useEffect(() => { loadStats(); loadData() }, [])
+
+  const totalPages = Math.ceil(total / 50)
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-bold text-gray-900">📊 수집 결과 (D1)</h2>
+        <button onClick={exportCSV} disabled={data.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-xs font-bold rounded-lg border border-green-200 disabled:opacity-40 hover:bg-green-100">
+          <Download className="w-3.5 h-3.5" /> CSV 내보내기
+        </button>
+      </div>
+
+      {/* 통계 카드 */}
+      {stats && (
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          <div className="bg-gray-50 rounded-lg p-3 text-center">
+            <p className="text-lg font-bold text-gray-900">{stats.total.toLocaleString()}</p>
+            <p className="text-[10px] text-gray-500">총 수집</p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-3 text-center">
+            <p className="text-lg font-bold text-blue-600">{stats.uniqueEmails.toLocaleString()}</p>
+            <p className="text-[10px] text-gray-500">고유 이메일</p>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-3 text-center">
+            <p className="text-lg font-bold text-purple-600">{stats.keywords}</p>
+            <p className="text-[10px] text-gray-500">키워드 수</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3 text-center">
+            <p className="text-sm font-bold text-green-600">{stats.latestScrape?.slice(0, 10) || '-'}</p>
+            <p className="text-[10px] text-gray-500">최근 수집</p>
+          </div>
+        </div>
+      )}
+
+      {/* 검색 */}
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && loadData(1)}
+            placeholder="키워드로 검색..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-400"
+          />
+        </div>
+        <button onClick={() => loadData(1)} className="px-4 py-2 bg-gray-800 text-white text-sm font-bold rounded-lg">
+          검색
+        </button>
+        <button onClick={() => { setSearch(''); loadData(1) }} className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg">
+          초기화
+        </button>
+      </div>
+
+      {/* 테이블 */}
+      {loading ? (
+        <div className="py-8 text-center text-gray-400"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
+      ) : data.length === 0 ? (
+        <div className="py-8 text-center text-gray-400 text-sm">수집된 데이터가 없습니다. 위에서 키워드를 입력하고 시작해보세요.</div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
+                  <th className="px-3 py-2">키워드</th>
+                  <th className="px-3 py-2">광고주</th>
+                  <th className="px-3 py-2">이메일</th>
+                  <th className="px-3 py-2">전화번호</th>
+                  <th className="px-3 py-2">사이트</th>
+                  <th className="px-3 py-2">수집일</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((row: any, i: number) => (
+                  <tr key={row.id || i} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="px-3 py-2.5"><Tag className="inline w-3 h-3 text-gray-400 mr-1" />{row.keyword}</td>
+                    <td className="px-3 py-2.5 font-medium text-gray-900">{row.advertiser_name}</td>
+                    <td className="px-3 py-2.5">
+                      <a href={`mailto:${row.email}`} className="text-blue-600 hover:underline flex items-center gap-1">
+                        <Mail className="w-3 h-3" />{row.email}
+                      </a>
+                    </td>
+                    <td className="px-3 py-2.5 text-gray-600">{row.phone || '-'}</td>
+                    <td className="px-3 py-2.5">
+                      <a href={row.site_url} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-500 text-xs truncate block max-w-[150px]">
+                        {row.site_url?.replace(/^https?:\/\/(www\.)?/, '').slice(0, 30)}
+                      </a>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-gray-400">{row.scraped_at?.slice(0, 10)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-xs text-gray-500">총 {total.toLocaleString()}건 중 {((page - 1) * 50 + 1)}-{Math.min(page * 50, total)}건</p>
+              <div className="flex gap-1">
+                <button disabled={page <= 1} onClick={() => loadData(page - 1)}
+                  className="px-3 py-1 text-xs border border-gray-200 rounded disabled:opacity-30">이전</button>
+                <span className="px-3 py-1 text-xs text-gray-600">{page}/{totalPages}</span>
+                <button disabled={page >= totalPages} onClick={() => loadData(page + 1)}
+                  className="px-3 py-1 text-xs border border-gray-200 rounded disabled:opacity-30">다음</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }
