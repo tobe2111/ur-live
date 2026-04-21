@@ -36,11 +36,17 @@ async function signJwt(payload: Record<string, unknown>, secret = JWT_SECRET) {
   );
 }
 
-function buildApp(middleware: ReturnType<typeof requireAuth>) {
-  const app = new Hono();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildApp(middleware: any) {
+  // Use loose typing — Hono's strict generics around middleware response
+  // types collide across requireAuth / requireUserType. For tests we only
+  // care about HTTP status.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const app = new Hono<any>();
   app.use('/protected', middleware);
   app.get('/protected', (c) => {
-    const user = c.get('user') as { id: string; type: string } | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const user = (c as any).get('user') as { id: string; type: string } | undefined;
     return c.json({ ok: true, userId: user?.id, type: user?.type });
   });
   return app;
