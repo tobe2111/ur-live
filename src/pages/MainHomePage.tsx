@@ -6,6 +6,7 @@ import axios from 'axios'
 import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd } from '@/components/SEO'
 import SharePrompt from '@/components/SharePrompt'
+import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
 
 interface LiveStream {
   id: number; title: string; youtube_video_id?: string; status: string
@@ -94,6 +95,22 @@ export default function MainHomePage() {
   const [mealProducts, setMealProducts] = useState<Product[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [cartCount, setCartCount] = useState(0)
+
+  useEffect(() => {
+    // Load cart count
+    axios.get('/api/cart').then(res => {
+      if (res.data.success && Array.isArray(res.data.data)) {
+        setCartCount(res.data.data.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0))
+      }
+    }).catch(() => {
+      // Fallback to localStorage
+      try {
+        const cached = localStorage.getItem('hasCartItems')
+        if (cached) setCartCount(parseInt(cached) || 0)
+      } catch {}
+    })
+  }, [])
 
   useEffect(() => {
     document.title = '유어딜 - 라이브 커머스'
@@ -127,33 +144,38 @@ export default function MainHomePage() {
     <div className="bg-[#020202] min-h-screen pb-16">
       <SEO title="홈" description="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매" url="/" jsonLd={organizationJsonLd} />
 
+      {/* ═══ Sticky Top Bar ═══ */}
+      <div className="sticky top-0 inset-x-0 px-4 pt-3 pb-2 flex items-center justify-between z-30 bg-[#020202]/95 backdrop-blur-md">
+        <Link to="/" className="flex items-center gap-1.5">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
+            <Play className="h-3 w-3 text-white fill-white" />
+          </div>
+          <span className="text-[15px] font-extrabold text-white" style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}>UR·DEAL</span>
+        </Link>
+        <div className="flex items-center gap-1 text-gray-200">
+          <button onClick={() => navigate('/search')} className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
+          <button onClick={() => navigate('/notifications')} className="p-1.5 relative">
+            <Bell className="h-5 w-5" strokeWidth={1.5} />
+            <span className="absolute top-1 right-1 rounded-full w-1.5 h-1.5 bg-[#EF4444]" />
+          </button>
+          <button onClick={() => navigate('/cart')} className="p-1.5 relative">
+            <ShoppingCart className="h-5 w-5" strokeWidth={1.5} />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* ═══ Region Hero ═══ */}
-      <div className="relative" style={{ height: 340, background: '#000' }}>
+      <div className="relative" style={{ height: 300, background: '#000' }}>
         {featured?.image_url && <img src={featured.image_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55" />}
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 30%, rgba(0,0,0,0) 55%, rgba(5,5,5,1) 100%)' }} />
 
-        {/* Top bar */}
-        <div className="absolute top-0 inset-x-0 px-4 pt-3 flex items-center justify-between z-10">
-          <Link to="/" className="flex items-center gap-1.5">
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-              <Play className="h-3 w-3 text-white fill-white" />
-            </div>
-            <span className="text-[15px] font-extrabold text-white" style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}>UR·DEAL</span>
-          </Link>
-          <div className="flex items-center gap-1 text-gray-200">
-            <button onClick={() => navigate('/search')} className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
-            <button onClick={() => navigate('/notifications')} className="p-1.5 relative">
-              <Bell className="h-5 w-5" strokeWidth={1.5} />
-              <span className="absolute top-1 right-1 rounded-full w-1.5 h-1.5 bg-[#EF4444]" />
-            </button>
-            <button onClick={() => navigate('/cart')} className="p-1.5 relative">
-              <ShoppingCart className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-          </div>
-        </div>
-
         {/* Region + featured content */}
-        <div className="absolute top-12 left-4 right-4 z-10">
+        <div className="absolute top-4 left-4 right-4 z-10">
           <button onClick={() => setRegion(REGIONS[(REGIONS.indexOf(region) + 1) % REGIONS.length])}
             className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-white/[0.12] backdrop-blur-md border border-white/20">
             <MapPin className="w-3.5 h-3.5 text-white" />
@@ -326,8 +348,8 @@ export default function MainHomePage() {
               const schedDate = s.scheduled_at ? new Date(s.scheduled_at) : null
               const timeLabel = schedDate ? schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
               return (
-                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] text-left">
-                  <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1A1A1A]">
+                <div key={s.id} className="shrink-0 w-[170px] text-left">
+                  <div onClick={() => navigate(`/live/${s.id}`)} className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1A1A1A] cursor-pointer">
                     {thumb && <img src={thumb} alt="" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-500 px-2 py-0.5 rounded-md">
@@ -340,7 +362,10 @@ export default function MainHomePage() {
                     </div>
                   </div>
                   <p className="text-[11px] text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
-                </button>
+                  <div className="mt-1.5">
+                    <BroadcastNotifyButton streamId={s.id} compact />
+                  </div>
+                </div>
               )
             })}
           </div>
