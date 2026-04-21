@@ -15,6 +15,7 @@ interface Seller { id: number; name: string }
 interface Product { id: number; name: string; price: number; image_url?: string }
 
 export default function AdminReplayPage() {
+  const navigate = useNavigate()
   const [streams, setStreams] = useState<Stream[]>([])
   const [sellers, setSellers] = useState<Seller[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -29,7 +30,11 @@ export default function AdminReplayPage() {
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
 
-  useEffect(() => { if (!localStorage.getItem("admin_token")) { navigate("/admin/login", { replace: true }); return } }, [navigate])
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [navigate])
   useEffect(() => {
     Promise.all([
       api.get('/api/admin/streams?status=ended', { headers }),
