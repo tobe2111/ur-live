@@ -1,5 +1,9 @@
 import React, { useRef, useEffect } from 'react'
 
+interface YTPlayer {
+  destroy(): void
+}
+
 interface LiveStreamPlayerProps {
   youtubeVideoId?: string
   isFullscreen?: boolean
@@ -14,6 +18,7 @@ export const LiveStreamPlayer = React.memo(function LiveStreamPlayer({
   className = ''
 }: LiveStreamPlayerProps) {
   const playerContainerRef = useRef<HTMLDivElement>(null)
+  const playerRef = useRef<YTPlayer | null>(null)
 
   useEffect(() => {
     if (!youtubeVideoId) return
@@ -29,7 +34,7 @@ export const LiveStreamPlayer = React.memo(function LiveStreamPlayer({
     // YouTube API 준비 완료 후 플레이어 생성
     const initPlayer = () => {
       if (playerContainerRef.current && (window as any).YT) {
-        new (window as any).YT.Player(playerContainerRef.current, {
+        playerRef.current = new (window as any).YT.Player(playerContainerRef.current, {
           videoId: youtubeVideoId,
           playerVars: {
             autoplay: 1,
@@ -48,7 +53,14 @@ export const LiveStreamPlayer = React.memo(function LiveStreamPlayer({
     if ((window as any).YT && (window as any).YT.Player) {
       initPlayer()
     } else {
-      ;(window as any).onYouTubeIframeAPIReady = initPlayer
+      // 다른 컴포넌트의 콜백을 덮어쓰지 않도록 전역 배열에 push
+      if (!(window as any).youtubeCallbacks) (window as any).youtubeCallbacks = []
+      ;(window as any).youtubeCallbacks.push(initPlayer)
+    }
+
+    return () => {
+      try { playerRef.current?.destroy() } catch { /* ignore */ }
+      playerRef.current = null
     }
   }, [youtubeVideoId, onPlayerReady])
 

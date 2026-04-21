@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Home } from 'lucide-react';
+import SEO from '@/components/SEO';
 
 export default function AccountDeletedPage() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function AccountDeletedPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <SEO title="계정 삭제 완료" description="계정이 삭제되었습니다" url="/account/deleted" noindex />
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
           {/* 완료 아이콘 */}

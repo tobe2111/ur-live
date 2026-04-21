@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
-import { Mail, Lock, Eye, EyeOff, TrendingUp, Package, Users, ArrowRight } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Play, Package, TrendingUp, ArrowRight } from 'lucide-react'
 
 export default function SellerLoginPage() {
   const { t } = useTranslation()
@@ -60,61 +60,67 @@ export default function SellerLoginPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex">
-      {/* 왼쪽 브랜딩 패널 (데스크탑) */}
-      <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-white border-r border-gray-200">
+      {/* Left branding panel (desktop only) */}
+      <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
         <div className="px-10 pt-10">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
-              <span className="text-white text-lg font-bold">U</span>
-            </div>
-            <span className="text-xl font-bold text-gray-900">Ur Seller</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-extrabold italic text-white tracking-[-0.03em]">
+              UR·DEAL
+            </span>
+            <span className="text-[9px] font-bold tracking-wider text-[#FF0033]">
+              SELLER STUDIO
+            </span>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col justify-center px-10">
-          <h1 className="text-3xl font-bold text-gray-900 leading-tight mb-3">
-            {t('seller.liveCommerceTagline')}
+          <h1 className="text-3xl font-bold text-white leading-tight mb-3">
+            라이브 커머스의 시작
           </h1>
-          <p className="text-gray-500 text-base mb-10">
-            {t('seller.liveCommerceDesc')}
+          <p className="text-gray-400 text-base mb-10">
+            셀러 전용 대시보드에서 매출, 방송, 상품을 한눈에 관리하세요.
           </p>
 
           <div className="space-y-5">
             {[
-              { icon: <TrendingUp className="w-5 h-5 text-blue-600" />, title: t('seller.realtimeSalesStatus'), desc: t('seller.realtimeSalesDesc') },
-              { icon: <Package className="w-5 h-5 text-blue-600" />, title: t('seller.integratedOrderManage'), desc: t('seller.integratedOrderDesc') },
-              { icon: <Users className="w-5 h-5 text-blue-600" />, title: t('seller.settlementAutomation'), desc: t('seller.settlementAutomationDesc') },
-            ].map(({ icon, title, desc }) => (
+              { icon: Play, title: '라이브 방송 관리', desc: '실시간 방송 시작부터 종료까지 원클릭' },
+              { icon: Package, title: '상품·주문 통합', desc: '상품 등록과 주문 처리를 한 화면에서' },
+              { icon: TrendingUp, title: '매출 분석 리포트', desc: '일별·월별 매출 추이를 한눈에 확인' },
+            ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  {icon}
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{title}</p>
-                  <p className="text-sm text-gray-500 mt-0.5">{desc}</p>
+                  <p className="text-sm font-semibold text-white">{title}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="px-10 pb-8 text-xs text-gray-400">© 2026 Ur Team. All rights reserved.</div>
+        <div className="px-10 pb-8">
+          <p className="text-xs text-gray-600">&copy; 2026 유어딜. 셀러 전용 서비스</p>
+        </div>
       </div>
 
-      {/* 오른쪽 로그인 폼 */}
+      {/* Right login panel */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        {/* 모바일 로고 */}
+        {/* Mobile logo */}
         <div className="lg:hidden mb-8 flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
-            <span className="text-white text-lg font-bold">U</span>
-          </div>
-          <span className="text-xl font-bold text-gray-900">Ur Seller</span>
+          <span className="text-[13px] font-extrabold italic text-gray-900 tracking-[-0.03em]">
+            UR·DEAL
+          </span>
+          <span className="text-[9px] font-bold tracking-wider text-[#FF0033]">
+            SELLER STUDIO
+          </span>
         </div>
 
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="mb-7">
-              <h2 className="text-2xl font-bold text-gray-900">{t('common.login')}</h2>
+              <h2 className="text-2xl font-bold text-gray-900">셀러 로그인</h2>
               <p className="text-sm text-gray-500 mt-1">{t('seller.loginSubtitle')}</p>
             </div>
 
@@ -125,7 +131,7 @@ export default function SellerLoginPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* 이메일 */}
+              {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('common.email')}</label>
                 <div className="relative">
@@ -139,12 +145,12 @@ export default function SellerLoginPage() {
                     autoComplete="email"
                     disabled={loading}
                     placeholder="seller@example.com"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
                   />
                 </div>
               </div>
 
-              {/* 비밀번호 */}
+              {/* Password */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.password')}</label>
                 <div className="relative">
@@ -158,7 +164,7 @@ export default function SellerLoginPage() {
                     autoComplete="current-password"
                     disabled={loading}
                     placeholder={t('seller.passwordPlaceholder')}
-                    className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-50"
+                    className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
                   />
                   <button
                     type="button"
@@ -170,14 +176,14 @@ export default function SellerLoginPage() {
                 </div>
               </div>
 
-              {/* {t('seller.rememberEmail')} */}
+              {/* Remember email + Forgot password */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setRememberMe(v => !v)}
                     className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
-                      rememberMe ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'
+                      rememberMe ? 'bg-[#FF0033] border-[#FF0033]' : 'border-gray-300 bg-white'
                     }`}
                   >
                     {rememberMe && (
@@ -195,17 +201,17 @@ export default function SellerLoginPage() {
                 </div>
                 <Link
                   to="/seller/forgot-password"
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-sm text-[#FF0033] hover:text-[#cc0029] font-medium"
                 >
                   비밀번호를 잊으셨나요?
                 </Link>
               </div>
 
-              {/* 로그인 버튼 */}
+              {/* Login button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-gradient-to-r from-[#FF0033] to-[#EC4899] text-white text-sm font-semibold rounded-2xl hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
@@ -220,9 +226,9 @@ export default function SellerLoginPage() {
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-gray-500">
-                {t('seller.noSellerAccount')}{' '}
-                <Link to="/seller/signup" className="text-blue-600 font-medium hover:text-blue-700 transition-colors">
-                  {t('seller.signUpLink')}
+                계정이 없으신가요?{' '}
+                <Link to="/seller/signup" className="text-[#FF0033] font-medium hover:text-[#cc0029] transition-colors">
+                  셀러 등록
                 </Link>
               </p>
             </div>

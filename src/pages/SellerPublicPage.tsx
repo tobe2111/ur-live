@@ -367,7 +367,7 @@ export default function SellerPublicPage() {
                     return (
                       <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-44 text-left active:scale-[0.97]">
                         <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1A1A1A]">
-                          {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover" />}
+                          {p.image_url && <img src={p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />}
                           {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">-{disc}%</span>}
                           {isAchieved && <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{t('seller.publicPage.achieved')}</span>}
                         </div>
@@ -471,7 +471,7 @@ export default function SellerPublicPage() {
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-[#121212] rounded-xl text-left active:scale-[0.98]">
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-200 shrink-0">
-                      {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover" />}
+                      {p.image_url && <img src={p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-bold ${T.text} line-clamp-1`}>{p.name}</p>

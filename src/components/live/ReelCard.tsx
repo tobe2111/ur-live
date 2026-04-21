@@ -282,6 +282,9 @@ export default function ReelCard({
   // Donation effects
   const [donationEffects, setDonationEffects] = useState<Array<{ id: string; donorName: string; amount: number; message: string }>>([])
 
+  // View tracking cleanup (component-local, avoid global collision)
+  const viewTrackCleanupRef = useRef<(() => void) | null>(null)
+
   // ── 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) ──
   
   // Handle null product case
@@ -544,8 +547,7 @@ export default function ReelCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, action: 'join', deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop' }),
       }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
-      // @ts-ignore - store cleanup on ref-like closure
-      ;(window as any).__viewTrackCleanup__ = () => {
+      viewTrackCleanupRef.current = () => {
         clearInterval(heartbeatInterval)
         fetch(`/api/live/${stream.id}/view`, {
           method: 'POST',
@@ -556,12 +558,9 @@ export default function ReelCard({
     }, 2000)
     return () => {
       clearTimeout(joinTimer)
-      // @ts-ignore
-      const cleanup = (window as any).__viewTrackCleanup__
-      if (typeof cleanup === 'function') {
-        cleanup()
-        // @ts-ignore
-        delete (window as any).__viewTrackCleanup__
+      if (viewTrackCleanupRef.current) {
+        viewTrackCleanupRef.current()
+        viewTrackCleanupRef.current = null
       }
     }
   }, [isActive, stream.id])

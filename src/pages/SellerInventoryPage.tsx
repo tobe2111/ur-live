@@ -349,7 +349,7 @@ export default function SellerInventoryPage() {
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">{selectedProduct.name}</h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+              <button onClick={() => setShowModal(false)} aria-label={t('common.close')} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
             </div>
             <div className="p-5 space-y-4">
               {/* 바코드 표시 + 다운로드/인쇄 */}

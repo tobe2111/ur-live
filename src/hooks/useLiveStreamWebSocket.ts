@@ -161,6 +161,11 @@ export function useLiveStreamWebSocket(
         setIsConnected(true)
         setError(null)
         reconnectAttemptsRef.current = 0
+        // WS 복구 시 폴링 중이었다면 중단
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = null
+        }
         fetchInitialMessages()
       }
 

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import api from '@/lib/api'
 
@@ -123,6 +123,15 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
     reset()
     onClose()
   }
+
+  useEffect(() => {
+    if (!open) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setResult(null)

@@ -60,7 +60,7 @@ function RecentlyViewed() {
         {items.map(p => (
           <div key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-28 cursor-pointer">
             <div className="aspect-square bg-[#1A1A1A] rounded-xl overflow-hidden">
-              {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" />}
+              {p.image && <img src={p.image} alt="" loading="lazy" className="w-full h-full object-cover" />}
             </div>
             <p className="text-xs text-gray-300 mt-1.5 truncate">{p.name}</p>
             <p className="text-xs font-bold text-white">{p.price?.toLocaleString()}원</p>
@@ -259,7 +259,7 @@ export default function MainHomePage() {
               <button key={m.id} onClick={() => navigate(`/products/${m.id}`)} className="w-full flex items-center gap-3 rounded-xl p-2.5 text-left bg-[#0B0B0B] border border-[#151515]">
                 <span className="text-[20px] font-black w-[22px] shrink-0" style={{ color: i < 3 ? '#FBBF24' : '#6B7280', letterSpacing: '-0.03em' }}>{i + 1}</span>
                 <div className="rounded-lg overflow-hidden shrink-0 relative w-[68px] h-[68px] bg-[#1A1A1A]">
-                  {m.image_url && <img src={m.image_url} alt="" className="w-full h-full object-cover" />}
+                  {m.image_url && <img src={m.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1 mb-1">
@@ -301,7 +301,7 @@ export default function MainHomePage() {
               return (
                 <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] text-left active:scale-[0.98] transition-transform">
                   <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-[#1A1A1A]">
-                    {thumb && <img src={thumb} alt="" className="w-full h-full object-cover" />}
+                    {thumb && <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 35%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
                       <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
@@ -348,7 +348,7 @@ export default function MainHomePage() {
               return (
                 <div key={s.id} className="shrink-0 w-[170px] text-left">
                   <div onClick={() => navigate(`/live/${s.id}`)} className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1A1A1A] cursor-pointer">
-                    {thumb && <img src={thumb} alt="" className="w-full h-full object-cover" />}
+                    {thumb && <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-500 px-2 py-0.5 rounded-md">
                       <Clock className="h-2.5 w-2.5 text-white" />
@@ -386,7 +386,7 @@ export default function MainHomePage() {
               return (
                 <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[150px] text-left">
                   <div className="relative rounded-xl overflow-hidden bg-[#1A1A1A]" style={{ aspectRatio: '16/9' }}>
-                    {thumb && <img src={thumb} alt="" className="w-full h-full object-cover brightness-[0.85]" />}
+                    {thumb && <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover brightness-[0.85]" />}
                     <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
                       <Play className="h-2.5 w-2.5 text-white" />
                       <span className="text-[9px] font-bold text-white">다시보기</span>
@@ -430,7 +430,7 @@ export default function MainHomePage() {
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative">
                     <div className="relative rounded-lg overflow-hidden aspect-square bg-[#1A1A1A]">
-                      {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover" />}
+                      {p.image_url && <img src={p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />}
                       <span className="absolute top-1.5 left-1.5 rounded flex items-center justify-center w-[22px] h-[22px] bg-[#EF4444] text-[11px] font-black text-white">{i + 1}</span>
                     </div>
                     <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
@@ -454,7 +454,7 @@ export default function MainHomePage() {
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left">
                     <div className="relative rounded-lg overflow-hidden aspect-square bg-[#1A1A1A]">
-                      {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover" />}
+                      {p.image_url && <img src={p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />}
                       {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
                     </div>
                     <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>

@@ -1,5 +1,5 @@
 import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react'
-import { ReactNode } from 'react'
+import { ReactNode, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
 interface ModalProps {
@@ -23,6 +23,15 @@ export function CustomModal({
   type = 'alert',
   maxWidth = 'sm'
 }: ModalProps) {
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   const isConfirm = type === 'confirm'

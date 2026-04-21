@@ -330,6 +330,7 @@ export default function MyOrdersPage() {
               <h3 className="text-lg font-semibold text-[#1d1d1f]">주문 상세</h3>
               <button
                 onClick={() => setSelectedOrder(null)}
+                aria-label="닫기"
                 className="text-[#6e6e73] hover:text-[#1d1d1f]"
               >
                 ✕
