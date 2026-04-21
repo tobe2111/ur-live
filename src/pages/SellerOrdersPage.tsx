@@ -411,7 +411,7 @@ export default function SellerOrdersPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="ALL">{t('common.all')}</option>
                 <option value="PAY_COMPLETE">{t('seller.statusDone')}</option>
@@ -434,7 +434,7 @@ export default function SellerOrdersPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('seller.searchPlaceholder')}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -448,7 +448,7 @@ export default function SellerOrdersPage() {
                 type="date"
                 value={dateFilter.start}
                 onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
@@ -460,7 +460,7 @@ export default function SellerOrdersPage() {
                 type="date"
                 value={dateFilter.end}
                 onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
@@ -828,7 +828,7 @@ export default function SellerOrdersPage() {
                           value={trackingForm.courier}
                           onChange={(e) => setTrackingForm({ ...trackingForm, courier: e.target.value })}
                           required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                         >
                           <option value="">{t('seller.selectCourier')}</option>
                           <option value="CJ대한통운">CJ대한통운</option>
@@ -865,7 +865,7 @@ export default function SellerOrdersPage() {
                           onChange={(e) => setTrackingForm({ ...trackingForm, tracking_number: e.target.value })}
                           placeholder={t('seller.trackingNumberPlaceholder')}
                           required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       <Button

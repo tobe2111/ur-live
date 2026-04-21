@@ -308,7 +308,7 @@ export default function SellerBusinessInfoPage() {
               maxLength={12}
               required
               disabled={businessInfo?.is_verified && !editMode}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
             <p className="text-xs text-gray-500 mt-1">{t('seller.businessNumberHint')}</p>
           </div>
@@ -325,7 +325,7 @@ export default function SellerBusinessInfoPage() {
               placeholder={t('seller.businessNamePlaceholder')}
               required
               disabled={businessInfo?.is_verified && !editMode}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -341,7 +341,7 @@ export default function SellerBusinessInfoPage() {
               placeholder={t('seller.representativePlaceholder')}
               required
               disabled={businessInfo?.is_verified && !editMode}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -357,7 +357,7 @@ export default function SellerBusinessInfoPage() {
                 onChange={handleChange}
                 placeholder={t('seller.businessTypePlaceholder')}
                 disabled={businessInfo?.is_verified && !editMode}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -371,7 +371,7 @@ export default function SellerBusinessInfoPage() {
                 onChange={handleChange}
                 placeholder={t('seller.businessCategoryPlaceholder')}
                 disabled={businessInfo?.is_verified && !editMode}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -391,7 +391,7 @@ export default function SellerBusinessInfoPage() {
                   required
                   readOnly
                   disabled={businessInfo?.is_verified && !editMode}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
                 {(!businessInfo?.is_verified || editMode) && (
                   <Button
@@ -413,7 +413,7 @@ export default function SellerBusinessInfoPage() {
                 required
                 readOnly
                 disabled={businessInfo?.is_verified && !editMode}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
               <input
                 type="text"
@@ -422,7 +422,7 @@ export default function SellerBusinessInfoPage() {
                 onChange={handleChange}
                 placeholder={t('seller.detailAddress')}
                 disabled={businessInfo?.is_verified && !editMode}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -441,7 +441,7 @@ export default function SellerBusinessInfoPage() {
                 maxLength={13}
                 required
                 disabled={businessInfo?.is_verified && !editMode}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
               <p className="text-xs text-gray-500 mt-1">{t('seller.phoneNumberHint')}</p>
             </div>
@@ -457,7 +457,7 @@ export default function SellerBusinessInfoPage() {
                 placeholder="business@example.com"
                 required
                 disabled={businessInfo?.is_verified && !editMode}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>

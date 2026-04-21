@@ -378,7 +378,7 @@ export default function AdminProductsPage() {
                           type="number"
                           defaultValue={product.sold_count || 0}
                           min={0}
-                          className="w-16 px-1.5 py-1 text-xs text-center border border-gray-200 rounded-lg focus:border-blue-400 focus:outline-none"
+                          className="w-16 px-1.5 py-1 text-xs text-center border border-gray-200 rounded-lg text-gray-900 focus:border-blue-400 focus:outline-none"
                           onBlur={async (e) => {
                             const val = Number(e.target.value)
                             if (val === (product.sold_count || 0)) return
@@ -468,7 +468,7 @@ export default function AdminProductsPage() {
                           value={adminMemoMap[req.id] || ''}
                           onChange={e => setAdminMemoMap(prev => ({ ...prev, [req.id]: e.target.value }))}
                           rows={2}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
                         />
                         <div className="flex gap-2">
                           <button
