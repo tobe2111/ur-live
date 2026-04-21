@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react'
+import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
@@ -273,10 +273,17 @@ export default function CheckoutPage() {
 
     setUserId(uid)
 
+    // ✅ UX C1 FIX: CartPage에서 선택된 상품만 navigate state로 전달받음
+    const fromCart = (location.state as { fromCart?: boolean } | null)?.fromCart
+    const cartItemsFromState = (location.state as { cartItems?: CartItem[] } | null)?.cartItems
+
     const loadData = async () => {
       try {
-        // 바로구매 모드: navigate state에서 상품 정보 사용 (장바구니 API 미호출)
-        if (isDirectPurchase && directPurchaseItems) {
+        // CartPage에서 선택된 아이템만 결제 (전체 /api/cart 재조회 금지)
+        if (fromCart && Array.isArray(cartItemsFromState) && cartItemsFromState.length > 0) {
+          setCartItems(cartItemsFromState)
+        } else if (isDirectPurchase && directPurchaseItems) {
+          // 바로구매 모드: navigate state에서 상품 정보 사용 (장바구니 API 미호출)
           setCartItems(directPurchaseItems)
         } else {
           // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
@@ -433,7 +440,16 @@ export default function CheckoutPage() {
   // 식사권 여부 확인
   const isMealVoucher = cartItems.some(item => (item as CartItem & { category?: string }).category === 'meal_voucher')
 
+  // ✅ UX H7 FIX: 더블 서브밋 방지 ref 가드
+  const isSubmittingRef = useRef(false)
+
   const handleBeforePayment = async (orderId: string): Promise<void> => {
+    // ✅ UX H7 FIX: 이미 진행 중이면 중복 호출 차단
+    if (isSubmittingRef.current) {
+      throw new Error('이미 결제가 진행 중입니다')
+    }
+    isSubmittingRef.current = true
+    try {
     if (!isMealVoucher && !selectedAddress) {
       setShowAddressModal(true)
       throw new Error('배송지를 선택해주세요')
@@ -509,6 +525,10 @@ export default function CheckoutPage() {
           captureError(couponErr as Error, { context: 'CheckoutPage.couponUse', couponId })
         }
       }
+    }
+    } finally {
+      // ✅ UX H7 FIX: 성공/실패와 무관하게 가드 해제
+      isSubmittingRef.current = false
     }
   }
 

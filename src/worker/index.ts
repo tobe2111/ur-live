@@ -62,6 +62,7 @@ import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/
 import { requireAdmin } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
 import { rateLimit } from './middleware/rate-limit';
+import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1154,13 +1155,17 @@ import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-s
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    // Run existing cleanup tasks (every 5 minutes)
-    ctx.waitUntil(handleScheduled(env));
+    const cron = event.cron;
 
-    // Auto-settlement: runs on every trigger but only processes vouchers 7+ days old
-    ctx.waitUntil(handleAutoSettlement(env));
+    // Every 5 minutes: short cleanup tasks
+    if (cron === '*/5 * * * *') {
+      ctx.waitUntil(handleScheduled(env));
+    }
 
-    // Auto-refund expired vouchers: marks unused expired vouchers and refunds deal points
-    ctx.waitUntil(handleExpiredVoucherRefunds(env));
+    // Daily 18:00 UTC (KST 03:00): heavy tasks (settlement + expired-voucher refund)
+    if (cron === '0 18 * * *') {
+      ctx.waitUntil(handleAutoSettlement(env));
+      ctx.waitUntil(handleExpiredVoucherRefunds(env));
+    }
   },
 };

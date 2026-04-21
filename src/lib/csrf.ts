@@ -17,7 +17,7 @@ export function generateCsrfToken(): string {
   // 32바이트 랜덤 데이터 생성 (256비트)
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
-  
+
   // Base64 URL-safe 인코딩
   return btoa(String.fromCharCode(...array))
     .replace(/\+/g, '-')
@@ -25,30 +25,40 @@ export function generateCsrfToken(): string {
     .replace(/=/g, '');
 }
 
+/** Constant-time string comparison to avoid timing leaks on token check. */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 /**
- * CSRF 토큰 검증
+ * CSRF 토큰 검증 (Double Submit Cookie)
+ * 헤더와 쿠키의 토큰이 constant-time으로 정확히 일치해야 통과.
  */
 export function verifyCsrfToken(
   tokenFromHeader: string | undefined,
   tokenFromCookie: string | undefined
 ): boolean {
-  // 토큰이 없으면 실패
   if (!tokenFromHeader || !tokenFromCookie) {
     return false;
   }
-
-  // Double Submit Cookie 패턴: 헤더와 쿠키의 토큰이 일치해야 함
-  return tokenFromHeader === tokenFromCookie;
+  return timingSafeEqualStr(tokenFromHeader, tokenFromCookie);
 }
 
 /**
  * CSRF 토큰을 쿠키에 설정
+ *
+ * ⚠️ HttpOnly 금지: Double Submit Cookie 패턴은 JS가 쿠키를 읽어
+ *    X-CSRF-Token 헤더에 복사해야 동작함. HttpOnly면 JS가 못 읽어서 무용지물.
+ *    대신 SameSite=Strict + Secure 로 방어.
  */
 export function setCsrfCookie(c: Context, token: string): void {
-  // SameSite=Strict for CSRF protection
-  // Secure flag는 HTTPS에서만 활성화
-  c.header('Set-Cookie', 
-    `csrf_token=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400${
+  c.header('Set-Cookie',
+    `csrf_token=${token}; Path=/; SameSite=Strict; Max-Age=86400${
       c.req.url.startsWith('https') ? '; Secure' : ''
     }`
   );
@@ -88,6 +98,14 @@ export function csrfProtection(options?: {
 
     // 특정 경로는 건너뛰기
     if (skipPaths.some(pattern => pattern.test(path))) {
+      return next();
+    }
+
+    // ── Bearer 토큰 인증 요청은 CSRF 불필요 ────────────────────
+    // 공격자가 cross-origin에서 Authorization 헤더를 못 세팅하므로
+    // CSRF 위협이 성립하지 않음. 쿠키 기반 인증일 때만 검증.
+    const authHeader = c.req.header('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
       return next();
     }
 

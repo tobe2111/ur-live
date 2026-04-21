@@ -8,6 +8,7 @@
 // ============================================================
 
 import { Hono } from 'hono';
+import type { D1Database } from '@cloudflare/workers-types';
 import type { Env } from '../types/env';
 import { OrderRepository } from '../repositories/order.repository';
 import { WebhookEventRepository } from '../repositories/webhook.repository';
@@ -160,8 +161,21 @@ webhookRouter.post('/', async (c) => {
     if (isProduction || (webhookSecret && webhookSecret.length > 0)) {
       if (!webhookSecret) {
         console.error('[WEBHOOK] ❌ TOSS_WEBHOOK_SECRET not configured in production');
-        // Return 401 so Toss retries (misconfig may be transient) and legitimate deliveries are not silently lost
-        return c.json({ received: false, status: 'rejected', error: 'webhook_secret_not_configured' }, 401);
+        // ✅ FIX (Cron C4): Return 200 (not 401) so Toss does not enter a retry storm
+        // for a misconfiguration that Toss retries cannot fix. Alert via Discord so
+        // ops can set the secret. The webhook event is NOT processed.
+        const discordUrl = (c.env as any).DISCORD_WEBHOOK_URL;
+        if (discordUrl) {
+          await fetch(discordUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: '🚨 TOSS_WEBHOOK_SECRET not configured — webhook delivery dropped. Set the secret immediately.',
+            }),
+            signal: AbortSignal.timeout(5000),
+          }).catch(() => {});
+        }
+        return c.json({ success: false, error: 'webhook_secret_not_configured', processed: false }, 200);
       }
       const signatureHeader = c.req.header('Toss-Signature');
       const isValid = await verifyTossSignature(rawBody, signatureHeader, webhookSecret);
@@ -230,7 +244,7 @@ webhookRouter.post('/', async (c) => {
         break;
 
       case 'payment.cancelled':
-        await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env);
+        await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
         break;
 
       case 'payment.failed':
@@ -346,7 +360,8 @@ async function handlePaymentCancelled(
   orderRepo: OrderRepository,
   data: TossWebhookPayload['data'],
   orderNumber: string,
-  env: Env
+  env: Env,
+  DB: D1Database
 ): Promise<void> {
   console.log('[WEBHOOK] PAYMENT_CANCELLED', {
     orderNumber,
@@ -355,21 +370,72 @@ async function handlePaymentCancelled(
 
   const orders = await orderRepo.findByOrderNumber(orderNumber);
 
-  // ✅ SCHEMA FIX: Removed webhook_processed_at / webhook_event_id (not in schema)
-  // Update all orders to CANCELLED
-  await orderRepo.updateStatus(orderNumber, 'CANCELLED', {
-    cancelled_at: data.cancelledAt ?? new Date().toISOString(),
-    cancel_reason: data.failureMessage ?? 'Payment cancelled',
-  });
+  // ✅ SECURITY FIX (Payment C3): Reject cancel transition from paid/shipping/delivered.
+  // A cancel webhook should only apply to orders that never completed payment
+  // (PENDING / AWAITING_PAYMENT). Orders already PAID/DONE/SHIPPING/DELIVERED must
+  // go through the refund API — otherwise an attacker who can forge a cancel
+  // webhook could reverse status + restore stock while keeping the goods.
+  const paidTerminalStatuses = ['PAID', 'DONE', 'SHIPPING', 'DELIVERED'];
+  const hasPaidOrder = orders.some(o =>
+    paidTerminalStatuses.includes((o.status || '').toUpperCase())
+  );
+  if (hasPaidOrder) {
+    console.warn('[WEBHOOK] CANCEL_REJECTED_PAID_ORDER', {
+      orderNumber,
+      statuses: orders.map(o => o.status),
+    });
+    return; // skip — do not update status or restore stock
+  }
 
-  // Restore stock for each order.
-  // reserveStock() is called at order-creation time (PENDING), so any order that
-  // hasn't already been fully restored needs its stock returned here.
+  // ✅ CONCURRENCY FIX (Cron C2): atomically CAS each order to CANCELLED to prevent
+  // double stock-restore (webhook + scheduled-cleanup may race). Only restore
+  // stock for orders that actually transitioned in THIS call.
+  const cancelledAt = data.cancelledAt ?? new Date().toISOString();
+  const cancelReason = data.failureMessage ?? 'Payment cancelled';
   for (const order of orders) {
-    if (!['CANCELLED', 'FAILED', 'REFUNDED'].includes(order.status)) {
-      await orderRepo.restoreStock(order.id);
-      console.log('[WEBHOOK] STOCK_RESTORED', { orderId: order.id, sellerId: order.seller_id });
+    const casResult = await DB.prepare(
+      `UPDATE orders
+       SET status = 'CANCELLED', cancelled_at = ?, cancel_reason = ?, updated_at = datetime('now')
+       WHERE id = ?
+         AND status NOT IN ('CANCELLED', 'REFUNDED', 'FAILED')`
+    ).bind(cancelledAt, cancelReason, order.id).run();
+
+    if ((casResult.meta?.changes ?? 0) === 0) {
+      // Already cancelled/refunded/failed by another path — skip stock restore
+      console.log('[WEBHOOK] STOCK_RESTORE_SKIPPED_ALREADY_TRANSITIONED', {
+        orderId: order.id,
+      });
+      continue;
     }
+
+    // Only restore stock when we actually transitioned the status
+    await orderRepo.restoreStock(order.id);
+    console.log('[WEBHOOK] STOCK_RESTORED', { orderId: order.id, sellerId: order.seller_id });
+  }
+
+  // ✅ SECURITY FIX (Payment C7): Reverse any referral commissions granted for
+  // these orders so a cancel/refund cannot leave the inviter with free deals.
+  // Best-effort — tables may not exist in every environment.
+  try {
+    for (const order of orders) {
+      const orderId = order.id;
+      await DB.prepare(`
+        UPDATE referral_commissions
+        SET status = 'withdrawn', withdrawn_at = datetime('now')
+        WHERE order_id = ? AND status = 'granted'
+      `).bind(orderId).run().catch(() => {});
+      // Debit the deal_balance (best-effort — column may not exist)
+      const commissions = await DB.prepare(
+        "SELECT user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'withdrawn'"
+      ).bind(orderId).all<{ user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ user_id: string; amount: number }> }));
+      for (const co of (commissions.results || [])) {
+        await DB.prepare(
+          'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
+        ).bind(co.amount, co.user_id).run().catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.warn('[WEBHOOK] Commission reversal skipped:', e);
   }
 
   // Send order cancellation notification

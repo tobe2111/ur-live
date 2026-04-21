@@ -98,17 +98,15 @@ export default function MainHomePage() {
   const [cartCount, setCartCount] = useState(0)
 
   useEffect(() => {
-    // Load cart count
+    // ✅ UX C2 FIX: API 응답은 { success, data: { items: [...], summary } } 구조
     axios.get('/api/cart').then(res => {
-      if (res.data.success && Array.isArray(res.data.data)) {
-        setCartCount(res.data.data.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0))
+      if (res.data?.success) {
+        const items = res.data.data?.items || (Array.isArray(res.data.data) ? res.data.data : [])
+        const count = items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0)
+        setCartCount(count)
       }
     }).catch(() => {
-      // Fallback to localStorage
-      try {
-        const cached = localStorage.getItem('hasCartItems')
-        if (cached) setCartCount(parseInt(cached) || 0)
-      } catch {}
+      setCartCount(0)
     })
   }, [])
 

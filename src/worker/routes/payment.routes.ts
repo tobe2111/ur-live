@@ -82,6 +82,17 @@ paymentsRouter.post('/confirm', async (c) => {
       return c.json({ success: true, data: { orders } });
     }
 
+    // ✅ SECURITY FIX (Payment C4): Reject confirm when any order is already
+    // cancelled/refunded/failed. Without this guard an attacker who cancelled
+    // an order could still re-confirm it on Toss after the fact and bypass
+    // the refund path.
+    const forbidden = orders.filter(o =>
+      ['CANCELLED', 'REFUNDED', 'FAILED'].includes((o.status || '').toUpperCase())
+    );
+    if (forbidden.length > 0) {
+      return c.json({ success: false, error: '이미 취소/환불된 주문입니다.' }, 409);
+    }
+
     // Security: verify user owns these orders (타입 안전 비교: DB는 INTEGER, auth는 STRING)
     const unauthorized = orders.find(o => String(o.user_id) !== String(userId));
     if (unauthorized) {

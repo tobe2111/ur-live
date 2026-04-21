@@ -118,6 +118,18 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
   const userId = String(user.id); // H8: 항상 문자열로 통일
   const orderId = `DEAL-${userId}-${Date.now()}`;
 
+  // ✅ SECURITY FIX (H5): Reject if this user already has a pending charge
+  // within the last hour. Prevents creating many unconfirmed pending rows that
+  // could later be abused for duplicate credit.
+  try {
+    const existing = await DB.prepare(
+      "SELECT id FROM point_transactions WHERE user_id = ? AND type = 'charge' AND payment_key IS NULL AND created_at > datetime('now', '-1 hour')"
+    ).bind(userId).first<{ id: number }>();
+    if (existing) {
+      return c.json({ success: false, error: '이미 진행 중인 충전이 있습니다. 잠시 후 다시 시도해주세요.' }, 409);
+    }
+  } catch { /* column/shape fallback: skip guard */ }
+
   // pending 트랜잭션 기록
   await DB.prepare(`
     INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)

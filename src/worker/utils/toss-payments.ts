@@ -74,6 +74,7 @@ export async function tossCancelPayment(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10000), // 10s timeout (critical path)
     });
   } catch (networkErr) {
     return {

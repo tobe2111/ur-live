@@ -9,7 +9,7 @@ import {
   Trash2,
   ChevronLeft,
 } from 'lucide-react'
-import { getUserId } from '@/utils/auth'
+import { getUserIdSync } from '@/utils/auth'
 import { CustomModal } from '@/components/CustomModal'
 import { toast } from '@/hooks/useToast'
 
@@ -45,7 +45,9 @@ export default function AddressManagementPage() {
   const [formData, setFormData] = useState(EMPTY_FORM)
 
   useEffect(() => {
-    const userId = getUserId()
+    // ✅ UX C4 FIX: getUserId()는 Promise를 반환 (truthy check always passes).
+    // 동기 체크를 위해 getUserIdSync() 사용.
+    const userId = getUserIdSync()
     if (!userId) {
       toast.info('로그인이 필요합니다.')
       navigate('/login')

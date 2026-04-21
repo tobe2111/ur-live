@@ -21,7 +21,9 @@ export async function handleScheduled(env: Env) {
   } catch (e) { console.error('[Cron] stale_streams error:', e) }
 
   // ── 2. 미결제 주문: 24시간 후 자동 취소 + 재고 복구 ──
-  // 동시 실행 방지: UPDATE RETURNING으로 원자적으로 취소 후 재고 복구
+  // ✅ CONCURRENCY FIX (Cron C2): UPDATE RETURNING은 원자적으로 PENDING → CANCELLED
+  // 전환된 행만 반환하므로 웹훅과의 경쟁에서도 재고 복구는 한 번만 실행됨.
+  // 추가 방어: 재고 복구한 order_items를 CANCELLED로 표시해서 이중 복구 차단.
   try {
     const { results: cancelledOrders } = await DB.prepare(`
       UPDATE orders
@@ -34,14 +36,18 @@ export async function handleScheduled(env: Env) {
     if (cancelledOrders && cancelledOrders.length > 0) {
       const orderIds = cancelledOrders.map(o => o.id);
       for (const orderId of orderIds) {
+        // Only restore items whose status isn't already CANCELLED (double-restore guard)
         const { results: items } = await DB.prepare(
-          'SELECT product_id, quantity FROM order_items WHERE order_id = ?'
+          "SELECT product_id, quantity FROM order_items WHERE order_id = ? AND (status IS NULL OR status != 'CANCELLED')"
         ).bind(orderId).all<{ product_id: number; quantity: number }>();
         if (items) {
           for (const item of items) {
             await DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
               .bind(item.quantity, item.product_id).run();
           }
+          // Mark items as cancelled so a subsequent run won't double-restore
+          await DB.prepare("UPDATE order_items SET status = 'CANCELLED' WHERE order_id = ?")
+            .bind(orderId).run().catch(() => {});
         }
       }
       results.pending_orders_cancelled = cancelledOrders.length;
@@ -135,6 +141,8 @@ export async function handleScheduled(env: Env) {
   // ── 10. 자동 구매확정: 배송 14일 경과 ──
   // 프로덕션 DB는 대문자 상태값 사용 ('SHIPPING', 'DELIVERED').
   // settlement_status는 'completed' 사용 (정산 자동화 스크립트와 일치).
+  // ✅ FIX (Cron C3): settlement_status가 이미 completed/paid인 행은 건너뛰어
+  // 이미 정산된 주문을 재처리하지 않도록 필터링.
   try {
     const { meta } = await DB.prepare(`
       UPDATE orders
@@ -142,6 +150,7 @@ export async function handleScheduled(env: Env) {
           settlement_status = 'completed', updated_at = datetime('now')
       WHERE status = 'SHIPPING'
         AND shipped_at < datetime('now', '-14 days')
+        AND (settlement_status IS NULL OR settlement_status = 'pending')
     `).run();
     results.auto_confirmed = meta.changes ?? 0;
   } catch (e) { console.error('[Cron] auto_confirm error:', e) }
