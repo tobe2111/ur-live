@@ -63,6 +63,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         onChange={e => setContent(e.target.value)}
         placeholder="상품은 어떠셨나요? 최소 10자 이상 작성해주세요."
         rows={3}
+        maxLength={2000}
         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 resize-none focus:outline-none focus:border-blue-400"
       />
       <div className="flex gap-2 mt-3">

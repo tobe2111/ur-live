@@ -41,29 +41,49 @@ export async function sendEmail(
   }
   
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: fromAddress,
-        to,
-        subject,
-        html
-      })
-    })
-    
+    // ✅ FIX (H8): Retry up to 2 times with exponential backoff on transient failures.
+    let response: Response | undefined;
+    let lastError: unknown;
+    const maxRetries = 2;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: fromAddress,
+            to,
+            subject,
+            html
+          }),
+          signal: AbortSignal.timeout(30000) // 30s timeout
+        })
+        if (response.ok) break;
+        // Retry on 5xx; don't retry on 4xx
+        if (response.status < 500 || attempt === maxRetries) break;
+      } catch (e) {
+        lastError = e;
+        if (attempt === maxRetries) break;
+      }
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+    }
+
+    if (!response) {
+      return { success: false, error: (lastError as Error)?.message || 'Network error' }
+    }
+
     const data = await response.json() as any
-    
+
     if (!response.ok) {
       console.error('[Email] Failed to send:', data)
       return { success: false, error: data.message || 'Failed to send email' }
     }
-    
+
     return { success: true }
-    
+
   } catch (error) {
     console.error('[Email] Error:', error)
     return { success: false, error: (error as Error).message }

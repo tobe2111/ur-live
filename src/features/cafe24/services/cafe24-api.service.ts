@@ -54,6 +54,7 @@ export async function exchangeCodeForTokens(
       code,
       redirect_uri: redirectUri,
     }).toString(),
+    signal: AbortSignal.timeout(20000),
   });
 
   if (!res.ok) {
@@ -84,6 +85,7 @@ export async function refreshAccessToken(
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
     }).toString(),
+    signal: AbortSignal.timeout(20000),
   });
 
   if (!res.ok) {
@@ -187,6 +189,7 @@ export async function fetchProducts(
       'Content-Type': 'application/json',
       'X-Cafe24-Api-Version': '2024-06-01',
     },
+    signal: AbortSignal.timeout(20000),
   });
 
   if (!res.ok) {

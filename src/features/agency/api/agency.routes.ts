@@ -22,7 +22,7 @@ import { cors } from 'hono/cors'
 import { sign, verify } from 'hono/jwt'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Context, Next } from 'hono'
-import { verifyPassword, hashPassword } from '@/lib/password'
+import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password'
 import { sendEmail } from '@/services/email'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
@@ -151,8 +151,9 @@ app.post('/register', cors(), async (c) => {
   if (!name || !contact_name || !email || !password) {
     return c.json({ success: false, error: '에이전시명, 담당자명, 이메일, 비밀번호는 필수입니다.' }, 400)
   }
-  if (password.length < 8) {
-    return c.json({ success: false, error: '비밀번호는 8자 이상이어야 합니다.' }, 400)
+  const pwCheck = validatePasswordComplexity(password)
+  if (!pwCheck.ok) {
+    return c.json({ success: false, error: pwCheck.error }, 400)
   }
 
   const existing = await c.env.DB.prepare('SELECT id FROM agencies WHERE email = ?').bind(email).first()
