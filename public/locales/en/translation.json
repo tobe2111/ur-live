@@ -1123,7 +1123,61 @@
     "daysFilter90": "90 days",
     "salesUnit": "K",
     "ordersUnit": "orders",
-    "persons": "persons"
+    "persons": "persons",
+    "coupons": {
+      "title": "Coupon Management",
+      "create": "Create Coupon",
+      "createBtn": "Create",
+      "fillRequired": "Please enter code, name, and discount value",
+      "created": "Coupon created",
+      "createFailed": "Failed to create coupon",
+      "confirmDeactivate": "Do you want to deactivate this coupon?",
+      "deleteFailed": "Failed to delete coupon.",
+      "codePlaceholder": "Coupon code (e.g., SUMMER2026)",
+      "namePlaceholder": "Coupon name",
+      "fixedDiscount": "Fixed discount",
+      "percentDiscount": "Percent discount",
+      "discountAmountPlaceholder": "Discount amount (KRW)",
+      "discountRatePlaceholder": "Discount rate (%)",
+      "minOrderAmount": "Minimum order amount",
+      "maxDiscountPlaceholder": "Max discount (KRW)",
+      "totalCountPlaceholder": "Issue quantity",
+      "empty": "No coupons created yet",
+      "percentOff": "{{value}}% off",
+      "fixedOff": "{{value}} KRW off",
+      "minOrder": "{{amount}} KRW or more",
+      "usage": "Used {{used}}/{{total}}"
+    },
+    "reviews": {
+      "title": "Review Management",
+      "empty": "No reviews received",
+      "customer": "Customer",
+      "sellerReply": "Seller Reply",
+      "replyPlaceholder": "Write a reply...",
+      "replySubmitted": "Reply has been submitted",
+      "replyFailed": "Failed to submit reply",
+      "writeReply": "Write Reply"
+    },
+    "groupBuy": {
+      "active": "In Progress",
+      "achieved": "Goal Reached",
+      "totalParticipants": "Total Participants",
+      "noVouchers": "No meal vouchers registered",
+      "noVouchersDesc": "Register a meal voucher and start a group buy",
+      "registerVoucher": "Register Meal Voucher",
+      "closed": "Closed",
+      "participantCount": "{{current}}/{{target}} people",
+      "deadline": "Deadline",
+      "storeOwnerStatsLink": "Store owner stats link",
+      "linkCopied": "Link copied! Share it with the store owner."
+    },
+    "liveChat": {
+      "title": "Live Chat",
+      "messageCount": "{{count}} messages",
+      "empty": "Messages will appear here when the chat starts",
+      "inputPlaceholder": "Type a message...",
+      "seller": "Seller"
+    }
   },
   "nav": {
     "home": "Home",

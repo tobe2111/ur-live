@@ -1123,7 +1123,61 @@
     "daysFilter90": "90天",
     "salesUnit": "万",
     "ordersUnit": "单",
-    "persons": "人"
+    "persons": "人",
+    "coupons": {
+      "title": "优惠券管理",
+      "create": "创建优惠券",
+      "createBtn": "创建",
+      "fillRequired": "请输入代码、名称和折扣值",
+      "created": "优惠券已创建",
+      "createFailed": "创建失败",
+      "confirmDeactivate": "确定要停用此优惠券吗？",
+      "deleteFailed": "优惠券删除失败。",
+      "codePlaceholder": "优惠券代码（例：SUMMER2026）",
+      "namePlaceholder": "优惠券名称",
+      "fixedDiscount": "固定折扣",
+      "percentDiscount": "百分比折扣",
+      "discountAmountPlaceholder": "折扣金额（元）",
+      "discountRatePlaceholder": "折扣率（%）",
+      "minOrderAmount": "最低订单金额",
+      "maxDiscountPlaceholder": "最大折扣（元）",
+      "totalCountPlaceholder": "发放数量",
+      "empty": "暂无优惠券",
+      "percentOff": "{{value}}%折扣",
+      "fixedOff": "{{value}}元折扣",
+      "minOrder": "{{amount}}元以上",
+      "usage": "已使用 {{used}}/{{total}}"
+    },
+    "reviews": {
+      "title": "评价管理",
+      "empty": "暂无收到的评价",
+      "customer": "客户",
+      "sellerReply": "卖家回复",
+      "replyPlaceholder": "写回复...",
+      "replySubmitted": "回复已提交",
+      "replyFailed": "回复提交失败",
+      "writeReply": "写回复"
+    },
+    "groupBuy": {
+      "active": "进行中",
+      "achieved": "已达标",
+      "totalParticipants": "全部参与者",
+      "noVouchers": "暂无注册的餐券",
+      "noVouchersDesc": "注册餐券并开始团购",
+      "registerVoucher": "注册餐券",
+      "closed": "已截止",
+      "participantCount": "{{current}}/{{target}}人",
+      "deadline": "截止",
+      "storeOwnerStatsLink": "店主统计链接",
+      "linkCopied": "链接已复制！请分享给店主。"
+    },
+    "liveChat": {
+      "title": "实时聊天",
+      "messageCount": "{{count}}条消息",
+      "empty": "聊天开始后消息将显示在这里",
+      "inputPlaceholder": "输入消息...",
+      "seller": "卖家"
+    }
   },
   "nav": {
     "home": "首页",

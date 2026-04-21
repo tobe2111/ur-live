@@ -41,7 +41,7 @@ export default function SellerMealVoucherNewPage() {
   const token = getSellerToken()
   const headers = { Authorization: `Bearer ${token}` }
 
-  const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865'
+  const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || ''
 
   function selectPlace(place: KakaoPlace) {
     setForm(f => ({

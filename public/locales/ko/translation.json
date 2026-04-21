@@ -1122,7 +1122,61 @@
     "daysFilter90": "90일",
     "salesUnit": "만",
     "ordersUnit": "건",
-    "persons": "명"
+    "persons": "명",
+    "coupons": {
+      "title": "쿠폰 관리",
+      "create": "쿠폰 생성",
+      "createBtn": "생성",
+      "fillRequired": "코드, 이름, 할인값을 입력해주세요",
+      "created": "쿠폰 생성됨",
+      "createFailed": "생성 실패",
+      "confirmDeactivate": "쿠폰을 비활성화하시겠습니까?",
+      "deleteFailed": "쿠폰 삭제에 실패했습니다.",
+      "codePlaceholder": "쿠폰 코드 (예: SUMMER2026)",
+      "namePlaceholder": "쿠폰 이름",
+      "fixedDiscount": "정액 할인",
+      "percentDiscount": "퍼센트 할인",
+      "discountAmountPlaceholder": "할인금액 (원)",
+      "discountRatePlaceholder": "할인율 (%)",
+      "minOrderAmount": "최소 주문금액",
+      "maxDiscountPlaceholder": "최대할인 (원)",
+      "totalCountPlaceholder": "발급 수량",
+      "empty": "생성된 쿠폰이 없습니다",
+      "percentOff": "{{value}}% 할인",
+      "fixedOff": "{{value}}원 할인",
+      "minOrder": "{{amount}}원 이상",
+      "usage": "사용 {{used}}/{{total}}"
+    },
+    "reviews": {
+      "title": "리뷰 관리",
+      "empty": "받은 리뷰가 없습니다",
+      "customer": "고객",
+      "sellerReply": "셀러 답글",
+      "replyPlaceholder": "답글 작성...",
+      "replySubmitted": "답글이 등록되었습니다",
+      "replyFailed": "답글 등록 실패",
+      "writeReply": "답글 작성"
+    },
+    "groupBuy": {
+      "active": "진행 중",
+      "achieved": "달성 완료",
+      "totalParticipants": "전체 참여자",
+      "noVouchers": "등록된 식사권이 없습니다",
+      "noVouchersDesc": "식사권 상품을 등록하고 공동구매를 시작하세요",
+      "registerVoucher": "식사권 등록하기",
+      "closed": "마감",
+      "participantCount": "{{current}}/{{target}}명",
+      "deadline": "마감",
+      "storeOwnerStatsLink": "식당 사장 통계 링크",
+      "linkCopied": "링크 복사됨! 식당 사장에게 공유하세요."
+    },
+    "liveChat": {
+      "title": "실시간 채팅",
+      "messageCount": "{{count}}개 메시지",
+      "empty": "채팅이 시작되면 여기에 표시됩니다",
+      "inputPlaceholder": "메시지 입력...",
+      "seller": "셀러"
+    }
   },
   "nav": {
     "home": "홈",

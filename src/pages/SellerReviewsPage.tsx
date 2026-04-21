@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { Star, MessageCircle, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function SellerReviewsPage() {
+  const { t } = useTranslation()
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [replyId, setReplyId] = useState<number | null>(null)
@@ -21,18 +23,18 @@ export default function SellerReviewsPage() {
     if (!replyText.trim()) return
     try {
       await api.post(`/api/seller/analytics/reviews/${reviewId}/reply`, { reply: replyText.trim() }, getAuthHeaders())
-      toast.success('답글이 등록되었습니다')
+      toast.success(t('seller.reviews.replySubmitted'))
       setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, seller_reply: replyText.trim(), seller_reply_at: new Date().toISOString() } : r))
       setReplyId(null); setReplyText('')
-    } catch { toast.error('답글 등록 실패') }
+    } catch { toast.error(t('seller.reviews.replyFailed')) }
   }
 
   return (
-    <SellerLayout title="리뷰 관리">
+    <SellerLayout title={t('seller.reviews.title')}>
       <div className="p-6">
-        <h1 className="text-xl font-bold text-gray-900 mb-4">리뷰 관리</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-4">{t('seller.reviews.title')}</h1>
         {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div> : reviews.length === 0 ? (
-          <p className="text-center py-12 text-gray-500">받은 리뷰가 없습니다</p>
+          <p className="text-center py-12 text-gray-500">{t('seller.reviews.empty')}</p>
         ) : (
           <div className="space-y-3">
             {reviews.map(r => (
@@ -44,7 +46,7 @@ export default function SellerReviewsPage() {
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
                       ))}
-                      <span className="text-xs text-gray-500 ml-1">{r.user_name || '고객'}</span>
+                      <span className="text-xs text-gray-500 ml-1">{r.user_name || t('seller.reviews.customer')}</span>
                     </div>
                   </div>
                   <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
@@ -52,20 +54,20 @@ export default function SellerReviewsPage() {
                 <p className="text-sm text-gray-700">{r.content}</p>
                 {r.seller_reply ? (
                   <div className="mt-3 bg-blue-50 rounded-lg p-3">
-                    <p className="text-xs text-blue-600 font-medium mb-1">셀러 답글</p>
+                    <p className="text-xs text-blue-600 font-medium mb-1">{t('seller.reviews.sellerReply')}</p>
                     <p className="text-sm text-gray-700">{r.seller_reply}</p>
                   </div>
                 ) : replyId === r.id ? (
                   <div className="mt-3 flex gap-2">
-                    <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="답글 작성..."
+                    <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={t('seller.reviews.replyPlaceholder')}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-                    <button onClick={() => submitReply(r.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold">등록</button>
-                    <button onClick={() => setReplyId(null)} className="px-3 py-2 text-gray-500 text-sm">취소</button>
+                    <button onClick={() => submitReply(r.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold">{t('common.register')}</button>
+                    <button onClick={() => setReplyId(null)} className="px-3 py-2 text-gray-500 text-sm">{t('common.cancel')}</button>
                   </div>
                 ) : (
                   <button onClick={() => { setReplyId(r.id); setReplyText('') }}
                     className="mt-2 text-xs text-blue-600 font-medium flex items-center gap-1">
-                    <MessageCircle className="w-3.5 h-3.5" /> 답글 작성
+                    <MessageCircle className="w-3.5 h-3.5" /> {t('seller.reviews.writeReply')}
                   </button>
                 )}
               </div>
