@@ -97,12 +97,13 @@ export async function upsertUser(
   try {
     // ✅ 최적화: 단일 쿼리로 UPSERT (3개 쿼리 → 1개 쿼리)
     // INSERT ... ON CONFLICT DO UPDATE ... RETURNING 사용
+    // toss_user_id는 production users 테이블 NOT NULL 이므로 kakao_id 기반 유니크 값 주입
     const user = await DB.prepare(`
       INSERT INTO users (
-        kakao_id, name, email, profile_image, 
+        toss_user_id, kakao_id, name, email, profile_image,
         created_at, last_login_at, updated_at
       )
-      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
       ON CONFLICT(kakao_id) DO UPDATE SET
         name = excluded.name,
         email = excluded.email,
@@ -110,7 +111,7 @@ export async function upsertUser(
         last_login_at = datetime('now'),
         updated_at = datetime('now')
       RETURNING id, kakao_id, name, email, profile_image
-    `).bind(kakaoId, nickname, email, profileImage).first<User>();
+    `).bind(`kakao_${kakaoId}`, kakaoId, nickname, email, profileImage).first<User>();
     
     if (!user) {
       throw new AuthError('Failed to upsert user', 500, 'UPSERT_FAILED');

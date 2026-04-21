@@ -85,10 +85,12 @@ affiliateRoutes.post('/track', async (c) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(referrer_id, order_id, product_id || null, product_name || null, buyer_id || null, buyerIp, order_amount, commission).run()
 
-  // 딜 포인트 즉시 적립
-  await DB.prepare(
-    'UPDATE users SET deal_points = COALESCE(deal_points, 0) + ? WHERE id = ?'
-  ).bind(commission, referrer_id).run()
+  // 딜 포인트 즉시 적립 (deal_balance 컬럼이 없는 환경에서는 silently ignore)
+  try {
+    await DB.prepare(
+      'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?'
+    ).bind(commission, referrer_id).run()
+  } catch { /* deal_balance column may not exist */ }
 
   // 알림
   try {

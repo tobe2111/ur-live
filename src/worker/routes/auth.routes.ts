@@ -54,10 +54,13 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
     const passwordHash = await hashPassword(password);
     const userId = generateId();
 
+    // Production users table requires toss_user_id NOT NULL; omits role/is_email_verified
+    // Use a unique generated value as toss_user_id for local auth registrations
+    const tossUserId = `local_${userId}`;
     await qb.execute(
-      `INSERT INTO users (id, email, password_hash, name, phone, role, is_email_verified)
-       VALUES (?, ?, ?, ?, ?, 'BUYER', 1)`,
-      [userId, email, passwordHash, name, phone ?? null]
+      `INSERT INTO users (id, toss_user_id, email, password_hash, name, phone)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId, tossUserId, email, passwordHash, name, phone ?? null]
     );
 
     const secret = c.env.JWT_SECRET;
@@ -106,17 +109,14 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
     const { email, password } = parsed.data;
 
     const qb = new QueryBuilder(c.env.DB);
+    // Production users table doesn't have role/status columns
     const user = await qb.queryOne<{
-      id: string; email: string; name: string; role: string;
-      password_hash: string; status: string;
-    }>('SELECT id, email, name, role, password_hash, status FROM users WHERE email = ?', [email]);
+      id: string; email: string; name: string;
+      password_hash: string;
+    }>('SELECT id, email, name, password_hash FROM users WHERE email = ?', [email]);
 
-    if (!user || user.status === 'DELETED') {
+    if (!user) {
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다' }, 401);
-    }
-
-    if (user.status === 'SUSPENDED') {
-      return c.json({ success: false, error: '정지된 계정입니다' }, 403);
     }
 
     const { valid, isLegacy } = await verifyPassword(password, user.password_hash);
@@ -145,13 +145,15 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
     }
 
     const secret = c.env.JWT_SECRET;
+    // Production users table doesn't have role column — default to 'BUYER'
+    const role = 'BUYER';
     const accessToken = await createJwt(
-      { sub: user.id, email: user.email, role: user.role },
+      { sub: user.id, email: user.email, role },
       secret,
       JWT_ACCESS_TOKEN_EXPIRY
     );
     const refreshToken = await createJwt(
-      { sub: user.id, email: user.email, role: user.role },
+      { sub: user.id, email: user.email, role },
       secret,
       JWT_REFRESH_TOKEN_EXPIRY
     );
@@ -165,7 +167,7 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
         access_token: accessToken,
         refresh_token: refreshToken,
         expires_in: JWT_ACCESS_TOKEN_EXPIRY,
-        user: { id: user.id, email: user.email, name: user.name, role: user.role },
+        user: { id: user.id, email: user.email, name: user.name, role },
       },
     });
   } catch (err) {
@@ -209,16 +211,17 @@ authRouter.get('/me', async (c) => {
   }
 
   const qb = new QueryBuilder(c.env.DB);
+  // Production users table doesn't have role/status columns
   const user = await qb.queryOne<{
-    id: string; email: string; name: string; role: string;
+    id: string; email: string; name: string;
     phone: string | null; avatar_url: string | null;
-  }>('SELECT id, email, name, role, phone, avatar_url FROM users WHERE id = ? AND status = \'ACTIVE\'', [authedUser.id]);
+  }>('SELECT id, email, name, phone, avatar_url FROM users WHERE id = ?', [authedUser.id]);
 
   if (!user) {
     return c.json({ success: false, error: 'User not found' }, 404);
   }
 
-  return c.json({ success: true, data: user });
+  return c.json({ success: true, data: { ...user, role: 'BUYER' } });
 });
 
 // PATCH /api/auth/profile — 프로필(이름, 전화번호) 수정

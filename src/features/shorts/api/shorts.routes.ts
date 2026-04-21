@@ -82,7 +82,7 @@ shortsRoutes.get('/feed', async (c) => {
     let liveQuery = `
       SELECT ls.id, ls.title, ls.youtube_video_id, ls.seller_id,
              s.name as seller_name, s.profile_image as seller_avatar,
-             ls.viewer_count, 'live' as source_type
+             ls.current_viewers, 'live' as source_type
       FROM live_streams ls
       LEFT JOIN sellers s ON ls.seller_id = s.id
       WHERE ls.status = 'live' AND ls.youtube_video_id IS NOT NULL
@@ -92,7 +92,7 @@ shortsRoutes.get('/feed', async (c) => {
       liveQuery += ` AND ls.id NOT IN (${excludeLive.map(() => '?').join(',')})`
       liveBinds.push(...excludeLive)
     }
-    liveQuery += ` ORDER BY ls.viewer_count DESC LIMIT ?`
+    liveQuery += ` ORDER BY ls.current_viewers DESC LIMIT ?`
     liveBinds.push(Math.min(3, limit))
 
     const liveRes = await DB.prepare(liveQuery).bind(...liveBinds).all()

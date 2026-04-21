@@ -577,8 +577,8 @@ sellerStreamsRoutes.get('/analytics/summary', async (c) => {
       SELECT
         ls.id, ls.title, ls.status, ls.youtube_video_id, ls.created_at,
         (SELECT COUNT(*) FROM chat_messages cm WHERE cm.live_stream_id = ls.id AND cm.is_deleted = 0) as chat_count,
-        (SELECT COUNT(*) FROM orders o WHERE o.live_stream_id = ls.id AND o.payment_status = 'approved') as order_count,
-        (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.live_stream_id = ls.id AND o.payment_status = 'approved') as revenue
+        (SELECT COUNT(*) FROM orders o WHERE o.live_stream_id = ls.id AND o.status IN ('PAID','DONE')) as order_count,
+        (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.live_stream_id = ls.id AND o.status IN ('PAID','DONE')) as revenue
       FROM live_streams ls
       WHERE ls.seller_id = ? AND ls.created_at >= datetime('now', '-' || ? || ' days')
       ORDER BY ls.created_at DESC
@@ -588,8 +588,8 @@ sellerStreamsRoutes.get('/analytics/summary', async (c) => {
     const totalStats = await db.prepare(`
       SELECT
         COUNT(DISTINCT ls.id) as total_streams,
-        (SELECT COUNT(*) FROM orders o WHERE o.seller_id = ? AND o.payment_status = 'approved' AND o.live_stream_id IS NOT NULL AND o.created_at >= datetime('now', '-' || ? || ' days')) as total_orders,
-        (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.seller_id = ? AND o.payment_status = 'approved' AND o.live_stream_id IS NOT NULL AND o.created_at >= datetime('now', '-' || ? || ' days')) as total_revenue,
+        (SELECT COUNT(*) FROM orders o WHERE o.seller_id = ? AND o.status IN ('PAID','DONE') AND o.live_stream_id IS NOT NULL AND o.created_at >= datetime('now', '-' || ? || ' days')) as total_orders,
+        (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.seller_id = ? AND o.status IN ('PAID','DONE') AND o.live_stream_id IS NOT NULL AND o.created_at >= datetime('now', '-' || ? || ' days')) as total_revenue,
         (SELECT COUNT(*) FROM chat_messages cm JOIN live_streams ls2 ON ls2.id = cm.live_stream_id WHERE ls2.seller_id = ? AND cm.is_deleted = 0 AND cm.created_at >= datetime('now', '-' || ? || ' days')) as total_chats
       FROM live_streams ls
       WHERE ls.seller_id = ? AND ls.created_at >= datetime('now', '-' || ? || ' days')
