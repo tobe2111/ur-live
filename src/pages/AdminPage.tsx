@@ -191,52 +191,67 @@ export default function AdminPage() {
       }
     } catch { /* silent */ }
 
-    // 이상 거래 감지: 최근 주문 확인
+    // 이상 거래 감지: 유저별 그룹핑 (도배 방지)
     try {
       const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
-      const ordersRes = await api.get('/api/admin/orders?page=1&limit=5', h)
+      const ordersRes = await api.get('/api/admin/orders?page=1&limit=10', h)
       const orders = ordersRes.data?.data?.orders || ordersRes.data?.data || []
       const now = Date.now()
 
+      // 고액 주문을 유저별 그룹핑 (개별 알림 도배 방지)
+      const highValueByUser: Record<string, { count: number; total: number }> = {}
       for (const order of orders) {
-        // 고액 주문 감지 (50만원 초과)
         if (Number(order.total_amount) > 500000) {
-          setAlerts(prev => {
-            if (prev.some(a => a.message.includes(order.order_number))) return prev
-            return [...prev, {
-              type: 'warning' as const,
-              emoji: '\u26A0\uFE0F',
-              title: '이상 거래 감지 - 고액 주문',
-              message: `주문 ${order.order_number}: ${Number(order.total_amount).toLocaleString()}원 (유저: ${order.user_email || order.user_id})`
-            }]
-          })
+          const uid = String(order.user_email || order.user_id || 'unknown')
+          if (!highValueByUser[uid]) highValueByUser[uid] = { count: 0, total: 0 }
+          highValueByUser[uid].count++
+          highValueByUser[uid].total += Number(order.total_amount)
         }
+      }
+      const userEntries = Object.entries(highValueByUser)
+      if (userEntries.length > 0) {
+        setAlerts(prev => {
+          if (prev.some(a => a.title.includes('고액 주문'))) return prev
+          const summary = userEntries.slice(0, 3).map(([uid, d]) =>
+            `${uid}: ${d.count}건 ${d.total.toLocaleString()}원`
+          ).join(' | ')
+          return [...prev, {
+            type: 'warning' as const,
+            emoji: '⚠️',
+            title: `고액 주문 감지 (${userEntries.length}명)`,
+            message: summary + (userEntries.length > 3 ? ` 외 ${userEntries.length - 3}명` : '')
+          }]
+        })
+      }
 
-        // 동일 유저 1분 내 다중 주문 감지
+      // 연속 주문 감지 (유저별 1건만)
+      const continuousDetected = new Set<string>()
+      for (const order of orders) {
         if (order.user_id && order.created_at) {
+          const uid = String(order.user_id)
           const orderTime = new Date(order.created_at).getTime()
-          const recent = recentOrdersRef.current.filter(
-            r => r.userId === order.user_id && Math.abs(now - r.time) < 60000
-          )
-          if (recent.length >= 2) {
-            setAlerts(prev => {
-              if (prev.some(a => a.title === '이상 거래 감지 - 연속 주문' && a.message.includes(order.user_id))) return prev
-              return [...prev, {
-                type: 'error' as const,
-                emoji: '\uD83D\uDEA8',
-                title: '이상 거래 감지 - 연속 주문',
-                message: `유저 ${order.user_email || order.user_id}이(가) 1분 내 ${recent.length + 1}건 주문`
-              }]
-            })
+          if (!continuousDetected.has(uid)) {
+            const recent = recentOrdersRef.current.filter(
+              r => r.userId === uid && Math.abs(now - r.time) < 60000
+            )
+            if (recent.length >= 2) {
+              continuousDetected.add(uid)
+              setAlerts(prev => {
+                if (prev.some(a => a.title.includes('연속 주문'))) return prev
+                return [...prev, {
+                  type: 'error' as const,
+                  emoji: '🚨',
+                  title: '연속 주문 감지',
+                  message: `유저 ${order.user_email || uid}: 1분 내 ${recent.length + 1}건`
+                }]
+              })
+            }
           }
-          // 기존 기록에 없으면 추가
-          if (!recentOrdersRef.current.some(r => r.userId === order.user_id && r.time === orderTime)) {
-            recentOrdersRef.current.push({ userId: order.user_id, time: orderTime })
+          if (!recentOrdersRef.current.some(r => r.userId === uid && r.time === orderTime)) {
+            recentOrdersRef.current.push({ userId: uid, time: orderTime })
           }
         }
       }
-
-      // 오래된 기록 정리 (5분 이상)
       recentOrdersRef.current = recentOrdersRef.current.filter(r => now - r.time < 300000)
     } catch { /* silent */ }
   }
