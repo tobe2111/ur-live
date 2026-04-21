@@ -56,7 +56,8 @@ export default function SearchHeader({
     } else {
       setShowSuggestions(false)
     }
-  }, [inputValue, suggestions.length, onLoadSuggestions])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputValue, suggestions.length])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

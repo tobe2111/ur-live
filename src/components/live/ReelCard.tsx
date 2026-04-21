@@ -524,7 +524,7 @@ export default function ReelCard({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, action: 'heartbeat', watchDuration: watchSeconds }),
-      }).catch((e) => console.warn("[Poll]", e?.message || e))
+      }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
     }, 30000)
 
     // Initial join
@@ -532,7 +532,7 @@ export default function ReelCard({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId, action: 'join', deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop' }),
-    }).catch((e) => console.warn("[Poll]", e?.message || e))
+    }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
 
     return () => {
       clearInterval(heartbeatInterval)
@@ -541,7 +541,7 @@ export default function ReelCard({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, action: 'leave', watchDuration: watchSeconds }),
-      }).catch((e) => console.warn("[Poll]", e?.message || e))
+      }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
     }
   }, [isActive, stream.id])
 
@@ -1095,6 +1095,15 @@ export default function ReelCard({
               />
 
 
+              {/* 상품 목록 버튼 */}
+              <button
+                onClick={openProductListSheet}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
+                aria-label="Products"
+              >
+                <ShoppingBag className="h-5 w-5 text-white/90" />
+              </button>
+
               {/* 후원하기 버튼 (딜 포인트) */}
               {!isSeller && stream?.id && (
                 <LiveDonation streamId={stream.id} />
@@ -1170,7 +1179,7 @@ export default function ReelCard({
           <div className="grid grid-cols-2 w-full rounded-2xl overflow-hidden mt-1.5" style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.12)' }}>
             <button
               onClick={handleAddToCart}
-              disabled={!product || addingToCart}
+              disabled={!currentProduct || addingToCart}
               className="py-2.5 text-center text-[13px] font-bold text-white active:scale-[0.98] transition-transform disabled:opacity-40"
               style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}
             >
@@ -1191,7 +1200,7 @@ export default function ReelCard({
                   if (currentProduct) handleCheckout()
                   else showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
                 }}
-                disabled={!product}
+                disabled={!currentProduct}
                 className="py-2.5 text-center text-[13px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-40"
                 style={{ background: 'linear-gradient(90deg, #EF4444, #EC4899)' }}
               >

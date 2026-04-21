@@ -187,6 +187,7 @@ export default function BrowsePage() {
       case 'price_asc': result.sort((a, b) => (a.current_price || a.price) - (b.current_price || b.price)); break
       case 'price_desc': result.sort((a, b) => (b.current_price || b.price) - (a.current_price || a.price)); break
       case 'discount': result.sort((a, b) => b.discount_rate - a.discount_rate); break
+      case 'newest': result.sort((a, b) => b.id - a.id); break
     }
     return result
   }, [products, sortBy, priceRange, freeShipOnly])
@@ -260,7 +261,7 @@ export default function BrowsePage() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <button onClick={() => setShowFilter(v => !v)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-gray-900 text-white'}`}>
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}>
               <SlidersHorizontal className="w-3 h-3" /> 필터
             </button>
             <span className="text-xs text-gray-500">{sorted.length}개</span>

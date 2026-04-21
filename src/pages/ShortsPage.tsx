@@ -269,13 +269,16 @@ export default function ShortsPage() {
                   </div>
                   <div className="text-left">
                     <p className="text-white text-[12px] font-bold leading-tight">{item.seller_name || '셀러'}</p>
-                    <p className="text-white/60 text-[10px] leading-tight">{item.view_count || 0} 팔로워</p>
+                    <p className="text-white/60 text-[10px] leading-tight">{item.view_count || 0} 조회</p>
                   </div>
                 </button>
 
                 {/* Right: follow + mute + close */}
                 <div className="flex items-center gap-2">
-                  <button className="px-3.5 py-1.5 bg-white rounded-full text-[11px] font-bold text-gray-900 active:scale-95 transition-transform">
+                  <button
+                    onClick={() => item.seller_id ? navigate(`/s/${item.seller_id}`) : toast.info('팔로우 기능 준비 중입니다')}
+                    className="px-3.5 py-1.5 bg-white rounded-full text-[11px] font-bold text-gray-900 active:scale-95 transition-transform"
+                  >
                     팔로우
                   </button>
                   <button onClick={() => setMuted(!muted)} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
@@ -325,7 +328,7 @@ export default function ShortsPage() {
                 </button>
 
                 {/* Comment */}
-                <button className="flex flex-col items-center gap-1">
+                <button onClick={() => toast.info('댓글 기능 준비 중입니다')} className="flex flex-col items-center gap-1">
                   <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     <MessageCircle className="w-5 h-5 text-white" />
                   </div>
@@ -342,7 +345,7 @@ export default function ShortsPage() {
                 />
 
                 {/* Wishlist */}
-                <button className="flex flex-col items-center gap-1">
+                <button onClick={() => toast.info('저장 기능 준비 중입니다')} className="flex flex-col items-center gap-1">
                   <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     <Bookmark className="w-5 h-5 text-white" />
                   </div>
@@ -456,7 +459,10 @@ export default function ShortsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            toast.success('위시리스트에 추가했습니다')
+                            if (!item.product_id) return
+                            api.post('/api/wishlists', { product_id: item.product_id })
+                              .then(() => toast.success('위시리스트에 추가했습니다'))
+                              .catch(() => toast.error('로그인이 필요합니다'))
                           }}
                           className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-gray-100 active:bg-gray-200 transition-colors"
                         >
