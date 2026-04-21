@@ -31,6 +31,26 @@ type Bindings = {
   FRONTEND_URL?: string;
 };
 
+/**
+ * refresh_tokens 보조 테이블 (admin/seller용) 생성.
+ * admin.routes.ts의 동명 함수와 동일 스키마. 멱등(IF NOT EXISTS).
+ */
+async function ensureAuthRefreshTokensTable(DB: D1Database) {
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_type TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `).run().catch(() => {});
+  await DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_auth_refresh_tokens_user ON auth_refresh_tokens(user_type, user_id)'
+  ).run().catch(() => {});
+}
+
 // ── 비밀번호 재설정 토큰 테이블 보장 ─────────────────────────
 async function ensurePasswordResetTable(DB: D1Database) {
   await DB.prepare(`
@@ -211,13 +231,31 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     };
     
     const token = await sign(payload, JWT_SECRET);
-    
+
     // ✅ Generate refresh token (longer expiry: 30 days)
+    const nowSec = Math.floor(Date.now() / 1000);
     const refreshPayload = {
       ...payload,
-      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30일
+      exp: nowSec + (30 * 24 * 60 * 60) // 30일
     };
     const refreshToken = await sign(refreshPayload, JWT_SECRET);
+
+    // ── refresh token 해시 저장 (rotation 기반) ─────────────
+    try {
+      await ensureAuthRefreshTokensTable(DB);
+      const refreshHash = await hashPassword(refreshToken);
+      await DB.prepare(
+        `INSERT INTO auth_refresh_tokens (user_type, user_id, token_hash, expires_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind(
+        'seller',
+        seller.id,
+        refreshHash,
+        new Date((nowSec + 30 * 24 * 3600) * 1000).toISOString()
+      ).run();
+    } catch (e) {
+      console.error('[Seller Login] refresh token persist failed:', e);
+    }
     
     // 5. 응답 반환 (frontend expects accessToken & refreshToken)
     return c.json({
@@ -350,7 +388,40 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
         code: 'ACCOUNT_NOT_ACTIVE'
       }, 403);
     }
-    
+
+    // 4.5 저장된 refresh 해시 검증 + rotation
+    try {
+      await ensureAuthRefreshTokensTable(DB);
+      const rows = await DB.prepare(
+        `SELECT id, token_hash, expires_at
+         FROM auth_refresh_tokens
+         WHERE user_type = 'seller' AND user_id = ?`
+      ).bind(Number(sellerId)).all<{ id: number; token_hash: string; expires_at: string }>();
+
+      const candidates = rows.results || [];
+      if (candidates.length > 0) {
+        let matchedId: number | null = null;
+        for (const row of candidates) {
+          const { valid } = await verifyPassword(refreshToken, row.token_hash);
+          if (valid) {
+            matchedId = row.id;
+            break;
+          }
+        }
+        if (matchedId === null) {
+          console.warn('[Seller Refresh] refresh token not recognized (revoked or reused)');
+          return c.json<AuthResponse>({
+            success: false,
+            error: 'Refresh Token이 유효하지 않습니다.',
+            code: 'INVALID_REFRESH_TOKEN'
+          }, 401);
+        }
+        await DB.prepare('DELETE FROM auth_refresh_tokens WHERE id = ?').bind(matchedId).run().catch(() => {});
+      }
+    } catch (e) {
+      console.error('[Seller Refresh] token store verify failed:', e);
+    }
+
     // 5. 새 Access Token 생성
     const newPayload = {
       sub: seller.id.toString(),
@@ -368,11 +439,28 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
     const newAccessToken = await sign(newPayload, JWT_SECRET);
     
     // 6. 새 Refresh Token 생성 (선택사항, 보안 강화)
+    const nowSec2 = Math.floor(Date.now() / 1000);
     const newRefreshPayload = {
       ...newPayload,
-      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30일
+      exp: nowSec2 + (30 * 24 * 60 * 60) // 30일
     };
     const newRefreshToken = await sign(newRefreshPayload, JWT_SECRET);
+
+    // 새 refresh 해시 저장
+    try {
+      const newHash = await hashPassword(newRefreshToken);
+      await DB.prepare(
+        `INSERT INTO auth_refresh_tokens (user_type, user_id, token_hash, expires_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind(
+        'seller',
+        seller.id,
+        newHash,
+        new Date((nowSec2 + 30 * 24 * 3600) * 1000).toISOString()
+      ).run();
+    } catch (e) {
+      console.error('[Seller Refresh] new refresh persist failed:', e);
+    }
     
     // 7. 응답 반환
     return c.json<AuthResponse>({

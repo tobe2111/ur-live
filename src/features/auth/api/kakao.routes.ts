@@ -26,6 +26,18 @@ type Bindings = {
 
 export const kakaoRoutes = new Hono<{ Bindings: Bindings }>();
 
+// ✅ FIX (H5): One-time schema check instead of running ALTER TABLE on every
+// Kakao callback. These DDLs are cheap, but issuing them per-request causes
+// unnecessary D1 load and log noise. Column creation should move to a proper
+// migration file when convenient.
+let _kakaoSchemaChecked = false;
+async function ensureKakaoColumns(DB: D1Database): Promise<void> {
+  if (_kakaoSchemaChecked) return;
+  try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run(); } catch {}
+  try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_refresh_token TEXT").run(); } catch {}
+  _kakaoSchemaChecked = true;
+}
+
 // ────────────────────────────────────────────────────────────
 // OAuth state & redirect path safety helpers (CSRF / open redirect)
 // ────────────────────────────────────────────────────────────
