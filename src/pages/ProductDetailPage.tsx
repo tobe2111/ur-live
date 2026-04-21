@@ -524,8 +524,6 @@ export default function ProductDetailPage() {
           <ProductImageCarousel images={allImages} />
         </Suspense>
 
-        <Separator />
-
         {/* Product Info */}
         <ProductHeader
           name={product.name}
@@ -539,45 +537,26 @@ export default function ProductDetailPage() {
           avgRating={reviewSummary?.avg_rating}
         />
 
-        {/* Product Description */}
-        {product.description && (
-          <div className="px-5 py-3">
-            <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-              {product.description}
-            </p>
-          </div>
-        )}
+        {/* v4: description은 상세정보 섹션에서 통합 표시 */}
 
-        {/* Long Description */}
-        {product.long_description && (
-          <div className="px-5 py-4 border-t border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900 mb-2">상품 상세</h2>
-            <div className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-              {product.long_description}
+        {/* v4 상세 정보 (이미지 + 설명 + 펼쳐보기) */}
+        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <section className="px-5 py-5">
+          <p className="text-[13px] font-bold text-gray-900 mb-3">상세 정보</p>
+          {detailImages.length > 0 && (
+            <div className="rounded-xl overflow-hidden mb-3" style={{ background: '#F9FAFB' }}>
+              <img src={detailImages[0]} alt="" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
             </div>
-          </div>
-        )}
-
-        {/* Product Details - Vertical Images */}
-        {detailImages.length > 0 && (
-          <>
-            <Separator />
-            <div className="px-0">
-              <h2 className="text-sm font-bold text-gray-900 px-5 py-4">상세 이미지</h2>
-              <div className="flex flex-col">
-                {detailImages.map((src, idx) => (
-                  <img
-                    key={idx}
-                    src={src}
-                    alt={`Product detail ${idx + 1}`}
-                    className="w-full h-auto block"
-                    loading={idx === 0 ? 'eager' : 'lazy'}
-                  />
-                ))}
-              </div>
-            </div>
-          </>
-        )}
+          )}
+          {product.long_description && (
+            <p className="text-[12px] text-gray-700 leading-relaxed">{product.long_description.slice(0, 200)}</p>
+          )}
+          {(detailImages.length > 1 || (product.long_description && product.long_description.length > 200)) && (
+            <button className="w-full mt-4 py-3 rounded-xl border border-gray-200 bg-white text-[12px] font-semibold text-gray-700 active:bg-gray-50">
+              상세정보 펼쳐보기
+            </button>
+          )}
+        </section>
 
         {/* v4 공동구매 배너 (다크 카드) */}
         {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
@@ -656,15 +635,6 @@ export default function ProductDetailPage() {
         </section>
         <div style={{ height: 8, background: '#F9FAFB' }} />
 
-        {/* 상품 정보 — 아코디언 */}
-        <AccordionSection title="상품 정보">
-          <ProductInfoGrid items={[
-            { label: '재고', value: `${product.stock ?? product.stock_quantity ?? 0}개` },
-            ...(product.sold_count !== undefined && product.sold_count > 0 ? [{ label: '판매량', value: `${product.sold_count}개` }] : []),
-            ...(product.category ? [{ label: '카테고리', value: product.category }] : []),
-          ]} />
-        </AccordionSection>
-
         {/* 공유 + 추천 링크 */}
         <div className="px-5 py-3 space-y-2">
           {isLoggedIn && (
@@ -706,30 +676,40 @@ export default function ProductDetailPage() {
           showToast={showToast}
         />
 
-        {/* 안내 정보 */}
-        <AccordionSection title="안내 정보">
-          <ProductNoticeSection />
-        </AccordionSection>
+        {/* v4: 안내정보는 하단 아코디언으로 이동 */}
 
-        {/* 상품 리뷰 */}
-        <AccordionSection title={`리뷰`} defaultOpen={true}>
-          <ProductReviews productId={product.id} />
-        </AccordionSection>
-
-        {/* 교환 및 반품 */}
-        <AccordionSection title="교환 및 반품 안내">
-          <ReturnPolicySection />
-        </AccordionSection>
-
-        {/* 배송안내 */}
-        <AccordionSection title="배송 안내">
-          <div className="space-y-2.5 text-xs text-gray-500">
-            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송업체</span><span>택배사 (추후 안내)</span></div>
-            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송지역</span><span>대한민국 전 지역</span></div>
-            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송비용</span><span>3,000원 / 50,000원 이상 무료</span></div>
-            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송기간</span><span>주말·공휴일 제외 2-5일</span></div>
+        {/* v4 리뷰 섹션 (독립) */}
+        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <section className="px-5 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[13px] font-bold text-gray-900">
+              리뷰 <span className="text-gray-400 font-normal">({(reviewSummary?.total_count || 0).toLocaleString()})</span>
+            </p>
+            <button className="flex items-center gap-0.5 text-[11px] text-gray-400">
+              전체보기 <ChevronRight className="w-2.5 h-2.5" />
+            </button>
           </div>
-        </AccordionSection>
+          <ProductReviews productId={product.id} />
+        </section>
+
+        {/* v4 아코디언 — 3개 표준 섹션 */}
+        <div className="border-t border-gray-100">
+          <AccordionSection title="상품 정보 고시">
+            <ProductInfoGrid items={[
+              { label: '재고', value: `${product.stock ?? 0}개` },
+              ...(product.sold_count ? [{ label: '판매량', value: `${product.sold_count}개` }] : []),
+              ...(product.category ? [{ label: '카테고리', value: product.category }] : []),
+            ]} />
+          </AccordionSection>
+          <AccordionSection title="배송 · 교환 · 반품 안내">
+            <ReturnPolicySection />
+          </AccordionSection>
+          <AccordionSection title="유의사항">
+            <ProductNoticeSection />
+          </AccordionSection>
+        </div>
+
+        {/* v4: 배송 안내는 하단 아코디언 "배송·교환·반품"에 통합됨 */}
       </main>
 
       {/* Floating Cart / Purchase Bar */}
