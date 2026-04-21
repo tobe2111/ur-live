@@ -19,7 +19,7 @@ sellerAnalyticsRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials:
 async function getSellerId(c: any): Promise<number | null> {
   const user = getCurrentUser(c)
   if (!user) return null
-  const seller = await c.env.DB.prepare('SELECT id FROM sellers WHERE user_id = ?').bind(String(user.id)).first() as { id: number } | null
+  const seller = await c.env.DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(String(user.id)).first() as { id: number } | null
   return seller?.id ?? null
 }
 

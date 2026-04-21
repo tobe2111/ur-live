@@ -250,9 +250,8 @@ returnsRoutes.get('/seller', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
-  // seller_id 조회: sellers 테이블에서 user_id로 매칭
   const seller = await DB.prepare(
-    'SELECT id FROM sellers WHERE user_id = ?'
+    'SELECT id FROM sellers WHERE id = ?'
   ).bind(String(user.id)).first<{ id: number }>();
 
   // seller 테이블이 없거나 매칭 안 되면 user.id를 seller_id로 시도

@@ -357,8 +357,8 @@ sellerSettlementRoutes.get('/', requireAuth(), async (c) => {
       // Try to find a seller linked to this user
       const seller = await queryFirst<{ id: number }>(
         DB,
-        'SELECT id FROM sellers WHERE user_id = ? OR firebase_uid = ?',
-        [String(user.id), String(user.id)],
+        'SELECT id FROM sellers WHERE id = ?',
+        [String(user.id)],
       );
       if (seller) sellerId = seller.id;
     }

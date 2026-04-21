@@ -181,7 +181,7 @@ shortsRoutes.get('/seller/list', requireAuth(), async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
-  const seller = await DB.prepare('SELECT id FROM sellers WHERE user_id = ?').bind(String(user.id)).first<{ id: number }>()
+  const seller = await DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(String(user.id)).first<{ id: number }>()
   if (!seller) return c.json({ success: true, data: [] })
 
   const { results } = await DB.prepare(
@@ -259,7 +259,7 @@ shortsRoutes.post('/', requireAuth(), async (c) => {
   }
 
   // seller_id 조회
-  const seller = await DB.prepare('SELECT id FROM sellers WHERE user_id = ?').bind(String(user.id)).first<{ id: number }>()
+  const seller = await DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(String(user.id)).first<{ id: number }>()
   if (!seller) return c.json({ success: false, error: '셀러 정보를 찾을 수 없습니다' }, 404)
 
   const result = await DB.prepare(`

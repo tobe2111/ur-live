@@ -130,13 +130,13 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
     'SELECT id, name, contact_name, email, password_hash, status FROM agencies WHERE email = ?'
   ).bind(email).first<{ id: number; name: string; contact_name: string; email: string; password_hash: string; status: string }>()
 
-  if (!agency) return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401)
+  if (!agency) return c.json({ success: false, error: '등록되지 않은 이메일입니다. 회원가입을 먼저 진행해주세요.' }, 401)
   if (agency.status === 'pending') return c.json({ success: false, error: '관리자 승인 대기 중입니다. 승인 후 로그인이 가능합니다.' }, 403)
   if (agency.status === 'rejected') return c.json({ success: false, error: '가입이 거절된 계정입니다. 관리자에게 문의해주세요.' }, 403)
-  if (agency.status !== 'active') return c.json({ success: false, error: '비활성화된 계정입니다.' }, 403)
+  if (agency.status !== 'active') return c.json({ success: false, error: `비활성화된 계정입니다. (상태: ${agency.status})` }, 403)
 
   const { valid } = await verifyPassword(password, agency.password_hash)
-  if (!valid) return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401)
+  if (!valid) return c.json({ success: false, error: '비밀번호가 올바르지 않습니다.' }, 401)
 
   const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email)
   return c.json({
