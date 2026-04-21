@@ -483,11 +483,7 @@ export default function MainHomePage() {
       <InvitePrompt />
       <SiteFooter />
 
-      {loading && (
-        <div className="fixed inset-0 bg-[#020202] flex items-center justify-center z-50">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-        </div>
-      )}
+{/* 로딩 오버레이 제거 — 각 섹션이 데이터 없으면 자체 스켈레톤 표시 */}
     </div>
   )
 }
