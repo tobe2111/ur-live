@@ -107,7 +107,7 @@ export default function AdminHealthPage() {
     : 'ok'
 
   return (
-    <AdminLayout>
+    <AdminLayout title="시스템 상태">
       <SEO title="시스템 상태" description="실시간 시스템 헬스 모니터링" url="/admin/health" noindex />
       <div className="mx-auto max-w-6xl p-6">
         <div className="mb-6 flex items-center justify-between">

@@ -10,6 +10,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { Eye, EyeOff } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { addBreadcrumb, maskEmail } from '@/lib/sentry'
 
 // Kakao SDK 타입 선언
 interface KakaoAuth {
@@ -224,6 +225,8 @@ export default function LoginPage() {
         setError(t('auth.emailRequired'))
         return
       }
+
+      addBreadcrumb('auth', 'login attempt', { email: maskEmail(email), method: 'email' })
 
       // ✅ Zustand action 직접 호출
       await loginWithEmailAction(email, password)

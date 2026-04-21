@@ -350,8 +350,14 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
 
     let refundCount = 0
     for (const v of (vouchers || [])) {
-      // 바우처 상태 변경
-      await DB.prepare("UPDATE vouchers SET status = 'refunded' WHERE id = ?").bind(v.id).run()
+      // ✅ CONCURRENCY: CAS voucher status unused → refunded. Only credit the
+      //    deal refund if WE transitioned this voucher (prevents double-refund
+      //    when two admins/sellers race on the same refund API call).
+      const casRes = await DB.prepare(
+        "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
+      ).bind((v as any).id).run()
+
+      if ((casRes.meta?.changes ?? 0) === 0) continue
 
       // 딜 결제였으면 딜 환불
       // ✅ BUG #45 FIX: `o.total_amount` covers the whole order (N vouchers).

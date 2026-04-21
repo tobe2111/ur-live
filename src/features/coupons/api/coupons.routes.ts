@@ -83,10 +83,28 @@ couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 6
   if (computed > amountBase) computed = amountBase
   if (computed < 0) computed = 0
 
+  // ✅ CONCURRENCY: UNIQUE(coupon_id, user_id) guarantees single-use.
+  //    If two concurrent requests both pass the earlier SELECT check,
+  //    exactly one of these INSERTs will succeed; the other throws.
+  try {
+    const insertRes = await DB.prepare(
+      'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, ?, ?)'
+    ).bind(coupon_id, String(user.id), order_id, computed).run()
+    if ((insertRes.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '이미 사용한 쿠폰입니다' }, 409)
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/UNIQUE|constraint/i.test(msg)) {
+      return c.json({ success: false, error: '이미 사용한 쿠폰입니다' }, 409)
+    }
+    throw e
+  }
+  // ✅ CONCURRENCY: also cap the global used_count so late inserts cannot
+  //    push used_count past total_count (race with coupon_apply).
   await DB.prepare(
-    'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, ?, ?)'
-  ).bind(coupon_id, String(user.id), order_id, computed).run()
-  await DB.prepare('UPDATE coupons SET used_count = used_count + 1 WHERE id = ?').bind(coupon_id).run()
+    'UPDATE coupons SET used_count = used_count + 1 WHERE id = ? AND (total_count = 0 OR used_count < total_count)'
+  ).bind(coupon_id).run()
   return c.json({ success: true, data: { discount_amount: computed } })
 })
 

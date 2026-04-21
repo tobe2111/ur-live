@@ -11,7 +11,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { isKorea } from '@/config/region'
-import { captureError, captureMessage } from '@/lib/sentry'
+import { captureError, captureMessage, addBreadcrumb } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
 
 // 🔥 Region-based lazy loading for payment components
@@ -481,6 +481,13 @@ export default function CheckoutPage() {
       const groupShippingFee = (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold)
         ? 0
         : group.shipping_fee
+
+      addBreadcrumb('order', 'creating', {
+        orderId,
+        sellerId: group.seller_id,
+        itemCount: group.items.length,
+        total: group.subtotal + groupShippingFee,
+      })
 
       const response = await api.post('/api/orders', {
         // seller_id가 0(null에서 변환)이면 빈 문자열 → order route의 seller 검증 skip

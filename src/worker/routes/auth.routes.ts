@@ -18,6 +18,7 @@ import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
 import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../lib/password';
 import { parseSessionCookie, clearSessionCookie } from '../utils/session';
+import { withCircuitBreaker } from '../utils/circuit-breaker';
 
 const authRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -315,9 +316,16 @@ authRouter.get('/session/health', async (c) => {
       ).bind(sessionUser.userId).first<{ kakao_access_token: string | null; kakao_refresh_token: string | null }>();
 
       if (row?.kakao_access_token) {
-        const check = await fetch('https://kapi.kakao.com/v1/user/access_token_info', {
-          headers: { 'Authorization': `Bearer ${row.kakao_access_token}` },
-        });
+        // Wrap with circuit breaker — Kakao outages should not block session checks.
+        // Fallback assumes token is still valid (optimistic) and does NOT force reauth,
+        // because forcing reauth during a Kakao outage would kick every user out.
+        const check = await withCircuitBreaker(
+          { name: 'kakao-token-info', maxFailures: 5, resetTimeoutMs: 30_000 },
+          () => fetch('https://kapi.kakao.com/v1/user/access_token_info', {
+            headers: { 'Authorization': `Bearer ${row.kakao_access_token}` },
+          }),
+          () => new Response(null, { status: 200 }),
+        );
         if (check.status === 200) kakaoValid = true;
         else if (!row.kakao_refresh_token) kakaoNeedsReauth = true;
       } else {

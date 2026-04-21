@@ -12,6 +12,8 @@
  * 3. For production: Add domain in Resend dashboard (optional, but recommended)
  */
 
+import { withCircuitBreaker } from '../worker/utils/circuit-breaker'
+
 interface SendEmailParams {
   to: string
   subject: string
@@ -47,20 +49,25 @@ export async function sendEmail(
     const maxRetries = 2;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            from: fromAddress,
-            to,
-            subject,
-            html
+        // Email is non-critical — circuit breaker protects against
+        // Resend outages cascading into slow checkout / auth flows.
+        response = await withCircuitBreaker(
+          { name: 'resend-email', maxFailures: 5, resetTimeoutMs: 30_000 },
+          () => fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: fromAddress,
+              to,
+              subject,
+              html
+            }),
+            signal: AbortSignal.timeout(30000) // 30s timeout
           }),
-          signal: AbortSignal.timeout(30000) // 30s timeout
-        })
+        )
         if (response.ok) break;
         // Retry on 5xx; don't retry on 4xx
         if (response.status < 500 || attempt === maxRetries) break;
