@@ -315,6 +315,16 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
     ).bind(productId).first<any>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+
+    // ✅ OWNERSHIP FIX: Only the product's seller (or admin) can refund
+    const authUser = getCurrentUser(c)
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    if (authUser.type !== 'admin') {
+      if (authUser.type !== 'seller' || Number(product.seller_id) !== Number(authUser.id)) {
+        return c.json({ success: false, error: 'forbidden — not your product' }, 403)
+      }
+    }
+
     if (product.group_buy_status !== 'expired') return c.json({ success: false, error: '마감된 공동구매만 환불 가능합니다' }, 400)
     if (product.group_buy_current >= product.group_buy_target) return c.json({ success: false, error: '목표 달성된 공동구매는 환불 불가' }, 400)
 

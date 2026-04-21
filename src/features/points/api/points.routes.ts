@@ -357,9 +357,8 @@ pointsRoutes.post('/ad-reward', rateLimit({ action: 'points_ad_reward', max: 5, 
   const userId = String(user.id); // 항상 문자열로 통일
 
   // 오늘 이미 시청한 횟수 확인 (KST 기준)
-  const todayStart = new Date();
-  todayStart.setHours(todayStart.getHours() + 9);
-  const kstDateStr = todayStart.toISOString().slice(0, 10);
+  const kstNow = new Date(Date.now() + 9 * 3600 * 1000);
+  const kstDateStr = kstNow.toISOString().slice(0, 10);
 
   try {
     const countRow = await DB.prepare(
@@ -421,9 +420,8 @@ pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
   await ensureTables(DB);
 
   const userId = String(user.id);
-  const todayStart = new Date();
-  todayStart.setHours(todayStart.getHours() + 9);
-  const kstDateStr = todayStart.toISOString().slice(0, 10);
+  const kstNow = new Date(Date.now() + 9 * 3600 * 1000);
+  const kstDateStr = kstNow.toISOString().slice(0, 10);
 
   const countRow = await DB.prepare(
     `SELECT COUNT(*) as cnt FROM point_transactions
@@ -450,14 +448,15 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
 
   const userId = String(user.id);
 
-  const { order_number, total_amount, items, shipping } = await c.req.json<{
+  // ✅ SECURITY FIX: Ignore client-supplied total_amount/price. Recompute server-side.
+  const { order_number, items, shipping } = await c.req.json<{
     order_number: string;
-    total_amount: number;
+    total_amount?: number; // ignored (kept for back-compat parsing)
     items: Array<{
-      product_id: string;
-      product_name: string;
+      product_id: string | number;
+      product_name?: string;
       quantity: number;
-      price: number;
+      price?: number; // ignored — fetched from DB
       seller_id?: string;
       option_value?: string;
     }>;
@@ -470,52 +469,117 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     };
   }>();
 
-  if (!order_number || !total_amount || !items?.length || !shipping?.name) {
+  if (!order_number || !items?.length || !shipping?.name) {
     return c.json({ success: false, error: '필수 항목이 누락되었습니다' }, 400);
   }
 
-  // 잔액 확인
+  // ✅ Server-side price lookup: fetch actual price + seller_id from DB
+  const productIds = Array.from(new Set(items.map(i => Number(i.product_id)))).filter(n => !isNaN(n));
+  if (productIds.length === 0) {
+    return c.json({ success: false, error: '유효하지 않은 상품입니다' }, 400);
+  }
+
+  const placeholders = productIds.map(() => '?').join(',');
+  const { results: productRows = [] } = await DB.prepare(
+    `SELECT id, name, price, seller_id, stock FROM products WHERE id IN (${placeholders}) AND is_active = 1`
+  ).bind(...productIds).all<{ id: number; name: string; price: number; seller_id: number | null; stock: number }>();
+
+  const productMap = new Map<number, { id: number; name: string; price: number; seller_id: number | null; stock: number }>();
+  for (const p of productRows) productMap.set(Number(p.id), p);
+
+  // Validate all items exist + have stock
+  for (const item of items) {
+    const p = productMap.get(Number(item.product_id));
+    if (!p) {
+      return c.json({ success: false, error: `상품을 찾을 수 없거나 판매 중단된 상품입니다 (id: ${item.product_id})` }, 404);
+    }
+    const qty = Number(item.quantity) || 0;
+    if (qty <= 0) {
+      return c.json({ success: false, error: '수량이 유효하지 않습니다' }, 400);
+    }
+    if (p.stock < qty) {
+      return c.json({ success: false, error: `재고 부족: ${p.name}` }, 400);
+    }
+  }
+
+  // Build server-side normalized items with authoritative price
+  const normalizedItems = items.map(i => {
+    const p = productMap.get(Number(i.product_id))!;
+    return {
+      product_id: p.id,
+      product_name: p.name,
+      price: Number(p.price),
+      quantity: Number(i.quantity),
+      seller_id: p.seller_id ? String(p.seller_id) : '0',
+      option_value: i.option_value,
+    };
+  });
+
+  // Group by seller to compute shipping fee per seller
+  const sellerGroups = new Map<string, typeof normalizedItems>();
+  for (const item of normalizedItems) {
+    const sid = item.seller_id;
+    if (!sellerGroups.has(sid)) sellerGroups.set(sid, []);
+    sellerGroups.get(sid)!.push(item);
+  }
+
+  // Compute authoritative total (subtotal + shipping per seller group)
+  let authoritativeTotal = 0;
+  for (const [, groupItems] of sellerGroups) {
+    const groupSubtotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
+    const shippingFee = groupSubtotal >= 50000 ? 0 : 3000;
+    authoritativeTotal += groupSubtotal + shippingFee;
+  }
+
+  // ✅ Validate balance BEFORE deducting
   const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
     .bind(userId).first<{ balance: number }>();
 
-  if (!wallet || wallet.balance < total_amount) {
+  if (!wallet || wallet.balance < authoritativeTotal) {
     return c.json({
       success: false,
-      error: `딜이 부족합니다. (보유: ${wallet?.balance ?? 0}딜, 필요: ${total_amount}딜)`,
+      error: `딜이 부족합니다. (보유: ${wallet?.balance ?? 0}딜, 필요: ${authoritativeTotal}딜)`,
       code: 'INSUFFICIENT_POINTS',
     }, 400);
   }
 
+  // ✅ Atomic deduct (balance >= authoritativeTotal guard)
+  const deductRes = await DB.prepare(
+    'UPDATE user_points SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?'
+  ).bind(authoritativeTotal, userId, authoritativeTotal).run();
+  if (!deductRes.meta.changes) {
+    return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)', code: 'INSUFFICIENT_POINTS' }, 400);
+  }
+
+  // Track stock reservations so we can roll back on failure
+  const stockReserved: Array<{ product_id: number; quantity: number }> = [];
+
   try {
-    // 1. 딜 차감 (atomic: balance >= 조건으로 race condition 방지)
-    const deductRes = await DB.prepare('UPDATE user_points SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?')
-      .bind(total_amount, userId, total_amount).run();
-    if (!deductRes.meta.changes) {
-      return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)', code: 'INSUFFICIENT_POINTS' }, 400);
-    }
-    const afterWallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(userId).first<{ balance: number }>();
+    const afterWallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+      .bind(userId).first<{ balance: number }>();
     const newBalance = afterWallet?.balance ?? 0;
 
-    // 2. 거래 기록
+    // ✅ Reserve stock atomically (decrement per item, guard on stock >= qty)
+    for (const item of normalizedItems) {
+      const stockRes = await DB.prepare(
+        'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ? AND is_active = 1'
+      ).bind(item.quantity, item.product_id, item.quantity).run();
+      if (!stockRes.meta.changes) {
+        throw new Error(`재고 부족 (동시 결제 충돌): ${item.product_name}`);
+      }
+      stockReserved.push({ product_id: item.product_id, quantity: item.quantity });
+    }
+
+    // Transaction record
     await DB.prepare(
       `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
        VALUES (?, 'donate', ?, 0, ?, ?, ?, ?)`
-    ).bind(userId, total_amount, total_amount, newBalance, `상품 구매 (${items.length}건)`, order_number).run();
+    ).bind(userId, authoritativeTotal, authoritativeTotal, newBalance, `상품 구매 (${normalizedItems.length}건)`, order_number).run();
 
-    // 3. 주문 생성 (셀러별 그룹화)
-    const sellerGroups = new Map<string, typeof items>();
-    for (const item of items) {
-      const sid = item.seller_id || '0';
-      if (!sellerGroups.has(sid)) sellerGroups.set(sid, []);
-      sellerGroups.get(sid)!.push(item);
-    }
-
+    // Create orders per seller
     for (const [sellerId, groupItems] of sellerGroups) {
-      const groupTotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
-      const shippingFee = groupTotal >= 50000 ? 0 : 3000;
-
-      // ✅ SCHEMA FIX: orders.order_number is UNIQUE — multi-seller loop must
-      // generate distinct numbers to avoid UNIQUE constraint violation.
+      const groupSubtotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const shippingFee = groupSubtotal >= 50000 ? 0 : 3000;
       const sellerOrderNumber = `${order_number}_s${sellerId}`;
 
       await DB.prepare(`
@@ -523,12 +587,11 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
         VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
       `).bind(
         sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
-        groupTotal, shippingFee, groupTotal + shippingFee,
+        groupSubtotal, shippingFee, groupSubtotal + shippingFee,
         shipping.name, shipping.phone,
         JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' })
       ).run();
 
-      // 주문 상세 아이템 INSERT (use sellerOrderNumber to look up the right row)
       const orderRow = await DB.prepare('SELECT id FROM orders WHERE order_number = ? ORDER BY id DESC LIMIT 1')
         .bind(sellerOrderNumber).first<{ id: number }>();
 
@@ -542,21 +605,37 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       }
     }
 
-    // 4. 알림
-    createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${total_amount.toLocaleString()}딜 상품 결제`, '/admin/orders').catch(() => {});
+    createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${authoritativeTotal.toLocaleString()}딜 상품 결제`, '/admin/orders').catch(() => {});
 
     return c.json({
       success: true,
       data: {
         order_number,
-        amount_paid: total_amount,
+        amount_paid: authoritativeTotal,
         balance: newBalance,
         payment_method: 'deal_points',
       },
-      message: `${total_amount.toLocaleString()}딜로 결제가 완료되었습니다!`,
+      message: `${authoritativeTotal.toLocaleString()}딜로 결제가 완료되었습니다!`,
     });
   } catch (err) {
     console.error('[points/pay] Error:', err);
+    // ✅ Refund deals on any failure
+    try {
+      await DB.prepare(
+        'UPDATE user_points SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?'
+      ).bind(authoritativeTotal, userId).run();
+    } catch (refundErr) {
+      console.error('[points/pay] Refund failed:', refundErr);
+    }
+    // ✅ Roll back any stock reservations
+    for (const r of stockReserved) {
+      try {
+        await DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
+          .bind(r.quantity, r.product_id).run();
+      } catch (stockErr) {
+        console.error('[points/pay] Stock rollback failed:', stockErr);
+      }
+    }
     return c.json({ success: false, error: '딜 결제 중 오류가 발생했습니다', detail: String(err) }, 500);
   }
 });

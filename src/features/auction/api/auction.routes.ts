@@ -77,6 +77,13 @@ auctionRoutes.post('/create', requireAuth(), async (c) => {
   const stream = await DB.prepare('SELECT seller_id FROM live_streams WHERE id = ?').bind(stream_id).first<{ seller_id: number }>();
   if (!stream) return c.json({ success: false, error: '방송을 찾을 수 없습니다' }, 404);
 
+  // ✅ OWNERSHIP FIX: only the stream's seller (or admin) can create an auction
+  if (user.type !== 'admin') {
+    if (user.type !== 'seller' || Number(stream.seller_id) !== Number(user.id)) {
+      return c.json({ success: false, error: 'forbidden — not your stream' }, 403);
+    }
+  }
+
   const dur = duration_seconds || 180;
   const endsAt = new Date(Date.now() + dur * 1000).toISOString();
 
