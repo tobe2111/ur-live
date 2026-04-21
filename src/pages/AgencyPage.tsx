@@ -140,30 +140,85 @@ function InviteLinkSection() {
   )
 }
 
-function RevenueTrendChart({ sellers }: { sellers: Seller[] }) {
-  const totalRev = sellers.reduce((s, sl) => s + (sl.total_revenue || 0), 0)
-  const days = ['월', '화', '수', '목', '금', '토', '일']
-  const dayWeights = [0.12, 0.14, 0.13, 0.16, 0.18, 0.15, 0.12]
-  const maxVal = Math.max(...dayWeights) * totalRev || 1
+interface DailyStat {
+  date: string
+  revenue: number
+  orders: number
+}
+
+function RevenueTrendChart() {
+  const [daily, setDaily] = useState<DailyStat[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const token = localStorage.getItem('agency_token')
+    if (!token) return
+    api.get('/api/agency/stats/daily?days=7', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        if (r.data.success) setDaily(r.data.data || [])
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  // 최근 7일 날짜 버킷 생성 (데이터 없는 날도 0으로 표시)
+  const buckets = useMemo(() => {
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+    const byDate: Record<string, DailyStat> = {}
+    for (const d of daily) byDate[d.date] = d
+    const out: { key: string; label: string; revenue: number; orders: number }[] = []
+    for (let i = 6; i >= 0; i--) {
+      const dt = new Date()
+      dt.setDate(dt.getDate() - i)
+      const key = dt.toISOString().slice(0, 10)
+      const match = byDate[key]
+      out.push({
+        key,
+        label: dayNames[dt.getDay()],
+        revenue: match?.revenue || 0,
+        orders: match?.orders || 0,
+      })
+    }
+    return out
+  }, [daily])
+
+  const maxVal = Math.max(1, ...buckets.map(b => b.revenue))
+
+  if (loading && daily.length === 0) {
+    return (
+      <div className="flex items-end gap-2 h-[140px] px-2 pt-4">
+        {[0, 1, 2, 3, 4, 5, 6].map(i => (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <div className="w-full animate-pulse bg-gray-200 rounded" style={{ height: '40%' }} />
+            <span className="text-[10px] text-gray-300">·</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-end gap-2 h-[140px] px-2 pt-4">
-      {days.map((d, i) => {
-        const live = dayWeights[i] * totalRev * 0.6
-        const groupBuy = dayWeights[i] * totalRev * 0.25
-        const affiliate = dayWeights[i] * totalRev * 0.15
-        const total = live + groupBuy + affiliate
-        const heightPct = (total / (maxVal * 1.1)) * 100
+      {buckets.map((b, i) => {
+        const heightPct = b.revenue > 0 ? (b.revenue / (maxVal * 1.1)) * 100 : 0
+        // 라이브/공구/제휴 세분화 데이터는 아직 없으므로 단일 바 (그라디언트) 표시
         return (
-          <div key={d} className="flex-1 flex flex-col items-center gap-1">
-            <div className="w-full relative" style={{ height: `${Math.max(heightPct, 5)}%` }}>
-              <div className="absolute bottom-0 w-full rounded-t-md overflow-hidden flex flex-col-reverse" style={{ height: '100%' }}>
-                <div style={{ height: '60%', background: '#8B5CF6' }} />
-                <div style={{ height: '25%', background: '#FF0033' }} />
-                <div style={{ height: '15%', background: '#10B981' }} />
-              </div>
+          <div key={b.key} className="flex-1 flex flex-col items-center gap-1" title={`${b.key}: ${b.revenue.toLocaleString()}원 / ${b.orders}건`}>
+            <div className="w-full relative" style={{ height: `${Math.max(heightPct, 2)}%` }}>
+              <div
+                className="absolute bottom-0 w-full rounded-t-md"
+                style={{
+                  height: '100%',
+                  background: b.revenue > 0
+                    ? 'linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)'
+                    : '#E5E7EB',
+                }}
+              />
             </div>
-            <span className="text-[10px] text-gray-400 font-medium">{d}</span>
+            <span className="text-[10px] text-gray-400 font-medium">{b.label}</span>
+            {i === buckets.length - 1 && (
+              <span className="text-[9px] text-purple-600 font-bold">오늘</span>
+            )}
           </div>
         )
       })}
@@ -181,7 +236,15 @@ export default function AgencyPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [sellers, setSellers] = useState<Seller[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [daily, setDaily] = useState<DailyStat[]>([])
   const [loading, setLoading] = useState(true)
+
+  // 월간 매출 목표 (localStorage 저장)
+  const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
+    const stored = Number(localStorage.getItem('agency_monthly_goal') || '0')
+    return stored > 0 ? stored : 50_000_000
+  })
+  const [editingGoal, setEditingGoal] = useState(false)
 
   const token = localStorage.getItem('agency_token')
 
@@ -208,8 +271,9 @@ export default function AgencyPage() {
       api.get('/api/agency/stats', { headers }),
       api.get('/api/agency/sellers', { headers }),
       api.get('/api/agency/orders?limit=8', { headers }),
+      api.get('/api/agency/stats/daily?days=14', { headers }),
     ])
-      .then(([statsRes, sellersRes, ordersRes]) => {
+      .then(([statsRes, sellersRes, ordersRes, dailyRes]) => {
         // 통계 호출이 401로 실패하면 세션 만료 처리
         const authFailed = [statsRes, sellersRes].some(r =>
           r.status === 'rejected' && (r.reason as { response?: { status?: number } })?.response?.status === 401
@@ -223,15 +287,17 @@ export default function AgencyPage() {
         const nextStats = statsRes.status === 'fulfilled' ? (statsRes.value.data.data as Stats | null) : null
         const nextSellers = sellersRes.status === 'fulfilled' ? (sellersRes.value.data.data || []) : []
         const nextOrders = ordersRes.status === 'fulfilled' ? (ordersRes.value.data.data || []) : []
+        const nextDaily = dailyRes.status === 'fulfilled' ? (dailyRes.value.data.data || []) : []
 
         if (nextStats) setStats(nextStats)
         setSellers(nextSellers)
         setOrders(nextOrders)
+        setDaily(nextDaily)
 
         // sessionStorage 캐시 (5분 TTL)
         try {
           sessionStorage.setItem('agency_dashboard_cache', JSON.stringify({
-            ts: Date.now(), stats: nextStats, sellers: nextSellers, orders: nextOrders,
+            ts: Date.now(), stats: nextStats, sellers: nextSellers, orders: nextOrders, daily: nextDaily,
           }))
         } catch { /* quota 무시 */ }
       })
@@ -344,20 +410,12 @@ export default function AgencyPage() {
         <div className="rounded-2xl bg-white border border-[#E8EAEE] p-5">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-bold text-gray-900">매출 추이 (7일)</h2>
-            <div className="flex items-center gap-3">
-              {[
-                { label: '라이브', color: '#8B5CF6' },
-                { label: '공구', color: '#FF0033' },
-                { label: '제휴', color: '#10B981' },
-              ].map(l => (
-                <div key={l.label} className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full" style={{ background: l.color }} />
-                  <span className="text-[10px] text-gray-500">{l.label}</span>
-                </div>
-              ))}
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full" style={{ background: '#8B5CF6' }} />
+              <span className="text-[10px] text-gray-500">일일 매출</span>
             </div>
           </div>
-          <RevenueTrendChart sellers={sellers} />
+          <RevenueTrendChart />
         </div>
 
         {/* CSV Download + Notifications */}

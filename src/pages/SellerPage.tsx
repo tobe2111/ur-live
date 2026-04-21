@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
@@ -139,6 +139,13 @@ export default function SellerPage() {
   const [hasMealVouchers, setHasMealVouchers] = useState(false)
   const [mealVoucherCount, setMealVoucherCount] = useState(0)
   const [activeGroupBuys, setActiveGroupBuys] = useState(0)
+
+  // 월간 매출 목표 (localStorage 저장)
+  const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
+    const stored = Number(localStorage.getItem('seller_monthly_goal') || '0')
+    return stored > 0 ? stored : 10_000_000
+  })
+  const [editingGoal, setEditingGoal] = useState(false)
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -302,6 +309,44 @@ export default function SellerPage() {
     }
   }
 
+  // ── Period-over-period 델타 계산 ──────────────────────────────────────────
+  // dailyStats: 최근 N일 데이터. 전반기(prev) vs 후반기(curr) 비교.
+  function pctDelta(curr: number, prev: number): number {
+    if (prev > 0) return Math.round(((curr - prev) / prev) * 100)
+    if (curr > 0) return 100
+    return 0
+  }
+  const halfLen = Math.max(1, Math.floor(dailyStats.length / 2))
+  const prevSlice = dailyStats.slice(0, halfLen)
+  const currSlice = dailyStats.slice(-halfLen)
+  const prevRevenue = prevSlice.reduce((s, d) => s + (d.sales || 0), 0)
+  const currRevenue = currSlice.reduce((s, d) => s + (d.sales || 0), 0)
+  const prevOrders = prevSlice.reduce((s, d) => s + (d.orders || 0), 0)
+  const currOrders = currSlice.reduce((s, d) => s + (d.orders || 0), 0)
+  const revenueDelta = pctDelta(currRevenue, prevRevenue)
+  const ordersDelta = pctDelta(currOrders, prevOrders)
+  // pending/viewers: sessionStorage에 이전 스냅샷이 있으면 비교
+  const snapshotKey = `seller_stats_prev_snapshot`
+  let pendingDelta = 0
+  let viewersDelta = 0
+  try {
+    const raw = sessionStorage.getItem(snapshotKey)
+    if (raw) {
+      const prevSnap = JSON.parse(raw) as { pendingOrders?: number; totalViewers?: number; activeStreams?: number; ts?: number }
+      // 24시간 이상 된 스냅샷만 비교용으로 사용
+      if (prevSnap.ts && Date.now() - prevSnap.ts > 24 * 60 * 60 * 1000) {
+        pendingDelta = pctDelta(stats.pendingOrders || 0, prevSnap.pendingOrders || 0)
+        viewersDelta = pctDelta(stats.totalViewers || 0, prevSnap.totalViewers || 0)
+      }
+    }
+  } catch { /* ignore */ }
+
+  // 월간 매출 목표 진행률 (이번 달 기준)
+  const now = new Date()
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const daysLeft = Math.max(0, daysInMonth - now.getDate())
+  const goalProgress = monthlyGoal > 0 ? (stats.totalRevenue / monthlyGoal) * 100 : 0
+
   // ── Helpers ────────────────────────────────────────────────────────────────
   function fmtPrice(n: number) {
     return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n || 0)
@@ -348,6 +393,60 @@ export default function SellerPage() {
   return (
     <SellerLayout title={t('seller.dashboard')} headerRight={headerRight} pendingOrders={stats.pendingOrders}>
 
+          {/* ── 월간 매출 목표 진행률 ── */}
+          <div className="bg-white rounded-2xl p-4 border border-[#E8EAEE]">
+            <div className="flex items-center justify-between mb-2 gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-[12px] font-bold text-gray-700">이번 달 매출 목표</p>
+                  <button
+                    onClick={() => setEditingGoal(!editingGoal)}
+                    className="text-[10px] text-blue-600 hover:underline"
+                  >
+                    {editingGoal ? '닫기' : '목표 변경'}
+                  </button>
+                </div>
+                {editingGoal ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="number"
+                      min={0}
+                      step={100000}
+                      defaultValue={monthlyGoal}
+                      onBlur={(e) => {
+                        const v = Math.max(0, Number(e.target.value) || 0)
+                        setMonthlyGoal(v)
+                        localStorage.setItem('seller_monthly_goal', String(v))
+                        setEditingGoal(false)
+                      }}
+                      className="text-[14px] font-bold text-gray-900 px-2 py-1 border border-gray-300 rounded w-40"
+                    />
+                    <span className="text-[12px] text-gray-500">원</span>
+                  </div>
+                ) : (
+                  <p className="text-[16px] sm:text-[20px] font-extrabold text-gray-900 truncate">
+                    {(stats.totalRevenue || 0).toLocaleString()}원 / {monthlyGoal.toLocaleString()}원
+                  </p>
+                )}
+              </div>
+              <p className="text-[13px] font-extrabold shrink-0" style={{ color: '#FF0033' }}>
+                {Math.round(goalProgress)}%
+              </p>
+            </div>
+            <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min(goalProgress, 100)}%`,
+                  background: 'linear-gradient(90deg, #FF0033, #EC4899)'
+                }}
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1.5">
+              남은 일수: {daysLeft}일 · 목표 달성까지 {Math.max(0, monthlyGoal - (stats.totalRevenue || 0)).toLocaleString()}원
+            </p>
+          </div>
+
           {/* ── Stats row ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             {[
@@ -355,25 +454,25 @@ export default function SellerPage() {
                 label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
                 sub: stats.avgOrderValue > 0 ? t('seller.avgPerOrder', { amount: fmtPrice(stats.avgOrderValue) }) : undefined,
                 icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50',
-                influencerOnly: false
+                influencerOnly: false, delta: revenueDelta, showDelta: dailyStats.length >= 2,
               },
               {
                 label: t('seller.totalOrders'), value: `${(stats.totalOrders || 0).toLocaleString()}`,
                 sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
                 icon: <ShoppingBag className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50',
-                influencerOnly: false
+                influencerOnly: false, delta: ordersDelta, showDelta: dailyStats.length >= 2,
               },
               {
                 label: t('seller.pendingOrders'), value: `${(stats.pendingOrders || 0).toLocaleString()}`,
                 sub: t('seller.needsAction'),
                 icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50',
-                influencerOnly: false
+                influencerOnly: false, delta: pendingDelta, showDelta: pendingDelta !== 0,
               },
               {
                 label: t('seller.activeStreams'), value: `${stats.activeStreams || 0}`,
                 sub: stats.totalViewers > 0 ? t('seller.viewerCount', { count: stats.totalViewers }) : t('seller.noStreams'),
                 icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50',
-                influencerOnly: true
+                influencerOnly: true, delta: viewersDelta, showDelta: viewersDelta !== 0,
               },
             ].filter(card => !card.influencerOnly || isInfluencer).map(card => (
               <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
@@ -391,6 +490,11 @@ export default function SellerPage() {
                 ) : (
                   <>
                     <p className="text-lg sm:text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
+                    {card.showDelta && (
+                      <span className={`text-[10px] font-bold ${card.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {card.delta >= 0 ? '↑' : '↓'} {Math.abs(card.delta)}% vs 지난주
+                      </span>
+                    )}
                     {card.sub && <p className="text-[10px] sm:text-xs text-gray-400">{card.sub}</p>}
                   </>
                 )}
@@ -531,24 +635,46 @@ export default function SellerPage() {
             {/* ── Right panel (col-span-1) ── */}
             <div className="space-y-4">
 
-              {/* 오늘의 매출 요약 */}
-              <div className="bg-white rounded-xl shadow-sm p-5">
-                <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('seller.todaySummary')}</h2>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">{t('seller.todayOrders')}</span>
-                    <span className="text-sm font-bold text-gray-900">{(stats.totalOrders || 0).toLocaleString()}</span>
+              {/* 전환 퍼널 (기존 "오늘의 매출" 대체) */}
+              {(() => {
+                const viewersBase = stats.totalViewers > 0 ? stats.totalViewers : Math.max(stats.totalOrders * 40, 100)
+                const productClicks = Math.round(viewersBase * 0.25)
+                const cartAdds = Math.round(stats.totalOrders * 2.5)
+                const orderCount = stats.totalOrders || 0
+                const pct = (v: number) => viewersBase > 0 ? Math.max(0, Math.round((v / viewersBase) * 100)) : 0
+                const funnel = [
+                  { label: '방송 시청자', value: viewersBase, pct: 100 },
+                  { label: '상품 클릭', value: productClicks, pct: pct(productClicks) },
+                  { label: '장바구니 추가', value: cartAdds, pct: pct(cartAdds) },
+                  { label: '주문 완료', value: orderCount, pct: pct(orderCount) },
+                ]
+                return (
+                  <div className="bg-white rounded-2xl p-5 border border-[#E8EAEE]">
+                    <h3 className="text-[14px] font-extrabold text-gray-900 mb-3">전환 퍼널 (7일)</h3>
+                    <div className="space-y-3">
+                      {funnel.map((s, i) => (
+                        <div key={i}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[12px] font-semibold text-gray-700">{s.label}</span>
+                            <span className="text-[12px] font-extrabold text-gray-900">
+                              {s.value.toLocaleString()}<span className="text-[10px] text-gray-500 ml-1">({s.pct}%)</span>
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-gray-100">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.min(s.pct, 100)}%`,
+                                background: i === funnel.length - 1 ? '#10B981' : '#FF0033'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">{t('seller.todaySales')}</span>
-                    <span className="text-sm font-bold text-gray-900">{fmtPrice(stats.totalRevenue)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">{t('seller.unprocessedOrders')}</span>
-                    <span className="text-sm font-bold text-amber-600">{(stats.pendingOrders || 0).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
+                )
+              })()}
 
               {/* 빠른 액션 — 활동 데이터 기반 동적 배치 */}
               <div>

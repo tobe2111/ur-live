@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import {
-  LayoutDashboard, Users, ShoppingBag, Play, BarChart2, LogOut, Menu, X,
+  LayoutDashboard, Users, ShoppingBag, BarChart2, LogOut, Menu, X,
   Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
   TrendingUp, Radio, UserPlus, type LucideIcon
 } from 'lucide-react'
@@ -16,22 +16,47 @@ interface NavItem {
   liveBadge?: boolean
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { path: '/agency',              label: '대시보드',    icon: LayoutDashboard, exact: true },
-  { path: '/agency/sellers',      label: '셀러 관리',   icon: Users },
-  { path: '/agency/streams',      label: '라이브 현황',  icon: Radio, liveBadge: true },
-  { path: '/agency/schedule',     label: '방송 캘린더',  icon: Calendar },
-  { path: '/agency/stats',        label: '통계 분석',   icon: BarChart2 },
-  { path: '/agency/settlements',  label: '정산 관리',   icon: TrendingUp },
-  { path: '/agency/ranking',      label: '셀러 랭킹',   icon: BarChart2 },
-  { path: '/agency/orders',       label: '주문 현황',   icon: ShoppingBag },
-  { path: '/agency/returns',      label: '반품/CS',    icon: ShoppingBag },
-  { path: '/agency/contracts',    label: '계약 관리',   icon: FileText },
-  { path: '/agency/targets',      label: '매출 목표',   icon: Target },
-  { path: '/agency/notices',      label: '셀러 공지',   icon: Bell },
-  { path: '/agency/group-buy',    label: '공동구매',    icon: Utensils },
-  { path: '/agency/compare',      label: '셀러 비교',   icon: GitCompare },
-  { path: '/agency/profile',      label: '프로필 설정',  icon: Settings },
+interface NavGroup {
+  label: string
+  items: NavItem[]
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: '운영',
+    items: [
+      { path: '/agency',          label: '대시보드',    icon: LayoutDashboard, exact: true },
+      { path: '/agency/sellers',  label: '담당 셀러',   icon: Users },
+      { path: '/agency/streams',  label: '라이브 현황',  icon: Radio, liveBadge: true },
+      { path: '/agency/schedule', label: '방송 캘린더',  icon: Calendar },
+    ],
+  },
+  {
+    label: '판매 관리',
+    items: [
+      { path: '/agency/orders',    label: '주문 현황', icon: ShoppingBag },
+      { path: '/agency/group-buy', label: '공동구매',  icon: Utensils },
+      { path: '/agency/returns',   label: '반품/CS',  icon: ShoppingBag },
+    ],
+  },
+  {
+    label: '분석 & 성과',
+    items: [
+      { path: '/agency/stats',   label: '통계 분석', icon: BarChart2 },
+      { path: '/agency/ranking', label: '셀러 랭킹', icon: BarChart2 },
+      { path: '/agency/compare', label: '셀러 비교', icon: GitCompare },
+      { path: '/agency/targets', label: '매출 목표', icon: Target },
+    ],
+  },
+  {
+    label: '재무 & 설정',
+    items: [
+      { path: '/agency/settlements', label: '정산 관리',   icon: TrendingUp },
+      { path: '/agency/contracts',   label: '계약 관리',   icon: FileText },
+      { path: '/agency/notices',     label: '셀러 공지',   icon: Bell },
+      { path: '/agency/profile',     label: '프로필 설정',  icon: Settings },
+    ],
+  },
 ]
 
 interface AgencyLayoutProps {
@@ -134,54 +159,64 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto scrollbar-hide py-2">
-        {NAV_ITEMS.map(({ path, label, icon: Icon, exact, badge, liveBadge }) => {
-          const active = isActive(path, exact)
-          return (
-            <Link
-              key={path}
-              to={path}
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors"
-              style={
-                active
-                  ? {
-                      color: '#FFFFFF',
-                      borderLeft: '2.5px solid #8B5CF6',
-                      background: 'linear-gradient(to right, rgba(139,92,246,0.18), transparent)',
-                    }
-                  : {
-                      color: 'rgba(255,255,255,0.55)',
-                      borderLeft: '2.5px solid transparent',
-                    }
-              }
-              onMouseEnter={(e) => {
-                if (!active) e.currentTarget.style.color = '#FFFFFF'
-              }}
-              onMouseLeave={(e) => {
-                if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
-              }}
+      {/* Navigation — 그룹별 */}
+      <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={gi} className="mt-3 first:mt-1">
+            <div
+              className="px-4 py-1.5 font-extrabold uppercase text-white/30"
+              style={{ fontSize: '9px', letterSpacing: '0.12em' }}
             >
-              <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
-              <span className="flex-1 truncate">{label}</span>
-              {liveBadge && (
-                <span
-                  className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center gap-1"
-                  style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171' }}
+              {group.label}
+            </div>
+            {group.items.map(({ path, label, icon: Icon, exact, badge, liveBadge }) => {
+              const active = isActive(path, exact)
+              return (
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors"
+                  style={
+                    active
+                      ? {
+                          color: '#FFFFFF',
+                          borderLeft: '2.5px solid #8B5CF6',
+                          background: 'linear-gradient(to right, rgba(139,92,246,0.18), transparent)',
+                        }
+                      : {
+                          color: 'rgba(255,255,255,0.55)',
+                          borderLeft: '2.5px solid transparent',
+                        }
+                  }
+                  onMouseEnter={(e) => {
+                    if (!active) e.currentTarget.style.color = '#FFFFFF'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
+                  }}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                  LIVE
-                </span>
-              )}
-              {badge && (
-                <span className="text-[9px] font-extrabold px-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', color: '#FFFFFF' }}>
-                  {badge}
-                </span>
-              )}
-            </Link>
-          )
-        })}
+                  <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
+                  <span className="flex-1 truncate">{label}</span>
+                  {liveBadge && (
+                    <span
+                      className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center gap-1"
+                      style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171' }}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                      LIVE
+                    </span>
+                  )}
+                  {badge && (
+                    <span className="text-[9px] font-extrabold px-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', color: '#FFFFFF' }}>
+                      {badge}
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Bottom: invite button + logout */}
@@ -238,6 +273,18 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
           {children}
         </main>
+      </div>
+
+      {/* Mobile quick-action FAB */}
+      <div className="lg:hidden fixed bottom-6 right-4 z-40">
+        <button
+          onClick={() => navigate('/agency/schedule')}
+          className="flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-lg active:scale-95 transition-transform"
+          style={{ background: 'linear-gradient(90deg, #8B5CF6, #EC4899)', boxShadow: '0 8px 24px rgba(139,92,246,0.3)' }}
+        >
+          <Calendar className="w-4 h-4" />
+          라이브 편성
+        </button>
       </div>
     </div>
   )
