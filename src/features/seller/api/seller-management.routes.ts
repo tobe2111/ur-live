@@ -13,7 +13,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
-import { hashPassword } from '@/lib/password';
+import { hashPassword, validatePasswordComplexity } from '@/lib/password';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { ApiError } from '@/shared/types/common';
 import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE, MIN_PASSWORD_LENGTH } from '@/shared/constants';
@@ -202,11 +202,12 @@ sellerManagementRoutes.post('/register', async (c) => {
       }, 400);
     }
 
-    // 비밀번호 강도 검증
-    if (password.length < MIN_PASSWORD_LENGTH) {
+    // 비밀번호 강도 검증 (신규 가입: 10자 이상 + 대/소/숫자)
+    const pwCheck = validatePasswordComplexity(password);
+    if (!pwCheck.ok) {
       return c.json({
         success: false,
-        error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+        error: pwCheck.error
       }, 400);
     }
 

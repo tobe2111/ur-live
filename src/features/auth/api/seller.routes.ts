@@ -96,6 +96,14 @@ type SellerLoginResponse = {
   };
 };
 
+/** 로그 노출 방지: 이메일을 "a***@domain" 형태로 마스킹. */
+function maskEmail(e: string | undefined | null): string {
+  if (!e || typeof e !== 'string') return '***';
+  const [local, domain] = e.split('@');
+  if (!local || !domain) return '***';
+  return (local[0] ?? '*') + '***@' + domain;
+}
+
 export const sellerRoutes = new Hono<{ Bindings: Bindings }>();
 
 /**
@@ -150,41 +158,41 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     `).bind(email).first<Record<string, any>>();
     
     if (!seller) {
-      console.warn('[Seller Login] Seller not found:', email);
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: '이메일 또는 비밀번호가 올바르지 않습니다.' 
+      if (import.meta.env.DEV) console.warn('[Seller Login] Seller not found:', maskEmail(email));
+      return c.json<AuthResponse>({
+        success: false,
+        error: '이메일 또는 비밀번호가 올바르지 않습니다.'
       }, 401);
     }
-    
+
     // 2. 계정 상태 확인
     if (seller.status === 'suspended') {
-      console.warn('[Seller Login] Account suspended:', email);
-      return c.json<AuthResponse>({ 
-        success: false, 
+      if (import.meta.env.DEV) console.warn('[Seller Login] Account suspended:', maskEmail(email));
+      return c.json<AuthResponse>({
+        success: false,
         error: '정지된 계정입니다. 관리자에게 문의하세요.',
         code: 'ACCOUNT_SUSPENDED'
       }, 403);
     }
-    
+
     if (seller.status === 'pending') {
-      console.warn('[Seller Login] Account pending approval:', email);
-      return c.json<AuthResponse>({ 
-        success: false, 
+      if (import.meta.env.DEV) console.warn('[Seller Login] Account pending approval:', maskEmail(email));
+      return c.json<AuthResponse>({
+        success: false,
         error: '승인 대기 중인 계정입니다. 관리자 승인 후 이용 가능합니다.',
         code: 'ACCOUNT_PENDING'
       }, 403);
     }
-    
+
     // 3. 비밀번호 검증
     const passwordHash = seller.password_hash as string;
     const { valid } = await verifyPassword(password, passwordHash);
 
     if (!valid) {
-      if (import.meta.env.DEV) console.warn('[Seller Login] Invalid password');
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: '이메일 또는 비밀번호가 올바르지 않습니다.' 
+      if (import.meta.env.DEV) console.warn('[Seller Login] Invalid password for:', maskEmail(email));
+      return c.json<AuthResponse>({
+        success: false,
+        error: '이메일 또는 비밀번호가 올바르지 않습니다.'
       }, 401);
     }
     

@@ -260,8 +260,9 @@ authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 
     if (!body.current_password || !body.new_password) {
       return c.json({ success: false, error: '현재 비밀번호와 새 비밀번호를 입력해주세요' }, 400);
     }
-    if (body.new_password.length < 8) {
-      return c.json({ success: false, error: '새 비밀번호는 8자 이상이어야 합니다' }, 400);
+    const complexity = validatePasswordComplexity(body.new_password);
+    if (!complexity.ok) {
+      return c.json({ success: false, error: complexity.error }, 400);
     }
     const user = await db.prepare('SELECT password_hash FROM users WHERE id = ?').bind(id).first<{ password_hash: string }>();
     if (!user) return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);

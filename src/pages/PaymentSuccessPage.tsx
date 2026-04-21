@@ -286,8 +286,11 @@ export default function PaymentSuccessPage() {
                 </Button>
                 <Button
                   onClick={() => {
+                    // ✅ UX M20 FIX: 1시간 이상 경과한 lastViewedLiveId는 stale로 간주하여 홈으로 이동
                     const lastLiveId = localStorage.getItem('lastViewedLiveId')
-                    if (lastLiveId) {
+                    const lastViewedAt = localStorage.getItem('lastViewedLiveAt')
+                    const isStale = !lastViewedAt || (Date.now() - parseInt(lastViewedAt, 10)) > 3600000
+                    if (lastLiveId && !isStale) {
                       navigate(`/live/${lastLiveId}`)
                     } else {
                       navigate('/')

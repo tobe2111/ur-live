@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
 import api from '@/lib/api'
@@ -359,6 +359,17 @@ export default function BrowsePage() {
                 </div>
               ))}
             </div>
+          </div>
+        ) : error ? (
+          /* ✅ UX M17 FIX: 에러 상태 + 재시도 버튼 */
+          <div className="text-center py-16">
+            <p className="text-gray-900 mb-4">{error}</p>
+            <button
+              onClick={loadProducts}
+              className="px-6 py-2 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-colors"
+            >
+              다시 시도
+            </button>
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-16">
