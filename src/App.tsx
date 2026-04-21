@@ -66,6 +66,8 @@ const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
 const SellerPage = lazy(() => import('./pages/SellerPage'))
 const SellerLoginPage = lazy(() => import('./pages/SellerLoginPage'))
 const SellerRegisterPage = lazy(() => import('./pages/SellerRegisterPage'))
+const SellerForgotPasswordPage = lazy(() => import('./pages/SellerForgotPasswordPage'))
+const SellerResetPasswordPage = lazy(() => import('./pages/SellerResetPasswordPage'))
 const SellerBusinessInfoPage = lazy(() => import('./pages/SellerBusinessInfoPage'))
 const SellerOrdersPage = lazy(() => import('./pages/SellerOrdersPage'))
 const SellerProductsPage = lazy(() => import('./pages/SellerProductsPage'))
@@ -134,6 +136,8 @@ const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'))
 const AdminReviewModerationPage = lazy(() => import('./pages/AdminReviewModerationPage'))
 // Agency 페이지들
 const AgencyLoginPage = lazy(() => import('./pages/AgencyLoginPage'))
+const AgencyForgotPasswordPage = lazy(() => import('./pages/AgencyForgotPasswordPage'))
+const AgencyResetPasswordPage = lazy(() => import('./pages/AgencyResetPasswordPage'))
 const AgencyPage = lazy(() => import('./pages/AgencyPage'))
 const AgencySellersPage = lazy(() => import('./pages/AgencySellersPage'))
 const AgencyOrdersPage = lazy(() => import('./pages/AgencyOrdersPage'))
@@ -392,6 +396,8 @@ function AppContent() {
             } />
             <Route path="/seller/register" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
             <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
+            <Route path="/seller/forgot-password" element={<ErrorBoundary><SellerForgotPasswordPage /></ErrorBoundary>} />
+            <Route path="/seller/reset-password" element={<ErrorBoundary><SellerResetPasswordPage /></ErrorBoundary>} />
             
             {/* Seller Protected 페이지들 */}
             <Route path="/seller" element={
@@ -675,6 +681,8 @@ function AppContent() {
             {/* Agency 대시보드 — login/register는 공개, 나머지는 인증 필요 */}
             <Route path="/agency/login" element={<AgencyLoginPage />} />
             <Route path="/agency/register" element={<AgencyRegisterPage />} />
+            <Route path="/agency/forgot-password" element={<AgencyForgotPasswordPage />} />
+            <Route path="/agency/reset-password" element={<AgencyResetPasswordPage />} />
             <Route path="/agency" element={<AgencyAuthGuard><AgencyPage /></AgencyAuthGuard>} />
             <Route path="/agency/sellers" element={<AgencyAuthGuard><AgencySellersPage /></AgencyAuthGuard>} />
             <Route path="/agency/orders" element={<AgencyAuthGuard><AgencyOrdersPage /></AgencyAuthGuard>} />

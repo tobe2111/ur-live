@@ -171,6 +171,11 @@ function RevenueTrendChart({ sellers }: { sellers: Seller[] }) {
   )
 }
 
+// Inline skeleton placeholder
+const Skel = ({ className }: { className?: string }) => (
+  <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
+)
+
 export default function AgencyPage() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
@@ -183,18 +188,53 @@ export default function AgencyPage() {
   useEffect(() => {
     if (!token) { navigate('/agency/login', { replace: true }); return }
     const headers = { Authorization: `Bearer ${token}` }
-    setLoading(true)
-    Promise.all([
+
+    // sessionStorage 캐시로 즉시 렌더 (5분 TTL)
+    try {
+      const cached = sessionStorage.getItem('agency_dashboard_cache')
+      if (cached) {
+        const c = JSON.parse(cached)
+        if (Date.now() - (c.ts || 0) < 5 * 60 * 1000) {
+          if (c.stats) setStats(c.stats)
+          if (Array.isArray(c.sellers)) setSellers(c.sellers)
+          if (Array.isArray(c.orders)) setOrders(c.orders)
+          setLoading(false)
+        }
+      }
+    } catch { /* 파싱 실패 무시 */ }
+
+    // Promise.allSettled: 하나 실패해도 나머지 데이터 표시
+    Promise.allSettled([
       api.get('/api/agency/stats', { headers }),
       api.get('/api/agency/sellers', { headers }),
       api.get('/api/agency/orders?limit=8', { headers }),
     ])
       .then(([statsRes, sellersRes, ordersRes]) => {
-        setStats(statsRes.data.data)
-        setSellers(sellersRes.data.data || [])
-        setOrders(ordersRes.data.data || [])
+        // 통계 호출이 401로 실패하면 세션 만료 처리
+        const authFailed = [statsRes, sellersRes].some(r =>
+          r.status === 'rejected' && (r.reason as { response?: { status?: number } })?.response?.status === 401
+        )
+        if (authFailed) {
+          toast.error('세션이 만료되었습니다. 다시 로그인해주세요.')
+          navigate('/agency/login', { replace: true })
+          return
+        }
+
+        const nextStats = statsRes.status === 'fulfilled' ? (statsRes.value.data.data as Stats | null) : null
+        const nextSellers = sellersRes.status === 'fulfilled' ? (sellersRes.value.data.data || []) : []
+        const nextOrders = ordersRes.status === 'fulfilled' ? (ordersRes.value.data.data || []) : []
+
+        if (nextStats) setStats(nextStats)
+        setSellers(nextSellers)
+        setOrders(nextOrders)
+
+        // sessionStorage 캐시 (5분 TTL)
+        try {
+          sessionStorage.setItem('agency_dashboard_cache', JSON.stringify({
+            ts: Date.now(), stats: nextStats, sellers: nextSellers, orders: nextOrders,
+          }))
+        } catch { /* quota 무시 */ }
       })
-      .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
       .finally(() => setLoading(false))
   }, [token])
 
@@ -216,13 +256,7 @@ export default function AgencyPage() {
       }))
   }, [sellers])
 
-  if (loading) {
-    return (
-      <AgencyLayout title="대시보드">
-        <div className="flex items-center justify-center h-64 text-gray-500 text-sm">불러오는 중...</div>
-      </AgencyLayout>
-    )
-  }
+  const showStatsSkeleton = loading && !stats
 
   async function downloadCSV(days: number) {
     try {
@@ -252,12 +286,21 @@ export default function AgencyPage() {
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-2xl p-4 bg-white border border-[#E8EAEE]">
             <div className="flex items-start justify-between">
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] mb-1">{kpi.label}</p>
-                <p className="text-[22px] font-extrabold text-[#111]">{kpi.value}</p>
-                {kpi.sub && <p className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</p>}
+                {showStatsSkeleton ? (
+                  <>
+                    <Skel className="h-6 w-2/3 mb-1" />
+                    <Skel className="h-3 w-1/2" />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[22px] font-extrabold text-[#111]">{kpi.value}</p>
+                    {kpi.sub && <p className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</p>}
+                  </>
+                )}
               </div>
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.color}`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.color} shrink-0`}>
                 <kpi.icon className="w-4 h-4 text-white" />
               </div>
             </div>
@@ -357,7 +400,22 @@ export default function AgencyPage() {
               전체보기 <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
-          {sortedSellers.length === 0 ? (
+          {loading && sortedSellers.length === 0 ? (
+            <div className="divide-y divide-gray-50">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between px-5 py-3">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <Skel className="w-5 h-4" />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <Skel className="h-4 w-1/2" />
+                      <Skel className="h-3 w-1/3" />
+                    </div>
+                  </div>
+                  <Skel className="h-5 w-12" />
+                </div>
+              ))}
+            </div>
+          ) : sortedSellers.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-400">
               소속 셀러가 없습니다.<br />
               <span className="text-xs">관리자에게 셀러 배정을 요청하세요.</span>
@@ -405,7 +463,20 @@ export default function AgencyPage() {
               전체보기 <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
-          {orders.length === 0 ? (
+          {loading && orders.length === 0 ? (
+            <div className="divide-y divide-gray-50">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between px-5 py-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <Skel className="h-3 w-1/3" />
+                    <Skel className="h-4 w-1/4" />
+                    <Skel className="h-3 w-1/2" />
+                  </div>
+                  <Skel className="h-4 w-16 ml-3" />
+                </div>
+              ))}
+            </div>
+          ) : orders.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-400">주문 내역이 없습니다.</div>
           ) : (
             <div className="divide-y divide-gray-50">

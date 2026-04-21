@@ -136,6 +136,15 @@ export default function AgencyLoginPage() {
                 </div>
               </div>
 
+              <div className="flex justify-end">
+                <Link
+                  to="/agency/forgot-password"
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  비밀번호를 잊으셨나요?
+                </Link>
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}
