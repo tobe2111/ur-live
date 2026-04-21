@@ -5,17 +5,14 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 
 interface LiveStream { id: number; title: string; seller_name?: string; viewer_count?: number; thumbnail_url?: string; image_url?: string; youtube_video_id?: string }
-interface Product { id: number; name: string; price: number; original_price?: number; image_url?: string; discount_rate?: number; group_buy_current?: number; group_buy_target?: number }
 
 export default function IntroducePage() {
   const navigate = useNavigate()
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
-  const [deals, setDeals] = useState<Product[]>([])
   const [faqOpen, setFaqOpen] = useState<number | null>(0)
 
   useEffect(() => {
     api.get('/api/streams?status=live').then(r => { if (r.data.success) setLiveStreams(r.data.data?.slice(0, 4) || []) }).catch(() => {})
-    api.get('/api/group-buy/products?status=active').then(r => { if (r.data.success) setDeals(r.data.data?.slice(0, 6) || []) }).catch(() => {})
   }, [])
 
   const faqs = [
@@ -41,7 +38,7 @@ export default function IntroducePage() {
             <span className="text-[20px] font-black italic text-gray-900" style={{ letterSpacing: '-0.04em' }}>UR·DEAL</span>
           </button>
           <nav className="hidden md:flex items-center gap-1">
-            {['지금 라이브', '인기 공구', '어떻게 쓰나요', '셀러 입점'].map(t => (
+            {['지금 라이브', '어떻게 쓰나요', '셀러 입점'].map(t => (
               <a key={t} href={`#${t}`} className="px-3 py-2 text-[14px] font-semibold text-gray-600 hover:text-black">{t}</a>
             ))}
           </nav>
