@@ -10,7 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
 import { rateLimit } from '@/worker/middleware/rate-limit';
-import { verifyPassword, hashPassword } from '@/lib/password';
+import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password';
 import { sendEmail } from '@/services/email';
 import type { AuthResponse } from '../types';
 import {
@@ -458,10 +458,10 @@ sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot
           RESEND_FROM
         ).catch((e) => console.error('[Seller ForgotPassword] Email send failed:', e));
       } else {
-        console.warn('[Seller ForgotPassword] RESEND_API_KEY not configured; skipping email. resetUrl=', resetUrl);
+        if (import.meta.env.DEV) console.warn('[Seller ForgotPassword] RESEND_API_KEY not configured; skipping email. resetUrl=', resetUrl);
       }
     } else {
-      console.info('[Seller ForgotPassword] Unknown email (silent):', email);
+      if (import.meta.env.DEV) console.info('[Seller ForgotPassword] Unknown email (silent):', maskEmail(email));
     }
 
     // 이메일 존재 여부와 무관하게 동일 응답
@@ -502,10 +502,11 @@ sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_p
       }, 400);
     }
 
-    if (newPassword.length < 8) {
+    const pwCheck = validatePasswordComplexity(newPassword);
+    if (!pwCheck.ok) {
       return c.json<AuthResponse>({
         success: false,
-        error: '비밀번호는 8자 이상이어야 합니다.'
+        error: pwCheck.error
       }, 400);
     }
 
