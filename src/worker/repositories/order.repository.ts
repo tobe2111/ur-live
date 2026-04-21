@@ -33,8 +33,8 @@ export class OrderRepository {
       product_id: string;
       seller_id: string;
       product_name: string;
-      product_thumbnail?: string;
-      product_sku?: string;
+      product_thumbnail?: string;  // mapped to product_image on INSERT
+      product_sku?: string;        // ignored on INSERT (column doesn't exist)
       unit_price: number;
       quantity: number;
       subtotal: number;
@@ -96,22 +96,23 @@ export class OrderRepository {
     const orderId = String(orderRow.id);
 
     // Step 3: order_items 일괄 삽입 (id 생략 → 자동증가)
+    // ✅ SCHEMA FIX: Production order_items has `product_image` (NOT product_thumbnail);
+    //   no `product_sku` column. Required NOT NULL: product_name, price, quantity.
     if (items.length > 0) {
       const itemStmts = items.map(item => ({
         sql: `INSERT INTO order_items (
           order_id, product_id, seller_id,
-          product_name, product_thumbnail, product_sku,
+          product_name, product_image,
           price, unit_price, quantity, subtotal, currency, options, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
         params: [
           orderId,
           item.product_id,
           item.seller_id || null,
           item.product_name,
-          item.product_thumbnail ?? null,
-          item.product_sku ?? null,
-          item.unit_price,       // price (NOT NULL — 구 스키마 호환)
-          item.unit_price,       // unit_price (신 스키마)
+          item.product_thumbnail ?? null,  // UI uses product_thumbnail, DB column is product_image
+          item.unit_price,       // price (NOT NULL)
+          item.unit_price,       // unit_price
           item.quantity,
           item.subtotal,
           JSON.stringify(item.options ?? {}),
@@ -225,7 +226,9 @@ export class OrderRepository {
       paid_at?: string;
       cancelled_at?: string;
       cancel_reason?: string;
+      /** @deprecated — column doesn't exist in production schema. Tracked in webhook_events table. */
       webhook_processed_at?: string;
+      /** @deprecated — column doesn't exist in production schema. Tracked in webhook_events table. */
       webhook_event_id?: string;
     }
   ): Promise<void> {
@@ -254,14 +257,8 @@ export class OrderRepository {
       setFields.push('cancel_reason = ?');
       params.push(extra.cancel_reason ?? null);
     }
-    if (extra?.webhook_processed_at) {
-      setFields.push('webhook_processed_at = ?');
-      params.push(extra.webhook_processed_at);
-    }
-    if (extra?.webhook_event_id) {
-      setFields.push('webhook_event_id = ?');
-      params.push(extra.webhook_event_id);
-    }
+    // ✅ SCHEMA FIX: webhook_processed_at / webhook_event_id columns don't
+    // exist on `orders`. Idempotency is tracked in the `webhook_events` table.
 
     params.push(orderNumber);
 
@@ -304,14 +301,7 @@ export class OrderRepository {
       setFields.push('cancel_reason = ?');
       params.push(extra.cancel_reason ?? null);
     }
-    if (extra?.webhook_processed_at) {
-      setFields.push('webhook_processed_at = ?');
-      params.push(extra.webhook_processed_at);
-    }
-    if (extra?.webhook_event_id) {
-      setFields.push('webhook_event_id = ?');
-      params.push(extra.webhook_event_id);
-    }
+    // ✅ SCHEMA FIX: webhook_processed_at / webhook_event_id columns don't exist.
 
     params.push(orderId);
 
@@ -455,14 +445,16 @@ export class OrderRepository {
 
   /**
    * Mark order as cancel-failed with a reason (rollback marker)
+   * ✅ SCHEMA FIX: `cancel_fail_reason` column doesn't exist in production.
+   * Fall back to `cancel_reason` (with a "[CANCEL_FAILED]" prefix for auditability).
    */
   async markCancelFailed(orderId: string, reason: string): Promise<void> {
     await this.qb.execute(
       `UPDATE orders SET
-         cancel_fail_reason = ?,
+         cancel_reason = ?,
          updated_at = datetime('now')
        WHERE id = ?`,
-      [reason, orderId]
+      [`[CANCEL_FAILED] ${reason}`, orderId]
     );
   }
 
@@ -488,7 +480,8 @@ export class OrderRepository {
         : undefined,
       shipping_memo: row['shipping_memo'] ? String(row['shipping_memo']) : undefined,
       tracking_number: row['tracking_number'] ? String(row['tracking_number']) : undefined,
-      tracking_company: row['tracking_company'] ? String(row['tracking_company']) : undefined,
+      // ✅ SCHEMA FIX: Column is `courier` (not tracking_company). Alias for API compat.
+      tracking_company: row['courier'] ? String(row['courier']) : undefined,
       cancelled_at: row['cancelled_at'] ? String(row['cancelled_at']) : undefined,
       cancel_reason: row['cancel_reason'] ? String(row['cancel_reason']) : undefined,
       paid_at: row['paid_at'] ? String(row['paid_at']) : undefined,
@@ -505,8 +498,9 @@ export class OrderRepository {
         product_id: String(item['product_id'] ?? ''),
         seller_id: String(item['seller_id'] ?? ''),
         product_name: String(item['product_name'] ?? ''),
-        product_thumbnail: item['product_thumbnail'] ? String(item['product_thumbnail']) : undefined,
-        product_sku: item['product_sku'] ? String(item['product_sku']) : undefined,
+        // ✅ SCHEMA FIX: DB column is `product_image` (not product_thumbnail).
+        //   No `product_sku` column in production schema.
+        product_thumbnail: item['product_image'] ? String(item['product_image']) : undefined,
         unit_price: Number(item['unit_price'] ?? 0),
         quantity: Number(item['quantity'] ?? 0),
         subtotal: Number(item['subtotal'] ?? 0),

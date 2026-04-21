@@ -32,6 +32,20 @@ export async function deleteUserAccount(
     const deletedAt = new Date().toISOString();
     const reregisterAvailableAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
+    // 0. Capture the user's original email BEFORE anonymization so we can enforce
+    //    the 30-day re-registration restriction by email (checkReregistrationRestriction).
+    let originalEmail: string | null = null;
+    try {
+      const userRow = await db
+        .prepare('SELECT email FROM users WHERE id = ?')
+        .bind(userId)
+        .first<{ email: string | null }>();
+      originalEmail = userRow?.email ?? null;
+    } catch {
+      // Best-effort — proceed even if lookup fails
+      originalEmail = null;
+    }
+
     // 1. 병렬 삭제: 장바구니, 찜목록, 배송지
     await db.batch([
       db.prepare('DELETE FROM cart_items WHERE user_id = ?').bind(userId),
@@ -83,13 +97,13 @@ export async function deleteUserAccount(
       }
     }
 
-    // 4. 탈퇴 기록 저장
+    // 4. 탈퇴 기록 저장 (email 포함 — 30일 재가입 제한에 사용됨)
     await db
       .prepare(
-        `INSERT INTO deleted_accounts (user_id, reason, deleted_at, reregister_available_at)
-         VALUES (?, ?, ?, ?)`
+        `INSERT INTO deleted_accounts (user_id, email, reason, deleted_at, reregister_available_at)
+         VALUES (?, ?, ?, ?, ?)`
       )
-      .bind(userId, reason ?? null, deletedAt, reregisterAvailableAt)
+      .bind(userId, originalEmail, reason ?? null, deletedAt, reregisterAvailableAt)
       .run();
 
     return {

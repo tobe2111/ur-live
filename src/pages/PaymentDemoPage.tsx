@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { toast } from '@/hooks/useToast'
+import SEO from '@/components/SEO'
 
 // 공식 샌드박스 키 (테스트용)
 // 실제 운영 시에는 MID urteamizy1의 클라이언트 키로 변경 필요
@@ -138,12 +139,13 @@ export default function PaymentDemoPage() {
   }
 
   return (
-    <div style={{ 
-      maxWidth: '800px', 
-      margin: '0 auto', 
+    <div style={{
+      maxWidth: '800px',
+      margin: '0 auto',
       padding: '40px 20px',
       fontFamily: 'sans-serif'
     }}>
+      <SEO title="결제 데모" description="토스페이먼츠 결제 데모 페이지" url="/payment/demo" noindex />
       <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '20px' }}>
         토스페이먼츠 결제 데모
       </h1>

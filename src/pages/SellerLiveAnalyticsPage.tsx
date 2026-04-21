@@ -1,17 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SellerLayout from '@/components/SellerLayout'
 import api from '@/lib/api'
 import {
   Eye, Users, MessageCircle, ShoppingBag, TrendingUp,
   Heart, ArrowLeft, BarChart3, Clock, DollarSign,
-  Play, ChevronRight
+  Play, ChevronRight, Loader2
 } from 'lucide-react'
-import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend
-} from 'recharts'
 import { useTranslation } from 'react-i18next'
+
+// Recharts lazy load (377KB → 차트 영역만 지연 로드)
+const CombinedTimelineChart = lazy(() => import('@/components/charts/SellerLiveAnalyticsCharts').then(m => ({ default: m.CombinedTimelineChart })))
+const ChatBarChart = lazy(() => import('@/components/charts/SellerLiveAnalyticsCharts').then(m => ({ default: m.ChatBarChart })))
+const OrderRevenueChart = lazy(() => import('@/components/charts/SellerLiveAnalyticsCharts').then(m => ({ default: m.OrderRevenueChart })))
+
+const ChartFallback = ({ height }: { height: number }) => (
+  <div className="flex items-center justify-center" style={{ height }}>
+    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+  </div>
+)
 
 // ── Types ──
 interface StreamAnalytics {
@@ -324,17 +331,13 @@ function StreamAnalyticsDetail({ streamId }: { streamId: string }) {
           {combinedTimeline.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('seller.realtimeActivityTrend')}</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={combinedTimeline} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                  <XAxis dataKey="minute" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
-                  <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} width={40} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="chat" stroke="#F97316" strokeWidth={2} name={t('seller.chatNameChart')} dot={false} />
-                  <Line type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={2} name={t('seller.ordersNameChart')} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<ChartFallback height={250} />}>
+                <CombinedTimelineChart
+                  data={combinedTimeline}
+                  chatName={t('seller.chatNameChart')}
+                  ordersName={t('seller.ordersNameChart')}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -385,15 +388,9 @@ function StreamAnalyticsDetail({ streamId }: { streamId: string }) {
         <div className="bg-white rounded-xl shadow-sm p-5">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('seller.chatPerMinute')}</h3>
           {chat.timeline.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chat.timeline} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                <XAxis dataKey="minute" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
-                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} width={35} />
-                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }} />
-                <Bar dataKey="count" fill="#F97316" radius={[4, 4, 0, 0]} name={t('seller.chatCountChart')} />
-              </BarChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<ChartFallback height={300} />}>
+              <ChatBarChart data={chat.timeline} chatCountLabel={t('seller.chatCountChart')} />
+            </Suspense>
           ) : (
             <p className="text-center text-gray-400 py-12 text-sm">{t('seller.noChatData')}</p>
           )}
@@ -405,18 +402,13 @@ function StreamAnalyticsDetail({ streamId }: { streamId: string }) {
           <div className="bg-white rounded-xl shadow-sm p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('seller.orderSalesTrend')}</h3>
             {orders.timeline.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={orders.timeline} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                  <XAxis dataKey="minute" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
-                  <YAxis yAxisId="left" tick={{ fontSize: 10, fill: '#9CA3AF' }} width={35} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#9CA3AF' }} width={60} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar yAxisId="left" dataKey="order_count" fill="#10B981" radius={[4, 4, 0, 0]} name={t('seller.orderCountChart')} />
-                  <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#2563EB" strokeWidth={2} name={t('seller.salesLabelAnalytics')} dot={false} />
-                </BarChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<ChartFallback height={300} />}>
+                <OrderRevenueChart
+                  data={orders.timeline}
+                  orderCountLabel={t('seller.orderCountChart')}
+                  salesLabel={t('seller.salesLabelAnalytics')}
+                />
+              </Suspense>
             ) : (
               <p className="text-center text-gray-400 py-12 text-sm">{t('seller.noOrderData')}</p>
             )}

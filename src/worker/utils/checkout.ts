@@ -88,6 +88,15 @@ export async function rollbackOrder(
   orderId: string
 ): Promise<void> {
   try {
+    // ✅ SCHEMA FIX: orderId here is the order_number string. Look up the
+    // integer id first, then use it to join order_items.
+    const row = await db
+      .prepare('SELECT id FROM orders WHERE order_number = ?')
+      .bind(orderId)
+      .first<{ id: number }>()
+
+    if (!row) return
+
     // 재고 복구
     await db
       .prepare(
@@ -101,18 +110,18 @@ export async function rollbackOrder(
         WHERE id IN (SELECT product_id FROM order_items WHERE order_id = ?)
       `
       )
-      .bind(orderId, orderId)
+      .bind(row.id, row.id)
       .run()
 
     // 주문 상태 업데이트 (DB constraint는 uppercase)
     await db
       .prepare('UPDATE orders SET status = ? WHERE id = ?')
-      .bind('CANCELLED', orderId)
+      .bind('CANCELLED', row.id)
       .run()
 
     // Order rollback completed
   } catch (error) {
-    console.error(`❌ 주문 롤백 실패: ${orderId}`, error)
+    console.error(`주문 롤백 실패: ${orderId}`, error)
   }
 }
 

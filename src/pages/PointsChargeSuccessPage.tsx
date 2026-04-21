@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Zap, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import SEO from '@/components/SEO'
 
 export default function PointsChargeSuccessPage() {
   const navigate = useNavigate()
@@ -51,6 +52,7 @@ export default function PointsChargeSuccessPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
+        <SEO title="딜 충전 처리" description="딜 포인트 충전 처리 중" url="/points/charge/success" noindex />
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-pink-500 mx-auto mb-4" />
           <p className="text-gray-500">충전을 처리하는 중...</p>
@@ -62,6 +64,7 @@ export default function PointsChargeSuccessPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
+        <SEO title="딜 충전 실패" description="딜 포인트 충전에 실패했습니다" url="/points/charge/success" noindex />
         <div className="max-w-md w-full text-center bg-white rounded-2xl p-8 shadow-lg">
           <p className="text-red-600 mb-4">{error}</p>
           <button onClick={() => navigate('/points/charge')} className="px-6 py-3 bg-pink-500 text-white rounded-xl font-bold">
@@ -74,6 +77,7 @@ export default function PointsChargeSuccessPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
+      <SEO title="딜 충전 완료" description="딜 포인트 충전이 완료되었습니다" url="/points/charge/success" noindex />
       <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-lg text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
           <CheckCircle className="w-10 h-10 text-green-600" />

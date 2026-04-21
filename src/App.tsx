@@ -93,7 +93,6 @@ const SellerSupplyPage = lazy(() => import('./pages/SellerSupplyPage'))
 const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
 
 // User 페이지들
-const MyPage = lazy(() => import('./pages/MyPage'))
 const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage'))
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
 const MyGroupBuysPage = lazy(() => import('./pages/MyGroupBuysPage'))
@@ -786,13 +785,13 @@ function AppContent() {
             <Route path="/embed/live/:streamId" element={<EmbedLivePage />} />
             <Route path="/payment/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
             <Route path="/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
-            <Route path="/payment/fail" element={<PaymentFailPage />} />
+            <Route path="/payment/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
 
             {/* 딜 포인트 충전 */}
             <Route path="/points/charge" element={<ProtectedRoute requireUser><PointsChargePage /></ProtectedRoute>} />
-            <Route path="/points/charge/success" element={<PointsChargeSuccessPage />} />
-            <Route path="/points/charge/fail" element={<PaymentFailPage />} />
-            <Route path="/fail" element={<PaymentFailPage />} />
+            <Route path="/points/charge/success" element={<ErrorBoundary><PointsChargeSuccessPage /></ErrorBoundary>} />
+            <Route path="/points/charge/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
+            <Route path="/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
             
             {/* 친구 초대 공동구매 */}
             <Route path="/referral/:code" element={<ReferralPage />} />
