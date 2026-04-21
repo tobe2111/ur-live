@@ -63,8 +63,7 @@ export function useLiveStreamWebSocket(
   const reconnectAttemptsRef = useRef(0)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  // 0 = WebSocket 첫 실패 시 즉시 polling으로 전환 (Durable Objects 없는 환경)
-  const MAX_RECONNECT = 0
+  const MAX_RECONNECT = 3
 
   const clearMessages = useCallback(() => setMessages([]), [])
 
