@@ -1,12 +1,13 @@
 /**
  * Admin Agency Management Routes
  *
- * GET    /agencies              - 에이전시 목록
- * POST   /agencies              - 에이전시 생성
- * PATCH  /agencies/:id          - 에이전시 정보 수정
- * DELETE /agencies/:id          - 에이전시 삭제
- * GET    /agencies/:id/sellers  - 에이전시 소속 셀러
- * POST   /agencies/:id/sellers  - 셀러 소속 추가
+ * GET    /agencies                      - 에이전시 목록
+ * POST   /agencies                      - 에이전시 생성
+ * PATCH  /agencies/:id                  - 에이전시 정보 수정
+ * DELETE /agencies/:id                  - 에이전시 삭제
+ * POST   /agencies/:id/reset-password   - 에이전시 비밀번호 재설정
+ * GET    /agencies/:id/sellers          - 에이전시 소속 셀러
+ * POST   /agencies/:id/sellers          - 셀러 소속 추가
  * DELETE /agencies/:id/sellers/:sellerId - 셀러 소속 제거
  */
 
@@ -120,6 +121,22 @@ app.delete('/:id', async (c) => {
   await c.env.DB.prepare('DELETE FROM agency_sellers WHERE agency_id = ?').bind(id).run()
   await c.env.DB.prepare('DELETE FROM agencies WHERE id = ?').bind(id).run()
   return c.json({ success: true })
+})
+
+// ── POST /agencies/:id/reset-password ─────────────────────────
+app.post('/:id/reset-password', async (c) => {
+  const id = Number(c.req.param('id'))
+  const { newPassword } = await c.req.json<{ newPassword: string }>()
+  if (!newPassword || newPassword.length < 8) {
+    return c.json({ success: false, error: '비밀번호는 8자 이상이어야 합니다.' }, 400)
+  }
+  const existing = await c.env.DB.prepare('SELECT id, email FROM agencies WHERE id = ?').bind(id).first<{ id: number; email: string }>()
+  if (!existing) return c.json({ success: false, error: 'Not found' }, 404)
+  const hash = await hashPassword(newPassword)
+  await c.env.DB.prepare(
+    'UPDATE agencies SET password_hash = ?, status = \'active\', updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  ).bind(hash, id).run()
+  return c.json({ success: true, message: `${existing.email} 비밀번호가 초기화되었고 상태가 active로 변경되었습니다.` })
 })
 
 // ── GET /agencies/:id/sellers ─────────────────────────────────
