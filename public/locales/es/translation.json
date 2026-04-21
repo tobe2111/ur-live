@@ -1095,6 +1095,15 @@
       "inputPlaceholder": "Escribir mensaje...",
       "seller": "Vendedor"
     }
+    ,
+    "layout": {
+      "broadcast": "Transmisión",
+      "sales": "Ventas",
+      "revenue": "Ingresos",
+      "settings": "Configuración",
+      "backToMain": "Volviendo al inicio",
+      "backToUser": "Volver a usuario"
+    }
   },
   "nav": {
     "home": "Inicio",

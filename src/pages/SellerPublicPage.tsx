@@ -102,8 +102,8 @@ export default function SellerPublicPage() {
       // 로컬 상태 업데이트
       setSeller(prev => prev ? { ...prev, ...payload } : prev)
       setEditingField(null)
-      toast.success('저장되었습니다')
-    } catch { toast.error('저장 실패') }
+      toast.success(t('common.saveSuccess'))
+    } catch { toast.error(t('common.saveFailed')) }
     finally { setSaving(false) }
   }
 
@@ -120,8 +120,8 @@ export default function SellerPublicPage() {
       try {
         await api.put('/api/seller/profile', { profile_image: base64 }, { headers: { Authorization: `Bearer ${token}` } })
         setSeller(prev => prev ? { ...prev, profile_image: base64 } : prev)
-        toast.success('프로필 이미지가 변경되었습니다')
-      } catch { toast.error('이미지 업로드 실패') }
+        toast.success(t('seller.publicPage.profileImageChanged'))
+      } catch { toast.error(t('seller.publicPage.imageUploadFailed')) }
       finally { setSaving(false) }
     }
     reader.readAsDataURL(file)
@@ -174,11 +174,11 @@ export default function SellerPublicPage() {
   const regularProducts = products.filter(p => p.category !== 'meal_voucher')
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'home', label: '홈' },
-    { key: 'vouchers', label: `식사권 ${mealVouchers.length}` },
-    { key: 'shorts', label: `영상 ${shorts.length}` },
-    { key: 'live', label: `라이브 ${streams.length}` },
-    { key: 'info', label: '정보' },
+    { key: 'home', label: t('seller.tabHome') },
+    { key: 'vouchers', label: `${t('seller.publicPage.vouchers')} ${mealVouchers.length}` },
+    { key: 'shorts', label: `${t('seller.publicPage.videos')} ${shorts.length}` },
+    { key: 'live', label: `${t('seller.tabLive')} ${streams.length}` },
+    { key: 'info', label: t('seller.tabInfo') },
   ]
 
   return (
@@ -261,7 +261,7 @@ export default function SellerPublicPage() {
             </div>
           ) : (
             <h1 className={`text-xl font-extrabold ${T.text} group`} onClick={() => startEdit('name')}>
-              {seller.name || '이름 없음'}
+              {seller.name || t('seller.publicPage.noName')}
               {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />}
             </h1>
           )}
@@ -282,14 +282,14 @@ export default function SellerPublicPage() {
               className="w-full text-sm text-gray-400 bg-[#121212] border border-pink-500 rounded-lg p-2 focus:outline-none focus:border-pink-500 resize-none"
             />
             <div className="flex gap-2 mt-1">
-              <button onClick={() => saveEdit('bio', editBio)} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">저장</button>
-              <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">취소</button>
+              <button onClick={() => saveEdit('bio', editBio)} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">{t('common.save')}</button>
+              <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">{t('common.cancel')}</button>
             </div>
           </div>
         ) : (
           <div className="group mt-2" onClick={() => startEdit('bio')}>
             <p className="text-sm text-gray-400 leading-relaxed line-clamp-2">
-              {seller.bio || (isOwner ? '소개글을 입력해주세요' : '')}
+              {seller.bio || (isOwner ? t('seller.publicPage.enterBio') : '')}
             </p>
             {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline opacity-0 group-hover:opacity-100 transition-opacity" />}
           </div>
@@ -356,8 +356,8 @@ export default function SellerPublicPage() {
             {mealVouchers.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className={`text-base font-bold ${T.text}`}>🍽️ 추천 식사권</h2>
-                  <button onClick={() => setTab('vouchers')} className="text-xs text-gray-500 flex items-center">전체보기 <ChevronRight className="w-3 h-3" /></button>
+                  <h2 className={`text-base font-bold ${T.text}`}>🍽️ {t('seller.publicPage.recommendedVouchers')}</h2>
+                  <button onClick={() => setTab('vouchers')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
                 </div>
                 <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
                   {mealVouchers.slice(0, 4).map(p => {
@@ -369,7 +369,7 @@ export default function SellerPublicPage() {
                         <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1A1A1A]">
                           {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover" />}
                           {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">-{disc}%</span>}
-                          {isAchieved && <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">달성!</span>}
+                          {isAchieved && <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{t('seller.publicPage.achieved')}</span>}
                         </div>
                         <div className="mt-2">
                           <p className={`text-[12px] font-medium ${T.text} line-clamp-1`}>{p.name}</p>
@@ -385,7 +385,7 @@ export default function SellerPublicPage() {
                               <div className="w-full bg-gray-700 rounded-full h-1.5"><div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
                               <div className="flex items-center justify-between mt-0.5">
                                 <p className="text-[9px] text-gray-400">{p.group_buy_current || 0}/{p.group_buy_target}명</p>
-                                {!isAchieved && <p className="text-[9px] text-pink-400 font-medium">공구 참여하기 →</p>}
+                                {!isAchieved && <p className="text-[9px] text-pink-400 font-medium">{t('seller.publicPage.joinGroupBuy')}</p>}
                               </div>
                             </div>
                           )}
@@ -401,8 +401,8 @@ export default function SellerPublicPage() {
             {shorts.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className={`text-base font-bold ${T.text}`}>📹 맛집 리뷰 영상</h2>
-                  {isOwner && <button onClick={() => navigate('/seller/shorts')} className="text-xs text-blue-500 flex items-center gap-0.5"><Plus className="w-3 h-3" /> 영상 추가</button>}
+                  <h2 className={`text-base font-bold ${T.text}`}>📹 {t('seller.publicPage.reviewVideos')}</h2>
+                  {isOwner && <button onClick={() => navigate('/seller/shorts')} className="text-xs text-blue-500 flex items-center gap-0.5"><Plus className="w-3 h-3" /> {t('seller.publicPage.addVideo')}</button>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {shorts.slice(0, 4).map(s => (
@@ -433,7 +433,7 @@ export default function SellerPublicPage() {
                 </div>
                 {shorts.length > 4 && (
                   <button onClick={() => setTab('shorts')} className="w-full mt-3 py-2.5 text-sm text-gray-500 bg-[#121212] rounded-xl font-medium">
-                    영상 더보기 ({shorts.length}개)
+                    {t('seller.publicPage.moreVideos', { count: shorts.length })}
                   </button>
                 )}
               </section>
@@ -443,8 +443,8 @@ export default function SellerPublicPage() {
             {recentStreams.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className={`text-base font-bold ${T.text}`}>라이브 <span className="text-pink-500">{streams.length}</span></h2>
-                  <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">더보기 <ChevronRight className="w-3 h-3" /></button>
+                  <h2 className={`text-base font-bold ${T.text}`}>{t('seller.tabLive')} <span className="text-pink-500">{streams.length}</span></h2>
+                  <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {recentStreams.slice(0, 4).map(s => (
@@ -460,8 +460,8 @@ export default function SellerPublicPage() {
         {tab === 'vouchers' && (
           mealVouchers.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-gray-400 text-sm">등록된 식사권이 없습니다</p>
-              {isOwner && <button onClick={() => navigate('/seller/products/new')} className="mt-3 text-sm text-pink-500 font-medium">식사권 등록하기</button>}
+              <p className="text-gray-400 text-sm">{t('seller.publicPage.noVouchers')}</p>
+              {isOwner && <button onClick={() => navigate('/seller/products/new')} className="mt-3 text-sm text-pink-500 font-medium">{t('seller.publicPage.registerVoucher')}</button>}
             </div>
           ) : (
             <div className="space-y-3">
@@ -507,8 +507,8 @@ export default function SellerPublicPage() {
           shorts.length === 0 ? (
             <div className="text-center py-16">
               <Play className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">등록된 영상이 없습니다</p>
-              {isOwner && <button onClick={() => navigate('/seller/shorts')} className="mt-3 text-sm text-blue-500 font-medium">영상 등록하기</button>}
+              <p className="text-gray-400 text-sm">{t('seller.publicPage.noVideos')}</p>
+              {isOwner && <button onClick={() => navigate('/seller/shorts')} className="mt-3 text-sm text-blue-500 font-medium">{t('seller.publicPage.registerVideo')}</button>}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -548,7 +548,7 @@ export default function SellerPublicPage() {
         {/* ═══ 라이브 탭 ═══ */}
         {tab === 'live' && (
           streams.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 text-sm">라이브 기록이 없습니다</div>
+            <div className="text-center py-16 text-gray-400 text-sm">{t('seller.publicPage.noLiveRecords')}</div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {streams.map(s => (
@@ -562,19 +562,19 @@ export default function SellerPublicPage() {
         {tab === 'info' && (
           <div className="space-y-6">
             <section>
-              <h3 className={`text-base font-bold ${T.text} mb-2`}>소개</h3>
+              <h3 className={`text-base font-bold ${T.text} mb-2`}>{t('seller.publicPage.introduction')}</h3>
               {editingField === 'bio-info' ? (
                 <div>
                   <textarea autoFocus value={editBio} onChange={e => setEditBio(e.target.value)} rows={4}
                     className="w-full text-sm bg-[#121212] border border-pink-500 rounded-lg p-2 focus:outline-none resize-none" />
                   <div className="flex gap-2 mt-1">
-                    <button onClick={() => { saveEdit('bio', editBio); setEditingField(null) }} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">저장</button>
-                    <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">취소</button>
+                    <button onClick={() => { saveEdit('bio', editBio); setEditingField(null) }} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">{t('common.save')}</button>
+                    <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">{t('common.cancel')}</button>
                   </div>
                 </div>
               ) : (
                 <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap group" onClick={() => { if (isOwner) { setEditBio(seller.bio || ''); setEditingField('bio-info') } }}>
-                  {seller.bio || (isOwner ? '소개글을 입력해주세요 (탭하여 편집)' : '소개글이 없습니다.')}
+                  {seller.bio || (isOwner ? t('seller.publicPage.enterBioTap') : t('seller.publicPage.noBio'))}
                   {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1 opacity-0 group-hover:opacity-100" />}
                 </p>
               )}

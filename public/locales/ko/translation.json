@@ -1176,6 +1176,14 @@
       "empty": "채팅이 시작되면 여기에 표시됩니다",
       "inputPlaceholder": "메시지 입력...",
       "seller": "셀러"
+    },
+    "layout": {
+      "broadcast": "방송",
+      "sales": "판매",
+      "revenue": "수익",
+      "settings": "설정",
+      "backToMain": "메인으로 돌아갑니다",
+      "backToUser": "유저로 돌아가기"
     }
   },
   "nav": {

@@ -1177,6 +1177,14 @@
       "empty": "Messages will appear here when the chat starts",
       "inputPlaceholder": "Type a message...",
       "seller": "Seller"
+    },
+    "layout": {
+      "broadcast": "Broadcast",
+      "sales": "Sales",
+      "revenue": "Revenue",
+      "settings": "Settings",
+      "backToMain": "Returning to main",
+      "backToUser": "Back to user"
     }
   },
   "nav": {

@@ -1148,6 +1148,14 @@
       "minOrder": "{{amount}}円以上",
       "usage": "使用 {{used}}/{{total}}"
     },
+    "layout": {
+      "broadcast": "放送",
+      "sales": "販売",
+      "revenue": "収益",
+      "settings": "設定",
+      "backToMain": "メインに戻ります",
+      "backToUser": "ユーザーに戻る"
+    },
     "reviews": {
       "title": "レビュー管理",
       "empty": "受信したレビューはありません",

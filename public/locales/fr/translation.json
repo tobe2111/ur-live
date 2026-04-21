@@ -1095,6 +1095,15 @@
       "inputPlaceholder": "Saisir un message...",
       "seller": "Vendeur"
     }
+    ,
+    "layout": {
+      "broadcast": "Diffusion",
+      "sales": "Ventes",
+      "revenue": "Revenus",
+      "settings": "Paramètres",
+      "backToMain": "Retour à l'accueil",
+      "backToUser": "Retour utilisateur"
+    }
   },
   "nav": {
     "home": "Accueil",

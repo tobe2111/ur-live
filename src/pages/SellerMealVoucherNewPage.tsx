@@ -53,7 +53,7 @@ export default function SellerMealVoucherNewPage() {
       restaurant_lng: place.x || '',
     }))
     setPlaceSelected(true)
-    toast.success(`${place.place_name} 정보가 자동 입력되었습니다!`)
+    toast.success(t('seller.mealVoucher.placeAutoFilled', { name: place.place_name }))
 
     // 네이버 이미지 검색으로 맛집 사진 추천
     if (place.place_name) {
@@ -102,7 +102,7 @@ export default function SellerMealVoucherNewPage() {
     e.preventDefault()
 
     if (!form.name || !form.price || !form.restaurant_name) {
-      toast.error('식사권 이름, 가격, 맛집 이름은 필수입니다')
+      toast.error(t('seller.mealVoucher.requiredFields'))
       return
     }
 
@@ -131,14 +131,14 @@ export default function SellerMealVoucherNewPage() {
 
       const res = await api.post('/api/seller/products', payload, { headers })
       if (res.data.success) {
-        toast.success('식사권이 등록되었습니다!')
+        toast.success(t('seller.mealVoucher.registered'))
         navigate('/seller/group-buy')
       } else {
-        toast.error(res.data.error || '등록 실패')
+        toast.error(res.data.error || t('seller.mealVoucher.registerFailed'))
       }
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
-      toast.error(axiosErr?.response?.data?.error || '식사권 등록에 실패했습니다')
+      toast.error(axiosErr?.response?.data?.error || t('seller.mealVoucher.registerFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -147,7 +147,7 @@ export default function SellerMealVoucherNewPage() {
   const update = (key: string, value: string | number) => setForm(f => ({ ...f, [key]: value }))
 
   return (
-    <SellerLayout title="식사권 등록">
+    <SellerLayout title={t('seller.mealVoucher.title')}>
       <div className="max-w-2xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
 
@@ -155,7 +155,7 @@ export default function SellerMealVoucherNewPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <MapPin className="w-5 h-5 text-orange-500" />
-              <h2 className="text-base font-bold text-gray-900">맛집 정보</h2>
+              <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.restaurantInfo')}</h2>
             </div>
 
             <div className="space-y-4">
@@ -438,7 +438,7 @@ export default function SellerMealVoucherNewPage() {
               disabled={submitting}
               className="flex-[2] py-3 bg-pink-500 text-white rounded-xl font-bold text-sm disabled:opacity-50 active:scale-[0.98]"
             >
-              {submitting ? '등록 중...' : '식사권 등록하기'}
+              {submitting ? t('seller.registering') : t('seller.mealVoucher.registerSubmit')}
             </button>
           </div>
         </form>

@@ -13,7 +13,8 @@ import DashboardNotificationBell from './DashboardNotificationBell'
 type SellerType = 'influencer' | 'store_owner' | 'both'
 
 const NAV_GROUPS: {
-  label: string
+  label?: string
+  labelKey?: string
   hideFor?: SellerType[]
   items: {
     path: string
@@ -31,7 +32,7 @@ const NAV_GROUPS: {
     ],
   },
   {
-    label: '방송',
+    labelKey: 'seller.layout.broadcast',
     hideFor: ['store_owner'],
     items: [
       { path: '/seller/live-broadcast', labelKey: 'seller.live', icon: Radio, highlight: true },
@@ -40,7 +41,7 @@ const NAV_GROUPS: {
     ],
   },
   {
-    label: '판매',
+    labelKey: 'seller.layout.sales',
     items: [
       { path: '/seller/products', labelKey: 'seller.products', icon: Package },
       { path: '/seller/group-buy', labelKey: 'seller.mealVoucher', icon: Ticket },
@@ -51,7 +52,7 @@ const NAV_GROUPS: {
     ],
   },
   {
-    label: '수익',
+    labelKey: 'seller.layout.revenue',
     items: [
       { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2 },
       { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign },
@@ -59,7 +60,7 @@ const NAV_GROUPS: {
     ],
   },
   {
-    label: '설정',
+    labelKey: 'seller.layout.settings',
     items: [
       { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2 },
       { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', icon: Bell },
@@ -132,8 +133,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       <nav className="flex-1 px-3 py-3 overflow-y-auto">
         {filteredNavGroups.map((group, gi) => (
           <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
-            {group.label && (
-              <p className="px-3 mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.label}</p>
+            {(group.label || group.labelKey) && (
+              <p className="px-3 mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.labelKey ? t(group.labelKey) : group.label}</p>
             )}
             <div className="space-y-0.5">
               {group.items.map(({ path, labelKey, icon: Icon, ...rest }) => {
@@ -184,13 +185,13 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         {localStorage.getItem('user_id') && (
           <button
             onClick={() => {
-              toast.success('메인으로 돌아갑니다')
+              toast.success(t('seller.layout.backToMain'))
               navigate('/')
             }}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
           >
             <Globe className="w-4 h-4" />
-            유저로 돌아가기
+            {t('seller.layout.backToUser')}
           </button>
         )}
         <button
