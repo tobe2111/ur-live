@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import SEO from '@/components/SEO'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -195,6 +196,7 @@ export default function PaymentSuccessPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center px-4 py-6">
+      <SEO title="결제 완료 - 유어딜" description="주문이 성공적으로 완료되었습니다" url="/payment/success" />
       <div className="max-w-2xl w-full">
         <div className="bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7]">
           {/* 성공 아이콘 */}

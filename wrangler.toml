@@ -5,7 +5,7 @@
 
 name = "ur-live"
 main = "src/worker/index.ts"
-compatibility_date = "2024-09-25"
+compatibility_date = "2025-12-01"
 compatibility_flags = ["nodejs_compat"]
 
 # Build command: Cloudflare Workers CI가 빌드 전 프론트엔드를 생성하도록
@@ -53,7 +53,6 @@ new_sqlite_classes = ["LiveStreamDurableObject"]
 # ============================================================
 [vars]
 # ENVIRONMENT is set via Cloudflare Dashboard
-TOSS_CLIENT_KEY = "live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY"
 FRONTEND_URL = "https://live.ur-team.com"
 SCRAPER_URL = "https://live.ur-team.com"
 # REGION is set via Cloudflare Dashboard

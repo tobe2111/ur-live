@@ -163,13 +163,13 @@ export default function SellerMealVoucherNewPage() {
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <label className="block text-sm font-bold text-gray-900">🗺️ 카카오맵에서 매장 찾기</label>
-                    <p className="text-[11px] text-gray-500 mt-0.5">지도에서 직접 찾거나 검색해서 마커를 클릭하세요</p>
+                    <label className="block text-sm font-bold text-gray-900">🗺️ {t('seller.mealVoucher.findOnMap')}</label>
+                    <p className="text-[11px] text-gray-500 mt-0.5">{t('seller.mealVoucher.findOnMapDesc')}</p>
                   </div>
                   {placeSelected && (
                     <div className="flex items-center gap-1 text-xs text-green-600 shrink-0">
                       <CheckCircle className="w-3.5 h-3.5" />
-                      선택됨
+                      {t('seller.mealVoucher.selected')}
                     </div>
                   )}
                 </div>
@@ -187,23 +187,23 @@ export default function SellerMealVoucherNewPage() {
 
               {/* 자동 입력된 정보 (수정 가능) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">맛집 이름 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.restaurantNameLabel')} *</label>
                 <input
                   value={form.restaurant_name}
                   onChange={e => update('restaurant_name', e.target.value)}
-                  placeholder="카카오맵 검색으로 자동 입력되거나 직접 입력"
+                  placeholder={t('seller.mealVoucher.restaurantNamePlaceholder')}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">주소</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.addressLabel')}</label>
                 <div className="flex gap-2">
                   <input
                     value={form.restaurant_address}
                     onChange={e => update('restaurant_address', e.target.value)}
-                    placeholder="자동 입력 또는 직접 입력"
+                    placeholder={t('seller.mealVoucher.addressPlaceholder')}
                     className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   />
                   <button
@@ -211,35 +211,35 @@ export default function SellerMealVoucherNewPage() {
                     onClick={() => openKakaoAddress()}
                     className="px-3 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium shrink-0 active:scale-95"
                   >
-                    우편번호
+                    {t('seller.mealVoucher.postalCode')}
                   </button>
                 </div>
                 {form.restaurant_lat && form.restaurant_lng && (
                   <p className="text-[10px] text-green-600 mt-1">
-                    ✓ 좌표: {Number(form.restaurant_lat).toFixed(6)}, {Number(form.restaurant_lng).toFixed(6)} (맛집 지도에 표시됩니다)
+                    ✓ {t('seller.mealVoucher.coordinates')}: {Number(form.restaurant_lat).toFixed(6)}, {Number(form.restaurant_lng).toFixed(6)} ({t('seller.mealVoucher.shownOnMap')})
                   </p>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">전화번호</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.phoneLabel')}</label>
                   <input
                     value={form.restaurant_phone}
                     onChange={e => update('restaurant_phone', e.target.value)}
-                    placeholder="자동 입력 또는 직접 입력"
+                    placeholder={t('seller.mealVoucher.addressPlaceholder')}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">매장 인증 PIN</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.storeVerifyPin')}</label>
                   <input
                     value={form.store_verify_pin}
                     onChange={e => update('store_verify_pin', e.target.value)}
-                    placeholder="4자리 이상"
+                    placeholder={t('seller.mealVoucher.pinPlaceholder')}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   />
-                  <p className="text-[10px] text-gray-400 mt-1">매장에서 바우처 사용 시 확인하는 비밀번호</p>
+                  <p className="text-[10px] text-gray-400 mt-1">{t('seller.mealVoucher.pinDesc')}</p>
                 </div>
               </div>
             </div>
@@ -250,25 +250,25 @@ export default function SellerMealVoucherNewPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg">📸</span>
-                <h2 className="text-base font-bold text-gray-900">대표 이미지</h2>
+                <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.mainImage')}</h2>
               </div>
 
               <div className="space-y-3">
                 <input
                   value={form.image_url}
                   onChange={e => update('image_url', e.target.value)}
-                  placeholder="이미지 URL을 입력하거나 아래에서 선택하세요"
+                  placeholder={t('seller.mealVoucher.imageUrlPlaceholder')}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                 />
                 {form.image_url && (
                   <img src={form.image_url} alt="" className="w-full max-w-[200px] h-40 rounded-lg object-cover" />
                 )}
                 {loadingImages && (
-                  <p className="text-xs text-gray-500">맛집 사진을 검색하는 중...</p>
+                  <p className="text-xs text-gray-500">{t('seller.mealVoucher.searchingImages')}</p>
                 )}
                 {suggestedImages.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-600 mb-2">추천 이미지 (클릭하여 선택)</p>
+                    <p className="text-xs font-medium text-gray-600 mb-2">{t('seller.mealVoucher.suggestedImages')}</p>
                     <div className="grid grid-cols-3 gap-2">
                       {suggestedImages.map((url, i) => (
                         <button
@@ -293,7 +293,7 @@ export default function SellerMealVoucherNewPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Utensils className="w-5 h-5 text-pink-500" />
-              <h2 className="text-base font-bold text-gray-900">식사권 정보</h2>
+              <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.voucherInfo')}</h2>
             </div>
 
             <div className="space-y-4">
