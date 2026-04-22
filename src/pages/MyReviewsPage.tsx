@@ -50,7 +50,7 @@ export default function MyReviewsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <SEO title="리뷰 작성 - 유어딜" description="배송 완료된 상품의 리뷰를 작성하세요" url="/my-reviews" />
+      <SEO title="리뷰 작성 - 유어딜" description="배송 완료된 상품의 리뷰를 작성하세요" url="/my-reviews" noindex />
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="mx-auto max-w-md flex items-center justify-between px-4 h-[52px]">

@@ -134,7 +134,7 @@ const WishlistPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white pb-20">
-      <SEO title="위시리스트 - 유어딜" description="관심 상품을 모아보세요" url="/wishlist" />
+      <SEO title="위시리스트 - 유어딜" description="관심 상품을 모아보세요" url="/wishlist" noindex />
 
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">

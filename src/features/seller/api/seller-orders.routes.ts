@@ -177,7 +177,7 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
 
     // ✅ CONCURRENCY: enforce state machine so a seller cannot regress
     // a DELIVERED order back to PREPARING (or skip steps like PAID → DELIVERED).
-    const { statusesThatCanReach } = await import('@/worker/utils/state-machine');
+    const { statusesThatCanReach } = await import('../../../worker/utils/state-machine');
     const allowedPrev = statusesThatCanReach(dbStatus);
     if (allowedPrev.length === 0) {
       return c.json({ success: false, error: `Invalid status transition to ${dbStatus}` }, 400);
@@ -205,7 +205,7 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
             'CANCELLED': '\u274C 주문이 취소되었습니다.',
           };
           const msg = statusMessages[dbStatus] || `주문 상태: ${dbStatus}`;
-          const { notifyUser } = await import('@/lib/notifications');
+          const { notifyUser } = await import('../../../lib/notifications');
           await notifyUser(db, orderInfo.user_id, 'order_status', msg, `주문번호: ${orderInfo.order_number}`, '/my-orders');
         }
       } catch {} // fire and forget
@@ -311,7 +311,7 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
         `SELECT user_id, order_number FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
       ).bind(orderId, orderId, sellerId).first<{ user_id: string; order_number: string }>();
       if (orderForNotif?.user_id) {
-        const { notifyUser } = await import('@/lib/notifications');
+        const { notifyUser } = await import('../../../lib/notifications');
         await notifyUser(db, orderForNotif.user_id, 'order_status', '\u{1F4E6} 주문하신 상품이 발송되었습니다!', `주문번호: ${orderForNotif.order_number}`, '/my-orders');
       }
     } catch {} // fire and forget
@@ -477,7 +477,7 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
         };
         const msg = statusMessages[dbStatus];
         if (msg) {
-          const { notifyUser } = await import('@/lib/notifications');
+          const { notifyUser } = await import('../../../lib/notifications');
           const { results: affectedOrders } = await db.prepare(
             `SELECT user_id, order_number FROM orders WHERE id IN (${placeholders}) AND seller_id = ?`
           ).bind(...order_ids, sellerId).all<{ user_id: string; order_number: string }>();
@@ -593,7 +593,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
 
     // 팔로워에게 새 상품 알림 (인앱 + 카카오)
     if (newProduct) {
-      const { notifyFollowers, sendKakaoToFollowers } = await import('@/lib/notifications');
+      const { notifyFollowers, sendKakaoToFollowers } = await import('../../../lib/notifications');
       const productName = (newProduct as any).name;
       const productId = (newProduct as any).id;
       notifyFollowers(db, Number(sellerId), 'new_product', `🛍️ 새 상품 등록!`, productName, `/products/${productId}`).catch(() => {});

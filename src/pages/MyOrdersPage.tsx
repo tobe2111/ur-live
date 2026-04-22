@@ -216,7 +216,7 @@ export default function MyOrdersPage() {
 
   return (
     <div className="min-h-screen bg-white pb-20">
-      <SEO title="주문내역 - 유어딜" description="주문 내역과 배송 현황을 확인하세요" url="/my-orders" />
+      <SEO title="주문내역 - 유어딜" description="주문 내역과 배송 현황을 확인하세요" url="/my-orders" noindex />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="w-full px-4 sm:px-6">

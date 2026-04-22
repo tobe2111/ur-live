@@ -220,7 +220,7 @@ export default function AddressManagementPage() {
 
   return (
     <div className="min-h-screen bg-white pb-20">
-      <SEO title="배송지 관리 - 유어딜" description="배송지를 추가하고 관리하세요" url="/mypage/addresses" />
+      <SEO title="배송지 관리 - 유어딜" description="배송지를 추가하고 관리하세요" url="/mypage/addresses" noindex />
       {/* ✅ UX H15 FIX: Daum Postcode script는 useEffect에서 1회만 로드 */}
 
       {/* Header */}

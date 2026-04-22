@@ -79,7 +79,7 @@ export default function CartPage() {
   if (!loggedIn) {
     return (
       <div className="flex flex-col min-h-screen bg-white">
-        <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" />
+        <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" noindex />
         <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
           <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
             <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center">
@@ -429,7 +429,7 @@ function CartPageContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F4F4F4]">
-      <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" />
+      <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" noindex />
 
       {/* v4 Header + Select All */}
       <CartHeader
