@@ -429,6 +429,16 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       }, 400);
     }
 
+    // 🛡️ 2026-04-22: payment_status 추가 검증 — 결제 미완료 주문 환불 차단
+    // status 가 PAID 여도 payment_status 가 pending/failed 이면 Toss 호출 시 404/inconsistent → DB 오염.
+    const payStatus = (order as any).payment_status;
+    if (payStatus && payStatus !== 'approved') {
+      return c.json({
+        success: false,
+        error: `결제가 완료되지 않은 주문입니다 (payment_status: ${payStatus})`,
+      }, 400);
+    }
+
     // Toss 결제 취소 API 호출 (실제 환불)
     const payInfo = await orderRepo.getPaymentInfo(body.order_id);
     const paymentKey = payInfo?.toss_payment_key;
@@ -446,6 +456,23 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       return c.json({ success: false, error: 'Payment service unavailable' }, 503);
     }
 
+    // 🛡️ 2026-04-22: Toss 호출 전 CAS 로 refunded_amount 예약 — 동시 환불 race 차단
+    // 이전: Toss 먼저 호출 → DB 업데이트. 동시 2건 요청 시 양쪽 다 Toss 성공 후 합이 total 초과 가능.
+    // 수정: CAS 로 DB 에 먼저 기록 (total_amount 초과 불가). Toss 실패 시 롤백.
+    const refundAmount = body.refund_amount && body.refund_amount > 0 ? Math.round(body.refund_amount) : order.total_amount;
+    if (refundAmount <= 0 || refundAmount > order.total_amount) {
+      return c.json({ success: false, error: '환불 금액이 유효하지 않습니다' }, 400);
+    }
+
+    // CAS: refunded_amount + refund_amount <= total_amount 일 때만 업데이트
+    const reserveResult = await c.env.DB.prepare(
+      "UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + ? WHERE id = ? AND COALESCE(refunded_amount, 0) + ? <= total_amount"
+    ).bind(refundAmount, body.order_id, refundAmount).run().catch(() => null);
+
+    if (!reserveResult || (reserveResult.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '환불 가능 금액을 초과하거나 이미 처리 중입니다' }, 409);
+    }
+
     const tossResult = await tossCancelPayment(
       paymentKey,
       tossSecretKey,
@@ -454,6 +481,11 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     );
 
     if (!tossResult.success) {
+      // 🛡️ Toss 실패 시 예약한 refunded_amount 롤백
+      await c.env.DB.prepare(
+        "UPDATE orders SET refunded_amount = MAX(0, COALESCE(refunded_amount, 0) - ?) WHERE id = ?"
+      ).bind(refundAmount, body.order_id).run().catch(() => {});
+
       const tossErrorMessages: Record<string, string> = {
         ALREADY_CANCELED_PAYMENT: '이미 취소된 결제입니다',
         EXCEED_CANCEL_AMOUNT: '환불 금액이 결제 금액을 초과합니다',
@@ -466,15 +498,6 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       }, 422);
     }
 
-    // 🛡️ 2026-04-22: 부분 환불 refunded_amount 누적 기록
-    // 이전: Toss 호출 성공해도 DB refunded_amount 업데이트 안 됨 → 이중 환불 가능.
-    // 수정 후: Toss 성공 직후 refunded_amount 누적. 다음 환불 요청은 정확한 잔액 기반 검증.
-    if (body.refund_amount && body.refund_amount > 0) {
-      await c.env.DB.prepare(
-        "UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + ? WHERE id = ?"
-      ).bind(body.refund_amount, body.order_id).run().catch(() => {});
-    }
-
     // DB 상태 업데이트 + 재고 복구
     await orderRepo.updateStatusById(body.order_id, 'CANCELLED', {
       cancel_reason: `[환불요청] ${body.reason}`,
@@ -483,20 +506,26 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     await orderRepo.restoreStock(body.order_id);
 
     // ✅ 환불 시 추천 커미션도 회수 (webhook path 동등화)
-    //    Best-effort — tables may not exist in every environment.
+    // 🛡️ 2026-04-22: CAS 로 이중 회수 방어 — 이미 withdrawn 인 커미션은 포인트 재차감 안 됨.
+    // 기존 버그: UPDATE 이후 SELECT WHERE status='withdrawn' 하면 과거 회수분까지 포함 → 중복 차감.
+    // 수정: UPDATE 시점에 회수된 row 만 RETURNING-style 로 조회 (updated_at 범위로 필터).
     try {
-      await c.env.DB.prepare(
-        "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'granted'"
-      ).bind(body.order_id).run().catch(() => {});
+      const revokeTs = new Date().toISOString();
+      // 먼저 granted 인 commission 을 읽고 CAS 로 withdrawn 전환
+      const toRevoke = await c.env.DB.prepare(
+        "SELECT id, user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
+      ).bind(body.order_id).all<{ id: number; user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ id: number; user_id: string; amount: number }> }));
 
-      const commissions = await c.env.DB.prepare(
-        "SELECT user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'withdrawn'"
-      ).bind(body.order_id).all<{ user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ user_id: string; amount: number }> }));
-
-      for (const co of (commissions.results || [])) {
-        await c.env.DB.prepare(
-          'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
-        ).bind(co.amount, co.user_id).run().catch(() => {});
+      for (const co of (toRevoke.results || [])) {
+        const cas = await c.env.DB.prepare(
+          "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = ? WHERE id = ? AND status = 'granted'"
+        ).bind(revokeTs, co.id).run().catch(() => null);
+        // CAS 성공한 경우에만 포인트 차감 (다른 요청이 이미 처리했으면 skip)
+        if (cas && (cas.meta?.changes ?? 0) > 0) {
+          await c.env.DB.prepare(
+            'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
+          ).bind(co.amount, co.user_id).run().catch(() => {});
+        }
       }
     } catch (e) {
       console.warn('[ORDERS] Commission reversal (refund) skipped:', e);

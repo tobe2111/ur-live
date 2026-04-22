@@ -447,27 +447,31 @@ async function handlePaymentCancelled(
 
   // ✅ SECURITY FIX (Payment C7): Reverse any referral commissions granted for
   // these orders so a cancel/refund cannot leave the inviter with free deals.
-  // Best-effort — tables may not exist in every environment.
+  // 🛡️ 2026-04-22: CAS 로 이중 회수 방어 — granted 인 commission 만 개별 전환 → 포인트 차감.
+  // 이전: UPDATE 후 SELECT status='withdrawn' 하면 과거 회수분까지 포함 → 중복 차감 가능.
   try {
     for (const order of orders) {
       const orderId = order.id;
-      await DB.prepare(`
-        UPDATE referral_commissions
-        SET status = 'withdrawn', withdrawn_at = datetime('now')
-        WHERE order_id = ? AND status = 'granted'
-      `).bind(orderId).run().catch(() => {});
-      // Debit the deal_balance (best-effort — column may not exist)
-      const commissions = await DB.prepare(
-        "SELECT user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'withdrawn'"
-      ).bind(orderId).all<{ user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ user_id: string; amount: number }> }));
-      for (const co of (commissions.results || [])) {
-        await DB.prepare(
-          'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
-        ).bind(co.amount, co.user_id).run().catch(() => {});
+      const toRevoke = await DB.prepare(
+        "SELECT id, user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
+      ).bind(orderId).all<{ id: number; user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ id: number; user_id: string; amount: number }> }));
+
+      for (const co of (toRevoke.results || [])) {
+        const cas = await DB.prepare(
+          "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE id = ? AND status = 'granted'"
+        ).bind(co.id).run().catch(() => null);
+        if (cas && (cas.meta?.changes ?? 0) > 0) {
+          await DB.prepare(
+            'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
+          ).bind(co.amount, co.user_id).run().catch((err) => {
+            // 🛡️ 에러는 조용히 삼키지 말고 로깅 (감사 로그 누락 방어)
+            console.error('[WEBHOOK] user_points debit failed:', { user_id: co.user_id, amount: co.amount, err });
+          });
+        }
       }
     }
   } catch (e) {
-    console.warn('[WEBHOOK] Commission reversal skipped:', e);
+    console.error('[WEBHOOK] Commission reversal error:', e);
   }
 
   // v26 FIX: 결제 취소 시 coupon_uses 복원 (쿠폰 재사용 가능하게)

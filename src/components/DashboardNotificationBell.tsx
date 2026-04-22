@@ -83,7 +83,18 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
 
   function handleNotificationClick(n: Notification) {
     if (!n.is_read) markRead(n.id)
-    if (n.link) window.location.href = n.link
+    if (n.link) {
+      // 🛡️ 2026-04-22: open redirect 방어 — 내부 경로만 허용
+      // 알림 생성자가 악의적으로 외부 URL 을 넣어도 차단. scheme-relative (//evil.com) 도 차단.
+      const link = String(n.link).trim()
+      const isInternalPath = link.startsWith('/') && !link.startsWith('//') && !link.includes('\n') && !link.includes('\t')
+      if (isInternalPath) {
+        window.location.href = link
+      } else {
+        // dev 환경에서만 경고
+        if (import.meta.env.DEV) console.warn('[Notification] blocked external link:', link)
+      }
+    }
   }
 
   return (

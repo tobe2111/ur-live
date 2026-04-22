@@ -129,7 +129,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
          FROM cart_items ci
          JOIN products p  ON ci.product_id = p.id
          LEFT JOIN sellers s ON p.seller_id = s.id
-         WHERE ci.user_id = ?
+         WHERE ci.user_id = ? AND p.is_active = 1
          ORDER BY ci.added_at DESC`
       )
       .bind(userId)

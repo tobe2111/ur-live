@@ -4,6 +4,7 @@
  */
 
 import { clearAuthData } from '@/utils/auth'
+import { getQueryClient } from '@/lib/react-query'
 
 export function getSellerToken(): string | null {
   // PRIMARY: seller_token (최우선!)
@@ -32,13 +33,16 @@ export function getSellerId(): string | null {
 export function redirectToLogin(navigate: any) {
   // ✅ Clear only seller session (preserves User and Admin sessions)
   clearAuthData('seller')
-  
+  // 🛡️ 2026-04-22: React Query 캐시 초기화 — 이전 셀러의 주문/정산 데이터 누출 방어
+  try { getQueryClient().clear() } catch {}
+
   navigate('/seller/login', { replace: true })
 }
 
 export function logoutSeller(navigate: any) {
   // ✅ Clear only seller session (preserves User and Admin sessions)
   clearAuthData('seller')
+  try { getQueryClient().clear() } catch {}
 
   navigate('/seller/login', { replace: true })
 }

@@ -1763,9 +1763,10 @@ app.get('/api/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30
   const headers = { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
 
   try {
+    // 🛡️ 2026-04-22: Naver 느리면 5초 후 중단 (Worker CPU/메모리 보호)
     const [localRes, imageRes] = await Promise.all([
-      fetch(`https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=1&sort=comment`, { headers }),
-      fetch(`https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query + ' 맛집 음식')}&display=3&sort=sim&filter=large`, { headers }),
+      fetch(`https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=1&sort=comment`, { headers, signal: AbortSignal.timeout(5000) }),
+      fetch(`https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query + ' 맛집 음식')}&display=3&sort=sim&filter=large`, { headers, signal: AbortSignal.timeout(5000) }),
     ])
 
     const localData: any = await localRes.json()

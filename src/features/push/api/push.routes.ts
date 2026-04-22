@@ -13,6 +13,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { encryptAtRest } from '../../../worker/utils/data-crypto';
 
 type Bindings = {
   DB: D1Database;
@@ -20,6 +21,7 @@ type Bindings = {
   JWT_SECRET?: string;
   FIREBASE_PROJECT_ID?: string;
   SESSION_KV?: KVNamespace;
+  DATA_ENCRYPTION_KEY?: string;
 };
 
 // Push subscription helpers (inline to avoid circular imports)
@@ -28,7 +30,11 @@ async function savePushSubscription(
   userId: number,
   userType: 'user' | 'seller' | 'admin',
   subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  kek: string | undefined,
 ): Promise<void> {
+  // 🛡️ 2026-04-22: p256dh / auth key 암호화 — DB 탈취 시 푸시 복호화 방어
+  const encP256dh = await encryptAtRest(subscription.keys.p256dh, kek);
+  const encAuth = await encryptAtRest(subscription.keys.auth, kek);
   await db
     .prepare(`
       INSERT INTO push_subscriptions (user_id, user_type, endpoint, p256dh, auth, created_at)
@@ -40,7 +46,7 @@ async function savePushSubscription(
         auth = excluded.auth,
         updated_at = CURRENT_TIMESTAMP
     `)
-    .bind(userId, userType, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth)
+    .bind(userId, userType, subscription.endpoint, encP256dh, encAuth)
     .run();
 }
 
@@ -67,7 +73,7 @@ pushRoutes.post('/api/push/subscribe', requireAuth(), async (c) => {
     const userId = parseInt(String(authUser.id), 10);
     const userType = authUser.type as 'user' | 'seller' | 'admin';
     const subscription = await c.req.json();
-    await savePushSubscription(c.env.DB, userId, userType, subscription);
+    await savePushSubscription(c.env.DB, userId, userType, subscription, (c.env as any).DATA_ENCRYPTION_KEY);
 
     return c.json({ success: true });
   } catch (error: any) {

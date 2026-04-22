@@ -73,6 +73,9 @@ export interface Env {
   // ---- Security ----
   ADMIN_IP_WHITELIST?: string; // comma-separated IPs/CIDRs, e.g. "1.2.3.4,10.0.0.0/8"
   INTERNAL_API_TOKEN?: string; // shared secret for internal-only endpoints (cron, commission calc)
+  // 🛡️ 2026-04-22: DB at-rest 암호화용 KEK (Cafe24/Push subscription 토큰 보호)
+  // 32자 이상의 random string. Cloudflare Dashboard → Variables and Secrets 에서 설정.
+  DATA_ENCRYPTION_KEY?: string;
 
   // ---- Naver Ad Scraper ----
   // ⚠️ [LEGAL/PIPA] 크롤러로 수집한 이메일/연락처를 마케팅 목적으로 사용하려면

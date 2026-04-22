@@ -24,9 +24,14 @@ export function initSentry() {
       // 성능 추적 통합
       integrations: [
         Sentry.browserTracingIntegration(),
+        // 🛡️ 2026-04-22: PII 마스킹 — 결제/주소/전화/카드번호 유출 방어
+        // replay 세션에 모든 사용자 텍스트를 숨김. input 은 Sentry 기본 마스킹 유지.
         Sentry.replayIntegration({
-          maskAllText: false,
-          blockAllMedia: false,
+          maskAllText: true,
+          blockAllMedia: true,
+          maskAllInputs: true,
+          // 네트워크 상세 URL 화이트리스트 — 외부 결제/인증 URL 제외
+          networkDetailAllowUrls: [window.location.origin],
         }),
       ],
 

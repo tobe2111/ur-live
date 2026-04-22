@@ -15,10 +15,12 @@ export function initSentry() {
     integrations: [
       // 브라우저 추적
       Sentry.browserTracingIntegration(),
-      // 리플레이 세션 (에러 발생 시 사용자 행동 재생)
+      // 🛡️ 2026-04-22: PII 마스킹 — 리플레이에서 카드번호/전화/이메일 노출 차단
       Sentry.replayIntegration({
-        maskAllText: false,
-        blockAllMedia: false,
+        maskAllText: true,
+        blockAllMedia: true,
+        maskAllInputs: true,
+        networkDetailAllowUrls: [window.location.origin],
       }),
     ],
     

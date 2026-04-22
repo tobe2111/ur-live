@@ -340,3 +340,69 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
 
   return c.json({ success: true, id: insertedId })
 })
+
+// ── Delete (soft) chat message: DELETE /api/chat/:liveId/messages/:messageId ──
+// 🛡️ 2026-04-22: 채팅 모더레이션 — 셀러/어드민이 혐오/스팸 메시지 숨김.
+// 본인 방의 메시지만 삭제 가능 (live_stream.seller_id === authenticated seller).
+// admin 은 모든 메시지 삭제 가능.
+chatRoutes.delete('/:liveId/messages/:messageId', requireSellerOrAdmin() as any, async (c) => {
+  const { liveId, messageId } = c.req.param()
+  const msgIdNum = Number(messageId)
+  if (!Number.isInteger(msgIdNum) || msgIdNum <= 0) {
+    return c.json({ success: false, error: 'Invalid messageId' }, 400)
+  }
+
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
+
+  try {
+    // admin 이 아니면 셀러가 본인 방송의 메시지인지 확인
+    if (user.type !== 'admin') {
+      const stream = await c.env.DB.prepare(
+        'SELECT seller_id FROM live_streams WHERE id = ? LIMIT 1'
+      ).bind(liveId).first<{ seller_id: number }>()
+      if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
+      if (String(stream.seller_id) !== String(user.id)) {
+        return c.json({ success: false, error: 'Forbidden' }, 403)
+      }
+    }
+
+    // soft delete + 모더레이터 기록
+    const result = await c.env.DB.prepare(
+      `UPDATE chat_messages SET is_deleted = 1
+       WHERE id = ? AND live_stream_id = ? AND is_deleted = 0`
+    ).bind(msgIdNum, liveId).run()
+
+    if ((result.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: 'Message not found or already deleted' }, 404)
+    }
+
+    // DO 로 삭제 이벤트 브로드캐스트 (실시간으로 숨김)
+    if (c.env.LIVE_STREAM) {
+      try {
+        const doId = c.env.LIVE_STREAM.idFromName(liveId)
+        const stub = c.env.LIVE_STREAM.get(doId)
+        await stub.fetch(new Request('https://internal/broadcast', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Auth': 'worker',
+            'X-Auth-User-Type': user.type,
+          },
+          body: JSON.stringify({
+            type: 'chat_delete',
+            data: { id: msgIdNum, deleted_by: user.type },
+            timestamp: Date.now(),
+          }),
+        }) as any)
+      } catch (err) {
+        console.error('[Chat] Delete broadcast failed:', err)
+      }
+    }
+
+    return c.json({ success: true })
+  } catch (err) {
+    console.error('[Chat] Delete failed:', err)
+    return c.json({ success: false, error: 'Delete failed' }, 500)
+  }
+})
