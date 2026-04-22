@@ -304,6 +304,10 @@ authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 
     if (!valid) return c.json({ success: false, error: '현재 비밀번호가 올바르지 않습니다' }, 400);
     const newHash = await hashPassword(body.new_password);
     await db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").bind(newHash, id).run();
+    // 🛡️ 2026-04-22: 비밀번호 변경 시 기존 refresh token 전량 무효화 — 탈취된 세션 강제 로그아웃
+    try {
+      await db.prepare("DELETE FROM refresh_tokens WHERE user_id = ? AND user_type = 'user'").bind(id).run();
+    } catch { /* table may not exist in older environments */ }
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);
