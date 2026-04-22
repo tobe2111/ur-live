@@ -2071,21 +2071,38 @@ export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     const cron = event.cron;
 
+    // 🛡️ Cron 에러 래퍼 — 실패 시 Discord 알림 (이전엔 silent failure)
+    const safeCron = async (name: string, task: () => Promise<unknown>) => {
+      try {
+        await task();
+      } catch (err) {
+        const msg = (err as Error)?.message || String(err);
+        console.error(`[cron:${name}] FAILED:`, msg);
+        const webhook = env.DISCORD_WEBHOOK_URL;
+        if (webhook) {
+          try {
+            const { sendDiscordAlert } = await import('./utils/discord-alert');
+            await sendDiscordAlert(webhook, `🔴 Cron Failed: ${name}`, msg.slice(0, 1500), 'error');
+          } catch { /* discord 자체 실패는 무시 */ }
+        }
+      }
+    };
+
     // Every 5 minutes: short cleanup tasks
     if (cron === '*/5 * * * *') {
-      ctx.waitUntil(handleScheduled(env));
+      ctx.waitUntil(safeCron('scheduled-cleanup', () => handleScheduled(env)));
     }
 
     // Daily 18:00 UTC (KST 03:00): heavy tasks (settlement + expired-voucher refund + self diagnostic)
     if (cron === '0 18 * * *') {
-      ctx.waitUntil(handleAutoSettlement(env));
-      ctx.waitUntil(handleExpiredVoucherRefunds(env));
-      ctx.waitUntil(runDailySelfDiagnostic(env));  // 🆕 자가 진단 + Discord 요약 알림
+      ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
+      ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
+      ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
     }
 
-    // Daily 19:00 UTC (KST 04:00): reconciliation — stuck orders, orphan data, negative stock cleanup
+    // Daily 19:00 UTC (KST 04:00): reconciliation
     if (event.cron === '0 19 * * *' || cron === '0 19 * * *') {
-      ctx.waitUntil(runReconciliation(env));
+      ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
     }
   },
 };

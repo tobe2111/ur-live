@@ -413,7 +413,7 @@ export async function calculateAutoSettlement(
   DB: D1Database,
   periodStart?: string,
   periodEnd?: string,
-  defaultCommissionRate: number = 10.0
+  defaultCommissionRate: number = 15.0
 ): Promise<SellerSettlementCalc[]> {
   let dateFilter = ''
   const params: (string | number)[] = []
@@ -458,7 +458,7 @@ export async function executeSettlement(
   DB: D1Database,
   periodStart?: string,
   periodEnd?: string,
-  defaultCommissionRate: number = 10.0
+  defaultCommissionRate: number = 15.0
 ): Promise<SettlementExecutionResult> {
   const now = new Date().toISOString()
   const batchId = `SETTLE-${Date.now()}`
@@ -529,7 +529,7 @@ export async function executeSettlement(
 export async function getSellerSettlementSummary(
   DB: D1Database,
   sellerId: number,
-  defaultCommissionRate: number = 10.0
+  defaultCommissionRate: number = 15.0
 ): Promise<{
   unsettled_amount: number
   unsettled_orders: number
