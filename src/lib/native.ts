@@ -66,7 +66,8 @@ export async function initNativeFeatures() {
     }
 
     PushNotifications.addListener('registration', (token) => {
-      console.log('[Push] Token:', token.value)
+      // 🛡️ 2026-04-22: PII (push token) 노출 방어 — DEV 만 로깅
+      if (import.meta.env.DEV) console.log('[Push] Token registered (length:', token.value.length, ')')
       localStorage.setItem('push_token', token.value)
       // 서버에 토큰 저장
       import('@/lib/api').then(({ default: api }) => {
@@ -75,7 +76,7 @@ export async function initNativeFeatures() {
     })
 
     PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      console.log('[Push] Foreground:', notification.title)
+      if (import.meta.env.DEV) console.log('[Push] Foreground:', notification.title)
     })
 
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
