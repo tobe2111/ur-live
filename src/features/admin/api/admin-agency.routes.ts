@@ -13,9 +13,15 @@
 
 import { Hono } from 'hono'
 import { hashPassword } from '@/lib/password'
+import { requireAdmin } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 
 const app = new Hono<{ Bindings: Env }>()
+
+// 🛡️ 2026-04-22: 명시적 requireAdmin 적용 (depth-in-defense).
+// 이전: adminApp 래퍼에만 의존 → 라우터 마운트 변경 시 우회 가능
+// 수정: 각 라우터에도 명시적 requireAdmin 추가
+app.use('*', requireAdmin())
 
 async function ensureAgencyTables(DB: D1Database) {
   await DB.prepare(`
