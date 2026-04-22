@@ -281,9 +281,7 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     return c.json<AuthResponse>({
       success: false,
       error: '로그인 중 오류가 발생했습니다.',
-      code: 'SELLER_LOGIN_FAILED',
-      // @ts-expect-error 임시 디버그 — 안정화 후 제거
-      debug: errorMsg.slice(0, 300),
+      code: 'SELLER_LOGIN_FAILED'
     }, statusCode);
   }
 });

@@ -24,7 +24,12 @@ esbuild.build({
     'node-forge'
   ],
   define: {
-    'process.env.NODE_ENV': '"production"'
+    'process.env.NODE_ENV': '"production"',
+    // 2026-04-22: import.meta.env.DEV crash 영구 방지 (22개 파일 일괄 치환).
+    'import.meta.env.DEV': 'false',
+    'import.meta.env.PROD': 'true',
+    'import.meta.env.MODE': '"production"',
+    'import.meta.env.SSR': 'true',
   },
   mainFields: ['browser', 'module', 'main'],
   conditions: ['worker', 'browser'],

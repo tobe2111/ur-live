@@ -31,6 +31,13 @@ async function buildWorker() {
       define: {
         'process.env.NODE_ENV': '"production"',
         'global': 'globalThis',
+        // 2026-04-22: Vite의 import.meta.env.* 상수를 Worker esbuild 번들에서 치환.
+        // 미치환 시 런타임에 undefined 접근으로 crash (admin/seller/user/agency 로그인 500 사고).
+        // 22개 파일에 분산된 import.meta.env.DEV 를 일괄 해결.
+        'import.meta.env.DEV': 'false',
+        'import.meta.env.PROD': 'true',
+        'import.meta.env.MODE': '"production"',
+        'import.meta.env.SSR': 'true',
       },
       logLevel: 'info',
       metafile: true,
