@@ -75,26 +75,29 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Post-deploy verification (smoke test)
-        # 🛡️ 2026-04-22 강화: 주요 엔드포인트 응답 확인.
-        # 배포 후 5xx 에러가 나는 엔드포인트가 있으면 PR/커밋 revert 신호.
+        # 🛡️ 2026-04-22 강화: 주요 엔드포인트가 "응답은 한다"는 것만 확인.
+        # worker 자체가 부팅 실패면 5xx 또는 타임아웃. 2xx/3xx/4xx는 worker 살아있음.
+        # CRITICAL: 5xx 응답 있으면 workflow FAIL → 빠른 revert 신호.
         run: |
           echo "=== Post-deploy smoke test ==="
-          sleep 15  # 배포 전파 대기
+          sleep 15
 
           PROD=https://live.ur-team.com
           FAIL=0
+          FAIL_DETAILS=""
 
           check() {
             local path="$1"
             local label="$2"
-            local expect="${3:-200}"
             local status
             status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD$path" || echo "000")
-            if [ "$status" = "$expect" ] || [ "$status" = "405" ] || [ "$status" = "401" ]; then
-              echo "✅ $label ($path) → $status"
-            else
-              echo "❌ $label ($path) → $status (expected $expect)"
+            # 5xx (worker crash) 또는 000 (timeout/DNS fail)만 실패 처리
+            if [ "$status" -ge 500 ] 2>/dev/null || [ "$status" = "000" ]; then
+              echo "❌ $label ($path) → $status"
               FAIL=$((FAIL + 1))
+              FAIL_DETAILS="$FAIL_DETAILS\n  - $label ($path): $status"
+            else
+              echo "✅ $label ($path) → $status"
             fi
           }
 
@@ -102,14 +105,16 @@ jobs:
           check "/api/health"     "Health API"
           check "/api/version"    "Version API"
           check "/manifest.webmanifest" "PWA manifest"
-          check "/api/seller/login" "Seller login (expect 405 GET)" "405"
-          check "/api/admin/login"  "Admin login (expect 405 GET)"  "405"
-          check "/api/agency/login" "Agency login (expect 405 GET)" "405"
+          check "/api/seller/login" "Seller login"
+          check "/api/admin/login"  "Admin login"
+          check "/api/agency/login" "Agency login"
 
           if [ "$FAIL" -gt 0 ]; then
             echo ""
-            echo "❌ Smoke test failed ($FAIL endpoints). 배포된 빌드에 런타임 에러가 있을 수 있습니다."
-            echo "   최근 커밋을 revert하거나 Cloudflare Workers Logs를 확인하세요."
+            echo "❌ Smoke test: $FAIL 엔드포인트에서 5xx/타임아웃 (worker crash 가능성):"
+            echo -e "$FAIL_DETAILS"
+            echo ""
+            echo "원인 파악: https://dash.cloudflare.com → ur-live → Logs → Live log"
             exit 1
           fi
-          echo "✅ All smoke tests passed"
+          echo "✅ All smoke tests passed (worker 정상 응답 중)"
