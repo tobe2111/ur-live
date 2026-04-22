@@ -187,6 +187,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-[#555]"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -213,6 +214,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? '비밀번호 확인 숨기기' : '비밀번호 확인 표시'}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-[#555]"
               >
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

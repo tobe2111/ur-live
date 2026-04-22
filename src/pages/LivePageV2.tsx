@@ -110,7 +110,7 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
       {/* 1행: 뒤로가기 + 셀러 프로필 (하나의 pill) + SNS 링크 */}
       <div className="flex items-center justify-between gap-2">
         {/* 왼쪽: 뒤로가기 */}
-        <a href="/" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+        <a href="/" aria-label="홈으로 돌아가기" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
           <ChevronLeft className="h-5 w-5 text-white/80" />
         </a>
 
@@ -118,7 +118,7 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
         {sellerName && (
           <div className="flex items-center gap-1.5 min-w-0 flex-1 bg-black/40 backdrop-blur-md rounded-full pl-1 pr-1 py-1">
             <img src={sellerAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&size=28&background=random`}
-              alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+              alt={`${sellerName} 프로필 이미지`} className="w-7 h-7 rounded-full object-cover shrink-0" />
             <span className="text-xs font-bold text-white/90 truncate">{sellerName}</span>
             <button onClick={handleFollow}
               className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${following ? 'bg-white/20 text-white/70' : 'bg-pink-500 text-white'}`}>
@@ -137,8 +137,8 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
             <Eye className="h-3 w-3 text-white/80" />
             <span className="text-[10px] font-semibold text-white/90">{formatViewers(viewers)}</span>
           </div>
-          {sellerLinks?.youtube && <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" className="flex h-7 w-7 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm"><YouTubeIcon className="h-3.5 w-3.5 text-white/80" /></a>}
-          {sellerLinks?.instagram && <a href={sellerLinks.instagram} target="_blank" rel="noopener noreferrer" className="flex h-7 w-7 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm"><InstagramIcon className="h-3.5 w-3.5 text-white/80" /></a>}
+          {sellerLinks?.youtube && <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label="유튜브 채널 방문" className="flex h-7 w-7 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm"><YouTubeIcon className="h-3.5 w-3.5 text-white/80" /></a>}
+          {sellerLinks?.instagram && <a href={sellerLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label="인스타그램 방문" className="flex h-7 w-7 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm"><InstagramIcon className="h-3.5 w-3.5 text-white/80" /></a>}
         </div>
       </div>
     </header>

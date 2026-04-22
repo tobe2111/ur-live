@@ -226,7 +226,7 @@ export default function AddressManagementPage() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} className="text-gray-900">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-gray-900 font-bold text-[15px]">배송지 관리</h1>
@@ -318,12 +318,14 @@ export default function AddressManagementPage() {
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={() => openEditForm(address)}
+                      aria-label="배송지 수정"
                       className="p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-xl hover:bg-gray-50"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteAddress(address.id)}
+                      aria-label="배송지 삭제"
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-gray-50"
                     >
                       <Trash2 className="w-4 h-4" />

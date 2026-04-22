@@ -613,7 +613,7 @@ export default function CheckoutPage() {
       {/* v4 Breakdown 헤더 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="mx-auto max-w-md flex items-center justify-between px-3 py-3">
-          <button onClick={() => navigate('/cart')} className="w-9 h-9 flex items-center justify-center">
+          <button onClick={() => navigate('/cart')} aria-label="장바구니로 돌아가기" className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
           <h1 className="text-[15px] font-extrabold text-gray-900">주문 · 결제</h1>
@@ -749,6 +749,7 @@ export default function CheckoutPage() {
                   value={couponCode}
                   onChange={e => setCouponCode(e.target.value.toUpperCase())}
                   placeholder="쿠폰 코드 입력"
+                  aria-label="쿠폰 코드 입력"
                   className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none"
                 />
                 <button
@@ -814,6 +815,7 @@ export default function CheckoutPage() {
                       setDealToUse(v)
                     }}
                     placeholder="사용할 딜 입력"
+                    aria-label="사용할 딜 포인트 입력"
                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium placeholder:text-gray-400"
                   />
                   <button onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}

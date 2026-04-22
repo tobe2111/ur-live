@@ -41,9 +41,10 @@ function TeamPointsCard() {
   }, [])
   return (
     <div className="px-5 py-3">
-      <div
+      <button
+        type="button"
         onClick={() => navigate('/points/charge')}
-        className="flex items-center justify-between bg-[#121212] rounded-2xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all border border-[#2A2A2A]"
+        className="w-full text-left flex items-center justify-between bg-[#121212] rounded-2xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all border border-[#2A2A2A]"
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">🎁</span>
@@ -54,10 +55,10 @@ function TeamPointsCard() {
             </p>
           </div>
         </div>
-        <button className="px-3 py-1.5 text-xs font-bold text-pink-400 bg-pink-500/10 rounded-lg border border-pink-500/30">
+        <span className="px-3 py-1.5 text-xs font-bold text-pink-400 bg-pink-500/10 rounded-lg border border-pink-500/30">
           충전
-        </button>
-      </div>
+        </span>
+      </button>
     </div>
   )
 }
@@ -203,7 +204,7 @@ function SellerApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold text-white">셀러로 활동하기</h2>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-white/10">
+          <button onClick={onClose} aria-label="닫기" className="p-1 rounded-full hover:bg-white/10">
             <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>
@@ -592,10 +593,10 @@ export default function UserProfilePage() {
       <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3" style={{ background: '#0A0A0A' }}>
         <p className="text-[16px] font-extrabold text-white">My</p>
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/notifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+          <button onClick={() => navigate('/notifications')} aria-label="알림" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
           </button>
-          <button onClick={() => navigate('/account/settings')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+          <button onClick={() => navigate('/account/settings')} aria-label="설정" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
           </button>
         </div>
@@ -607,7 +608,7 @@ export default function UserProfilePage() {
           <div className="relative">
             <img
               src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
-              alt="" className="w-16 h-16 rounded-full object-cover" style={{ border: '2px solid rgba(255,255,255,0.15)' }}
+              alt={`${userName} 프로필 이미지`} className="w-16 h-16 rounded-full object-cover" style={{ border: '2px solid rgba(255,255,255,0.15)' }}
             />
           </div>
           <div className="flex-1 min-w-0">

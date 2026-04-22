@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
@@ -41,6 +42,7 @@ interface Order {
 }
 
 function NotificationList() {
+  const { t } = useTranslation()
   const [notifs, setNotifs] = useState<any[]>([])
   const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
   useEffect(() => {
@@ -48,7 +50,7 @@ function NotificationList() {
       .then(r => { if (r.data.success) setNotifs((r.data.data || []).slice(0, 5)) })
       .catch(() => {})
   }, [])
-  if (notifs.length === 0) return <p className="text-xs text-gray-400">새로운 알림이 없습니다</p>
+  if (notifs.length === 0) return <p className="text-xs text-gray-400">{t('agency.noNewNotifications')}</p>
   return (
     <div className="space-y-1.5">
       {notifs.map((n, i) => (
@@ -64,24 +66,27 @@ function NotificationList() {
   )
 }
 
-function statusBadge(status: string) {
+function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation()
   const map: Record<string, { label: string; cls: string }> = {
-    approved: { label: '승인', cls: 'bg-green-100 text-green-700' },
-    pending:  { label: '대기', cls: 'bg-amber-100 text-amber-700' },
-    rejected: { label: '거부', cls: 'bg-red-100 text-red-700' },
-    suspended:{ label: '정지', cls: 'bg-gray-100 text-gray-600' },
+    approved: { label: t('agency.statusApproved'), cls: 'bg-green-100 text-green-700' },
+    pending:  { label: t('agency.statusPending'), cls: 'bg-amber-100 text-amber-700' },
+    rejected: { label: t('agency.statusRejected'), cls: 'bg-red-100 text-red-700' },
+    suspended:{ label: t('agency.statusSuspended'), cls: 'bg-gray-100 text-gray-600' },
   }
   const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-600' }
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
 }
 
-function payBadge(status: string) {
-  if (status === 'approved') return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" />결제완료</span>
-  if (status === 'failed' || status === 'cancelled') return <span className="flex items-center gap-1 text-xs text-red-500"><XCircle className="w-3 h-3" />취소</span>
-  return <span className="flex items-center gap-1 text-xs text-amber-600"><Clock className="w-3 h-3" />대기중</span>
+function PayBadge({ status }: { status: string }) {
+  const { t } = useTranslation()
+  if (status === 'approved') return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" />{t('common.paid')}</span>
+  if (status === 'failed' || status === 'cancelled') return <span className="flex items-center gap-1 text-xs text-red-500"><XCircle className="w-3 h-3" />{t('common.cancelled')}</span>
+  return <span className="flex items-center gap-1 text-xs text-amber-600"><Clock className="w-3 h-3" />{t('common.pending')}</span>
 }
 
 function InviteLinkSection() {
+  const { t } = useTranslation()
   const agencyId = localStorage.getItem('agency_id')
   const inviteUrl = `https://live.ur-team.com/seller/register?agency=${agencyId}`
   const [recruitedCount, setRecruitedCount] = useState(0)
@@ -102,10 +107,10 @@ function InviteLinkSection() {
     try {
       await navigator.clipboard.writeText(inviteUrl)
       setCopied(true)
-      toast.success('초대 링크가 복사되었습니다.')
+      toast.success(t('agency.inviteLinkCopied'))
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error('복사에 실패했습니다.')
+      toast.error(t('common.copyFailed'))
     }
   }
 
@@ -116,12 +121,12 @@ function InviteLinkSection() {
           <UserPlus className="w-4 h-4 text-purple-600" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-gray-900">인플루언서 초대</h3>
-          <p className="text-xs text-gray-500">링크를 공유하여 셀러를 모집하세요</p>
+          <h3 className="text-sm font-bold text-gray-900">{t('agency.influencerInvite')}</h3>
+          <p className="text-xs text-gray-500">{t('agency.shareLink')}</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
           <Link2 className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-xs font-semibold text-gray-700">모집된 셀러: {recruitedCount}명</span>
+          <span className="text-xs font-semibold text-gray-700">{t('agency.recruitedSellers', { count: recruitedCount })}</span>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -133,7 +138,7 @@ function InviteLinkSection() {
           className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 transition-colors shrink-0"
         >
           <Copy className="w-3.5 h-3.5" />
-          {copied ? '복사됨!' : '복사'}
+          {copied ? t('common.copied') : t('common.copy')}
         </button>
       </div>
     </div>
@@ -147,6 +152,7 @@ interface DailyStat {
 }
 
 function RevenueTrendChart() {
+  const { t } = useTranslation()
   const [daily, setDaily] = useState<DailyStat[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -163,7 +169,7 @@ function RevenueTrendChart() {
 
   // 최근 7일 날짜 버킷 생성 (데이터 없는 날도 0으로 표시)
   const buckets = useMemo(() => {
-    const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+    const dayNames = [t('common.sun'), t('common.mon'), t('common.tue'), t('common.wed'), t('common.thu'), t('common.fri'), t('common.sat')]
     const byDate: Record<string, DailyStat> = {}
     for (const d of daily) byDate[d.date] = d
     const out: { key: string; label: string; revenue: number; orders: number }[] = []
@@ -217,7 +223,7 @@ function RevenueTrendChart() {
             </div>
             <span className="text-[10px] text-gray-400 font-medium">{b.label}</span>
             {i === buckets.length - 1 && (
-              <span className="text-[9px] text-purple-600 font-bold">오늘</span>
+              <span className="text-[9px] text-purple-600 font-bold">{t('agency.today')}</span>
             )}
           </div>
         )
@@ -240,6 +246,7 @@ interface Stream {
 }
 
 export default function AgencyPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
   const [sellers, setSellers] = useState<Seller[]>([])
@@ -292,7 +299,7 @@ export default function AgencyPage() {
           r.status === 'rejected' && (r.reason as { response?: { status?: number } })?.response?.status === 401
         )
         if (authFailed) {
-          toast.error('세션이 만료되었습니다. 다시 로그인해주세요.')
+          toast.error(t('agency.sessionExpired'))
           navigate('/agency/login', { replace: true })
           return
         }
@@ -399,9 +406,9 @@ export default function AgencyPage() {
       list.push({
         severity: 'medium',
         icon: AlertTriangle,
-        title: `${inactiveSellers}개 셀러가 주문/라이브 활동이 없어요`,
-        description: '모집 이후 활동 이력이 없습니다',
-        action: { label: '셀러 관리', path: '/agency/sellers' },
+        title: t('agency.inactiveSellersTitle', { count: inactiveSellers }),
+        description: t('agency.inactiveSellersDesc'),
+        action: { label: t('agency.manageSellers'), path: '/agency/sellers' },
       })
     }
 
@@ -417,8 +424,8 @@ export default function AgencyPage() {
         list.push({
           severity: 'high',
           icon: TrendingUp,
-          title: `이번 주 매출 ${dropPct}% 하락`,
-          description: '긴급 점검 필요',
+          title: t('agency.weeklyDropTitle', { pct: dropPct }),
+          description: t('agency.weeklyDropDesc'),
         })
       }
     }
@@ -429,9 +436,9 @@ export default function AgencyPage() {
       list.push({
         severity: 'info',
         icon: UserCheck,
-        title: `승인 대기 셀러 ${pendingSellers}명`,
-        description: '검토 후 승인 처리해주세요',
-        action: { label: '관리', path: '/agency/sellers' },
+        title: t('agency.pendingSellersTitle', { count: pendingSellers }),
+        description: t('agency.pendingSellersDesc'),
+        action: { label: t('common.manage'), path: '/agency/sellers' },
       })
     }
 
@@ -442,9 +449,9 @@ export default function AgencyPage() {
       list.push({
         severity: 'info',
         icon: Radio,
-        title: '오늘 진행 중인 라이브가 없습니다',
-        description: `${activeSellers}명의 활성 셀러에게 편성 안내를 보내보세요`,
-        action: { label: '편성 보기', path: '/agency/schedule' },
+        title: t('agency.noLiveTodayTitle'),
+        description: t('agency.noLiveTodayDesc', { count: activeSellers }),
+        action: { label: t('agency.viewSchedule'), path: '/agency/schedule' },
       })
     }
 
@@ -464,23 +471,23 @@ export default function AgencyPage() {
       a.href = url; a.download = `agency-report-${days}d.csv`; a.click()
       URL.revokeObjectURL(url)
     } catch {
-      toast.error('리포트 다운로드에 실패했습니다.')
+      toast.error(t('agency.reportDownloadFailed'))
     }
   }
 
   return (
-    <AgencyLayout title="대시보드">
+    <AgencyLayout title={t('seller.dashboard')}>
       {/* 0. 월간 매출 목표 진행률 */}
       <div className="bg-white rounded-2xl p-4 border border-[#E8EAEE]">
         <div className="flex items-center justify-between mb-2 gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="text-[12px] font-bold text-gray-700">이번 달 매출 목표</p>
+              <p className="text-[12px] font-bold text-gray-700">{t('seller.monthlyGoalTitle')}</p>
               <button
                 onClick={() => setEditingGoal(!editingGoal)}
                 className="text-[10px] text-purple-600 hover:underline"
               >
-                {editingGoal ? '닫기' : '목표 변경'}
+                {editingGoal ? t('common.close') : t('seller.changeGoal')}
               </button>
             </div>
             {editingGoal ? (
@@ -498,11 +505,11 @@ export default function AgencyPage() {
                   }}
                   className="text-[14px] font-bold text-gray-900 px-2 py-1 border border-gray-300 rounded w-44"
                 />
-                <span className="text-[12px] text-gray-500">원</span>
+                <span className="text-[12px] text-gray-500">{t('common.won')}</span>
               </div>
             ) : (
               <p className="text-[16px] sm:text-[20px] font-extrabold text-gray-900 truncate">
-                {currentRev.toLocaleString()}원 / {monthlyGoal.toLocaleString()}원
+                {currentRev.toLocaleString()}{t('common.won')} / {monthlyGoal.toLocaleString()}{t('common.won')}
               </p>
             )}
           </div>
@@ -520,18 +527,18 @@ export default function AgencyPage() {
           />
         </div>
         <p className="text-[10px] text-gray-500 mt-1.5">
-          남은 일수: {daysLeft}일 · 목표 달성까지 {Math.max(0, monthlyGoal - currentRev).toLocaleString()}원
+          {t('seller.daysLeft', { days: daysLeft })} · {t('seller.goalRemaining', { amount: Math.max(0, monthlyGoal - currentRev).toLocaleString() })}
         </p>
       </div>
 
       {/* 1. KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: '소속 셀러', value: String(stats?.sellers ?? 0), sub: '명', icon: Users, color: 'bg-blue-600', delta: 0, showDelta: false },
-          { label: '이번달 주문', value: String(stats?.orders_30d ?? 0), sub: '30일 기준', icon: ShoppingBag, color: 'bg-blue-500', delta: ordersDelta, showDelta },
-          { label: '이번달 매출', value: `${((stats?.revenue_30d ?? 0) / 10000).toFixed(0)}만원`, sub: '결제 완료 기준', icon: DollarSign, color: 'bg-emerald-500', delta: revenueDelta, showDelta },
-          { label: '셀러 수익', value: `${((stats?.net_revenue_30d ?? 0) / 10000).toFixed(0)}만원`, sub: '수수료 제외', icon: TrendingUp, color: 'bg-violet-500', delta: revenueDelta, showDelta },
-          { label: '진행중 라이브', value: String(stats?.active_streams ?? 0), sub: '현재 방송', icon: Play, color: 'bg-rose-500', delta: 0, showDelta: false },
+          { label: t('agency.kpiSellers'), value: String(stats?.sellers ?? 0), sub: t('common.person'), icon: Users, color: 'bg-blue-600', delta: 0, showDelta: false },
+          { label: t('agency.kpiOrders'), value: String(stats?.orders_30d ?? 0), sub: t('agency.kpiOrdersSub'), icon: ShoppingBag, color: 'bg-blue-500', delta: ordersDelta, showDelta },
+          { label: t('agency.kpiRevenue'), value: `${((stats?.revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiRevenueSub'), icon: DollarSign, color: 'bg-emerald-500', delta: revenueDelta, showDelta },
+          { label: t('agency.kpiSellerRevenue'), value: `${((stats?.net_revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiSellerRevenueSub'), icon: TrendingUp, color: 'bg-violet-500', delta: revenueDelta, showDelta },
+          { label: t('agency.kpiLive'), value: String(stats?.active_streams ?? 0), sub: t('agency.kpiLiveSub'), icon: Play, color: 'bg-rose-500', delta: 0, showDelta: false },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-2xl p-4 bg-white border border-[#E8EAEE]">
             <div className="flex items-start justify-between">
@@ -547,7 +554,7 @@ export default function AgencyPage() {
                     <p className="text-[22px] font-extrabold text-[#111]">{kpi.value}</p>
                     {kpi.showDelta && (
                       <span className={`text-[10px] font-bold block ${kpi.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {kpi.delta >= 0 ? '↑' : '↓'} {Math.abs(kpi.delta)}% vs 지난주
+                        {kpi.delta >= 0 ? '↑' : '↓'} {Math.abs(kpi.delta)}% {t('seller.vsPreviousPeriod')}
                       </span>
                     )}
                     {kpi.sub && <p className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</p>}
@@ -588,17 +595,17 @@ export default function AgencyPage() {
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm opacity-80">이번달 에이전시 수수료</p>
+            <p className="text-sm opacity-80">{t('agency.commissionTitle')}</p>
             <p className="text-2xl font-extrabold mt-1">
-              {commission.toLocaleString()}원
+              {commission.toLocaleString()}{t('common.won')}
             </p>
-            <p className="text-xs opacity-60 mt-1">매출 대비 {commissionRate}% · 확정 후 정산 신청 가능</p>
+            <p className="text-xs opacity-60 mt-1">{t('agency.commissionDesc', { rate: commissionRate })}</p>
           </div>
           <button
             onClick={() => navigate('/agency/settlements')}
             className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-bold transition-colors"
           >
-            정산 관리 →
+            {t('agency.settlementManage')} →
           </button>
         </div>
       </div>
@@ -606,20 +613,20 @@ export default function AgencyPage() {
       {/* 2.5 전환 퍼널 — 실제 데이터만 표시 (추정값 사용 금지) */}
       <div className="bg-white rounded-2xl p-5 border border-[#E8EAEE]">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[14px] font-extrabold text-gray-900">주문 현황 (30일)</h3>
-          <span className="text-[10px] text-gray-400">소속 셀러 집계</span>
+          <h3 className="text-[14px] font-extrabold text-gray-900">{t('agency.orderStatusTitle')}</h3>
+          <span className="text-[10px] text-gray-400">{t('agency.sellerAggregate')}</span>
         </div>
         {totalOrdersAgg === 0 ? (
           <p className="text-[12px] text-gray-500 py-4 text-center">
-            주문 데이터가 아직 없습니다
+            {t('agency.noOrderData')}
           </p>
         ) : (
           <div className="space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-semibold text-gray-700">주문 완료</span>
+                <span className="text-[12px] font-semibold text-gray-700">{t('agency.orderComplete')}</span>
                 <span className="text-[12px] font-extrabold text-gray-900">
-                  {totalOrdersAgg.toLocaleString()}건
+                  {totalOrdersAgg.toLocaleString()}{t('agency.unitCase')}
                 </span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-gray-100">
@@ -739,7 +746,7 @@ export default function AgencyPage() {
                         LIVE
                       </span>
                     )}
-                    {statusBadge(s.status)}
+                    <StatusBadge status={s.status} />
                   </div>
                 </div>
               ))}
@@ -783,7 +790,7 @@ export default function AgencyPage() {
                     <p className="text-xs text-gray-400">{o.seller_business_name}</p>
                   </div>
                   <div className="ml-3 flex-shrink-0">
-                    {payBadge(o.payment_status)}
+                    <PayBadge status={o.payment_status} />
                     <p className="text-xs text-gray-400 mt-1 text-right">
                       {new Date(o.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                     </p>

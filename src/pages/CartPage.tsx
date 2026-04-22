@@ -82,7 +82,7 @@ export default function CartPage() {
         <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" noindex />
         <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
           <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
-            <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center">
+            <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
               <X className="h-5 w-5 text-gray-900" />
             </button>
             <h1 className="text-[16px] font-extrabold text-gray-900">장바구니</h1>

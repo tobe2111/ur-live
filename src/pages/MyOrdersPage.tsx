@@ -223,6 +223,7 @@ export default function MyOrdersPage() {
           <div className="flex h-[52px] items-center justify-between">
             <button
               onClick={() => navigate(-1)}
+              aria-label="뒤로 가기"
               className="text-gray-900"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -582,6 +583,7 @@ export default function MyOrdersPage() {
               </h3>
               <button
                 onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
+                aria-label="닫기"
                 className="text-gray-500 hover:text-gray-500 transition-colors"
               >
                 <X className="h-6 w-6" />
@@ -642,6 +644,7 @@ export default function MyOrdersPage() {
                   value={cancelAmount}
                   onChange={(e) => setCancelAmount(e.target.value)}
                   placeholder="취소할 금액 입력 (원)"
+                  aria-label="부분 취소 금액 입력 (원)"
                   min="1"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />

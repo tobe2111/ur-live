@@ -25,22 +25,24 @@ export const adminFlagsRoutes = new Hono<{ Bindings: Env }>();
 
 // GET /api/admin/flags — current flag state
 adminFlagsRoutes.get('/', async (c) => {
-  const flags = await getFeatureFlags((c.env as Env).SESSION_KV);
+  const env = c.env as Env;
+  const flags = await getFeatureFlags(env.SESSION_KV, env.DB);
   return c.json({ success: true, data: flags });
 });
 
 // POST /api/admin/flags/emergency-mode — atomic bulk toggle
 // ⚠️ Registered BEFORE the PATCH /:name route so Hono matches the literal path first.
+// KV 미설정 시 D1 폴백 자동 사용 (1인 운영 호환)
 adminFlagsRoutes.post('/emergency-mode', async (c) => {
-  const KV = (c.env as Env).SESSION_KV;
-  if (!KV) {
-    return c.json({ success: false, error: 'KV not configured' }, 503);
+  const env = c.env as Env;
+  if (!env.DB) {
+    return c.json({ success: false, error: 'DB not configured' }, 503);
   }
 
   const { enable } = await c.req.json<{ enable: boolean }>();
   const flags = enable ? EMERGENCY_MODE_FLAGS : NORMAL_MODE_FLAGS;
 
-  await setAllFeatureFlags(KV, flags);
+  await setAllFeatureFlags(flags, env.SESSION_KV, env.DB);
 
   return c.json({
     success: true,
@@ -51,9 +53,9 @@ adminFlagsRoutes.post('/emergency-mode', async (c) => {
 
 // PATCH /api/admin/flags/:name — toggle a single flag
 adminFlagsRoutes.patch('/:name', async (c) => {
-  const KV = (c.env as Env).SESSION_KV;
-  if (!KV) {
-    return c.json({ success: false, error: 'KV not configured' }, 503);
+  const env = c.env as Env;
+  if (!env.DB) {
+    return c.json({ success: false, error: 'DB not configured' }, 503);
   }
 
   const name = c.req.param('name') as keyof FeatureFlags;
@@ -65,6 +67,6 @@ adminFlagsRoutes.patch('/:name', async (c) => {
     return c.json({ success: false, error: `Unknown flag: ${name}` }, 400);
   }
 
-  await setFeatureFlag(KV, name, Boolean(value));
+  await setFeatureFlag(name, Boolean(value), env.SESSION_KV, env.DB);
   return c.json({ success: true, message: `${name} = ${Boolean(value)}` });
 });
