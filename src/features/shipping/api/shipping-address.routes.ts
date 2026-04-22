@@ -183,8 +183,8 @@ shippingAddressRoutes.post('/', requireAuth(), async (c) => {
       );
     }
 
-    // 새 배송지 추가
-    const result = await dbHelper.insert('shipping_addresses', {
+    // 새 배송지 추가 (migration 0204 확장 필드 — 없으면 fallback)
+    const basePayload = {
       user_id: userId,
       recipient_name,
       phone,
@@ -192,13 +192,23 @@ shippingAddressRoutes.post('/', requireAuth(), async (c) => {
       address_detail,
       postal_code,
       is_default: is_default ? 1 : 0,
-      label,
-      delivery_note,
-      entry_code,
-      entry_method,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    });
+    };
+    const extraPayload = { label, delivery_note, entry_code, entry_method };
+
+    let result;
+    try {
+      result = await dbHelper.insert('shipping_addresses', { ...basePayload, ...extraPayload });
+    } catch (insertErr) {
+      // 마이그레이션 0204 미적용 환경 — 확장 필드 없이 재시도
+      if (insertErr instanceof Error && /no such column|has no column/i.test(insertErr.message)) {
+        console.warn('[Shipping] migration 0204 not applied, inserting without extended fields');
+        result = await dbHelper.insert('shipping_addresses', basePayload);
+      } else {
+        throw insertErr;
+      }
+    }
 
     const newAddress = await dbHelper.findById('shipping_addresses', result.meta.last_row_id);
 
