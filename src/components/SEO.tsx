@@ -1,4 +1,16 @@
 import { Helmet } from 'react-helmet-async'
+import { useTranslation } from 'react-i18next'
+
+// v39 FIX: og:locale 동적화 — i18n 언어 코드를 BCP47로 변환
+const LOCALE_MAP: Record<string, string> = {
+  ko: 'ko_KR',
+  en: 'en_US',
+  ja: 'ja_JP',
+  zh: 'zh_CN',
+  es: 'es_ES',
+  fr: 'fr_FR',
+}
+const ALL_LOCALES = Object.values(LOCALE_MAP)
 
 interface SEOProps {
   title?: string
@@ -27,6 +39,12 @@ export default function SEO({
   const fullTitle = title ? `${title} - ${SITE_NAME}` : `${SITE_NAME} - 라이브 커머스 & 맛집 공동구매`
   const fullUrl = url ? `${BASE_URL}${url}` : BASE_URL
 
+  // v39 FIX: 현재 사용자 언어 기반 og:locale
+  const { i18n } = useTranslation()
+  const currentLang = (i18n.language || 'ko').split('-')[0]
+  const primaryLocale = LOCALE_MAP[currentLang] || 'ko_KR'
+  const alternateLocales = ALL_LOCALES.filter(l => l !== primaryLocale)
+
   return (
     <Helmet>
       <title>{fullTitle}</title>
@@ -41,12 +59,10 @@ export default function SEO({
       <meta property="og:image" content={image} />
       <meta property="og:url" content={fullUrl} />
       <meta property="og:site_name" content={SITE_NAME} />
-      <meta property="og:locale" content="ko_KR" />
-      <meta property="og:locale:alternate" content="en_US" />
-      <meta property="og:locale:alternate" content="ja_JP" />
-      <meta property="og:locale:alternate" content="zh_CN" />
-      <meta property="og:locale:alternate" content="es_ES" />
-      <meta property="og:locale:alternate" content="fr_FR" />
+      <meta property="og:locale" content={primaryLocale} />
+      {alternateLocales.map(loc => (
+        <meta key={loc} property="og:locale:alternate" content={loc} />
+      ))}
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />

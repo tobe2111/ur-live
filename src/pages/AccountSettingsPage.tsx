@@ -170,6 +170,7 @@ export default function AccountSettingsPage() {
         title="계정 설정"
         description="프로필, 알림, 결제 수단 등 계정 설정을 관리하세요."
         url="/account/settings"
+        noindex
       />
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">

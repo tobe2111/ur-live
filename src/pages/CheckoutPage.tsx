@@ -609,7 +609,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
-      <SEO title="주문/결제 - 유어딜" description="주문 정보를 확인하고 안전하게 결제하세요" url="/checkout" />
+      <SEO title="주문/결제 - 유어딜" description="주문 정보를 확인하고 안전하게 결제하세요" url="/checkout" noindex />
       {/* v4 Breakdown 헤더 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="mx-auto max-w-md flex items-center justify-between px-3 py-3">

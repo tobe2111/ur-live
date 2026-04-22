@@ -73,7 +73,7 @@ export default function MyCouponsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <SEO title="내 쿠폰 - 유어딜" description="보유 중인 쿠폰을 확인하세요" url="/my-coupons" />
+      <SEO title="내 쿠폰 - 유어딜" description="보유 중인 쿠폰을 확인하세요" url="/my-coupons" noindex />
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
