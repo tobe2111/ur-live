@@ -26,8 +26,18 @@ echo ""
 echo "[2/4] 자가 진단 엔드포인트 확인 (커밋 8b82323 이후)..."
 whoami_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/api/debug/whoami" || echo "timeout")
 build_info_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/api/debug/build-info" || echo "timeout")
-echo "  /api/debug/whoami → $whoami_status  $([ "$whoami_status" = "200" ] && echo "✅ 최신 코드 반영" || echo "❌ 최신 배포 미반영")"
-echo "  /api/debug/build-info → $build_info_status"
+# admin-gated 이므로 401(존재함, 인증 필요)도 "최신 코드 반영" 시그널.
+# 404만 "엔드포인트 없음 = 구 배포" 로 판정.
+whoami_exists="❌ 최신 배포 미반영"
+if [ "$whoami_status" = "401" ] || [ "$whoami_status" = "200" ]; then
+  whoami_exists="✅ 최신 코드 반영 (admin gated)"
+fi
+build_info_exists="❌ 최신 배포 미반영"
+if [ "$build_info_status" = "401" ] || [ "$build_info_status" = "200" ]; then
+  build_info_exists="✅ 최신 코드 반영 (admin gated)"
+fi
+echo "  /api/debug/whoami → $whoami_status  $whoami_exists"
+echo "  /api/debug/build-info → $build_info_status  $build_info_exists"
 
 echo ""
 echo "[3/4] 로그인 엔드포인트 상태..."
@@ -51,7 +61,7 @@ if [ "$user_login" = "500" ] && [ "$seller_login" = "500" ] && [ "$admin_login" 
   all_login_500=true
 fi
 
-if [ "$whoami_status" = "404" ]; then
+if [ "$whoami_status" = "404" ] && [ "$build_info_status" = "404" ]; then
   echo "❌ 최신 코드가 프로덕션에 반영 안 됨"
   echo "   → GitHub Actions 최근 run 성공 여부 확인"
   echo "   → 또는 Cloudflare Pages Dashboard → Deployments 탭에서 최근 커밋 promote"
