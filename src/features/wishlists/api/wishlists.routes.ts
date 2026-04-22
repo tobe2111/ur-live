@@ -20,6 +20,10 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { AuthUser } from '@/worker/middleware/auth';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { rateLimit } from '@/worker/middleware/rate-limit';
+
+// v31 FIX: wishlist mutation rate limit (per-IP, 분당 20회)
+const wishlistRateLimit = rateLimit({ action: 'wishlist_mutation', max: 20, windowSec: 60 });
 
 type Bindings = {
   DB: D1Database;
@@ -86,7 +90,7 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
 });
 
 // ── POST /api/wishlists/toggle  (useToggleWishlist hook) ──────────────────────
-wishlistRoutes.post('/toggle', requireAuth(), async (c) => {
+wishlistRoutes.post('/toggle', wishlistRateLimit, requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
   try {
@@ -115,7 +119,7 @@ wishlistRoutes.post('/toggle', requireAuth(), async (c) => {
 });
 
 // ── DELETE /api/wishlists  (useClearWishlist hook - 전체 비우기) ──────────────
-wishlistRoutes.delete('/', requireAuth(), async (c) => {
+wishlistRoutes.delete('/', wishlistRateLimit, requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
   try {
@@ -130,7 +134,7 @@ wishlistRoutes.delete('/', requireAuth(), async (c) => {
 });
 
 // 찜하기 추가
-wishlistRoutes.post('/', requireAuth(), async (c) => {
+wishlistRoutes.post('/', wishlistRateLimit, requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
@@ -176,7 +180,7 @@ wishlistRoutes.post('/', requireAuth(), async (c) => {
 });
 
 // 찜하기 삭제 (wishlist ID)
-wishlistRoutes.delete('/:id', requireAuth(), async (c) => {
+wishlistRoutes.delete('/:id', wishlistRateLimit, requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
@@ -204,7 +208,7 @@ wishlistRoutes.delete('/:id', requireAuth(), async (c) => {
 });
 
 // 찜하기 삭제 (상품 ID)
-wishlistRoutes.delete('/product/:productId', requireAuth(), async (c) => {
+wishlistRoutes.delete('/product/:productId', wishlistRateLimit, requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 

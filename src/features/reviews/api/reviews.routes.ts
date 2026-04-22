@@ -58,7 +58,9 @@ reviewsRoutes.get('/product/:productId', async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
   const productId = c.req.param('productId');
-  const page = parseInt(c.req.query('page') || '1');
+  // v31 FIX: page 파라미터 범위 제한 (offset 폭발 방지)
+  const rawPage = parseInt(c.req.query('page') || '1');
+  const page = Math.min(Math.max(rawPage, 1), 100);
   const limit = Math.min(parseInt(c.req.query('limit') || '20'), 50);
   const offset = (page - 1) * limit;
 
@@ -300,7 +302,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
 });
 
 // PUT /api/reviews/:id — 리뷰 수정
-reviewsRoutes.put('/:id', requireAuth(), async (c) => {
+reviewsRoutes.put('/:id', rateLimit({ action: 'review_mutation', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -361,7 +363,7 @@ reviewsRoutes.put('/:id', requireAuth(), async (c) => {
 });
 
 // DELETE /api/reviews/:id — 리뷰 삭제
-reviewsRoutes.delete('/:id', requireAuth(), async (c) => {
+reviewsRoutes.delete('/:id', rateLimit({ action: 'review_mutation', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
