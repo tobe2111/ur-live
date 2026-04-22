@@ -235,7 +235,8 @@ app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password
       `).bind(agency.id, token, expiresAt).run()
 
       const baseUrl = FRONTEND_URL || 'https://live.ur-team.com'
-      const resetUrl = `${baseUrl}/agency/reset-password?token=${token}`
+      // 🛡️ token URL-encode + trailing slash 정리
+      const resetUrl = `${baseUrl.replace(/\/+$/, '')}/agency/reset-password?token=${encodeURIComponent(token)}`
 
       if (RESEND_API_KEY) {
         await sendEmail(

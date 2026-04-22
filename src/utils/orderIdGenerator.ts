@@ -9,14 +9,19 @@
 
 /**
  * Generate a random alphanumeric string
+ * 🛡️ 2026-04-22: Math.random → crypto.getRandomValues (CSPRNG)
  * @param length - Length of the random string (default: 12)
  * @returns Random string with only a-z, A-Z, 0-9
  */
 export function generateRandomId(length: number = 12): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = typeof crypto !== 'undefined' && crypto.getRandomValues
+    ? crypto.getRandomValues(new Uint8Array(length))
+    : null;
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const idx = bytes ? bytes[i] % chars.length : Math.floor(Math.random() * chars.length);
+    result += chars.charAt(idx);
   }
   return result;
 }
@@ -51,7 +56,11 @@ export function generateOrderId(_userId?: string | number): string {
     String(now.getMinutes()).padStart(2, '0'),
     String(now.getSeconds()).padStart(2, '0'),
   ].join('')
-  const randomPart = String(Math.floor(100000 + Math.random() * 900000))
+  // 🛡️ 2026-04-22: Math.random → crypto.getRandomValues (CSPRNG, collision 방어)
+  const rnd = typeof crypto !== 'undefined' && crypto.getRandomValues
+    ? crypto.getRandomValues(new Uint32Array(1))[0] % 900000
+    : Math.floor(Math.random() * 900000)
+  const randomPart = String(100000 + rnd)
   return datePart + randomPart
 }
 

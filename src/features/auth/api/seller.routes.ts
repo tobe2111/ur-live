@@ -560,7 +560,8 @@ sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot
       `).bind(seller.id, token, expiresAt).run();
 
       const baseUrl = FRONTEND_URL || 'https://live.ur-team.com';
-      const resetUrl = `${baseUrl}/seller/reset-password?token=${token}`;
+      // 🛡️ token URL-encode (URL 특수문자 방어) + baseUrl 검증
+      const resetUrl = `${baseUrl.replace(/\/+$/, '')}/seller/reset-password?token=${encodeURIComponent(token)}`;
 
       if (RESEND_API_KEY) {
         await sendEmail(
