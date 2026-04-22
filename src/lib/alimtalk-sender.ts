@@ -58,7 +58,9 @@ function replaceTemplateVariables(
 
   // #{변수명} 형식의 변수를 치환
   Object.entries(variables).forEach(([key, value]) => {
-    const pattern = new RegExp(`#{${key}}`, 'g')
+    // 🛡️ 2026-04-22: regex injection 방어 — key 의 정규식 메타문자 escape
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(`#{${escapedKey}}`, 'g')
     result = result.replace(pattern, value)
   })
 

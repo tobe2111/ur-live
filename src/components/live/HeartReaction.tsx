@@ -1,15 +1,29 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Heart } from 'lucide-react'
 
 export default function HeartReaction() {
   const [hearts, setHearts] = useState<{ id: number; x: number }[]>([])
   const nextId = useRef(0)
+  // 🛡️ 2026-04-22: setTimeout cleanup — unmount 시 보류 중인 timer 정리
+  const timersRef = useRef<Set<number>>(new Set())
+
+  useEffect(() => {
+    return () => {
+      // unmount 시 모든 보류 타이머 clear
+      timersRef.current.forEach(id => clearTimeout(id))
+      timersRef.current.clear()
+    }
+  }, [])
 
   const addHeart = () => {
     const id = nextId.current++
     const x = Math.random() * 30 - 15
     setHearts(prev => [...prev.slice(-15), { id, x }])
-    setTimeout(() => setHearts(prev => prev.filter(h => h.id !== id)), 2000)
+    const timer = setTimeout(() => {
+      setHearts(prev => prev.filter(h => h.id !== id))
+      timersRef.current.delete(timer)
+    }, 2000) as unknown as number
+    timersRef.current.add(timer)
   }
 
   return (

@@ -242,9 +242,10 @@ export function validate(rules: ValidationRule[]) {
 // 유틸리티 함수들
 // =================================
 
-/** 이메일 검증 */
+/** 이메일 검증 — 🛡️ 2026-04-22: RFC 5322 lite. 도메인에 최소 2글자, TLD 2~24글자 */
 function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  // 부분: 영문/숫자/.-_ + @ + 도메인(2글자+) + . + TLD(2~24)
+  const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]{1,63}(\.[A-Za-z0-9-]{1,63})*\.[A-Za-z]{2,24}$/
   return emailRegex.test(email) && email.length <= 255
 }
 
