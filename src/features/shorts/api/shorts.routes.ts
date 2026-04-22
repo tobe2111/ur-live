@@ -72,7 +72,7 @@ shortsRoutes.get('/feed', async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
-  const limit = Number(c.req.query('limit')) || 10
+  const limit = Math.min(Math.max(1, Number(c.req.query('limit')) || 10), 100)
   const exclude = c.req.query('exclude') || ''
 
   const excludeShorts: number[] = []

@@ -19,9 +19,14 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { getFeatureFlags } from '@/worker/utils/feature-flags';
+import { rateLimit } from '@/worker/middleware/rate-limit';
+import { ALLOWED_ORIGINS } from '../../../shared/constants';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
+
+// 🛡️ 2026-04-22: bare cors() 는 모든 origin 허용. 민감 routes 에 쓰지 말고 아래 tightCors 사용.
+const tightCors = () => cors({ origin: [...ALLOWED_ORIGINS], credentials: true });
 
 type Bindings = {
   DB: D1Database;
@@ -206,7 +211,7 @@ productsRoutes.get('/:id', cors(), async (c) => {
  * POST /api/products
  * 상품 생성 (판매자 전용)
  */
-productsRoutes.post('/', cors(), requireAuth(), async (c) => {
+productsRoutes.post('/', tightCors(), rateLimit({ action: 'product_create', max: 20, windowSec: 300 }), requireAuth(), async (c) => {
   const { DB } = c.env;
 
   try {
@@ -270,7 +275,7 @@ productsRoutes.post('/', cors(), requireAuth(), async (c) => {
  * PUT /api/products/:id
  * 상품 수정 (판매자 전용)
  */
-productsRoutes.put('/:id', cors(), requireAuth(), async (c) => {
+productsRoutes.put('/:id', tightCors(), requireAuth(), async (c) => {
   const { DB } = c.env;
 
   try {
@@ -333,7 +338,7 @@ productsRoutes.put('/:id', cors(), requireAuth(), async (c) => {
  * DELETE /api/products/:id
  * 상품 삭제 (판매자 전용)
  */
-productsRoutes.delete('/:id', cors(), requireAuth(), async (c) => {
+productsRoutes.delete('/:id', tightCors(), requireAuth(), async (c) => {
   const { DB } = c.env;
 
   try {

@@ -38,8 +38,8 @@ app.get('/public', async (c) => {
   if (!count || count.cnt === 0) {
     await seedBlogPosts(c.env.DB)
   }
-  const page = Number(c.req.query('page') || 1)
-  const limit = Number(c.req.query('limit') || 9)
+  const page = Math.max(1, Number(c.req.query('page') || 1))
+  const limit = Math.min(Math.max(1, Number(c.req.query('limit') || 9)), 100)
   const tag = c.req.query('tag')
   const offset = (page - 1) * limit
 

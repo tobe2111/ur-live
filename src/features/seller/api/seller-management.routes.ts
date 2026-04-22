@@ -20,6 +20,7 @@ import { ApiError } from '@/shared/types/common';
 import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE, MIN_PASSWORD_LENGTH } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { validateFileMagicBytes } from '@/lib/upload-security';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 type Bindings = {
   DB: D1Database;
@@ -174,7 +175,7 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
  * POST /api/seller/register
  * 셀러 회원가입
  */
-sellerManagementRoutes.post('/register', async (c) => {
+sellerManagementRoutes.post('/register', rateLimit({ action: 'seller_register', max: 5, windowSec: 3600 }), async (c) => {
   try {
     const body = await c.req.json<SellerRegisterRequest>();
     const { username, email, password, name, business_name, business_number, phone, address, description, youtube_email, seller_type } = body;
@@ -1124,7 +1125,7 @@ sellerManagementRoutes.post('/change-password', async (c) => {
     const seller = await db.prepare('SELECT password_hash FROM sellers WHERE id = ?').bind(sellerId).first<{ password_hash: string }>();
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     // 현재 비밀번호 검증
-    const { hashPassword: hp, verifyPassword } = await import('@/lib/password');
+    const { hashPassword: hp, verifyPassword } = await import('../../../lib/password');
     const { valid } = await verifyPassword(currentPassword, seller.password_hash);
     if (!valid) return c.json({ success: false, error: '현재 비밀번호가 올바르지 않습니다' }, 400);
     const newHash = await hp(newPassword);
@@ -1294,7 +1295,7 @@ sellerManagementRoutes.get('/settlements/summary', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 401);
 
   try {
-    const { getSellerSettlementSummary } = await import('@/lib/settlement-automation');
+    const { getSellerSettlementSummary } = await import('../../../lib/settlement-automation');
     const summary = await getSellerSettlementSummary(db, sellerId);
     return c.json({ success: true, data: summary });
   } catch (err: unknown) {
