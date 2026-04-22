@@ -93,6 +93,21 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
   const commissionAmount = Math.round(body.amount * stream.commission_rate / 100);
   const creditAmount = body.amount - commissionAmount;
 
+  // 🛡️ 중복 방지 — 동일 스트림 + 동일 유저의 pending 후원 이미 있으면 거부
+  // 빠른 2회 클릭으로 2개 pending 레코드 생기는 문제 방지
+  const existingPending = await DB.prepare(
+    `SELECT id FROM donations
+     WHERE donor_user_id = ? AND live_stream_id = ? AND payment_status = 'pending'
+     AND created_at >= datetime('now', '-10 minutes')`
+  ).bind(userId, body.stream_id).first<{ id: number }>();
+  if (existingPending) {
+    return c.json({
+      success: false,
+      error: '이미 진행 중인 후원이 있습니다. 잠시 후 다시 시도해주세요.',
+      code: 'DUPLICATE_PENDING_DONATION',
+    }, 409);
+  }
+
   // pending 레코드를 DB에 저장 — confirm 단계에서 이 레코드의 금액으로 검증
   // DB 스키마: live_stream_id (NOT stream_id), credit_amount (NOT seller_amount),
   //           payment_status (NOT status), is_anonymous 컬럼 없음

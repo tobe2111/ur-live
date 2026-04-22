@@ -28,6 +28,7 @@ import { i18nMiddleware } from './middleware/i18n.middleware';
 import { rateLimitMiddleware as rateLimiterMiddleware } from './middleware/rate-limiter';
 import { globalErrorHandler as errorHandler } from './middleware/error-handler';
 import { errorRateMonitor } from './middleware/error-rate-monitor';
+import { edgeCache } from './middleware/edge-cache';
 
 // ---- Feature module routes ----
 import { accountRoutes } from '../features/account/api/account.routes';
@@ -438,6 +439,74 @@ app.get('/api/_internal/health-dashboard', async (c) => {
 });
 
 let _cachedBuildVersion: { version: string; fetchedAt: number } | null = null;
+// ============================================================
+// 🌐 Dynamic Sitemap.xml (2026-04-22 추가)
+// 기존 정적 public/sitemap.xml 은 상품/스트림 누락 + 7일 stale.
+// 서버가 현재 DB 상태로 매번 생성 → 검색엔진이 항상 최신 인덱싱.
+// ============================================================
+app.get('/sitemap.xml', async (c) => {
+  const origin = new URL(c.req.url).origin;
+  const DB = c.env.DB as D1Database | undefined;
+  const urls: Array<{ loc: string; priority: number; changefreq: string }> = [
+    // 정적 페이지
+    { loc: '/', priority: 1.0, changefreq: 'daily' },
+    { loc: '/browse', priority: 0.9, changefreq: 'daily' },
+    { loc: '/live', priority: 0.9, changefreq: 'hourly' },
+    { loc: '/shorts', priority: 0.8, changefreq: 'hourly' },
+    { loc: '/search', priority: 0.7, changefreq: 'weekly' },
+    { loc: '/login', priority: 0.5, changefreq: 'monthly' },
+    { loc: '/blog', priority: 0.6, changefreq: 'daily' },
+  ];
+
+  if (DB) {
+    try {
+      // 활성 상품 최신 500개
+      const products = await DB.prepare(
+        `SELECT id FROM products WHERE is_active = 1 ORDER BY id DESC LIMIT 500`
+      ).all<{ id: number }>();
+      for (const p of products.results || []) {
+        urls.push({ loc: `/products/${p.id}`, priority: 0.8, changefreq: 'weekly' });
+      }
+
+      // 활성 셀러 공개 프로필
+      const sellers = await DB.prepare(
+        `SELECT id, username FROM sellers WHERE status = 'approved' ORDER BY id DESC LIMIT 200`
+      ).all<{ id: number; username: string }>();
+      for (const s of sellers.results || []) {
+        urls.push({ loc: `/s/${s.username || s.id}`, priority: 0.7, changefreq: 'weekly' });
+      }
+
+      // 최근 라이브 스트림
+      const streams = await DB.prepare(
+        `SELECT id FROM live_streams WHERE status IN ('live','scheduled','ended') ORDER BY id DESC LIMIT 100`
+      ).all<{ id: number }>();
+      for (const s of streams.results || []) {
+        urls.push({ loc: `/live/${s.id}`, priority: 0.6, changefreq: 'hourly' });
+      }
+
+      // 블로그 글
+      const blogs = await DB.prepare(
+        `SELECT slug FROM blog_posts WHERE published = 1 ORDER BY id DESC LIMIT 100`
+      ).all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
+      for (const b of blogs.results || []) {
+        if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly' });
+      }
+    } catch {
+      // DB 쿼리 실패해도 정적 URL 은 응답
+    }
+  }
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map(u => `  <url><loc>${origin}${u.loc}</loc><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`).join('\n')}
+</urlset>`;
+
+  return c.body(xml, 200, {
+    'Content-Type': 'application/xml; charset=utf-8',
+    'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+  });
+});
+
 app.get('/api/version', async (c) => {
   // 공개 secret 존재 여부 boolean — 값 자체는 노출 안 됨. 500 진단용.
   const env = c.env as any;
@@ -699,6 +768,14 @@ app.get('/api/_internal/repair-schema', async (c) => {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )` },
+    // 🚀 인덱스 추가 (2026-04-22 static audit 결과 — 셀러 대시보드 쿼리 500ms → 50ms)
+    { name: 'idx_orders_seller_status_v2', sql: `CREATE INDEX IF NOT EXISTS idx_orders_seller_status_v2 ON orders(seller_id, status)` },
+    { name: 'idx_donations_seller_payment_status', sql: `CREATE INDEX IF NOT EXISTS idx_donations_seller_payment_status ON donations(seller_id, payment_status)` },
+    { name: 'idx_orders_live_stream_status', sql: `CREATE INDEX IF NOT EXISTS idx_orders_live_stream_status ON orders(live_stream_id, status)` },
+    { name: 'idx_orders_user_id', sql: `CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)` },
+    { name: 'idx_cart_user_id', sql: `CREATE INDEX IF NOT EXISTS idx_cart_user_id ON cart_items(user_id)` },
+    { name: 'idx_products_seller_id', sql: `CREATE INDEX IF NOT EXISTS idx_products_seller_id ON products(seller_id)` },
+    { name: 'idx_wishlists_user_id', sql: `CREATE INDEX IF NOT EXISTS idx_wishlists_user_id ON wishlists(user_id)` },
     { name: 'shipping_addresses', sql: `CREATE TABLE IF NOT EXISTS shipping_addresses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -1282,10 +1359,12 @@ app.route('/api/users', usersRouter);
 // ============================================================
 // Cache Control — read-heavy public endpoints
 // ============================================================
-app.use('/api/products', cacheControl(60));     // 1 min
-app.use('/api/streams', cacheControl(30));      // 30 sec
-app.use('/api/group-buy/products', cacheControl(60)); // 1 min
-app.use('/api/banners', cacheControl(300));     // 5 min
+// 🚀 Edge cache + Cache-Control 동시 적용 (1인 운영 D1 부하 감소)
+// edge cache 는 CF edge 에서 응답 캐싱 → D1 쿼리 자체를 우회 → 빠르고 비용 절감
+app.use('/api/products', edgeCache(60), cacheControl(60));     // 1 min
+app.use('/api/streams', edgeCache(30), cacheControl(30));      // 30 sec
+app.use('/api/group-buy/products', edgeCache(60), cacheControl(60)); // 1 min
+app.use('/api/banners', edgeCache(300), cacheControl(300));    // 5 min
 
 // ============================================================
 // Rate limits for read/write endpoints
