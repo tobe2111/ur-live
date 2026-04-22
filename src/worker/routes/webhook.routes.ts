@@ -81,6 +81,11 @@ async function sendOrderNotification(
 
 const webhookRouter = new Hono<{ Bindings: Env }>();
 
+// v31 FIX: webhook intake rate-limit (per-IP).
+// 서명 검증 전 단계에서 1초당 100회 제한 — fake webhook flood 시 HMAC 연산/DB 쓰기 폭증 방지.
+import { rateLimit as _rlForWebhook } from '../middleware/rate-limit';
+webhookRouter.use('*', _rlForWebhook({ action: 'webhook_intake', max: 100, windowSec: 1 }));
+
 // ---- HMAC-SHA256 Signature Verification ----
 async function verifyTossSignature(
   rawBody: string,

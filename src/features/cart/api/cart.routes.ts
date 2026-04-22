@@ -26,6 +26,10 @@ import {
   unauthorizedResponse,
   internalServerErrorResponse,
 } from '@/worker/utils/response';
+import { rateLimit } from '@/worker/middleware/rate-limit';
+
+// v31 FIX: cart mutation rate limit (per-IP, 분당 30회)
+const cartRateLimit = rateLimit({ action: 'cart_mutation', max: 30, windowSec: 60 });
 
 type Bindings = {
   DB: D1Database;
@@ -176,7 +180,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
  * Body: { product_id, quantity, price_snapshot?, option_id?, live_stream_id?, options? }
  * LivePageV2 호환: productId, liveStreamId, priceSnapshot 도 허용
  */
-cartRoutes.post('/', requireAuth(), async (c) => {
+cartRoutes.post('/', cartRateLimit, requireAuth(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
@@ -318,7 +322,7 @@ cartRoutes.post('/', requireAuth(), async (c) => {
  * PUT /api/cart/:id
  * 수량 변경
  */
-cartRoutes.put('/:id', requireAuth(), async (c) => {
+cartRoutes.put('/:id', cartRateLimit, requireAuth(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
@@ -370,7 +374,7 @@ cartRoutes.put('/:id', requireAuth(), async (c) => {
  * DELETE /api/cart/:id
  * 아이템 삭제
  */
-cartRoutes.delete('/:id', requireAuth(), async (c) => {
+cartRoutes.delete('/:id', cartRateLimit, requireAuth(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
@@ -406,7 +410,7 @@ cartRoutes.delete('/:id', requireAuth(), async (c) => {
  * POST /api/cart/clear
  * 장바구니 비우기
  */
-cartRoutes.post('/clear', requireAuth(), async (c) => {
+cartRoutes.post('/clear', cartRateLimit, requireAuth(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
