@@ -145,40 +145,43 @@ export default function AdminLoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
+                <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    id="email"
+                    id="admin-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoComplete="email"
                     placeholder="관리자 이메일을 입력하세요"
+                    aria-label="이메일"
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
+                <label htmlFor="admin-password" className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    id="password"
+                    id="admin-password"
                     type={showPw ? 'text' : 'password'}
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="비밀번호 입력"
+                    aria-label="비밀번호"
                     className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw(!showPw)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 보기'}
                   >
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>

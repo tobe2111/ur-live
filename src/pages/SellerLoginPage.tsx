@@ -75,17 +75,17 @@ export default function SellerLoginPage() {
 
         <div className="flex-1 flex flex-col justify-center px-10">
           <h1 className="text-3xl font-bold text-white leading-tight mb-3">
-            라이브 커머스의 시작
+            {t('seller.loginHeroTitle')}
           </h1>
           <p className="text-gray-400 text-base mb-10">
-            셀러 전용 대시보드에서 매출, 방송, 상품을 한눈에 관리하세요.
+            {t('seller.loginHeroDesc')}
           </p>
 
           <div className="space-y-5">
             {[
-              { icon: Play, title: '라이브 방송 관리', desc: '실시간 방송 시작부터 종료까지 원클릭' },
-              { icon: Package, title: '상품·주문 통합', desc: '상품 등록과 주문 처리를 한 화면에서' },
-              { icon: TrendingUp, title: '매출 분석 리포트', desc: '일별·월별 매출 추이를 한눈에 확인' },
+              { icon: Play, title: t('seller.loginFeature1Title'), desc: t('seller.loginFeature1Desc') },
+              { icon: Package, title: t('seller.loginFeature2Title'), desc: t('seller.loginFeature2Desc') },
+              { icon: TrendingUp, title: t('seller.loginFeature3Title'), desc: t('seller.loginFeature3Desc') },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
@@ -101,7 +101,7 @@ export default function SellerLoginPage() {
         </div>
 
         <div className="px-10 pb-8">
-          <p className="text-xs text-gray-600">&copy; 2026 유어딜. 셀러 전용 서비스</p>
+          <p className="text-xs text-gray-600">&copy; 2026 {t('seller.loginCopyright')}</p>
         </div>
       </div>
 
@@ -120,7 +120,7 @@ export default function SellerLoginPage() {
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="mb-7">
-              <h2 className="text-2xl font-bold text-gray-900">셀러 로그인</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t('seller.sellerLogin')}</h2>
               <p className="text-sm text-gray-500 mt-1">{t('seller.loginSubtitle')}</p>
             </div>
 
@@ -133,10 +133,11 @@ export default function SellerLoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('common.email')}</label>
+                <label htmlFor="seller-email" className="block text-sm font-medium text-gray-700 mb-1.5">{t('common.email')}</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
+                    id="seller-email"
                     type="email"
                     name="email"
                     value={formData.email}
@@ -145,6 +146,7 @@ export default function SellerLoginPage() {
                     autoComplete="email"
                     disabled={loading}
                     placeholder="seller@example.com"
+                    aria-label="이메일"
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
                   />
                 </div>
@@ -152,10 +154,11 @@ export default function SellerLoginPage() {
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.password')}</label>
+                <label htmlFor="seller-password" className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.password')}</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
+                    id="seller-password"
                     type={showPw ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
@@ -164,12 +167,14 @@ export default function SellerLoginPage() {
                     autoComplete="current-password"
                     disabled={loading}
                     placeholder={t('seller.passwordPlaceholder')}
+                    aria-label="비밀번호"
                     className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw(v => !v)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 보기'}
                   >
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -203,7 +208,7 @@ export default function SellerLoginPage() {
                   to="/seller/forgot-password"
                   className="text-sm text-[#FF0033] hover:text-[#cc0029] font-medium"
                 >
-                  비밀번호를 잊으셨나요?
+                  {t('auth.forgotPassword')}
                 </Link>
               </div>
 
@@ -226,9 +231,9 @@ export default function SellerLoginPage() {
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-gray-500">
-                계정이 없으신가요?{' '}
+                {t('auth.noAccount')}{' '}
                 <Link to="/seller/signup" className="text-[#FF0033] font-medium hover:text-[#cc0029] transition-colors">
-                  셀러 등록
+                  {t('seller.sellerRegister')}
                 </Link>
               </p>
             </div>

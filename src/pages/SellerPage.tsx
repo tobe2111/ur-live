@@ -480,12 +480,12 @@ export default function SellerPage() {
             <div className="flex items-center justify-between mb-2 gap-2">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-[12px] font-bold text-gray-700">이번 달 매출 목표</p>
+                  <p className="text-[12px] font-bold text-gray-700">{t('seller.monthlyGoalTitle')}</p>
                   <button
                     onClick={() => setEditingGoal(!editingGoal)}
                     className="text-[10px] text-blue-600 hover:underline"
                   >
-                    {editingGoal ? '닫기' : '목표 변경'}
+                    {editingGoal ? t('common.close') : t('seller.changeGoal')}
                   </button>
                 </div>
                 {editingGoal ? (
@@ -503,11 +503,11 @@ export default function SellerPage() {
                       }}
                       className="text-[14px] font-bold text-gray-900 px-2 py-1 border border-gray-300 rounded w-40"
                     />
-                    <span className="text-[12px] text-gray-500">원</span>
+                    <span className="text-[12px] text-gray-500">{t('common.won')}</span>
                   </div>
                 ) : (
                   <p className="text-[16px] sm:text-[20px] font-extrabold text-gray-900 truncate">
-                    {(stats.totalRevenue || 0).toLocaleString()}원 / {monthlyGoal.toLocaleString()}원
+                    {(stats.totalRevenue || 0).toLocaleString()}{t('common.won')} / {monthlyGoal.toLocaleString()}{t('common.won')}
                   </p>
                 )}
               </div>
@@ -525,7 +525,7 @@ export default function SellerPage() {
               />
             </div>
             <p className="text-[10px] text-gray-500 mt-1.5">
-              남은 일수: {daysLeft}일 · 목표 달성까지 {Math.max(0, monthlyGoal - (stats.totalRevenue || 0)).toLocaleString()}원
+              {t('seller.daysLeft', { days: daysLeft })} · {t('seller.goalRemaining', { amount: Math.max(0, monthlyGoal - (stats.totalRevenue || 0)).toLocaleString() })}
             </p>
           </div>
 
@@ -574,7 +574,7 @@ export default function SellerPage() {
                     <p className="text-lg sm:text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
                     {card.showDelta && (
                       <span className={`text-[10px] font-bold ${card.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {card.delta >= 0 ? '↑' : '↓'} {Math.abs(card.delta)}% vs 지난주
+                        {card.delta >= 0 ? '↑' : '↓'} {Math.abs(card.delta)}% {t('seller.vsPreviousPeriod')}
                       </span>
                     )}
                     {card.sub && <p className="text-[10px] sm:text-xs text-gray-400">{card.sub}</p>}
@@ -750,17 +750,17 @@ export default function SellerPage() {
                   : 0
                 return (
                   <div className="bg-white rounded-2xl p-5 border border-[#E8EAEE]">
-                    <h3 className="text-[14px] font-extrabold text-gray-900 mb-3">전환 퍼널 (7일)</h3>
+                    <h3 className="text-[14px] font-extrabold text-gray-900 mb-3">{t('seller.conversionFunnel')}</h3>
                     {!hasViewerData && orderCount === 0 ? (
                       <p className="text-[12px] text-gray-500 py-4 text-center">
-                        시청자 데이터가 아직 없습니다
+                        {t('seller.noViewerData')}
                       </p>
                     ) : (
                       <div className="space-y-3">
                         {hasViewerData && (
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[12px] font-semibold text-gray-700">방송 시청자</span>
+                              <span className="text-[12px] font-semibold text-gray-700">{t('seller.broadcastViewers')}</span>
                               <span className="text-[12px] font-extrabold text-gray-900">
                                 {viewerCount.toLocaleString()}<span className="text-[10px] text-gray-500 ml-1">(100%)</span>
                               </span>
@@ -772,7 +772,7 @@ export default function SellerPage() {
                         )}
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-[12px] font-semibold text-gray-700">주문 완료</span>
+                            <span className="text-[12px] font-semibold text-gray-700">{t('seller.ordersCompleted')}</span>
                             <span className="text-[12px] font-extrabold text-gray-900">
                               {orderCount.toLocaleString()}
                               {hasViewerData && (

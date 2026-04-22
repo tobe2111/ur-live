@@ -431,32 +431,36 @@ export default function LoginPage() {
         {showEmailLogin && !showForgotPassword && (
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div>
-              <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+              <label htmlFor="login-email" className="block text-[12px] font-medium text-[#555] mb-1.5">
                 {t('auth.email')}
               </label>
               <input
+                id="login-email"
                 type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
+                aria-label={t('auth.email')}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+              <label htmlFor="login-password" className="block text-[12px] font-medium text-[#555] mb-1.5">
                 {t('auth.password')}
               </label>
               <div className="relative">
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full h-[48px] px-4 pr-12 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                   placeholder={t('auth.passwordPlaceholder')}
+                  aria-label={t('auth.password')}
                   required
                 />
                 <button
@@ -511,16 +515,18 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+              <label htmlFor="reset-email" className="block text-[12px] font-medium text-[#555] mb-1.5">
                 {t('auth.email')}
               </label>
               <input
+                id="reset-email"
                 type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
+                aria-label={t('auth.email')}
                 required
               />
             </div>

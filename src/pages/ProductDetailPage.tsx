@@ -64,6 +64,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         placeholder="상품은 어떠셨나요? 최소 10자 이상 작성해주세요."
         rows={3}
         maxLength={2000}
+        aria-label="리뷰 내용"
         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 resize-none focus:outline-none focus:border-blue-400"
       />
       <div className="flex gap-2 mt-3">
@@ -547,7 +548,7 @@ export default function ProductDetailPage() {
           <p className="text-[13px] font-bold text-gray-900 mb-3">상세 정보</p>
           {detailImages.length > 0 && (
             <div className="rounded-xl overflow-hidden mb-3" style={{ background: '#F9FAFB' }}>
-              <img src={detailImages[0]} alt="" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
+              <img src={detailImages[0]} alt={product.name || '상품 상세 이미지'} className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
             </div>
           )}
           {product.long_description && (

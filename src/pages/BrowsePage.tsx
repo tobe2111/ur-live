@@ -227,13 +227,15 @@ export default function BrowsePage() {
       {/* 상단 헤더: 검색바 + 아이콘 */}
       <div className="sticky top-0 z-50 bg-white px-4 py-2.5 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <div
+          <button
+            type="button"
             onClick={() => navigate('/search')}
             className="flex-1 flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2.5 cursor-pointer"
+            aria-label="상품 검색"
           >
             <Search className="w-4 h-4 text-gray-400" />
             <span className="text-sm text-gray-400">상품명, 브랜드명</span>
-          </div>
+          </button>
           <button onClick={() => navigate('/cart')} className="p-1 relative">
             <ShoppingCart className="w-6 h-6 text-gray-800" />
           </button>
@@ -398,7 +400,7 @@ export default function BrowsePage() {
                   className="block w-full text-left mb-6"
                 >
                   <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '4/3', background: '#F9FAFB' }}>
-                    {hero.image_url && <img src={hero.image_url} alt="" className="w-full h-full object-cover" fetchPriority="high" decoding="async" />}
+                    {hero.image_url && <img src={hero.image_url} alt={hero.name || '상품 이미지'} className="w-full h-full object-cover" fetchPriority="high" decoding="async" />}
                     <div className="absolute top-2 left-2 flex gap-1">
                       {heroDiscount > 0 && (
                         <span className="rounded-md px-2 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">-{heroDiscount}%</span>
@@ -438,7 +440,7 @@ export default function BrowsePage() {
                   >
                     <div className="relative aspect-square overflow-hidden bg-gray-50 rounded-xl">
                       {product.image_url ? (
-                        <img src={product.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        <img src={product.image_url} alt={product.name || '상품 이미지'} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className="w-full h-full bg-gray-100" />
                       )}

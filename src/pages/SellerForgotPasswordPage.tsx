@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react'
 
 export default function SellerForgotPasswordPage() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -19,15 +21,15 @@ export default function SellerForgotPasswordPage() {
       const res = await api.post('/api/seller/forgot-password', { email })
       if (res.data?.success) {
         setSent(true)
-        toast.success('이메일을 확인해주세요.')
+        toast.success(t('seller.forgotPassword.checkEmailToast'))
       } else {
-        const msg = res.data?.error || '요청 처리 중 오류가 발생했습니다.'
+        const msg = res.data?.error || t('seller.forgotPassword.requestError')
         setError(msg)
         toast.error(msg)
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string } } }
-      const msg = err_.response?.data?.error || '요청 처리 중 오류가 발생했습니다.'
+      const msg = err_.response?.data?.error || t('seller.forgotPassword.requestError')
       setError(msg)
       toast.error(msg)
     } finally {
@@ -38,8 +40,8 @@ export default function SellerForgotPasswordPage() {
   return (
     <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex items-center justify-center p-6">
       <SEO
-        title="비밀번호 찾기 (셀러)"
-        description="유어딜 셀러 비밀번호 재설정 링크를 이메일로 받아보세요."
+        title={t('seller.forgotPassword.seoTitle')}
+        description={t('seller.forgotPassword.seoDescription')}
         url="/seller/forgot-password"
         noindex
       />
@@ -57,10 +59,9 @@ export default function SellerForgotPasswordPage() {
               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="w-6 h-6 text-blue-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">이메일을 확인해주세요</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">{t('seller.forgotPassword.checkEmailTitle')}</h2>
               <p className="text-sm text-gray-500 leading-relaxed mb-6">
-                입력하신 이메일로 비밀번호 재설정 링크를 보냈습니다.<br />
-                메일이 오지 않는다면 스팸함을 확인해주세요. (1시간 유효)
+                {t('seller.forgotPassword.checkEmailDesc')}
               </p>
               <Link
                 to="/seller/login"
