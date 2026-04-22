@@ -107,11 +107,13 @@ function validateAligoResponse(result: AligoApiResponse, operation: string): voi
 export async function getAligoToken(
   env: AligoEnv
 ): Promise<AligoTokenResponse> {
+  // v35 FIX: Aligo 타임아웃 없으면 worker hang → Alimtalk 전체 블로킹
   const response = await fetch('https://smartsms.aligo.in/admin/api/akv10/token/create/30/s/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
+    signal: AbortSignal.timeout(5000),
     body: createFormData({
       apikey: env.ALIGO_API_KEY,
       userid: env.ALIGO_USER_ID
