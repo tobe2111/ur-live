@@ -36,7 +36,8 @@ function highlightText(text: string, query: string) {
 }
 
 export default function ProductCard({ product, highlightQuery }: ProductCardProps) {
-  const discountedPrice = Math.floor(product.price * (1 - (product.discount_rate || 0) / 100))
+  // 🛡️ 2026-04-22: 서버 라운딩과 통일 (Math.floor → Math.round)
+  const discountedPrice = Math.round(product.price * (1 - (product.discount_rate || 0) / 100))
   const discount = product.discount_rate || 0
   const showDiscountBadge = discount >= 30
 

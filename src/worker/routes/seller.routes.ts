@@ -58,15 +58,16 @@ sellersRouter.get('/', async (c) => {
 });
 
 // GET /api/sellers/:id
+// 🛡️ 2026-04-22: PII 누출 방어 — 공개 API 에서 phone/email/business_number/bank_account 제거.
+// 이 정보는 /api/seller/me (인증된 본인) + admin API 에서만 노출. 공개 페이지는 PUBLIC_SELLER_COLUMNS.
 sellersRouter.get('/:id', async (c) => {
   try {
     const qb = new QueryBuilder(c.env.DB);
     const sellerId = c.req.param('id');
 
-    // ✅ 실제 sellers 테이블 스키마에 맞게 수정
     const seller = await qb.queryOne<Seller>(
-      `SELECT id, username, name, email, phone,
-              business_name, business_number, bank_account,
+      `SELECT id, username, name,
+              business_name,
               status, is_active,
               created_at, updated_at, approved_at
        FROM sellers WHERE id = ? AND status = 'approved' AND is_active = 1`,

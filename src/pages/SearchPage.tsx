@@ -52,7 +52,8 @@ export default function SearchPage() {
   }, [isError])
 
   const getDiscountedPrice = (price: number, discountRate: number) => {
-    return Math.floor(price * (1 - discountRate / 100))
+    // 🛡️ 2026-04-22: 서버 라운딩(Math.round) 과 통일 — 표시-결제 1원 차이 방지
+    return Math.round(price * (1 - discountRate / 100))
   }
 
   const handleSearch = (searchQuery: string) => {
