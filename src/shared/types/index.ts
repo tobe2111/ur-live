@@ -171,6 +171,7 @@ export interface Order {
   tracking_company?: string;
   cancelled_at?: string;
   cancel_reason?: string;
+  refunded_amount?: number;
   paid_at?: string;
   shipped_at?: string;
   delivered_at?: string;
