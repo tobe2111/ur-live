@@ -15,6 +15,7 @@ import { WebhookEventRepository } from '../repositories/webhook.repository';
 import type { TossWebhookPayload } from '../../shared/types';
 import { arrayBufferToHex } from '../../shared/utils';
 import { sendAlert } from '../utils/alerts';
+import { rateLimit } from '../middleware/rate-limit';
 
 // ============================================================
 // Order Notification Helper
@@ -81,10 +82,8 @@ async function sendOrderNotification(
 
 const webhookRouter = new Hono<{ Bindings: Env }>();
 
-// v31 FIX: webhook intake rate-limit (per-IP).
-// POST / 에만 적용. wildcard '*'는 타 라우터에 영향을 줄 수 있어 피함.
-import { rateLimit as _rlForWebhook } from '../middleware/rate-limit';
-const webhookIntakeLimiter = _rlForWebhook({ action: 'webhook_intake', max: 100, windowSec: 1 });
+// v31 FIX: webhook intake rate-limit (per-IP). POST / 에만 직접 적용.
+const webhookIntakeLimiter = rateLimit({ action: 'webhook_intake', max: 100, windowSec: 1 });
 
 // ---- HMAC-SHA256 Signature Verification ----
 async function verifyTossSignature(
