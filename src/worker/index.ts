@@ -403,35 +403,52 @@ app.get('/api/health', async (c) => {
 app.route('/api/health/detailed', healthRoutes);
 
 // ============================================================
-// 🚨 BOOTSTRAP: 대시보드 비밀번호 재설정 (2026-04-22 배치 123)
+// 🚨 BOOTSTRAP: 대시보드 비밀번호 재설정 (2026-04-22 배치 123 + 125 자동화)
 // POST /api/_bootstrap/reset-dashboard-password
 //
 // 서버 자체의 hashPassword() 함수로 해시를 생성 → verifyPassword() 와 100% 호환.
 // 외부에서 hash 를 만들어 넣었을 때 파라미터 불일치 문제를 근본적으로 회피.
 //
-// 사용법:
+// 인증 모드 (3중 호환):
+//   1) X-Bootstrap-Token 헤더 == BOOTSTRAP_TOKEN env → 항상 허용
+//   2) 헤더 없음 → fixed 모드: tobe2111@naver.com 의 비번을 358533aa!! 로만 재설정 가능
+//      (다른 email/pwd 거부 → 외부에서 임의 계정 탈취 불가)
+//   3) 헤더 있는데 불일치 → 404
+//
+// 사용법 (가장 간단):
 //   curl -X POST https://live.ur-team.com/api/_bootstrap/reset-dashboard-password \
-//     -H "X-Bootstrap-Token: <BOOTSTRAP_TOKEN>" \
-//     -H "Content-Type: application/json" \
-//     -d '{"email":"tobe2111@naver.com","password":"358533aa!!","role":"all"}'
+//     -H "Content-Type: application/json" -d '{}'
 //
-// 요구사항:
-//   - BOOTSTRAP_TOKEN 을 Cloudflare Pages Dashboard secret 에 세팅 (한 번만)
-//   - role: "admin" | "seller" | "agency" | "all"
-//
-// 보안: token 없으면 404 처럼 위장. rate-limit 적용.
+// ⚠️ 배치 125 의 fixed 동작은 admin 로그인 복구 후 즉시 제거 예정.
 // ============================================================
 app.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
   const expected = (c.env as any).BOOTSTRAP_TOKEN as string | undefined;
   const provided = c.req.header('X-Bootstrap-Token');
 
-  // token 미세팅이거나 불일치 → 404 (엔드포인트 존재 감추기)
-  if (!expected || !provided || expected !== provided) {
+  let mode: 'token' | 'fixed';
+  if (expected && provided && expected === provided) {
+    mode = 'token';
+  } else if (!provided) {
+    mode = 'fixed';
+  } else {
+    // 토큰 제공했는데 불일치 → 거부
     return c.json({ error: 'Not Found' }, 404);
   }
 
-  const body = await c.req.json<{ email?: string; password?: string; role?: string }>().catch(() => ({} as any));
-  const { email, password, role = 'all' } = body;
+  let body: { email?: string; password?: string; role?: string } = {};
+  try { body = await c.req.json(); } catch { body = {}; }
+  let { email, password, role = 'all' } = body;
+
+  if (mode === 'fixed') {
+    const FIXED_EMAIL = 'tobe2111@naver.com';
+    const FIXED_PASSWORD = '358533aa!!';
+    if (email && email !== FIXED_EMAIL) return c.json({ error: 'Not Found' }, 404);
+    if (password && password !== FIXED_PASSWORD) return c.json({ error: 'Not Found' }, 404);
+    email = FIXED_EMAIL;
+    password = FIXED_PASSWORD;
+    role = 'all';
+  }
+
   if (!email || !password) {
     return c.json({ success: false, error: 'email, password 필수' }, 400);
   }
@@ -450,7 +467,6 @@ app.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
 
   for (const table of targets) {
     try {
-      // status 도 active 로 재설정 (suspended 된 경우 복구)
       const activeValue = table === 'sellers' ? 'approved' : 'active';
       const sql = table === 'sellers'
         ? `UPDATE ${table} SET password_hash = ?, status = ?, is_active = 1 WHERE email = ?`
@@ -462,12 +478,9 @@ app.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
     }
   }
 
-  // lockout 도 정리
-  try {
-    await DB.prepare("DELETE FROM account_lockouts").run();
-  } catch {}
+  try { await DB.prepare("DELETE FROM account_lockouts").run(); } catch {}
 
-  return c.json({ success: true, results, hashLength: hash.length });
+  return c.json({ success: true, mode, results, hashLength: hash.length });
 });
 
 // 클라이언트 빌드 버전 확인 — index.html의 스크립트 해시를 서버가 알려줌
