@@ -1513,7 +1513,9 @@
       "backToLogin": "ログインに戻る",
       "sending": "送信中...",
       "submitButton": "リセットリンクを受け取る"
-    }
+    },
+    "hidePassword": "パスワードを隠す",
+    "showPassword": "パスワードを表���"
   },
   "nav": {
     "home": "ホーム",

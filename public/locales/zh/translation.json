@@ -1516,7 +1516,9 @@
       "backToLogin": "返回登录",
       "sending": "发送中...",
       "submitButton": "获取重置链接"
-    }
+    },
+    "hidePassword": "隐藏��码",
+    "showPassword": "显示密码"
   },
   "nav": {
     "home": "首页",

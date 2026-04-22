@@ -1513,7 +1513,9 @@
       "backToLogin": "Back to Login",
       "sending": "Sending...",
       "submitButton": "Get Reset Link"
-    }
+    },
+    "hidePassword": "Hide password",
+    "showPassword": "Show password"
   },
   "nav": {
     "home": "Home",
