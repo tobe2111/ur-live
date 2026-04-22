@@ -38,7 +38,13 @@ export default function KakaoConsentCallbackPage() {
 
       setTimeout(() => {
         if (window.opener) {
-          window.opener.postMessage({ type: 'kakao_consent_done' }, '*')
+          // 🛡️ 2026-04-22: wildcard origin 제거 — phishing 팝업 공격 방어
+          // opener 가 같은 origin 일 때만 메시지 전송 (cross-origin 악성 opener 차단)
+          try {
+            window.opener.postMessage({ type: 'kakao_consent_done' }, window.location.origin)
+          } catch {
+            // opener 가 다른 origin 이거나 closed — 무시
+          }
           window.close()
         } else {
           const returnUrl = state ? decodeURIComponent(state) : '/'

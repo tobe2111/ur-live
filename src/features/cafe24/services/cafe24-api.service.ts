@@ -16,6 +16,7 @@ import type {
   Cafe24TokenRow,
   SyncResult,
 } from '../types';
+import { encryptAtRest, decryptAtRest } from '../../../worker/utils/data-crypto';
 
 // ── helpers ────────────────────────────────────────────────────────
 
@@ -103,8 +104,12 @@ export async function saveTokens(
   db: D1Database,
   mallId: string,
   tokens: Cafe24OAuthTokens,
+  kek?: string,
 ): Promise<void> {
   const scopes = Array.isArray(tokens.scopes) ? tokens.scopes.join(',') : (tokens.scopes ?? '');
+  // 🛡️ 2026-04-22: at-rest 암호화 — DB 탈취 시 Cafe24 API 즉시 악용 방어
+  const encAccess = await encryptAtRest(tokens.access_token, kek);
+  const encRefresh = await encryptAtRest(tokens.refresh_token, kek);
   // Upsert: if mall_id already exists, update tokens
   const existing = await db
     .prepare('SELECT id FROM cafe24_auth WHERE mall_id = ?')
@@ -118,7 +123,7 @@ export async function saveTokens(
          SET access_token = ?, refresh_token = ?, expires_at = ?, scopes = ?, updated_at = datetime('now')
          WHERE mall_id = ?`,
       )
-      .bind(tokens.access_token, tokens.refresh_token, tokens.expires_at, scopes, mallId)
+      .bind(encAccess, encRefresh, tokens.expires_at, scopes, mallId)
       .run();
   } else {
     await db
@@ -126,7 +131,7 @@ export async function saveTokens(
         `INSERT INTO cafe24_auth (mall_id, access_token, refresh_token, expires_at, scopes)
          VALUES (?, ?, ?, ?, ?)`,
       )
-      .bind(mallId, tokens.access_token, tokens.refresh_token, tokens.expires_at, scopes)
+      .bind(mallId, encAccess, encRefresh, tokens.expires_at, scopes)
       .run();
   }
 }
@@ -150,29 +155,58 @@ export async function saveTokens(
 export async function saveTokensCAS(
   db: D1Database,
   mallId: string,
-  expectedOldRefresh: string,
+  expectedOldRefreshEncrypted: string,
   tokens: Cafe24OAuthTokens,
+  kek?: string,
 ): Promise<boolean> {
   const scopes = Array.isArray(tokens.scopes) ? tokens.scopes.join(',') : (tokens.scopes ?? '');
+  const encAccess = await encryptAtRest(tokens.access_token, kek);
+  const encRefresh = await encryptAtRest(tokens.refresh_token, kek);
+  // CAS: 저장된 암호문(refresh_token)이 호출자가 본 값과 동일해야 업데이트 허용.
+  // 암호화 비결정적이지만 복호화된 값 기준이 아닌 "DB 에 있던 바로 그 row 버전" 기준으로 비교.
   const result = await db
     .prepare(
       `UPDATE cafe24_auth
        SET access_token = ?, refresh_token = ?, expires_at = ?, scopes = ?, updated_at = datetime('now')
        WHERE mall_id = ? AND refresh_token = ?`,
     )
-    .bind(tokens.access_token, tokens.refresh_token, tokens.expires_at, scopes, mallId, expectedOldRefresh)
+    .bind(encAccess, encRefresh, tokens.expires_at, scopes, mallId, expectedOldRefreshEncrypted)
     .run();
   return (result.meta?.changes ?? 0) > 0;
 }
 
+/**
+ * 저장된 tokens 를 읽고 복호화해서 반환. (호출 측이 평문 token 기대)
+ */
 export async function getStoredTokens(
   db: D1Database,
   mallId: string,
+  kek?: string,
 ): Promise<Cafe24TokenRow | null> {
-  return db
+  const row = await db
     .prepare('SELECT * FROM cafe24_auth WHERE mall_id = ? LIMIT 1')
     .bind(mallId)
     .first<Cafe24TokenRow>();
+  if (!row) return null;
+  return {
+    ...row,
+    access_token: await decryptAtRest(row.access_token, kek),
+    refresh_token: await decryptAtRest(row.refresh_token, kek),
+  };
+}
+
+/**
+ * CAS 용 — 복호화 없이 암호문 그대로 반환 (saveTokensCAS 비교용).
+ */
+export async function getStoredTokenCiphertext(
+  db: D1Database,
+  mallId: string,
+): Promise<{ refresh_token: string } | null> {
+  const row = await db
+    .prepare('SELECT refresh_token FROM cafe24_auth WHERE mall_id = ? LIMIT 1')
+    .bind(mallId)
+    .first<{ refresh_token: string }>();
+  return row ?? null;
 }
 
 /**
@@ -189,8 +223,9 @@ export async function getValidAccessToken(
   mallId: string,
   clientId: string,
   clientSecret: string,
+  kek?: string,
 ): Promise<string> {
-  const stored = await getStoredTokens(db, mallId);
+  const stored = await getStoredTokens(db, mallId, kek);
   if (!stored) throw new Error('Cafe24 not connected. Please authorize first.');
 
   // Check expiry (with 5 min buffer)
@@ -199,13 +234,17 @@ export async function getValidAccessToken(
     return stored.access_token;
   }
 
-  // Refresh
+  // 🛡️ CAS 비교를 위해 복호화되지 않은 원본 암호문을 다시 읽는다.
+  const cipher = await getStoredTokenCiphertext(db, mallId);
+  const expectedCipher = cipher?.refresh_token ?? '';
+
+  // Refresh (복호화된 평문으로 Cafe24 호출)
   const newTokens = await refreshAccessToken(mallId, clientId, clientSecret, stored.refresh_token);
-  const won = await saveTokensCAS(db, mallId, stored.refresh_token, newTokens);
+  const won = await saveTokensCAS(db, mallId, expectedCipher, newTokens, kek);
   if (won) return newTokens.access_token;
 
   // Lost the race — somebody else refreshed first. Re-read and return their tokens.
-  const fresh = await getStoredTokens(db, mallId);
+  const fresh = await getStoredTokens(db, mallId, kek);
   if (!fresh) throw new Error('Cafe24 tokens disappeared during concurrent refresh.');
   return fresh.access_token;
 }

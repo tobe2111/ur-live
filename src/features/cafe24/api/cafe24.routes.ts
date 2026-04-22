@@ -108,7 +108,8 @@ cafe24Routes.get('/callback', async (c) => {
       code,
       redirectUri,
     );
-    await saveTokens(DB, CAFE24_MALL_ID, tokens);
+    // 🛡️ at-rest 암호화 — KEK 전달
+    await saveTokens(DB, CAFE24_MALL_ID, tokens, c.env.DATA_ENCRYPTION_KEY);
 
     // Redirect back to admin Cafe24 page with success
     const adminUrl = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24?connected=true`;
@@ -130,7 +131,7 @@ cafe24Routes.post('/sync', requireAdmin() as any, async (c) => {
   }
 
   try {
-    const accessToken = await getValidAccessToken(DB, CAFE24_MALL_ID, CAFE24_CLIENT_ID, CAFE24_CLIENT_SECRET);
+    const accessToken = await getValidAccessToken(DB, CAFE24_MALL_ID, CAFE24_CLIENT_ID, CAFE24_CLIENT_SECRET, c.env.DATA_ENCRYPTION_KEY);
     const products = await fetchAllProducts(CAFE24_MALL_ID, accessToken);
     const result = await syncProductsToLocal(DB, CAFE24_MALL_ID, products);
 
@@ -154,7 +155,7 @@ cafe24Routes.get('/status', requireAdmin() as any, async (c) => {
     return c.json({ success: true, data: { connected: false, reason: 'CAFE24_MALL_ID not set' } });
   }
 
-  const tokens = await getStoredTokens(DB, CAFE24_MALL_ID);
+  const tokens = await getStoredTokens(DB, CAFE24_MALL_ID, c.env.DATA_ENCRYPTION_KEY);
   if (!tokens) {
     return c.json({ success: true, data: { connected: false } });
   }
@@ -251,6 +252,7 @@ cafe24Routes.post('/webhook', async (c) => {
         CAFE24_MALL_ID,
         CAFE24_CLIENT_ID,
         CAFE24_CLIENT_SECRET,
+        c.env.DATA_ENCRYPTION_KEY,
       );
       const products = await fetchAllProducts(CAFE24_MALL_ID, accessToken);
       await syncProductsToLocal(DB, CAFE24_MALL_ID, products);
