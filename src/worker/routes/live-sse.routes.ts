@@ -12,6 +12,7 @@ import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { handleChatSSE, handleLiveStreamSSE } from '../../lib/sse-realtime'
 import { optionalAuth, getCurrentUser, requireSellerOrAdmin } from '../middleware/auth'
+import { rateLimit } from '../middleware/rate-limit'
 import {
   MAX_CHAT_MESSAGE_LENGTH,
   MAX_NAME_LENGTH,
@@ -215,7 +216,10 @@ liveSseRoutes.post('/:liveId/view', optionalAuth(), async (c) => {
 
 // ── Send chat message: POST /api/chat/:liveId/messages ──────────────────────
 // optionalAuth: 비로그인 시청자도 채팅 가능하나 isSeller/isAdmin은 서버에서만 결정
-chatRoutes.post('/:liveId/messages', optionalAuth(), async (c) => {
+// 🛡️ 2026-04-22: 채팅 POST rate limit (spam 방어)
+// 이전: 1초당 수백 메시지 flood 가능 (중복 메시지만 차단)
+// 수정: 30 msg/60s per IP
+chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, windowSec: 60 }), optionalAuth(), async (c) => {
   const { liveId } = c.req.param()
 
   let body: any

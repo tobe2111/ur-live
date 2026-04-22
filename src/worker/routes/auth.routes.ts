@@ -18,6 +18,7 @@ import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
 import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../lib/password';
 import { parseSessionCookie, clearSessionCookie } from '../utils/session';
+import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 
 const authRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -126,10 +127,24 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다' }, 401);
     }
 
+    // 🛡️ 2026-04-22: 계정 잠금 확인 (brute force 방어)
+    const lockStatus = await checkLockout(c.env.DB, 'user', String(user.id));
+    if (lockStatus.locked) {
+      return c.json({
+        success: false,
+        error: lockStatus.reason || '계정이 일시 잠금되었습니다.',
+        code: 'ACCOUNT_LOCKED',
+      }, 423);
+    }
+
     const { valid, isLegacy } = await verifyPassword(password, user.password_hash);
     if (!valid) {
+      await recordFailure(c.env.DB, 'user', String(user.id));
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다' }, 401);
     }
+
+    // 성공 시 실패 카운터 초기화
+    await clearFailures(c.env.DB, 'user', String(user.id));
 
     // ── 점진적 마이그레이션: SHA-256 → PBKDF2 ────────────────
     // 로그인 성공 시 레거시 해시를 감지하면 PBKDF2로 자동 재해싱합니다.

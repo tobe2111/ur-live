@@ -26,6 +26,7 @@ import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/
 import { sendEmail } from '@/services/email'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout'
 
 type AgencyVars = { agency: { id: number; email: string } }
 type AgencyCtx = Context<{ Bindings: Env; Variables: AgencyVars }>
@@ -183,8 +184,23 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
   if (agency.status === 'rejected') return c.json({ success: false, error: '가입이 거절된 계정입니다. 관리자에게 문의해주세요.' }, 403)
   if (agency.status !== 'active' && agency.status !== 'approved') return c.json({ success: false, error: `비활성화된 계정입니다. (상태: ${agency.status})` }, 403)
 
+  // 🛡️ 2026-04-22: 계정 잠금 확인
+  const lockStatus = await checkLockout(c.env.DB, 'agency', String(agency.id))
+  if (lockStatus.locked) {
+    return c.json({
+      success: false,
+      error: lockStatus.reason || '계정이 일시 잠금되었습니다.',
+      code: 'ACCOUNT_LOCKED',
+    }, 423)
+  }
+
   const { valid } = await verifyPassword(password, agency.password_hash)
-  if (!valid) return c.json({ success: false, error: '비밀번호가 올바르지 않습니다.' }, 401)
+  if (!valid) {
+    await recordFailure(c.env.DB, 'agency', String(agency.id))
+    return c.json({ success: false, error: '비밀번호가 올바르지 않습니다.' }, 401)
+  }
+
+  await clearFailures(c.env.DB, 'agency', String(agency.id))
 
   const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email)
   return c.json({
