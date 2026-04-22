@@ -74,11 +74,42 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Post-deploy verification
+      - name: Post-deploy verification (smoke test)
+        # 🛡️ 2026-04-22 강화: 주요 엔드포인트 응답 확인.
+        # 배포 후 5xx 에러가 나는 엔드포인트가 있으면 PR/커밋 revert 신호.
         run: |
-          echo "=== Post-deploy check ==="
-          sleep 10
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://ur-live.pages.dev/)
-          echo "Homepage status: $STATUS"
-          test "$STATUS" = "200" || (echo "⚠️ Homepage returned $STATUS" && exit 0)
-          echo "✅ Deployment verified"
+          echo "=== Post-deploy smoke test ==="
+          sleep 15  # 배포 전파 대기
+
+          PROD=https://live.ur-team.com
+          FAIL=0
+
+          check() {
+            local path="$1"
+            local label="$2"
+            local expect="${3:-200}"
+            local status
+            status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD$path" || echo "000")
+            if [ "$status" = "$expect" ] || [ "$status" = "405" ] || [ "$status" = "401" ]; then
+              echo "✅ $label ($path) → $status"
+            else
+              echo "❌ $label ($path) → $status (expected $expect)"
+              FAIL=$((FAIL + 1))
+            fi
+          }
+
+          check "/"               "Homepage"
+          check "/api/health"     "Health API"
+          check "/api/version"    "Version API"
+          check "/manifest.webmanifest" "PWA manifest"
+          check "/api/seller/login" "Seller login (expect 405 GET)" "405"
+          check "/api/admin/login"  "Admin login (expect 405 GET)"  "405"
+          check "/api/agency/login" "Agency login (expect 405 GET)" "405"
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo ""
+            echo "❌ Smoke test failed ($FAIL endpoints). 배포된 빌드에 런타임 에러가 있을 수 있습니다."
+            echo "   최근 커밋을 revert하거나 Cloudflare Workers Logs를 확인하세요."
+            exit 1
+          fi
+          echo "✅ All smoke tests passed"

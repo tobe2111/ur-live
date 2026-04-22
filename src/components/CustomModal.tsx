@@ -1,5 +1,5 @@
 import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react'
-import { ReactNode, useEffect } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useBackButton } from '@/hooks/useBackButton'
 
@@ -239,5 +239,3 @@ export function useModal() {
   }
 }
 
-// Add useState import
-import { useState } from 'react'
