@@ -115,6 +115,12 @@ export interface ProductsTable {
   seller_id: number | null
   version: number               // INTEGER DEFAULT 0
   detail_images: string | null
+  // migration 0129: sold_count (기존)
+  sold_count: number            // INTEGER DEFAULT 0 — 판매 건수
+  // migration 0205: 랭킹 통계
+  view_count: number            // INTEGER DEFAULT 0 — 상품 상세 조회 수
+  avg_rating: number            // REAL DEFAULT 0 — 리뷰 평균 별점
+  review_count: number          // INTEGER DEFAULT 0 — 리뷰 개수
 }
 
 // ============================================================
@@ -178,3 +184,30 @@ export interface SellersTable {
   created_at: string
   updated_at: string
 }
+
+// ─── shipping_addresses (0001 + migration 0204) ────────────────
+export interface ShippingAddressesTable {
+  id: number
+  user_id: number
+  recipient_name: string
+  phone: string
+  postal_code: string
+  address: string
+  address_detail: string | null
+  is_default: number            // 0 | 1
+  country: string | null
+  state: string | null
+  city: string | null
+  // migration 0204 — 실무 필수 필드
+  label: string | null          // 배송지 별칭 ('집', '회사', '부모님댁')
+  delivery_note: string | null  // 배송 메모 (최대 200자)
+  entry_code: string | null     // 공동현관 비밀번호 (최대 20자)
+  entry_method: 'free' | 'password' | 'intercom' | 'pickup_box' | null  // DEFAULT 'free'
+  created_at: string
+  updated_at: string
+}
+
+// ─── product_reviews (0001) + migration 0205 통계 컬럼 ──────────
+// products 테이블에 view_count/avg_rating/review_count 추가 (0205 migration)
+// 해당 컬럼은 ProductsTable 위의 primary interface에서 관리
+
