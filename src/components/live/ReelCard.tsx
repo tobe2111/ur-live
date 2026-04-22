@@ -440,7 +440,7 @@ export default function ReelCard({
             enablejsapi: 1,
             loop: 1,
             playlist: stream.youtube_video_id,
-            fs: 0,
+            fs: 1,  // 🛡️ 2026-04-22: fullscreen 활성화 — 모바일 가로 시청 지원
             cc_load_policy: 0,
             origin: window.location.origin, // ✅ CORS 에러 방지
           },

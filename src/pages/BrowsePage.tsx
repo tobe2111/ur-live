@@ -119,10 +119,24 @@ export default function BrowsePage() {
     if (window.kakao?.maps) {
       initMap()
     } else {
-      const script = document.createElement('script')
-      script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&autoload=false`
-      script.onload = () => window.kakao.maps.load(initMap)
-      document.head.appendChild(script)
+      // 🛡️ 2026-04-22: 중복 로드 방지 — 이미 로드된 script 재사용
+      const SCRIPT_ID = 'kakao-maps-sdk'
+      const existingScript = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
+      if (existingScript) {
+        // 다른 곳에서 이미 추가됨 — onload 등록만 하거나 즉시 init 시도
+        if (window.kakao?.maps) {
+          window.kakao.maps.load(initMap)
+        } else {
+          existingScript.addEventListener('load', () => window.kakao.maps.load(initMap), { once: true })
+        }
+      } else {
+        const script = document.createElement('script')
+        script.id = SCRIPT_ID
+        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&autoload=false`
+        script.onload = () => window.kakao.maps.load(initMap)
+        document.head.appendChild(script)
+        // cleanup 은 안 함 — 다른 페이지(RestaurantMap 등)도 사용 → singleton SDK 유지
+      }
     }
   }, [mapView, isMealVoucher, products])
 

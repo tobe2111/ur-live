@@ -819,7 +819,9 @@ function AppContent() {
             <Route path="/referral/:code" element={<ReferralPage />} />
 
             {/* 맛집 지도 */}
-            <Route path="/restaurant-map" element={<Navigate to="/browse?category=meal_voucher" replace />} />
+            {/* 🛡️ 2026-04-22: dead route 활성화 — RestaurantMapPage 컴포넌트가 import/lazy load 됐으나
+                redirect 만 되어 사용 안 되던 것을 실제 렌더링하도록 수정. 사용자는 지도 또는 /browse 카테고리 둘 다 사용 가능. */}
+            <Route path="/restaurant-map" element={<RestaurantMapPage />} />
 
             {/* Terms Pages */}
             {/* 블로그 */}
