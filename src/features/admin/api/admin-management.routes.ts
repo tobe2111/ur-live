@@ -327,6 +327,16 @@ adminManagementRoutes.delete('/sellers/:id', cors(), async (c) => {
       // is_active column might not exist
       await executeRun(DB, `UPDATE sellers SET status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     }
+
+    // Cascade: deactivate the seller's products and end live streams so nothing
+    // remains purchasable or visible while the seller is suspended.
+    try {
+      await executeRun(DB, `UPDATE products SET is_active = 0 WHERE seller_id = ?`, [sellerId]);
+    } catch { /* defensive — schema may vary */ }
+    try {
+      await executeRun(DB, `UPDATE live_streams SET status = 'ended' WHERE seller_id = ? AND status = 'live'`, [sellerId]);
+    } catch { /* defensive */ }
+
     await writeAuditLog(c, { action: 'suspend_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'suspended', is_active: 0 } });
     return c.json({ success: true, message: '판매자가 정지되었습니다', data: { id: sellerId, status: 'suspended' } });
   } catch (err) {
@@ -404,8 +414,8 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
       let q = base;
       if (status) { q += ' AND COALESCE(o.status,\'pending\') = ?'; params.push(status); }
       if (sellerId) { q += ' AND o.seller_id = ?'; params.push(sellerId); }
-      if (startDate) { q += ' AND DATE(o.created_at) >= ?'; params.push(startDate); }
-      if (endDate) { q += ' AND DATE(o.created_at) <= ?'; params.push(endDate); }
+      if (startDate) { q += " AND DATE(o.created_at, '+9 hours') >= ?"; params.push(startDate); }
+      if (endDate) { q += " AND DATE(o.created_at, '+9 hours') <= ?"; params.push(endDate); }
       q += ' ORDER BY o.created_at DESC LIMIT 1000';
       return { q, params };
     };
@@ -490,8 +500,8 @@ adminManagementRoutes.get('/orders/export', cors(), async (c) => {
     const params: (string | number)[] = [];
     if (status) { q += ' AND o.status = ?'; params.push(status); }
     if (sellerId) { q += ' AND o.seller_id = ?'; params.push(sellerId); }
-    if (startDate) { q += ' AND DATE(o.created_at) >= ?'; params.push(startDate); }
-    if (endDate) { q += ' AND DATE(o.created_at) <= ?'; params.push(endDate); }
+    if (startDate) { q += " AND DATE(o.created_at, '+9 hours') >= ?"; params.push(startDate); }
+    if (endDate) { q += " AND DATE(o.created_at, '+9 hours') <= ?"; params.push(endDate); }
     q += ' ORDER BY o.created_at DESC LIMIT 5000';
 
     const orders = await executeQuery<OrderRow>(DB, q, params);
@@ -1028,8 +1038,8 @@ adminManagementRoutes.get('/dashboard/stats', cors(), async (c) => {
   };
 
   const [sales, orders, live] = await Promise.all([
-    safe<SalesRow>(`SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at)=? AND status IN ('DONE','PAID','DELIVERED')`, [today]),
-    safe<CountRow>('SELECT COUNT(*) as count FROM orders WHERE DATE(created_at)=?', [today]),
+    safe<SalesRow>(`SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at, '+9 hours')=? AND status IN ('DONE','PAID','DELIVERED')`, [today]),
+    safe<CountRow>("SELECT COUNT(*) as count FROM orders WHERE DATE(created_at, '+9 hours')=?", [today]),
     safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
   ]);
 
@@ -1048,9 +1058,9 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
     const { DB } = c.env;
     const period = c.req.query('period') || 'all';
     let df = '';
-    if (period === 'today') df = `AND DATE(o.created_at) = '${new Date().toISOString().split('T')[0]}'`;
-    else if (period === 'week') df = "AND DATE(o.created_at) >= DATE('now','-7 days')";
-    else if (period === 'month') df = "AND DATE(o.created_at) >= DATE('now','-30 days')";
+    if (period === 'today') df = `AND DATE(o.created_at, '+9 hours') = '${new Date().toISOString().split('T')[0]}'`;
+    else if (period === 'week') df = "AND DATE(o.created_at, '+9 hours') >= DATE('now','+9 hours','-7 days')";
+    else if (period === 'month') df = "AND DATE(o.created_at, '+9 hours') >= DATE('now','+9 hours','-30 days')";
 
     const safeFull = async <T>(q: string): Promise<T[] | null> => {
       try { return await executeQuery<T>(DB, q); } catch { return null; }
@@ -1060,12 +1070,14 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
     };
 
     // Try full query (with commission_rate and payment_status); fall back if columns missing
+    // HIGH-6: prefer order-level commission_rate snapshot (migration 0118) so
+    // changes to sellers.commission_rate don't retroactively rewrite past orders.
     let overview: SettlementOverviewRow[];
     const fullOverview = await safeFull<SettlementOverviewRow>(`
       SELECT COUNT(*) as total_orders,
              COALESCE(SUM(o.total_amount),0) as total_sales,
-             COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
-             COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
+             COALESCE(SUM(o.total_amount*COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
+             COALESCE(SUM(o.total_amount*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
       FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
       WHERE o.status IN ('DONE','PAID','DELIVERED') ${df}`);
     if (fullOverview !== null) {
@@ -1080,16 +1092,17 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
         WHERE 1=1 ${df}`);
     }
 
+    // HIGH-6: order-level commission_rate snapshot takes precedence over sellers.commission_rate.
     let sellers: SettlementSellerRow[];
     const fullSellers = await safeFull<SettlementSellerRow>(`
       SELECT s.id as seller_id, s.name as seller_name, s.business_name,
              COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
              COUNT(o.id) as order_count,
              COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount,
-             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='pending' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as pending_amount,
-             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='completed' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as settled_amount
+             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
+             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount,
+             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='pending' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as pending_amount,
+             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='completed' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as settled_amount
       FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND o.status IN ('DONE','PAID','DELIVERED') ${df}
       GROUP BY s.id ORDER BY total_sales DESC`);
     if (fullSellers !== null) {
@@ -1128,12 +1141,13 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
     };
 
     const buildQuery = (withNewCols: boolean) => {
+      // HIGH-6: prefer o.commission_rate (snapshot) over s.commission_rate (current).
       let q = withNewCols
         ? `SELECT o.id, o.order_number, o.seller_id, COALESCE(s.name,'') as seller_name, COALESCE(s.business_name,'') as business_name,
                   o.total_amount as total_amount,
-                  COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
-                  o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100 as commission_amount,
-                  o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as seller_amount,
+                  COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
+                  o.total_amount*COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100 as commission_amount,
+                  o.total_amount*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as seller_amount,
                   COALESCE(o.settlement_status,'pending') as settlement_status,
                   o.settled_at, o.created_at, COALESCE(u.name,'') as user_name
            FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
@@ -1148,9 +1162,9 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
            FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
            WHERE 1=1`;
       const params: (string|number|null)[] = [];
-      if (period === 'today') { q += ' AND DATE(o.created_at)=?'; params.push(new Date().toISOString().split('T')[0]); }
-      else if (period === 'week') q += " AND DATE(o.created_at)>=DATE('now','-7 days')";
-      else if (period === 'month') q += " AND DATE(o.created_at)>=DATE('now','-30 days')";
+      if (period === 'today') { q += " AND DATE(o.created_at, '+9 hours')=?"; params.push(new Date().toISOString().split('T')[0]); }
+      else if (period === 'week') q += " AND DATE(o.created_at, '+9 hours')>=DATE('now','+9 hours','-7 days')";
+      else if (period === 'month') q += " AND DATE(o.created_at, '+9 hours')>=DATE('now','+9 hours','-30 days')";
       if (sellerId) { q += ' AND o.seller_id=?'; params.push(sellerId); }
       if (withNewCols && status && status !== 'all') { q += " AND COALESCE(o.settlement_status,'pending')=?"; params.push(status); }
       q += ' ORDER BY o.created_at DESC LIMIT 1000';
@@ -1285,9 +1299,9 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
     let query = `
       SELECT o.order_number, s.name as seller_name, s.business_name,
              o.total_amount,
-             COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) as commission_rate,
-             ROUND(o.total_amount * COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100) as commission_amount,
-             ROUND(o.total_amount * (1 - COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100)) as seller_amount,
+             COALESCE(o.commission_rate, s.commission_rate, ${DEFAULT_COMMISSION_RATE}) as commission_rate,
+             ROUND(o.total_amount * COALESCE(o.commission_rate, s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100) as commission_amount,
+             ROUND(o.total_amount * (1 - COALESCE(o.commission_rate, s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100)) as seller_amount,
              COALESCE(o.settlement_status, 'pending') as settlement_status,
              o.settled_at, o.created_at, u.name as user_name
       FROM orders o
@@ -1296,9 +1310,9 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
       WHERE o.status IN ('DONE', 'PAID', 'DELIVERED')
     `;
     const params: (string | number | null)[] = [];
-    if (period === 'today') { query += ' AND DATE(o.created_at) = ?'; params.push(new Date().toISOString().split('T')[0]); }
-    else if (period === 'week') query += " AND DATE(o.created_at) >= DATE('now','-7 days')";
-    else if (period === 'month') query += " AND DATE(o.created_at) >= DATE('now','-30 days')";
+    if (period === 'today') { query += " AND DATE(o.created_at, '+9 hours') = ?"; params.push(new Date().toISOString().split('T')[0]); }
+    else if (period === 'week') query += " AND DATE(o.created_at, '+9 hours') >= DATE('now','+9 hours','-7 days')";
+    else if (period === 'month') query += " AND DATE(o.created_at, '+9 hours') >= DATE('now','+9 hours','-30 days')";
     if (sellerId) { query += ' AND o.seller_id = ?'; params.push(sellerId); }
     query += ' ORDER BY o.created_at DESC';
 
@@ -2646,13 +2660,13 @@ adminManagementRoutes.get('/analytics/revenue', cors(), async (c) => {
     }
 
     const dailyRevenue = await executeQuery<RevenueRow>(DB,
-      `SELECT DATE(created_at) as date,
+      `SELECT DATE(created_at, '+9 hours') as date,
               SUM(total_amount) as revenue,
               COUNT(*) as order_count
        FROM orders
-       WHERE payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+       WHERE status IN ('PAID','DONE','SHIPPING','DELIVERED')
          AND created_at >= datetime('now', '-' || ? || ' days')
-       GROUP BY DATE(created_at)
+       GROUP BY DATE(created_at, '+9 hours')
        ORDER BY date ASC`,
       [days]
     );
@@ -2661,7 +2675,7 @@ adminManagementRoutes.get('/analytics/revenue', cors(), async (c) => {
       `SELECT COALESCE(SUM(total_amount), 0) as total_revenue,
               COUNT(*) as total_orders
        FROM orders
-       WHERE payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+       WHERE status IN ('PAID','DONE','SHIPPING','DELIVERED')
          AND created_at >= datetime('now', '-' || ? || ' days')`,
       [days]
     );
@@ -2691,7 +2705,7 @@ adminManagementRoutes.get('/analytics/category', cors(), async (c) => {
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
        JOIN products p ON p.id = oi.product_id
-       WHERE o.payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+       WHERE o.status IN ('PAID','DONE','SHIPPING','DELIVERED')
        GROUP BY p.category
        ORDER BY revenue DESC`
     );
@@ -2716,7 +2730,7 @@ adminManagementRoutes.get('/analytics/top-sellers', cors(), async (c) => {
               COUNT(*) as order_count
        FROM orders o
        LEFT JOIN sellers s ON s.id = o.seller_id
-       WHERE o.payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+       WHERE o.status IN ('PAID','DONE','SHIPPING','DELIVERED')
          AND o.seller_id IS NOT NULL
        GROUP BY o.seller_id
        ORDER BY revenue DESC
@@ -2745,7 +2759,7 @@ adminManagementRoutes.get('/analytics/top-products', cors(), async (c) => {
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
        LEFT JOIN products p ON p.id = oi.product_id
-       WHERE o.payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')
+       WHERE o.status IN ('PAID','DONE','SHIPPING','DELIVERED')
        GROUP BY oi.product_id
        ORDER BY sales_count DESC
        LIMIT ?`,
@@ -3438,7 +3452,7 @@ adminManagementRoutes.get('/users/:id', cors(), async (c) => {
 
     const orderStats = await executeQuery<{ order_count: number; total_spent: number }>(DB,
       `SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_spent
-       FROM orders WHERE user_id = ? AND payment_status IN ('PAID','DONE','SHIPPING','DELIVERED')`,
+       FROM orders WHERE user_id = ? AND status IN ('PAID','DONE','SHIPPING','DELIVERED')`,
       [userId]
     );
 

@@ -450,6 +450,7 @@ export default function LoginPage() {
               </label>
               <input
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
@@ -465,6 +466,7 @@ export default function LoginPage() {
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full h-[48px] px-4 pr-12 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
@@ -528,6 +530,7 @@ export default function LoginPage() {
               </label>
               <input
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"

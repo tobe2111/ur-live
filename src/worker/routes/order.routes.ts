@@ -126,6 +126,38 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       console.warn('[ORDERS] Seller not found or inactive:', request.seller_id, '— using default shipping fee');
     }
 
+    // Block orders targeting a suspended/unapproved seller.
+    // Defensive: only enforce when a seller row was actually fetched (skip for
+    // seller-less legacy orders where `seller` stays null).
+    if (seller && request.seller_id) {
+      try {
+        const gate = await qb.queryOne<{ id: string }>(
+          "SELECT id FROM sellers WHERE id = ? AND status = 'approved' AND (is_active IS NULL OR is_active = 1)",
+          [request.seller_id]
+        );
+        if (!gate) {
+          return c.json(
+            { success: false, error: '판매자가 정지되었거나 존재하지 않습니다.' },
+            400
+          );
+        }
+      } catch {
+        // If is_active column doesn't exist, fall back to status-only check
+        try {
+          const gate = await qb.queryOne<{ id: string }>(
+            "SELECT id FROM sellers WHERE id = ? AND status = 'approved'",
+            [request.seller_id]
+          );
+          if (!gate) {
+            return c.json(
+              { success: false, error: '판매자가 정지되었거나 존재하지 않습니다.' },
+              400
+            );
+          }
+        } catch { /* defensive — skip gate if schema doesn't support it */ }
+      }
+    }
+
     // Validate and fetch products
     const productIds = request.items.map(i => i.product_id);
     const products = await productRepo.findByIds(productIds);

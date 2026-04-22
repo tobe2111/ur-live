@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react'
 import { ReactNode, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useBackButton } from '@/hooks/useBackButton'
 
 interface ModalProps {
   isOpen: boolean
@@ -31,6 +32,9 @@ export function CustomModal({
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [isOpen, onClose])
+
+  // Android/mobile 하드웨어 뒤로가기 버튼으로 모달 닫기
+  useBackButton(isOpen, onClose)
 
   if (!isOpen) return null
 

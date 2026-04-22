@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { Shield, ChevronDown, ChevronUp, Filter, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { formatDate } from '@/shared/utils'
 
 interface AuditLog {
   id: number
@@ -105,12 +106,6 @@ export default function AdminAuditLogPage() {
     setEndDate('')
     setPage(1)
     setTimeout(loadLogs, 0)
-  }
-
-  function formatDate(dateStr: string) {
-    if (!dateStr) return '-'
-    const d = new Date(dateStr)
-    return d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
   }
 
   function formatJSON(val: Record<string, unknown> | string | null) {

@@ -410,15 +410,15 @@ ordersRoutes.post('/:id/confirm', cors(), requireAuth(), async (c) => {
     if (order.user_id !== dbUserId) return c.json({ success: false, error: 'Forbidden' }, 403);
   }
 
-  if (!['shipping', 'SHIPPING'].includes(order.status)) {
+  if (!['SHIPPING'].includes(order.status)) {
     return c.json({ success: false, error: '배송중 상태에서만 구매확정이 가능합니다.' }, 400);
   }
 
   await DB.prepare(`
     UPDATE orders
-    SET status = 'delivered', delivered_at = datetime('now'),
+    SET status = 'DELIVERED', delivered_at = datetime('now'),
         settlement_status = 'confirmed', updated_at = datetime('now')
-    WHERE id = ? AND status IN ('shipping', 'SHIPPING')
+    WHERE id = ? AND status IN ('SHIPPING')
   `).bind(id).run();
 
   // 셀러 정산 알림
@@ -456,9 +456,9 @@ ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
 
   const { meta } = await DB.prepare(`
     UPDATE orders
-    SET status = 'delivered', delivered_at = datetime('now'),
+    SET status = 'DELIVERED', delivered_at = datetime('now'),
         settlement_status = 'confirmed', updated_at = datetime('now')
-    WHERE status IN ('shipping', 'SHIPPING')
+    WHERE status IN ('SHIPPING')
       AND shipped_at < datetime('now', '-14 days')
   `).run();
 
@@ -486,7 +486,7 @@ ordersRoutes.post('/internal/sync-deliveries', cors(), async (c) => {
   const { results: rows = [] } = await DB.prepare(`
     SELECT id, order_number, courier, tracking_number
     FROM orders
-    WHERE status IN ('shipping', 'SHIPPING')
+    WHERE status IN ('SHIPPING')
       AND tracking_number IS NOT NULL
       AND shipped_at < datetime('now', '-12 hours')
     ORDER BY shipped_at ASC
@@ -507,8 +507,8 @@ ordersRoutes.post('/internal/sync-deliveries', cors(), async (c) => {
       if (lastStatus === 'DELIVERED') {
         await DB.prepare(`
           UPDATE orders
-          SET status = 'delivered', delivered_at = datetime('now'), updated_at = datetime('now')
-          WHERE id = ? AND status IN ('shipping', 'SHIPPING')
+          SET status = 'DELIVERED', delivered_at = datetime('now'), updated_at = datetime('now')
+          WHERE id = ? AND status IN ('SHIPPING')
         `).bind(row.id).run();
         delivered++;
       }
