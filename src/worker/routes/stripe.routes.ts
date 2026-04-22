@@ -87,4 +87,131 @@ stripeRouter.post('/create-intent', async (c) => {
   }
 });
 
+/**
+ * POST /api/payment/stripe/webhook
+ * Stripe webhook — payment_intent.succeeded / payment_intent.payment_failed 등 처리.
+ *
+ * 🛡️ 2026-04-22: 이전엔 webhook handler 가 전혀 없어서 결제 확정 처리 불가.
+ * Client 가 Stripe 에서 결제 성공해도 서버 order.status 업데이트 안 됨.
+ *
+ * 서명 검증: Stripe-Signature 헤더 (t=timestamp,v1=hmac).
+ * 환경 변수: STRIPE_WEBHOOK_SECRET (Stripe Dashboard 에서 발급).
+ */
+stripeRouter.post('/webhook', async (c) => {
+  const webhookSecret = (c.env as any).STRIPE_WEBHOOK_SECRET as string | undefined;
+  if (!webhookSecret) {
+    console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured');
+    return c.json({ received: true }, 200); // Stripe 재시도 방지용 200
+  }
+
+  const signature = c.req.header('Stripe-Signature');
+  if (!signature) {
+    return c.json({ success: false, error: 'Missing Stripe-Signature header' }, 400);
+  }
+
+  const rawBody = await c.req.text();
+
+  // 🛡️ 서명 검증 (Stripe 형식: "t=timestamp,v1=hmac")
+  try {
+    const sigParts = Object.fromEntries(
+      signature.split(',').map((part) => {
+        const [k, v] = part.split('=');
+        return [k, v];
+      }),
+    );
+    const ts = sigParts.t;
+    const v1 = sigParts.v1;
+    if (!ts || !v1) return c.json({ success: false, error: 'Malformed signature' }, 400);
+
+    // 5분 timestamp tolerance (replay 방어)
+    const tsNum = Number(ts);
+    if (!Number.isFinite(tsNum) || Math.abs(Math.floor(Date.now() / 1000) - tsNum) > 300) {
+      return c.json({ success: false, error: 'Timestamp out of tolerance' }, 400);
+    }
+
+    const payload = `${ts}.${rawBody}`;
+    const key = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(webhookSecret),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+    );
+    const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+    const computed = Array.from(new Uint8Array(mac))
+      .map((b) => b.toString(16).padStart(2, '0')).join('');
+
+    // 상수 시간 비교
+    if (computed.length !== v1.length) {
+      return c.json({ success: false, error: 'Invalid signature' }, 401);
+    }
+    let diff = 0;
+    for (let i = 0; i < computed.length; i++) {
+      diff |= computed.charCodeAt(i) ^ v1.charCodeAt(i);
+    }
+    if (diff !== 0) {
+      return c.json({ success: false, error: 'Invalid signature' }, 401);
+    }
+  } catch (err) {
+    console.error('[Stripe Webhook] Signature verification failed:', err);
+    return c.json({ success: false, error: 'Signature verification failed' }, 401);
+  }
+
+  // 이벤트 파싱
+  let event: { id: string; type: string; data: { object: any } };
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    return c.json({ success: false, error: 'Invalid JSON' }, 400);
+  }
+
+  const DB = c.env.DB;
+  if (!DB) return c.json({ received: true }, 200);
+
+  // 🛡️ Idempotency — 이미 처리된 event 는 skip
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+        event_id TEXT PRIMARY KEY,
+        event_type TEXT NOT NULL,
+        processed_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `).run();
+    const existing = await DB.prepare(
+      'SELECT event_id FROM stripe_webhook_events WHERE event_id = ?'
+    ).bind(event.id).first();
+    if (existing) {
+      return c.json({ received: true, idempotent: true }, 200);
+    }
+  } catch {}
+
+  // 이벤트별 처리
+  try {
+    const obj = event.data.object;
+    const metadata = obj.metadata || {};
+
+    if (event.type === 'payment_intent.succeeded') {
+      const orderNumber = metadata.orderNumber || metadata.order_number;
+      if (orderNumber) {
+        await DB.prepare(
+          "UPDATE orders SET status = 'PAID', payment_status = 'approved', paid_at = datetime('now'), updated_at = datetime('now') WHERE order_number = ? AND status = 'PENDING'"
+        ).bind(orderNumber).run();
+      }
+    } else if (event.type === 'payment_intent.payment_failed') {
+      const orderNumber = metadata.orderNumber || metadata.order_number;
+      if (orderNumber) {
+        await DB.prepare(
+          "UPDATE orders SET status = 'FAILED', payment_status = 'failed', updated_at = datetime('now') WHERE order_number = ?"
+        ).bind(orderNumber).run();
+      }
+    }
+
+    // 처리 기록
+    await DB.prepare(
+      'INSERT INTO stripe_webhook_events (event_id, event_type) VALUES (?, ?)'
+    ).bind(event.id, event.type).run().catch(() => {});
+  } catch (err) {
+    console.error('[Stripe Webhook] Processing error:', err);
+  }
+
+  return c.json({ received: true }, 200);
+});
+
 export { stripeRouter };
