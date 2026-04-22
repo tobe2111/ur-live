@@ -11,6 +11,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
+import { validateImageUrl } from '@/worker/utils/validation'
 
 export const adminToolsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -94,6 +95,16 @@ adminToolsRoutes.get('/banners', async (c) => {
 adminToolsRoutes.post('/banners', async (c) => {
   const { title, image_url, link_url, display_order } = await c.req.json<any>()
   if (!image_url) return c.json({ success: false, error: '이미지 URL 필수' }, 400)
+
+  // 🛡️ 2026-04-22: URL 검증 추가 (XSS/SSRF 방어)
+  // 이전: admin-banners.routes.ts 는 validateImageUrl 쓰지만 여기선 검증 없었음
+  const imgCheck = validateImageUrl(image_url)
+  if (!imgCheck.valid) return c.json({ success: false, error: `이미지 URL: ${imgCheck.error}` }, 400)
+  if (link_url && link_url !== '/') {
+    const linkCheck = validateImageUrl(link_url)
+    if (!linkCheck.valid) return c.json({ success: false, error: `링크 URL: ${linkCheck.error}` }, 400)
+  }
+
   const result = await c.env.DB.prepare('INSERT INTO banners (title, image_url, link_url, display_order) VALUES (?, ?, ?, ?)')
     .bind(title || '', image_url, link_url || '/', display_order || 0).run()
   await writeAuditLog(c, {
@@ -200,13 +211,33 @@ adminToolsRoutes.post('/settlements/process', async (c) => {
   const { seller_ids } = await c.req.json<{ seller_ids: number[] }>()
   if (!seller_ids?.length) return c.json({ success: false, error: '셀러를 선택해주세요' }, 400)
 
-  for (const sid of seller_ids) {
-    await c.env.DB.prepare(`
+  // 🛡️ 2026-04-22: 입력 검증 + 감사 로그 추가
+  // 이전: seller_ids 배열 크기/타입 검증 없음, audit 없음
+  if (seller_ids.length > 100) {
+    return c.json({ success: false, error: '한 번에 최대 100명 처리 가능' }, 400)
+  }
+  const validIds = seller_ids.filter((id) => Number.isFinite(id) && id > 0)
+  if (validIds.length !== seller_ids.length) {
+    return c.json({ success: false, error: '유효하지 않은 seller_id 포함' }, 400)
+  }
+
+  let affectedOrders = 0
+  for (const sid of validIds) {
+    const result = await c.env.DB.prepare(`
       UPDATE orders SET settlement_status = 'settled', updated_at = datetime('now')
       WHERE seller_id = ? AND status IN ('DELIVERED', 'delivered') AND COALESCE(settlement_status, 'pending') = 'pending'
     `).bind(sid).run()
+    affectedOrders += result.meta?.changes || 0
   }
-  return c.json({ success: true, message: `${seller_ids.length}명 정산 처리 완료` })
+
+  // 감사 로그 — 누가 언제 몇 명 정산 처리했는지
+  await writeAuditLog(c, {
+    action: 'settlements.process',
+    targetType: 'settlement',
+    after: { sellerCount: validIds.length, affectedOrders, sellerIds: validIds }
+  })
+
+  return c.json({ success: true, message: `${validIds.length}명 / ${affectedOrders}건 정산 처리 완료` })
 })
 
 // ── 신고/차단 관리 ──
