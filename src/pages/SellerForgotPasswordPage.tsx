@@ -67,14 +67,14 @@ export default function SellerForgotPasswordPage() {
                 to="/seller/login"
                 className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
               >
-                <ArrowLeft className="w-4 h-4" /> 로그인으로 돌아가기
+                <ArrowLeft className="w-4 h-4" /> {t('seller.forgotPassword.backToLogin')}
               </Link>
             </div>
           ) : (
             <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">비밀번호 찾기</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">{t('seller.forgotPassword.title')}</h2>
               <p className="text-sm text-gray-500 mb-7">
-                가입하신 이메일을 입력하시면 비밀번호 재설정 링크를 보내드립니다.
+                {t('seller.forgotPassword.description')}
               </p>
 
               {error && (
@@ -85,7 +85,7 @@ export default function SellerForgotPasswordPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('common.email')}</label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
@@ -109,10 +109,10 @@ export default function SellerForgotPasswordPage() {
                   {loading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      발송 중...
+                      {t('seller.forgotPassword.sending')}
                     </>
                   ) : (
-                    '재설정 링크 받기'
+                    t('seller.forgotPassword.submitButton')
                   )}
                 </button>
               </form>
@@ -122,7 +122,7 @@ export default function SellerForgotPasswordPage() {
                   to="/seller/login"
                   className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
                 >
-                  <ArrowLeft className="w-4 h-4" /> 로그인으로 돌아가기
+                  <ArrowLeft className="w-4 h-4" /> {t('seller.forgotPassword.backToLogin')}
                 </Link>
               </div>
             </>
@@ -130,7 +130,7 @@ export default function SellerForgotPasswordPage() {
         </div>
 
         <p className="mt-5 text-center text-xs text-gray-400">
-          문의:{' '}
+          {t('seller.contactInquiry')}:{' '}
           <a href="mailto:support@ur-team.com" className="hover:text-gray-600 underline">
             support@ur-team.com
           </a>
