@@ -1525,19 +1525,17 @@ app.route('/api/affiliate', affiliateRoutes);
 // ============================================================
 
 // -------------------------------------------------------
-// Order routing: TWO repositories, ONE path prefix.
+// Order routing: 두 라우터 — 이제 경로 non-overlapping (배치 112).
 //
 // ordersRouter  → worker/repositories/order.repository.ts (PRIMARY)
-//   POST /, GET /, GET /:id, POST /:id/cancel
-//   Uses authMiddleware, multi-seller support, idempotency.
+//   POST /, GET /, GET /:id, POST /refund, POST /:id/cancel
 //
-// featureOrdersRoutes → features/orders/repositories/OrderRepository.ts (SECONDARY)
+// featureOrdersRoutes → features/orders (delivery tracking & cron)
 //   GET /:id/tracking, POST /:id/confirm,
 //   POST /internal/auto-confirm, POST /internal/sync-deliveries
-//   These endpoints do NOT overlap with ordersRouter.
 //
-// ⚠️ Both are mounted on /api/orders — ordersRouter is registered
-//    first so its routes take priority for any overlapping paths.
+// 🛡️ 2026-04-22 배치 112: featureOrdersRoutes 의 중복 경로 (GET /, GET /:id, POST /)
+//    삭제 완료 → 이제 완전 non-overlapping.
 // -------------------------------------------------------
 app.route('/api/orders', ordersRouter);
 app.route('/api/orders', featureOrdersRoutes);
