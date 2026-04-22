@@ -125,6 +125,7 @@ dashboardNotificationsRoutes.put('/read-all', requireAuth(), async (c) => {
 });
 
 // PUT /:id/read — 개별 읽음 처리
+// 🛡️ 2026-04-22: ownership check 추가 (이전: 누구나 임의 알림 읽음 처리 가능)
 dashboardNotificationsRoutes.put('/:id/read', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
@@ -132,9 +133,27 @@ dashboardNotificationsRoutes.put('/:id/read', requireAuth(), async (c) => {
   const { DB } = c.env;
   const id = c.req.param('id');
 
-  await DB.prepare(
-    `UPDATE dashboard_notifications SET is_read = 1 WHERE id = ?`
-  ).bind(id).run();
+  // 본인 recipient_id 와 일치하는 알림만 읽음 처리
+  // admin 은 recipient_id IS NULL (전체 브로드캐스트) 또는 자기 것만
+  let whereClause: string;
+  let params: unknown[];
+  if (user.type === 'admin') {
+    whereClause = 'id = ? AND recipient_type = ? AND (recipient_id IS NULL OR recipient_id = ?)';
+    params = [id, 'admin', String(user.id)];
+  } else if (user.type === 'seller') {
+    whereClause = 'id = ? AND recipient_type = ? AND recipient_id = ?';
+    params = [id, 'seller', String(user.id)];
+  } else {
+    return c.json({ success: false, error: '접근 권한 없음' }, 403);
+  }
+
+  const result = await DB.prepare(
+    `UPDATE dashboard_notifications SET is_read = 1 WHERE ${whereClause}`
+  ).bind(...params).run();
+
+  if (!result.meta?.changes) {
+    return c.json({ success: false, error: '알림을 찾을 수 없거나 권한이 없습니다' }, 404);
+  }
 
   return c.json({ success: true });
 });
