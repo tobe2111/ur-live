@@ -26,10 +26,9 @@ type Bindings = {
   FIREBASE_CLIENT_EMAIL: string;
   DELIVERY_TRACKER_API_KEY?: string;
   /**
-   * ✅ BUG #49: Shared secret used by cron workers to call `/internal/*` routes.
-   * TODO: Set INTERNAL_CRON_TOKEN in production secrets (`wrangler secret put`).
-   * Falls back to the legacy hardcoded value so existing cron deployments keep
-   * working until the secret is provisioned.
+   * 🛡️ 2026-04-22 배치 120 (TD-008): fail-closed — 이 secret 없으면 cron
+   *   엔드포인트가 500 반환. Dashboard/wrangler 로 반드시 세팅 필요.
+   *   값: `openssl rand -base64 32`
    */
   INTERNAL_CRON_TOKEN?: string;
 };
@@ -239,9 +238,13 @@ ordersRoutes.post('/:id/confirm', cors(), requireAuth(), async (c) => {
  * X-Internal-Token: cron-sync-deliveries 헤더 필요
  */
 ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
-  // ✅ BUG #49 FIX: prefer INTERNAL_CRON_TOKEN secret; fall back to legacy literal.
-  // TODO: provision INTERNAL_CRON_TOKEN in production secrets.
-  const expectedToken = c.env.INTERNAL_CRON_TOKEN || 'cron-sync-deliveries';
+  // 🛡️ 2026-04-22 배치 120 (TD-008): fail-closed — INTERNAL_CRON_TOKEN 필수.
+  //   legacy literal fallback 제거. secret 미세팅이면 500 반환 (bruteforce 차단).
+  const expectedToken = c.env.INTERNAL_CRON_TOKEN;
+  if (!expectedToken) {
+    console.error('[CronAuth] INTERNAL_CRON_TOKEN secret not configured');
+    return c.json({ success: false, error: 'Server misconfiguration' }, 500);
+  }
   if (c.req.header('X-Internal-Token') !== expectedToken) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }
@@ -267,9 +270,13 @@ ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
  * X-Internal-Token: cron-sync-deliveries 헤더 필요
  */
 ordersRoutes.post('/internal/sync-deliveries', cors(), async (c) => {
-  // ✅ BUG #49 FIX: prefer INTERNAL_CRON_TOKEN secret; fall back to legacy literal.
-  // TODO: provision INTERNAL_CRON_TOKEN in production secrets.
-  const expectedToken = c.env.INTERNAL_CRON_TOKEN || 'cron-sync-deliveries';
+  // 🛡️ 2026-04-22 배치 120 (TD-008): fail-closed — INTERNAL_CRON_TOKEN 필수.
+  //   legacy literal fallback 제거. secret 미세팅이면 500 반환 (bruteforce 차단).
+  const expectedToken = c.env.INTERNAL_CRON_TOKEN;
+  if (!expectedToken) {
+    console.error('[CronAuth] INTERNAL_CRON_TOKEN secret not configured');
+    return c.json({ success: false, error: 'Server misconfiguration' }, 500);
+  }
   if (c.req.header('X-Internal-Token') !== expectedToken) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }

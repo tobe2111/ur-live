@@ -10,6 +10,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy to Cloudflare Pages
+    # 🛡️ 2026-04-22 배치 117 (TD-012): Node 20 runtime deprecation 대비.
+    #   2026-09 부터 GHA 의 JS actions 는 Node 24 사용. 일부 actions 는 아직
+    #   Node 20 을 지정 — 이 env 가 Node 24 로 강제 실행.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout code
