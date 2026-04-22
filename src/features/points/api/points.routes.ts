@@ -24,7 +24,7 @@ pointsRoutes.use('*', cors({
   credentials: true,
 }));
 
-const DEFAULT_COMMISSION_RATE = 0.15; // 기본 15% (DB 설정으로 오버라이드 가능)
+const DEFAULT_COMMISSION_RATE = 0.10; // 🛡️ 2026-04-22: 기본 10% (CLAUDE.md 정책). DB platform_settings.commission_rate_default 로 오버라이드 가능.
 
 async function getDefaultCommissionRate(DB: D1Database): Promise<number> {
   try {
@@ -34,7 +34,7 @@ async function getDefaultCommissionRate(DB: D1Database): Promise<number> {
   return DEFAULT_COMMISSION_RATE;
 }
 
-// 충전: 1원 = 1딜 (수수료 없음, 셀러 정산 시 15% 차감)
+// 충전: 1원 = 1딜 (수수료 없음, 셀러 정산 시 기본 10% 차감 / 식사권 5% / 어드민 조정 가능)
 const CHARGE_AMOUNTS = [
   { amount: 5000,   points: 5000,   label: '5,000원 → 5,000딜' },
   { amount: 10000,  points: 10000,  label: '10,000원 → 10,000딜' },
@@ -294,7 +294,7 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
 
   // ✅ IDEMPOTENCY: if the client supplied a key, guard the whole handler.
   if (body.idempotency_key) {
-    const { idempotentWrite, IdempotencyConflictError } = await import('@/worker/utils/idempotency');
+    const { idempotentWrite, IdempotencyConflictError } = await import('../../../worker/utils/idempotency');
     try {
       const result = await idempotentWrite<{ status: number; body: any }>(
         DB,
@@ -373,7 +373,7 @@ async function executeDonate(
     stream_id, stream.seller_id
   ).run();
 
-  // donations 테이블에도 기록 (셀러 정산 시 15% 수수료 적용)
+  // donations 테이블에도 기록 (셀러 정산 시 platform_settings.commission_rate_default 적용, 기본 10%)
   const COMMISSION_RATE = await getDefaultCommissionRate(DB);
   const commissionAmount = Math.round(amount * COMMISSION_RATE);
   const creditAmount = amount - commissionAmount; // 셀러 실수령액

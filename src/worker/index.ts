@@ -168,12 +168,16 @@ app.use('/api/*', errorRateMonitor());
 
 app.use('*', async (c, next) => {
   await next();
+  // 🛡️ 2026-04-22: CSP nonce — 요청별 랜덤 nonce 로 inline script 허용 범위 제한.
+  // 'unsafe-inline' 은 nonce 미지원 구형 브라우저용 fallback (CSP2+ 는 nonce 우선).
+  const nonceBytes = new Uint8Array(16);
+  crypto.getRandomValues(nonceBytes);
+  const nonce = btoa(String.fromCharCode(...nonceBytes)).replace(/[+/=]/g, '');
+
   // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
   // CSP — 공통 script sources (script-src와 script-src-elem에서 공유)
-  // ✅ Security hardening: removed 'unsafe-eval' (no eval()/new Function() in code).
-  //    If a third-party SDK requires it, add a nonce/hash for that specific script.
   const scriptSources = [
-    "'self'", "'unsafe-inline'", "blob:",
+    "'self'", `'nonce-${nonce}'`, "'strict-dynamic'", "'unsafe-inline'", "blob:",
     "https://*.cloudflare.com", "https://static.cloudflareinsights.com", "https://cloudflareinsights.com",
     "https://*.googletagmanager.com", "https://*.google-analytics.com",
     "https://*.tosspayments.com", "https://js.tosspayments.com",
@@ -241,6 +245,18 @@ app.use('*', async (c, next) => {
   c.header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups'); // 카카오/구글 OAuth 팝업 허용
   c.header('Cross-Origin-Resource-Policy', 'same-site');
   c.header('X-Permitted-Cross-Domain-Policies', 'none'); // Flash/PDF 크로스도메인 차단
+
+  // 🛡️ 2026-04-22: HTML 응답에 nonce 주입 — inline <script> 에 nonce 속성 추가.
+  // 'strict-dynamic' + nonce 조합으로 inline 이 아닌 외부 script 도 신뢰 전파됨.
+  const ct = c.res.headers.get('Content-Type') || '';
+  if (ct.includes('text/html') && c.res.body) {
+    const rewritten = new HTMLRewriter()
+      .on('script:not([src])', {
+        element(el) { el.setAttribute('nonce', nonce); },
+      })
+      .transform(c.res);
+    c.res = new Response(rewritten.body, rewritten);
+  }
 });
 
 // ============================================================
@@ -252,7 +268,39 @@ app.post('/api/csp-report', async (c) => {
   try {
     const report = await c.req.json().catch(() => null);
     if (import.meta.env.DEV && report) console.warn('[CSP violation]', report);
-    // Optionally persist to DB here for later analysis.
+    // 🛡️ 2026-04-22: CSP 위반 DB 저장 — 어드민이 이상 패턴 분석 가능.
+    // 테이블은 auto-create (마이그레이션 미적용 환경 호환).
+    if (report && c.env.DB) {
+      try {
+        await c.env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS csp_violations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            blocked_uri TEXT,
+            violated_directive TEXT,
+            document_uri TEXT,
+            source_file TEXT,
+            line_number INTEGER,
+            user_agent TEXT,
+            ip TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+          )
+        `).run();
+        const body = (report as any)['csp-report'] || report;
+        await c.env.DB.prepare(`
+          INSERT INTO csp_violations
+            (blocked_uri, violated_directive, document_uri, source_file, line_number, user_agent, ip)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          String(body?.['blocked-uri'] || body?.blockedURL || '').slice(0, 500),
+          String(body?.['violated-directive'] || body?.effectiveDirective || '').slice(0, 200),
+          String(body?.['document-uri'] || body?.documentURL || '').slice(0, 500),
+          String(body?.['source-file'] || body?.sourceFile || '').slice(0, 500),
+          Number(body?.['line-number'] || body?.lineNumber || 0) || null,
+          (c.req.header('User-Agent') || '').slice(0, 300),
+          c.req.header('CF-Connecting-IP') || '',
+        ).run();
+      } catch { /* DB 실패도 CSP 에 영향 주지 않음 */ }
+    }
   } catch { /* swallow — never surface parse errors to the browser */ }
   return c.body(null, 204);
 });
@@ -1410,6 +1458,10 @@ app.use('/api/products', edgeCache(60), cacheControl(60));     // 1 min
 app.use('/api/streams', edgeCache(30), cacheControl(30));      // 30 sec
 app.use('/api/group-buy/products', edgeCache(60), cacheControl(60)); // 1 min
 app.use('/api/banners', edgeCache(300), cacheControl(300));    // 5 min
+// 🛡️ 2026-04-22: 추가 공개 read-only 엔드포인트 캐싱 (성능 감사 결과)
+app.use('/api/shorts', edgeCache(60), cacheControl(60));                // 쇼츠 피드 1min
+app.use('/api/reviews/product/*', edgeCache(120), cacheControl(120));   // 리뷰 목록 2min (리뷰 쓰기는 POST 라 캐시 무영향)
+app.use('/api/restaurants', edgeCache(300), cacheControl(300));         // 식당 목록 5min
 
 // ============================================================
 // Rate limits for read/write endpoints

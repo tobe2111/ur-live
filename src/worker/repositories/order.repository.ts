@@ -449,10 +449,13 @@ export class OrderRepository {
     if (orderIds.length === 0) return { orderIds: [], confirmed: 0 };
 
     // Batch: UPDATE orders + UPDATE order_items (atomic all-or-nothing)
+    // 🛡️ 2026-04-22: payment_status='approved' 동기화 — 이전엔 status=DONE 이어도
+    // payment_status 가 pending 인 채 남아서 환불/정산 로직 오작동.
     const statements: { sql: string; params?: unknown[] }[] = [
       {
         sql: `UPDATE orders
               SET status = 'DONE',
+                  payment_status = 'approved',
                   toss_payment_key = ?,
                   toss_order_id = ?,
                   payment_method = ?,

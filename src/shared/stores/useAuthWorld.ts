@@ -77,7 +77,7 @@ export const useAuthWorld = create<AuthWorldState>()(
 
             if (role === 'seller' || role === 'admin') {
               const { signOut } = await import('@/lib/firebase-auth');
-              await signOut().catch(() => {});
+              await signOut().catch((e) => { if (import.meta.env.DEV) console.warn('[Auth] signOut failed:', e); });
               throw new Error(`${role} 계정은 /seller/login 또는 /admin/login을 이용하세요.`);
             }
 

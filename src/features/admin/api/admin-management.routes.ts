@@ -2180,7 +2180,9 @@ adminManagementRoutes.put('/settings/commission', cors(), async (c) => {
     if (isNaN(numValue) || numValue < 0 || numValue > 100) return c.json({ success: false, error: '수수료율은 0~100 사이여야 합니다' }, 400);
 
     // 🛡️ 2026-04-22: key 화이트리스트 검증 + 이전 값 기록 (audit)
+    // commission_rate_live 추가 (라이브 판매 5% 분기용)
     const ALLOWED_KEYS = ['commission_rate_default', 'commission_rate_donation', 'commission_rate_meal_voucher',
+      'commission_rate_live',
       'review_reward_text', 'review_reward_image', 'review_reward_video',
       'affiliate_commission_rate'];
     if (!ALLOWED_KEYS.includes(key)) {
