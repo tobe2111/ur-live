@@ -1,0 +1,70 @@
+#!/bin/bash
+# verify-deploy.sh — 현재 live.ur-team.com 배포 상태 진단
+#
+# 사용법: bash scripts/verify-deploy.sh
+#
+# 2026-04-22 사고 이후 추가. 로그인 500 같은 문제 발생 시
+# "코드 문제인가, 배포 문제인가?"를 30초 안에 구분.
+
+set -e
+PROD="https://live.ur-team.com"
+
+echo "===================================================="
+echo "  Cloudflare Pages 배포 상태 진단"
+echo "===================================================="
+echo ""
+
+echo "[1/4] 프로덕션 응답 체크..."
+homepage_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/" || echo "timeout")
+health_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/api/health" || echo "timeout")
+version_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/api/version" || echo "timeout")
+echo "  / → $homepage_status"
+echo "  /api/health → $health_status"
+echo "  /api/version → $version_status"
+
+echo ""
+echo "[2/4] 자가 진단 엔드포인트 확인 (커밋 8b82323 이후)..."
+whoami_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/api/debug/whoami" || echo "timeout")
+build_info_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/api/debug/build-info" || echo "timeout")
+echo "  /api/debug/whoami → $whoami_status  $([ "$whoami_status" = "200" ] && echo "✅ 최신 코드 반영" || echo "❌ 최신 배포 미반영")"
+echo "  /api/debug/build-info → $build_info_status"
+
+echo ""
+echo "[3/4] 로그인 엔드포인트 상태..."
+user_login=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 -X POST "$PROD/api/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"test@test.com","password":"wrong"}' || echo "timeout")
+seller_login=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 -X POST "$PROD/api/seller/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"test@test.com","password":"wrong"}' || echo "timeout")
+admin_login=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 -X POST "$PROD/api/admin/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"test@test.com","password":"wrong"}' || echo "timeout")
+echo "  유저 로그인: $user_login  $([ "$user_login" = "500" ] && echo "❌ 서버 에러 (JWT/DB 미설정 의심)" || [ "$user_login" = "401" ] && echo "✅ 정상 (인증 실패는 예상 응답)" || echo "상태: $user_login")"
+echo "  셀러 로그인: $seller_login  $([ "$seller_login" = "500" ] && echo "❌ 서버 에러" || [ "$seller_login" = "401" ] && echo "✅ 정상" || echo "상태: $seller_login")"
+echo "  어드민 로그인: $admin_login  $([ "$admin_login" = "500" ] && echo "❌ 서버 에러" || [ "$admin_login" = "401" ] && echo "✅ 정상" || echo "상태: $admin_login")"
+
+echo ""
+echo "[4/4] 진단 종합..."
+all_login_500=false
+if [ "$user_login" = "500" ] && [ "$seller_login" = "500" ] && [ "$admin_login" = "500" ]; then
+  all_login_500=true
+fi
+
+if [ "$whoami_status" = "404" ]; then
+  echo "❌ 최신 코드가 프로덕션에 반영 안 됨"
+  echo "   → GitHub Actions 최근 run 성공 여부 확인"
+  echo "   → 또는 Cloudflare Pages Dashboard → Deployments 탭에서 최근 커밋 promote"
+elif [ "$all_login_500" = true ]; then
+  echo "❌ 모든 로그인 500 — secret 미설정 매우 유력"
+  echo "   → Cloudflare Dashboard → ur-live (Pages) → Settings → Secrets"
+  echo "   → JWT_SECRET, REFRESH_TOKEN_SECRET 등이 Pages 쪽에 있는지 확인"
+  echo "   → 없으면 값 생성 후 추가 (openssl rand -base64 32)"
+elif [ "$homepage_status" = "200" ] && ([ "$user_login" = "401" ] || [ "$seller_login" = "401" ]); then
+  echo "✅ 프로덕션 정상 — 인증 플로우 작동 중"
+else
+  echo "⚠️  부분적 이슈 — 개별 엔드포인트 확인 필요"
+fi
+
+echo ""
+echo "===================================================="
