@@ -13,6 +13,22 @@ export const isIOS = () => Capacitor.getPlatform() === 'ios'
 export const isAndroid = () => Capacitor.getPlatform() === 'android'
 
 /**
+ * v32 CRITICAL FIX: 내부 경로 검증
+ * 푸시 알림 / 딥링크 타고 들어오는 URL이 외부 도메인으로 리다이렉트되는 것을 차단.
+ * 반드시 '/'로 시작하고 '//' 프로토콜 탈출을 막은 상대 경로만 허용.
+ */
+function sanitizeInternalPath(raw: string | undefined | null): string | null {
+  if (!raw) return null
+  const s = String(raw).trim()
+  // '//example.com' 같은 scheme-relative URL 차단
+  if (s.startsWith('//')) return null
+  if (!s.startsWith('/')) return null
+  // 줄바꿈/공백 문자 섞인 경우 차단
+  if (/[\r\n\t]/.test(s)) return null
+  return s
+}
+
+/**
  * 앱 시작 시 한 번 호출
  */
 export async function initNativeFeatures() {
@@ -60,7 +76,9 @@ export async function initNativeFeatures() {
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
       const data = action.notification.data
       if (data?.url) {
-        window.location.href = data.url
+        // v32 CRITICAL FIX: URL 검증 — 상대경로만 허용 또는 동일 오리진
+        const safePath = sanitizeInternalPath(String(data.url))
+        if (safePath) window.location.href = safePath
       }
     })
   } catch {}
@@ -79,10 +97,20 @@ export async function initNativeFeatures() {
 
     // 딥링크 처리
     App.addListener('appUrlOpen', (event) => {
-      const url = new URL(event.url)
-      const path = url.pathname + url.search
-      if (path) {
-        window.location.href = path
+      // v32 CRITICAL FIX: 딥링크 open-redirect 방지
+      // event.url: urlive://some/path 또는 https://live.ur-team.com/path 형태
+      try {
+        const url = new URL(event.url)
+        const allowedHosts = new Set(['live.ur-team.com', 'www.live.ur-team.com'])
+        const isCustomScheme = url.protocol === 'urlive:' || url.protocol === 'urdeal:'
+        const isAllowedHttps = (url.protocol === 'https:' || url.protocol === 'http:') && allowedHosts.has(url.host)
+        if (!isCustomScheme && !isAllowedHttps) {
+          return // 외부 도메인 redirect 차단
+        }
+        const safePath = sanitizeInternalPath(url.pathname + url.search + url.hash)
+        if (safePath) window.location.href = safePath
+      } catch {
+        // URL 파싱 실패 — 무시
       }
     })
   } catch {}

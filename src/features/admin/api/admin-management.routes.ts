@@ -24,6 +24,14 @@ import { requireAdmin } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
+
+// v30 FIX: 에러 메시지 유출 방지. 프로덕션에서는 generic 메시지만 노출,
+// 개발에서는 디버깅을 위해 원본 보존. SQL 오류/컬럼명이 클라이언트에 노출되던 문제 수정.
+function safeAdminError(err: unknown, env: Env): string {
+  const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
+  if (isProd) return 'Internal server error';
+  return err instanceof Error ? err.message : String(err);
+}
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
@@ -166,7 +174,7 @@ adminManagementRoutes.get('/sellers', cors(), async (c) => {
     return c.json({ success: true, data: sellers });
   } catch (err) {
     console.error('[Admin] sellers error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -184,7 +192,7 @@ adminManagementRoutes.get('/sellers/pending', cors(), async (c) => {
     return c.json({ success: true, data: sellers });
   } catch (err) {
     console.error('[Admin] pending sellers error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -234,7 +242,7 @@ adminManagementRoutes.get('/sellers/:id', cors(), async (c) => {
 
     return c.json({ success: true, data: { ...seller, ...(biz || {}) } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -255,7 +263,7 @@ adminManagementRoutes.patch('/sellers/:id/business-info/approve', cors(), async 
     await writeAuditLog(c, { action: 'approve_business_info', targetType: 'seller', targetId: sellerId, after: { is_verified: true } });
     return c.json({ success: true, message: '사업자 정보를 승인했습니다' });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -276,7 +284,7 @@ adminManagementRoutes.patch('/sellers/:id/business-info/reject', cors(), async (
     await writeAuditLog(c, { action: 'reject_business_info', targetType: 'seller', targetId: sellerId, after: { is_verified: false, reason } });
     return c.json({ success: true, message: '사업자 정보를 반려했습니다' });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -293,7 +301,7 @@ adminManagementRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
     createDashboardNotification(DB, 'seller', String(sellerId), 'seller_approved', '셀러 승인 완료', '판매를 시작할 수 있습니다', '/seller').catch(() => {});
     return c.json({ success: true, data: { id: sellerId, status: 'approved' } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -308,7 +316,7 @@ adminManagementRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
     await writeAuditLog(c, { action: 'reject_seller', targetType: 'seller', targetId: sellerId, after: { status: 'rejected', reason } });
     return c.json({ success: true, data: { id: sellerId, status: 'rejected', reason } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -340,7 +348,7 @@ adminManagementRoutes.delete('/sellers/:id', cors(), async (c) => {
     await writeAuditLog(c, { action: 'suspend_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'suspended', is_active: 0 } });
     return c.json({ success: true, message: '판매자가 정지되었습니다', data: { id: sellerId, status: 'suspended' } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -357,7 +365,7 @@ adminManagementRoutes.patch('/sellers/:id/commission', cors(), async (c) => {
     await writeAuditLog(c, { action: 'change_commission', targetType: 'seller', targetId: sellerId, before: { commission_rate: rows[0].commission_rate }, after: { commission_rate } });
     return c.json({ success: true, data: { id: sellerId, commission_rate } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -378,7 +386,7 @@ adminManagementRoutes.patch('/sellers/:id/donation-commission', cors(), async (c
     );
     return c.json({ success: true, data: { id: sellerId, donation_commission_rate } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -395,7 +403,7 @@ adminManagementRoutes.patch('/sellers/:id/permissions', cors(), async (c) => {
     await executeQuery(DB, `UPDATE sellers SET can_manipulate_stats = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [val, sellerId]);
     return c.json({ success: true, data: { id: sellerId, can_manipulate_stats: val } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -473,7 +481,7 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
     return c.json({ success: true, data: orders });
   } catch (err) {
     console.error('[Admin] orders error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -522,7 +530,7 @@ adminManagementRoutes.get('/orders/export', cors(), async (c) => {
     });
   } catch (err) {
     console.error('[Admin] orders export error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -586,7 +594,7 @@ adminManagementRoutes.get('/orders/:orderNumber', cors(), async (c) => {
     return c.json({ success: true, data: order });
   } catch (err) {
     console.error('[Admin] order detail error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -606,7 +614,7 @@ adminManagementRoutes.get('/products', cors(), async (c) => {
     `);
     return c.json({ success: true, data: products });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -635,7 +643,7 @@ adminManagementRoutes.delete('/products/:id', cors(), async (c) => {
     return c.json({ success: true, data: { id: productId } });
   } catch (err) {
     console.error('[Admin] delete product error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -686,7 +694,7 @@ adminManagementRoutes.post('/products', cors(), async (c) => {
     return c.json({ success: true, data: { id: result.meta.last_row_id, name, price } });
   } catch (err) {
     console.error('[Admin] create product error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -743,7 +751,7 @@ adminManagementRoutes.put('/products/:id', cors(), async (c) => {
     return c.json({ success: true, data: { id: productId, name } });
   } catch (err) {
     console.error('[Admin] update product error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -772,7 +780,7 @@ adminManagementRoutes.patch('/products/:id', cors(), async (c) => {
     return c.json({ success: true, data: { id: productId, ...(is_active !== undefined ? { is_active: is_active ? 1 : 0 } : {}), ...(sold_count !== undefined ? { sold_count: Number(sold_count) } : {}) } });
   } catch (err) {
     console.error('[Admin] patch product error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -844,7 +852,7 @@ adminManagementRoutes.get('/sample-requests', cors(), async (c) => {
     });
   } catch (err) {
     console.error('[Admin] GET /sample-requests error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -923,7 +931,7 @@ adminManagementRoutes.patch('/sample-requests/:id', cors(), async (c) => {
     });
   } catch (err) {
     console.error('[Admin] PATCH /sample-requests/:id error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1002,7 +1010,7 @@ adminManagementRoutes.get('/supply/sales', cors(), async (c) => {
     return c.json({ success: true, data: { rows: items, summary } });
   } catch (err) {
     console.error('[Admin] GET /supply/sales error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1025,7 +1033,7 @@ adminManagementRoutes.get('/stats', cors(), async (c) => {
       activeStreams: ast[0]?.count || 0,
     }});
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1125,7 +1133,7 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
     const defaultOverview = { total_orders: 0, total_sales: 0, total_commission: 0, total_seller_amount: 0 };
     return c.json({ success: true, data: { overview: overview[0] || defaultOverview, sellers } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1181,7 +1189,7 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
     }
     return c.json({ success: true, data: records });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1200,7 +1208,7 @@ adminManagementRoutes.patch('/settlement/:id/status', cors(), async (c) => {
       [status, settled_at, orderId]);
     return c.json({ success: true, data: { id: orderId, settlement_status: status } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1237,7 +1245,7 @@ adminManagementRoutes.post('/settlement/batch-complete', cors(), async (c) => {
       [settled_at, ...order_ids]);
     return c.json({ success: true, data: { updated: order_ids.length } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1284,7 +1292,7 @@ adminManagementRoutes.post('/settlement/execute', cors(), async (c) => {
 
     return c.json({ success: true, data: result });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1345,7 +1353,7 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1428,7 +1436,7 @@ adminManagementRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => 
 
     return c.json({ success: true, data: { orderNumber, status } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1460,7 +1468,7 @@ adminManagementRoutes.put('/orders/:orderNumber/tracking', cors(), async (c) => 
 
     return c.json({ success: true, data: { orderNumber, tracking_number, shipping_company, status: 'SHIPPING' } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1505,7 +1513,7 @@ adminManagementRoutes.patch('/orders/bulk-status', cors(), async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1553,7 +1561,7 @@ adminManagementRoutes.post('/streams/replay', cors(), async (c) => {
 
     return c.json({ success: true, data: { id: streamId, youtube_video_id: videoId } }, 201);
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1569,7 +1577,7 @@ adminManagementRoutes.get('/streams', cors(), async (c) => {
     const { results } = await DB.prepare(sql).bind(...params).all();
     return c.json({ success: true, data: results || [] });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1603,7 +1611,7 @@ adminManagementRoutes.put('/streams/:id', cors(), async (c) => {
 
     return c.json({ success: true });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1616,7 +1624,7 @@ adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
     await executeQuery(DB, 'DELETE FROM live_streams WHERE id=?', [streamId]);
     return c.json({ success: true, data: { id: streamId } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1695,7 +1703,7 @@ adminManagementRoutes.put('/alimtalk/pricing/:id', cors(), async (c) => {
     ).bind(...values).run();
     return c.json({ success: true, message: '패키지가 업데이트되었습니다' });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1713,7 +1721,7 @@ adminManagementRoutes.post('/alimtalk/pricing', cors(), async (c) => {
     ).bind(body.label, body.credits, body.price, body.sort_order ?? 99).run();
     return c.json({ success: true, data: { id: result.meta.last_row_id } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1848,7 +1856,7 @@ adminManagementRoutes.get('/side-banners', cors(), async (c) => {
     ).all();
     return c.json({ success: true, data: results ?? [] });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1873,7 +1881,7 @@ adminManagementRoutes.post('/side-banners', cors(), async (c) => {
     ).run();
     return c.json({ success: true, data: { id: result.meta.last_row_id, title: body.title } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1901,7 +1909,7 @@ adminManagementRoutes.put('/side-banners/:id', cors(), async (c) => {
     ).bind(...values).run();
     return c.json({ success: true, data: { id } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1916,7 +1924,7 @@ adminManagementRoutes.delete('/side-banners/:id', cors(), async (c) => {
     await DB.prepare('DELETE FROM side_banners WHERE id = ?').bind(id).run();
     return c.json({ success: true, data: { id } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1949,7 +1957,7 @@ adminManagementRoutes.patch('/donations/settlements/:id', cors(), async (c) => {
       message: body.action === 'done' ? '정산이 완료 처리되었습니다.' : '정산이 거부되었습니다.',
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2010,7 +2018,7 @@ adminManagementRoutes.get('/deals/stats', async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2065,7 +2073,7 @@ adminManagementRoutes.get('/deals/charges', async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2115,7 +2123,7 @@ adminManagementRoutes.get('/deals/users', async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2137,7 +2145,7 @@ adminManagementRoutes.get('/settings/commission', cors(), async (c) => {
     const { results } = await DB.prepare("SELECT * FROM platform_settings WHERE key LIKE 'commission_%' ORDER BY key").all();
     return c.json({ success: true, data: results ?? [] });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2153,7 +2161,7 @@ adminManagementRoutes.put('/settings/commission', cors(), async (c) => {
     await DB.prepare("UPDATE platform_settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?").bind(value, key).run();
     return c.json({ success: true, message: `수수료율이 ${value}%로 변경되었습니다` });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2378,7 +2386,7 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
 
     return c.json({ success: true, data: { generated, sold_increment: soldIncrement }, message: `${generated}개 리뷰 + ${soldIncrement}명 구매 수 반영` });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2390,7 +2398,7 @@ adminManagementRoutes.delete('/reviews/:id', cors(), async (c) => {
     await DB.prepare('DELETE FROM product_reviews WHERE id = ?').bind(id).run();
     return c.json({ success: true, message: '리뷰가 삭제되었습니다' });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2402,7 +2410,7 @@ adminManagementRoutes.get('/reviews/product/:productId', cors(), async (c) => {
     const { results } = await DB.prepare('SELECT * FROM product_reviews WHERE product_id = ? ORDER BY created_at DESC LIMIT 100').bind(productId).all();
     return c.json({ success: true, data: results ?? [] });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2414,7 +2422,7 @@ adminManagementRoutes.delete('/reviews/generated/:productId', cors(), async (c) 
     const result = await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(productId).run();
     return c.json({ success: true, message: `${result.meta.changes}개 생성 리뷰 삭제됨` });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2425,7 +2433,7 @@ adminManagementRoutes.get('/coupons', cors(), async (c) => {
     try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value INTEGER NOT NULL, min_order_amount INTEGER DEFAULT 0, max_discount INTEGER, total_count INTEGER DEFAULT 0, used_count INTEGER DEFAULT 0, seller_id INTEGER, is_active INTEGER DEFAULT 1, starts_at DATETIME, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
     const { results } = await DB.prepare('SELECT * FROM coupons ORDER BY created_at DESC').all();
     return c.json({ success: true, data: results ?? [] });
-  } catch (err) { return c.json({ success: false, error: (err as Error).message }, 500); }
+  } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
 
 adminManagementRoutes.post('/coupons', cors(), async (c) => {
@@ -2435,14 +2443,14 @@ adminManagementRoutes.post('/coupons', cors(), async (c) => {
     if (!code || !name || !type || !value) return c.json({ success: false, error: '필수 항목 누락' }, 400);
     await DB.prepare(`INSERT INTO coupons (code, name, type, value, min_order_amount, max_discount, total_count, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(code, name, type, value, min_order_amount || 0, max_discount || null, total_count || 0, expires_at || null).run();
     return c.json({ success: true, message: '쿠폰이 생성되었습니다' });
-  } catch (err) { return c.json({ success: false, error: (err as Error).message }, 500); }
+  } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
 
 adminManagementRoutes.delete('/coupons/:id', cors(), async (c) => {
   try {
     await c.env.DB.prepare('DELETE FROM coupons WHERE id = ?').bind(c.req.param('id')).run();
     return c.json({ success: true });
-  } catch (err) { return c.json({ success: false, error: (err as Error).message }, 500); }
+  } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
 
 // ── 쿠폰 세그먼트 발송 ──
@@ -2544,7 +2552,7 @@ adminManagementRoutes.post('/coupons/:id/send-segment', cors(), async (c) => {
       data: { sent_count: sentCount, segment }
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2610,7 +2618,7 @@ adminManagementRoutes.get('/audit-logs', cors(), async (c) => {
     });
   } catch (err) {
     console.error('[Admin] audit-logs error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2690,7 +2698,7 @@ adminManagementRoutes.get('/analytics/revenue', cors(), async (c) => {
     });
   } catch (err) {
     console.error('[Admin] analytics/revenue error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2713,7 +2721,7 @@ adminManagementRoutes.get('/analytics/category', cors(), async (c) => {
     return c.json({ success: true, data: categories });
   } catch (err) {
     console.error('[Admin] analytics/category error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2741,7 +2749,7 @@ adminManagementRoutes.get('/analytics/top-sellers', cors(), async (c) => {
     return c.json({ success: true, data: topSellers });
   } catch (err) {
     console.error('[Admin] analytics/top-sellers error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2769,7 +2777,7 @@ adminManagementRoutes.get('/analytics/top-products', cors(), async (c) => {
     return c.json({ success: true, data: topProducts });
   } catch (err) {
     console.error('[Admin] analytics/top-products error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2799,7 +2807,7 @@ adminManagementRoutes.get('/admins', cors(), async (c) => {
     return c.json({ success: true, data: admins });
   } catch (err) {
     console.error('[Admin] list admins error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2858,7 +2866,7 @@ adminManagementRoutes.post('/admins', cors(), async (c) => {
     return c.json({ success: true, message: '관리자가 생성되었습니다' });
   } catch (err) {
     console.error('[Admin] create admin error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2930,7 +2938,7 @@ adminManagementRoutes.patch('/admins/:id', cors(), async (c) => {
     return c.json({ success: true, message: '관리자 정보가 업데이트되었습니다' });
   } catch (err) {
     console.error('[Admin] update admin error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -2988,7 +2996,7 @@ adminManagementRoutes.delete('/admins/:id', cors(), async (c) => {
     return c.json({ success: true, message: '관리자가 삭제되었습니다' });
   } catch (err) {
     console.error('[Admin] delete admin error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3035,7 +3043,7 @@ adminManagementRoutes.post('/admins/:id/reset-password', cors(), async (c) => {
     return c.json({ success: true, message: '비밀번호가 재설정되었습니다' });
   } catch (err) {
     console.error('[Admin] reset password error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3121,7 +3129,7 @@ adminManagementRoutes.get('/reviews/list', cors(), async (c) => {
     });
   } catch (err) {
     console.error('[Admin] reviews/list error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3155,7 +3163,7 @@ adminManagementRoutes.patch('/reviews/:id/visibility', cors(), async (c) => {
     return c.json({ success: true, message: is_visible ? '리뷰가 표시되었습니다' : '리뷰가 숨겨졌습니다' });
   } catch (err) {
     console.error('[Admin] review visibility error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3184,7 +3192,7 @@ adminManagementRoutes.delete('/reviews/:id', cors(), async (c) => {
     return c.json({ success: true, message: '리뷰가 삭제되었습니다' });
   } catch (err) {
     console.error('[Admin] delete review error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3208,7 +3216,7 @@ adminManagementRoutes.get('/reviews/stats', cors(), async (c) => {
     return c.json({ success: true, data: stats[0] || { total: 0, avg_rating: 0, hidden_count: 0, rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0 } });
   } catch (err) {
     console.error('[Admin] reviews/stats error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3266,7 +3274,7 @@ adminManagementRoutes.get('/live-monitor', cors(), async (c) => {
     return c.json({ success: true, data: streams });
   } catch (err) {
     console.error('[Admin] live-monitor error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3301,7 +3309,7 @@ adminManagementRoutes.patch('/live-monitor/:id/end', cors(), async (c) => {
     return c.json({ success: true, message: '스트림이 강제 종료되었습니다' });
   } catch (err) {
     console.error('[Admin] live-monitor end error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3335,7 +3343,7 @@ adminManagementRoutes.get('/live-monitor/history', cors(), async (c) => {
     return c.json({ success: true, data: streams });
   } catch (err) {
     console.error('[Admin] live-monitor/history error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3399,7 +3407,7 @@ adminManagementRoutes.get('/users', cors(), async (c) => {
     });
   } catch (err) {
     console.error('[Admin] users list error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3433,7 +3441,7 @@ adminManagementRoutes.patch('/users/:id/status', cors(), async (c) => {
     return c.json({ success: true, message: '사용자 상태가 변경되었습니다', data: { id: userId, status } });
   } catch (err) {
     console.error('[Admin] user status error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -3471,6 +3479,6 @@ adminManagementRoutes.get('/users/:id', cors(), async (c) => {
     return c.json({ success: true, data: detail });
   } catch (err) {
     console.error('[Admin] user detail error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
