@@ -41,11 +41,21 @@ export default function BrowsePage() {
   const [loading, setLoading] = useState(true)
   // ✅ UX M17 FIX: 에러 상태 + 재시도 버튼
   const [error, setError] = useState<string | null>(null)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const category = searchParams.get('category') || 'all'
-  const [sortBy, setSortBy] = useState<SortOption>(
-    (searchParams.get('sort') as SortOption) || 'popular'
-  )
+
+  // v37 FIX: sortBy를 URL 파라미터로 양방향 동기화
+  // - 뒤로가기 시 URL의 sort 값으로 자동 복원
+  // - 공유 URL에 sort 포함
+  const sortBy = (searchParams.get('sort') as SortOption) || 'popular'
+  const setSortBy = (next: SortOption) => {
+    setSearchParams((prev) => {
+      const n = new URLSearchParams(prev)
+      if (next === 'popular') n.delete('sort')
+      else n.set('sort', next)
+      return n
+    }, { replace: true })
+  }
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [showCount, setShowCount] = useState(ITEMS_PER_PAGE)
   const [priceRange, setPriceRange] = useState<'all' | 'under10' | 'under30' | 'under50' | 'over50'>('all')
