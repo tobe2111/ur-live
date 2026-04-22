@@ -204,3 +204,14 @@ GitHub Actions (`main.yml`)가 **둘 다** 배포함. Workers를 빠뜨리면 `l
 - ❌ `_redirects`에 `/* /index.html 200` — Workers에서 무한 루프
 - ❌ `_headers`에 2000자 초과 줄 — Workers 배포 실패
 - ❌ `wrangler.toml`에서 `new_classes` 사용 — free plan은 `new_sqlite_classes` 필요
+- ❌ **파일 중간에 `import` 문 추가** — ES module 표준 위반, 런타임 crash 유발
+  (2026-04-22 `webhook.routes.ts:86` 중간 import → 셀러/어드민/에이전시 로그인 전부 500 사고)
+- ❌ **Worker 코드에서 `await import('@/...')` 금지** — dynamic import + path alias 조합은 런타임 crash
+  - TypeScript `paths` alias(`@/*`)는 **컴파일 시 힌트**일 뿐, JS 런타임에 존재하지 않음
+  - Static import는 esbuild가 빌드 시 실제 파일로 교체 → OK
+  - Dynamic import는 문자열 그대로 번들에 남음 → JS engine이 `@/foo` 모듈을 못 찾아 crash
+  - 반드시 **상대경로**로: `await import('../../features/foo')`
+  - 예외: 순수 프론트엔드 파일(pages/components/shared/stores 등)은 Vite가 alias resolve → OK
+  - 이중 방어 (2026-04-22 강화):
+    1. `esbuild.worker.config.js` 의 `alias: { '@': path.resolve(__dirname, 'src') }` — 빌드 시 resolve
+    2. Pre-commit hook이 `src/{worker,features,shared,lib}/` 하위 파일에서 `await import('@/...')` 감지 시 차단
