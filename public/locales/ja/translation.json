@@ -1670,5 +1670,44 @@
     "search": "検索",
     "admin": "Admin",
     "seller": "Seller"
+  },
+  "voucher": {
+    "myVouchers": "マイクーポン",
+    "empty": "クーポンがまだありません",
+    "emptyHint": "グルメ共同購入に参加しましょう！",
+    "exploreRestaurants": "店舗を探す",
+    "expiresAt": "有効期限",
+    "usedAt": "使用日",
+    "until": "まで",
+    "scan": "QRを表示",
+    "copy": "コピー",
+    "showQrAtStore": "店舗でこのQRコードを見せてください",
+    "seoTitle": "マイクーポン - 유어딜",
+    "seoDescription": "購入したクーポンを確認・使用",
+    "status": {
+      "unused": "利用可能",
+      "used": "使用済み",
+      "expired": "期限切れ",
+      "refunded": "返金済み"
+    },
+    "verify": {
+      "title": "クーポン認証",
+      "subtitle": "お客様のクーポンコードを確認してください",
+      "codeLabel": "クーポンコード",
+      "codePlaceholder": "UR-XXXX-XXXX",
+      "qrHint": "QRスキャン結果を貼り付けると自動で抽出されます",
+      "lookup": "検索",
+      "alreadyUsed": "使用済みクーポン",
+      "expired": "期限切れクーポン",
+      "lookupAnother": "別のクーポンを検索",
+      "enterPin": "認証パスワード",
+      "pinPlaceholder": "パスワードを入力",
+      "confirm": "使用確認",
+      "cancel": "キャンセル",
+      "notFound": "クーポンが見つかりません",
+      "processingError": "処理中にエラーが発生しました",
+      "seoTitle": "クーポン確認",
+      "seoDescription": "QRコードでクーポンを確認します"
+    }
   }
 }

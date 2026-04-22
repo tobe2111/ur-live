@@ -85,7 +85,11 @@ export async function runDailySelfDiagnostic(env: Env) {
   } catch {}
 
   // 알림 발송
-  if (!webhookUrl) return;
+  if (!webhookUrl) {
+    // 🛡️ 2026-04-22: webhook 미설정 알림 — 진단 자체 작동 안 함을 운영자가 인지하도록
+    console.warn('[Daily Diagnostic] DISCORD_WEBHOOK_URL not configured — diagnostic results not sent');
+    return;
+  }
 
   if (issues.length > 0) {
     await sendDiscordAlert(

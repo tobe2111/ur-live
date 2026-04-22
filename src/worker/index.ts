@@ -2136,7 +2136,7 @@ export default {
     }
 
     // Daily 19:00 UTC (KST 04:00): reconciliation
-    if (event.cron === '0 19 * * *' || cron === '0 19 * * *') {
+    if (cron === '0 19 * * *') {
       ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
     }
   },

@@ -56,38 +56,51 @@ export async function handleAutoSettlement(env: Env) {
     }
 
     // Create settlement records
+    // 🛡️ 2026-04-22: per-seller try-catch — 한 셀러 실패 시 나머지 셀러 정산 계속 진행
+    let processedSellers = 0;
+    let failedSellers = 0;
+    const failedSellerIds: string[] = [];
     for (const [sellerId, vouchers] of Object.entries(sellerGroups)) {
-      const totalRevenue = vouchers.reduce((sum: number, v: any) => sum + (v.price || 0), 0);
-      const commissionRate = vouchers[0]?.commission_rate ?? platformRate;
-      // CRIT-2: standardized to Math.round() across all settlement calculations
-      // to avoid accumulated drift from mixing Math.floor/Math.round.
-      const commissionAmount = Math.round(totalRevenue * commissionRate / 100);
-      const settlementAmount = totalRevenue - commissionAmount;
+      try {
+        const totalRevenue = vouchers.reduce((sum: number, v: any) => sum + (v.price || 0), 0);
+        const commissionRate = vouchers[0]?.commission_rate ?? platformRate;
+        // CRIT-2: standardized to Math.round() across all settlement calculations
+        const commissionAmount = Math.round(totalRevenue * commissionRate / 100);
+        const settlementAmount = totalRevenue - commissionAmount;
 
-      const result = await DB.prepare(`
-        INSERT INTO restaurant_settlements (seller_id, restaurant_name, total_vouchers_used, total_revenue, commission_rate, commission_amount, settlement_amount, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
-      `).bind(
-        Number(sellerId),
-        vouchers[0]?.restaurant_name || '',
-        vouchers.length,
-        totalRevenue,
-        commissionRate,
-        commissionAmount,
-        settlementAmount
-      ).run();
+        const result = await DB.prepare(`
+          INSERT INTO restaurant_settlements (seller_id, restaurant_name, total_vouchers_used, total_revenue, commission_rate, commission_amount, settlement_amount, status, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+        `).bind(
+          Number(sellerId),
+          vouchers[0]?.restaurant_name || '',
+          vouchers.length,
+          totalRevenue,
+          commissionRate,
+          commissionAmount,
+          settlementAmount
+        ).run();
 
-      // Mark vouchers as settled
-      // ✅ PERF: single UPDATE ... WHERE id IN (...) instead of N UPDATE statements.
-      if (result.meta?.last_row_id && vouchers.length > 0) {
-        const voucherIds = vouchers.map((v: any) => Number(v.id)).filter(Number.isFinite);
-        if (voucherIds.length > 0) {
-          const placeholders = voucherIds.map(() => '?').join(',');
-          await DB.prepare(
-            `UPDATE vouchers SET settlement_id = ? WHERE id IN (${placeholders})`
-          ).bind(result.meta.last_row_id, ...voucherIds).run();
+        // Mark vouchers as settled
+        if (result.meta?.last_row_id && vouchers.length > 0) {
+          const voucherIds = vouchers.map((v: any) => Number(v.id)).filter(Number.isFinite);
+          if (voucherIds.length > 0) {
+            const placeholders = voucherIds.map(() => '?').join(',');
+            await DB.prepare(
+              `UPDATE vouchers SET settlement_id = ? WHERE id IN (${placeholders})`
+            ).bind(result.meta.last_row_id, ...voucherIds).run();
+          }
         }
+        processedSellers++;
+      } catch (sellerErr) {
+        failedSellers++;
+        failedSellerIds.push(sellerId);
+        console.error(`[Cron] Settlement failed for seller ${sellerId}:`, sellerErr);
+        // 다음 셀러 계속 진행
       }
+    }
+    if (failedSellers > 0) {
+      console.warn(`[Cron] Settlement: ${processedSellers} OK, ${failedSellers} failed (sellers: ${failedSellerIds.join(',')})`);
     }
 
     console.log(`[Cron] Auto-settlement: ${Object.keys(sellerGroups).length} sellers processed`);

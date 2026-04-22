@@ -1673,5 +1673,44 @@
     "reviews": "Reviews",
     "selectOption": "Select Option",
     "seller": "Seller"
+  },
+  "voucher": {
+    "myVouchers": "Mis cupones",
+    "empty": "Aún no tienes cupones",
+    "emptyHint": "¡Únete a una compra grupal de restaurante!",
+    "exploreRestaurants": "Explorar restaurantes",
+    "expiresAt": "Válido hasta",
+    "usedAt": "Fecha de uso",
+    "until": "hasta",
+    "scan": "Ver QR",
+    "copy": "Copiar",
+    "showQrAtStore": "Muestre este código QR en el establecimiento",
+    "seoTitle": "Mis cupones - 유어딜",
+    "seoDescription": "Ver y usar cupones comprados",
+    "status": {
+      "unused": "Disponible",
+      "used": "Usado",
+      "expired": "Caducado",
+      "refunded": "Reembolsado"
+    },
+    "verify": {
+      "title": "Verificar cupón",
+      "subtitle": "Verifique el código del cupón del cliente",
+      "codeLabel": "Código del cupón",
+      "codePlaceholder": "UR-XXXX-XXXX",
+      "qrHint": "Pegar el resultado del escaneo QR extraerá el código automáticamente",
+      "lookup": "Buscar",
+      "alreadyUsed": "Cupón ya usado",
+      "expired": "Cupón caducado",
+      "lookupAnother": "Buscar otro cupón",
+      "enterPin": "Contraseña de verificación",
+      "pinPlaceholder": "Ingrese contraseña",
+      "confirm": "Confirmar uso",
+      "cancel": "Cancelar",
+      "notFound": "Cupón no encontrado",
+      "processingError": "Error durante el procesamiento",
+      "seoTitle": "Verificación de cupón",
+      "seoDescription": "Verificar cupón mediante código QR"
+    }
   }
 }
