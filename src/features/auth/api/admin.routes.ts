@@ -13,7 +13,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
-import { maskEmail } from '@/lib/sentry';
+import { maskEmail } from '@/lib/mask';
 
 /**
  * refresh_tokens 보조 테이블 (admin/seller용) 생성.

@@ -20,7 +20,7 @@ import {
   forbiddenResponse,
   internalServerErrorResponse
 } from '@/worker/utils/response';
-import { maskEmail } from '@/lib/sentry';
+import { maskEmail } from '@/lib/mask';
 
 type Bindings = {
   DB: D1Database;
