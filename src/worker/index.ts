@@ -27,6 +27,7 @@ import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role
 import { i18nMiddleware } from './middleware/i18n.middleware';
 import { rateLimitMiddleware as rateLimiterMiddleware } from './middleware/rate-limiter';
 import { globalErrorHandler as errorHandler } from './middleware/error-handler';
+import { errorRateMonitor } from './middleware/error-rate-monitor';
 
 // ---- Feature module routes ----
 import { accountRoutes } from '../features/account/api/account.routes';
@@ -147,6 +148,9 @@ app.use('*', async (c, next) => {
   await next();
   c.header('X-Request-Id', rayId);
 });
+
+// 🚨 5xx 스파이크 자동 감지 + Discord 알림 (1인 운영자용)
+app.use('/api/*', errorRateMonitor());
 
 app.use('*', async (c, next) => {
   await next();
@@ -387,6 +391,22 @@ app.get('/api/_internal/health-dashboard', async (c) => {
   const secretsTotal = Object.keys(envCheck).length;
   const secretsSet = Object.values(envCheck).filter(Boolean).length;
 
+  // Slow query 통계 (24h)
+  let slowQueries: Array<{ label: string; count: number; avg_ms: number; max_ms: number }> = [];
+  try {
+    const { getSlowQueryStats } = await import('./utils/slow-query-logger');
+    slowQueries = await getSlowQueryStats(DB, 24);
+  } catch {}
+
+  // 최근 5xx spike 기록
+  let recent5xxSpikes = 0;
+  try {
+    const row = await DB.prepare(
+      "SELECT COUNT(*) as c FROM rate_limit_attempts WHERE action='5xx_spike' AND window_start >= ?"
+    ).bind(Math.floor(Date.now() / 1000) - 86400).first<{ c: number }>();
+    recent5xxSpikes = row?.c ?? 0;
+  } catch {}
+
   return c.json({
     timestamp: new Date().toISOString(),
     totalDurationMs: Date.now() - start,
@@ -406,6 +426,13 @@ app.get('/api/_internal/health-dashboard', async (c) => {
       configured: secretsSet,
       missing: Object.entries(envCheck).filter(([, v]) => !v).map(([k]) => k),
       health: secretsSet === secretsTotal ? 'complete' : 'incomplete',
+    },
+    performance: {
+      slowQueriesLast24h: slowQueries.length,
+      topSlow: slowQueries.slice(0, 5),
+    },
+    errors: {
+      spikesLast24h: recent5xxSpikes,
     },
   });
 });
@@ -1958,6 +1985,7 @@ app.onError(errorHandler);
 import { handleScheduled } from './cron/scheduled-cleanup';
 import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
 import { runReconciliation } from './cron/reconciliation';
+import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
 
 export default {
   fetch: app.fetch,
@@ -1969,10 +1997,11 @@ export default {
       ctx.waitUntil(handleScheduled(env));
     }
 
-    // Daily 18:00 UTC (KST 03:00): heavy tasks (settlement + expired-voucher refund)
+    // Daily 18:00 UTC (KST 03:00): heavy tasks (settlement + expired-voucher refund + self diagnostic)
     if (cron === '0 18 * * *') {
       ctx.waitUntil(handleAutoSettlement(env));
       ctx.waitUntil(handleExpiredVoucherRefunds(env));
+      ctx.waitUntil(runDailySelfDiagnostic(env));  // 🆕 자가 진단 + Discord 요약 알림
     }
 
     // Daily 19:00 UTC (KST 04:00): reconciliation — stuck orders, orphan data, negative stock cleanup
