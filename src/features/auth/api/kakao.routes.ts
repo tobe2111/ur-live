@@ -239,7 +239,10 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
         .bind(accessToken, kakaoRefreshToken, user.id).run();
 
-      // Set httpOnly session cookie on the redirect response
+      // 🛡️ 순서 중요: clear-state 먼저, session 은 append 로 추가.
+      // 원래 c.header('Set-Cookie', ...) 를 두 번 호출해서 두 번째가 첫 번째를 덮어써
+      // 세션 쿠키가 사라지고 카카오 로그인 이후 모든 API 401이 발생하던 버그.
+      c.header('Set-Cookie', clearStateCookieHeader());
       try {
         const sessionCookie = await createSessionCookie(
           user.id,
@@ -248,7 +251,7 @@ kakaoRoutes.get('/sync/callback', async (c) => {
           user.profile_image || undefined,
           c.env.JWT_SECRET,
         );
-        c.header('Set-Cookie', sessionCookie);
+        c.header('Set-Cookie', sessionCookie, { append: true });
       } catch (e) {
         console.error('[Kakao Sync] Session cookie creation failed:', e);
       }
@@ -269,7 +272,6 @@ kakaoRoutes.get('/sync/callback', async (c) => {
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;
       // 302 명시: Set-Cookie 헤더가 일부 브라우저에서 303에 무시되는 문제 회피
-      c.header('Set-Cookie', clearStateCookieHeader());
       return c.redirect(redirectUrl, 302);
 
     } catch (serviceError) {
