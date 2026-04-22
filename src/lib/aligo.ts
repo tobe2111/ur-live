@@ -408,9 +408,11 @@ export function replaceTemplateVariables(
   variables: Record<string, string>
 ): string {
   let result = template
-  
+
   for (const [key, value] of Object.entries(variables)) {
-    const regex = new RegExp(`#{${key}}`, 'g')
+    // 🛡️ 2026-04-22: regex injection 방어 — key 의 정규식 메타문자 escape
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`#{${escapedKey}}`, 'g')
     result = result.replace(regex, value)
   }
   

@@ -89,7 +89,9 @@ export async function parseSessionCookie(
 
   for (const t of typesToCheck) {
     const cookieName = COOKIE_NAMES[t];
-    const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${cookieName}=([^;]+)`));
+    // 🛡️ 2026-04-22: defense-in-depth — cookieName 은 정적 상수이지만 future-proof escape
+    const escaped = cookieName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]+)`));
     if (!match || !match[1]) continue;
 
     const token = match[1];
