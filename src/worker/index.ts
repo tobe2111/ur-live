@@ -1713,7 +1713,7 @@ app.get('/api/kakao/place/address', async (c) => {
 
 // ── 네이버 검색 API 프록시 (식당 이미지/정보) ──
 // 지역 검색: 식당명 + 주소 + 전화번호 + 카테고리
-app.get('/api/naver/place/search', async (c) => {
+app.get('/api/naver/place/search', rateLimit({ action: 'naver_place', max: 30, windowSec: 60 }), async (c) => {
   const query = c.req.query('query')
   const display = c.req.query('display') || '5'
   if (!query) return c.json({ success: false, error: 'query required' }, 400)
@@ -1733,7 +1733,7 @@ app.get('/api/naver/place/search', async (c) => {
 })
 
 // 이미지 검색: 식당명으로 이미지 가져오기
-app.get('/api/naver/image/search', async (c) => {
+app.get('/api/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windowSec: 60 }), async (c) => {
   const query = c.req.query('query')
   const display = c.req.query('display') || '3'
   if (!query) return c.json({ success: false, error: 'query required' }, 400)
@@ -1753,7 +1753,7 @@ app.get('/api/naver/image/search', async (c) => {
 })
 
 // 통합 식당 정보 (지역 검색 + 이미지 한번에)
-app.get('/api/naver/restaurant', async (c) => {
+app.get('/api/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30, windowSec: 60 }), async (c) => {
   const query = c.req.query('query')
   if (!query) return c.json({ success: false, error: 'query required' }, 400)
   const clientId = (c.env as Env).NAVER_CLIENT_ID
