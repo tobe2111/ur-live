@@ -97,6 +97,12 @@ export interface OrderItemsTable {
 // ============================================================
 // products 테이블
 // ⚠️ stock (NOT stock_quantity), is_active (NOT status)
+//
+// 🛡️ 2026-04-22: legacy stock_quantity 컬럼이 일부 환경에 추가된 상태(ALTER TABLE).
+//    코드에서 `p.stock ?? p.stock_quantity ?? 0` 패턴으로 fallback 사용 중이나,
+//    INSERT/UPDATE 는 항상 `stock` 만 사용. SQL 쿼리에서 stock_quantity 를
+//    SELECT 하는 것은 OK (없으면 NULL → COALESCE 가 처리).
+//    신규 코드는 `stock` 만 사용할 것.
 // ============================================================
 export interface ProductsTable {
   id: number                    // INTEGER PRIMARY KEY AUTOINCREMENT
