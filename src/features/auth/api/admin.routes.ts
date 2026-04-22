@@ -14,6 +14,7 @@ import { verifyPassword, hashPassword } from '@/lib/password';
 import type { AuthResponse } from '../types';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
+import { maskEmail } from '@/lib/sentry';
 
 /**
  * refresh_tokens 보조 테이블 (admin/seller용) 생성.
@@ -45,14 +46,6 @@ type AdminLoginRequest = {
   email: string;
   password: string;
 };
-
-/** 로그 노출 방지: 이메일을 "a***@domain" 형태로 마스킹. */
-function maskEmail(e: string | undefined | null): string {
-  if (!e || typeof e !== 'string') return '***';
-  const [local, domain] = e.split('@');
-  if (!local || !domain) return '***';
-  return (local[0] ?? '*') + '***@' + domain;
-}
 
 export const adminRoutes = new Hono<{ Bindings: Bindings }>();
 

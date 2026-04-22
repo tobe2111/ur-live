@@ -53,9 +53,18 @@ interface SettlementReport {
 
 /**
  * 플랫폼 수수료 계산 (기본 10%)
+ *
+ * CRIT-2: standardized to Math.round() across all settlement calculations
+ * (was Math.floor) — matches auto-settlement.ts and restaurant-settlement.routes.ts
+ * to avoid accumulated drift from mixing rounding modes.
+ *
+ * HIGH-1 NOTE: feeRate here is a RATIO (e.g., 0.10 = 10%). Most other places store
+ * commission_rate as PERCENTAGE (e.g., 10 = 10%). Callers of this function must
+ * divide percentage values by 100 first. Exception: donations.commission_rate
+ * is stored as RATIO.
  */
 function calculatePlatformFee(amount: number, feeRate: number = 0.10): number {
-  return Math.floor(amount * feeRate)
+  return Math.round(amount * feeRate)
 }
 
 /**
@@ -148,7 +157,9 @@ async function calculateSellerSettlement(
     let totalPlatformFee = 0
 
     for (const order of orders.results as any[]) {
-      const orderAmount = order.total_amount - order.shipping_fee // 상품 금액만
+      // CRIT-3: use order.total_amount (includes shipping) as the fee base.
+      // Shipping is included in totalSales and flows back to the seller after fee.
+      const orderAmount = order.total_amount
       const platformFee = calculatePlatformFee(orderAmount, seller.commission_rate / 100)
 
       settlementOrders.push({
@@ -179,8 +190,16 @@ async function calculateSellerSettlement(
 
     const refundAmount = refunds?.refund_amount || 0
 
-    // 정산 금액 = 매출 - 수수료 - 환불 + 배송비
-    const settlementAmount = totalSales - totalPlatformFee - refundAmount + totalShippingFee
+    // CRIT-3: 배송비 이중 계산 방지
+    // Previous buggy formula was: totalSales - totalPlatformFee - refundAmount + totalShippingFee
+    // Problem: when totalSales already included shipping, adding shipping again
+    // double-credited the seller. We now treat order.total_amount (which includes
+    // shipping) as both the fee base and totalSales, so:
+    //   - Platform keeps commission on full amount (incl. shipping)
+    //   - Seller receives (totalSales - platformFee - refund)
+    //   - Shipping is implicitly in totalSales and flows to seller
+    // Option B from audit: simpler, less breaking.
+    const settlementAmount = totalSales - totalPlatformFee - refundAmount
 
     return {
       seller_id: sellerId,

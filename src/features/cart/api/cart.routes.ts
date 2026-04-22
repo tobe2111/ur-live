@@ -227,32 +227,54 @@ cartRoutes.post('/', requireAuth(), async (c) => {
       return c.json(badRequestResponse('Insufficient stock'), 400);
     }
 
-    // ── 이미 장바구니에 있는지 확인 ──────────────────────────────────────────
-    const existing = await db
-      .prepare(
-        'SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_id = ? LIMIT 1'
-      )
-      .bind(userId, product_id)
-      .first<{ id: number; quantity: number }>();
-
     const snapshot = price_snapshot ?? product.price;
 
-    if (existing) {
-      const newQty = existing.quantity + quantity;
-      if (product.stock < newQty) {
+    // ── 원자적 UPSERT (SELECT→UPDATE-OR-INSERT race 방지) ────────────────────
+    // UNIQUE(user_id, product_id, option_id) index (see migration 0202) 하에서
+    // 충돌 없는 경쟁이 되도록 atomic UPDATE-first, INSERT-on-miss 패턴 사용.
+    const updateResult = await db
+      .prepare(
+        `UPDATE cart_items
+         SET quantity = quantity + ?, price_snapshot = ?
+         WHERE user_id = ?
+           AND product_id = ?
+           AND (option_id = ? OR (option_id IS NULL AND ? IS NULL))`
+      )
+      .bind(quantity, snapshot, userId, product_id, option_id, option_id)
+      .run();
+
+    if ((updateResult.meta.changes ?? 0) > 0) {
+      // 업데이트된 행의 최종 수량을 다시 조회해 응답
+      const updated = await db
+        .prepare(
+          `SELECT id, quantity FROM cart_items
+           WHERE user_id = ?
+             AND product_id = ?
+             AND (option_id = ? OR (option_id IS NULL AND ? IS NULL))
+           LIMIT 1`
+        )
+        .bind(userId, product_id, option_id, option_id)
+        .first<{ id: number; quantity: number }>();
+
+      const finalQty = updated?.quantity ?? quantity;
+      if (product.stock < finalQty) {
+        // 재고 초과 시 되돌려 놓음 (best-effort)
+        await db
+          .prepare('UPDATE cart_items SET quantity = ? WHERE id = ?')
+          .bind(Math.max(1, finalQty - quantity), updated?.id ?? 0)
+          .run()
+          .catch(() => {});
         return c.json(badRequestResponse('Insufficient stock'), 400);
       }
 
-      await db
-        .prepare(
-          'UPDATE cart_items SET quantity = ?, price_snapshot = ? WHERE id = ?'
-        )
-        .bind(newQty, snapshot, existing.id)
-        .run();
-
       return c.json(
         successResponse(
-          { id: existing.id, product_id, quantity: newQty, price_snapshot: snapshot },
+          {
+            id: updated?.id,
+            product_id,
+            quantity: finalQty,
+            price_snapshot: snapshot,
+          },
           'Cart item updated'
         )
       );

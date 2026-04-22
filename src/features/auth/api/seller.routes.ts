@@ -22,6 +22,7 @@ import {
 } from '@/worker/utils/response';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
+import { maskEmail } from '@/lib/sentry';
 
 type Bindings = {
   DB: D1Database;
@@ -115,14 +116,6 @@ type SellerLoginResponse = {
     seller_type: string;
   };
 };
-
-/** 로그 노출 방지: 이메일을 "a***@domain" 형태로 마스킹. */
-function maskEmail(e: string | undefined | null): string {
-  if (!e || typeof e !== 'string') return '***';
-  const [local, domain] = e.split('@');
-  if (!local || !domain) return '***';
-  return (local[0] ?? '*') + '***@' + domain;
-}
 
 export const sellerRoutes = new Hono<{ Bindings: Bindings }>();
 

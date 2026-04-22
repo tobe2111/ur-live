@@ -10,7 +10,8 @@ import { describe, it, expect } from 'vitest';
  * Default commission rates (from getCommissionRates defaults):
  *   tier1 = 10%, tier2 = 3%, tier3 = 1%
  *
- * The production code uses Math.floor(orderAmount * rate / 100).
+ * The production code uses Math.round(orderAmount * rate / 100).
+ * (Standardized to Math.round across all commission math per v9 audit CRIT-2.)
  */
 
 // ── Constants (mirrored from referral-tree.routes.ts) ──────────────
@@ -51,7 +52,7 @@ function calculateCommissions(
 
   // Tier 1 -- direct referrer (parent)
   if (buyerNode.parent_id) {
-    const amount = Math.floor(orderAmount * rates.tier1 / 100);
+    const amount = Math.round(orderAmount * rates.tier1 / 100);
     if (amount > 0) {
       commissions.push({ tier: 1, beneficiary_id: buyerNode.parent_id, commission_amount: amount });
     }
@@ -59,7 +60,7 @@ function calculateCommissions(
 
   // Tier 2 -- grandparent
   if (buyerNode.grandparent_id) {
-    const amount = Math.floor(orderAmount * rates.tier2 / 100);
+    const amount = Math.round(orderAmount * rates.tier2 / 100);
     if (amount > 0) {
       commissions.push({ tier: 2, beneficiary_id: buyerNode.grandparent_id, commission_amount: amount });
     }
@@ -67,7 +68,7 @@ function calculateCommissions(
 
   // Tier 3 -- great-grandparent
   if (buyerNode.great_grandparent_id) {
-    const amount = Math.floor(orderAmount * rates.tier3 / 100);
+    const amount = Math.round(orderAmount * rates.tier3 / 100);
     if (amount > 0) {
       commissions.push({ tier: 3, beneficiary_id: buyerNode.great_grandparent_id, commission_amount: amount });
     }
@@ -99,8 +100,8 @@ describe('Multi-tier referral commission', () => {
       expect(result.find(c => c.tier === 1)!.commission_amount).toBe(5_000);
     });
 
-    it('uses Math.floor (rounds down) for non-integer results', () => {
-      // 33,333 * 10 / 100 = 3333.3 => floor => 3333
+    it('uses Math.round for non-integer results', () => {
+      // 33,333 * 10 / 100 = 3333.3 => round => 3333
       const result = calculateCommissions(fullNode, 33_333);
       expect(result.find(c => c.tier === 1)!.commission_amount).toBe(3_333);
     });
@@ -120,8 +121,8 @@ describe('Multi-tier referral commission', () => {
       expect(tier2!.commission_amount).toBe(3_000);
     });
 
-    it('uses Math.floor for non-integer results', () => {
-      // 10,001 * 3 / 100 = 300.03 => floor => 300
+    it('uses Math.round for non-integer results', () => {
+      // 10,001 * 3 / 100 = 300.03 => round => 300
       const result = calculateCommissions(fullNode, 10_001);
       expect(result.find(c => c.tier === 2)!.commission_amount).toBe(300);
     });
@@ -141,10 +142,10 @@ describe('Multi-tier referral commission', () => {
       expect(tier3!.commission_amount).toBe(1_000);
     });
 
-    it('uses Math.floor for non-integer results', () => {
-      // 999 * 1 / 100 = 9.99 => floor => 9
+    it('uses Math.round for non-integer results', () => {
+      // 999 * 1 / 100 = 9.99 => round => 10
       const result = calculateCommissions(fullNode, 999);
-      expect(result.find(c => c.tier === 3)!.commission_amount).toBe(9);
+      expect(result.find(c => c.tier === 3)!.commission_amount).toBe(10);
     });
 
     it('assigns to the great_grandparent_id beneficiary', () => {
@@ -201,7 +202,9 @@ describe('Multi-tier referral commission', () => {
       const result = calculateCommissions(fullNode, orderAmount);
       const totalCommission = result.reduce((sum, c) => sum + c.commission_amount, 0);
       const maxRate = (DEFAULT_RATES.tier1 + DEFAULT_RATES.tier2 + DEFAULT_RATES.tier3) / 100;
-      expect(totalCommission).toBeLessThanOrEqual(Math.floor(orderAmount * maxRate));
+      // Math.round may produce a value 1 higher than Math.floor(orderAmount * maxRate) due to
+      // rounding up; allow a small tolerance of the number of tiers.
+      expect(totalCommission).toBeLessThanOrEqual(Math.round(orderAmount * maxRate) + result.length);
     });
   });
 
@@ -230,17 +233,17 @@ describe('Multi-tier referral commission', () => {
       expect(result).toEqual([]);
     });
 
-    it('very small order (< 100) still produces tier 1 commission via floor', () => {
-      // 99 * 10 / 100 = 9.9 => floor => 9
+    it('very small order (< 100) still produces tier 1 commission via round', () => {
+      // 99 * 10 / 100 = 9.9 => round => 10
       const result = calculateCommissions(fullNode, 99);
-      expect(result.find(c => c.tier === 1)!.commission_amount).toBe(9);
+      expect(result.find(c => c.tier === 1)!.commission_amount).toBe(10);
     });
 
-    it('order amount of 1 yields 0 for all tiers (all floor to 0)', () => {
+    it('order amount of 1 yields 0 for all tiers (all round to 0)', () => {
       const result = calculateCommissions(fullNode, 1);
-      // 1 * 10/100 = 0.1 => floor => 0 (filtered out since amount > 0 check)
-      // 1 * 3/100 = 0.03 => floor => 0
-      // 1 * 1/100 = 0.01 => floor => 0
+      // 1 * 10/100 = 0.1 => round => 0 (filtered out since amount > 0 check)
+      // 1 * 3/100 = 0.03 => round => 0
+      // 1 * 1/100 = 0.01 => round => 0
       expect(result).toEqual([]);
     });
 

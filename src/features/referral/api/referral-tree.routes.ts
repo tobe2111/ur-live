@@ -191,8 +191,36 @@ export async function calculateMultiTierCommission(
   )
   if (existing) return [] // already processed
 
+  // HIGH-2: If order already has an affiliate_earnings entry, skip referral commissions
+  // to prevent double-paying commission through both the affiliate and referral systems.
+  try {
+    const affExists = await queryFirst<{ one: number }>(
+      DB,
+      'SELECT 1 as one FROM affiliate_earnings WHERE order_id = ? LIMIT 1',
+      [orderId],
+    ).catch(() => null)
+    if (affExists) {
+      if (import.meta.env?.DEV) console.log('[Referral] Order already has affiliate earning, skipping referral commission')
+      return []
+    }
+  } catch { /* affiliate_earnings table may not exist — proceed */ }
+
   // 3. Get commission rates
   const rates = await getCommissionRates(DB)
+
+  // CRIT-4: Cap total commission rate at platform's max margin to prevent accidental
+  // misconfiguration from paying out more than the platform earns.
+  // NOTE: commission_rate here is stored as PERCENTAGE (e.g., 10 = 10%), not ratio (0.10).
+  // Exception: donations.commission_rate stores as RATIO (0.10).
+  const MAX_TOTAL_COMMISSION_RATE = 15 // platform's max margin (%)
+  const totalRate = (rates.tier1 || 0) + (rates.tier2 || 0) + (rates.tier3 || 0)
+  if (totalRate > MAX_TOTAL_COMMISSION_RATE) {
+    if (import.meta.env?.DEV) console.warn(`[Referral] Total commission ${totalRate}% exceeds max ${MAX_TOTAL_COMMISSION_RATE}%; scaling proportionally`)
+    const scale = MAX_TOTAL_COMMISSION_RATE / totalRate
+    rates.tier1 *= scale
+    rates.tier2 *= scale
+    rates.tier3 *= scale
+  }
 
   // 4. Build commission entries
   const commissions: Array<{
@@ -202,9 +230,11 @@ export async function calculateMultiTierCommission(
     amount: number
   }> = []
 
+  // CRIT-2: standardized to Math.round() across all settlement/commission
+  // calculations to avoid accumulated drift from mixing Math.floor/Math.round.
   // Tier 1 — direct referrer (parent)
   if (buyerNode.parent_id) {
-    const amount = Math.floor(orderAmount * rates.tier1 / 100)
+    const amount = Math.round(orderAmount * rates.tier1 / 100)
     if (amount > 0) {
       commissions.push({ tier: 1, beneficiary_id: buyerNode.parent_id, rate: rates.tier1, amount })
     }
@@ -212,7 +242,7 @@ export async function calculateMultiTierCommission(
 
   // Tier 2 — referrer's referrer (grandparent)
   if (buyerNode.grandparent_id) {
-    const amount = Math.floor(orderAmount * rates.tier2 / 100)
+    const amount = Math.round(orderAmount * rates.tier2 / 100)
     if (amount > 0) {
       commissions.push({ tier: 2, beneficiary_id: buyerNode.grandparent_id, rate: rates.tier2, amount })
     }
@@ -220,7 +250,7 @@ export async function calculateMultiTierCommission(
 
   // Tier 3 — great-grandparent
   if (buyerNode.great_grandparent_id) {
-    const amount = Math.floor(orderAmount * rates.tier3 / 100)
+    const amount = Math.round(orderAmount * rates.tier3 / 100)
     if (amount > 0) {
       commissions.push({ tier: 3, beneficiary_id: buyerNode.great_grandparent_id, rate: rates.tier3, amount })
     }
@@ -258,14 +288,14 @@ export async function calculateMultiTierCommission(
     )
   }
 
+  // HIGH-3: D1 batch atomicity — do NOT fall back to per-statement execution on
+  // batch failure. Partial commits (some commissions granted, some points granted)
+  // are worse than a full failure we can retry safely.
   try {
     await DB.batch(statements)
   } catch (err) {
-    // Fallback to running statements one-by-one if the batch fails
-    if (import.meta.env?.DEV) console.error('[ReferralTree] Batch commission failed:', err)
-    for (const stmt of statements) {
-      try { await stmt.run() } catch { /* individual statement failure is non-fatal */ }
-    }
+    if (import.meta.env?.DEV) console.error('[ReferralTree] Commission batch failed:', err)
+    throw new Error('Commission write failed')
   }
 
   return commissions.map(c => ({

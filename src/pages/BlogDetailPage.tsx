@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
+import { escapeHtml } from '@/shared/utils/html'
 
 interface BlogPost {
   id: number; slug: string; title: string; summary: string; content: string
@@ -44,10 +45,6 @@ export default function BlogDetailPage() {
   }
 
   const tags: string[] = (() => { try { return JSON.parse(post.tags) } catch { return [] } })()
-
-  function escapeHtml(text: string) {
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-  }
 
   function boldify(text: string) {
     return escapeHtml(text).replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')

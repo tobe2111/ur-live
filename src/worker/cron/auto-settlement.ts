@@ -43,8 +43,13 @@ export async function handleAutoSettlement(env: Env) {
     if (!usedVouchers.results?.length) return;
 
     // Group by seller_id
+    // HIGH-5: skip orphan vouchers (null seller_id would coerce to 0 and merge unrelated orders)
     const sellerGroups: Record<number, any[]> = {};
     for (const v of usedVouchers.results) {
+      if (v.seller_id == null) {
+        if (env.ENVIRONMENT !== 'production') console.warn('[Settlement] Voucher without seller_id:', v.id);
+        continue; // Don't process orphan vouchers
+      }
       const sid = v.seller_id as number;
       if (!sellerGroups[sid]) sellerGroups[sid] = [];
       sellerGroups[sid].push(v);
@@ -54,7 +59,9 @@ export async function handleAutoSettlement(env: Env) {
     for (const [sellerId, vouchers] of Object.entries(sellerGroups)) {
       const totalRevenue = vouchers.reduce((sum: number, v: any) => sum + (v.price || 0), 0);
       const commissionRate = vouchers[0]?.commission_rate ?? platformRate;
-      const commissionAmount = Math.floor(totalRevenue * commissionRate / 100);
+      // CRIT-2: standardized to Math.round() across all settlement calculations
+      // to avoid accumulated drift from mixing Math.floor/Math.round.
+      const commissionAmount = Math.round(totalRevenue * commissionRate / 100);
       const settlementAmount = totalRevenue - commissionAmount;
 
       const result = await DB.prepare(`

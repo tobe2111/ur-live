@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { isKorea } from '@/shared/config/region'
+import { escapeHtml } from '@/shared/utils/html'
 
 interface Restaurant {
   id: number; name: string; restaurant_name: string; restaurant_address: string
@@ -120,11 +121,6 @@ export default function RestaurantMapPage() {
         : ''
 
       // XSS 방지: restaurant_name/discountText 등 외부 데이터는 이스케이프 후 삽입
-      const escapeHtml = (s: string): string => {
-        const d = document.createElement('div')
-        d.textContent = s
-        return d.innerHTML
-      }
       const safeName = escapeHtml(r.restaurant_name || '')
       const safeDiscount = escapeHtml(discountText)
 

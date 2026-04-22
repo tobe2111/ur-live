@@ -66,6 +66,85 @@ export async function deleteUserAccount(
       .bind(userId)
       .run();
 
+    // 2-1. Additional privacy/cleanup cascades — wrapped defensively so missing
+    //      tables in any environment don't break the core flow.
+    const userIdStr = String(userId);
+
+    // Privacy: anonymize reviews
+    await db
+      .prepare("UPDATE reviews SET user_id = 'deleted', user_name = '탈퇴회원' WHERE user_id = ?")
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+
+    // Remove follows/subscriptions
+    await db
+      .prepare('DELETE FROM seller_follows WHERE user_id = ?')
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+    await db
+      .prepare('DELETE FROM broadcast_subscriptions WHERE user_id = ?')
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+    await db
+      .prepare('DELETE FROM push_subscriptions WHERE user_id = ?')
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+
+    // Zero out points balance (preserve transaction history for audit)
+    await db
+      .prepare('UPDATE user_points SET balance = 0 WHERE user_id = ?')
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+
+    // Clean coupons
+    await db
+      .prepare('DELETE FROM user_coupons WHERE user_id = ?')
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+
+    // Anonymize donations (keep for accounting but remove PII)
+    await db
+      .prepare("UPDATE donations SET donor_name = '탈퇴회원' WHERE user_id = ?")
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+
+    // Mark referral commissions as inactive (stop future earnings)
+    await db
+      .prepare(
+        "UPDATE referral_commissions SET status = 'cancelled' WHERE user_id = ? AND status = 'granted'"
+      )
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+
+    // Clean view history
+    await db
+      .prepare('DELETE FROM live_stream_views WHERE user_id = ?')
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+    await db
+      .prepare('DELETE FROM product_views WHERE user_id = ?')
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+
+    // Cancel pending youtube growth requests
+    await db
+      .prepare(
+        "UPDATE youtube_growth_requests SET status = 'cancelled' WHERE user_id = ? AND status IN ('pending', 'processing')"
+      )
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+
     // 3. 사용자 정보 익명화
     // NOTE: production users 테이블에는 status, avatar_url, kakao_access_token 컬럼이 없음.
     //       존재하는 컬럼(email, name, phone, firebase_uid)만 업데이트.

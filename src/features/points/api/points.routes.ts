@@ -564,10 +564,18 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   // ✅ IDEMPOTENCY: client-supplied `order_number` doubles as the idempotency
   //   key. If a row already exists with this order_number *for this user*,
   //   return it — DO NOT re-deduct deals or re-reserve stock.
+  //
+  // HIGH-4: Use an exact-match pattern instead of arbitrary prefix `LIKE '${ord}%'`,
+  // which would let an attacker collide with another user's order by guessing a
+  // prefix. Sub-orders follow the format `${order_number}_s{sellerId}`.
   try {
     const existingOrder = await DB.prepare(
-      'SELECT id, order_number, total_amount FROM orders WHERE order_number LIKE ? AND user_id = ? LIMIT 1'
-    ).bind(`${order_number}%`, userId).first<{ id: number; order_number: string; total_amount: number }>();
+      `SELECT id, order_number, total_amount FROM orders
+       WHERE (order_number = ? OR order_number LIKE ?)
+         AND user_id = ?
+       LIMIT 1`
+    ).bind(order_number, `${order_number}_s%`, userId)
+     .first<{ id: number; order_number: string; total_amount: number }>();
     if (existingOrder) {
       const wallet2 = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
         .bind(userId).first<{ balance: number }>();
