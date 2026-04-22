@@ -1056,6 +1056,14 @@ export default function CheckoutPage() {
                 {Math.max(0, totalAmount).toLocaleString()}원
               </span>
             </div>
+            {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시 의무) */}
+            {totalAmount > 0 && (
+              <div className="flex justify-end mt-0.5">
+                <span className="text-[11px] text-gray-500">
+                  부가세 포함 (10% · {Math.round(Math.max(0, totalAmount) - Math.floor(Math.max(0, totalAmount) / 1.1)).toLocaleString()}원)
+                </span>
+              </div>
+            )}
             {totalAmount > 0 && (
               <div className="flex justify-end mt-1">
                 <span className="rounded-md px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold">

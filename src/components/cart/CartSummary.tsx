@@ -43,6 +43,12 @@ export const CartSummary = React.memo(function CartSummary({
         <span className="text-[14px] font-bold text-gray-900">결제예정금액</span>
         <span className="text-[18px] font-bold text-gray-900">{fmt(total)}원</span>
       </div>
+      {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 */}
+      {total > 0 && (
+        <div className="flex justify-end mt-0.5">
+          <span className="text-[10.5px] text-gray-400">부가세 포함 (VAT 10%)</span>
+        </div>
+      )}
     </div>
   )
 })
