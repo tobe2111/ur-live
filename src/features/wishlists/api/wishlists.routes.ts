@@ -280,13 +280,21 @@ wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
 });
 
 // 찜 여부 확인
-wishlistRoutes.get('/check/:userId/:productId', async (c) => {
+// 🛡️ 2026-04-22: 본인만 조회 가능 (다른 유저 wishlist membership 누출 방지)
+wishlistRoutes.get('/check/:userId/:productId', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
   try {
+    const authUser = getCurrentUser(c);
     const userId = c.req.param('userId');
     const productId = c.req.param('productId');
+
+    // 본인 user_id 와 경로 userId 일치 확인 (admin 은 예외적으로 모두 조회 가능)
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    if (userId !== String(authUser.id) && authUser.type !== 'admin') {
+      return c.json({ success: false, error: 'Forbidden — 본인 wishlist 만 조회 가능' }, 403);
+    }
 
     const wishlist = await DB.prepare('SELECT id FROM wishlists WHERE user_id = ? AND product_id = ?')
       .bind(userId, productId)
