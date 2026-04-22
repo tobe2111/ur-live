@@ -114,6 +114,23 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
     return c.json({ error: 'Origin not allowed' }, 403)
   }
 
+  // v28 FIX: WebSocket 인증. 이전에는 origin check만 있어서 익명 접속 가능했음.
+  // token 쿼리파람을 검증하고 user_id를 DO에 전달. 검증 실패 시에도 읽기 전용(view-only)
+  // 으로 허용하되, 채팅/브로드캐스트는 DO에서 user_id 유무로 차단.
+  const tokenFromQuery = c.req.query('token')
+  let authenticatedUserId: string | null = null
+  if (tokenFromQuery && c.env.JWT_SECRET) {
+    try {
+      const { verify } = await import('hono/jwt')
+      const payload = await verify(tokenFromQuery, c.env.JWT_SECRET, 'HS256') as any
+      if (payload && (payload.sub || payload.user_id || payload.id)) {
+        authenticatedUserId = String(payload.sub || payload.user_id || payload.id)
+      }
+    } catch {
+      // 토큰 무효 — 익명으로 처리 (view-only)
+    }
+  }
+
   if (!c.env.LIVE_STREAM) {
     return c.json({ error: 'Real-time service unavailable', fallback: 'sse' }, 503)
   }
@@ -121,8 +138,19 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
   try {
     const doId = c.env.LIVE_STREAM.idFromName(liveId)
     const stub = c.env.LIVE_STREAM.get(doId)
-    // Cast to any to avoid Cloudflare types header mismatch between hono and workers-types
-    return stub.fetch(c.req.raw as any) as any
+    // Forward authenticated user_id via custom header (DO가 신뢰할 수 있음)
+    const headers = new Headers(c.req.raw.headers)
+    if (authenticatedUserId) {
+      headers.set('x-auth-user-id', authenticatedUserId)
+    } else {
+      headers.delete('x-auth-user-id') // 클라이언트가 직접 보낸 값 제거
+    }
+    const forwardedReq = new Request(c.req.raw.url, {
+      method: c.req.raw.method,
+      headers,
+      body: c.req.raw.body,
+    })
+    return stub.fetch(forwardedReq as any) as any
   } catch (err) {
     console.error('[WS] Durable Object proxy failed:', err)
     return c.json({ error: 'WebSocket connection failed', fallback: 'sse' }, 503)
