@@ -21,6 +21,7 @@ import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
 import { stripeRouter } from './routes/stripe.routes';
 import { sellersRouter } from './routes/seller.routes';
+import { emailRoutes } from '../features/notifications/api/email.routes';
 import { streamsRouter } from './routes/streams.routes';  // ✅ 공개 스트림 라우트
 import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
 import { i18nMiddleware } from './middleware/i18n.middleware';
@@ -569,7 +570,6 @@ app.route('/api/seller/analytics', sellerAnalyticsRoutes);
 app.route('/api/seller/streams', sellerStreamsRoutes);
 
 // Email notifications (global)
-import { emailRoutes } from '../features/notifications/api/email.routes';
 app.route('/api/email', emailRoutes);
 
 // Affiliate marketing
