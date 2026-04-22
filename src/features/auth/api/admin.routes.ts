@@ -68,7 +68,11 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     if (validationErrors.length > 0) {
       return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400);
     }
-    
+
+    // 누락 가능한 컬럼 자동 추가 (idempotent)
+    try { await DB.prepare("ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'").run() } catch { /* already exists */ }
+    try { await DB.prepare("ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1").run() } catch { /* already exists */ }
+
     const admins = await executeQuery<any>(
       DB,
       'SELECT id, username, email, password_hash, name, role, created_at FROM admins WHERE email = ?',
