@@ -1433,7 +1433,9 @@
       "backToLogin": "Volver al inicio de sesión",
       "sending": "Enviando...",
       "submitButton": "Obtener enlace de restablecimiento"
-    }
+    },
+    "hidePassword": "Ocultar contraseña",
+    "showPassword": "Mostrar contraseña"
   },
   "nav": {
     "home": "Inicio",

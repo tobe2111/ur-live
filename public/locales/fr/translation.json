@@ -1433,7 +1433,9 @@
       "backToLogin": "Retour à la connexion",
       "sending": "Envoi en cours...",
       "submitButton": "Recevoir le lien de réinitialisation"
-    }
+    },
+    "hidePassword": "Masquer le mot de passe",
+    "showPassword": "Afficher le mot de passe"
   },
   "nav": {
     "home": "Accueil",

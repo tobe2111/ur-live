@@ -146,7 +146,7 @@ export default function SellerLoginPage() {
                     autoComplete="email"
                     disabled={loading}
                     placeholder="seller@example.com"
-                    aria-label="이메일"
+                    aria-label={t('common.email')}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
                   />
                 </div>
@@ -167,14 +167,14 @@ export default function SellerLoginPage() {
                     autoComplete="current-password"
                     disabled={loading}
                     placeholder={t('seller.passwordPlaceholder')}
-                    aria-label="비밀번호"
+                    aria-label={t('auth.password')}
                     className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw(v => !v)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 보기'}
+                    aria-label={showPw ? t('seller.hidePassword') : t('seller.showPassword')}
                   >
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
