@@ -265,6 +265,11 @@ export interface CreateOrderRequest {
   shipping_phone: string;
   shipping_memo?: string;
   idempotency_key: string;
+  // 🛡️ 2026-04-22: 할인 로직 — 클라이언트가 적용한 쿠폰+포인트 합계
+  // 서버에서 max(0, min(discount, subtotal+shipping)) 검증 후 저장
+  discount_amount?: number;
+  coupon_id?: number | null;  // 적용된 쿠폰 (있으면 use 처리)
+  deal_used?: number;          // 사용한 딜 포인트
 }
 
 export interface CheckoutSession {

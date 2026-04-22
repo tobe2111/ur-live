@@ -68,7 +68,7 @@ export async function getIdTokenFromBackend(
 ): Promise<string | null> {
   if (!featureFlags.backendToken) {
     if (featureFlags.authDebugLogs) {
-      console.log('[AuthAPI] Backend token disabled, using client-side Firebase');
+      if (import.meta.env.DEV) console.log('[AuthAPI] Backend token disabled, using client-side Firebase');
     }
     return null; // Fall back to client-side Firebase
   }
@@ -79,7 +79,7 @@ export async function getIdTokenFromBackend(
   // Check if same request is already in flight
   const lastRequest = requestTracker.get(requestKey);
   if (lastRequest && now - lastRequest < 5000) {
-    console.warn('[AuthAPI] Duplicate request detected, skipping:', requestKey);
+    if (import.meta.env.DEV) console.warn('[AuthAPI] Duplicate request detected, skipping:', requestKey);
     return null;
   }
 
@@ -95,7 +95,7 @@ export async function getIdTokenFromBackend(
     requestTracker.set(requestKey, now);
 
     if (featureFlags.authDebugLogs) {
-      console.log('[AuthAPI] Requesting token from backend for uid:', uid);
+      if (import.meta.env.DEV) console.log('[AuthAPI] Requesting token from backend for uid:', uid);
     }
 
     const controller = new AbortController();
@@ -148,8 +148,8 @@ export async function getIdTokenFromBackend(
     }
 
     if (featureFlags.authDebugLogs) {
-      console.log('[AuthAPI] ✅ Token received from backend:', data.data.token.substring(0, 20) + '...');
-      console.log('[AuthAPI] Token expires at:', new Date(data.data.expiresAt).toISOString());
+      if (import.meta.env.DEV) console.log('[AuthAPI] ✅ Token received from backend:', data.data.token.substring(0, 20) + '...');
+      if (import.meta.env.DEV) console.log('[AuthAPI] Token expires at:', new Date(data.data.expiresAt).toISOString());
     }
 
     // Clear retry count on success
@@ -196,7 +196,7 @@ export async function authFetch<T = any>(
   const requestKey = `${options.method || 'GET'}:${url}`;
 
   // Get token from store
-  const { useAuthStore } = await import('@/client/stores/auth.store');
+  const { useAuthStore } = await import('../../client/stores/auth.store');
   const token = useAuthStore.getState().accessToken;
 
   if (!token) {
@@ -214,7 +214,7 @@ export async function authFetch<T = any>(
 
   try {
     if (featureFlags.authDebugLogs) {
-      console.log('[AuthAPI] Request:', requestKey, 'with token:', token.substring(0, 20) + '...');
+      if (import.meta.env.DEV) console.log('[AuthAPI] Request:', requestKey, 'with token:', token.substring(0, 20) + '...');
     }
 
     const response = await fetch(url, {
@@ -232,13 +232,13 @@ export async function authFetch<T = any>(
     }
 
     if (response.status === 401 && featureFlags.authRetryOn401 && retryCount === 0) {
-      console.warn('[AuthAPI] 401 Unauthorized, attempting token refresh...');
+      if (import.meta.env.DEV) console.warn('[AuthAPI] 401 Unauthorized, attempting token refresh...');
 
       // Increment retry count
       retryTracker.set(requestKey, retryCount + 1);
 
       // Try to refresh token
-      const { useAuthKR } = await import('@/shared/stores/useAuthKR');
+      const { useAuthKR } = await import('../stores/useAuthKR');
       const newToken = await useAuthKR.getState().getIdToken(true); // Force refresh
 
       if (newToken) {
@@ -291,7 +291,7 @@ export async function authFetch<T = any>(
  */
 export function redirectToLogin() {
   if (sessionStorage.getItem('auth_redirect_attempted')) {
-    console.warn('[AuthAPI] Login redirect already attempted this session');
+    if (import.meta.env.DEV) console.warn('[AuthAPI] Login redirect already attempted this session');
     return;
   }
 
