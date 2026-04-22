@@ -338,6 +338,103 @@ app.get('/api/version', async (c) => {
 });
 
 // ============================================================
+// 🔍 Self-Diagnostic Endpoints (2026-04-22)
+// 사용자가 브라우저 콘솔에서 직접 복사해 공유할 수 있는 진단용
+// Dashboard/Logs 접근 없이 '왜 500인지' 찾기 위한 안전한 메타데이터 반환
+// ============================================================
+
+app.get('/api/debug/whoami', async (c) => {
+  const authHeader = c.req.header('Authorization') || '';
+  const hasAuthHeader = authHeader.length > 0;
+  const cookieHeader = c.req.header('Cookie') || '';
+  const hasCookie = cookieHeader.length > 0;
+  const cookieNames = cookieHeader.split(';').map(s => s.split('=')[0].trim()).filter(Boolean);
+
+  // 토큰 앞 20자만 (전체 노출 안 됨)
+  const authPreview = hasAuthHeader ? authHeader.slice(0, 20) + '...' : null;
+
+  // 쿠키 파싱: 세션 쿠키 존재 여부 (값은 노출 안 함)
+  const sessionCookieNames = ['ur_session', 'firebase_token', 'seller_session', 'admin_session'];
+  const presentSessionCookies = sessionCookieNames.filter(n => cookieNames.includes(n));
+
+  // 미들웨어가 아직 안 돌았으므로 requireAuth 없이 수동 토큰 검증만
+  let tokenInfo: any = null;
+  if (hasAuthHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    try {
+      const { verify } = await import('hono/jwt');
+      const payload = await verify(token, c.env.JWT_SECRET, 'HS256');
+      tokenInfo = {
+        valid: true,
+        type: (payload as any).type,
+        sub: (payload as any).sub ? String((payload as any).sub).slice(0, 8) + '...' : null,
+        exp: (payload as any).exp,
+        expired: (payload as any).exp && (payload as any).exp < Math.floor(Date.now() / 1000),
+      };
+    } catch (err: any) {
+      tokenInfo = { valid: false, error: String(err?.message || err).slice(0, 100) };
+    }
+  }
+
+  return c.json({
+    success: true,
+    request: {
+      url: c.req.url,
+      method: c.req.method,
+      origin: c.req.header('Origin') || null,
+      userAgent: (c.req.header('User-Agent') || '').slice(0, 60),
+      cfConnectingIp: c.req.header('CF-Connecting-IP') || null,
+    },
+    auth: {
+      hasAuthHeader,
+      authPreview,
+      hasCookie,
+      cookieNames,
+      presentSessionCookies,
+      tokenInfo,
+    },
+    env: {
+      hasJwtSecret: !!c.env.JWT_SECRET,
+      hasDb: !!c.env.DB,
+      environment: (c.env as any).ENVIRONMENT || 'unknown',
+    },
+  });
+});
+
+// 세션 검증 시도 + 결과 리포트 (인증 경로 어느 스텝에서 실패하는지)
+app.get('/api/debug/auth-trace', async (c) => {
+  const steps: any[] = [];
+  try {
+    const authHeader = c.req.header('Authorization') || '';
+    steps.push({ step: 'headers', authHeaderPresent: !!authHeader });
+
+    if (authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      steps.push({ step: 'bearer-found', length: token.length });
+      try {
+        const { verify } = await import('hono/jwt');
+        const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as any;
+        steps.push({ step: 'jwt-verified', type: payload.type, sub: String(payload.sub).slice(0, 6) + '...' });
+      } catch (e: any) {
+        steps.push({ step: 'jwt-error', error: String(e?.message || e).slice(0, 100) });
+      }
+    }
+
+    // 카카오 세션 쿠키 체크
+    const cookieHeader = c.req.header('Cookie') || '';
+    const urSession = cookieHeader.split(';').map(s => s.trim()).find(c => c.startsWith('ur_session='));
+    if (urSession) {
+      steps.push({ step: 'ur_session-found', length: urSession.length });
+    }
+
+    return c.json({ success: true, trace: steps });
+  } catch (e: any) {
+    steps.push({ step: 'exception', error: String(e?.message || e).slice(0, 200) });
+    return c.json({ success: false, trace: steps });
+  }
+});
+
+// ============================================================
 // API Documentation (OpenAPI / Swagger UI)
 // ============================================================
 
