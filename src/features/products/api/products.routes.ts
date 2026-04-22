@@ -22,6 +22,7 @@ import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { ALLOWED_ORIGINS } from '../../../shared/constants';
 import { invalidateProductCache } from '../../../lib/cache-invalidation';
+import { validateImageUrl } from '../../../worker/utils/validation';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
@@ -250,6 +251,20 @@ productsRoutes.post('/', tightCors(), rateLimit({ action: 'product_create', max:
     }
     data.price = price;
     data.stock_quantity = stock;
+
+    // 🛡️ 2026-04-22: image_url 검증 (javascript:, data:, file://, 내부 IP SSRF 방어)
+    if ((data as any).image_url) {
+      const imgCheck = validateImageUrl((data as any).image_url);
+      if (!imgCheck.valid) {
+        return c.json({ success: false, error: `image_url: ${imgCheck.error}` }, 400);
+      }
+    }
+    if ((data as any).thumbnail_url) {
+      const thCheck = validateImageUrl((data as any).thumbnail_url);
+      if (!thCheck.valid) {
+        return c.json({ success: false, error: `thumbnail_url: ${thCheck.error}` }, 400);
+      }
+    }
 
     // 어드민 전용 엔드포인트이므로 seller_id 는 요청 body 값을 신뢰 (어드민이 명시)
     // 셀러 상품 등록은 별도 POST /api/seller/products 경로 사용

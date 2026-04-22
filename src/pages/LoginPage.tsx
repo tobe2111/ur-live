@@ -74,14 +74,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
 
   // ✅ 무한루프 방지: returnUrl은 마운트 시 1회만 계산 (useRef로 고정)
+  // 🛡️ 2026-04-22: open redirect 방어 — 내부 path 만 허용 (//evil.com, http://evil 차단)
   const returnUrlRef = useRef<string | null>(null)
   if (returnUrlRef.current === null) {
     const _rawReturnUrl = searchParams.get('returnUrl')
       ? decodeURIComponent(searchParams.get('returnUrl')!)
       : sessionStorage.getItem('returnUrl') || '/'
-    returnUrlRef.current = (_rawReturnUrl.startsWith('/login') || _rawReturnUrl.startsWith('/auth/'))
-      ? '/'
-      : _rawReturnUrl
+    const isInternalPath =
+      _rawReturnUrl.startsWith('/') &&
+      !_rawReturnUrl.startsWith('//') &&
+      !_rawReturnUrl.includes('\n') &&
+      !_rawReturnUrl.includes('\t') &&
+      !_rawReturnUrl.startsWith('/login') &&
+      !_rawReturnUrl.startsWith('/auth/')
+    returnUrlRef.current = isInternalPath ? _rawReturnUrl : '/'
   }
   const returnUrl = returnUrlRef.current
   const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))

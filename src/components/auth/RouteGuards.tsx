@@ -156,7 +156,11 @@ export function PublicRoute({
   if (isUserLoggedIn()) {
     const searchParams = new URLSearchParams(location.search)
     const returnUrl = searchParams.get('returnUrl')
-    const destination = returnUrl ? decodeURIComponent(returnUrl) : redirectTo
+    // 🛡️ 2026-04-22: open redirect 방어 — 내부 path 만 허용
+    const raw = returnUrl ? decodeURIComponent(returnUrl) : redirectTo
+    const isInternal =
+      typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') && !raw.includes('\n') && !raw.includes('\t')
+    const destination = isInternal ? raw : redirectTo
     if (DEBUG) if (import.meta.env.DEV) console.log('[PublicRoute] ✅ 이미 로그인됨 →', destination)
     return <Navigate to={destination} replace />
   }

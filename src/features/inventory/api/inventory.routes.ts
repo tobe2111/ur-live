@@ -146,6 +146,12 @@ inventoryRoutes.post('/stock/in', requireAuth(), async (c) => {
     .bind(product_id).first<{ id: number; stock: number; seller_id: number }>();
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
 
+  // 🛡️ 2026-04-22: seller ownership 검증 — 다른 셀러 상품 재고 조작 방어
+  // admin 은 모든 상품 조작 가능.
+  if (user.type !== 'admin' && String(product.seller_id) !== String(user.id)) {
+    return c.json({ success: false, error: '본인 상품만 재고 조작할 수 있습니다' }, 403);
+  }
+
   // 🛡️ 원자적 증가 (lost update race 방지)
   // 기존: SELECT 후 계산해서 UPDATE SET = 절대값 → 두 요청 동시 시 재고 누락
   // 수정: UPDATE SET = stock + ? → DB가 순서대로 처리 (SQLite write lock)
@@ -187,6 +193,11 @@ inventoryRoutes.post('/stock/out', requireAuth(), async (c) => {
     .bind(product_id).first<{ id: number; stock: number; seller_id: number }>();
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
 
+  // 🛡️ 2026-04-22: seller ownership 검증 — 다른 셀러 상품 재고 조작 방어
+  if (user.type !== 'admin' && String(product.seller_id) !== String(user.id)) {
+    return c.json({ success: false, error: '본인 상품만 재고 조작할 수 있습니다' }, 403);
+  }
+
   // 🛡️ 2026-04-22: 원자적 출고 (재고 race condition 방지)
   // 이전: SELECT 후 UPDATE SET = 절대값 → 동시 요청 시 재고 오차
   // 수정: UPDATE SET = stock - ? WHERE stock >= ? → 부족 시 변경 0건 → 에러
@@ -227,6 +238,11 @@ inventoryRoutes.post('/stock/adjust', requireAuth(), async (c) => {
   const product = await DB.prepare('SELECT id, stock, seller_id FROM products WHERE id = ?')
     .bind(product_id).first<{ id: number; stock: number; seller_id: number }>();
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+
+  // 🛡️ 2026-04-22: seller ownership 검증 — 다른 셀러 상품 재고 조정 방어
+  if (user.type !== 'admin' && String(product.seller_id) !== String(user.id)) {
+    return c.json({ success: false, error: '본인 상품만 재고 조정할 수 있습니다' }, 403);
+  }
 
   const diff = new_stock - product.stock;
 

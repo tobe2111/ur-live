@@ -92,6 +92,9 @@ sellersRouter.get('/:id/public', async (c) => {
     // Seller profile changes infrequently — 5 min TTL with 2 min SWR.
     // Key uses the lookup param directly (id/username/slug) so independent
     // callers that hit different keys stay cache-correct.
+    // 🛡️ 2026-04-22: 공개 endpoint — 민감 필드 제외하고 public 필드만 SELECT
+    // 이전: SELECT * 로 bank_account/email/phone/password_hash/business_number 노출
+    const PUBLIC_SELLER_COLUMNS = 'id, username, business_name, profile_image, bio, commission_rate, follower_count, is_verified, created_at';
     const seller = await cacheGet(
       c.env.SESSION_KV,
       `seller:${param}`,
@@ -99,8 +102,8 @@ sellersRouter.get('/:id/public', async (c) => {
         const qb = new QueryBuilder(c.env.DB);
         const isNumeric = /^\d+$/.test(param);
         return isNumeric
-          ? await qb.queryOne('SELECT * FROM sellers WHERE id = ?', [param])
-          : await qb.queryOne('SELECT * FROM sellers WHERE slug = ? OR username = ?', [param, param]);
+          ? await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS} FROM sellers WHERE id = ?`, [param])
+          : await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS} FROM sellers WHERE username = ?`, [param]);
       },
       { ttl: 300, staleWhileRevalidate: 120 }
     );

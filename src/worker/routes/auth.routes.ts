@@ -338,6 +338,8 @@ authRouter.get('/session/health', async (c) => {
           { name: 'kakao-token-info', maxFailures: 5, resetTimeoutMs: 30_000 },
           () => fetch('https://kapi.kakao.com/v1/user/access_token_info', {
             headers: { 'Authorization': `Bearer ${row.kakao_access_token}` },
+            // 🛡️ 2026-04-22: Kakao 느리면 3초 후 중단 (Worker CPU 보호)
+            signal: AbortSignal.timeout(3000),
           }),
           () => new Response(null, { status: 200 }),
         );

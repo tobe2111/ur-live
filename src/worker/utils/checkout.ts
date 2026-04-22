@@ -204,15 +204,19 @@ export async function processCheckout(
     //    Use order_number to link. order_items requires NOT NULL product_name.
     //    order_items column is `price` (not `price_snapshot`).
 
-    // Fetch product names (required NOT NULL column on order_items)
+    // Fetch product names + authoritative prices (required NOT NULL column on order_items)
+    // 🛡️ 2026-04-22: price 는 반드시 DB 에서 가져와서 스냅샷. client 값 신뢰 금지.
     const productIds = products.map(p => p.productId)
     const phs = productIds.map(() => '?').join(',')
     const { results: productRows = [] } = await db
-      .prepare(`SELECT id, name FROM products WHERE id IN (${phs})`)
+      .prepare(`SELECT id, name, price FROM products WHERE id IN (${phs})`)
       .bind(...productIds)
-      .all<{ id: string | number; name: string }>()
+      .all<{ id: string | number; name: string; price: number }>()
     const nameMap = new Map<string, string>(
       productRows.map(p => [String(p.id), String(p.name ?? '')])
+    )
+    const priceMap = new Map<string, number>(
+      productRows.map(p => [String(p.id), Number(p.price ?? 0)])
     )
 
     // Step A: Insert order (id auto-generated). Use order_number for linking.
@@ -247,6 +251,7 @@ export async function processCheckout(
 
     await db.batch([
       // 주문 아이템 생성 (schema: order_id, product_id, product_name [NOT NULL], quantity, price)
+      // 🛡️ price 는 server-side priceMap 에서 가져옴 (client price_snapshot 무시)
       ...products.map((item) =>
         db
           .prepare(
@@ -257,7 +262,7 @@ export async function processCheckout(
             item.productId,
             nameMap.get(String(item.productId)) ?? `Product ${item.productId}`,
             item.quantity,
-            item.price_snapshot ?? 0
+            priceMap.get(String(item.productId)) ?? 0
           )
       ),
     ])

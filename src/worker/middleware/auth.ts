@@ -115,7 +115,11 @@ async function getFirebaseJwkKeys(): Promise<JsonWebKey[]> {
 
   const res = await fetch(
     'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com',
-    { cf: { cacheTtl: 3600, cacheEverything: true } } as RequestInit
+    {
+      cf: { cacheTtl: 3600, cacheEverything: true },
+      // 🛡️ 2026-04-22: Firebase JWK 느리면 5초 후 중단 (auth middleware CPU 보호)
+      signal: AbortSignal.timeout(5000),
+    } as RequestInit
   );
 
   if (!res.ok) {
