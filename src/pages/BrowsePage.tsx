@@ -388,7 +388,7 @@ export default function BrowsePage() {
                   className="block w-full text-left mb-6"
                 >
                   <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '4/3', background: '#F9FAFB' }}>
-                    {hero.image_url && <img src={hero.image_url} alt="" className="w-full h-full object-cover" />}
+                    {hero.image_url && <img src={hero.image_url} alt="" className="w-full h-full object-cover" fetchPriority="high" decoding="async" />}
                     <div className="absolute top-2 left-2 flex gap-1">
                       {heroDiscount > 0 && (
                         <span className="rounded-md px-2 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">-{heroDiscount}%</span>

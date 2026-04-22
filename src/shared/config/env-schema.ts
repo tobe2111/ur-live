@@ -39,7 +39,7 @@ const commonEnvSchema = z.object({
 // ============================================
 const krEnvSchema = commonEnvSchema.extend({
   // Kakao 설정 (KR 필수)
-  VITE_KAKAO_REST_API_KEY: z.string().min(1, 'Kakao REST API Key is required for KR region'),
+  // NOTE: KAKAO_REST_API_KEY는 서버 전용. 프론트는 /auth/kakao/start 경유.
   VITE_KAKAO_JAVASCRIPT_KEY: z.string().min(1, 'Kakao JavaScript Key is required for KR region'),
   VITE_KAKAO_AUTH_URL: z.string().url('Invalid Kakao Auth URL').optional(),
 

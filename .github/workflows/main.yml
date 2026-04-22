@@ -44,7 +44,7 @@ jobs:
           VITE_FIREBASE_MEASUREMENT_ID: G-B1ST2L37CM
           VITE_KAKAO_APP_KEY: 975a2e7f97254b08f15dba4d177a2865
           VITE_KAKAO_JAVASCRIPT_KEY: 975a2e7f97254b08f15dba4d177a2865
-          VITE_KAKAO_REST_API_KEY: 5dd74bccb797640b0efd070467f3bafd
+          # KAKAO_REST_API_KEY는 서버 전용 (wrangler secret). 클라이언트 번들에 주입 금지.
           VITE_TOSS_CLIENT_KEY: live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY
           VITE_SENTRY_DSN: https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488
           VITE_SENTRY_ENVIRONMENT: production
