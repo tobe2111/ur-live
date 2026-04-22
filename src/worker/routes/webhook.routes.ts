@@ -217,13 +217,15 @@ webhookRouter.post('/', async (c) => {
     const tossOrderId = data.orderId;   // This is our order_number
     const paymentKey = data.paymentKey;
 
-    console.log('[WEBHOOK] RECEIVED', {
-      eventType,
-      tossOrderId,
-      paymentKey: paymentKey?.slice(0, 20) + '...',
-      status: data.status,
-      amount: data.totalAmount,
-    });
+    if (import.meta.env.DEV) {
+      console.log('[WEBHOOK] RECEIVED', {
+        eventType,
+        tossOrderId,
+        paymentKey: paymentKey ? paymentKey.slice(0, 8) + '...' : null,
+        status: data.status,
+        amount: data.totalAmount,
+      });
+    }
 
     // 4. Idempotency check - prevent duplicate processing
     const alreadyProcessed = await webhookRepo.isAlreadyProcessed(eventType, tossOrderId);

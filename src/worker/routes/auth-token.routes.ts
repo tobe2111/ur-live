@@ -118,7 +118,9 @@ authTokenRoutes.post('/id-token', async (c) => {
     // Token expires in 55 minutes (5-minute buffer like client cache)
     const expiresAt = Date.now() + (55 * 60 * 1000);
 
-    console.log(`[AuthToken] Generated token for user ${userQuery.id} (${uid})`);
+    if (import.meta.env.DEV) {
+      console.log(`[AuthToken] Generated token for user ${userQuery.id}`);
+    }
 
     return c.json({
       success: true,

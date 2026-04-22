@@ -18,6 +18,18 @@ const scraperProxy = new Hono<{ Bindings: Env }>();
 
 const DEFAULT_SCRAPER_URL = 'http://localhost:3456';
 
+// Strict allowlist to prevent SSRF / internal pivot
+const ALLOWED_PATHS = [
+  '/scrape',
+  '/search',
+  '/health',
+  '/api/status',
+  '/api/scrape',
+  '/api/search',
+  '/api/health',
+];
+const ALLOWED_METHODS = ['GET', 'POST', 'HEAD', 'OPTIONS'];
+
 scraperProxy.all('/*', async (c) => {
   // ── Auth: Bearer 토큰만 허용 (hono/jwt — 서명과 동일 라이브러리) ─────
   const jwtSecret = c.env.JWT_SECRET;
@@ -49,9 +61,26 @@ scraperProxy.all('/*', async (c) => {
     return c.json({ error: '스크래퍼 서버가 설정되지 않았습니다 (SCRAPER_URL 환경변수 필요)' }, 503);
   }
 
+  // Production SCRAPER_URL must be HTTPS (prevent plaintext internal pivots)
+  if ((c.env as any).ENVIRONMENT === 'production' && !String(scraperUrl).startsWith('https://')) {
+    return c.json({ error: 'Scraper URL must be HTTPS in production' }, 500);
+  }
+
   // /api/scraper/api/status → scraperUrl + /api/status
   const subPath = c.req.path.replace(/^\/api\/scraper/, '');
-  const targetUrl = `${scraperUrl}${subPath || '/'}`;
+
+  // Method allowlist
+  if (!ALLOWED_METHODS.includes(c.req.method)) {
+    return c.json({ error: 'Method not allowed' }, 405);
+  }
+
+  // Path allowlist (must start with one of the allowed prefixes)
+  const normalizedPath = subPath || '/';
+  if (!ALLOWED_PATHS.some((p) => normalizedPath === p || normalizedPath.startsWith(p + '/') || normalizedPath.startsWith(p + '?'))) {
+    return c.json({ error: 'Path not allowed' }, 403);
+  }
+
+  const targetUrl = `${scraperUrl}${normalizedPath}`;
 
   // query string 전달
   const qs = c.req.url.split('?')[1];

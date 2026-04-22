@@ -16,18 +16,45 @@ import type { Env } from '../types/env';
 export async function runReconciliation(env: Env): Promise<void> {
   const DB = env.DB;
   const results: Record<string, number | string> = {};
+  const details: Array<{ check: string; found: number; action: string }> = [];
 
-  // ── 1. Fix stuck PENDING orders > 24h → FAILED ──
+  // ── 1. Fix stuck PENDING orders > 24h → CANCELLED ──
+  // ⚠️  SAFETY: Only auto-cancel orders that have NO payment evidence at Toss.
+  //     If `toss_payment_key` (or legacy `payment_key`) is set, the user may
+  //     have actually paid and we just missed the webhook. Those require
+  //     manual review — never auto-cancel (accounting mismatch risk).
   try {
     const { meta } = await DB.prepare(`
       UPDATE orders
-      SET status = 'CANCELLED', cancel_reason = '자동 정리: 24시간 초과 미결제', updated_at = datetime('now')
+      SET status = 'CANCELLED', cancel_reason = '자동 정리: 24시간 초과 미결제 (결제 증거 없음)', updated_at = datetime('now')
       WHERE status = 'PENDING'
         AND created_at < datetime('now', '-24 hours')
+        AND (toss_payment_key IS NULL OR toss_payment_key = '')
+        AND (payment_key IS NULL OR payment_key = '')
     `).run();
     results.stuck_orders_fixed = meta.changes ?? 0;
   } catch (e) {
     results.stuck_orders_error = (e as Error).message;
+  }
+
+  // ── 1b. Surface stuck orders WITH payment_key for manual admin review ──
+  //     Do not auto-cancel — they may have completed at Toss.
+  try {
+    const stuck = await DB.prepare(`
+      SELECT COUNT(*) AS n FROM orders
+      WHERE status = 'PENDING'
+        AND created_at < datetime('now', '-24 hours')
+        AND (
+          (toss_payment_key IS NOT NULL AND toss_payment_key != '')
+          OR (payment_key IS NOT NULL AND payment_key != '')
+        )
+    `).first<{ n: number }>();
+    if (stuck && (stuck.n ?? 0) > 0) {
+      results.stuck_with_payment_key = stuck.n;
+      details.push({ check: 'stuck_with_payment_key', found: stuck.n, action: 'manual_review' });
+    }
+  } catch (e) {
+    results.stuck_with_payment_key_error = (e as Error).message;
   }
 
   // ── 2. Clean orphan order_items (no parent order) ──
@@ -92,4 +119,7 @@ export async function runReconciliation(env: Env): Promise<void> {
 
   // Log summary (visible in Cloudflare Worker logs)
   console.log('[Reconciliation] Completed:', JSON.stringify(results));
+  if (details.length > 0) {
+    console.log('[Reconciliation] Details:', JSON.stringify(details));
+  }
 }

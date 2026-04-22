@@ -119,6 +119,15 @@ export default function RestaurantMapPage() {
         ? `-${Math.round((1 - r.price / r.original_price) * 100)}%`
         : ''
 
+      // XSS 방지: restaurant_name/discountText 등 외부 데이터는 이스케이프 후 삽입
+      const escapeHtml = (s: string): string => {
+        const d = document.createElement('div')
+        d.textContent = s
+        return d.innerHTML
+      }
+      const safeName = escapeHtml(r.restaurant_name || '')
+      const safeDiscount = escapeHtml(discountText)
+
       const content = document.createElement('div')
       content.innerHTML = `
         <div style="
@@ -135,8 +144,8 @@ export default function RestaurantMapPage() {
           transform: translateY(-50%);
           position: relative;
         ">
-          ${r.restaurant_name}
-          ${discountText ? `<span style="color:${selected?.id === r.id ? '#fef08a' : '#ef4444'};margin-left:4px;">${discountText}</span>` : ''}
+          ${safeName}
+          ${safeDiscount ? `<span style="color:${selected?.id === r.id ? '#fef08a' : '#ef4444'};margin-left:4px;">${safeDiscount}</span>` : ''}
           <div style="
             position: absolute;
             bottom: -6px;

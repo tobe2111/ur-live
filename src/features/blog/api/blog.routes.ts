@@ -6,6 +6,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
+import { requireAuth, getCurrentUser } from '../../../worker/middleware/auth'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -43,8 +44,10 @@ app.get('/public', async (c) => {
   const offset = (page - 1) * limit
 
   const where = tag
-    ? `WHERE is_published = 1 AND tags LIKE '%${tag.replace(/'/g, "''")}%'`
+    ? `WHERE is_published = 1 AND tags LIKE ?`
     : 'WHERE is_published = 1'
+
+  const tagBind = tag ? [`%${tag}%`] : []
 
   const [posts, total] = await Promise.all([
     c.env.DB.prepare(`
@@ -52,8 +55,8 @@ app.get('/public', async (c) => {
       FROM blog_posts ${where}
       ORDER BY published_at DESC
       LIMIT ? OFFSET ?
-    `).bind(limit, offset).all(),
-    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM blog_posts ${where}`).first<{ cnt: number }>(),
+    `).bind(...tagBind, limit, offset).all(),
+    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM blog_posts ${where}`).bind(...tagBind).first<{ cnt: number }>(),
   ])
 
   return c.json({
