@@ -27,7 +27,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
             <h3 className="text-lg font-bold text-gray-900">{title}</h3>
             <p className="text-sm text-gray-500 mt-1">{message}</p>
           </div>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} aria-label="공유 프롬프트 닫기" className="p-1 text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -65,7 +65,7 @@ export function ShareBanner({ title, description, link, buttonText, className }:
     <div className={`bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 ${className || ''}`}>
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-bold text-gray-900">{title}</p>
-        <button onClick={() => setDismissed(true)} className="text-gray-400"><X className="w-4 h-4" /></button>
+        <button onClick={() => setDismissed(true)} aria-label="배너 닫기" className="text-gray-400"><X className="w-4 h-4" /></button>
       </div>
       <p className="text-xs text-gray-500 mb-3">{description}</p>
       <KakaoShareButton title={title} description={description} link={link} buttonText={buttonText} />
