@@ -27,9 +27,11 @@ async function ensureLockoutTable(DB: D1Database) {
 }
 
 function lockDurationMs(failureCount: number): number {
-  if (failureCount >= 20) return 24 * 60 * 60 * 1000; // 24h
-  if (failureCount >= 10) return 60 * 60 * 1000;      // 1h
-  if (failureCount >= 5) return 15 * 60 * 1000;       // 15min
+  // 🛡️ 2026-04-22: 정책 완화 (5/10/20 → 10/20/30) — 본인 비번 잘못 입력 시 잠금 너무 빠름.
+  // brute force 방어 효과는 유지 (10회+ 시 잠금 시작).
+  if (failureCount >= 30) return 24 * 60 * 60 * 1000; // 24h
+  if (failureCount >= 20) return 60 * 60 * 1000;      // 1h
+  if (failureCount >= 10) return 15 * 60 * 1000;      // 15min
   return 0;
 }
 
