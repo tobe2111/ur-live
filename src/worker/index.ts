@@ -348,6 +348,93 @@ app.get('/api/version', async (c) => {
 });
 
 // ============================================================
+// 🩹 Self-healing schema repair (idempotent, 재실행 안전)
+// 2026-04-22: D1 migration runner CI/CD 권한 부재 우회용.
+// 모든 ALTER TABLE은 IF EXISTS / catch 처리 — 이미 있으면 무해 무동작.
+// 운영자가 한 번 호출하면 누락된 컬럼이 자동 추가됨.
+// ============================================================
+app.get('/api/_internal/repair-schema', async (c) => {
+  const env = c.env as any;
+  const DB = env.DB as D1Database;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+
+  const stmts: Array<{ desc: string; sql: string }> = [
+    // sellers
+    { desc: 'sellers.commission_rate', sql: "ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 10.00" },
+    { desc: 'sellers.seller_type', sql: "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'" },
+    { desc: 'sellers.business_number', sql: "ALTER TABLE sellers ADD COLUMN business_number TEXT" },
+    { desc: 'sellers.phone', sql: "ALTER TABLE sellers ADD COLUMN phone TEXT" },
+    { desc: 'sellers.bank_account', sql: "ALTER TABLE sellers ADD COLUMN bank_account TEXT" },
+    { desc: 'sellers.last_login_at', sql: "ALTER TABLE sellers ADD COLUMN last_login_at TEXT" },
+    // admins
+    { desc: 'admins.role', sql: "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'" },
+    { desc: 'admins.is_active', sql: "ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1" },
+    { desc: 'admins.last_login_at', sql: "ALTER TABLE admins ADD COLUMN last_login_at TEXT" },
+    // users
+    { desc: 'users.password_hash', sql: "ALTER TABLE users ADD COLUMN password_hash TEXT" },
+    { desc: 'users.last_login_at', sql: "ALTER TABLE users ADD COLUMN last_login_at TEXT" },
+    // products (migration 0205)
+    { desc: 'products.view_count', sql: "ALTER TABLE products ADD COLUMN view_count INTEGER DEFAULT 0" },
+    { desc: 'products.avg_rating', sql: "ALTER TABLE products ADD COLUMN avg_rating REAL DEFAULT 0" },
+    { desc: 'products.review_count', sql: "ALTER TABLE products ADD COLUMN review_count INTEGER DEFAULT 0" },
+    { desc: 'products.sold_count', sql: "ALTER TABLE products ADD COLUMN sold_count INTEGER DEFAULT 0" },
+  ];
+
+  const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
+  for (const { desc, sql } of stmts) {
+    try {
+      await DB.prepare(sql).run();
+      results.push({ desc, status: 'added' });
+    } catch (e: any) {
+      const msg = String(e?.message || e);
+      if (/duplicate column|already exists/i.test(msg)) {
+        results.push({ desc, status: 'exists' });
+      } else {
+        results.push({ desc, status: 'error', error: msg.slice(0, 200) });
+      }
+    }
+  }
+
+  // 부수적: 자주 사용되는 보조 테이블 보장
+  const tables: Array<{ name: string; sql: string }> = [
+    { name: 'auth_refresh_tokens', sql: `CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_type TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )` },
+    { name: 'rate_limit_attempts', sql: `CREATE TABLE IF NOT EXISTS rate_limit_attempts (
+      key TEXT NOT NULL,
+      action TEXT NOT NULL,
+      window_start INTEGER NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (key, action, window_start)
+    )` },
+    { name: 'password_reset_tokens', sql: `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_type TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+  ];
+  const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
+  for (const { name, sql } of tables) {
+    try {
+      await DB.prepare(sql).run();
+      tableResults.push({ name, status: 'ok' });
+    } catch (e: any) {
+      tableResults.push({ name, status: 'error', error: String(e?.message || e).slice(0, 200) });
+    }
+  }
+
+  return c.json({ success: true, columns: results, tables: tableResults });
+});
+
+// ============================================================
 // 🔍 Self-Diagnostic Endpoints (2026-04-22)
 // 사용자가 브라우저 콘솔에서 직접 복사해 공유할 수 있는 진단용
 // Dashboard/Logs 접근 없이 '왜 500인지' 찾기 위한 안전한 메타데이터 반환

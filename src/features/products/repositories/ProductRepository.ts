@@ -85,8 +85,20 @@ export class ProductRepository {
     query += ` ORDER BY ${orderBy} LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
-    const result = await this.db.prepare(query).bind(...params).all<Product>();
-    return result.results || [];
+    try {
+      const result = await this.db.prepare(query).bind(...params).all<Product>();
+      return result.results || [];
+    } catch (err) {
+      // 누락된 컬럼(view_count, avg_rating, review_count, sold_count) 등으로 ranking/popular/rating 정렬 실패 시
+      // → 안전한 기본 정렬(created_at DESC)로 자동 폴백. 사용자에게는 500 대신 결과를 반환.
+      const errMsg = (err as Error).message || '';
+      if (/no such column/i.test(errMsg)) {
+        const fallbackQuery = query.replace(/ORDER BY[\s\S]*?LIMIT/, 'ORDER BY created_at DESC, id DESC LIMIT');
+        const fallback = await this.db.prepare(fallbackQuery).bind(...params).all<Product>();
+        return fallback.results || [];
+      }
+      throw err;
+    }
   }
   
   /**

@@ -155,8 +155,12 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       }, 400);
     }
     
-    // seller_type 컬럼 존재 보장
+    // 누락 가능한 컬럼 자동 추가 (idempotent — 이미 있으면 throw → catch)
     try { await DB.prepare("ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'").run() } catch { /* already exists */ }
+    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 10.00").run() } catch { /* already exists */ }
+    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN business_number TEXT").run() } catch { /* already exists */ }
+    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN phone TEXT").run() } catch { /* already exists */ }
+    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN business_name TEXT").run() } catch { /* already exists */ }
 
     // 1. 이메일로 셀러 조회
     const seller = await DB.prepare(`
