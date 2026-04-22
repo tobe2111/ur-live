@@ -387,18 +387,31 @@ export default function SellerInventoryPage() {
                     </button>
                     <button
                       onClick={() => {
+                        // 🛡️ 2026-04-22: document.write deprecated → DOM 방식
                         const svg = document.querySelector('#barcode-container svg')
                         if (!svg) return
                         const printWin = window.open('', '_blank', 'width=400,height=300')
                         if (!printWin) return
-                        printWin.document.write(`
-                          <html><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif">
-                            <h3 style="margin-bottom:8px">${selectedProduct.name}</h3>
-                            ${new XMLSerializer().serializeToString(svg)}
-                            <p style="margin-top:4px;font-size:12px">${selectedProduct.barcode}</p>
-                          </body></html>
-                        `)
-                        printWin.document.close()
+                        const doc = printWin.document
+                        doc.documentElement.innerHTML = ''
+                        const head = doc.createElement('head')
+                        const title = doc.createElement('title')
+                        title.textContent = selectedProduct.name
+                        head.appendChild(title)
+                        const body = doc.createElement('body')
+                        body.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif'
+                        const h3 = doc.createElement('h3')
+                        h3.textContent = selectedProduct.name
+                        h3.style.marginBottom = '8px'
+                        const svgClone = svg.cloneNode(true) as Element
+                        const p = doc.createElement('p')
+                        p.textContent = selectedProduct.barcode || ''
+                        p.style.cssText = 'margin-top:4px;font-size:12px'
+                        body.appendChild(h3)
+                        body.appendChild(svgClone)
+                        body.appendChild(p)
+                        doc.documentElement.appendChild(head)
+                        doc.documentElement.appendChild(body)
                         printWin.print()
                       }}
                       className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-lg"

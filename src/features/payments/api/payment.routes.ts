@@ -258,7 +258,7 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
     }
 
     // 주문 상태 업데이트 — state machine CAS (이미 CANCELLED이면 false)
-    const { transitionOrderStatus } = await import('@/worker/utils/state-machine');
+    const { transitionOrderStatus } = await import('../../../worker/utils/state-machine');
     const transitioned = await transitionOrderStatus(db, orderData.id as any, 'CANCELLED', {
       extraSets: {
         cancel_reason: cancelReason,

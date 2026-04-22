@@ -1222,6 +1222,8 @@ sellerManagementRoutes.post('/upload-image', cors(), async (c) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `image=${encodeURIComponent(base64)}&name=${encodeURIComponent(safeName)}`,
+      // 🛡️ 2026-04-22: 30s timeout — 큰 이미지 업로드 + imgbb 응답 지연 대비
+      signal: AbortSignal.timeout(30_000),
     });
     const json = await resp.json() as ImgbbResponse;
     if (!json.success) throw new Error(json.error?.message || 'imgbb upload failed');
