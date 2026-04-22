@@ -142,7 +142,12 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     
   } catch (error) {
     console.error('[Admin Login] Error:', error);
-    return c.json({ success: false, error: '로그인 중 오류가 발생했습니다.' }, 500);
+    const errMsg = (error as Error)?.message || String(error);
+    return c.json({
+      success: false,
+      error: '로그인 중 오류가 발생했습니다.',
+      debug: errMsg.slice(0, 300),
+    }, 500);
   }
 });
 
