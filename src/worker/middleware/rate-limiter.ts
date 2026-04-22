@@ -29,6 +29,31 @@ interface RateLimitInfo {
 }
 
 /**
+ * Action names (keyPrefix substrings) that must fail CLOSED if the rate
+ * limiter itself errors out. Brute-force against /login etc. could otherwise
+ * slip through whenever KV has a blip.
+ */
+const AUTH_SENSITIVE_ACTIONS = [
+  'login',
+  'register',
+  'signup',
+  'password_reset',
+  'forgot_password',
+  'admin_login',
+  'seller_login',
+  'agency_login',
+  'kakao_login',
+  'otp',
+  'verify',
+];
+
+function isAuthSensitiveAction(keyPrefix: string | undefined): boolean {
+  if (!keyPrefix) return false;
+  const lower = keyPrefix.toLowerCase();
+  return AUTH_SENSITIVE_ACTIONS.some((a) => lower.includes(a));
+}
+
+/**
  * Rate Limit 티어 정의
  */
 export const RATE_LIMIT_TIERS = {
@@ -65,6 +90,17 @@ export function rateLimiter(config: RateLimitConfig) {
     const kv = (c.env.RATE_LIMIT_KV || c.env.SESSION_KV) as KVNamespace | undefined;
     
     if (!kv) {
+      // Fail CLOSED on auth-sensitive routes: better to 429 a real user
+      // than to let the brute-forcer through while KV is unavailable.
+      if (isAuthSensitiveAction(config.keyPrefix)) {
+        return c.json(
+          {
+            error: 'RATE_LIMIT_UNAVAILABLE',
+            message: '일시적으로 요청이 제한됩니다. 잠시 후 다시 시도해주세요.',
+          },
+          429,
+        );
+      }
       console.warn('[Rate Limiter] KV not available, skipping rate limit');
       return next();
     }
@@ -132,7 +168,17 @@ export function rateLimiter(config: RateLimitConfig) {
       return next();
     } catch (error) {
       console.error('[Rate Limiter] Error:', error);
-      // Rate Limiter 오류 시에도 요청은 통과
+      // Fail CLOSED on auth-sensitive routes (brute-force protection priority).
+      // Fail OPEN elsewhere so a transient KV outage doesn't take the site down.
+      if (isAuthSensitiveAction(config.keyPrefix)) {
+        return c.json(
+          {
+            error: 'RATE_LIMIT_UNAVAILABLE',
+            message: '일시적으로 요청이 제한됩니다. 잠시 후 다시 시도해주세요.',
+          },
+          429,
+        );
+      }
       return next();
     }
   };

@@ -17,6 +17,21 @@
 import type { D1Database } from '@cloudflare/workers-types'
 
 /**
+ * Log ensure-table failures only in DEV so we can diagnose schema drift
+ * during local development. In production we stay silent — these are
+ * best-effort fallbacks and the actual migration should already have run.
+ */
+function logDev(tag: string, err: unknown): void {
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV) {
+      console.warn(`[${tag}] failed:`, err)
+    }
+  } catch {
+    // import.meta unavailable (test env, etc.) — stay silent.
+  }
+}
+
+/**
  * Ensure the `user_points` table exists.
  *
  * Schema mirrors `migrations/0130_add_user_points_system.sql`:
@@ -38,8 +53,9 @@ export async function ensureUserPointsTable(DB: D1Database): Promise<void> {
         updated_at DATETIME DEFAULT (datetime('now'))
       )
     `).run()
-  } catch {
+  } catch (e) {
     // Table already exists or a concurrent CREATE won the race — both fine.
+    logDev('ensureUserPointsTable', e)
   }
 }
 

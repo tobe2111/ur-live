@@ -66,8 +66,11 @@ export async function sendAlert(env: Env, payload: AlertPayload): Promise<void> 
 
   if (!discordUrl && !slackUrl) return;
 
-  const contextStr = payload.context
-    ? '\n```json\n' + JSON.stringify(payload.context, null, 2).slice(0, 800) + '\n```'
+  // ⚠️  Never send raw payload.context to a third-party webhook. It can contain
+  //    tokens, payment keys, cookies, etc. Redact before stringifying.
+  const safeContext = payload.context ? sanitizeContext(payload.context) : undefined;
+  const contextStr = safeContext
+    ? '\n```json\n' + JSON.stringify(safeContext, null, 2).slice(0, 800) + '\n```'
     : '';
 
   try {

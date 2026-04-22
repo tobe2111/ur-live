@@ -77,6 +77,17 @@ app.get('/public/:slug', async (c) => {
   return c.json({ success: true, data: post })
 })
 
+// ── 어드민 전용 가드 (GET 목록/상세 + POST/PUT/DELETE) ─────────
+// 공개 GET /public, /public/:slug 이후의 모든 핸들러에 인증 + admin 체크 적용
+app.use('*', requireAuth())
+app.use('*', async (c, next) => {
+  const user = getCurrentUser(c)
+  if (!user || user.type !== 'admin') {
+    return c.json({ success: false, error: 'Admin only' }, 403)
+  }
+  return next()
+})
+
 // ── 어드민: 전체 목록 ─────────────────────────────────────────
 app.get('/', async (c) => {
   await ensureBlogTable(c.env.DB)

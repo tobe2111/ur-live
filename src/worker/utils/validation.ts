@@ -323,22 +323,33 @@ export function validatePhoneNumber(phone: unknown): string {
 
 /**
  * URL validation
+ *
+ * Rejects URLs whose host resolves by name to an internal/private range
+ * (SSRF defense). Note: still vulnerable to DNS rebinding at fetch time —
+ * callers that actually make outbound fetches should also pin resolved IPs.
  */
 export function validateURL(url: unknown, fieldName: string = 'URL'): string {
   if (typeof url !== 'string') {
     throw new ValidationError(`${fieldName} must be a string`, fieldName, 'INVALID_TYPE');
   }
-  
+
   const trimmed = url.trim();
-  
+
   if (!trimmed) {
     throw new ValidationError(`${fieldName} is required`, fieldName, 'REQUIRED');
   }
-  
+
   try {
-    new URL(trimmed);
+    const u = new URL(trimmed);
+    if (!['http:', 'https:'].includes(u.protocol)) {
+      throw new ValidationError(`Invalid ${fieldName} format`, fieldName, 'INVALID_FORMAT');
+    }
+    if (isPrivateHost(u.hostname)) {
+      throw new ValidationError(`${fieldName} points to a private/internal host`, fieldName, 'PRIVATE_HOST');
+    }
     return trimmed;
-  } catch {
+  } catch (e) {
+    if (e instanceof ValidationError) throw e;
     throw new ValidationError(`Invalid ${fieldName} format`, fieldName, 'INVALID_FORMAT');
   }
 }
@@ -585,9 +596,53 @@ export function validateInteger(
 }
 
 /**
+ * SSRF defense: block URLs that point to localhost, loopback, link-local,
+ * RFC1918 private ranges, cloud metadata endpoints, or other internal hosts.
+ *
+ * NOTE: Hostname-based blocking alone can be bypassed by DNS rebinding. For
+ * true safety on server-side fetches, also pin to resolved IPs or use an
+ * egress proxy. This check is the first line of defense for URLs we store
+ * (avatars, product images) that may later be fetched by us or proxied.
+ */
+export function isPrivateHost(hostname: string): boolean {
+  if (!hostname) return true;
+  const lower = hostname.toLowerCase();
+
+  // Localhost variants
+  if (lower === 'localhost' || lower.endsWith('.localhost')) return true;
+
+  // IPv4 loopback: 127.0.0.0/8
+  if (/^127\./.test(lower)) return true;
+  // IPv4 link-local: 169.254.0.0/16 (includes AWS 169.254.169.254 metadata)
+  if (/^169\.254\./.test(lower)) return true;
+  // IPv4 RFC1918: 10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12
+  if (/^10\./.test(lower)) return true;
+  if (/^192\.168\./.test(lower)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(lower)) return true;
+  // IPv4 0.0.0.0/8
+  if (/^0\./.test(lower)) return true;
+
+  // IPv6 loopback / unspecified / link-local / unique-local
+  if (lower === '::1' || lower === '0:0:0:0:0:0:0:1') return true;
+  if (lower === '::' || lower === '0:0:0:0:0:0:0:0') return true;
+  if (lower.startsWith('fe80:') || lower.startsWith('[fe80:')) return true;
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true;
+  if (lower.startsWith('[fc') || lower.startsWith('[fd')) return true;
+
+  // Cloud metadata endpoints
+  if (lower === 'metadata.google.internal') return true;
+  if (lower === 'metadata') return true;
+  if (lower === 'metadata.goog') return true;
+
+  return false;
+}
+
+/**
  * Validates that a value is an http(s) URL under the allowed length.
  * Empty strings and undefined are treated as "not provided" (valid: true)
  * so callers can use this for optional URL fields.
+ *
+ * Blocks SSRF by rejecting internal/private hostnames.
  */
 export function validateImageUrl(url: unknown): { valid: boolean; error?: string } {
   if (url === undefined || url === null) return { valid: true };
@@ -598,6 +653,9 @@ export function validateImageUrl(url: unknown): { valid: boolean; error?: string
     const u = new URL(url);
     if (!['http:', 'https:'].includes(u.protocol)) {
       return { valid: false, error: 'http/https URL만 허용됩니다.' };
+    }
+    if (isPrivateHost(u.hostname)) {
+      return { valid: false, error: '내부 IP 주소는 허용되지 않습니다.' };
     }
     return { valid: true };
   } catch {
@@ -627,6 +685,7 @@ export function validateUrlSoft(url: unknown): string | null {
   try {
     const u = new URL(url);
     if (!['http:', 'https:'].includes(u.protocol)) return 'URL은 http:// 또는 https://로 시작해야 합니다.';
+    if (isPrivateHost(u.hostname)) return '내부 IP 주소는 허용되지 않습니다.';
     return null;
   } catch {
     return '올바른 URL 형식이 아닙니다.';
