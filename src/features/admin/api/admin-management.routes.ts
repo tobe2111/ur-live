@@ -649,11 +649,15 @@ adminManagementRoutes.delete('/products/:id', cors(), async (c) => {
     const hasOrders = await executeQuery<IdRow>(DB, 'SELECT id FROM order_items WHERE product_id = ? LIMIT 1', [productId]);
     if (hasOrders.length > 0) {
       await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
+      // 🛡️ 2026-04-22: audit log
+      await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0 } });
       return c.json({ success: true, data: { id: productId, soft_deleted: true } });
     }
 
     // 주문 없는 상품만 하드 삭제
     await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
+    // 🛡️ 2026-04-22: audit log
+    await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
 
     return c.json({ success: true, data: { id: productId } });
   } catch (err) {
@@ -2273,6 +2277,14 @@ adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
       return c.json({ success: false, error: '상품 ID와 개수(1-20000)가 필요합니다' }, 400);
     }
 
+    // 🛡️ 2026-04-22: 가짜 리뷰 생성은 중대한 관리 행위 → 감사 로그 필수
+    await writeAuditLog(c, {
+      action: 'generate_fake_reviews',
+      targetType: 'product',
+      targetId: String(product_id),
+      after: { count, avg_rating: avg_rating ?? 4.5, mode: mode ?? 'template' },
+    });
+
     // reviews 테이블 ensure
     try {
       await DB.prepare(`
@@ -2843,7 +2855,7 @@ adminManagementRoutes.get('/analytics/top-products', cors(), async (c) => {
 // 3. Admin Account Management
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { hashPassword } from '@/lib/password';
+import { hashPassword, validatePasswordComplexity } from '@/lib/password';
 
 interface AdminRow {
   id: number;
@@ -2894,6 +2906,12 @@ adminManagementRoutes.post('/admins', cors(), async (c) => {
     }
     if (!['super_admin', 'admin', 'viewer'].includes(role)) {
       return c.json({ success: false, error: '유효하지 않은 역할입니다. super_admin, admin, viewer 중 선택하세요' }, 400);
+    }
+
+    // 🛡️ 2026-04-22: admin 비밀번호 복잡도 검증 (user 와 동일 규칙)
+    const complexity = validatePasswordComplexity(password);
+    if (!complexity.ok) {
+      return c.json({ success: false, error: complexity.error ?? '비밀번호 복잡도 부족' }, 400);
     }
 
     // Check for duplicate email
@@ -3077,8 +3095,10 @@ adminManagementRoutes.post('/admins/:id/reset-password', cors(), async (c) => {
     const adminId = c.req.param('id');
     const { newPassword } = await c.req.json<{ newPassword: string }>();
 
-    if (!newPassword || newPassword.length < 6) {
-      return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다' }, 400);
+    // 🛡️ 2026-04-22: admin 비밀번호도 user 와 동일한 복잡도 규칙 적용
+    const complexity = validatePasswordComplexity(newPassword ?? '');
+    if (!complexity.ok) {
+      return c.json({ success: false, error: complexity.error ?? '비밀번호 복잡도 부족' }, 400);
     }
 
     const rows = await executeQuery<{ id: number }>(DB,

@@ -19,6 +19,9 @@ sellerAnalyticsRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials:
 async function getSellerId(c: any): Promise<number | null> {
   const user = getCurrentUser(c)
   if (!user) return null
+  // 🛡️ 2026-04-22: user.type === 'seller' (또는 admin) 확인 — 이전엔 user 타입도
+  // id 가 sellers 테이블에 존재하면 통과 → 다른 셀러 매출/고객 데이터 열람 가능.
+  if (user.type !== 'seller' && user.type !== 'admin') return null
   const seller = await c.env.DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(String(user.id)).first() as { id: number } | null
   return seller?.id ?? null
 }
