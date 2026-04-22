@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
-import { handleApiError, showErrorToast } from '@/lib/errorHandler'
+import { handleApiError, showErrorToast, getUserFriendlyError } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight, Store, CreditCard, Smartphone, Wallet } from 'lucide-react'
 import { getUserIdSync } from '@/utils/auth'
@@ -748,7 +748,7 @@ export default function CheckoutPage() {
                       } else {
                         toast.error(res.data.error)
                       }
-                    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : '쿠폰 적용 실패') }
+                    } catch (err: unknown) { toast.error(getUserFriendlyError(err, '쿠폰 적용 실패')) }
                   }}
                   className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-lg shrink-0"
                 >
@@ -851,7 +851,7 @@ export default function CheckoutPage() {
                         navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
                       }
                       else toast.error(res.data.error || '결제 실패')
-                    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : '딜 결제 실패') }
+                    } catch (err: unknown) { toast.error(getUserFriendlyError(err, '딜 결제 실패')) }
                     finally { setPayingWithDeals(false) }
                   }}
                   disabled={payingWithDeals || !selectedAddress}

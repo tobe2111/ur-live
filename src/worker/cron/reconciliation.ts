@@ -37,21 +37,62 @@ export async function runReconciliation(env: Env): Promise<void> {
     results.stuck_orders_error = (e as Error).message;
   }
 
-  // ── 1b. Surface stuck orders WITH payment_key for manual admin review ──
-  //     Do not auto-cancel — they may have completed at Toss.
+  // ── 1b. Auto-reconcile orders WITH payment_key via Toss API ─────────────
+  //     For orders stuck PENDING > 1 hour with a payment_key, query Toss
+  //     directly. If Toss says DONE, our DB missed the webhook → fix it.
+  //     Anything we can't resolve automatically is surfaced for manual review.
   try {
     const stuck = await DB.prepare(`
-      SELECT COUNT(*) AS n FROM orders
+      SELECT id, order_number, toss_payment_key, total_amount
+      FROM orders
       WHERE status = 'PENDING'
-        AND created_at < datetime('now', '-24 hours')
-        AND (
-          (toss_payment_key IS NOT NULL AND toss_payment_key != '')
-          OR (payment_key IS NOT NULL AND payment_key != '')
-        )
-    `).first<{ n: number }>();
-    if (stuck && (stuck.n ?? 0) > 0) {
-      results.stuck_with_payment_key = stuck.n;
-      details.push({ check: 'stuck_with_payment_key', found: stuck.n, action: 'manual_review' });
+        AND created_at < datetime('now', '-1 hour')
+        AND toss_payment_key IS NOT NULL
+        AND toss_payment_key != ''
+      LIMIT 50
+    `).all<{ id: string | number; order_number: string; toss_payment_key: string; total_amount: number }>();
+
+    let autoReconciled = 0;
+    let stillStuck = 0;
+
+    for (const order of (stuck.results || [])) {
+      if (!env.TOSS_SECRET_KEY) {
+        stillStuck++;
+        continue;
+      }
+      try {
+        const tossRes = await fetch(
+          `https://api.tosspayments.com/v1/payments/${order.toss_payment_key}`,
+          {
+            headers: { Authorization: `Basic ${btoa(env.TOSS_SECRET_KEY + ':')}` },
+            signal: AbortSignal.timeout(5000),
+          }
+        );
+        if (tossRes.ok) {
+          const tossData = await tossRes.json() as { status?: string };
+          if (tossData.status === 'DONE') {
+            // Toss confirmed but our DB missed it — fix it.
+            await DB.prepare(
+              "UPDATE orders SET status = 'PAID', updated_at = datetime('now') WHERE id = ? AND status = 'PENDING'"
+            ).bind(order.id).run();
+            autoReconciled++;
+            details.push({ check: 'reconciled_paid', found: 1, action: `updated_to_paid:${order.order_number}` });
+          } else {
+            // Toss says not done → leave for manual review.
+            stillStuck++;
+          }
+        } else {
+          stillStuck++;
+        }
+      } catch {
+        stillStuck++;
+      }
+    }
+
+    results.auto_reconciled_paid = autoReconciled;
+    if (stillStuck > 0) {
+      results.stuck_with_payment_key = stillStuck;
+      details.push({ check: 'stuck_with_payment_key', found: stillStuck, action: 'manual_review' });
     }
   } catch (e) {
     results.stuck_with_payment_key_error = (e as Error).message;

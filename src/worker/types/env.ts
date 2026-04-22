@@ -75,6 +75,10 @@ export interface Env {
   INTERNAL_API_TOKEN?: string; // shared secret for internal-only endpoints (cron, commission calc)
 
   // ---- Naver Ad Scraper ----
+  // ⚠️ [LEGAL/PIPA] 크롤러로 수집한 이메일/연락처를 마케팅 목적으로 사용하려면
+  // 정보주체의 명시적 동의가 선행되어야 합니다(개인정보 보호법 제15·22조).
+  // SCRAPER_ENABLED 플래그가 'true'가 아니면 라우트는 503을 반환합니다.
+  SCRAPER_ENABLED?: string; // 'true'일 때만 네이버 광고주 크롤러 활성화
   SCRAPER_URL?: string; // 스크래퍼 서버 URL (dev: http://localhost:3456)
   GITHUB_TOKEN?: string; // GitHub workflow dispatch용 (prod에서 스크래퍼 실행)
   GITHUB_REPO?: string;  // owner/repo 형식 (예: tobe2111/ur-live)

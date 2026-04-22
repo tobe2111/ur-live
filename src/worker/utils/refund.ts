@@ -102,6 +102,11 @@ export async function recordRefundHistory(
 
 /**
  * 통합 환불 처리 로직
+ *
+ * 부분 환불 지원 (v15-2):
+ *   - orders.refunded_amount 누적 검증으로 초과 환불 방지
+ *   - 전액 환불일 때만 status='REFUNDED'로 전환 (부분 환불은 상태 유지)
+ *   - order_refund_history 테이블에 개별 환불 내역 기록
  */
 export async function processRefund(
   db: D1Database,
@@ -110,11 +115,23 @@ export async function processRefund(
   const { orderId, reason, refundAmount, secretKey } = payload
 
   try {
-    // 1. 주문 조회
+    // 1. 주문 조회 (누적 환불 금액 포함)
     const order = await db
-      .prepare('SELECT * FROM orders WHERE id = ?')
+      .prepare(
+        `SELECT id, amount, total_amount, payment_key, toss_payment_key, status,
+                COALESCE(refunded_amount, 0) AS refunded
+         FROM orders WHERE id = ?`
+      )
       .bind(orderId)
-      .first<{ id: string; amount: number; total_amount: number; payment_key: string; toss_payment_key: string; status: string }>()
+      .first<{
+        id: string
+        amount: number
+        total_amount: number
+        payment_key: string
+        toss_payment_key: string
+        status: string
+        refunded: number
+      }>()
 
     if (!order) {
       return { success: false, error: '주문을 찾을 수 없습니다.' }
@@ -130,36 +147,67 @@ export async function processRefund(
       return { success: false, error: '취소된 주문입니다.' }
     }
 
+    // 1-a. 환불 가능 금액 검증
+    const orderAmount = order.total_amount ?? order.amount ?? 0
+    const alreadyRefunded = Number(order.refunded ?? 0)
+    const maxRefundable = Math.max(0, orderAmount - alreadyRefunded)
+    const requested = refundAmount && refundAmount > 0 ? refundAmount : maxRefundable
+
+    if (requested <= 0) {
+      return { success: false, error: '환불 가능 금액이 없습니다.' }
+    }
+
+    if (requested > maxRefundable) {
+      return { success: false, error: `환불 가능 금액: ${maxRefundable}원` }
+    }
+
     // 2. Toss 환불 요청
     const paymentKey = order.toss_payment_key || order.payment_key
     if (!paymentKey) {
       return { success: false, error: '결제 키를 찾을 수 없습니다.' }
     }
 
-    const refundResult = await requestTossRefund(paymentKey, reason, secretKey, refundAmount)
+    const refundResult = await requestTossRefund(paymentKey, reason, secretKey, requested)
     if (!refundResult.success) {
       return { success: false, error: refundResult.error }
     }
 
-    // 4. 주문 상태 업데이트 — state machine로 원자적 CAS
-    //    이미 REFUNDED/CANCELLED인 경우 transition 실패 → 재고 복구도 건너뜀
-    const { transitionOrderStatus } = await import('./state-machine')
-    const transitioned = await transitionOrderStatus(db, orderId, 'REFUNDED', {
-      extraSets: {
-        refund_status: 'completed',
-        refunded_at: new Date().toISOString(),
-      },
-    })
-    if (!transitioned) {
-      return { success: false, error: '이미 환불 처리된 주문이거나 상태 전환이 불가능합니다.' }
+    // 3. 누적 환불 금액 업데이트
+    await db
+      .prepare(
+        'UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + ? WHERE id = ?'
+      )
+      .bind(requested, orderId)
+      .run()
+
+    // 4. 개별 환불 내역 기록 (best-effort)
+    await db
+      .prepare(
+        'INSERT INTO order_refund_history (order_id, amount, reason) VALUES (?, ?, ?)'
+      )
+      .bind(orderId, requested, reason || '')
+      .run()
+      .catch(() => {})
+
+    // 5. 전액 환불일 때만 상태 전환
+    const fullyRefunded = alreadyRefunded + requested >= orderAmount
+    if (fullyRefunded) {
+      const { transitionOrderStatus } = await import('./state-machine')
+      const transitioned = await transitionOrderStatus(db, orderId, 'REFUNDED', {
+        allowedPrev: ['PAID', 'DONE', 'SHIPPING', 'DELIVERED'],
+        extraSets: {
+          refund_status: 'completed',
+          refunded_at: new Date().toISOString(),
+        },
+      })
+      if (transitioned) {
+        // 전액 환불된 경우에만 재고 복구 (이중 복구 방지)
+        await restoreStock(db, orderId)
+      }
     }
 
-    // 3. 재고 복구 (transition이 성공한 경우에만 실행 → 이중 복구 방지)
-    await restoreStock(db, orderId)
-
-    // 5. 환불 내역 기록
-    const orderAmount = order.total_amount ?? order.amount ?? 0
-    await recordRefundHistory(db, orderId, refundAmount || orderAmount, reason)
+    // 6. 레거시 환불 내역 기록 (기존 테이블 유지)
+    await recordRefundHistory(db, orderId, requested, reason).catch(() => {})
 
     return { success: true, refundId: orderId }
   } catch (error) {

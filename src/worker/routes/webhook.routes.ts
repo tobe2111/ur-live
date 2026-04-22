@@ -14,6 +14,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { WebhookEventRepository } from '../repositories/webhook.repository';
 import type { TossWebhookPayload } from '../../shared/types';
 import { arrayBufferToHex } from '../../shared/utils';
+import { sendAlert } from '../utils/alerts';
 
 // ============================================================
 // Order Notification Helper
@@ -243,7 +244,7 @@ webhookRouter.post('/', async (c) => {
     );
 
     // 6. Process by event type
-    switch (eventType) {
+    switch (eventType as string) {
       case 'payment.confirmed':
         await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey);
         break;
@@ -264,9 +265,39 @@ webhookRouter.post('/', async (c) => {
         await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey);
         break;
 
+      case 'payment.partial_canceled':
+        // Reuse cancel logic for partial cancels. Downstream amount tracking
+        // lives in the refund flow; this webhook only records the event.
+        await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
+        break;
+
+      case 'refund_completed':
+        // Main refund is already handled via the /cancel route. Just audit.
+        if (import.meta.env.DEV) console.log('[Webhook] refund_completed:', tossOrderId);
+        await webhookRepo.markSkipped(webhookEventId, 'refund_completed_already_handled');
+        return c.json({ received: true, status: 'audited' }, 200);
+
+      case 'dispute_raised':
+        // CRITICAL — alert ops immediately so manual action can be taken.
+        await sendAlert(c.env, {
+          severity: 'critical',
+          title: '결제 분쟁 발생',
+          message: `주문 ${tossOrderId}에 분쟁 제기됨`,
+          context: { orderNumber: tossOrderId, paymentKey, payload },
+        }).catch(() => {});
+        await webhookRepo.markSkipped(webhookEventId, 'dispute_requires_manual_handling');
+        return c.json({ received: true, status: 'dispute_alerted' }, 200);
+
       default:
+        // Unknown event — alert for investigation.
         if (import.meta.env.DEV) console.log('[WEBHOOK] UNHANDLED_EVENT_TYPE', { eventType });
-        await webhookRepo.markSkipped(webhookEventId);
+        await sendAlert(c.env, {
+          severity: 'warn',
+          title: `알 수 없는 Toss 이벤트: ${eventType}`,
+          message: `${tossOrderId}에 대한 미지원 이벤트 수신`,
+          context: { eventType, orderNumber: tossOrderId },
+        }).catch(() => {});
+        await webhookRepo.markSkipped(webhookEventId, `unknown_event:${eventType}`);
         return c.json({ received: true, status: 'unhandled' }, 200);
     }
 

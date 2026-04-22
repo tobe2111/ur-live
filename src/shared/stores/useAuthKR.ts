@@ -43,7 +43,17 @@ interface AuthKRState {
   getIdToken: (forceRefresh?: boolean) => Promise<string | null>;
 
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  signupWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
+  signupWithEmail: (
+    email: string,
+    password: string,
+    displayName: string,
+    agreements?: {
+      terms_agreed?: boolean;
+      privacy_agreed?: boolean;
+      marketing_agreed?: boolean;
+      age_confirmed?: boolean;
+    }
+  ) => Promise<void>;
   loginWithKakao: () => Promise<void>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -256,7 +266,7 @@ export const useAuthKR = create<AuthKRState>()(
         },
 
         // ── 이메일 회원가입 ────────────────────────────────────────────────────
-        signupWithEmail: async (email, password, displayName) => {
+        signupWithEmail: async (email, password, displayName, agreements) => {
           set({ isLoading: true, error: null });
           try {
             const { createUserWithEmailAndPassword } = await import('@/lib/firebase-auth');
@@ -268,7 +278,13 @@ export const useAuthKR = create<AuthKRState>()(
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${await user.getIdToken()}`,
               },
-              body: JSON.stringify({ displayName }),
+              body: JSON.stringify({
+                displayName,
+                terms_agreed: agreements?.terms_agreed === true,
+                privacy_agreed: agreements?.privacy_agreed === true,
+                marketing_agreed: agreements?.marketing_agreed === true,
+                age_confirmed: agreements?.age_confirmed === true,
+              }),
             }).catch(() => {});
 
             safeSetUserType();

@@ -13,6 +13,7 @@
  */
 
 import { withCircuitBreaker } from '../worker/utils/circuit-breaker'
+import type { D1Database } from '@cloudflare/workers-types'
 
 interface SendEmailParams {
   to: string
@@ -22,24 +23,50 @@ interface SendEmailParams {
 }
 
 /**
+ * Mask an email for log output: "foo@bar.com" → "f**@bar.com"
+ */
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@')
+  if (!local || !domain) return '***'
+  return `${local[0] ?? '*'}**@${domain}`
+}
+
+/**
  * Send email using Resend API
- * 
+ *
  * @param params - Email parameters (to, subject, html, from)
  * @param apiKey - Resend API key
  * @param defaultFrom - Default FROM address (optional, falls back to onboarding@resend.dev)
+ * @param db - Optional D1 binding. When provided, checks email_suppressions
+ *             (populated by the Resend bounce webhook) and skips suppressed
+ *             addresses to avoid damaging sender reputation.
  */
 export async function sendEmail(
-  params: SendEmailParams, 
-  apiKey: string, 
-  defaultFrom?: string
+  params: SendEmailParams,
+  apiKey: string,
+  defaultFrom?: string,
+  db?: D1Database
 ): Promise<{ success: boolean; error?: string }> {
   // Priority: 1) params.from, 2) defaultFrom (env var), 3) fallback
   const fromAddress = params.from || defaultFrom || '리스터코퍼레이션 <onboarding@resend.dev>'
   const { to, subject, html } = params
-  
+
   if (!apiKey) {
     console.warn('[Email] RESEND_API_KEY not configured, skipping email')
     return { success: false, error: 'API key not configured' }
+  }
+
+  // v15-5: Skip suppressed addresses (bounce / spam complaint)
+  if (db) {
+    const suppressed = await db
+      .prepare('SELECT 1 FROM email_suppressions WHERE email = ?')
+      .bind(to)
+      .first()
+      .catch(() => null)
+    if (suppressed) {
+      if (import.meta.env.DEV) console.warn('[Email] Skipping suppressed:', maskEmail(to))
+      return { success: false, error: 'suppressed' }
+    }
   }
   
   try {

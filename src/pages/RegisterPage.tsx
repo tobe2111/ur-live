@@ -33,7 +33,12 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: ''
   })
-  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  // 법적 동의 분리 (PIPA): 이용약관 / 개인정보처리방침은 필수, 마케팅은 선택
+  const [termsAgreed, setTermsAgreed] = useState(false)
+  const [privacyAgreed, setPrivacyAgreed] = useState(false)
+  const [marketingAgreed, setMarketingAgreed] = useState(false)
+  // 만 14세 이상 자기신고 (미성년 차단 기본선)
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
 
   useEffect(() => {
     if (isAuthReady && isLoggedIn) {
@@ -60,15 +65,25 @@ export default function RegisterPage() {
       return
     }
 
-    if (!agreedToTerms) {
-      setError('서비스 이용약관 및 개인정보처리방침에 동의해주세요.')
+    if (!termsAgreed || !privacyAgreed) {
+      setError('이용약관과 개인정보처리방침에 동의해주세요.')
+      return
+    }
+
+    if (!ageConfirmed) {
+      setError('만 14세 이상만 가입 가능합니다.')
       return
     }
 
     setLoading(true)
 
     try {
-      await signupWithEmailAction(formData.email, formData.password, formData.name)
+      await signupWithEmailAction(formData.email, formData.password, formData.name, {
+        terms_agreed: true,
+        privacy_agreed: true,
+        marketing_agreed: marketingAgreed,
+        age_confirmed: true,
+      })
       toast.success('회원가입이 완료되었습니다! 로그인해주세요.')
       navigate('/login')
     } catch (err: unknown) {
@@ -205,18 +220,17 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Terms Agreement */}
-          <div className="pt-1">
+          {/* Legal Agreements (PIPA: 필수 동의 분리 + 만 14세 이상) */}
+          <div className="pt-1 space-y-2">
             <label className="flex items-start gap-3 cursor-pointer group">
               <input
                 type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                checked={termsAgreed}
+                onChange={(e) => setTermsAgreed(e.target.checked)}
                 className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
-                required
               />
               <span className="text-[12px] text-[#888] leading-relaxed group-hover:text-[#555] transition-colors">
-                <span className="font-medium text-[#555]">(필수)</span>{' '}
+                <span className="font-medium text-[#555]">[필수]</span>{' '}
                 <Link
                   to="/terms"
                   className="text-[#111] underline underline-offset-4 decoration-1 hover:text-[#555]"
@@ -224,7 +238,19 @@ export default function RegisterPage() {
                 >
                   서비스 이용약관
                 </Link>
-                {' '}및{' '}
+                에 동의합니다.
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={privacyAgreed}
+                onChange={(e) => setPrivacyAgreed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+              />
+              <span className="text-[12px] text-[#888] leading-relaxed group-hover:text-[#555] transition-colors">
+                <span className="font-medium text-[#555]">[필수]</span>{' '}
                 <Link
                   to="/privacy"
                   className="text-[#111] underline underline-offset-4 decoration-1 hover:text-[#555]"
@@ -233,6 +259,32 @@ export default function RegisterPage() {
                   개인정보처리방침
                 </Link>
                 에 동의합니다.
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={ageConfirmed}
+                onChange={(e) => setAgeConfirmed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+              />
+              <span className="text-[12px] text-[#888] leading-relaxed group-hover:text-[#555] transition-colors">
+                <span className="font-medium text-[#555]">[필수]</span>{' '}
+                본인은 만 14세 이상입니다.
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={marketingAgreed}
+                onChange={(e) => setMarketingAgreed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+              />
+              <span className="text-[12px] text-[#888] leading-relaxed group-hover:text-[#555] transition-colors">
+                <span className="text-[#aaa]">[선택]</span>{' '}
+                마케팅 정보 수신에 동의합니다.
               </span>
             </label>
           </div>
