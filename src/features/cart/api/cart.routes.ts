@@ -212,11 +212,11 @@ cartRoutes.post('/', cartRateLimit, requireAuth(), async (c) => {
         : null;
 
     // ── 기본 Validation ───────────────────────────────────────────────────────
-    if (!product_id || product_id < 1) {
-      return c.json(badRequestResponse('product_id is required'), 400);
+    if (!Number.isFinite(product_id) || product_id < 1 || product_id > 1e10) {
+      return c.json(badRequestResponse('product_id is required (valid integer)'), 400);
     }
-    if (!quantity || quantity < 1) {
-      return c.json(badRequestResponse('quantity must be at least 1'), 400);
+    if (!Number.isFinite(quantity) || quantity < 1 || quantity > 10000) {
+      return c.json(badRequestResponse('quantity must be 1~10000'), 400);
     }
 
     const db = c.env.DB;
@@ -336,8 +336,8 @@ cartRoutes.put('/:id', cartRateLimit, requireAuth(), async (c) => {
 
     if (quantity === undefined)
       return c.json(badRequestResponse('quantity is required'), 400);
-    if (quantity < 1)
-      return c.json(badRequestResponse('quantity must be at least 1'), 400);
+    if (!Number.isFinite(quantity) || quantity < 1 || quantity > 10000)
+      return c.json(badRequestResponse('quantity must be 1~10000'), 400);
 
     const db = c.env.DB;
     const userId = await getUserDbId(db, String(user.id));
