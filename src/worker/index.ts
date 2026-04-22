@@ -1543,75 +1543,11 @@ adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // Naver Ad Scraper 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + 기술 불안정
 // 남은 `/api/scraper/d1/*` 엔드포인트도 단계적 제거. scraped_advertisers 테이블은 데이터 보존 목적으로 남김.
 
-// ── (레거시) D1에 저장된 스크래핑 결과 조회 — admin용 read-only ──
-app.get('/api/scraper/d1/emails', async (c) => {
-  const auth = c.req.header('Authorization');
-  if (!auth) return c.json({ error: 'Auth required' }, 401);
-  try {
-    const payload = await import('hono/jwt').then(m => m.verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256'));
-    if ((payload as any).type !== 'admin') return c.json({ error: 'Admin only' }, 403);
-  } catch { return c.json({ error: 'Invalid token' }, 401); }
-
-  const keyword = c.req.query('keyword') || '';
-  const page = parseInt(c.req.query('page') || '1');
-  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200);
-  const offset = (page - 1) * limit;
-
-  try {
-    const where = keyword ? `WHERE keyword LIKE ?` : '';
-    const params = keyword ? [`%${keyword}%`] : [];
-
-    const countRow = await c.env.DB.prepare(`SELECT COUNT(*) as total FROM scraped_advertisers ${where}`)
-      .bind(...params).first<{ total: number }>();
-
-    const { results } = await c.env.DB.prepare(`
-      SELECT id, keyword, advertiser_name, site_url, email, phone, description, scraped_at, session_name
-      FROM scraped_advertisers ${where}
-      ORDER BY scraped_at DESC LIMIT ? OFFSET ?
-    `).bind(...params, limit, offset).all();
-
-    return c.json({
-      success: true,
-      data: results || [],
-      total: countRow?.total || 0,
-      page, limit,
-    });
-  } catch (e) {
-    return c.json({ success: true, data: [], total: 0, page, limit });
-  }
-});
-
-// /api/scraper/d1/trigger 제거 (workflow 삭제됨)
-
-app.get('/api/scraper/d1/stats', async (c) => {
-  const auth = c.req.header('Authorization');
-  if (!auth) return c.json({ error: 'Auth required' }, 401);
-  try {
-    const payload = await import('hono/jwt').then(m => m.verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256'));
-    if ((payload as any).type !== 'admin') return c.json({ error: 'Admin only' }, 403);
-  } catch { return c.json({ error: 'Invalid token' }, 401); }
-
-  try {
-    const total = await c.env.DB.prepare('SELECT COUNT(*) as c FROM scraped_advertisers').first<{ c: number }>();
-    const withEmail = await c.env.DB.prepare("SELECT COUNT(*) as c FROM scraped_advertisers WHERE email IS NOT NULL AND email != ''").first<{ c: number }>();
-    const uniqueEmails = await c.env.DB.prepare("SELECT COUNT(DISTINCT email) as c FROM scraped_advertisers WHERE email IS NOT NULL AND email != ''").first<{ c: number }>();
-    const keywords = await c.env.DB.prepare('SELECT COUNT(DISTINCT keyword) as c FROM scraped_advertisers').first<{ c: number }>();
-    const latest = await c.env.DB.prepare('SELECT scraped_at FROM scraped_advertisers ORDER BY scraped_at DESC LIMIT 1').first<{ scraped_at: string }>();
-
-    return c.json({
-      success: true,
-      data: {
-        total: total?.c || 0,
-        withEmail: withEmail?.c || 0,
-        uniqueEmails: uniqueEmails?.c || 0,
-        keywords: keywords?.c || 0,
-        latestScrape: latest?.scraped_at || null,
-      },
-    });
-  } catch {
-    return c.json({ success: true, data: { total: 0, withEmail: 0, uniqueEmails: 0, keywords: 0, latestScrape: null } });
-  }
-});
+// 🛡️ 2026-04-22: Legacy scraper endpoint 제거 (법적 리스크 + 보안 위험)
+// - /api/scraper/d1/emails, /api/scraper/d1/stats 모두 제거
+// - 이유: adminApp 미들웨어 체인 (IP whitelist + audit) 을 우회하고 있었음
+// - scraped_advertisers 테이블은 데이터 보존용으로 남겨둠 (직접 SQL 조회 가능)
+// - 스크래핑 기능은 이미 CLAUDE.md 에 따라 제거됨 (PIPA/정보통신망법 리스크)
 
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)

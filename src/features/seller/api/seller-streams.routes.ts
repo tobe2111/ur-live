@@ -208,6 +208,22 @@ sellerStreamsRoutes.post('/', async (c) => {
       }, 400);
     }
 
+    // 🛡️ 2026-04-22: YouTube video_id 형식 검증 (11자 영숫자)
+    // 이전: 임의 문자열 허용 → 악성 ID 삽입, 타 셀러 영상 도용 가능
+    // 수정: YouTube 표준 형식 [a-zA-Z0-9_-]{11} 만 허용
+    if (youtube_video_id && !/^[a-zA-Z0-9_-]{11}$/.test(youtube_video_id)) {
+      return c.json({
+        success: false,
+        error: 'YouTube video ID 형식이 올바르지 않습니다 (11자 영숫자)'
+      }, 400);
+    }
+    if (title.length > 200) {
+      return c.json({ success: false, error: '제목은 200자 이하여야 합니다' }, 400);
+    }
+    if (description && description.length > 2000) {
+      return c.json({ success: false, error: '설명은 2000자 이하여야 합니다' }, 400);
+    }
+
     const db = c.env.DB;
 
     const result = await db.prepare(`
