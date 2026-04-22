@@ -19,6 +19,11 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 const youtubeGrowthRoutes = new Hono<{ Bindings: Env }>();
 youtubeGrowthRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
 
+// SECURITY (HIGH-5): admin-only 엔드포인트는 adminApp 내부 마운트용 별도 라우터로 분리
+// adminApp에서 requireAdmin + IP whitelist + audit log 자동 적용됨
+const youtubeGrowthAdminRoutes = new Hono<{ Bindings: Env }>();
+youtubeGrowthAdminRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+
 const GROWTH_PACKAGES = [
   { subscribers: 100,   price: 20000,   label: '100명 / 20,000원' },
   { subscribers: 500,   price: 45000,   label: '500명 / 45,000원' },
@@ -253,4 +258,53 @@ youtubeGrowthRoutes.put('/:id', requireAuth(), async (c) => {
   return c.json({ success: true, message: '상태가 변경되었습니다' });
 });
 
-export { youtubeGrowthRoutes };
+// ──────────────────────────────────────────────────────────────────────
+// Admin-only routes (mounted under adminApp for IP whitelist + audit log)
+// ──────────────────────────────────────────────────────────────────────
+
+// GET /admin/youtube-growth — 어드민 전체 목록
+youtubeGrowthAdminRoutes.get('/', async (c) => {
+  const { DB } = c.env;
+  await ensureTable(DB);
+
+  const { results } = await DB.prepare(`
+    SELECT r.*, s.name as seller_name, s.business_name
+    FROM youtube_growth_requests r
+    LEFT JOIN sellers s ON r.seller_id = s.id
+    WHERE r.payment_status = 'paid'
+    ORDER BY r.requested_at DESC
+  `).all();
+
+  return c.json({ success: true, data: results ?? [] });
+});
+
+// PUT /admin/youtube-growth/:id — 어드민 상태 변경
+youtubeGrowthAdminRoutes.put('/:id', async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+  const { status, admin_memo } = await c.req.json<{ status: string; admin_memo?: string }>();
+
+  const updates: string[] = ['status = ?'];
+  const params: (string | null)[] = [status];
+
+  if (admin_memo !== undefined) { updates.push('admin_memo = ?'); params.push(admin_memo); }
+  if (status === 'completed') updates.push("completed_at = datetime('now')");
+
+  params.push(id!);
+  await DB.prepare(`UPDATE youtube_growth_requests SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+
+  const request = await DB.prepare('SELECT seller_id FROM youtube_growth_requests WHERE id = ?').bind(id).first<{ seller_id: number }>();
+  if (request) {
+    const statusLabels: Record<string, string> = { processing: '처리 중', completed: '완료', rejected: '거절' };
+    createDashboardNotification(
+      DB, 'seller', String(request.seller_id), 'youtube_growth_update',
+      'YouTube 구독자 늘리기 상태 변경',
+      `상태: ${statusLabels[status] || status}`,
+      '/seller/youtube-growth'
+    ).catch(() => {});
+  }
+
+  return c.json({ success: true, message: '상태가 변경되었습니다' });
+});
+
+export { youtubeGrowthRoutes, youtubeGrowthAdminRoutes };

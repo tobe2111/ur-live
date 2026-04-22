@@ -6,7 +6,16 @@
 
 import type { Context, Next } from 'hono';
 
-// Suspicious UA patterns — headless browsers, CLI tools, scripting libraries
+// Suspicious UA patterns — headless browsers, CLI tools, scripting libraries.
+//
+// ⚠️  Historically we also matched /okhttp/i and /Java\/\d/i, but these are
+//     shipped with legitimate Android apps (including our own native client),
+//     which caused production false positives. They're removed to unblock
+//     real users; if scraper traffic becomes a problem, re-add them scoped
+//     to specific endpoints (not globally) or behind a logging-only rule.
+//
+//     Similarly "Postman" is NOT in this list — developers use it to hit the
+//     public API, and silently 403'ing them breaks integrations.
 const SUSPICIOUS_UA_PATTERNS = [
   /HeadlessChrome/i,
   /PhantomJS/i,
@@ -16,14 +25,12 @@ const SUSPICIOUS_UA_PATTERNS = [
   /python-urllib/i,
   /node-fetch/i,
   /Go-http-client/i,
-  /Java\/\d/i,
   /libwww-perl/i,
   /Wget/i,
   /curl\//i,
   /HTTPie/i,
   /scrapy/i,
   /Apache-HttpClient/i,
-  /okhttp/i,
 ];
 
 // Legitimate bots that should always be allowed through

@@ -622,7 +622,9 @@ adminApp.route('/blog', adminBlogRoutes);
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 app.route('/api/scraper', scraperProxy);  // /api/admin 밖 — adminApp 미들웨어 간섭 없음
-app.route('/api/naver-scraper', naverScraper);  // Worker 직접 크롤링 (브라우저 없음)
+// SECURITY (HIGH-4): naver-scraper는 adminApp 내부로 이동 (requireAdmin + IP whitelist + audit log)
+// 내부 verifyAdmin() 호출도 유지 (defense-in-depth)
+adminApp.route('/naver-scraper', naverScraper);
 
 // ── D1에 저장된 스크래핑 결과 조회 (스크래퍼 서버 없이도 작동) ──
 app.get('/api/scraper/d1/emails', async (c) => {
@@ -801,8 +803,10 @@ import { sectionsRoutes } from '../features/sections/api/sections.routes';
 app.route('/api/sections', sectionsRoutes);
 
 // ── YouTube 구독자 늘리기 ──
-import { youtubeGrowthRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
+import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 app.route('/api/youtube-growth', youtubeGrowthRoutes);
+// SECURITY (HIGH-5): admin 엔드포인트는 adminApp 내부로 별도 마운트 (IP whitelist + audit log)
+adminApp.route('/youtube-growth', youtubeGrowthAdminRoutes);
 
 // ── 대시보드 알림 ──
 import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';

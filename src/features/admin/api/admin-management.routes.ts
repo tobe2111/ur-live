@@ -1198,8 +1198,26 @@ adminManagementRoutes.post('/settlement/batch-complete', cors(), async (c) => {
     const { order_ids } = await c.req.json<{ order_ids: number[] }>();
     if (!Array.isArray(order_ids) || order_ids.length === 0)
       return c.json({ success: false, error: '주문 ID 목록이 필요합니다' }, 400);
-    const settled_at = new Date().toISOString();
+
+    // SECURITY (MED-2): 한 번에 처리 가능 주문 수 제한
+    if (order_ids.length > 1000) {
+      return c.json({ success: false, error: '한 번에 1000건 이하만 처리 가능합니다' }, 400);
+    }
+
+    // SECURITY (MED-2): DELIVERED 상태이고 아직 정산 완료되지 않은 주문만 허용
     const placeholders = order_ids.map(() => '?').join(',');
+    const eligible = await executeQuery<{ id: number }>(DB,
+      `SELECT id FROM orders
+       WHERE id IN (${placeholders})
+         AND status = 'DELIVERED'
+         AND (settlement_status IS NULL OR settlement_status != 'completed')`,
+      order_ids,
+    );
+    if ((eligible?.length ?? 0) !== order_ids.length) {
+      return c.json({ success: false, error: '일부 주문은 정산 대상이 아닙니다 (DELIVERED 상태 + 미정산 주문만 가능)' }, 400);
+    }
+
+    const settled_at = new Date().toISOString();
     await executeRun(DB,
       `UPDATE orders SET settlement_status = 'completed', settled_at = ? WHERE id IN (${placeholders})`,
       [settled_at, ...order_ids]);

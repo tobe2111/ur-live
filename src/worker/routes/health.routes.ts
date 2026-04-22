@@ -17,6 +17,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { listCircuits } from '../utils/circuit-breaker'
+import { requireAuth, getCurrentUser } from '../middleware/auth'
 
 export const healthRoutes = new Hono<{ Bindings: Env }>()
 
@@ -87,10 +88,17 @@ healthRoutes.get('/', async (c) => {
 })
 
 /**
- * Admin-friendly dump of circuit-breaker state.
- * Safe to expose (no secrets) but useful for debugging.
+ * Circuit-breaker state dump — ADMIN ONLY.
+ *
+ * Although it doesn't contain secrets, it exposes internal dependency
+ * names and failure counts that help attackers map our infrastructure.
+ * Locked behind `requireAuth() + admin` check.
  */
-healthRoutes.get('/circuits', (c) => {
+healthRoutes.get('/circuits', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user || user.type !== 'admin') {
+    return c.json({ error: 'forbidden' }, 403)
+  }
   return c.json({
     circuits: listCircuits(),
     timestamp: new Date().toISOString(),
