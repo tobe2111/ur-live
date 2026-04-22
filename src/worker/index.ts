@@ -316,24 +316,34 @@ app.route('/api/health/detailed', healthRoutes);
 // 프론트가 자신의 번들 해시와 비교해서 불일치 시 자동 리로드
 let _cachedBuildVersion: { version: string; fetchedAt: number } | null = null;
 app.get('/api/version', async (c) => {
+  // 공개 secret 존재 여부 boolean — 값 자체는 노출 안 됨. 500 진단용.
+  const env = c.env as any;
+  const secrets = {
+    JWT_SECRET: !!env.JWT_SECRET,
+    REFRESH_TOKEN_SECRET: !!env.REFRESH_TOKEN_SECRET,
+    KAKAO_REST_API_KEY: !!env.KAKAO_REST_API_KEY,
+    FIREBASE_PRIVATE_KEY: !!env.FIREBASE_PRIVATE_KEY,
+    FIREBASE_CLIENT_EMAIL: !!env.FIREBASE_CLIENT_EMAIL,
+    TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
+    DB: !!env.DB,
+  };
   try {
     const now = Date.now();
     if (_cachedBuildVersion && (now - _cachedBuildVersion.fetchedAt) < 60_000) {
-      return c.json({ success: true, version: _cachedBuildVersion.version });
+      return c.json({ success: true, version: _cachedBuildVersion.version, secrets });
     }
 
     const origin = new URL(c.req.url).origin;
     const htmlRes = await fetch(`${origin}/`, { cf: { cacheTtl: 30 } } as RequestInit);
-    if (!htmlRes.ok) return c.json({ success: false, version: null }, 200);
+    if (!htmlRes.ok) return c.json({ success: false, version: null, secrets }, 200);
 
     const html = await htmlRes.text();
-    // index.html 내의 메인 번들 해시 추출: assets/index-XXXXX.js
     const match = html.match(/assets\/(index-[A-Za-z0-9_-]+\.js)/);
     const version = match?.[1] || 'unknown';
     _cachedBuildVersion = { version, fetchedAt: now };
-    return c.json({ success: true, version });
+    return c.json({ success: true, version, secrets });
   } catch {
-    return c.json({ success: false, version: null }, 200);
+    return c.json({ success: false, version: null, secrets }, 200);
   }
 });
 
@@ -345,7 +355,7 @@ app.get('/api/version', async (c) => {
 
 // 배포 검증용 — 현재 worker 빌드가 언제 / 어떤 커밋에서 빌드됐는지 즉시 확인
 // 이 핸들러의 존재 자체가 "최신 배포 반영" 증거
-app.get('/api/debug/build-info', (c) => {
+app.get('/api/debug/build-info', requireAdmin(), (c) => {
   return c.json({
     success: true,
     // 빌드 시점 commit SHA — CI가 BUILD_SHA env로 주입
@@ -359,7 +369,7 @@ app.get('/api/debug/build-info', (c) => {
   });
 });
 
-app.get('/api/debug/whoami', async (c) => {
+app.get('/api/debug/whoami', requireAdmin(), async (c) => {
   const authHeader = c.req.header('Authorization') || '';
   const hasAuthHeader = authHeader.length > 0;
   const cookieHeader = c.req.header('Cookie') || '';
@@ -418,7 +428,7 @@ app.get('/api/debug/whoami', async (c) => {
 });
 
 // 세션 검증 시도 + 결과 리포트 (인증 경로 어느 스텝에서 실패하는지)
-app.get('/api/debug/auth-trace', async (c) => {
+app.get('/api/debug/auth-trace', requireAdmin(), async (c) => {
   const steps: any[] = [];
   try {
     const authHeader = c.req.header('Authorization') || '';
