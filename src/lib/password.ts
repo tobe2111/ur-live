@@ -148,6 +148,19 @@ export async function verifyPassword(
   storedHash: string
 ): Promise<{ valid: boolean; isLegacy: boolean }> {
 
+  // ── bcrypt 검증 ($2a$/$2b$/$2y$ prefix) ───────────────────
+  // 구 admin/seller 계정이 bcrypt로 저장됨 (migrations/0104 등)
+  // bcryptjs는 pure JS라 Worker 런타임 호환
+  if (/^\$2[aby]\$/.test(storedHash)) {
+    try {
+      const bcrypt = await import('bcryptjs');
+      const valid = await bcrypt.compare(password, storedHash);
+      return { valid, isLegacy: true };
+    } catch {
+      return { valid: false, isLegacy: true };
+    }
+  }
+
   // ── PBKDF2 검증 ────────────────────────────────────────────
   if (!isLegacyHash(storedHash)) {
     const parts = storedHash.split('$');
