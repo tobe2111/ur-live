@@ -1684,6 +1684,23 @@ sellerManagementRoutes.post('/alimtalk/send', requireSeller(), async (c) => {
       return c.json({ success: false, error: '템플릿 ID와 수신자 목록은 필수입니다.' }, 400);
     }
 
+    // 🛡️ 2026-04-22: 수신자 수 + 전화번호 형식 검증 (비용 공격 방어)
+    // 이전: 한 번에 10,000명 이상 발송 가능 → 계정 잔액 소진 + 남용
+    // 수정 후: 최대 500명 / 각 전화번호 한국 형식 검증
+    if (recipients.length > 500) {
+      return c.json({ success: false, error: '한 번에 최대 500명까지 발송 가능합니다.' }, 400);
+    }
+    const phoneRegex = /^01[016789][-\s]?\d{3,4}[-\s]?\d{4}$|^\d{10,11}$/;
+    for (const r of recipients) {
+      if (!r?.phone || typeof r.phone !== 'string') {
+        return c.json({ success: false, error: '유효하지 않은 수신자가 있습니다.' }, 400);
+      }
+      const normalized = r.phone.replace(/[-\s]/g, '');
+      if (!phoneRegex.test(normalized) || normalized.length < 10 || normalized.length > 11) {
+        return c.json({ success: false, error: `유효하지 않은 전화번호: ${r.phone.slice(0, 4)}***` }, 400);
+      }
+    }
+
     // 계정 확인
     const account = await DB.prepare(
       `SELECT id, sender_key, balance, status FROM alimtalk_accounts WHERE seller_id = ? LIMIT 1`

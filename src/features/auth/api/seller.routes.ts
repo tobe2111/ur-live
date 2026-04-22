@@ -513,7 +513,7 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
  * Response:
  * - 항상 success: true (이메일 존재 여부 노출 방지)
  */
-sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot_password', max: 5, windowSec: 600 }), async (c) => {
+sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot_password', max: 2, windowSec: 3600 }), async (c) => {
   const { DB, RESEND_API_KEY, RESEND_FROM, FRONTEND_URL } = c.env;
 
   try {

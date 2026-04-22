@@ -466,6 +466,15 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       }, 422);
     }
 
+    // 🛡️ 2026-04-22: 부분 환불 refunded_amount 누적 기록
+    // 이전: Toss 호출 성공해도 DB refunded_amount 업데이트 안 됨 → 이중 환불 가능.
+    // 수정 후: Toss 성공 직후 refunded_amount 누적. 다음 환불 요청은 정확한 잔액 기반 검증.
+    if (body.refund_amount && body.refund_amount > 0) {
+      await c.env.DB.prepare(
+        "UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + ? WHERE id = ?"
+      ).bind(body.refund_amount, body.order_id).run().catch(() => {});
+    }
+
     // DB 상태 업데이트 + 재고 복구
     await orderRepo.updateStatusById(body.order_id, 'CANCELLED', {
       cancel_reason: `[환불요청] ${body.reason}`,

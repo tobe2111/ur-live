@@ -195,7 +195,7 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
 })
 
 // ── POST /forgot-password (공개) ──────────────────────────────
-app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password', max: 5, windowSec: 600 }), async (c) => {
+app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password', max: 2, windowSec: 3600 }), async (c) => {
   const { DB, RESEND_API_KEY, RESEND_FROM, FRONTEND_URL } = c.env
 
   try {
