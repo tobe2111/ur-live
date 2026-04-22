@@ -1,4 +1,3 @@
-import React from 'react'
 import { Eye } from 'lucide-react'
 import { formatViewers } from './LiveUtils'
 import { YouTubeIcon, InstagramIcon } from './LiveIcons'

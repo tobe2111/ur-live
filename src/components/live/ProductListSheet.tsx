@@ -1,4 +1,3 @@
-import React from 'react'
 import { ShoppingBag, X } from 'lucide-react'
 import type { Product, Stream } from './LiveTypes'
 

@@ -3,7 +3,7 @@
  * React 컴포넌트 트리에서 발생한 에러를 포착하고 폴백 UI를 표시합니다.
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
