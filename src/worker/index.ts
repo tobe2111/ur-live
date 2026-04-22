@@ -402,6 +402,74 @@ app.get('/api/health', async (c) => {
 // ⚠️ Mounted under a sub-path so it does NOT shadow the inline GET /api/health above.
 app.route('/api/health/detailed', healthRoutes);
 
+// ============================================================
+// 🚨 BOOTSTRAP: 대시보드 비밀번호 재설정 (2026-04-22 배치 123)
+// POST /api/_bootstrap/reset-dashboard-password
+//
+// 서버 자체의 hashPassword() 함수로 해시를 생성 → verifyPassword() 와 100% 호환.
+// 외부에서 hash 를 만들어 넣었을 때 파라미터 불일치 문제를 근본적으로 회피.
+//
+// 사용법:
+//   curl -X POST https://live.ur-team.com/api/_bootstrap/reset-dashboard-password \
+//     -H "X-Bootstrap-Token: <BOOTSTRAP_TOKEN>" \
+//     -H "Content-Type: application/json" \
+//     -d '{"email":"tobe2111@naver.com","password":"358533aa!!","role":"all"}'
+//
+// 요구사항:
+//   - BOOTSTRAP_TOKEN 을 Cloudflare Pages Dashboard secret 에 세팅 (한 번만)
+//   - role: "admin" | "seller" | "agency" | "all"
+//
+// 보안: token 없으면 404 처럼 위장. rate-limit 적용.
+// ============================================================
+app.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
+  const expected = (c.env as any).BOOTSTRAP_TOKEN as string | undefined;
+  const provided = c.req.header('X-Bootstrap-Token');
+
+  // token 미세팅이거나 불일치 → 404 (엔드포인트 존재 감추기)
+  if (!expected || !provided || expected !== provided) {
+    return c.json({ error: 'Not Found' }, 404);
+  }
+
+  const body = await c.req.json<{ email?: string; password?: string; role?: string }>().catch(() => ({} as any));
+  const { email, password, role = 'all' } = body;
+  if (!email || !password) {
+    return c.json({ success: false, error: 'email, password 필수' }, 400);
+  }
+  if (password.length < 6) {
+    return c.json({ success: false, error: '비밀번호 6자 이상' }, 400);
+  }
+
+  // 서버 자체의 hashPassword() 사용 → verifyPassword 와 100% 호환
+  const { hashPassword } = await import('../lib/password');
+  const hash = await hashPassword(password);
+
+  const DB = c.env.DB;
+  const results: Record<string, { updated: number; status?: string }> = {};
+
+  const targets = role === 'all' ? ['admins', 'sellers', 'agencies'] : [`${role}s`];
+
+  for (const table of targets) {
+    try {
+      // status 도 active 로 재설정 (suspended 된 경우 복구)
+      const activeValue = table === 'sellers' ? 'approved' : 'active';
+      const sql = table === 'sellers'
+        ? `UPDATE ${table} SET password_hash = ?, status = ?, is_active = 1 WHERE email = ?`
+        : `UPDATE ${table} SET password_hash = ?, status = ? WHERE email = ?`;
+      const res = await DB.prepare(sql).bind(hash, activeValue, email).run();
+      results[table] = { updated: res.meta.changes ?? 0, status: activeValue };
+    } catch (e: any) {
+      results[table] = { updated: 0, status: `ERROR: ${e.message}` };
+    }
+  }
+
+  // lockout 도 정리
+  try {
+    await DB.prepare("DELETE FROM account_lockouts").run();
+  } catch {}
+
+  return c.json({ success: true, results, hashLength: hash.length });
+});
+
 // 클라이언트 빌드 버전 확인 — index.html의 스크립트 해시를 서버가 알려줌
 // 프론트가 자신의 번들 해시와 비교해서 불일치 시 자동 리로드
 // ============================================================
