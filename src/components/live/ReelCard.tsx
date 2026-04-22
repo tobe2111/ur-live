@@ -1212,7 +1212,7 @@ export default function ReelCard({
             >
               {/* Product image */}
               {(safeProduct.image_url || safeProduct.image) && (
-                <img src={safeProduct.image_url || safeProduct.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || '상품'} loading="lazy" className="w-12 h-12 rounded-lg object-cover shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-white/60 truncate">지금 소개 중</p>

@@ -548,7 +548,7 @@ export default function ProductDetailPage() {
           <p className="text-[13px] font-bold text-gray-900 mb-3">상세 정보</p>
           {detailImages.length > 0 && (
             <div className="rounded-xl overflow-hidden mb-3" style={{ background: '#F9FAFB' }}>
-              <img src={detailImages[0]} alt={product.name || '상품 상세 이미지'} className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
+              <img src={detailImages[0]} alt={product.name || '상품 상세 이미지'} loading="lazy" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
             </div>
           )}
           {product.long_description && (
