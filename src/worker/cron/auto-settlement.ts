@@ -133,9 +133,16 @@ export async function handleExpiredVoucherRefunds(env: Env) {
     let expireCount = 0;
 
     for (const voucher of expired.results) {
-      // Mark voucher as expired
-      await DB.prepare("UPDATE vouchers SET status = 'expired' WHERE id = ?")
-        .bind(voucher.id).run();
+      // 🛡️ 2026-04-22: Atomic CAS — status 가 'unused' 일 때만 'expired' 로 변경.
+      // 이전: SELECT 후 UPDATE 사이 재실행 시 두 번 환불 가능 (CRITICAL bug).
+      // 수정 후: CAS 성공 (changes=1) 시만 환불. 이미 expired 면 skip.
+      const casResult = await DB.prepare(
+        "UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused'"
+      ).bind(voucher.id).run();
+      if (!casResult.meta?.changes) {
+        // 이미 다른 실행에서 처리됨 — skip
+        continue;
+      }
       expireCount++;
 
       // Refund deal points if paid with deal_points — user_points 테이블 사용

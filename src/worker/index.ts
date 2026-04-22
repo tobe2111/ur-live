@@ -84,6 +84,18 @@ function cacheControl(maxAge: number) {
   };
 }
 
+// 🔒 2026-04-22: 인증 필요 엔드포인트는 CDN 캐싱 금지
+// auth.routes.ts 의 /me, /orders, /cart 등 개인화된 응답이 CDN 에 캐싱되면
+// 다른 유저에게 노출될 수 있음 (계정 탈취와 동급의 정보 유출).
+function privateNoCache() {
+  return async (c: Context, next: Next) => {
+    await next();
+    c.header('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+    c.header('Pragma', 'no-cache');
+    c.header('Vary', 'Authorization, Cookie');
+  };
+}
+
 const app = new Hono<{ Bindings: Env }>();
 
 // ============================================================
@@ -1308,6 +1320,22 @@ app.get('/api/csrf-token', csrfTokenHandler);
 app.use('/api/auth/logout', csrfProtection());
 app.use('/api/auth/profile', csrfProtection());
 app.use('/api/auth/change-password', csrfProtection());
+
+// 🔒 인증 필요 엔드포인트 CDN 캐싱 차단 (개인정보 유출 방지)
+app.use('/api/auth/me', privateNoCache());
+app.use('/api/orders/*', privateNoCache());
+app.use('/api/cart/*', privateNoCache());
+app.use('/api/wishlists/*', privateNoCache());
+app.use('/api/shipping-addresses/*', privateNoCache());
+app.use('/api/points/*', privateNoCache());
+app.use('/api/notifications/*', privateNoCache());
+app.use('/api/account/*', privateNoCache());
+app.use('/api/users/*', privateNoCache());
+app.use('/api/coupons/*', privateNoCache());
+app.use('/api/donations/*', privateNoCache());
+app.use('/api/reviews/*', privateNoCache());
+app.use('/api/returns/*', privateNoCache());
+app.use('/api/referral/*', privateNoCache());
 
 // ============================================================
 // Auth Routes
