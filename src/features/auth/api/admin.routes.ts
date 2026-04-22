@@ -148,7 +148,17 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       console.error('[Admin Login] refresh token persist failed:', e);
     }
 
-    return c.json({
+    // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 (Bearer 병행)
+    let adminCookie = '';
+    try {
+      const { createSessionCookie } = await import('../../../worker/utils/session');
+      adminCookie = await createSessionCookie(
+        admin.id as number, admin.name as string, admin.email as string,
+        null, JWT_SECRET, 'admin',
+      );
+    } catch {}
+
+    const res = c.json({
       success: true,
       data: {
         accessToken: token,
@@ -164,7 +174,9 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       },
       message: 'Login successful'
     });
-    
+    if (adminCookie) res.headers.append('Set-Cookie', adminCookie);
+    return res;
+
   } catch (error) {
     console.error('[Admin Login] Error:', error);
     return c.json({ success: false, error: '로그인 중 오류가 발생했습니다.' }, 500);

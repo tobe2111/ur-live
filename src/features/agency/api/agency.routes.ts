@@ -208,11 +208,23 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
   await clearFailures(c.env.DB, 'agency', String(agency.id))
 
   const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email)
-  return c.json({
+
+  // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 (Bearer 병행)
+  let agencyCookie = ''
+  try {
+    const { createSessionCookie } = await import('../../../worker/utils/session')
+    agencyCookie = await createSessionCookie(
+      agency.id, agency.name || '', agency.email, null, c.env.JWT_SECRET, 'agency',
+    )
+  } catch {}
+
+  const res = c.json({
     success: true,
     token,
     agency: { id: agency.id, name: agency.name, contact_name: agency.contact_name, email: agency.email },
   })
+  if (agencyCookie) res.headers.append('Set-Cookie', agencyCookie)
+  return res
 })
 
 // ── POST /forgot-password (공개) ──────────────────────────────

@@ -338,16 +338,19 @@ export function requireAuth() {
       }
     }
 
-    // ── 2. Try httpOnly session cookie (user login only) ───────────────
+    // ── 2. Try httpOnly session cookies (user, seller, admin, agency) ──
+    // 🛡️ 2026-04-22: Phase 1 — 셀러/어드민도 쿠키 인증 추가 (Bearer 와 병행).
+    // Bearer 없는 경우 쿠키로 fallback → 클라이언트 migration 전에도 보안 강화.
     const cookieHeader = c.req.header('Cookie');
     if (cookieHeader) {
       const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
       if (sessionUser) {
+        const sessionType = sessionUser.type || 'user';
         const user: AuthUser = {
           id: sessionUser.userId,
           email: sessionUser.email,
           name: sessionUser.name,
-          type: 'user',
+          type: sessionType as UserType,
           role: sessionUser.role,
           isDbId: sessionUser.isDbId,
         };
@@ -442,16 +445,17 @@ export function optionalAuth() {
       return next();
     }
 
-    // ── 1. Try httpOnly session cookie (user login) ─────────────────────
+    // ── 1. Try httpOnly session cookies (user/seller/admin/agency) ──────
     const cookieHeader = c.req.header('Cookie');
     if (cookieHeader) {
       const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
       if (sessionUser) {
+        const sessionType = sessionUser.type || 'user';
         const user: AuthUser = {
           id: sessionUser.userId,
           email: sessionUser.email,
           name: sessionUser.name,
-          type: 'user',
+          type: sessionType as UserType,
           role: sessionUser.role,
           isDbId: sessionUser.isDbId,
         };

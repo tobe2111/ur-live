@@ -270,8 +270,24 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       console.error('[Seller Login] refresh token persist failed:', e);
     }
     
+    // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 발급 (기존 Bearer 병행)
+    // 클라이언트 변경 없이 쿠키가 자동으로 브라우저에 저장됨.
+    // Phase 2 에서 클라이언트가 localStorage 대신 쿠키 의존으로 전환 예정.
+    let sellerCookie = '';
+    try {
+      const { createSessionCookie } = await import('../../../worker/utils/session');
+      sellerCookie = await createSessionCookie(
+        seller.id as number,
+        seller.name as string,
+        seller.email as string,
+        null,
+        JWT_SECRET,
+        'seller',
+      );
+    } catch {}
+
     // 5. 응답 반환 (frontend expects accessToken & refreshToken)
-    return c.json({
+    const res = c.json({
       success: true,
       data: {
         accessToken: token,
@@ -289,6 +305,8 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
         }
       }
     });
+    if (sellerCookie) res.headers.append('Set-Cookie', sellerCookie);
+    return res;
     
   } catch (error) {
     console.error('[Seller Login] Error:', error);
