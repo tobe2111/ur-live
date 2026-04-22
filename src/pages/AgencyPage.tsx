@@ -209,7 +209,7 @@ function RevenueTrendChart() {
         const heightPct = b.revenue > 0 ? (b.revenue / (maxVal * 1.1)) * 100 : 0
         // 라이브/공구/제휴 세분화 데이터는 아직 없으므로 단일 바 (그라디언트) 표시
         return (
-          <div key={b.key} className="flex-1 flex flex-col items-center gap-1" title={`${b.key}: ${b.revenue.toLocaleString()}원 / ${b.orders}건`}>
+          <div key={b.key} className="flex-1 flex flex-col items-center gap-1" title={`${b.key}: ${b.revenue.toLocaleString()}${t('common.won')} / ${b.orders}${t('agency.unitCase')}`}>
             <div className="w-full relative" style={{ height: `${Math.max(heightPct, 2)}%` }}>
               <div
                 className="absolute bottom-0 w-full rounded-t-md"
@@ -639,10 +639,10 @@ export default function AgencyPage() {
 
       {/* 3. Quick Actions */}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => navigate('/agency/sellers')} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">+ 셀러 초대</button>
-        <button onClick={() => navigate('/agency/notices')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">공지 발송</button>
-        <button onClick={() => navigate('/agency/compare')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">셀러 비교</button>
-        <button onClick={() => navigate('/agency/targets')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">매출 목표</button>
+        <button onClick={() => navigate('/agency/sellers')} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">+ {t('agency.inviteSeller')}</button>
+        <button onClick={() => navigate('/agency/notices')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">{t('agency.sendNotice')}</button>
+        <button onClick={() => navigate('/agency/compare')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">{t('agency.compareSellers')}</button>
+        <button onClick={() => navigate('/agency/targets')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">{t('agency.revenueGoal')}</button>
       </div>
 
       {/* 4. Invite Link */}
@@ -653,10 +653,10 @@ export default function AgencyPage() {
         {/* Revenue Trend */}
         <div className="rounded-2xl bg-white border border-[#E8EAEE] p-5">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-gray-900">매출 추이 (7일)</h2>
+            <h2 className="text-sm font-bold text-gray-900">{t('agency.revenueTrend7days')}</h2>
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full" style={{ background: '#8B5CF6' }} />
-              <span className="text-[10px] text-gray-500">일일 매출</span>
+              <span className="text-[10px] text-gray-500">{t('agency.dailyRevenue')}</span>
             </div>
           </div>
           <RevenueTrendChart />
@@ -666,22 +666,22 @@ export default function AgencyPage() {
         <div className="space-y-4">
           <div className="bg-white rounded-xl border border-[#E8EAEE] p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-bold text-gray-900">매출 리포트 다운로드</p>
+              <p className="text-sm font-bold text-gray-900">{t('agency.revenueReportDownload')}</p>
             </div>
-            <p className="text-xs text-gray-500 mb-3">셀러별 매출/수수료 CSV 파일</p>
+            <p className="text-xs text-gray-500 mb-3">{t('agency.revenueReportDesc')}</p>
             <div className="flex gap-2">
               {[7, 30, 90].map(d => (
                 <button key={d}
                   onClick={() => downloadCSV(d)}
                   className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">
-                  <Download className="w-3 h-3 inline mr-1" />{d}일
+                  <Download className="w-3 h-3 inline mr-1" />{t('agency.daysShort', { days: d })}
                 </button>
               ))}
             </div>
           </div>
           <div className="bg-white rounded-xl border border-[#E8EAEE] p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-bold text-gray-900">최근 알림</p>
+              <p className="text-sm font-bold text-gray-900">{t('agency.recentNotifications')}</p>
               <Bell className="w-4 h-4 text-gray-400" />
             </div>
             <NotificationList />
@@ -694,12 +694,12 @@ export default function AgencyPage() {
         {/* Seller Ranking */}
         <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">소속 셀러</h2>
+            <h2 className="text-sm font-bold text-gray-900">{t('agency.affiliatedSellers')}</h2>
             <button
               onClick={() => navigate('/agency/sellers')}
               className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
             >
-              전체보기 <ArrowUpRight className="w-3 h-3" />
+              {t('seller.viewAll')} <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
           {loading && sortedSellers.length === 0 ? (
@@ -719,8 +719,8 @@ export default function AgencyPage() {
             </div>
           ) : sortedSellers.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-400">
-              소속 셀러가 없습니다.<br />
-              <span className="text-xs">관리자에게 셀러 배정을 요청하세요.</span>
+              {t('agency.noSellers')}<br />
+              <span className="text-xs">{t('agency.requestAssignment')}</span>
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
@@ -737,8 +737,8 @@ export default function AgencyPage() {
                   </div>
                   <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                     <div className="text-right hidden sm:block">
-                      <p className="text-xs font-semibold text-gray-900">{(s.total_revenue / 10000).toFixed(0)}만원</p>
-                      <p className="text-xs text-gray-400">{s.total_orders}건</p>
+                      <p className="text-xs font-semibold text-gray-900">{(s.total_revenue / 10000).toFixed(0)}{t('agency.manwon')}</p>
+                      <p className="text-xs text-gray-400">{s.total_orders}{t('agency.unitCase')}</p>
                     </div>
                     {s.active_streams > 0 && (
                       <span className="flex items-center gap-1 text-xs bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">
@@ -757,12 +757,12 @@ export default function AgencyPage() {
         {/* Recent Orders */}
         <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">최근 주문</h2>
+            <h2 className="text-sm font-bold text-gray-900">{t('agency.recentOrders')}</h2>
             <button
               onClick={() => navigate('/agency/orders')}
               className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
             >
-              전체보기 <ArrowUpRight className="w-3 h-3" />
+              {t('seller.viewAll')} <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
           {loading && orders.length === 0 ? (
@@ -779,14 +779,14 @@ export default function AgencyPage() {
               ))}
             </div>
           ) : orders.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-400">주문 내역이 없습니다.</div>
+            <div className="p-8 text-center text-sm text-gray-400">{t('agency.noOrders')}</div>
           ) : (
             <div className="divide-y divide-gray-50">
               {orders.map(o => (
                 <div key={o.id} className="flex items-center justify-between px-5 py-3">
                   <div className="min-w-0">
                     <p className="text-xs font-mono text-gray-500">{o.order_number}</p>
-                    <p className="text-sm font-medium text-gray-900">{(o.total_amount).toLocaleString()}원</p>
+                    <p className="text-sm font-medium text-gray-900">{(o.total_amount).toLocaleString()}{t('common.won')}</p>
                     <p className="text-xs text-gray-400">{o.seller_business_name}</p>
                   </div>
                   <div className="ml-3 flex-shrink-0">
@@ -806,12 +806,12 @@ export default function AgencyPage() {
       {liveScheduleItems.length > 0 && (
         <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">진행 중인 라이브</h2>
+            <h2 className="text-sm font-bold text-gray-900">{t('agency.liveInProgress')}</h2>
             <button
               onClick={() => navigate('/agency/streams')}
               className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
             >
-              라이브 현황 <ArrowUpRight className="w-3 h-3" />
+              {t('agency.liveStatus')} <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
           <div className="divide-y divide-gray-50">
@@ -831,7 +831,7 @@ export default function AgencyPage() {
                   onClick={() => navigate('/agency/streams')}
                   className="text-[11px] font-bold text-purple-600 hover:text-purple-700 flex items-center gap-0.5 ml-3 flex-shrink-0"
                 >
-                  보기 <ChevronRight className="w-3 h-3" />
+                  {t('common.preview')} <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
             ))}
