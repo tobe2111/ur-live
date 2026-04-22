@@ -38,8 +38,17 @@ export function validatePasswordComplexity(password: string): { ok: true } | { o
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
   const hasNum = /[0-9]/.test(password);
-  if (!hasUpper || !hasLower || !hasNum) {
-    return { ok: false, error: '비밀번호는 대문자, 소문자, 숫자를 모두 포함해야 합니다.' };
+  // 🛡️ 2026-04-22: 특수문자 필수 (이전엔 대/소/숫자 3 class 만 요구)
+  const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password);
+  if (!hasUpper || !hasLower || !hasNum || !hasSpecial) {
+    return {
+      ok: false,
+      error: '비밀번호는 대문자, 소문자, 숫자, 특수문자를 모두 포함해야 합니다.'
+    };
+  }
+  // 반복 패턴 방어 (예: "Abc123abc123" 같은 뻔한 조합)
+  if (/(.)\1{3,}/.test(password)) {
+    return { ok: false, error: '같은 문자 4회 이상 반복 불가.' };
   }
   return { ok: true };
 }
