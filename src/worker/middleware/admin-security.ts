@@ -37,7 +37,13 @@ export function adminIpWhitelist() {
     const whitelist = rawList.split(',').map(s => s.trim()).filter(Boolean);
     if (whitelist.length === 0) return next();
 
-    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || '';
+    // 🛡️ 2026-04-22: Cloudflare 환경에선 CF-Connecting-IP 만 신뢰.
+    // X-Forwarded-For 는 클라이언트가 위조 가능 (스푸핑 공격).
+    const ip = c.req.header('CF-Connecting-IP');
+    if (!ip) {
+      console.warn('[Admin] No CF-Connecting-IP header — denying (spoofing prevention)');
+      return c.json({ success: false, error: 'IP verification failed' }, 403);
+    }
 
     if (!isIpAllowed(ip, whitelist)) {
       console.warn('[Admin] IP blocked:', ip);

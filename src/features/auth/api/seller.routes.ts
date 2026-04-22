@@ -646,6 +646,12 @@ sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_p
     // 토큰 삭제 (단일 사용)
     await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(() => {});
 
+    // 🛡️ 2026-04-22: 비번 변경 시 기존 refresh token 전부 revoke.
+    // 탈취된 토큰 유지 문제 방지 — 비번을 바꿨는데도 공격자가 기존 토큰으로 접근 가능하던 버그.
+    await DB.prepare(
+      "DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?"
+    ).bind(row.user_id).run().catch(() => {});
+
     return c.json({
       success: true,
       message: '비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.'

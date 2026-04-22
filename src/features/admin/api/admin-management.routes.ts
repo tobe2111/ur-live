@@ -3070,6 +3070,11 @@ adminManagementRoutes.post('/admins/:id/reset-password', cors(), async (c) => {
     const passwordHash = await hashPassword(newPassword);
     await executeRun(DB, `UPDATE admins SET password_hash = ? WHERE id = ?`, [passwordHash, adminId]);
 
+    // 🛡️ 2026-04-22: 비번 변경 시 기존 refresh token 전부 revoke
+    await DB.prepare(
+      "DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ?"
+    ).bind(Number(adminId)).run().catch(() => {});
+
     await writeAuditLog(c, {
       action: 'reset_admin_password',
       targetType: 'admin',

@@ -16,6 +16,7 @@ import { cors } from 'hono/cors';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { requireAdmin } from '@/worker/middleware/auth';
 import { validateImageUrl } from '@/worker/utils/validation';
+import { invalidateBannerCache } from '../../../lib/cache-invalidation';
 import type { Env } from '@/worker/types/env';
 
 export const adminBannersRoutes = new Hono<{ Bindings: Env }>();
@@ -61,6 +62,7 @@ adminBannersRoutes.post('/', cors(), async (c) => {
        is_active !== undefined ? (is_active ? 1 : 0) : 1,
        display_order || 0, start_date || null, end_date || null]
     );
+    c.executionCtx.waitUntil(invalidateBannerCache());
     return c.json({ success: true, data: { id: result.meta.last_row_id, title } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -93,6 +95,7 @@ adminBannersRoutes.put('/:id', cors(), async (c) => {
        is_active !== undefined ? (is_active ? 1 : 0) : 1,
        display_order || 0, start_date || null, end_date || null, bannerId]
     );
+    c.executionCtx.waitUntil(invalidateBannerCache());
     return c.json({ success: true, data: { id: bannerId } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -107,6 +110,7 @@ adminBannersRoutes.delete('/:id', cors(), async (c) => {
     const rows = await executeQuery<any>(DB, 'SELECT id FROM banners WHERE id = ?', [bannerId]);
     if (rows.length === 0) return c.json({ success: false, error: '배너를 찾을 수 없습니다' }, 404);
     await executeRun(DB, 'DELETE FROM banners WHERE id = ?', [bannerId]);
+    c.executionCtx.waitUntil(invalidateBannerCache());
     return c.json({ success: true, data: { id: bannerId } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);

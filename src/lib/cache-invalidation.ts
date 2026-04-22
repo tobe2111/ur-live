@@ -38,6 +38,13 @@ export async function invalidateProductCache(productId?: number): Promise<void> 
  * 
  * @param streamId 스트림 ID (선택)
  */
+export async function invalidateBannerCache(): Promise<void> {
+  await purgeCache([
+    'https://live.ur-team.com/api/banners',
+    'https://live.ur-team.com/api/banners/active',
+  ]);
+}
+
 export async function invalidateLiveStreamCache(streamId?: number): Promise<void> {
   const cacheKeys: string[] = [];
 
