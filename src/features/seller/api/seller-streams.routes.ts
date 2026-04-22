@@ -686,6 +686,17 @@ sellerStreamsRoutes.post('/:id/change-product', async (c) => {
 
     if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
 
+    // 🛡️ 2026-04-22: 연결할 상품이 본인 상품인지 검증 (다른 셀러 상품 도용 방지)
+    if (productId) {
+      const product = await c.env.DB.prepare(
+        'SELECT seller_id FROM products WHERE id = ?'
+      ).bind(productId).first<{ seller_id: number }>();
+      if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+      if (product.seller_id !== sellerId) {
+        return c.json({ success: false, error: '본인 상품만 연결 가능합니다' }, 403);
+      }
+    }
+
     await c.env.DB.prepare(
       "UPDATE live_streams SET current_product_id = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(productId ?? null, streamId).run();
