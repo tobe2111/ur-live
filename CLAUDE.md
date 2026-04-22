@@ -1,5 +1,13 @@
 # CLAUDE.md — 유어딜 프로젝트 개발 규칙
 
+## 🚨 기술 부채 & 알려진 이슈 (2026-04-22)
+
+**남은 기술 부채는 `TECHNICAL_DEBT.md` 참조.** 특히 주의:
+- 🔴 DB Migration CI 파이프라인 미작동 (D1 권한 없음) → `/api/_internal/repair-schema` 응급 처치 중
+- 🔴 `.dev.vars` git history 노출 (비밀값 rotation 필요)
+- 🟡 이중 라우팅 구조 (/api/orders, /api/payments, /api/seller)
+- 🟡 스키마 이중화 컬럼 (stock/stock_quantity, shipping_fee/base_shipping_fee)
+
 ## 테마 규칙 (필수)
 
 페이지를 생성하거나 수정할 때 **반드시** 해당 페이지의 테마에 맞는 색상을 사용합니다.
