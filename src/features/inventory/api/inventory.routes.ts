@@ -187,14 +187,19 @@ inventoryRoutes.post('/stock/out', requireAuth(), async (c) => {
     .bind(product_id).first<{ id: number; stock: number; seller_id: number }>();
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
 
-  if (product.stock < quantity) {
+  // 🛡️ 2026-04-22: 원자적 출고 (재고 race condition 방지)
+  // 이전: SELECT 후 UPDATE SET = 절대값 → 동시 요청 시 재고 오차
+  // 수정: UPDATE SET = stock - ? WHERE stock >= ? → 부족 시 변경 0건 → 에러
+  const result = await DB.prepare(
+    "UPDATE products SET stock = stock - ?, updated_at = datetime('now') WHERE id = ? AND stock >= ?"
+  ).bind(quantity, product_id, quantity).run();
+  if (!result.meta?.changes) {
     return c.json({ success: false, error: `재고가 부족합니다 (현재: ${product.stock}개)` }, 400);
   }
 
-  const stockAfter = product.stock - quantity;
-
-  await DB.prepare('UPDATE products SET stock = ?, updated_at = datetime(\'now\') WHERE id = ?')
-    .bind(stockAfter, product_id).run();
+  // 움직임 로그용 stock_after 재조회 (정확한 최종 값)
+  const after = await DB.prepare('SELECT stock FROM products WHERE id = ?').bind(product_id).first<{ stock: number }>();
+  const stockAfter = after?.stock ?? (product.stock - quantity);
 
   await DB.prepare(`
     INSERT INTO stock_movements (product_id, seller_id, type, quantity, stock_before, stock_after, reason, memo, created_by)

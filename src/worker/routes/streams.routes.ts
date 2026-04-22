@@ -446,6 +446,25 @@ streamsRouter.put('/:id/viewer-count', async (c) => {
     const { manual_count } = await c.req.json<{ manual_count: number | null }>();
 
     if (manual_count !== null) {
+      // 🛡️ 2026-04-22: 조작 방지 상한 + 증분 제한
+      // 이전: 셀러가 999999 같은 허위 수치 설정 가능 (스폰서 사기, 지표 조작)
+      // 수정: 0 ~ 100만 범위, 이전 값 대비 최대 +500 증가만 허용
+      if (!Number.isFinite(manual_count) || manual_count < 0 || manual_count > 1_000_000) {
+        return c.json({ success: false, error: 'manual_count 는 0~1,000,000' }, 400);
+      }
+      const current = await c.env.DB.prepare(
+        'SELECT current_viewers FROM live_streams WHERE id = ?'
+      ).bind(streamId).first<{ current_viewers: number }>();
+      const prev = Number(current?.current_viewers ?? 0);
+      const delta = manual_count - prev;
+      // 한 번에 +500 이상 증가 차단 (점진적 증가만 허용)
+      if (delta > 500) {
+        return c.json({
+          success: false,
+          error: `한 번에 500 이상 증가 불가 (이전: ${prev}, 요청: ${manual_count})`,
+          code: 'VIEWER_COUNT_DELTA_EXCEEDED',
+        }, 400);
+      }
       await c.env.DB.prepare(
         "UPDATE live_streams SET current_viewers = ?, updated_at = datetime('now') WHERE id = ?"
       ).bind(manual_count, streamId).run();

@@ -315,6 +315,17 @@ shortsRoutes.post('/', requireAuth(), async (c) => {
   const seller = await DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(String(user.id)).first<{ id: number }>()
   if (!seller) return c.json({ success: false, error: '셀러 정보를 찾을 수 없습니다' }, 404)
 
+  // 🛡️ 2026-04-22: 본인 상품만 쇼츠에 연결 가능 (다른 셀러 상품 하이재킹 방지)
+  if (product_id) {
+    const product = await DB.prepare(
+      'SELECT seller_id FROM products WHERE id = ?'
+    ).bind(product_id).first<{ seller_id: number }>()
+    if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+    if (product.seller_id !== seller.id) {
+      return c.json({ success: false, error: '본인 상품만 연결 가능합니다' }, 403)
+    }
+  }
+
   const result = await DB.prepare(`
     INSERT INTO shorts (seller_id, title, description, video_url, youtube_video_id, thumbnail_url, duration, product_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
