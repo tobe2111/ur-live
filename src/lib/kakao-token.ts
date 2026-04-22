@@ -3,13 +3,18 @@
  * - access_token 유효성 체크
  * - 만료 시 refresh_token으로 자동 갱신
  * - 갱신 실패 시 DB에서 만료 토큰 정리
+ *
+ * 🛡️ 2026-04-22: Kakao access_token/refresh_token 은 at-rest 암호화 (AES-GCM).
+ *   DATA_ENCRYPTION_KEY env 미설정 시 legacy 평문 호환.
  */
+
+import { encryptAtRest, decryptAtRest } from '../worker/utils/data-crypto';
 
 /**
  * refresh_token으로 강제 토큰 갱신 (유효성 체크 생략)
  */
 async function forceRefresh(
-  DB: D1Database, userId: string | number, kakaoRestApiKey: string, refreshToken: string
+  DB: D1Database, userId: string | number, kakaoRestApiKey: string, refreshToken: string, kek?: string
 ): Promise<string | null> {
   try {
     const refreshRes = await fetch('https://kauth.kakao.com/oauth/token', {
@@ -20,13 +25,16 @@ async function forceRefresh(
         client_id: kakaoRestApiKey,
         refresh_token: refreshToken,
       }),
+      signal: AbortSignal.timeout(5000),
     });
 
     if (refreshRes.ok) {
       const data: any = await refreshRes.json();
+      const encAccess = await encryptAtRest(data.access_token, kek);
+      const encRefresh = data.refresh_token ? await encryptAtRest(data.refresh_token, kek) : null;
       await DB.prepare(
         'UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?'
-      ).bind(data.access_token, data.refresh_token || null, userId).run();
+      ).bind(encAccess, encRefresh, userId).run();
       return data.access_token;
     }
 
@@ -42,7 +50,7 @@ async function forceRefresh(
 }
 
 export async function getKakaoToken(
-  DB: D1Database, userId: string | number, kakaoRestApiKey: string
+  DB: D1Database, userId: string | number, kakaoRestApiKey: string, kek?: string
 ): Promise<{ token: string | null; needsReauth: boolean }> {
   const row = await DB.prepare(
     'SELECT kakao_access_token, kakao_refresh_token FROM users WHERE id = ?'
@@ -50,32 +58,37 @@ export async function getKakaoToken(
 
   if (!row?.kakao_access_token) return { token: null, needsReauth: true };
 
+  // 🛡️ 복호화 (legacy 평문 호환)
+  const plainAccess = await decryptAtRest(row.kakao_access_token, kek).catch(() => row.kakao_access_token);
+  const plainRefresh = row.kakao_refresh_token ? await decryptAtRest(row.kakao_refresh_token, kek).catch(() => row.kakao_refresh_token) : null;
+
   let checkStatus: number;
   try {
     const checkRes = await fetch('https://kapi.kakao.com/v1/user/access_token_info', {
-      headers: { 'Authorization': `Bearer ${row.kakao_access_token}` },
+      headers: { 'Authorization': `Bearer ${plainAccess}` },
+      signal: AbortSignal.timeout(3000),
     });
     checkStatus = checkRes.status;
   } catch (e) {
     // 카카오 서버 일시적 장애 — 기존 토큰 그대로 사용 (낙관적)
     console.warn('[KakaoToken] access_token_info check failed, using cached token:', e);
-    return { token: row.kakao_access_token, needsReauth: false };
+    return { token: plainAccess, needsReauth: false };
   }
 
-  if (checkStatus === 200) return { token: row.kakao_access_token, needsReauth: false };
+  if (checkStatus === 200) return { token: plainAccess, needsReauth: false };
 
   // 카카오 서버 에러(5xx)는 토큰 문제 아님 → 기존 토큰 그대로 시도
   if (checkStatus >= 500) {
-    return { token: row.kakao_access_token, needsReauth: false };
+    return { token: plainAccess, needsReauth: false };
   }
 
   // 401/403 → 토큰 만료 or 취소, refresh 시도
-  if (!row.kakao_refresh_token) {
+  if (!plainRefresh) {
     await DB.prepare('UPDATE users SET kakao_access_token = NULL WHERE id = ?').bind(userId).run();
     return { token: null, needsReauth: true };
   }
 
-  const newToken = await forceRefresh(DB, userId, kakaoRestApiKey, row.kakao_refresh_token);
+  const newToken = await forceRefresh(DB, userId, kakaoRestApiKey, plainRefresh, kek);
   if (newToken) return { token: newToken, needsReauth: false };
   return { token: null, needsReauth: true };
 }
@@ -84,9 +97,9 @@ export async function getKakaoToken(
  * 단순 버전 — 토큰만 반환 (기존 호환)
  */
 export async function getKakaoTokenSimple(
-  DB: D1Database, userId: string | number, kakaoRestApiKey: string
+  DB: D1Database, userId: string | number, kakaoRestApiKey: string, kek?: string
 ): Promise<string | null> {
-  const { token } = await getKakaoToken(DB, userId, kakaoRestApiKey);
+  const { token } = await getKakaoToken(DB, userId, kakaoRestApiKey, kek);
   return token;
 }
 
@@ -96,9 +109,9 @@ export async function getKakaoTokenSimple(
  */
 export async function callKakaoApi(
   DB: D1Database, userId: string | number, kakaoRestApiKey: string,
-  url: string, options: { method?: string; body?: string }
+  url: string, options: { method?: string; body?: string }, kek?: string
 ): Promise<{ ok: boolean; data: any; needsReauth: boolean }> {
-  const { token, needsReauth } = await getKakaoToken(DB, userId, kakaoRestApiKey);
+  const { token, needsReauth } = await getKakaoToken(DB, userId, kakaoRestApiKey, kek);
   if (!token) return { ok: false, data: null, needsReauth };
 
   const res = await fetch(url, {
@@ -114,7 +127,7 @@ export async function callKakaoApi(
 
   if (res.status === 401) {
     // 토큰이 check와 API 호출 사이에 만료됨 → 1회 재시도
-    const retry = await getKakaoToken(DB, userId, kakaoRestApiKey);
+    const retry = await getKakaoToken(DB, userId, kakaoRestApiKey, kek);
     if (!retry.token) return { ok: false, data, needsReauth: true };
 
     const retryRes = await fetch(url, {

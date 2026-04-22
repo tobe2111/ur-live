@@ -158,6 +158,46 @@ export async function runReconciliation(env: Env): Promise<void> {
     results.sessions_note = 'table may not exist';
   }
 
+  // 🛡️ 2026-04-22: 웹훅 이벤트 정리 (unbounded growth 방지)
+  // 90일 지난 이벤트는 idempotency 관점에서 불필요 (webhook retry window 끝남).
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM stripe_webhook_events WHERE processed_at < datetime('now', '-90 days')"
+    ).run();
+    results.expired_stripe_webhooks = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM toss_webhook_events WHERE processed_at < datetime('now', '-90 days')"
+    ).run();
+    results.expired_toss_webhooks = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  // 🛡️ 만료된 계정 잠금 정리 (locked_until 지나면 row 삭제)
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM account_lockouts WHERE locked_until IS NOT NULL AND locked_until < datetime('now')"
+    ).run();
+    results.expired_lockouts = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  // 🛡️ 오래된 채팅 메시지 정리 (90일 이상) — DB 부담 감소
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM chat_messages WHERE created_at < datetime('now', '-90 days')"
+    ).run();
+    results.expired_chats = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  // 🛡️ 방치된 장바구니 (60일 이상) 정리 — 삭제된 상품 포함
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM cart_items WHERE added_at < datetime('now', '-60 days')"
+    ).run();
+    results.expired_carts = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
   // Log summary (visible in Cloudflare Worker logs)
   console.log('[Reconciliation] Completed:', JSON.stringify(results));
   if (details.length > 0) {

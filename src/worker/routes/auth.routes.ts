@@ -20,6 +20,7 @@ import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../
 import { parseSessionCookie, clearSessionCookie } from '../utils/session';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
+import { decryptAtRest } from '../utils/data-crypto';
 
 const authRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -330,21 +331,25 @@ authRouter.get('/session/health', async (c) => {
         'SELECT kakao_access_token, kakao_refresh_token FROM users WHERE id = ?'
       ).bind(sessionUser.userId).first<{ kakao_access_token: string | null; kakao_refresh_token: string | null }>();
 
-      if (row?.kakao_access_token) {
+      // 🛡️ 2026-04-22: at-rest 복호화 (legacy 평문 호환)
+      const kek = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
+      const plainAccess = row?.kakao_access_token ? await decryptAtRest(row.kakao_access_token, kek).catch(() => row.kakao_access_token) : null;
+
+      if (plainAccess) {
         // Wrap with circuit breaker — Kakao outages should not block session checks.
         // Fallback assumes token is still valid (optimistic) and does NOT force reauth,
         // because forcing reauth during a Kakao outage would kick every user out.
         const check = await withCircuitBreaker(
           { name: 'kakao-token-info', maxFailures: 5, resetTimeoutMs: 30_000 },
           () => fetch('https://kapi.kakao.com/v1/user/access_token_info', {
-            headers: { 'Authorization': `Bearer ${row.kakao_access_token}` },
-            // 🛡️ 2026-04-22: Kakao 느리면 3초 후 중단 (Worker CPU 보호)
+            headers: { 'Authorization': `Bearer ${plainAccess}` },
+            // 🛡️ Kakao 느리면 3초 후 중단 (Worker CPU 보호)
             signal: AbortSignal.timeout(3000),
           }),
           () => new Response(null, { status: 200 }),
         );
         if (check.status === 200) kakaoValid = true;
-        else if (!row.kakao_refresh_token) kakaoNeedsReauth = true;
+        else if (!row?.kakao_refresh_token) kakaoNeedsReauth = true;
       } else {
         kakaoNeedsReauth = true;
       }

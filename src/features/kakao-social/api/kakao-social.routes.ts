@@ -57,7 +57,8 @@ kakaoSocialRoutes.post('/message/broadcast', requireAuth(), async (c) => {
 
   const result = await callKakaoApi(DB, user.id, (c.env as any).KAKAO_REST_API_KEY,
     'https://kapi.kakao.com/v2/api/talk/memo/default/send',
-    { body: `template_object=${encodeURIComponent(templateObject)}` }
+    { body: `template_object=${encodeURIComponent(templateObject)}` },
+    (c.env as any).DATA_ENCRYPTION_KEY,
   );
 
   if (result.needsReauth) {
@@ -193,7 +194,7 @@ kakaoSocialRoutes.post('/message/send-to-subscribers', async (c) => {
   if (subs) {
     for (const sub of subs) {
       try {
-        const freshToken = await getKakaoTokenSimple(DB, sub.user_id, kakaoApiKey);
+        const freshToken = await getKakaoTokenSimple(DB, sub.user_id, kakaoApiKey, (c.env as any).DATA_ENCRYPTION_KEY);
         if (!freshToken) continue;
         const templateObject = JSON.stringify({
           object_type: 'feed',

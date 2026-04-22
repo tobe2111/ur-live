@@ -11,6 +11,7 @@ import { cors } from 'hono/cors';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
 import { createSessionCookie } from '../../../worker/utils/session';
+import { encryptAtRest } from '../../../worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 
 type Bindings = {
@@ -245,9 +246,13 @@ kakaoRoutes.get('/sync/callback', async (c) => {
 
       // 카카오 access_token + refresh_token 저장 (메시지/캘린더 API용)
       // ✅ FIX (H5): One-time schema check (not per-request)
+      // 🛡️ 2026-04-22: at-rest 암호화 (Cafe24 와 동일 패턴) — DB 탈취 시 Kakao 세션 즉시 악용 방어
       await ensureKakaoColumns(DB);
+      const kek = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
+      const encAccess = await encryptAtRest(accessToken, kek);
+      const encRefresh = kakaoRefreshToken ? await encryptAtRest(kakaoRefreshToken, kek) : null;
       await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
-        .bind(accessToken, kakaoRefreshToken, user.id).run();
+        .bind(encAccess, encRefresh, user.id).run();
 
       // 🛡️ 순서 중요: clear-state 먼저, session 은 append 로 추가.
       // 원래 c.header('Set-Cookie', ...) 를 두 번 호출해서 두 번째가 첫 번째를 덮어써
@@ -338,9 +343,13 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
 
     // 토큰 저장 (consent callback에서도 갱신)
     // ✅ FIX (H5): One-time schema check (not per-request)
+    // 🛡️ at-rest 암호화
     await ensureKakaoColumns(DB);
+    const kek2 = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
+    const encAccess2 = await encryptAtRest(accessToken, kek2);
+    const encRefresh2 = kakaoRefreshToken2 ? await encryptAtRest(kakaoRefreshToken2, kek2) : null;
     await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
-      .bind(accessToken, kakaoRefreshToken2, user.id).run();
+      .bind(encAccess2, encRefresh2, user.id).run();
 
     const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
     const customToken = await firebaseService.createCustomToken(firebaseUID, {
