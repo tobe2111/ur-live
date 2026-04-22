@@ -217,7 +217,7 @@ export const useAuthKR = create<AuthKRState>()(
             if (role === 'seller' || role === 'admin') {
               // Firebase signout 후 에러
               const { signOut } = await import('@/lib/firebase-auth');
-              await signOut().catch(() => {});
+              await signOut().catch((e) => { if (import.meta.env.DEV) console.warn('[Auth] signOut failed:', e); });
               throw new Error(`${role} 계정은 /seller/login 또는 /admin/login을 이용하세요.`);
             }
 
@@ -319,7 +319,7 @@ export const useAuthKR = create<AuthKRState>()(
         logout: async () => {
           try {
             const { signOut } = await import('@/lib/firebase-auth');
-            await signOut().catch(() => {});
+            await signOut().catch((e) => { if (import.meta.env.DEV) console.warn('[Auth] signOut failed:', e); });
           } catch (_) {} // non-critical: best-effort Firebase signOut during logout
 
           // user 세션 selective clear

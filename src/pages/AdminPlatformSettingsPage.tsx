@@ -5,8 +5,12 @@ import AdminLayout from '@/components/AdminLayout'
 import { Settings, Save, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
+// 🛡️ 2026-04-22: 실제 코드에서 읽는 키로 정정 (UI-코드 매핑 수정).
+// 이전: seller_commission_rate 키가 UI 에만 있고 코드에선 안 읽혀서 어드민 수정이 반영되지 않는 버그.
 const SETTINGS_FIELDS = [
-  { key: 'seller_commission_rate', label: '셀러 기본 수수료율 (%)', default: '5' },
+  { key: 'commission_rate_default', label: '기본 수수료율 — 일반 상품 (%)', default: '10' },
+  { key: 'commission_rate_live', label: '라이브 판매 수수료율 (%)', default: '5' },
+  { key: 'commission_rate_meal_voucher', label: '식사권(공동구매) 수수료율 (%)', default: '5' },
   { key: 'agency_commission_rate', label: '에이전시 추가 수수료율 (%)', default: '2' },
   { key: 'min_donation', label: '최소 후원 금액 (딜)', default: '500' },
   { key: 'free_shipping_threshold', label: '무료배송 기준 (원)', default: '50000' },

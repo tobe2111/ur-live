@@ -458,11 +458,14 @@ export async function calculateAutoSettlement(
       COALESCE(s.commission_rate, ${defaultCommissionRate}) as commission_rate,
       COUNT(o.id) as total_orders,
       COALESCE(SUM(o.total_amount), 0) as total_sales,
+      -- 🛡️ 2026-04-22: 라이브 판매(live_stream_id 존재) 는 5%, 외엔 sellers.commission_rate or default
       COALESCE(SUM(
-        ROUND(o.total_amount * COALESCE(s.commission_rate, ${defaultCommissionRate}) / 100)
+        ROUND(o.total_amount * CASE WHEN o.live_stream_id IS NOT NULL THEN 5.0
+                                    ELSE COALESCE(s.commission_rate, ${defaultCommissionRate}) END / 100)
       ), 0) as commission_amount,
       COALESCE(SUM(
-        o.total_amount - ROUND(o.total_amount * COALESCE(s.commission_rate, ${defaultCommissionRate}) / 100)
+        o.total_amount - ROUND(o.total_amount * CASE WHEN o.live_stream_id IS NOT NULL THEN 5.0
+                                                     ELSE COALESCE(s.commission_rate, ${defaultCommissionRate}) END / 100)
       ), 0) as settlement_amount
     FROM orders o
     LEFT JOIN sellers s ON o.seller_id = s.id
@@ -514,27 +517,35 @@ export async function executeSettlement(
     updateParams.push(periodStart, periodEnd)
   }
 
+  // 🛡️ 2026-04-22: 라이브 판매 5% 분기 (CLAUDE.md 정책)
+  // orders.live_stream_id IS NOT NULL 이면 platform_settings.commission_rate_live (기본 5%) 적용.
+  // 그 외엔 기존 로직 (sellers.commission_rate 또는 defaultCommissionRate).
+  let liveRate = 5.0;
+  try {
+    const liveRow = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'commission_rate_live'"
+    ).first<{ value: string }>();
+    if (liveRow) liveRate = Number(liveRow.value);
+  } catch {}
+
+  // Build the SET clause with CASE WHEN for live vs regular
+  const rateCase = `CASE WHEN orders.live_stream_id IS NOT NULL THEN ${liveRate}
+                         ELSE COALESCE((SELECT s.commission_rate FROM sellers s WHERE s.id = orders.seller_id), ?) END`;
+  const updateParamsFixed: (string | number)[] = [now, defaultCommissionRate, defaultCommissionRate, defaultCommissionRate];
+  if (periodStart && periodEnd) updateParamsFixed.push(periodStart, periodEnd);
+
   // Update all matching orders in one statement
   await DB.prepare(`
     UPDATE orders
     SET settlement_status = 'completed',
         settled_at = ?,
-        commission_rate = COALESCE(
-          (SELECT s.commission_rate FROM sellers s WHERE s.id = orders.seller_id),
-          ?
-        ),
-        commission_amount = ROUND(total_amount * COALESCE(
-          (SELECT s.commission_rate FROM sellers s WHERE s.id = orders.seller_id),
-          ?
-        ) / 100),
-        seller_amount = total_amount - ROUND(total_amount * COALESCE(
-          (SELECT s.commission_rate FROM sellers s WHERE s.id = orders.seller_id),
-          ?
-        ) / 100)
+        commission_rate = ${rateCase},
+        commission_amount = ROUND(total_amount * (${rateCase}) / 100),
+        seller_amount = total_amount - ROUND(total_amount * (${rateCase}) / 100)
     WHERE status IN ('DONE', 'DELIVERED')
       AND COALESCE(settlement_status, 'pending') = 'pending'
       ${dateFilter}
-  `).bind(...updateParams).run()
+  `).bind(...updateParamsFixed).run()
 
   return {
     batch_id: batchId,

@@ -116,7 +116,8 @@ export async function handleExpiredVoucherRefunds(env: Env) {
   const DB = env.DB;
 
   try {
-    // Find expired unused vouchers
+    // 🛡️ 2026-04-22: LIMIT 5000 추가 — 수만 건 expired voucher 시 cron hang/OOM 방어.
+    // 다음 cron 주기에 나머지 처리 (idempotent).
     const expired = await DB.prepare(`
       SELECT v.id, v.code, v.order_id, v.product_id,
              o.user_id, o.payment_method, p.price, p.name as product_name
@@ -125,6 +126,8 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       JOIN products p ON v.product_id = p.id
       WHERE v.status = 'unused'
         AND v.expires_at < datetime('now')
+      ORDER BY v.expires_at ASC
+      LIMIT 5000
     `).all();
 
     if (!expired.results?.length) return;

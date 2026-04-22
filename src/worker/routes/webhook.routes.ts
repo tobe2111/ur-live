@@ -425,9 +425,12 @@ async function handlePaymentCancelled(
   const cancelledAt = data.cancelledAt ?? new Date().toISOString();
   const cancelReason = data.failureMessage ?? 'Payment cancelled';
   for (const order of orders) {
+    // 🛡️ 2026-04-22: payment_status='cancelled' 동기화 (status 와 함께)
     const casResult = await DB.prepare(
       `UPDATE orders
-       SET status = 'CANCELLED', cancelled_at = ?, cancel_reason = ?, updated_at = datetime('now')
+       SET status = 'CANCELLED',
+           payment_status = 'cancelled',
+           cancelled_at = ?, cancel_reason = ?, updated_at = datetime('now')
        WHERE id = ?
          AND status NOT IN ('CANCELLED', 'REFUNDED', 'FAILED')`
     ).bind(cancelledAt, cancelReason, order.id).run();
