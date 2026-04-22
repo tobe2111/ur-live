@@ -423,6 +423,63 @@ export class OrderRepository {
   }
 
   /**
+   * v24 FIX: atomic payment confirmation.
+   * UPDATE orders + UPDATE order_items를 D1 batch로 묶어 all-or-nothing 보장.
+   * 기존에는 updateStatus() 성공 후 루프로 reduceStock() 호출 → 중간 실패 시 불일치.
+   */
+  async confirmPaymentAtomic(
+    orderNumber: string,
+    paymentInfo: {
+      toss_payment_key: string;
+      toss_order_id?: string;
+      payment_method?: string;
+      paid_at: string;
+    }
+  ): Promise<{ orderIds: string[]; confirmed: number }> {
+    const allowedPrev = statusesThatCanReach('DONE');
+    if (allowedPrev.length === 0) return { orderIds: [], confirmed: 0 };
+    const prevPlaceholders = allowedPrev.map(() => '?').join(',');
+
+    // 먼저 해당 orderNumber의 orders id를 조회 (batch 전)
+    const orderRows = await this.qb.queryMany<{ id: string }>(
+      `SELECT id FROM orders WHERE order_number = ? AND UPPER(status) IN (${prevPlaceholders})`,
+      [orderNumber, ...allowedPrev],
+    );
+    const orderIds = orderRows.map(r => r.id);
+    if (orderIds.length === 0) return { orderIds: [], confirmed: 0 };
+
+    // Batch: UPDATE orders + UPDATE order_items (atomic all-or-nothing)
+    const statements: { sql: string; params?: unknown[] }[] = [
+      {
+        sql: `UPDATE orders
+              SET status = 'DONE',
+                  toss_payment_key = ?,
+                  toss_order_id = ?,
+                  payment_method = ?,
+                  paid_at = ?,
+                  updated_at = datetime('now')
+              WHERE order_number = ?
+                AND UPPER(status) IN (${prevPlaceholders})`,
+        params: [
+          paymentInfo.toss_payment_key,
+          paymentInfo.toss_order_id ?? orderNumber,
+          paymentInfo.payment_method ?? null,
+          paymentInfo.paid_at,
+          orderNumber,
+          ...allowedPrev,
+        ],
+      },
+      ...orderIds.map(id => ({
+        sql: 'UPDATE order_items SET status = ? WHERE order_id = ?',
+        params: ['CONFIRMED', id],
+      })),
+    ];
+
+    await this.qb.batch(statements);
+    return { orderIds, confirmed: orderIds.length };
+  }
+
+  /**
    * Check if order already processed (idempotency)
    */
   async isAlreadyProcessed(orderNumber: string, status: OrderStatus): Promise<boolean> {

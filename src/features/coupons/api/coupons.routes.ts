@@ -108,6 +108,35 @@ couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 6
   return c.json({ success: true, data: { discount_amount: computed } })
 })
 
+/**
+ * v26 FIX: 결제 취소/환불 시 쿠폰 복원
+ * webhook.routes.ts의 payment.cancelled 및 order.routes.ts의 refund 핸들러에서 호출.
+ * 내부용이므로 requireAuth 대신 인증된 컨텍스트에서만 호출됨을 가정.
+ *
+ * @param DB D1Database
+ * @param orderIds 복원할 주문 ID 배열
+ */
+export async function restoreCouponsForOrders(DB: D1Database, orderIds: (number | string)[]): Promise<number> {
+  if (!orderIds.length) return 0
+  // coupon_uses 조회 (취소할 쿠폰 + 전역 used_count 차감용)
+  const placeholders = orderIds.map(() => '?').join(',')
+  const rows = await DB.prepare(
+    `SELECT coupon_id FROM coupon_uses WHERE order_id IN (${placeholders})`
+  ).bind(...orderIds).all<{ coupon_id: number }>()
+  const couponIds = (rows.results || []).map(r => r.coupon_id)
+  if (!couponIds.length) return 0
+
+  // D1 batch: DELETE + UPDATE used_count (per-coupon decrement)
+  const stmts = [
+    DB.prepare(`DELETE FROM coupon_uses WHERE order_id IN (${placeholders})`).bind(...orderIds),
+    ...couponIds.map(id =>
+      DB.prepare('UPDATE coupons SET used_count = MAX(used_count - 1, 0) WHERE id = ?').bind(id)
+    ),
+  ]
+  await DB.batch(stmts)
+  return couponIds.length
+}
+
 // 내 쿠폰 목록
 couponRoutes.get('/my', requireAuth(), async (c) => {
   const user = getCurrentUser(c)

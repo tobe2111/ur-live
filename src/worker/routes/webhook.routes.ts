@@ -364,27 +364,19 @@ async function handlePaymentConfirmed(
     return;
   }
 
-  // ✅ SCHEMA FIX: Removed webhook_processed_at / webhook_event_id —
-  // those columns don't exist on `orders`. Webhook idempotency is already
-  // tracked via WebhookEventRepository (webhook_events table).
-  // Update all orders with this order_number (multi-seller)
-  await orderRepo.updateStatus(orderNumber, 'DONE', {
+  // v24 FIX: UPDATE orders + UPDATE order_items를 D1 batch로 묶어 atomic 처리.
+  // 기존 updateStatus + 루프 reduceStock은 중간 실패 시 orders=DONE이지만
+  // order_items는 PENDING 상태가 남는 불일치 발생 가능.
+  const result = await orderRepo.confirmPaymentAtomic(orderNumber, {
     toss_payment_key: paymentKey,
     toss_order_id: orderNumber,
     payment_method: data.method,
     paid_at: data.approvedAt ?? new Date().toISOString(),
   });
 
-  // Find all orders to reduce stock
-  const orders = await orderRepo.findByOrderNumber(orderNumber);
-  for (const order of orders) {
-    await orderRepo.reduceStock(order.id);
-    console.log('[WEBHOOK] STOCK_REDUCED', { orderId: order.id, sellerId: order.seller_id });
-  }
-
   console.log('[WEBHOOK] PAYMENT_CONFIRMED_COMPLETE', {
     orderNumber,
-    ordersUpdated: orders.length,
+    ordersUpdated: result.confirmed,
   });
 }
 
@@ -472,6 +464,17 @@ async function handlePaymentCancelled(
     }
   } catch (e) {
     console.warn('[WEBHOOK] Commission reversal skipped:', e);
+  }
+
+  // v26 FIX: 결제 취소 시 coupon_uses 복원 (쿠폰 재사용 가능하게)
+  try {
+    const { restoreCouponsForOrders } = await import('@/features/coupons/api/coupons.routes');
+    const restored = await restoreCouponsForOrders(DB, orders.map(o => o.id));
+    if (restored > 0) {
+      console.log('[WEBHOOK] COUPON_RESTORED', { orderNumber, restored });
+    }
+  } catch (e) {
+    console.warn('[WEBHOOK] Coupon restore skipped:', e);
   }
 
   // Send order cancellation notification

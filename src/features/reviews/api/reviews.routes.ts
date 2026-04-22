@@ -250,20 +250,20 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일
     const ptsUserId = String(user.id);
 
-    // 잔액 조회 또는 생성
-    const pts = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(ptsUserId).first<{ balance: number }>();
-    const currentBalance = pts?.balance ?? 0;
-    const newBalance = currentBalance + rewardAmount;
+    // v24 FIX: lost-update 방지. SELECT-then-UPDATE 패턴은 동시 리뷰 작성 시 잔액 덮어쓰기 발생.
+    // 원자적 UPSERT + balance = balance + ? 패턴으로 전환.
+    await DB.prepare(`
+      INSERT INTO user_points (user_id, balance, total_charged)
+      VALUES (?, ?, 0)
+      ON CONFLICT(user_id) DO UPDATE SET
+        balance = balance + excluded.balance,
+        updated_at = datetime('now')
+    `).bind(ptsUserId, rewardAmount).run();
 
-    // ✅ BUG #19 FIX: Review reward is not a top-up, so don't inflate total_charged
-    // (which represents money the user spent to charge their wallet).  Just bump balance.
-    if (pts) {
-      await DB.prepare('UPDATE user_points SET balance = ?, updated_at = datetime(\'now\') WHERE user_id = ?')
-        .bind(newBalance, ptsUserId).run();
-    } else {
-      await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, 0)')
-        .bind(ptsUserId, rewardAmount).run();
-    }
+    // 트랜잭션 기록용 최신 잔액 조회 (원자성 보장 후)
+    const updatedRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+      .bind(ptsUserId).first<{ balance: number }>();
+    const newBalance = updatedRow?.balance ?? rewardAmount;
 
     await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
       .bind(ptsUserId, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc).run();

@@ -463,20 +463,20 @@ pointsRoutes.post('/ad-reward', rateLimit({ action: 'points_ad_reward', max: 5, 
       }, 429);
     }
 
-    // 포인트 지급
-    const currentRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+    // v24 FIX: lost-update 방지. 원자적 UPSERT (balance = balance + ?)로 전환.
+    // SELECT-then-UPDATE 패턴은 동시 광고 보상 요청 시 잔액 덮어쓰기 발생.
+    await DB.prepare(`
+      INSERT INTO user_points (user_id, balance, total_charged, total_donated)
+      VALUES (?, ?, 0, 0)
+      ON CONFLICT(user_id) DO UPDATE SET
+        balance = balance + excluded.balance,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(userId, AD_REWARD_POINTS).run();
+
+    // 거래 기록용 최신 잔액 조회 (원자적 UPSERT 후)
+    const afterRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
       .bind(userId).first<{ balance: number }>();
-
-    const currentBalance = currentRow?.balance ?? 0;
-    const newBalance = currentBalance + AD_REWARD_POINTS;
-
-    if (currentRow) {
-      await DB.prepare('UPDATE user_points SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
-        .bind(newBalance, userId).run();
-    } else {
-      await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged, total_donated) VALUES (?, ?, 0, 0)')
-        .bind(userId, newBalance).run();
-    }
+    const newBalance = afterRow?.balance ?? AD_REWARD_POINTS;
 
     // 거래 기록 (type='charge'로 저장, description으로 광고 리워드 구분)
     await DB.prepare(

@@ -407,10 +407,26 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
             code: 'INVALID_REFRESH_TOKEN'
           }, 401);
         }
-        await DB.prepare('DELETE FROM auth_refresh_tokens WHERE id = ?').bind(matchedId).run().catch(() => {});
+        // v27 FIX: 구 토큰 삭제가 실패하면 rotation 중단 (구+신 동시 유효 방지)
+        const deleteResult = await DB.prepare(
+          'DELETE FROM auth_refresh_tokens WHERE id = ?'
+        ).bind(matchedId).run();
+        if (!deleteResult.meta?.changes) {
+          console.warn('[Seller Refresh] old token delete failed (changes=0) — aborting rotation');
+          return c.json<AuthResponse>({
+            success: false,
+            error: '토큰 갱신에 실패했습니다. 다시 로그인해주세요.',
+            code: 'TOKEN_ROTATION_FAILED'
+          }, 401);
+        }
       }
     } catch (e) {
       console.error('[Seller Refresh] token store verify failed:', e);
+      return c.json<AuthResponse>({
+        success: false,
+        error: '토큰 검증에 실패했습니다.',
+        code: 'TOKEN_VERIFY_FAILED'
+      }, 500);
     }
 
     // 5. 새 Access Token 생성
