@@ -448,6 +448,11 @@ app.get('/api/_internal/repair-schema', async (c) => {
 // ============================================================
 app.get('/api/_internal/smoke-test', async (c) => {
   const origin = new URL(c.req.url).origin;
+  // 🛡️ Cloudflare Workers 의 subrequest 제한(50/invocation) 회피를 위해 chunk 지원.
+  // /api/_internal/smoke-test          → 자동으로 처음 45개만
+  // /api/_internal/smoke-test?chunk=1  → 46~끝
+  const chunk = Number(c.req.query('chunk') || '0');
+  const CHUNK_SIZE = 45;
   const endpoints: Array<{ path: string; method: 'GET' | 'POST'; body?: string; cat: string }> = [
     // ── 인프라 ──────────────────────────────────────────────
     { cat: 'infra', path: '/api/health', method: 'GET' },
@@ -542,11 +547,18 @@ app.get('/api/_internal/smoke-test', async (c) => {
     { cat: 'misc', path: '/api/csrf-token', method: 'GET' },
   ];
 
+  // ── chunk 단위 슬라이스 ────────────────────────────────
+  const totalCount = endpoints.length;
+  const startIdx = chunk * CHUNK_SIZE;
+  const endIdx = Math.min(startIdx + CHUNK_SIZE, totalCount);
+  const testSlice = endpoints.slice(startIdx, endIdx);
+  const hasMore = endIdx < totalCount;
+
   const results: Array<{ cat: string; path: string; method: string; status: number; ok: boolean; ms: number }> = [];
   const catStats: Record<string, { total: number; passed: number; failed: number }> = {};
   let fail5xx = 0;
 
-  for (const ep of endpoints) {
+  for (const ep of testSlice) {
     const start = Date.now();
     let status = 0;
     try {
@@ -576,9 +588,12 @@ app.get('/api/_internal/smoke-test', async (c) => {
 
   return c.json({
     success: fail5xx === 0,
-    total: endpoints.length,
-    passed: endpoints.length - fail5xx,
+    chunk,
+    range: { from: startIdx, to: endIdx, totalEndpoints: totalCount },
+    tested: testSlice.length,
+    passed: testSlice.length - fail5xx,
     failed5xx: fail5xx,
+    nextChunkUrl: hasMore ? `/api/_internal/smoke-test?chunk=${chunk + 1}` : null,
     byCategory: catStats,
     failures: failures.length > 0 ? failures : undefined,
     allResults: results,
