@@ -248,13 +248,16 @@ describe('Auth API Utils - Infinite Loop Prevention', () => {
 
       const { authFetch } = await import('@/shared/utils/auth-api');
 
-      // Advance past the 2s retry delay + 5s cleanup timers
-      const fetchPromise = authFetch('/api/orders');
+      // pre-attach .catch() to avoid unhandled-rejection while timers advance
+      const settled = authFetch('/api/orders').then(
+        (v) => ({ ok: true as const, v }),
+        (err: Error) => ({ ok: false as const, err })
+      );
       await vi.advanceTimersByTimeAsync(7500);
-      try {
-        await fetchPromise;
-      } catch (err) {
-        expect((err as Error).message).toBe('MAX_RETRIES_EXCEEDED');
+      const result = await settled;
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.err.message).toBe('MAX_RETRIES_EXCEEDED');
       }
 
       // Should be called twice: initial + 1 retry
