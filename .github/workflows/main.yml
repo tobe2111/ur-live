@@ -62,14 +62,18 @@ jobs:
           test $JS_COUNT -gt 50 || (echo "❌ Too few JS chunks ($JS_COUNT), build may be incomplete" && exit 1)
           echo "✅ Build verification passed"
 
-      - name: Deploy to Cloudflare Workers (live.ur-team.com)
-        run: npx wrangler@3 deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # 🚨 2026-04-22: 이 프로젝트는 Cloudflare Pages (with _worker.js) 구조.
+      # wrangler.toml의 [assets] directory = "./dist/client" 가 Pages 시그니처.
+      # `wrangler deploy` (Workers용)는 이 구조에 적합하지 않아 제거.
+      #
+      # Deploy 명령어 업그레이드:
+      # - wrangler@3 → wrangler@4 (versions/deploy 명령 세트 완전 지원)
+      # - `wrangler deploy` 대신 `wrangler pages deploy dist/client` 사용 — Pages 프로덕션에 즉시 반영
+      # - Cloudflare Pages Dashboard의 자체 Git Integration은 수동으로 해제 권장
+      #   (Actions 배포와 충돌 + `versions upload`만 하고 promote 안 되는 이슈 원인)
 
-      - name: Deploy to Cloudflare Pages (ur-live.pages.dev)
-        run: npx wrangler@3 pages deploy dist/client --project-name=ur-live --branch=main --commit-message="deploy from ${{ github.sha }}"
+      - name: Deploy to Cloudflare Pages (live.ur-team.com + ur-live.pages.dev)
+        run: npx wrangler@4 pages deploy dist/client --project-name=ur-live --branch=main --commit-message="deploy from ${{ github.sha }}"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
