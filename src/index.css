@@ -497,6 +497,8 @@ html.native-app nav {
   background-color: #020202;
   position: relative;
   overflow-x: hidden;
+  /* fixed 요소가 뷰포트가 아닌 이 컨테이너 기준으로 위치하도록 */
+  transform: translateZ(0);
 }
 
 /* 모바일: 전체 너비, 평소처럼 */
