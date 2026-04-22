@@ -799,7 +799,8 @@ function AppContent() {
             } />
             
             {/* Payment 페이지들 */}
-            <Route path="/payment/demo" element={<ErrorBoundary><PaymentDemoPage /></ErrorBoundary>} />
+            {/* /payment/demo: dev 전용 — 프로덕션 빌드 시 tree-shake */}
+            {import.meta.env.DEV && <Route path="/payment/demo" element={<ErrorBoundary><PaymentDemoPage /></ErrorBoundary>} />}
 
             {/* 임베드 위젯 (외부 서비스용) */}
             <Route path="/embed/live/:streamId" element={<EmbedLivePage />} />
@@ -840,8 +841,8 @@ function AppContent() {
             {/* 커뮤니티 공구 상세 (ReferralPage 재사용) */}
             <Route path="/community-group-buy/:code" element={<ReferralPage />} />
 
-            {/* Debug 페이지 (개발 환경만) */}
-            <Route path="/kakao-debug" element={<KakaoDebugPage />} />
+            {/* Debug 페이지 (개발 환경만) — 프로덕션에선 라우트 등록 안 됨 */}
+            {import.meta.env.DEV && <Route path="/kakao-debug" element={<KakaoDebugPage />} />}
             
             {/* Error 페이지들 */}
             <Route path="/500" element={<ServerErrorPage />} />
