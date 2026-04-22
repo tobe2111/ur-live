@@ -175,11 +175,26 @@ bash scripts/quality-check.sh
 
 ## 배포 아키텍처 (필수 이해)
 
-⚠️ **두 개의 배포 대상이 있음**:
-- `live.ur-team.com` → **Cloudflare Workers** (`wrangler deploy`) — 백엔드 API + 프론트엔드
-- `ur-live.pages.dev` → **Cloudflare Pages** (`wrangler pages deploy`) — 프론트엔드만
+⚠️ **Cloudflare Pages 단일 배포** (2026-04-22 정정):
+- `live.ur-team.com` → **Cloudflare Pages** `ur-live` (Custom Domain)
+- `ur-live.pages.dev` → 같은 Pages 프로젝트의 기본 도메인
+- 배포 명령: `npx wrangler@3 pages deploy dist/client --project-name=ur-live`
+- 프로젝트 구조: Pages with `_worker.js` — `wrangler.toml`의 `[assets] directory = "./dist/client"`로 표시
 
-GitHub Actions (`main.yml`)가 **둘 다** 배포함. Workers를 빠뜨리면 `live.ur-team.com`에 변경사항이 미반영.
+❌ **Workers 프로젝트가 아님**:
+- 과거(2026-04 이전) CLAUDE.md는 "Workers"라고 기재했었으나 실제로는 Pages
+- `wrangler deploy` (Workers용) 명령은 사용 금지 — 이 프로젝트 구조에 부적합
+- 2026-04-22 이전 Dashboard에 Workers 프로젝트 `ur-live`가 병행 존재했으나 Pages 로 일원화됨
+
+### Secret/환경변수 관리
+- **Cloudflare Dashboard → Workers & Pages → ur-live (Pages 프로젝트) → Settings → Variables and Secrets**
+- CI 배포 후 즉시 반영 (Pages deploy는 곧바로 production promote)
+- secret은 한 번 저장하면 값을 다시 볼 수 없음. 팀 외부에서도 참조해야 하면 별도 기록 필요.
+
+### 2026-04-22 사고 요약 (재발 방지 기록)
+- 증상: admin/seller/agency 로그인 500 + 유저 로그인 후 API 401 (이틀간)
+- 원인: Pages 프로젝트에 secret 세팅했는데, 별개 Workers 프로젝트가 Custom Domain을 붙들고 있어 실제 요청은 secret 없는 Workers에서 처리 → `JWT_SECRET is not configured` 500
+- 교훈: 로그인/인증 500이 반복되면 **가장 먼저 Cloudflare Dashboard의 Workers/Pages Custom Domain 어느 쪽에 연결되어 있는지** 확인. 코드 수정 전에 설정 파악.
 
 ### 파일-라우트 매핑 (실수 방지)
 - 홈(`/`) → **`MainHomePage.tsx`** (NOT ~~HomePage.tsx~~ — 삭제됨)

@@ -1,6 +1,15 @@
 # ============================================================
 # Cloudflare Pages Configuration
-# This project uses Pages with _worker.js for advanced routing
+#
+# ⚠️ 이 프로젝트는 Cloudflare Pages (with _worker.js advanced routing) 입니다.
+# - 배포 명령: `npx wrangler@3 pages deploy dist/client --project-name=ur-live`
+# - `wrangler deploy` (Workers용) 사용 금지 — 부적합 + 배포 꼬임 유발
+# - `live.ur-team.com` Custom Domain 은 Pages 프로젝트 `ur-live`에 연결
+# - Secret 관리: Dashboard → Workers & Pages → ur-live (Pages) → Settings → Secrets
+#
+# 2026-04-22 사고 기록:
+# Workers 프로젝트가 Custom Domain을 가로채 secret 없이 동작 → 로그인 500 이틀 지속.
+# 상세는 CLAUDE.md "2026-04-22 사고 요약" 참조.
 # ============================================================
 
 name = "ur-live"
