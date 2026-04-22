@@ -98,7 +98,7 @@ function saveTokenCacheToStorage(cache: TokenCache) {
   try {
     localStorage.setItem(TOKEN_CACHE_KEY, JSON.stringify(cache));
   } catch (err) {
-    console.warn('[AuthKR] Failed to save token cache:', err);
+    if (import.meta.env.DEV) console.warn('[AuthKR] Failed to save token cache:', err);
   }
 }
 
@@ -135,7 +135,7 @@ export const useAuthKR = create<AuthKRState>()(
           const { user, tokenCache } = get();
           
           if (!user) {
-            console.warn('[AuthKR] getIdToken: No user logged in');
+            if (import.meta.env.DEV) console.warn('[AuthKR] getIdToken: No user logged in');
             return null;
           }
 
@@ -158,10 +158,10 @@ export const useAuthKR = create<AuthKRState>()(
               }
               
               // Fallback to client-side if backend fails
-              console.warn('[AuthKR] Backend token failed, falling back to client-side');
+              if (import.meta.env.DEV) console.warn('[AuthKR] Backend token failed, falling back to client-side');
             }
           } catch (err) {
-            console.warn('[AuthKR] Backend token error:', err);
+            if (import.meta.env.DEV) console.warn('[AuthKR] Backend token error:', err);
             // Continue to client-side token
           }
 
@@ -466,7 +466,7 @@ export const useAuthKR = create<AuthKRState>()(
                         );
                         // accessToken saved successfully
                       } catch (e) {
-                        console.warn('[AuthKR] ⚠️ useAuthStore 업데이트 실패:', e);
+                        if (import.meta.env.DEV) console.warn('[AuthKR] ⚠️ useAuthStore 업데이트 실패:', e);
                       }
 
                       sessionStorage.setItem('auth_processed_uid', firebaseUser.uid);
@@ -477,7 +477,7 @@ export const useAuthKR = create<AuthKRState>()(
                       }
                     } catch (err) {
                       // 백그라운드 실패해도 user/isAuthReady는 이미 설정됨 → 무시
-                      console.warn('[AuthKR] ⚠️ 백그라운드 인증 작업 실패 (무시):', err);
+                      if (import.meta.env.DEV) console.warn('[AuthKR] ⚠️ 백그라운드 인증 작업 실패 (무시):', err);
                       try {
                         const idTokenFallback = await firebaseUser.getIdToken(false);
                         const { useAuthStore } = await import('@/client/stores/auth.store');
