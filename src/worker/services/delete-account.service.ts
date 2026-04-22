@@ -145,6 +145,25 @@ export async function deleteUserAccount(
       .run()
       .catch(() => {});
 
+    // 🛡️ 2026-04-22: GDPR 추가 PII 정리 — 누락 테이블 보강
+    // 채팅 메시지 익명화 (기록은 유지, user_name만 변경)
+    await db
+      .prepare("UPDATE chat_messages SET user_name = '탈퇴회원', user_avatar = NULL WHERE user_id = ?")
+      .bind(userIdStr)
+      .run()
+      .catch(() => {});
+    // 알림 삭제
+    await db.prepare('DELETE FROM notifications WHERE user_id = ?').bind(userIdStr).run().catch(() => {});
+    await db.prepare('DELETE FROM user_notifications WHERE user_id = ?').bind(userIdStr).run().catch(() => {});
+    // 네이티브 푸시 토큰 삭제
+    await db.prepare('DELETE FROM native_push_tokens WHERE user_id = ?').bind(Number(userId) || 0).run().catch(() => {});
+    // 검색 기록 삭제 (테이블 존재 시)
+    await db.prepare('DELETE FROM search_history WHERE user_id = ?').bind(userIdStr).run().catch(() => {});
+    // 계정 잠금 기록 삭제
+    await db.prepare("DELETE FROM account_lockouts WHERE user_type = 'user' AND user_id = ?").bind(userIdStr).run().catch(() => {});
+    // refresh token 삭제
+    await db.prepare("DELETE FROM auth_refresh_tokens WHERE user_type = 'user' AND user_id = ?").bind(userIdStr).run().catch(() => {});
+
     // 3. 사용자 정보 익명화
     // NOTE: production users 테이블에는 status, avatar_url, kakao_access_token 컬럼이 없음.
     //       존재하는 컬럼(email, name, phone, firebase_uid)만 업데이트.

@@ -168,12 +168,16 @@ app.use('/api/*', errorRateMonitor());
 
 app.use('*', async (c, next) => {
   await next();
+  // 🛡️ 2026-04-22: CSP nonce — 요청별 랜덤 nonce 로 inline script 허용 범위 제한.
+  // 'unsafe-inline' 은 nonce 미지원 구형 브라우저용 fallback (CSP2+ 는 nonce 우선).
+  const nonceBytes = new Uint8Array(16);
+  crypto.getRandomValues(nonceBytes);
+  const nonce = btoa(String.fromCharCode(...nonceBytes)).replace(/[+/=]/g, '');
+
   // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
   // CSP — 공통 script sources (script-src와 script-src-elem에서 공유)
-  // ✅ Security hardening: removed 'unsafe-eval' (no eval()/new Function() in code).
-  //    If a third-party SDK requires it, add a nonce/hash for that specific script.
   const scriptSources = [
-    "'self'", "'unsafe-inline'", "blob:",
+    "'self'", `'nonce-${nonce}'`, "'strict-dynamic'", "'unsafe-inline'", "blob:",
     "https://*.cloudflare.com", "https://static.cloudflareinsights.com", "https://cloudflareinsights.com",
     "https://*.googletagmanager.com", "https://*.google-analytics.com",
     "https://*.tosspayments.com", "https://js.tosspayments.com",
@@ -241,6 +245,18 @@ app.use('*', async (c, next) => {
   c.header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups'); // 카카오/구글 OAuth 팝업 허용
   c.header('Cross-Origin-Resource-Policy', 'same-site');
   c.header('X-Permitted-Cross-Domain-Policies', 'none'); // Flash/PDF 크로스도메인 차단
+
+  // 🛡️ 2026-04-22: HTML 응답에 nonce 주입 — inline <script> 에 nonce 속성 추가.
+  // 'strict-dynamic' + nonce 조합으로 inline 이 아닌 외부 script 도 신뢰 전파됨.
+  const ct = c.res.headers.get('Content-Type') || '';
+  if (ct.includes('text/html') && c.res.body) {
+    const rewritten = new HTMLRewriter()
+      .on('script:not([src])', {
+        element(el) { el.setAttribute('nonce', nonce); },
+      })
+      .transform(c.res);
+    c.res = new Response(rewritten.body, rewritten);
+  }
 });
 
 // ============================================================
