@@ -316,7 +316,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#020202] flex flex-col items-center justify-center px-5 py-12">
-      <SEO title="로그인 - 유어딜" description="유어딜에 로그인하세요." url="/login" />
+      <SEO title="로그인 - 유어딜" description="유어딜에 로그인하세요." url="/login" noindex />
       <div className="w-full max-w-[360px]">
 
         {/* Logo */}

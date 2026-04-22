@@ -236,7 +236,15 @@ api.interceptors.response.use(
       if (isPublicAPI(url)) return Promise.reject(error);
 
       // ── Seller / Admin / Agency: Refresh Token 시도 ────────────────────────
-      if (url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/') || url.includes('/api/agency/')) {
+      // 🛡️ 2026-04-22 FIX: URL이 /api/seller/ 이더라도 유저 세션으로 호출한 경우
+      // (예: /api/seller/public/:id 공개 프로필, /api/youtube/video-info 등)
+      // dashboard 토큰이 없으면 이 블록 건너뛰고 Firebase user refresh 블록으로 fall through.
+      // 기존 동작: 유저가 셀러 공개 프로필 보다가 401 → "셀러 인증 만료" → /seller/login (잘못)
+      const _isDashboardUrl = url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/') || url.includes('/api/agency/');
+      const _isDashTokenKey = url.includes('/api/agency/') ? 'agency_token' : (url.includes('/api/seller/') || url.includes('/api/youtube/')) ? 'seller_token' : 'admin_token';
+      const _hasDashboardToken = _isDashboardUrl && !!localStorage.getItem(_isDashTokenKey);
+
+      if (_isDashboardUrl && _hasDashboardToken) {
         const isSeller = url.includes('/api/seller/') || url.includes('/api/youtube/');
         const isAgency = url.includes('/api/agency/');
         const tokenKey = isAgency ? 'agency_token' : isSeller ? 'seller_token' : 'admin_token';
