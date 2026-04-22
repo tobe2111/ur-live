@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import api from '@/lib/api'
@@ -41,6 +42,7 @@ interface Order {
 }
 
 function NotificationList() {
+  const { t } = useTranslation()
   const [notifs, setNotifs] = useState<any[]>([])
   const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
   useEffect(() => {
@@ -48,7 +50,7 @@ function NotificationList() {
       .then(r => { if (r.data.success) setNotifs((r.data.data || []).slice(0, 5)) })
       .catch(() => {})
   }, [])
-  if (notifs.length === 0) return <p className="text-xs text-gray-400">새로운 알림이 없습니다</p>
+  if (notifs.length === 0) return <p className="text-xs text-gray-400">{t('agency.noNewNotifications')}</p>
   return (
     <div className="space-y-1.5">
       {notifs.map((n, i) => (
@@ -64,24 +66,27 @@ function NotificationList() {
   )
 }
 
-function statusBadge(status: string) {
+function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation()
   const map: Record<string, { label: string; cls: string }> = {
-    approved: { label: '승인', cls: 'bg-green-100 text-green-700' },
-    pending:  { label: '대기', cls: 'bg-amber-100 text-amber-700' },
-    rejected: { label: '거부', cls: 'bg-red-100 text-red-700' },
-    suspended:{ label: '정지', cls: 'bg-gray-100 text-gray-600' },
+    approved: { label: t('agency.statusApproved'), cls: 'bg-green-100 text-green-700' },
+    pending:  { label: t('agency.statusPending'), cls: 'bg-amber-100 text-amber-700' },
+    rejected: { label: t('agency.statusRejected'), cls: 'bg-red-100 text-red-700' },
+    suspended:{ label: t('agency.statusSuspended'), cls: 'bg-gray-100 text-gray-600' },
   }
   const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-600' }
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
 }
 
-function payBadge(status: string) {
-  if (status === 'approved') return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" />결제완료</span>
-  if (status === 'failed' || status === 'cancelled') return <span className="flex items-center gap-1 text-xs text-red-500"><XCircle className="w-3 h-3" />취소</span>
-  return <span className="flex items-center gap-1 text-xs text-amber-600"><Clock className="w-3 h-3" />대기중</span>
+function PayBadge({ status }: { status: string }) {
+  const { t } = useTranslation()
+  if (status === 'approved') return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" />{t('common.paid')}</span>
+  if (status === 'failed' || status === 'cancelled') return <span className="flex items-center gap-1 text-xs text-red-500"><XCircle className="w-3 h-3" />{t('common.cancelled')}</span>
+  return <span className="flex items-center gap-1 text-xs text-amber-600"><Clock className="w-3 h-3" />{t('common.pending')}</span>
 }
 
 function InviteLinkSection() {
+  const { t } = useTranslation()
   const agencyId = localStorage.getItem('agency_id')
   const inviteUrl = `https://live.ur-team.com/seller/register?agency=${agencyId}`
   const [recruitedCount, setRecruitedCount] = useState(0)
@@ -739,7 +744,7 @@ export default function AgencyPage() {
                         LIVE
                       </span>
                     )}
-                    {statusBadge(s.status)}
+                    <StatusBadge status={s.status} />
                   </div>
                 </div>
               ))}
@@ -783,7 +788,7 @@ export default function AgencyPage() {
                     <p className="text-xs text-gray-400">{o.seller_business_name}</p>
                   </div>
                   <div className="ml-3 flex-shrink-0">
-                    {payBadge(o.payment_status)}
+                    <PayBadge status={o.payment_status} />
                     <p className="text-xs text-gray-400 mt-1 text-right">
                       {new Date(o.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                     </p>

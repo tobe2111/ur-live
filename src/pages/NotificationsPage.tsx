@@ -34,7 +34,7 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
         <div className="flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} className="text-white">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-white font-bold text-[15px]">알림</h1>

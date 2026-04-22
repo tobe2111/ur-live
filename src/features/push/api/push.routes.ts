@@ -56,7 +56,7 @@ pushRoutes.post('/api/push/subscribe', requireAuth(), async (c) => {
   try {
     // Kill switch: skip enrolling new push subscriptions during overload.
     // We ACK success so the client doesn't retry-loop on 503.
-    const flags = await getFeatureFlags(c.env.SESSION_KV);
+    const flags = await getFeatureFlags(c.env.SESSION_KV, c.env.DB);
     if (!flags.enable_push_notifications) {
       return c.json({ success: true, skipped: true, reason: 'push_disabled' });
     }
@@ -79,7 +79,7 @@ pushRoutes.post('/api/push/subscribe', requireAuth(), async (c) => {
 // 네이티브 (Capacitor) 푸시 토큰 등록 — FCM/APNS 토큰
 pushRoutes.post('/api/push/register', requireAuth(), async (c) => {
   try {
-    const flags = await getFeatureFlags(c.env.SESSION_KV);
+    const flags = await getFeatureFlags(c.env.SESSION_KV, c.env.DB);
     if (!flags.enable_push_notifications) {
       return c.json({ success: true, skipped: true, reason: 'push_disabled' });
     }

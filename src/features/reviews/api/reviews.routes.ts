@@ -119,7 +119,7 @@ reviewsRoutes.get('/product/:productId/summary', async (c) => {
 // POST /api/reviews — 리뷰 작성
 reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
   // Kill switch: disable review submission during traffic spikes
-  const flags = await getFeatureFlags((c.env as Env).SESSION_KV);
+  const flags = await getFeatureFlags((c.env as Env).SESSION_KV, (c.env as Env).DB);
   if (!flags.enable_reviews) {
     c.header('Retry-After', '300');
     return c.json(

@@ -64,7 +64,7 @@ productsRoutes.get('/search/popular', cors(), async (c) => {
  */
 productsRoutes.get('/search/suggestions', cors(), async (c) => {
   // Kill switch: serve empty suggestions during traffic spikes to cut DB load
-  const flags = await getFeatureFlags(c.env.SESSION_KV);
+  const flags = await getFeatureFlags(c.env.SESSION_KV, c.env.DB);
   if (!flags.enable_search_suggestions) {
     return c.json({ success: true, data: [] });
   }

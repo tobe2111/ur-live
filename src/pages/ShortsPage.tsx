@@ -286,7 +286,7 @@ export default function ShortsPage() {
                 >
                   <div className="w-7 h-7 rounded-full overflow-hidden bg-white/20 flex items-center justify-center shrink-0">
                     {item.seller_avatar ? (
-                      <img src={item.seller_avatar} alt="" className="w-full h-full object-cover" />
+                      <img src={item.seller_avatar} alt={`${item.seller_name || '셀러'} 프로필 이미지`} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-[10px] font-bold text-white">{(item.seller_name || '?').charAt(0)}</span>
                     )}
@@ -305,10 +305,10 @@ export default function ShortsPage() {
                   >
                     팔로우
                   </button>
-                  <button onClick={() => setMuted(!muted)} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
+                  <button onClick={() => setMuted(!muted)} aria-label={muted ? '음소거 해제' : '음소거'} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
                   </button>
-                  <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
+                  <button onClick={() => navigate(-1)} aria-label="닫기" className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     <X className="w-4 h-4 text-white" />
                   </button>
                 </div>

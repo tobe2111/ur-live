@@ -64,7 +64,7 @@ async function ensureTables(DB: D1Database) {
 shortsRoutes.get('/feed', async (c) => {
   // Kill switch: when shorts feed is disabled, serve a minimal empty payload
   // instead of running the multi-query blend. Front-end already tolerates [].
-  const flags = await getFeatureFlags((c.env as Env).SESSION_KV)
+  const flags = await getFeatureFlags((c.env as Env).SESSION_KV, (c.env as Env).DB)
   if (!flags.enable_shorts_feed) {
     return c.json({ success: true, data: [], degraded: true })
   }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { clearAuthData } from '@/utils/auth'
@@ -6,6 +7,7 @@ import { clearFirebaseTokenCache } from '@/lib/api'
 import { Mail, Lock, Eye, EyeOff, Shield, BarChart2, Settings } from 'lucide-react'
 
 export default function AdminLoginPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -75,7 +77,7 @@ export default function AdminLoginPage() {
       }
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('[AdminLogin] Error:', err)
-      setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
+      setError(err.response?.data?.message || err.response?.data?.error || t('admin.login.failed'))
     } finally {
       setLoading(false)
     }
@@ -94,17 +96,17 @@ export default function AdminLoginPage() {
 
         <div className="flex-1 flex flex-col justify-center px-10">
           <h1 className="text-3xl font-bold text-white leading-tight mb-3">
-            플랫폼 운영<br />관리 콘솔
+            {t('admin.login.heroTitle')}
           </h1>
           <p className="text-gray-400 text-base mb-10">
-            유어딜 플랫폼의 전체 운영을 관리하는 관리자 전용 대시보드입니다.
+            {t('admin.login.heroDesc')}
           </p>
 
           <div className="space-y-5">
             {[
-              { icon: Shield, title: '보안 관리', desc: '플랫폼 보안 및 사용자 권한 관리' },
-              { icon: BarChart2, title: '운영 통계', desc: '매출, 사용자, 트래픽 실시간 분석' },
-              { icon: Settings, title: '시스템 설정', desc: '플랫폼 설정 및 정책 관리' },
+              { icon: Shield, title: t('admin.login.feature1Title'), desc: t('admin.login.feature1Desc') },
+              { icon: BarChart2, title: t('admin.login.feature2Title'), desc: t('admin.login.feature2Desc') },
+              { icon: Settings, title: t('admin.login.feature3Title'), desc: t('admin.login.feature3Desc') },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[#FCD34D]/10 flex items-center justify-center flex-shrink-0">
@@ -120,7 +122,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="px-10 pb-8">
-          <p className="text-xs text-gray-600">&copy; 2026 유어딜. 관리자 전용</p>
+          <p className="text-xs text-gray-600">{t('admin.login.copyright')}</p>
         </div>
       </div>
 
@@ -134,8 +136,8 @@ export default function AdminLoginPage() {
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">관리자 로그인</h2>
-            <p className="text-gray-500 text-sm mb-8">관리자 계정으로 로그인하세요</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">{t('admin.login.title')}</h2>
+            <p className="text-gray-500 text-sm mb-8">{t('admin.login.subtitle')}</p>
 
             {error && (
               <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
@@ -145,7 +147,7 @@ export default function AdminLoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-5">
               <div>
-                <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
+                <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.email')}</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
@@ -155,15 +157,15 @@ export default function AdminLoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoComplete="email"
-                    placeholder="관리자 이메일을 입력하세요"
-                    aria-label="이메일"
+                    placeholder={t('admin.login.emailPlaceholder')}
+                    aria-label={t('auth.email')}
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="admin-password" className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
+                <label htmlFor="admin-password" className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.password')}</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
@@ -173,15 +175,15 @@ export default function AdminLoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    placeholder="비밀번호 입력"
-                    aria-label="비밀번호"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    aria-label={t('auth.password')}
                     className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw(!showPw)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 보기'}
+                    aria-label={showPw ? t('auth.hidePassword') : t('auth.showPassword')}
                   >
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -201,7 +203,7 @@ export default function AdminLoginPage() {
                   htmlFor="adminRememberMe"
                   className="text-sm text-gray-600 cursor-pointer select-none"
                 >
-                  이메일 기억하기
+                  {t('admin.login.rememberEmail')}
                 </label>
               </div>
 
@@ -210,7 +212,7 @@ export default function AdminLoginPage() {
                 disabled={loading}
                 className="w-full py-3 bg-gradient-to-r from-[#FCD34D] to-[#F59E0B] hover:opacity-90 disabled:opacity-50 text-[#0A0A0B] font-semibold rounded-xl text-sm transition-all"
               >
-                {loading ? '로그인 중...' : '로그인'}
+                {loading ? t('admin.login.loggingIn') : t('common.login')}
               </button>
             </form>
           </div>
@@ -221,7 +223,7 @@ export default function AdminLoginPage() {
               onClick={() => navigate('/')}
               className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
             >
-              &larr; 홈으로 돌아가기
+              &larr; {t('admin.login.backToHome')}
             </button>
           </div>
         </div>
