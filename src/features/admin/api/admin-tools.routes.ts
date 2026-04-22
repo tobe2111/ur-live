@@ -10,6 +10,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { writeAuditLog } from '@/worker/middleware/admin-security'
 
 export const adminToolsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -65,6 +66,8 @@ adminToolsRoutes.get('/sellers/pending', async (c) => {
 adminToolsRoutes.put('/sellers/:id/approve', async (c) => {
   const id = c.req.param('id')
   await c.env.DB.prepare("UPDATE sellers SET status = 'approved', updated_at = datetime('now') WHERE id = ?").bind(id).run()
+  // v30 FIX: admin-tools audit log 누락 보완
+  await writeAuditLog(c, { action: 'seller.approve', targetType: 'seller', targetId: id })
   return c.json({ success: true })
 })
 
@@ -72,6 +75,7 @@ adminToolsRoutes.put('/sellers/:id/reject', async (c) => {
   const id = c.req.param('id')
   const { reason } = await c.req.json<{ reason?: string }>().catch(() => ({ reason: '' }))
   await c.env.DB.prepare("UPDATE sellers SET status = 'rejected', updated_at = datetime('now') WHERE id = ?").bind(id).run()
+  await writeAuditLog(c, { action: 'seller.reject', targetType: 'seller', targetId: id, after: { reason } })
   return c.json({ success: true })
 })
 
@@ -90,8 +94,14 @@ adminToolsRoutes.get('/banners', async (c) => {
 adminToolsRoutes.post('/banners', async (c) => {
   const { title, image_url, link_url, display_order } = await c.req.json<any>()
   if (!image_url) return c.json({ success: false, error: '이미지 URL 필수' }, 400)
-  await c.env.DB.prepare('INSERT INTO banners (title, image_url, link_url, display_order) VALUES (?, ?, ?, ?)')
+  const result = await c.env.DB.prepare('INSERT INTO banners (title, image_url, link_url, display_order) VALUES (?, ?, ?, ?)')
     .bind(title || '', image_url, link_url || '/', display_order || 0).run()
+  await writeAuditLog(c, {
+    action: 'banner.create',
+    targetType: 'banner',
+    targetId: result.meta?.last_row_id,
+    after: { title, image_url, link_url, display_order },
+  })
   return c.json({ success: true })
 })
 
@@ -107,11 +117,14 @@ adminToolsRoutes.put('/banners/:id', async (c) => {
   if (!sets.length) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400)
   vals.push(id)
   await c.env.DB.prepare(`UPDATE banners SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run()
+  await writeAuditLog(c, { action: 'banner.update', targetType: 'banner', targetId: id, after: body })
   return c.json({ success: true })
 })
 
 adminToolsRoutes.delete('/banners/:id', async (c) => {
-  await c.env.DB.prepare('DELETE FROM banners WHERE id = ?').bind(c.req.param('id')).run()
+  const id = c.req.param('id')
+  await c.env.DB.prepare('DELETE FROM banners WHERE id = ?').bind(id).run()
+  await writeAuditLog(c, { action: 'banner.delete', targetType: 'banner', targetId: id })
   return c.json({ success: true })
 })
 

@@ -471,8 +471,9 @@ async function handlePaymentCancelled(
   }
 
   // v26 FIX: 결제 취소 시 coupon_uses 복원 (쿠폰 재사용 가능하게)
+  // 상대 경로 사용 — esbuild worker 번들은 `@/` path alias를 dynamic import에서 resolve 안 함
   try {
-    const { restoreCouponsForOrders } = await import('@/features/coupons/api/coupons.routes');
+    const { restoreCouponsForOrders } = await import('../../features/coupons/api/coupons.routes');
     const restored = await restoreCouponsForOrders(DB, orders.map(o => o.id));
     if (restored > 0) {
       console.log('[WEBHOOK] COUPON_RESTORED', { orderNumber, restored });

@@ -123,8 +123,12 @@ export async function restoreCouponsForOrders(DB: D1Database, orderIds: (number 
   const rows = await DB.prepare(
     `SELECT coupon_id FROM coupon_uses WHERE order_id IN (${placeholders})`
   ).bind(...orderIds).all<{ coupon_id: number }>()
-  const couponIds = (rows.results || []).map(r => r.coupon_id)
-  if (!couponIds.length) return 0
+  const rawCouponIds = (rows.results || []).map(r => r.coupon_id)
+  if (!rawCouponIds.length) return 0
+
+  // v26 FIX: multi-seller 주문에서 같은 쿠폰이 여러 order에 쓰였으면 중복 제거
+  // 쿠폰은 주문 단위가 아니라 쿠폰 단위로 used_count를 차감해야 함.
+  const couponIds = [...new Set(rawCouponIds)]
 
   // D1 batch: DELETE + UPDATE used_count (per-coupon decrement)
   const stmts = [
