@@ -67,33 +67,43 @@ function calculatePlatformFee(amount: number, feeRate: number = 0.10): number {
   return Math.round(amount * feeRate)
 }
 
+// 🇰🇷 KST 기준 (UTC+9) — Cloudflare Workers 는 UTC 로 실행되므로 명시적 변환 필요.
+// 한국 셀러 입장에서 "이번 달" 은 KST 자정 기준으로 시작해야 정확한 정산 경계 얻음.
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+function nowKST(): Date {
+  return new Date(Date.now() + KST_OFFSET_MS);
+}
+
 /**
- * 정산 기간 생성 (이번 달)
+ * 정산 기간 생성 (이번 달, KST 기준)
  */
 export function getCurrentSettlementPeriod(): SettlementPeriod {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  
+  const now = nowKST()
+  const year = now.getUTCFullYear()
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const lastDay = new Date(Date.UTC(year, now.getUTCMonth() + 1, 0)).getUTCDate()
+
   return {
     startDate: `${year}-${month}-01`,
-    endDate: `${year}-${month}-${new Date(year, now.getMonth() + 1, 0).getDate()}`
+    endDate: `${year}-${month}-${String(lastDay).padStart(2, '0')}`
   }
 }
 
 /**
- * 정산 기간 생성 (지난 달)
+ * 정산 기간 생성 (지난 달, KST 기준)
  */
 export function getLastMonthSettlementPeriod(): SettlementPeriod {
-  const now = new Date()
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const year = lastMonth.getFullYear()
-  const month = String(lastMonth.getMonth() + 1).padStart(2, '0')
-  const lastDay = new Date(year, lastMonth.getMonth() + 1, 0).getDate()
-  
+  const now = nowKST()
+  // KST 이번 달 1일 0시의 이전 월 1일
+  const lastMonthDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+  const year = lastMonthDate.getUTCFullYear()
+  const month = String(lastMonthDate.getUTCMonth() + 1).padStart(2, '0')
+  const lastDay = new Date(Date.UTC(year, lastMonthDate.getUTCMonth() + 1, 0)).getUTCDate()
+
   return {
     startDate: `${year}-${month}-01`,
-    endDate: `${year}-${month}-${lastDay}`
+    endDate: `${year}-${month}-${String(lastDay).padStart(2, '0')}`
   }
 }
 

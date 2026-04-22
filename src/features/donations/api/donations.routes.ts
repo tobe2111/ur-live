@@ -39,7 +39,11 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
   if (!body.stream_id || !body.amount) {
     return c.json({ success: false, error: '필수 항목 누락 (stream_id, amount)' }, 400);
   }
-  if (body.amount < 1000 || body.amount % 100 !== 0) {
+  // 🛡️ stream_id 형식 검증 — NaN/음수/매우 큰 수 방지
+  if (!Number.isFinite(body.stream_id) || body.stream_id < 1 || body.stream_id > 1e10) {
+    return c.json({ success: false, error: 'stream_id 형식이 올바르지 않습니다' }, 400);
+  }
+  if (!Number.isFinite(body.amount) || body.amount < 1000 || body.amount % 100 !== 0) {
     return c.json({ success: false, error: '후원 금액은 최소 1,000원이며 100원 단위여야 합니다' }, 400);
   }
   // ✅ SECURITY FIX (H1): Upper bound on donation amount (prevent overflow /
@@ -47,9 +51,13 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
   if (body.amount > 10_000_000) {
     return c.json({ success: false, error: '후원 금액은 최대 1천만원입니다' }, 400);
   }
-  // ✅ C2 FIX: cap message length (DoS / UI overflow 방지)
+  // ✅ C2 FIX: cap message length + XSS 위험 문자 제거
   if (body.message && body.message.length > 500) {
     return c.json({ success: false, error: '메시지는 500자 이내로 작성해주세요.' }, 400);
+  }
+  // 🛡️ 메시지 XSS 방어 — <, >, 스크립트 태그 제거 (저장 시점 sanitize)
+  if (body.message && typeof body.message === 'string') {
+    body.message = body.message.replace(/[<>]/g, '').slice(0, 500);
   }
 
   const { DB } = c.env;
