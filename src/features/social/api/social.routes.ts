@@ -29,7 +29,7 @@ socialRoutes.post('/follow/:sellerId', requireAuth(), async (c) => {
   await DB.prepare("INSERT INTO seller_follows (user_id, seller_id) VALUES (?, ?)").bind(userId, sellerId).run()
   // 셀러에게 새 팔로워 알림
   try {
-    const { notifySeller } = await import('@/lib/notifications')
+    const { notifySeller } = await import('../../../lib/notifications')
     notifySeller(DB, sellerId || '', 'new_follower', '👤 새 팔로워!', `${user.name || '유저'}님이 팔로우했습니다`, `/profile/${sellerId}`).catch(() => {})
   } catch {}
   return c.json({ success: true, data: { following: true } })

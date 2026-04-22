@@ -22,6 +22,10 @@
 
     <!-- Pretendard 웹폰트 -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+    <!-- 🛡️ 2026-04-22: font-display: swap — FOUT 허용 (FOIT 방지). 한글 글자 안 보이는 시간 단축. -->
+    <style>
+      @font-face { font-family: 'Pretendard Variable'; font-display: swap; }
+    </style>
 
     <meta name="description" content="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매, 실시간 라이브 쇼핑" />
     <meta name="keywords" content="라이브커머스,라이브쇼핑,공동구매,맛집,식사권,인플루언서,유어딜" />

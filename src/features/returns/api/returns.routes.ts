@@ -476,7 +476,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
 
   // 4. 주문 상태 업데이트 (state machine CAS) — 이미 REFUNDED인 경우 false
   //    중복 승인 시 이중 복구/이중 환불을 차단하기 위해 transition 성공 시에만 재고 복구.
-  const { transitionOrderStatus } = await import('@/worker/utils/state-machine');
+  const { transitionOrderStatus } = await import('../../../worker/utils/state-machine');
   const transitioned = await transitionOrderStatus(DB, returnRecord.order_id, 'REFUNDED', {
     extraSets: {
       refund_status: 'completed',
@@ -584,7 +584,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
       ).run().catch(() => {});
 
       try {
-        const { sendAlert } = await import('@/worker/utils/alerts');
+        const { sendAlert } = await import('../../../worker/utils/alerts');
         await sendAlert(c.env, {
           severity: 'warn',
           title: 'Settlement clawback: refund after completed settlement',
@@ -601,7 +601,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
 
   // 6. 소비자에게 환불 완료 알림
   try {
-    const { notifyUser } = await import('@/lib/notifications');
+    const { notifyUser } = await import('../../../lib/notifications');
     notifyUser(DB, returnRecord.user_id, 'refund_complete', '💰 환불 완료', `${returnRecord.refund_amount?.toLocaleString()}원이 환불되었습니다`, '/my-orders').catch(() => {});
   } catch {}
 

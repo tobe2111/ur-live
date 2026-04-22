@@ -2352,6 +2352,8 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
               'anthropic-version': '2023-06-01',
               'content-type': 'application/json',
             },
+            // 🛡️ 2026-04-22: 30s timeout — LLM 응답 느릴 때 worker hang 방어
+            signal: AbortSignal.timeout(30_000),
             body: JSON.stringify({
               model: 'claude-haiku-4-5-20251001',
               max_tokens: 4096,
