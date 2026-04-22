@@ -2175,8 +2175,29 @@ adminManagementRoutes.put('/settings/commission', cors(), async (c) => {
     const numValue = Number(value);
     if (isNaN(numValue) || numValue < 0 || numValue > 100) return c.json({ success: false, error: '수수료율은 0~100 사이여야 합니다' }, 400);
 
+    // 🛡️ 2026-04-22: key 화이트리스트 검증 + 이전 값 기록 (audit)
+    const ALLOWED_KEYS = ['commission_rate_default', 'commission_rate_donation', 'commission_rate_meal_voucher',
+      'review_reward_text', 'review_reward_image', 'review_reward_video',
+      'affiliate_commission_rate'];
+    if (!ALLOWED_KEYS.includes(key)) {
+      return c.json({ success: false, error: `변경 불가능한 key: ${key}` }, 400);
+    }
+
+    const prevRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = ?").bind(key).first<{ value: string }>();
+    const prevValue = prevRow?.value ?? null;
+
     await DB.prepare("UPDATE platform_settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?").bind(value, key).run();
-    return c.json({ success: true, message: `수수료율이 ${value}%로 변경되었습니다` });
+
+    // 감사 로그 — 어드민 대시보드에서 누가 언제 수수료/보상을 변경했는지 추적
+    await writeAuditLog(c, {
+      action: 'platform_settings.update',
+      targetType: 'platform_setting',
+      targetId: key,
+      before: { value: prevValue },
+      after: { value }
+    });
+
+    return c.json({ success: true, message: `${key} 값이 ${value}로 변경되었습니다` });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

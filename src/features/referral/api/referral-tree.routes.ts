@@ -347,10 +347,31 @@ export async function registerInReferralTree(
       )
 
       if (referrerNode) {
-        parentId = referrerNode.user_id
-        grandparentId = referrerNode.parent_id || null
-        greatGrandparentId = referrerNode.grandparent_id || null
-        depth = referrerNode.depth + 1
+        // 🛡️ 2026-04-22: 순환 참조 방지 (A→B→A 같은 cycle 차단)
+        // 이전: 조상 chain 에 userId 있어도 INSERT 진행 → 무한 보상 루프
+        if (
+          referrerNode.parent_id === userId ||
+          referrerNode.grandparent_id === userId
+        ) {
+          // 순환 감지 — referrer 없이 직접 depth 0 등록
+          parentId = null
+          grandparentId = null
+          greatGrandparentId = null
+          depth = 0
+        } else {
+          parentId = referrerNode.user_id
+          grandparentId = referrerNode.parent_id || null
+          greatGrandparentId = referrerNode.grandparent_id || null
+          depth = referrerNode.depth + 1
+
+          // 🛡️ depth 제한 — 무한 추천 chain 차단
+          if (depth > 3) {
+            parentId = null
+            grandparentId = null
+            greatGrandparentId = null
+            depth = 0
+          }
+        }
       } else {
         // Referrer exists as user but not in referral_tree yet — register them first (depth 0)
         try {
