@@ -117,7 +117,7 @@ export default function MainHomePage() {
       axios.get('/api/streams?status=scheduled'),
       axios.get('/api/streams?status=ended&limit=6'),
       api.get('/api/group-buy/products?status=active'),
-      api.get('/api/products?limit=12&sort=popular&featured=true'),
+      api.get('/api/products?limit=12&sort=ranking&featured=true'),
     ]).then(([liveRes, schedRes, endedRes, mealRes, prodRes]) => {
       if (liveRes.status === 'fulfilled' && liveRes.value.data.success) setLiveStreams(liveRes.value.data.data || [])
       if (schedRes.status === 'fulfilled' && schedRes.value.data.success) setScheduledStreams(schedRes.value.data.data || [])

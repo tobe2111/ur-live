@@ -3,11 +3,111 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   ChevronLeft, User, Mail, Phone, Bell, CreditCard,
   MapPin, Globe, HelpCircle, ChevronRight, Edit, X,
+  Loader2, CheckCircle2, RefreshCw,
 } from 'lucide-react';
 import { getUserIdSync, getUserNameSync, getUserEmail } from '@/utils/auth';
 import api from '@/lib/api';
 import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';
+
+// ─── 앱 버전 섹션 ──────────────────────────────────────────────
+
+const LOCAL_APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
+
+function AppVersionSection() {
+  const [serverVersion, setServerVersion] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
+
+  const fetchVersion = async () => {
+    try {
+      const res = await fetch('/api/version', { cache: 'no-store' });
+      const data = await res.json() as { success?: boolean; version?: string };
+      if (data?.version) setServerVersion(String(data.version));
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchVersion().finally(() => setLoading(false));
+  }, []);
+
+  const handleCheck = async () => {
+    setChecking(true);
+    await fetchVersion();
+    setTimeout(() => setChecking(false), 500);
+  };
+
+  const handleUpdate = async () => {
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.update()));
+      }
+    } catch {}
+    window.location.reload();
+  };
+
+  // localStorage에 저장된 로컬 빌드 버전 (version-check.ts에서 관리)
+  const localBuildVersion = (typeof window !== 'undefined' ? localStorage.getItem('ur_build_version') : null);
+  const isLatest = !loading && serverVersion && localBuildVersion && serverVersion === localBuildVersion;
+  const hasUpdate = !loading && serverVersion && localBuildVersion && serverVersion !== localBuildVersion;
+
+  return (
+    <div className="mb-6">
+      <h3 className="text-sm font-semibold text-gray-500 mb-3 px-2">앱 정보</h3>
+      <div className="bg-[#121212] border border-[#2A2A2A] rounded-xl divide-y divide-[#2A2A2A]">
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-sm text-gray-400">현재 버전</span>
+          <span className="text-sm font-medium text-white">{LOCAL_APP_VERSION}</span>
+        </div>
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-sm text-gray-400">최신 빌드 확인</span>
+          {loading ? (
+            <span className="flex items-center gap-1.5 text-sm text-gray-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> 확인 중
+            </span>
+          ) : !serverVersion ? (
+            <button
+              onClick={handleCheck}
+              className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
+              다시 시도
+            </button>
+          ) : isLatest ? (
+            <span className="flex items-center gap-1.5 text-sm text-emerald-400 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5" /> 최신 버전
+            </span>
+          ) : hasUpdate ? (
+            <button
+              onClick={handleUpdate}
+              className="flex items-center gap-1 px-3 py-1 rounded-full bg-pink-500 text-white text-xs font-bold hover:bg-pink-600 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" /> 업데이트
+            </button>
+          ) : (
+            <button
+              onClick={handleCheck}
+              className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
+              확인
+            </button>
+          )}
+        </div>
+      </div>
+      {hasUpdate && (
+        <p className="mt-2 text-[11px] text-pink-400 px-2 text-center">
+          새 버전이 준비되었습니다. 업데이트 버튼을 눌러 적용하세요.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function AccountSettingsPage() {
   const navigate = useNavigate();
@@ -144,13 +244,8 @@ export default function AccountSettingsPage() {
           </Link>
         </Section>
 
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-500 mb-3 px-2">앱 정보</h3>
-          <div className="bg-[#121212] border border-[#2A2A2A] rounded-xl p-4 space-y-2">
-            <div className="flex justify-between text-sm"><span className="text-gray-400">버전</span><span className="font-medium text-white">1.0.0</span></div>
-            <div className="flex justify-between text-sm"><span className="text-gray-400">최신 버전</span><span className="text-green-400 font-medium">사용 중</span></div>
-          </div>
-        </div>
+        <AppVersionSection />
+
 
         <div className="mt-16 pt-8 border-t border-[#1A1A1A] text-center">
           <Link to="/account/delete-warning" className="text-xs text-gray-500 hover:text-gray-400 underline">회원 탈퇴</Link>
