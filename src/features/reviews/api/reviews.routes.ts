@@ -221,15 +221,11 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
       throw new Error('__skip_reward__');
     }
     // ✅ BUG #32 FIX: Prevent review reward farming (POST → DELETE → POST again).
-    // Check if user already received a reward for this product before granting.
-    const existingReward = await DB.prepare(
-      "SELECT 1 FROM point_transactions WHERE user_id = ? AND type = 'charge' AND description LIKE ?"
-    ).bind(String(user.id), `%리뷰리워드%`).first().catch(() => null);
-    // More precise: also check product_id via description or dedicated column
-    // For now, check if there's any review reward for this user+product combo
+    // 🛡️ 2026-04-22: 정확한 매칭 — 이전 `%${product_id}%` 는 product_id=1 이 11, 21, 111 에도 매칭
+    // (product:${id}) 형식 완전 구간 매칭으로 수정.
     const existingProductReward = await DB.prepare(
       "SELECT 1 FROM point_transactions WHERE user_id = ? AND description LIKE ? AND description LIKE ?"
-    ).bind(String(user.id), `%리뷰리워드%`, `%${body.product_id}%`).first().catch(() => null);
+    ).bind(String(user.id), `%리뷰리워드%`, `%(product:${body.product_id})%`).first().catch(() => null);
 
     if (existingProductReward) {
       // Skip reward — already earned for this product (even if review was deleted & re-posted)

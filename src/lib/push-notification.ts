@@ -1,12 +1,17 @@
 /**
  * Web Push Notification 시스템
- * 
+ *
  * 기능:
  * - 브라우저 푸시 알림
  * - 구독 관리
  * - 알림 발송
  * - Service Worker 연동
+ *
+ * 🛡️ 2026-04-22: p256dh / auth 는 DB 저장 시 encryptAtRest (AES-GCM).
+ *    DATA_ENCRYPTION_KEY env 미설정 시 legacy plaintext 호환.
  */
+
+import { encryptAtRest, decryptAtRest } from '../worker/utils/data-crypto'
 
 interface PushSubscription {
   endpoint: string
@@ -48,13 +53,16 @@ export async function savePushSubscription(
   DB: D1Database,
   userId: number,
   userType: 'user' | 'seller' | 'admin',
-  subscription: PushSubscription
+  subscription: PushSubscription,
+  kek?: string,
 ): Promise<void> {
   // Use ON CONFLICT instead of INSERT OR REPLACE so that:
   //  1. The row's PRIMARY KEY id is preserved (REPLACE deletes+reinserts, which
   //     invalidates foreign-key references and `is_active` resets).
   //  2. The `is_active` column is NOT silently reset to its default.
   //  3. `created_at` is kept, only `updated_at` bumps.
+  const encP256dh = await encryptAtRest(subscription.keys.p256dh, kek)
+  const encAuth = await encryptAtRest(subscription.keys.auth, kek)
   await DB.prepare(`
     INSERT INTO push_subscriptions
       (user_id, user_type, endpoint, p256dh, auth, created_at, updated_at)
@@ -70,8 +78,8 @@ export async function savePushSubscription(
     userId,
     userType,
     subscription.endpoint,
-    subscription.keys.p256dh,
-    subscription.keys.auth
+    encP256dh,
+    encAuth
   ).run()
 
   // Subscription saved
@@ -83,7 +91,8 @@ export async function savePushSubscription(
 export async function getPushSubscriptions(
   DB: D1Database,
   userId: number,
-  userType: 'user' | 'seller' | 'admin'
+  userType: 'user' | 'seller' | 'admin',
+  kek?: string,
 ): Promise<PushSubscription[]> {
   const result = await DB.prepare(`
     SELECT endpoint, p256dh, auth
@@ -91,13 +100,21 @@ export async function getPushSubscriptions(
     WHERE user_id = ? AND user_type = ? AND is_active = TRUE
   `).bind(userId, userType).all()
 
-  return (result.results as any[]).map(row => ({
-    endpoint: row.endpoint,
-    keys: {
-      p256dh: row.p256dh,
-      auth: row.auth
+  const subs: PushSubscription[] = []
+  for (const row of result.results as any[]) {
+    try {
+      subs.push({
+        endpoint: row.endpoint,
+        keys: {
+          p256dh: await decryptAtRest(row.p256dh, kek),
+          auth: await decryptAtRest(row.auth, kek),
+        },
+      })
+    } catch {
+      // 복호화 실패 (KEK rotation 실수 등) — 해당 구독만 건너뜀
     }
-  }))
+  }
+  return subs
 }
 
 /**
@@ -292,9 +309,9 @@ export async function notifyUser(
   userId: number,
   userType: 'user' | 'seller' | 'admin',
   payload: PushNotificationPayload,
-  env: { VAPID_PUBLIC_KEY: string; VAPID_PRIVATE_KEY: string; VAPID_SUBJECT: string }
+  env: { VAPID_PUBLIC_KEY: string; VAPID_PRIVATE_KEY: string; VAPID_SUBJECT: string; DATA_ENCRYPTION_KEY?: string }
 ): Promise<void> {
-  const subscriptions = await getPushSubscriptions(DB, userId, userType)
+  const subscriptions = await getPushSubscriptions(DB, userId, userType, env.DATA_ENCRYPTION_KEY)
 
   if (subscriptions.length === 0) {
     return

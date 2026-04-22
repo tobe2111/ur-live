@@ -1,6 +1,10 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { WSMessage, ProductChangeMessage, ViewerCountMessage, StreamStatusMessage } from './types';
 
+// 🛡️ 2026-04-22: DO 당 최대 동시 WebSocket 수 — 한 DO 로 공격자가 수만 connection 으로
+// 메모리 고갈 시도하는 것을 방어. 한 라이브 방송에 10k 관중은 현실적 상한.
+const MAX_SESSIONS_PER_DO = 10_000;
+
 export class LiveStreamDurableObject extends DurableObject {
   private sessions: Set<WebSocket>;
   private viewerCount: number;
@@ -18,6 +22,11 @@ export class LiveStreamDurableObject extends DurableObject {
 
     // WebSocket 업그레이드 요청 처리
     if (request.headers.get('Upgrade') === 'websocket') {
+      // 🛡️ 세션 한도 초과 시 503 — DO 메모리 보호
+      if (this.sessions.size >= MAX_SESSIONS_PER_DO) {
+        return new Response('Stream at capacity', { status: 503 });
+      }
+
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
@@ -74,14 +83,15 @@ export class LiveStreamDurableObject extends DurableObject {
 
     webSocket.addEventListener('close', () => {
       this.sessions.delete(webSocket);
-      this.viewerCount--;
+      // 🛡️ viewerCount 하한선 보장 (음수 방지)
+      this.viewerCount = Math.max(0, this.viewerCount - 1);
       this.broadcastViewerCount();
     });
 
     webSocket.addEventListener('error', (err) => {
       console.error('WebSocket error:', err);
       this.sessions.delete(webSocket);
-      this.viewerCount--;
+      this.viewerCount = Math.max(0, this.viewerCount - 1);
     });
   }
 
