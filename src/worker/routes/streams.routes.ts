@@ -426,8 +426,21 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
   }
 });
 
-// ── PUT /api/streams/:id/viewer-count (셀러 수동 설정) ────────────────────────
+// ── PUT /api/streams/:id/viewer-count (셀러 수동 설정 — 인증 필수) ────────────
 streamsRouter.put('/:id/viewer-count', async (c) => {
+  // 🛡️ 인증 체크 — 미인증 시 시청자 수 조작 가능
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
+  try {
+    const { verify } = await import('hono/jwt');
+    const payload = await verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256') as any;
+    if (!['seller', 'admin'].includes(payload.type)) {
+      return c.json({ success: false, error: 'Seller or admin only' }, 403);
+    }
+  } catch {
+    return c.json({ success: false, error: 'Invalid token' }, 401);
+  }
+
   try {
     const streamId = c.req.param('id');
     const { manual_count } = await c.req.json<{ manual_count: number | null }>();
