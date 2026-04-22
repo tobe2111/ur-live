@@ -138,6 +138,16 @@ app.use('*', cors({
 // Security Headers (CSP etc.)
 // ============================================================
 
+// 🆔 Request ID 미들웨어 (2026-04-22 추가)
+// CF ray ID 또는 crypto.randomUUID() 로 고유 ID 부여 후 response 헤더로 반환.
+// 장애 발생 시 사용자가 이 ID 만 알려주면 Cloudflare Logs 에서 즉시 해당 요청 추적 가능.
+app.use('*', async (c, next) => {
+  const rayId = c.req.header('CF-Ray') || crypto.randomUUID();
+  c.set('requestId' as never, rayId);
+  await next();
+  c.header('X-Request-Id', rayId);
+});
+
 app.use('*', async (c, next) => {
   await next();
   // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
@@ -209,6 +219,10 @@ app.use('*', async (c, next) => {
   // ✅ X-XSS-Protection 제거: deprecated — 일부 브라우저에서 오히려 XSS를 유발 (HSTS/CSP로 대체)
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   c.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self), payment=(self), usb=()');
+  // 2026-04-22 추가: Spectre-class 공격 차단 + cross-origin 이슈 방지
+  c.header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups'); // 카카오/구글 OAuth 팝업 허용
+  c.header('Cross-Origin-Resource-Policy', 'same-site');
+  c.header('X-Permitted-Cross-Domain-Policies', 'none'); // Flash/PDF 크로스도메인 차단
 });
 
 // ============================================================
@@ -314,6 +328,88 @@ app.route('/api/health/detailed', healthRoutes);
 
 // 클라이언트 빌드 버전 확인 — index.html의 스크립트 해시를 서버가 알려줌
 // 프론트가 자신의 번들 해시와 비교해서 불일치 시 자동 리로드
+// ============================================================
+// 🩺 상세 헬스 대시보드 (2026-04-22 추가)
+// GET /api/_internal/health-dashboard
+// DB latency, 테이블 행 수, 최근 에러 수, 배포 시점 등 운영자용 종합 지표
+// ============================================================
+app.get('/api/_internal/health-dashboard', async (c) => {
+  const env = c.env as any;
+  const DB = env.DB as D1Database;
+  const start = Date.now();
+
+  // DB latency 측정
+  let dbLatency = 0;
+  let dbOk = false;
+  try {
+    const t0 = Date.now();
+    await DB.prepare('SELECT 1').first();
+    dbLatency = Date.now() - t0;
+    dbOk = true;
+  } catch {}
+
+  // 주요 테이블 행 수
+  const tableCounts: Record<string, number | null> = {};
+  const tablesToCheck = ['users', 'sellers', 'products', 'orders', 'live_streams'];
+  for (const t of tablesToCheck) {
+    try {
+      const row = await DB.prepare(`SELECT COUNT(*) as c FROM ${t}`).first<{ c: number }>();
+      tableCounts[t] = row?.c ?? null;
+    } catch {
+      tableCounts[t] = null;
+    }
+  }
+
+  // 최근 24시간 주문/결제 건수
+  let recentOrders = 0;
+  let recentPaidOrders = 0;
+  try {
+    const o = await DB.prepare(
+      "SELECT COUNT(*) as c FROM orders WHERE created_at >= datetime('now', '-24 hours')"
+    ).first<{ c: number }>();
+    recentOrders = o?.c ?? 0;
+    const p = await DB.prepare(
+      "SELECT COUNT(*) as c FROM orders WHERE created_at >= datetime('now', '-24 hours') AND payment_status = 'approved'"
+    ).first<{ c: number }>();
+    recentPaidOrders = p?.c ?? 0;
+  } catch {}
+
+  // 환경 변수 sanity
+  const envCheck = {
+    JWT_SECRET: !!env.JWT_SECRET,
+    REFRESH_TOKEN_SECRET: !!env.REFRESH_TOKEN_SECRET,
+    KAKAO_REST_API_KEY: !!env.KAKAO_REST_API_KEY,
+    FIREBASE_PRIVATE_KEY: !!env.FIREBASE_PRIVATE_KEY,
+    TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
+    RESEND_WEBHOOK_SECRET: !!env.RESEND_WEBHOOK_SECRET,
+    INTERNAL_CRON_TOKEN: !!env.INTERNAL_CRON_TOKEN,
+  };
+  const secretsTotal = Object.keys(envCheck).length;
+  const secretsSet = Object.values(envCheck).filter(Boolean).length;
+
+  return c.json({
+    timestamp: new Date().toISOString(),
+    totalDurationMs: Date.now() - start,
+    db: {
+      status: dbOk ? 'healthy' : 'unhealthy',
+      latencyMs: dbLatency,
+      latencyGrade: dbLatency < 50 ? 'excellent' : dbLatency < 200 ? 'good' : dbLatency < 500 ? 'slow' : 'critical',
+    },
+    tables: tableCounts,
+    traffic: {
+      last24hOrders: recentOrders,
+      last24hPaidOrders: recentPaidOrders,
+      conversionPct: recentOrders > 0 ? Math.round((recentPaidOrders / recentOrders) * 100) : 0,
+    },
+    secrets: {
+      total: secretsTotal,
+      configured: secretsSet,
+      missing: Object.entries(envCheck).filter(([, v]) => !v).map(([k]) => k),
+      health: secretsSet === secretsTotal ? 'complete' : 'incomplete',
+    },
+  });
+});
+
 let _cachedBuildVersion: { version: string; fetchedAt: number } | null = null;
 app.get('/api/version', async (c) => {
   // 공개 secret 존재 여부 boolean — 값 자체는 노출 안 됨. 500 진단용.
@@ -353,10 +449,24 @@ app.get('/api/version', async (c) => {
 // 모든 ALTER TABLE은 IF EXISTS / catch 처리 — 이미 있으면 무해 무동작.
 // 운영자가 한 번 호출하면 누락된 컬럼이 자동 추가됨.
 // ============================================================
+// Migration 버전 추적 — 매 repair-schema 호출 시 현재 상태 기록.
+// CI 에서 D1 권한 받으면 정식 migration runner 로 전환하고 이 엔드포인트는 deprecate.
+async function ensureMigrationTrackingTable(DB: D1Database) {
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS _migration_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      action TEXT NOT NULL,
+      details TEXT,
+      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `).run().catch(() => {});
+}
+
 app.get('/api/_internal/repair-schema', async (c) => {
   const env = c.env as any;
   const DB = env.DB as D1Database;
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  await ensureMigrationTrackingTable(DB);
 
   const stmts: Array<{ desc: string; sql: string }> = [
     // ── sellers ────────────────────────────────────
