@@ -49,10 +49,12 @@ export function useCart() {
       
       return cartData
     },
-    staleTime: 0, // ✅ 항상 최신 데이터 가져오기 (캐시 사용 안 함)
-    gcTime: 5 * 60 * 1000,   // 5분 후 메모리 해제
-    refetchOnMount: 'always', // ✅ 컴포넌트 마운트 시 항상 새로고침
-    refetchOnWindowFocus: true, // ✅ 윈도우 포커스 시 새로고침
+    // 🛡️ 2026-04-22: staleTime 0 → 30s (성능 개선, 매 렌더 fetch 방지)
+    // 사용자 변경 (수량 +/-, 삭제) 시 invalidateQueries 로 강제 refetch.
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     retry: (failureCount, error: any) => {
       // ✅ 401 에러 시 재시도 중단 (무한 로딩 방지)
       if (error?.response?.status === 401) {
