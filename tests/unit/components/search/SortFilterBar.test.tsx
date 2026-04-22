@@ -18,10 +18,9 @@ describe('SortFilterBar', () => {
   it('renders total results count', () => {
     render(<SortFilterBar {...defaultProps} />)
 
-    // Text is split across multiple elements, so check for the full text
-    expect(screen.getByText((_, element) => {
-      return element?.textContent === '총 25개 상품'
-    })).toBeDefined()
+    expect(screen.getByText('25')).toBeDefined()
+    expect(screen.getByText('총')).toBeDefined()
+    expect(screen.getByText('개')).toBeDefined()
   })
 
   it('renders sort select with all options', () => {
@@ -30,10 +29,9 @@ describe('SortFilterBar', () => {
     const select = screen.getByRole('combobox')
     expect(select).toBeDefined()
 
-    // Check all options are present
     expect(screen.getByText('관련도순')).toBeDefined()
-    expect(screen.getByText('낮은 가격순')).toBeDefined()
-    expect(screen.getByText('높은 가격순')).toBeDefined()
+    expect(screen.getByText('낮은가격')).toBeDefined()
+    expect(screen.getByText('높은가격')).toBeDefined()
     expect(screen.getByText('최신순')).toBeDefined()
   })
 
@@ -75,7 +73,7 @@ describe('SortFilterBar', () => {
     render(<SortFilterBar {...defaultProps} totalResults={0} />)
 
     expect(screen.getByText('0')).toBeDefined()
-    expect(screen.getByText('개 상품', { exact: false })).toBeDefined()
+    expect(screen.getByText('개')).toBeDefined()
   })
 
   it('handles large result counts', () => {
@@ -84,11 +82,12 @@ describe('SortFilterBar', () => {
     expect(screen.getByText('1500')).toBeDefined()
   })
 
-  it('applies focus ring on select focus', () => {
+  it('select has appearance-none and focus outline removed (custom chevron)', () => {
     render(<SortFilterBar {...defaultProps} />)
 
     const select = screen.getByRole('combobox')
-    expect(select.className).toContain('focus:ring-2')
+    expect(select.className).toContain('appearance-none')
+    expect(select.className).toContain('focus:outline-none')
   })
 
   it('has correct layout structure', () => {
@@ -98,10 +97,10 @@ describe('SortFilterBar', () => {
     expect(wrapper).toBeDefined()
   })
 
-  it('renders with border styling', () => {
+  it('renders filter chips row', () => {
     const { container } = render(<SortFilterBar {...defaultProps} />)
 
-    const mainDiv = container.querySelector('.border-b.border-\\[\\#e5e5ea\\]')
-    expect(mainDiv).toBeDefined()
+    const chipsRow = container.querySelector('.overflow-x-auto')
+    expect(chipsRow).toBeDefined()
   })
 })
