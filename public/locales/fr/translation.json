@@ -1673,5 +1673,44 @@
     "reviews": "Reviews",
     "selectOption": "Select Option",
     "seller": "Seller"
+  },
+  "voucher": {
+    "myVouchers": "Mes coupons",
+    "empty": "Aucun coupon pour le moment",
+    "emptyHint": "Participez à un achat groupé restaurant !",
+    "exploreRestaurants": "Explorer les restaurants",
+    "expiresAt": "Valide jusqu'au",
+    "usedAt": "Date d'utilisation",
+    "until": "jusqu'à",
+    "scan": "Voir QR",
+    "copy": "Copier",
+    "showQrAtStore": "Présentez ce code QR au restaurant",
+    "seoTitle": "Mes coupons - 유어딜",
+    "seoDescription": "Voir et utiliser les coupons achetés",
+    "status": {
+      "unused": "Disponible",
+      "used": "Utilisé",
+      "expired": "Expiré",
+      "refunded": "Remboursé"
+    },
+    "verify": {
+      "title": "Vérifier le coupon",
+      "subtitle": "Vérifiez le code du coupon client",
+      "codeLabel": "Code du coupon",
+      "codePlaceholder": "UR-XXXX-XXXX",
+      "qrHint": "Coller le résultat du scan QR extrait automatiquement le code",
+      "lookup": "Rechercher",
+      "alreadyUsed": "Coupon déjà utilisé",
+      "expired": "Coupon expiré",
+      "lookupAnother": "Rechercher un autre coupon",
+      "enterPin": "Mot de passe de vérification",
+      "pinPlaceholder": "Saisir mot de passe",
+      "confirm": "Confirmer l'utilisation",
+      "cancel": "Annuler",
+      "notFound": "Coupon introuvable",
+      "processingError": "Erreur lors du traitement",
+      "seoTitle": "Vérification du coupon",
+      "seoDescription": "Vérifier le coupon par code QR"
+    }
   }
 }

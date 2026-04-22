@@ -8,6 +8,7 @@ import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
 import PushNotificationSetup from './components/PushNotificationSetup'
 import OfflineBanner from './components/OfflineBanner'
+import CookieConsentBanner from './components/CookieConsentBanner'
 import BottomNav from '@/components/main/BottomNav'
 import SideBanner from '@/components/SideBanner'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -857,6 +858,7 @@ function AppContent() {
         </Suspense>
       </FrameWrapper>
       <ToastContainer />
+      <CookieConsentBanner />
     </>
   )
 }

@@ -170,6 +170,7 @@ export async function handleScheduled(env: Env) {
   } catch (e) { console.error('[Cron] auto_confirm error:', e) }
 
   // ── 11. 예정 방송 30분 전 알림 발송 ──
+  // 🛡️ 2026-04-22: LIMIT 100 추가 — 1000+ scheduled streams 시 OOM 방어
   try {
     // 30분 이내 시작 예정 + 아직 알림 미발송인 방송 조회
     const { results: upcomingStreams } = await DB.prepare(`
@@ -181,6 +182,8 @@ export async function handleScheduled(env: Env) {
         AND ls.scheduled_at > datetime('now')
         AND ls.scheduled_at <= datetime('now', '+35 minutes')
         AND COALESCE(ls.pre_notified, 0) = 0
+      ORDER BY ls.scheduled_at ASC
+      LIMIT 100
     `).all<{ id: number; title: string; seller_id: number; seller_name: string }>();
 
     if (upcomingStreams && upcomingStreams.length > 0) {
@@ -271,6 +274,8 @@ export async function handleScheduled(env: Env) {
         AND c.expires_at IS NOT NULL
         AND c.expires_at > datetime('now')
         AND c.expires_at <= datetime('now', '+1 day')
+      ORDER BY c.expires_at ASC
+      LIMIT 100
     `).all<{ id: number; code: string; name: string; expires_at: string }>();
 
     if (expiringCoupons?.length) {
@@ -308,15 +313,63 @@ export async function handleScheduled(env: Env) {
     `).all<{ id: number; name: string; seller_id: number }>();
 
     if (achievedGroups?.length) {
+      // 🛡️ 2026-04-22: per-group try-catch — 한 알림 실패해도 나머지 진행
+      let notified = 0;
       for (const g of achievedGroups) {
-        // 셀러 알림
-        await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
-          VALUES ('seller', ?, 'group_buy_achieved', ?, ?, '/seller/group-buy')`)
-          .bind(String(g.seller_id), '🎉 공동구매 목표 달성!', g.name).run();
+        try {
+          await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
+            VALUES ('seller', ?, 'group_buy_achieved', ?, ?, '/seller/group-buy')`)
+            .bind(String(g.seller_id), '🎉 공동구매 목표 달성!', g.name).run();
+          notified++;
+        } catch (notifyErr) {
+          console.error(`[Cron] group_buy_achieved notify failed for seller ${g.seller_id}:`, notifyErr);
+        }
       }
       results.group_buy_achieved = achievedGroups.length;
+      results.group_buy_notified = notified;
     }
   } catch (e) { console.error('[Cron] group_buy_achieved error:', e) }
+
+  // ── 15. csp_violations 정리: 30일 경과 (DoS 방어 + DB 부피 관리) ──
+  // 🛡️ 2026-04-22: CSP 보고가 너무 많이 쌓이면 DB 비용 + 분석 노이즈
+  try {
+    await DB.prepare(`
+      DELETE FROM csp_violations WHERE created_at < datetime('now', '-30 days')
+    `).run();
+  } catch { /* table may not exist */ }
+
+  // ── 16. account_lockouts 정리: 만료된 잠금 기록 ──
+  try {
+    await DB.prepare(`
+      DELETE FROM account_lockouts WHERE locked_until < datetime('now', '-7 days')
+    `).run();
+  } catch { /* table may not exist */ }
+
+  // ── 17. chat_messages 정리: 90일 경과 (live stream 종료 후 보관) ──
+  // 라이브 종료 후 대량 채팅 누적 → 검색 부하. 라이브 다시보기에 필요한 90일만 보관.
+  try {
+    await DB.prepare(`
+      DELETE FROM chat_messages
+      WHERE created_at < datetime('now', '-90 days')
+        AND live_stream_id IN (
+          SELECT id FROM live_streams WHERE status = 'ended' AND ended_at < datetime('now', '-90 days')
+        )
+    `).run();
+  } catch { /* table may not exist */ }
+
+  // ── 18. rate_limit_attempts 정리: 24시간 이상 된 카운터 ──
+  try {
+    await DB.prepare(`
+      DELETE FROM rate_limit_attempts WHERE window_start < (CAST(strftime('%s', 'now') AS INTEGER) - 86400)
+    `).run();
+  } catch { /* table may not exist */ }
+
+  // ── 19. stripe_webhook_events 정리: 90일 경과 (idempotency 키, 더 이상 필요없음) ──
+  try {
+    await DB.prepare(`
+      DELETE FROM stripe_webhook_events WHERE processed_at < datetime('now', '-90 days')
+    `).run();
+  } catch { /* table may not exist */ }
 
   console.log('[Cron] Scheduled cleanup:', JSON.stringify(results));
   return results;

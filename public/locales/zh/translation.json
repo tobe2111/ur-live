@@ -1673,5 +1673,44 @@
     "search": "搜索",
     "admin": "Admin",
     "seller": "Seller"
+  },
+  "voucher": {
+    "myVouchers": "我的餐券",
+    "empty": "暂无餐券",
+    "emptyHint": "参与美食拼团吧！",
+    "exploreRestaurants": "浏览餐厅",
+    "expiresAt": "有效期",
+    "usedAt": "使用日期",
+    "until": "之前",
+    "scan": "查看二维码",
+    "copy": "复制",
+    "showQrAtStore": "请向店家出示此二维码",
+    "seoTitle": "我的餐券 - 유어딜",
+    "seoDescription": "查看和使用已购餐券",
+    "status": {
+      "unused": "可使用",
+      "used": "已使用",
+      "expired": "已过期",
+      "refunded": "已退款"
+    },
+    "verify": {
+      "title": "餐券验证",
+      "subtitle": "请确认顾客的餐券代码",
+      "codeLabel": "餐券代码",
+      "codePlaceholder": "UR-XXXX-XXXX",
+      "qrHint": "粘贴二维码扫描结果将自动提取代码",
+      "lookup": "查询",
+      "alreadyUsed": "已使用的餐券",
+      "expired": "已过期的餐券",
+      "lookupAnother": "查询其他餐券",
+      "enterPin": "认证密码",
+      "pinPlaceholder": "输入密码",
+      "confirm": "确认使用",
+      "cancel": "取消",
+      "notFound": "未找到餐券",
+      "processingError": "处理时发生错误",
+      "seoTitle": "餐券确认",
+      "seoDescription": "通过二维码确认餐券"
+    }
   }
 }

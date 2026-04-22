@@ -14,7 +14,8 @@ interface Env {
 }
 
 interface SSEMessage {
-  type: 'chat' | 'order' | 'stock' | 'status' | 'viewer_count'
+  // 🛡️ 2026-04-22: chat_delete, product_change, donation, stream_status 추가 (DO 와 동기)
+  type: 'chat' | 'chat_delete' | 'order' | 'stock' | 'status' | 'viewer_count' | 'product_change' | 'donation' | 'stream_status'
   data: any
   timestamp: string
 }
