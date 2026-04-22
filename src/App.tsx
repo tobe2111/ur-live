@@ -344,7 +344,7 @@ function AppContent() {
       setStatusBarStyle(isLight ? 'light' : 'dark')
     }).catch(() => {})
   }, [location.pathname])
-  const fullScreenPrefixes = ['/checkout', '/payment', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog']
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
