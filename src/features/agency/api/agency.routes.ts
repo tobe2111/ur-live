@@ -296,6 +296,11 @@ app.post('/reset-password', cors(), rateLimit({ action: 'agency_reset_password',
 
     await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(() => {})
 
+    // 🛡️ 2026-04-22: 비번 변경 시 기존 refresh token 전부 revoke
+    await DB.prepare(
+      "DELETE FROM auth_refresh_tokens WHERE user_type = 'agency' AND user_id = ?"
+    ).bind(row.user_id).run().catch(() => {})
+
     return c.json({
       success: true,
       message: '비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.'

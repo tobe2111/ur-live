@@ -21,6 +21,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { ALLOWED_ORIGINS } from '../../../shared/constants';
+import { invalidateProductCache } from '../../../lib/cache-invalidation';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
@@ -256,6 +257,9 @@ productsRoutes.post('/', tightCors(), rateLimit({ action: 'product_create', max:
     const service = new ProductService(DB);
     const product = await service.createProduct(data);
 
+    // 🔄 Edge cache 무효화 — 신규 상품 즉시 목록에 반영
+    c.executionCtx.waitUntil(invalidateProductCache(product?.id));
+
     return c.json({
       success: true,
       data: product
@@ -310,12 +314,15 @@ productsRoutes.put('/:id', tightCors(), requireAuth(), async (c) => {
 
     const service = new ProductService(DB);
     const product = await service.updateProduct(id, data);
-    
+
+    // 🔄 Edge cache 무효화 — 수정된 가격/정보 즉시 반영
+    c.executionCtx.waitUntil(invalidateProductCache(id));
+
     return c.json({
       success: true,
       data: product
     });
-    
+
   } catch (error) {
     console.error('[Products API] Update error:', error);
     
@@ -372,7 +379,10 @@ productsRoutes.delete('/:id', tightCors(), requireAuth(), async (c) => {
 
     const service = new ProductService(DB);
     await service.deleteProduct(id);
-    
+
+    // 🔄 Edge cache 무효화 — 삭제된 상품 즉시 목록에서 제거
+    c.executionCtx.waitUntil(invalidateProductCache(id));
+
     return c.json({
       success: true,
       message: 'Product deleted successfully'
