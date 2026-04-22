@@ -176,12 +176,17 @@ app.use('*', async (c, next) => {
 
   // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
   // CSP — 공통 script sources (script-src와 script-src-elem에서 공유)
-  // 🛡️ 2026-04-22 HOTFIX: strict-dynamic 제거 — host allowlist 부활 (외부 script 호환)
-  // strict-dynamic 은 모든 script (src 포함) 에 nonce 가 있어야 하는데, Kakao SDK / GA /
-  // YouTube IFrame / Vite bundle 의 외부 src script 가 깨짐 → 사이트 검은 화면.
-  // nonce + unsafe-inline + host allowlist 조합으로 retreat (CSP 강도 약간 약화하나 동작 보장).
+  // 🛡️ 2026-04-22 배치 121: strict-dynamic 재도입 + HTMLRewriter 가 모든 script 태그
+  //   (inline & external src) 에 nonce 부여. 지난번 실패 원인: 외부 src script 에 nonce
+  //   누락 → strict-dynamic 이 차단. 이번엔 HTMLRewriter 를 확장하여 script[src] 도 포함.
+  //
+  // 구성:
+  //   - CSP3 브라우저: strict-dynamic 이 host allowlist 무시, nonce 만 신뢰. dynamic import()
+  //     로 로드되는 chunk 는 부모 script 의 nonce 자동 propagation.
+  //   - CSP2 브라우저: strict-dynamic 무시 → host allowlist 로 fallback.
+  //   - 둘 다 unsafe-inline 도 설정되지만 CSP3 에서는 nonce 존재 시 자동 무시됨.
   const scriptSources = [
-    "'self'", `'nonce-${nonce}'`, "'unsafe-inline'", "blob:",
+    "'self'", `'nonce-${nonce}'`, "'strict-dynamic'", "'unsafe-inline'", "blob:",
     "https://*.cloudflare.com", "https://static.cloudflareinsights.com", "https://cloudflareinsights.com",
     "https://*.googletagmanager.com", "https://*.google-analytics.com",
     "https://*.tosspayments.com", "https://js.tosspayments.com",
@@ -250,12 +255,13 @@ app.use('*', async (c, next) => {
   c.header('Cross-Origin-Resource-Policy', 'same-site');
   c.header('X-Permitted-Cross-Domain-Policies', 'none'); // Flash/PDF 크로스도메인 차단
 
-  // 🛡️ 2026-04-22: HTML 응답에 nonce 주입 — inline <script> 에 nonce 속성 추가.
-  // 'strict-dynamic' + nonce 조합으로 inline 이 아닌 외부 script 도 신뢰 전파됨.
+  // 🛡️ 2026-04-22 배치 121: HTML 응답에 nonce 주입 — 모든 <script> (inline & external src).
+  //   strict-dynamic + nonce 조합: 신뢰된 script 가 dynamic 하게 로드하는 하위 script 는
+  //   브라우저가 자동으로 nonce propagation (createElement('script') 케이스).
   const ct = c.res.headers.get('Content-Type') || '';
   if (ct.includes('text/html') && c.res.body) {
     const rewritten = new HTMLRewriter()
-      .on('script:not([src])', {
+      .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
       })
       .transform(c.res);
