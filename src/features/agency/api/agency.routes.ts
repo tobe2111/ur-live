@@ -179,7 +179,12 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
     'SELECT id, name, contact_name, email, password_hash, status FROM agencies WHERE email = ?'
   ).bind(email).first<{ id: number; name: string; contact_name: string; email: string; password_hash: string; status: string }>()
 
-  if (!agency) return c.json({ success: false, error: '등록되지 않은 이메일입니다. 회원가입을 먼저 진행해주세요.' }, 401)
+  if (!agency) {
+    // 🛡️ 2026-04-22: 타이밍 공격 방어 — 존재하지 않는 계정에도 verifyPassword 실행
+    await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(() => {})
+    // 또한 메시지는 generic — "등록되지 않은 이메일" 은 user enumeration 노출 → 수정
+    return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401)
+  }
   if (agency.status === 'pending') return c.json({ success: false, error: '관리자 승인 대기 중입니다. 승인 후 로그인이 가능합니다.' }, 403)
   if (agency.status === 'rejected') return c.json({ success: false, error: '가입이 거절된 계정입니다. 관리자에게 문의해주세요.' }, 403)
   if (agency.status !== 'active' && agency.status !== 'approved') return c.json({ success: false, error: `비활성화된 계정입니다. (상태: ${agency.status})` }, 403)

@@ -175,6 +175,8 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     
     if (!seller) {
       if (import.meta.env.DEV) console.warn('[Seller Login] Seller not found:', maskEmail(email));
+      // 🛡️ 2026-04-22: 타이밍 공격 방어 — 존재하지 않는 계정에도 verifyPassword 실행
+      await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(() => {});
       return c.json<AuthResponse>({
         success: false,
         error: '이메일 또는 비밀번호가 올바르지 않습니다.'

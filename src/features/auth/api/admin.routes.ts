@@ -82,6 +82,9 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     
     if (admins.length === 0) {
       if (import.meta.env.DEV) console.warn('[Admin Login] Admin not found:', maskEmail(email));
+      // 🛡️ 2026-04-22: 타이밍 공격 방어 — 존재하지 않는 계정에도 verifyPassword 실행해서
+      // 응답 시간을 비슷하게 맞춤 (user enumeration 방어)
+      await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(() => {});
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401);
     }
 
@@ -118,9 +121,11 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       role: admin.role,
       type: 'admin',
       iat: now,
-      exp: now + (7 * 24 * 60 * 60)
+      // 🛡️ 2026-04-22: admin access token 7d → 1d (breach window 축소)
+      // refresh token 으로 rotate — UI 에서는 자동 재발급되어 UX 에 영향 없음
+      exp: now + (24 * 60 * 60)
     };
-    
+
     const token = await sign(payload, JWT_SECRET);
     const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
     const refreshToken = await sign(refreshPayload, JWT_SECRET);
@@ -253,7 +258,8 @@ adminRoutes.post('/refresh', cors(), async (c) => {
       role: admin.role,
       type: 'admin',
       iat: now,
-      exp: now + (7 * 24 * 60 * 60)
+      // 🛡️ 2026-04-22: admin access token 1d (refresh 로 갱신)
+      exp: now + (24 * 60 * 60)
     };
 
     const newAccessToken = await sign(newPayload, JWT_SECRET);

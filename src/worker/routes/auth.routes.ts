@@ -294,6 +294,10 @@ authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 
     if (!body.current_password || !body.new_password) {
       return c.json({ success: false, error: '현재 비밀번호와 새 비밀번호를 입력해주세요' }, 400);
     }
+    // 🛡️ 2026-04-22: 비밀번호 재사용 방어
+    if (body.current_password === body.new_password) {
+      return c.json({ success: false, error: '새 비밀번호는 현재 비밀번호와 달라야 합니다' }, 400);
+    }
     const complexity = validatePasswordComplexity(body.new_password);
     if (!complexity.ok) {
       return c.json({ success: false, error: complexity.error }, 400);
