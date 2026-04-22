@@ -59,7 +59,16 @@ export default function SellerPublicPage() {
   const [editYoutube, setEditYoutube] = useState('')
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isDark, setIsDark] = useState(true)
+  // 🛡️ 2026-04-22: 테마 토글 영속성 — localStorage 저장. 새로고침해도 유지.
+  const [isDark, setIsDark] = useState(() => {
+    try {
+      const saved = localStorage.getItem('seller_public_theme')
+      return saved !== 'light' // 기본 dark, 명시적으로 light 일 때만 light
+    } catch { return true }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('seller_public_theme', isDark ? 'dark' : 'light') } catch {}
+  }, [isDark])
 
   // 테마별 클래스 매핑
   const T = isDark ? {
@@ -189,6 +198,16 @@ export default function SellerPublicPage() {
         description={seller.bio || `${seller.name || t('product.seller')} - Ur Deal`}
         image={seller.profile_image}
         url={`/profile/${seller.username || seller.slug || seller.id}`}
+        /* 🛡️ 2026-04-22: Person/Organization JSON-LD 추가 (Google 셀러 카드 노출) */
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'Person',
+          name: seller.name || seller.username || '셀러',
+          description: seller.bio || `${seller.name || '셀러'}의 라이브 커머스 채널`,
+          image: seller.profile_image || undefined,
+          url: `https://live.ur-team.com/profile/${seller.username || seller.slug || seller.id}`,
+          ...((seller as any).follower_count != null && { interactionStatistic: { '@type': 'InteractionCounter', interactionType: 'https://schema.org/FollowAction', userInteractionCount: (seller as any).follower_count } }),
+        }}
       />
       {/* 커버 + 프로필 */}
       <div className="relative">
@@ -309,7 +328,11 @@ export default function SellerPublicPage() {
           <div className="text-center flex-1">
             <p className="text-xs text-gray-500">{t('seller.rating')}</p>
             <p className={`text-sm font-bold ${T.text} flex items-center justify-center gap-0.5`}>
-              <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" /> 5.0
+              {/* 🛡️ 2026-04-22: 5.0 하드코딩 → 실제 평점 (없으면 '신규' 표시) */}
+              <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+              {(seller as any)?.average_rating != null
+                ? Number((seller as any).average_rating).toFixed(1)
+                : <span className="text-gray-500 text-xs">신규</span>}
             </p>
           </div>
         </div>
@@ -653,14 +676,10 @@ export default function SellerPublicPage() {
                   <span className="w-24 text-gray-400 shrink-0 text-xs">주소</span>
                   <span className="text-xs">{seller.business_address || <span className="text-gray-500">(정보 미등록)</span>}</span>
                 </div>
-                <div className="flex">
-                  <span className="w-24 text-gray-400 shrink-0 text-xs">전화번호</span>
-                  <span className="text-xs">{seller.phone || <span className="text-gray-500">(정보 미등록)</span>}</span>
-                </div>
-                <div className="flex">
-                  <span className="w-24 text-gray-400 shrink-0 text-xs">{t('common.email')}</span>
-                  <span className="text-xs">{seller.email || <span className="text-gray-500">(정보 미등록)</span>}</span>
-                </div>
+                {/* 🛡️ 2026-04-22: 셀러 phone/email 공개 노출 제거 (개인정보 보호법 / PIPA)
+                    - 공개 프로필에서 평문 노출은 spam/scam 위험 + 법적 위험
+                    - "셀러에게 문의하기" 버튼은 별도 (있다면) 또는 카카오톡 채널 링크 사용
+                    - API (/api/sellers/:id/public) 도 phone/email 미반환 (PUBLIC_SELLER_COLUMNS) */}
               </div>
               {/* 연락 수단 */}
               <div className="flex gap-2 mt-3">
