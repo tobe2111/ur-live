@@ -96,8 +96,11 @@ export default function MyReviewsPage() {
               <p className="text-[12px] text-gray-500">배송 완료 {orders.length}건</p>
               <span className="text-[11px] text-amber-600 font-semibold">· 리뷰 작성 시 100~500딜 적립</span>
             </div>
-            {orders.flatMap(order =>
-              (order.items ?? []).map((item, idx) => (
+            {orders.flatMap(order => {
+              // v32 audit FIX: API가 items를 array 대신 단일 object로 반환할 수도 있음 — 방어적 처리
+              const rawItems = order.items
+              const items = Array.isArray(rawItems) ? rawItems : (rawItems ? [rawItems as any] : [])
+              return items.map((item: any, idx: number) => (
                 <article
                   key={`${order.id}-${idx}`}
                   className="bg-white rounded-2xl border border-gray-100 p-4"
@@ -120,7 +123,7 @@ export default function MyReviewsPage() {
                   </button>
                 </article>
               ))
-            )}
+            })}
           </div>
         )}
       </main>

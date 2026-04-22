@@ -92,7 +92,7 @@ export default function ReferralIndexPage() {
             공동구매 상품 둘러보기
           </button>
           <button
-            onClick={() => navigate('/community-group-buy' as any)}
+            onClick={() => navigate('/group-buy')}
             className="w-full py-3.5 bg-white text-gray-900 border border-gray-200 text-[14px] font-semibold rounded-full hover:bg-gray-50 transition-colors"
           >
             진행 중인 공동구매 모아보기
