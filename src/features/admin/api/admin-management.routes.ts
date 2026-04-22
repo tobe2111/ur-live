@@ -2774,6 +2774,19 @@ adminManagementRoutes.get('/admins', cors(), async (c) => {
 adminManagementRoutes.post('/admins', cors(), async (c) => {
   try {
     const DB = c.env.DB;
+
+    // SECURITY: only super_admin can create admins
+    {
+      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
+      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
     const { email, password, name, role, username } = await c.req.json<{
       email: string; password: string; name: string; role: string; username?: string;
     }>();
@@ -2820,6 +2833,19 @@ adminManagementRoutes.post('/admins', cors(), async (c) => {
 adminManagementRoutes.patch('/admins/:id', cors(), async (c) => {
   try {
     const DB = c.env.DB;
+
+    // SECURITY: only super_admin can modify admins
+    {
+      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
+      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
     const adminId = c.req.param('id');
     const { name, role, email } = await c.req.json<{
       name?: string; role?: string; email?: string;
@@ -2879,6 +2905,19 @@ adminManagementRoutes.patch('/admins/:id', cors(), async (c) => {
 adminManagementRoutes.delete('/admins/:id', cors(), async (c) => {
   try {
     const DB = c.env.DB;
+
+    // SECURITY: only super_admin can delete admins
+    {
+      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
+      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
     const adminId = c.req.param('id');
 
     // Cannot delete self
@@ -2924,6 +2963,19 @@ adminManagementRoutes.delete('/admins/:id', cors(), async (c) => {
 adminManagementRoutes.post('/admins/:id/reset-password', cors(), async (c) => {
   try {
     const DB = c.env.DB;
+
+    // SECURITY: only super_admin can reset admin passwords
+    {
+      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
+      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
     const adminId = c.req.param('id');
     const { newPassword } = await c.req.json<{ newPassword: string }>();
 

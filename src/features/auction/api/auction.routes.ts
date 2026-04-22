@@ -96,6 +96,10 @@ auctionRoutes.post('/create', requireAuth(), async (c) => {
 });
 
 // POST /api/auction/:id/bid — 입찰
+// TODO: [CRITICAL BUSINESS] Auction bids do not reserve payment capacity.
+// Winner may refuse to pay, no runner-up promotion, no escrow.
+// Add escrow/deposit system (reserve deal balance on bid, refund on outbid) or
+// require max-bid deposit before architecting a full escrow mechanism.
 auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
@@ -106,6 +110,11 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
   const auctionId = Number(c.req.param('id'));
   const { amount } = await c.req.json<{ amount: number }>();
 
+  // 금액 유효성 검증 (NaN, 음수, 비정상 상한)
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) {
+    return c.json({ success: false, error: '유효하지 않은 금액입니다' }, 400);
+  }
+
   const auction = await DB.prepare(
     "SELECT * FROM live_auctions WHERE id = ? AND status = 'active'"
   ).bind(auctionId).first<any>();
@@ -115,6 +124,18 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
     await DB.prepare("UPDATE live_auctions SET status = 'ended' WHERE id = ?").bind(auctionId).run();
     return c.json({ success: false, error: '경매가 종료되었습니다' }, 400);
   }
+
+  // 본인 경매 입찰 방지 (자가낙찰 사기 차단)
+  if (Number(auction.seller_id) === Number(user.id) && user.type === 'seller') {
+    return c.json({ success: false, error: '본인 경매에는 입찰할 수 없습니다' }, 400);
+  }
+
+  // 시작가의 100배 초과 입찰 방지 (sanity cap)
+  const startPrice = Number(auction.start_price) || 0;
+  if (startPrice > 0 && amount > startPrice * 100) {
+    return c.json({ success: false, error: '시작가의 100배 초과 입찰은 불가합니다' }, 400);
+  }
+
   if (amount < auction.current_price + auction.min_increment) {
     return c.json({ success: false, error: `최소 ${(auction.current_price + auction.min_increment).toLocaleString()}원 이상 입찰해주세요` }, 400);
   }

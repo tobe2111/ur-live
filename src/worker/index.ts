@@ -615,6 +615,9 @@ adminApp.route('/banners', adminBannersRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
+// Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
+import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
+adminApp.route('/blog', adminBlogRoutes);
 // Restaurant settlement (admin)
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
@@ -976,9 +979,10 @@ app.get('/api/naver/restaurant', async (c) => {
 })
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
+// SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
+// /api/blog는 공개 GET /public, /public/:slug만 허용 (나머지는 라우터 내부에서 admin 체크)
 import { blogRoutes } from '../features/blog/api/blog.routes';
-app.route('/api/admin/blog', blogRoutes);
-app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용
+app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용 (내부에서 /public만 공개)
 
 // ── 에이전시 ──
 import { agencyRoutes } from '../features/agency/api/agency.routes';

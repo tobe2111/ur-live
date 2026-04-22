@@ -25,6 +25,19 @@ interface CacheEntry<T> {
 }
 
 /**
+ * In-isolate in-flight promise map for cache stampede protection.
+ *
+ * When many concurrent requests miss the same key inside a single Worker
+ * isolate, we fetch once and share the promise with the rest. This prevents
+ * the "thundering herd" from overwhelming D1 during a viral moment.
+ *
+ * ⚠️  Scope: only deduplicates within a single isolate. Multiple isolates
+ *    (or colos) can still stampede simultaneously. For a true global lock
+ *    you'd need a Durable Object — outside the scope of this utility.
+ */
+const inFlight = new Map<string, Promise<unknown>>();
+
+/**
  * Cache-aside read helper with stale-while-revalidate semantics.
  *
  * @param KV        KV namespace (optional — falls back to direct fetcher when undefined)
@@ -65,23 +78,37 @@ export async function cacheGet<T>(
     // KV read failed — fall through to origin fetch
   }
 
-  // Origin fetch
-  const fresh = await fetcher();
-  try {
-    const now = Date.now();
-    const entry: CacheEntry<T> = {
-      data: fresh,
-      expiresAt: now + ttl * 1000,
-      staleUntil: now + (ttl + staleWhileRevalidate) * 1000,
-    };
-    await KV.put(fullKey, JSON.stringify(entry), {
-      // KV auto-cleanup after stale window
-      expirationTtl: ttl + staleWhileRevalidate,
-    });
-  } catch {
-    // Cache write failures are non-fatal
+  // Origin fetch — dedupe concurrent misses within this isolate.
+  const existing = inFlight.get(fullKey) as Promise<T> | undefined;
+  if (existing) {
+    return existing;
   }
-  return fresh;
+
+  const promise: Promise<T> = (async () => {
+    const fresh = await fetcher();
+    try {
+      const now = Date.now();
+      const entry: CacheEntry<T> = {
+        data: fresh,
+        expiresAt: now + ttl * 1000,
+        staleUntil: now + (ttl + staleWhileRevalidate) * 1000,
+      };
+      await KV.put(fullKey, JSON.stringify(entry), {
+        // KV auto-cleanup after stale window
+        expirationTtl: ttl + staleWhileRevalidate,
+      });
+    } catch {
+      // Cache write failures are non-fatal
+    }
+    return fresh;
+  })();
+
+  inFlight.set(fullKey, promise);
+  try {
+    return await promise;
+  } finally {
+    inFlight.delete(fullKey);
+  }
 }
 
 /**
