@@ -446,7 +446,7 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
         WHERE 1=1`);
       orders = await executeQuery<OrderRow>(DB, q, params);
     } catch (primaryErr) {
-      console.warn('[Admin] orders primary query failed, trying fallback:', (primaryErr as Error).message);
+      if (import.meta.env.DEV) console.warn('[Admin] orders primary query failed, trying fallback:', (primaryErr as Error).message);
       try {
         // Fallback: only core orders columns, no JOINs that might fail
         const { q, params } = buildWhere(`
@@ -830,7 +830,7 @@ adminManagementRoutes.get('/sample-requests', cors(), async (c) => {
       ).bind(...params).first<{ count: number }>();
     } catch (tableErr) {
       // 테이블 또는 컬럼 미존재 (마이그레이션 0120 미실행) → 빈 목록 반환
-      console.warn('[Admin] sample_requests table not ready:', (tableErr as Error).message);
+      if (import.meta.env.DEV) console.warn('[Admin] sample_requests table not ready:', (tableErr as Error).message);
     }
 
     return c.json({

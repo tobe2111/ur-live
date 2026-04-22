@@ -90,7 +90,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     // ✅ BUG #43 FIX: Scope to current user to prevent cross-user idempotency collisions.
     const existingOrder = await orderRepo.findByIdempotencyKey(request.idempotency_key, userId);
     if (existingOrder) {
-      console.log('[ORDERS] Idempotent request, returning existing order:', existingOrder.id);
+      if (import.meta.env.DEV) console.log('[ORDERS] Idempotent request, returning existing order:', existingOrder.id);
       return c.json({ success: true, data: existingOrder }, 200);
     }
 
@@ -266,7 +266,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       throw createErr; // 상위 catch로 전달
     }
 
-    console.log('[ORDERS] Created:', {
+    if (import.meta.env.DEV) console.log('[ORDERS] Created:', {
       orderId: order.id,
       orderNumber: order.order_number,
       sellerId: order.seller_id,
@@ -605,7 +605,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
 
       const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
-      console.info('[ORDERS] Cancel success (paid):', {
+      if (import.meta.env.DEV) console.info('[ORDERS] Cancel success (paid):', {
         orderId,
         paymentKey,
         cancelAmount: latestCancel?.cancelAmount,
@@ -643,7 +643,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
       await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders');
     } catch {} // fire and forget
 
-    console.info('[ORDERS] Cancel success (unpaid):', { orderId, status: order.status });
+    if (import.meta.env.DEV) console.info('[ORDERS] Cancel success (unpaid):', { orderId, status: order.status });
 
     return c.json({
       success: true,

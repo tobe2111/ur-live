@@ -44,7 +44,7 @@ async function sendOrderNotification(
   const contactPhone = firstOrder?.shipping_phone ?? 'N/A';
   const userId = firstOrder?.user_id ?? 'N/A';
 
-  console.log(`[WEBHOOK] ORDER_NOTIFICATION event=${event}`, {
+  if (import.meta.env.DEV) console.log(`[WEBHOOK] ORDER_NOTIFICATION event=${event}`, {
     orderNumber,
     userId,
     contactPhone: contactPhone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2'), // mask middle digits
@@ -74,7 +74,7 @@ async function sendOrderNotification(
       body: JSON.stringify({ embeds: [embed] }),
     });
 
-    console.log(`[WEBHOOK] Discord notification sent for ${event} order ${orderNumber}`);
+    if (import.meta.env.DEV) console.log(`[WEBHOOK] Discord notification sent for ${event} order ${orderNumber}`);
   }
 }
 
@@ -230,7 +230,7 @@ webhookRouter.post('/', async (c) => {
     // 4. Idempotency check - prevent duplicate processing
     const alreadyProcessed = await webhookRepo.isAlreadyProcessed(eventType, tossOrderId);
     if (alreadyProcessed) {
-      console.log('[WEBHOOK] DUPLICATE_SKIPPED', { eventType, tossOrderId });
+      if (import.meta.env.DEV) console.log('[WEBHOOK] DUPLICATE_SKIPPED', { eventType, tossOrderId });
       return c.json({ received: true, status: 'duplicate_skipped' }, 200);
     }
 
@@ -265,7 +265,7 @@ webhookRouter.post('/', async (c) => {
         break;
 
       default:
-        console.log('[WEBHOOK] UNHANDLED_EVENT_TYPE', { eventType });
+        if (import.meta.env.DEV) console.log('[WEBHOOK] UNHANDLED_EVENT_TYPE', { eventType });
         await webhookRepo.markSkipped(webhookEventId);
         return c.json({ received: true, status: 'unhandled' }, 200);
     }
@@ -274,7 +274,7 @@ webhookRouter.post('/', async (c) => {
     await webhookRepo.markProcessed(webhookEventId);
 
     const elapsed = Date.now() - startTime;
-    console.log('[WEBHOOK] PROCESSED_SUCCESS', {
+    if (import.meta.env.DEV) console.log('[WEBHOOK] PROCESSED_SUCCESS', {
       eventType,
       tossOrderId,
       elapsed_ms: elapsed,
