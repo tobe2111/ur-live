@@ -209,7 +209,19 @@ async function calculateSellerSettlement(
     //   - Seller receives (totalSales - platformFee - refund)
     //   - Shipping is implicitly in totalSales and flows to seller
     // Option B from audit: simpler, less breaking.
-    const settlementAmount = totalSales - totalPlatformFee - refundAmount
+    const rawSettlementAmount = totalSales - totalPlatformFee - refundAmount
+    // 🛡️ 2026-04-22: 음수 정산 금액 방어 — 환불이 판매보다 큰 경우
+    // 셀러에게 음수로 지급되지 않도록 0 으로 하한선. 실제 손실은 review_required 플래그로 수동 처리.
+    const settlementAmount = Math.max(0, rawSettlementAmount)
+    if (rawSettlementAmount < 0) {
+      console.warn('[Settlement] Negative amount detected — clamped to 0 for manual review', {
+        seller_id: sellerId,
+        totalSales,
+        totalPlatformFee,
+        refundAmount,
+        rawSettlementAmount,
+      })
+    }
 
     return {
       seller_id: sellerId,

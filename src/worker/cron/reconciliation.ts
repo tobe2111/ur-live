@@ -23,16 +23,48 @@ export async function runReconciliation(env: Env): Promise<void> {
   //     If `toss_payment_key` (or legacy `payment_key`) is set, the user may
   //     have actually paid and we just missed the webhook. Those require
   //     manual review — never auto-cancel (accounting mismatch risk).
+  // 🛡️ 2026-04-22: 자동 취소 시 재고 복구 누락 수정 — 기존 PENDING 에서 예약된 재고가
+  //     CANCELLED 로 전환 시 복구되지 않으면 영구 손실. 이제 재고 복구 포함.
   try {
-    const { meta } = await DB.prepare(`
-      UPDATE orders
-      SET status = 'CANCELLED', cancel_reason = '자동 정리: 24시간 초과 미결제 (결제 증거 없음)', updated_at = datetime('now')
+    // 자동 취소 대상 orders 를 먼저 조회 (재고 복구용)
+    const toCancel = await DB.prepare(`
+      SELECT id FROM orders
       WHERE status = 'PENDING'
         AND created_at < datetime('now', '-24 hours')
         AND (toss_payment_key IS NULL OR toss_payment_key = '')
         AND (payment_key IS NULL OR payment_key = '')
-    `).run();
-    results.stuck_orders_fixed = meta.changes ?? 0;
+      LIMIT 200
+    `).all<{ id: number }>();
+    const cancelIds = (toCancel.results || []).map(r => r.id);
+
+    if (cancelIds.length > 0) {
+      // 재고 복구 (order_items 조회 후 products.stock 증가)
+      const placeholders = cancelIds.map(() => '?').join(',');
+      const items = await DB.prepare(
+        `SELECT order_id, product_id, quantity FROM order_items WHERE order_id IN (${placeholders})`
+      ).bind(...cancelIds).all<{ order_id: number; product_id: number; quantity: number }>();
+
+      const stockStmts = (items.results || []).map(it =>
+        DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').bind(it.quantity, it.product_id)
+      );
+      if (stockStmts.length > 0) {
+        try { await DB.batch(stockStmts); } catch (e) {
+          console.error('[Reconciliation] Stock restore batch failed:', e);
+        }
+      }
+
+      // 주문 상태 전환
+      const { meta } = await DB.prepare(
+        `UPDATE orders SET status = 'CANCELLED',
+           cancel_reason = '자동 정리: 24시간 초과 미결제 (결제 증거 없음)',
+           updated_at = datetime('now')
+         WHERE id IN (${placeholders}) AND status = 'PENDING'`
+      ).bind(...cancelIds).run();
+      results.stuck_orders_fixed = meta.changes ?? 0;
+      results.stuck_orders_stock_restored = stockStmts.length;
+    } else {
+      results.stuck_orders_fixed = 0;
+    }
   } catch (e) {
     results.stuck_orders_error = (e as Error).message;
   }
@@ -157,6 +189,46 @@ export async function runReconciliation(env: Env): Promise<void> {
     // Table may not exist — ignore silently
     results.sessions_note = 'table may not exist';
   }
+
+  // 🛡️ 2026-04-22: 웹훅 이벤트 정리 (unbounded growth 방지)
+  // 90일 지난 이벤트는 idempotency 관점에서 불필요 (webhook retry window 끝남).
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM stripe_webhook_events WHERE processed_at < datetime('now', '-90 days')"
+    ).run();
+    results.expired_stripe_webhooks = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM toss_webhook_events WHERE processed_at < datetime('now', '-90 days')"
+    ).run();
+    results.expired_toss_webhooks = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  // 🛡️ 만료된 계정 잠금 정리 (locked_until 지나면 row 삭제)
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM account_lockouts WHERE locked_until IS NOT NULL AND locked_until < datetime('now')"
+    ).run();
+    results.expired_lockouts = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  // 🛡️ 오래된 채팅 메시지 정리 (90일 이상) — DB 부담 감소
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM chat_messages WHERE created_at < datetime('now', '-90 days')"
+    ).run();
+    results.expired_chats = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  // 🛡️ 방치된 장바구니 (60일 이상) 정리 — 삭제된 상품 포함
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM cart_items WHERE added_at < datetime('now', '-60 days')"
+    ).run();
+    results.expired_carts = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
 
   // Log summary (visible in Cloudflare Worker logs)
   console.log('[Reconciliation] Completed:', JSON.stringify(results));

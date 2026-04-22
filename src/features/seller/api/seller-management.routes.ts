@@ -1139,17 +1139,24 @@ sellerManagementRoutes.post('/change-password', async (c) => {
     if (!currentPassword || !newPassword) {
       return c.json({ success: false, error: '현재 비밀번호와 새 비밀번호가 필요합니다' }, 400);
     }
-    if (newPassword.length < 8) {
-      return c.json({ success: false, error: '비밀번호는 8자 이상이어야 합니다' }, 400);
+    // 🛡️ 2026-04-22: 이전 비밀번호 재사용 방어
+    if (currentPassword === newPassword) {
+      return c.json({ success: false, error: '새 비밀번호는 현재 비밀번호와 달라야 합니다' }, 400);
+    }
+    // 🛡️ 복잡도 검증 (user 와 동일 규칙)
+    const { hashPassword: hp, verifyPassword, validatePasswordComplexity } = await import('../../../lib/password');
+    const complexity = validatePasswordComplexity(newPassword);
+    if (!complexity.ok) {
+      return c.json({ success: false, error: complexity.error ?? '비밀번호 복잡도 부족' }, 400);
     }
     const seller = await db.prepare('SELECT password_hash FROM sellers WHERE id = ?').bind(sellerId).first<{ password_hash: string }>();
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
-    // 현재 비밀번호 검증
-    const { hashPassword: hp, verifyPassword } = await import('../../../lib/password');
     const { valid } = await verifyPassword(currentPassword, seller.password_hash);
     if (!valid) return c.json({ success: false, error: '현재 비밀번호가 올바르지 않습니다' }, 400);
     const newHash = await hp(newPassword);
     await db.prepare("UPDATE sellers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").bind(newHash, sellerId).run();
+    // 🛡️ 비번 변경 시 기존 refresh token 전량 revoke
+    await db.prepare("DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?").bind(Number(sellerId)).run().catch(() => {});
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);

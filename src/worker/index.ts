@@ -1863,8 +1863,9 @@ app.get('/api/side-banners', async (c) => {
 
 app.get('/api/image/resize', async (c) => {
   const url = c.req.query('url');
-  const width = parseInt(c.req.query('w') || '400');
-  const quality = parseInt(c.req.query('q') || '80');
+  // 🛡️ 2026-04-22: radix=10 명시 (legacy octal 해석 방지) + 범위 clamp
+  const width = Math.min(2048, Math.max(16, parseInt(c.req.query('w') || '400', 10) || 400));
+  const quality = Math.min(100, Math.max(10, parseInt(c.req.query('q') || '80', 10) || 80));
 
   if (!url) return c.json({ error: 'url required' }, 400);
 

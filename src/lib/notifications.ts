@@ -98,7 +98,7 @@ export async function notifyAgencyForSeller(DB: D1Database, sellerId: number, ty
 }
 
 // ─── 카카오톡 메시지 (소비자, 구독자 대상, 시스템 자동) ─────────────────
-export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: number, title: string, sellerName: string, kakaoRestApiKey?: string) {
+export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: number, title: string, sellerName: string, kakaoRestApiKey?: string, kek?: string) {
   if (!kakaoRestApiKey) return 0;
   try {
     const { results: subs } = await DB.prepare(`
@@ -114,7 +114,7 @@ export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: nu
     let sent = 0;
     for (const sub of subs) {
       try {
-        const token = await getKakaoTokenSimple(DB, sub.user_id, kakaoRestApiKey);
+        const token = await getKakaoTokenSimple(DB, sub.user_id, kakaoRestApiKey, kek);
         if (!token) continue;
         const templateObject = JSON.stringify({
           object_type: 'feed',
@@ -140,7 +140,7 @@ export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: nu
 }
 
 // ─── 팔로워에게 카카오 메시지 (방송 시작 시) ─────────────────
-export async function sendKakaoToFollowers(DB: D1Database, sellerId: number, title: string, description: string, link: string, buttonText: string, kakaoRestApiKey?: string) {
+export async function sendKakaoToFollowers(DB: D1Database, sellerId: number, title: string, description: string, link: string, buttonText: string, kakaoRestApiKey?: string, kek?: string) {
   if (!kakaoRestApiKey) return 0;
   try {
     const { results: followers } = await DB.prepare(`
@@ -156,7 +156,7 @@ export async function sendKakaoToFollowers(DB: D1Database, sellerId: number, tit
     let sent = 0;
     for (const f of followers.slice(0, 100)) {
       try {
-        const token = await getKakaoTokenSimple(DB, f.user_id, kakaoRestApiKey);
+        const token = await getKakaoTokenSimple(DB, f.user_id, kakaoRestApiKey, kek);
         if (!token) continue;
         const templateObject = JSON.stringify({
           object_type: 'feed',
