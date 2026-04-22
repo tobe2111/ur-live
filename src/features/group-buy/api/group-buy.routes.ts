@@ -150,7 +150,16 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
-    // 공동구매 마감 확인
+    // 🛡️ 2026-04-22: 셀러가 본인 공구에 자기 참여 차단 (목표 조작 방지)
+    if (product.seller_id && Number(product.seller_id) === Number(userId)) {
+      return c.json({
+        success: false,
+        error: '본인의 공동구매 상품에는 참여할 수 없습니다',
+        code: 'SELF_PARTICIPATION_BLOCKED'
+      }, 403)
+    }
+
+    // 공동구매 마감 확인 (마감 시간이 참여보다 먼저 체크되도록)
     if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
       return c.json({ success: false, error: '공동구매가 마감되었습니다' }, 400)
     }
