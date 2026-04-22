@@ -145,7 +145,7 @@ export default function ProductOptionForm({
                   onClick={() => handleRemoveOption(index)}
                   disabled={disabled}
                   className="flex h-7 w-7 items-center justify-center text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                  aria-label="Remove option"
+                  aria-label="옵션 제거"
                 >
                   <X className="h-4 w-4" strokeWidth={1.5} />
                 </button>

@@ -153,6 +153,9 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
       {/* 벨 아이콘 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 (읽지 않음)` : '알림'}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
         className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
       >
         <Bell className="w-6 h-6" />
@@ -180,6 +183,7 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
               )}
               <button
                 onClick={() => setIsOpen(false)}
+                aria-label="알림 닫기"
                 className="p-1 text-gray-400 hover:text-gray-600"
               >
                 <X className="w-5 h-5" />

@@ -217,7 +217,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
             <Upload className="w-4 h-4" />
             상품 대량등록
           </h2>
-          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-gray-100">
+          <button onClick={handleClose} aria-label="모달 닫기" className="p-1.5 rounded-lg hover:bg-gray-100">
             <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
