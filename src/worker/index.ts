@@ -343,6 +343,22 @@ app.get('/api/version', async (c) => {
 // Dashboard/Logs 접근 없이 '왜 500인지' 찾기 위한 안전한 메타데이터 반환
 // ============================================================
 
+// 배포 검증용 — 현재 worker 빌드가 언제 / 어떤 커밋에서 빌드됐는지 즉시 확인
+// 이 핸들러의 존재 자체가 "최신 배포 반영" 증거
+app.get('/api/debug/build-info', (c) => {
+  return c.json({
+    success: true,
+    // 빌드 시점 commit SHA — CI가 BUILD_SHA env로 주입
+    commitSha: (c.env as any).BUILD_SHA || 'unknown',
+    buildTimestamp: (c.env as any).BUILD_TIMESTAMP || 'unknown',
+    // 이 엔드포인트가 도입된 커밋 기준 — 존재하면 그 이후 배포
+    markers: {
+      whoamiEndpoint: true,    // 2026-04-22 8b82323 이후
+      buildInfoEndpoint: true, // 현재 커밋 이후
+    },
+  });
+});
+
 app.get('/api/debug/whoami', async (c) => {
   const authHeader = c.req.header('Authorization') || '';
   const hasAuthHeader = authHeader.length > 0;
