@@ -68,6 +68,13 @@ app.post('/', async (c) => {
     return c.json({ success: false, error: 'name, contact_name, email, password 필수' }, 400)
   }
 
+  // 🛡️ 길이 제한 (DB bloat 방지)
+  if (typeof name !== 'string' || name.length > 100) return c.json({ success: false, error: 'name 100자 이하' }, 400)
+  if (typeof contact_name !== 'string' || contact_name.length > 50) return c.json({ success: false, error: 'contact_name 50자 이하' }, 400)
+  if (typeof email !== 'string' || email.length > 255 || !email.includes('@')) return c.json({ success: false, error: 'email 형식 오류' }, 400)
+  if (typeof password !== 'string' || password.length < 8 || password.length > 128) return c.json({ success: false, error: 'password 8~128자' }, 400)
+  if (phone && (typeof phone !== 'string' || phone.length > 20)) return c.json({ success: false, error: 'phone 20자 이하' }, 400)
+
   const existing = await c.env.DB.prepare('SELECT id FROM agencies WHERE email = ?').bind(email).first()
   if (existing) return c.json({ success: false, error: '이미 사용 중인 이메일입니다.' }, 409)
 
