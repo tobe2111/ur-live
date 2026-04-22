@@ -34,3 +34,8 @@ export function QueryProvider({ children }: QueryProviderProps) {
     </QueryClientProvider>
   )
 }
+
+// v37 FIX: logout 시 useAuthKR 에서 캐시 초기화용 getter
+export function getQueryClient() {
+  return queryClient
+}

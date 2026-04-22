@@ -27,8 +27,16 @@ export default function BottomNav() {
     { icon: User, label: '마이', path: '/user/profile' },
   ]
 
-  const isActivePath = (path: string) =>
-    location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
+  const isActivePath = (path: string) => {
+    const cur = location.pathname
+    if (cur === path) return true
+    if (path !== '/' && cur.startsWith(path)) return true
+    // v37 FIX: 마이페이지 범주에 /my-* 및 관련 계정/주문 경로 포함
+    if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-vouchers|my-group-buys|wishlist|interest-list|account|mypage)(\/|$)/.test(cur)) {
+      return true
+    }
+    return false
+  }
 
   const renderItem = ({ icon: Icon, label, path }: typeof leftItems[0]) => {
     const active = isActivePath(path)

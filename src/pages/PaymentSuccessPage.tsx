@@ -81,9 +81,17 @@ export default function PaymentSuccessPage() {
   async function confirmPayment() {
     // 🔒 중복 호출 방지 (ref 사용)
     isProcessingRef.current = true
-    
+
+    // v37 FIX: URL에서 paymentKey/orderId 즉시 제거 (새로고침 시 재승인 방지)
+    // replaceState → 뒤로가기 히스토리 건드리지 않음, URL만 정리
     try {
-      
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    } catch {}
+
+    try {
+
       // 1️⃣ 사용자 정보 확인
       // ✅ BUG #22 FIX: getUserId() is declared `async` (returns Promise<string|null>).
       // The old code called it without `await`, so `userId` was always a resolved
