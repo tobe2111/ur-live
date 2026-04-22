@@ -154,6 +154,11 @@ adminManagementRoutes.use('*', requireAdmin());
 adminManagementRoutes.get('/sellers', cors(), async (c) => {
   try {
     const { DB } = c.env;
+    // v31 HIGH FIX: 무제한 조회 금지. 페이지네이션 파라미터 (최대 200건/page)
+    const page = Math.max(parseInt(c.req.query('page') || '1'), 1);
+    const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '50'), 1), 200);
+    const offset = (page - 1) * limit;
+
     let sellers;
     try {
       sellers = await executeQuery<SellerRow>(DB, `
@@ -161,17 +166,25 @@ adminManagementRoutes.get('/sellers', cors(), async (c) => {
                status, created_at,
                COALESCE(commission_rate, 10) AS commission_rate,
                COALESCE(can_manipulate_stats, 0) AS can_manipulate_stats
-        FROM sellers ORDER BY created_at DESC
-      `);
+        FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
+      `, [limit, offset]);
     } catch {
       // fallback: commission_rate/can_manipulate_stats 컬럼 없을 수 있음
       sellers = await executeQuery<SellerRow>(DB, `
         SELECT id, email, name, phone, business_name, business_number,
                status, created_at
-        FROM sellers ORDER BY created_at DESC
-      `);
+        FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
+      `, [limit, offset]);
     }
-    return c.json({ success: true, data: sellers });
+    const totalRow = await DB.prepare('SELECT COUNT(*) as cnt FROM sellers').first<{ cnt: number }>();
+    return c.json({
+      success: true,
+      data: sellers,
+      pagination: {
+        page, limit, total: totalRow?.cnt ?? 0,
+        totalPages: Math.ceil((totalRow?.cnt ?? 0) / limit),
+      },
+    });
   } catch (err) {
     console.error('[Admin] sellers error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
