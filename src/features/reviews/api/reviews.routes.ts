@@ -185,6 +185,17 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     return c.json({ success: false, error: '이미 리뷰를 작성하셨습니다' }, 409);
   }
 
+  // 🛡️ 2026-04-22: 셀러 자기 상품 self-review 차단 — 평점 조작 방어
+  // user 가 해당 상품의 셀러 본인이면 차단. admin 은 허용 (테스트 목적).
+  if (user.type === 'seller') {
+    const ownsProduct = await DB.prepare(
+      'SELECT 1 FROM products WHERE id = ? AND seller_id = ?'
+    ).bind(body.product_id, user.id).first().catch(() => null);
+    if (ownsProduct) {
+      return c.json({ success: false, error: '본인이 판매하는 상품에는 리뷰를 작성할 수 없습니다' }, 403);
+    }
+  }
+
   // 구매 확인 — 보상 지급 여부는 order_id 소유/배송 상태에 따라 결정
   // order_id가 없어도 리뷰 자체는 저장되지만 보상은 지급되지 않음 (HIGH-3)
   let canGetReward = !!body.order_id;
@@ -307,11 +318,19 @@ reviewsRoutes.put('/:id', rateLimit({ action: 'review_mutation', max: 10, window
   const body = await c.req.json<{ rating?: number; content?: string; images?: string[] }>();
 
   const review = await DB.prepare(
-    'SELECT id, user_id FROM product_reviews WHERE id = ?'
-  ).bind(reviewId).first<{ id: number; user_id: string }>();
+    "SELECT id, user_id, created_at FROM product_reviews WHERE id = ?"
+  ).bind(reviewId).first<{ id: number; user_id: string; created_at: string }>();
 
   if (!review) return c.json({ success: false, error: '리뷰를 찾을 수 없습니다' }, 404);
   if (review.user_id !== user.id) return c.json({ success: false, error: '본인의 리뷰만 수정할 수 있습니다' }, 403);
+
+  // 🛡️ 2026-04-22: 리뷰 edit window 30일 — 구매 직후 고평점 쓰고 장기간 후 1점으로 바꾸는 조작 방어
+  try {
+    const createdAt = new Date(review.created_at.replace(' ', 'T') + (review.created_at.includes('Z') ? '' : 'Z')).getTime();
+    if (Number.isFinite(createdAt) && Date.now() - createdAt > 30 * 24 * 60 * 60 * 1000) {
+      return c.json({ success: false, error: '리뷰 작성 후 30일이 지나 수정할 수 없습니다' }, 400);
+    }
+  } catch { /* parse 실패 시 수정 허용 (legacy) */ }
 
   // Defensive: validate rating/content size before writing
   if (body.rating !== undefined) {

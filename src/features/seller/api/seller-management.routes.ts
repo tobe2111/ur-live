@@ -666,11 +666,31 @@ sellerManagementRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       website_url: 'website_url', kakao_chat_link: 'kakao_chat_url'
     };
 
+    // 🛡️ 2026-04-22: 정산 계좌 변경 시 is_verified=0 강제 → 어드민 재인증 전까지 출금 차단.
+    // 이전: 셀러가 이메일/UI 만 뚫리면 은행 계좌 변경 후 정산 받아감.
+    const bankChangeKeys = ['bank_account', 'bank_name', 'account_holder'] as const;
+    const bankChanged = bankChangeKeys.some(k => body[k] !== undefined);
+
     for (const [bodyKey, dbCol] of Object.entries(fieldMap)) {
       if (body[bodyKey] !== undefined) {
         updates.push(`${dbCol} = ?`);
         values.push(body[bodyKey] as string | number | null);
       }
+    }
+
+    if (bankChanged) {
+      updates.push('is_verified = 0');
+      // 감사 로그 (실패해도 업데이트는 진행)
+      try {
+        await c.env.DB.prepare(
+          `INSERT INTO admin_audit_logs (admin_id, admin_email, action, target_type, target_id, after_value)
+           VALUES (?, ?, 'seller_bank_change', 'seller', ?, ?)`
+        ).bind(String(sellerId), 'system', String(sellerId), JSON.stringify({
+          reason: 'seller-self-bank-change',
+          bank_name: body.bank_name ?? null,
+          account_holder: body.account_holder ?? null,
+        })).run();
+      } catch {}
     }
 
     if (updates.length === 0) {

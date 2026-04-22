@@ -23,7 +23,10 @@ export class ProductRepository {
    * 필터 조건으로 상품 목록 조회
    */
   async findAll(filter: ProductFilter, offset: number = 0, limit: number = 20): Promise<Product[]> {
-    let query = `SELECT * FROM products WHERE is_active = 1`;
+    // 🛡️ 2026-04-22: suspended/inactive seller 상품 숨김 (검색/브라우즈 방어)
+    // seller_id NULL (cafe24 등) 은 통과, seller is_active=0 이면 상품 숨김.
+    let query = `SELECT * FROM products WHERE is_active = 1
+      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
     const params: any[] = [];
     
     if (filter.sellerId) {
@@ -52,8 +55,10 @@ export class ProductRepository {
     }
     
     if (filter.search) {
-      query += ` AND (name LIKE ? OR description LIKE ?)`;
-      params.push(`%${filter.search}%`, `%${filter.search}%`);
+      // 🛡️ 2026-04-22: LIKE wildcard escape — %, _ 가 user input 에 있을 때 정확 매칭
+      const escaped = String(filter.search).replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+      query += ` AND (name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')`;
+      params.push(`%${escaped}%`, `%${escaped}%`);
     }
 
     if (filter.productType) {
@@ -105,7 +110,8 @@ export class ProductRepository {
    * 전체 개수 조회 (페이지네이션용)
    */
   async count(filter: ProductFilter): Promise<number> {
-    let query = `SELECT COUNT(*) as count FROM products WHERE is_active = 1`;
+    let query = `SELECT COUNT(*) as count FROM products WHERE is_active = 1
+      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
     const params: any[] = [];
     
     if (filter.sellerId) {
@@ -124,8 +130,10 @@ export class ProductRepository {
     }
     
     if (filter.search) {
-      query += ` AND (name LIKE ? OR description LIKE ?)`;
-      params.push(`%${filter.search}%`, `%${filter.search}%`);
+      // 🛡️ 2026-04-22: LIKE wildcard escape — %, _ 가 user input 에 있을 때 정확 매칭
+      const escaped = String(filter.search).replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+      query += ` AND (name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')`;
+      params.push(`%${escaped}%`, `%${escaped}%`);
     }
 
     if (filter.productType) {
