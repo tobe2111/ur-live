@@ -166,13 +166,20 @@ liveSseRoutes.post('/:liveId/broadcast', requireSellerOrAdmin(), async (c) => {
     return c.json({ success: false, error: 'DO not available' }, 503)
   }
 
+  const user = getCurrentUser(c)
   const body = await c.req.json()
   const doId = c.env.LIVE_STREAM.idFromName(liveId)
   const stub = c.env.LIVE_STREAM.get(doId)
 
+  // 🛡️ 2026-04-22: DO 에 인증 증빙 전달 — DO 자체 인증 체크용
   await stub.fetch(new Request('https://internal/broadcast', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Internal-Auth': '1',
+      'X-Auth-User-Type': user?.type ?? '',
+      'X-Auth-User-Id': String(user?.id ?? ''),
+    },
     body: JSON.stringify(body),
   }) as any)
 
