@@ -343,6 +343,12 @@ export const useAuthKR = create<AuthKRState>()(
             clearFirebaseTokenCache();
           } catch (_) {} // non-critical: best-effort token cache cleanup
 
+          // v37 FIX: React Query 캐시 초기화 (이전 유저의 orders/cart 등 잔존 방지)
+          try {
+            const { getQueryClient } = await import('@/lib/react-query');
+            getQueryClient().clear();
+          } catch (_) {} // non-critical: query client may not be initialized yet
+
           set({ user: null, userRole: null, tokenCache: null, isLoading: false, isAuthReady: true });
           setTimeout(() => { window.location.href = '/'; }, 50);
         },

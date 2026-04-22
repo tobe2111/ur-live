@@ -196,6 +196,21 @@ export default function CheckoutPage() {
 
   useEffect(() => { document.title = '주문/결제 - 유어딜' }, [])
 
+  // v36 FIX: 결제 진행 중 페이지 이탈(새로고침/탭 닫기/뒤로가기) 경고
+  // cartItems가 있고 결제 버튼 눌러 isSubmittingRef.current=true 상태에서 이탈 시 확인
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isSubmittingRef.current) {
+        e.preventDefault()
+        // 최신 크롬/사파리는 커스텀 메시지 무시, 기본 경고만 표시
+        e.returnValue = '결제가 진행 중입니다. 페이지를 벗어나시겠습니까?'
+        return e.returnValue
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [])
+
   // 공동구매 할인 조회 (cartItems 로드 후)
   useEffect(() => {
     if (cartItems.length === 0) return

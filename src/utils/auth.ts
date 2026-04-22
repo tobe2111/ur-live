@@ -98,8 +98,16 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
     if (!hasSellerSession && !hasAdminSession) {
       keysToRemove.push('user_type')
     }
+    // v37 FIX: user 로그아웃 시 zustand persist 스토어들도 초기화
+    // (이전 유저의 장바구니/찜 등이 새 유저 세션에 남지 않도록)
+    keysToRemove.push(
+      'cart-storage',
+      'wishlist-storage',
+      'deal-charge-storage',
+      'recent-views-storage'
+    )
   }
-  
+
   // 선택적 삭제
   keysToRemove.forEach(key => {
     localStorage.removeItem(key)
