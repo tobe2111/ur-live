@@ -547,6 +547,22 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
       }, 400);
     }
 
+    // ── 3-1. v26 CRITICAL: 부분 취소 금액 서버 검증 ────────────
+    // 클라이언트 값 신뢰 금지 — Toss API 호출 전 반드시 범위 클램프
+    if (cancelAmount !== undefined) {
+      if (!Number.isFinite(cancelAmount) || !Number.isInteger(cancelAmount) || cancelAmount <= 0) {
+        return c.json({ success: false, error: '유효한 취소 금액을 입력해주세요 (1원 이상 정수)' }, 400);
+      }
+      const alreadyRefunded = Number(order.refunded_amount ?? 0);
+      const remaining = Number(order.total_amount ?? 0) - alreadyRefunded;
+      if (cancelAmount > remaining) {
+        return c.json({
+          success: false,
+          error: `취소 가능 금액을 초과합니다 (최대 ${remaining.toLocaleString()}원)`,
+        }, 400);
+      }
+    }
+
     // ── 4. 결제 취소 (Toss Payments) ─────────────────────────
     // PAID / DONE 상태: 실제 결제가 이루어졌으므로 Toss Cancel API 호출
     const paymentMadeStatuses = ['PAID', 'DONE'];

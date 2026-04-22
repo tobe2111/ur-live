@@ -46,6 +46,8 @@ type Bindings = {
   FIREBASE_CLIENT_EMAIL: string;
 };
 
+type EntryMethod = 'free' | 'password' | 'intercom' | 'pickup_box';
+
 interface AddressCreateRequest {
   recipient_name: string;
   phone: string;
@@ -56,6 +58,11 @@ interface AddressCreateRequest {
   state?: string;
   city?: string;
   is_default?: boolean;
+  // 0204: 실무 필수 필드
+  label?: string;          // 배송지 별칭 ("집", "회사")
+  delivery_note?: string;  // 배송 메모
+  entry_code?: string;     // 공동현관 비밀번호
+  entry_method?: EntryMethod;
 }
 
 interface AddressUpdateRequest {
@@ -68,7 +75,13 @@ interface AddressUpdateRequest {
   state?: string;
   city?: string;
   is_default?: boolean;
+  label?: string;
+  delivery_note?: string;
+  entry_code?: string;
+  entry_method?: EntryMethod;
 }
+
+const ALLOWED_ENTRY_METHODS: EntryMethod[] = ['free', 'password', 'intercom', 'pickup_box'];
 
 export const shippingAddressRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -146,6 +159,12 @@ shippingAddressRoutes.post('/', requireAuth(), async (c) => {
     const address_detail = validateOptionalString(body.address_detail, 'address_detail', { maxLength: 100 });
     const postal_code = validateRequiredString(body.postal_code, 'postal_code', { maxLength: 10 });
     const is_default = Boolean(body.is_default);
+    const label = validateOptionalString(body.label, 'label', { maxLength: 20 });
+    const delivery_note = validateOptionalString(body.delivery_note, 'delivery_note', { maxLength: 200 });
+    const entry_code = validateOptionalString(body.entry_code, 'entry_code', { maxLength: 20 });
+    const entry_method: EntryMethod = body.entry_method && ALLOWED_ENTRY_METHODS.includes(body.entry_method)
+      ? body.entry_method
+      : 'free';
 
     const db = c.env.DB;
     const dbHelper = createDbHelper(db);
@@ -173,6 +192,10 @@ shippingAddressRoutes.post('/', requireAuth(), async (c) => {
       address_detail,
       postal_code,
       is_default: is_default ? 1 : 0,
+      label,
+      delivery_note,
+      entry_code,
+      entry_method,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });
@@ -230,6 +253,18 @@ shippingAddressRoutes.put('/:id', requireAuth(), async (c) => {
     }
     if (body.is_default !== undefined) {
       updateData.is_default = Boolean(body.is_default) ? 1 : 0;
+    }
+    if (body.label !== undefined) {
+      updateData.label = validateOptionalString(body.label, 'label', { maxLength: 20 });
+    }
+    if (body.delivery_note !== undefined) {
+      updateData.delivery_note = validateOptionalString(body.delivery_note, 'delivery_note', { maxLength: 200 });
+    }
+    if (body.entry_code !== undefined) {
+      updateData.entry_code = validateOptionalString(body.entry_code, 'entry_code', { maxLength: 20 });
+    }
+    if (body.entry_method !== undefined && ALLOWED_ENTRY_METHODS.includes(body.entry_method)) {
+      updateData.entry_method = body.entry_method;
     }
 
     if (Object.keys(updateData).length === 0) {

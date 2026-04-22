@@ -97,6 +97,11 @@ productsRoutes.get('/', cors(), async (c) => {
     // Defensive: cap search string length (200) to prevent giant LIKE DoS.
     const rawSearch = c.req.query('search');
     const safeSearch = rawSearch && rawSearch.length <= 200 ? rawSearch : undefined;
+    const rawSort = c.req.query('sort');
+    const allowedSorts = ['newest', 'popular', 'price_low', 'price_high', 'rating', 'ranking'] as const;
+    const sort = rawSort && (allowedSorts as readonly string[]).includes(rawSort)
+      ? (rawSort as typeof allowedSorts[number])
+      : undefined;
     const filter: ProductFilter = {
       sellerId: c.req.query('seller_id') ? Number(c.req.query('seller_id')) : undefined,
       category: c.req.query('category'),
@@ -105,6 +110,7 @@ productsRoutes.get('/', cors(), async (c) => {
       minPrice: c.req.query('min_price') ? Number(c.req.query('min_price')) : undefined,
       maxPrice: c.req.query('max_price') ? Number(c.req.query('max_price')) : undefined,
       productType: featuredOnly ? 'featured' : undefined,
+      sort,
     };
     
     const pagination = {

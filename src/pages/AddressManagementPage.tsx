@@ -13,6 +13,8 @@ import { getUserIdSync } from '@/utils/auth'
 import { CustomModal } from '@/components/CustomModal'
 import { toast } from '@/hooks/useToast'
 
+type EntryMethod = 'free' | 'password' | 'intercom' | 'pickup_box'
+
 interface ShippingAddress {
   id: number
   user_id: number
@@ -22,6 +24,10 @@ interface ShippingAddress {
   address: string
   address_detail: string
   is_default: number
+  label?: string | null
+  delivery_note?: string | null
+  entry_code?: string | null
+  entry_method?: EntryMethod | null
   created_at: string
   updated_at: string
 }
@@ -32,8 +38,26 @@ const EMPTY_FORM = {
   postal_code: '',
   address: '',
   address_detail: '',
-  is_default: false
+  is_default: false,
+  label: '',
+  delivery_note: '',
+  entry_code: '',
+  entry_method: 'free' as EntryMethod,
 }
+
+const ENTRY_METHOD_OPTIONS: { value: EntryMethod; label: string }[] = [
+  { value: 'free',       label: '자유 출입' },
+  { value: 'password',   label: '공동현관 비밀번호' },
+  { value: 'intercom',   label: '경비실 호출' },
+  { value: 'pickup_box', label: '무인택배함' },
+]
+
+const DELIVERY_NOTE_PRESETS = [
+  '문 앞에 놓아주세요',
+  '경비실에 맡겨주세요',
+  '부재 시 연락 부탁드려요',
+  '조심히 다뤄주세요 (깨짐 주의)',
+]
 
 export default function AddressManagementPage() {
   const navigate = useNavigate()
@@ -168,7 +192,11 @@ export default function AddressManagementPage() {
       postal_code: address.postal_code,
       address: address.address,
       address_detail: address.address_detail,
-      is_default: address.is_default === 1
+      is_default: address.is_default === 1,
+      label: address.label ?? '',
+      delivery_note: address.delivery_note ?? '',
+      entry_code: address.entry_code ?? '',
+      entry_method: (address.entry_method as EntryMethod) ?? 'free',
     })
     setEditingId(address.id)
     setShowPostcodePopup(false)
@@ -236,7 +264,12 @@ export default function AddressManagementPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                      {address.label && (
+                        <span className="rounded-full bg-gray-900 px-2 py-0.5 text-[11px] font-bold text-white">
+                          {address.label}
+                        </span>
+                      )}
                       <p className="text-[15px] font-semibold text-gray-900">{address.recipient_name}</p>
                       {address.is_default === 1 && (
                         <span className="rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-semibold text-pink-500">
@@ -252,6 +285,25 @@ export default function AddressManagementPage() {
                       <p className="text-[14px] text-gray-700 leading-relaxed mt-0.5">
                         {address.address_detail}
                       </p>
+                    )}
+                    {(address.delivery_note || address.entry_method === 'password' || address.entry_method === 'intercom' || address.entry_method === 'pickup_box') && (
+                      <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
+                        {address.entry_method && address.entry_method !== 'free' && (
+                          <p className="text-[12px] text-gray-500">
+                            <span className="font-semibold text-gray-700">출입 · </span>
+                            {ENTRY_METHOD_OPTIONS.find(o => o.value === address.entry_method)?.label}
+                            {address.entry_method === 'password' && address.entry_code && (
+                              <span className="text-gray-400"> (비번 등록됨)</span>
+                            )}
+                          </p>
+                        )}
+                        {address.delivery_note && (
+                          <p className="text-[12px] text-gray-500 line-clamp-2">
+                            <span className="font-semibold text-gray-700">메모 · </span>
+                            {address.delivery_note}
+                          </p>
+                        )}
+                      </div>
                     )}
                     {address.is_default === 0 && (
                       <button
@@ -370,6 +422,114 @@ export default function AddressManagementPage() {
               onChange={(e) => setFormData({ ...formData, address_detail: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="동/호수, 건물명 등 (선택)"
+            />
+          </div>
+
+          {/* 배송지 별칭 */}
+          <div>
+            <label htmlFor="addr-label" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              배송지 별칭 <span className="text-gray-400 font-normal">(선택)</span>
+            </label>
+            <div className="flex gap-1.5 mb-2">
+              {['집', '회사', '부모님댁'].map(preset => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, label: preset })}
+                  className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
+                    formData.label === preset
+                      ? 'bg-pink-500 text-white border-pink-500'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            <input
+              id="addr-label"
+              type="text"
+              value={formData.label}
+              onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+              maxLength={20}
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="직접 입력도 가능합니다"
+            />
+          </div>
+
+          {/* 출입 방식 */}
+          <div>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+              공동 현관 출입 방식 <span className="text-gray-400 font-normal">(선택)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {ENTRY_METHOD_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, entry_method: opt.value })}
+                  className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold border transition-colors ${
+                    formData.entry_method === opt.value
+                      ? 'bg-pink-50 text-pink-600 border-pink-500'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 공동현관 비밀번호 (password 선택 시만) */}
+          {formData.entry_method === 'password' && (
+            <div>
+              <label htmlFor="addr-entry-code" className="block text-[14px] font-semibold text-gray-900 mb-2">
+                공동현관 비밀번호
+              </label>
+              <input
+                id="addr-entry-code"
+                type="text"
+                value={formData.entry_code}
+                onChange={(e) => setFormData({ ...formData, entry_code: e.target.value })}
+                maxLength={20}
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="예: #1234*"
+              />
+              <p className="mt-1.5 text-[11px] text-gray-500">
+                배송기사에게만 전달되며 주문 완료 후 60일 뒤 자동 파기됩니다
+              </p>
+            </div>
+          )}
+
+          {/* 배송 메모 */}
+          <div>
+            <label htmlFor="addr-note" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              배송 메모 <span className="text-gray-400 font-normal">(선택)</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {DELIVERY_NOTE_PRESETS.map(preset => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, delivery_note: preset })}
+                  className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
+                    formData.delivery_note === preset
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            <textarea
+              id="addr-note"
+              value={formData.delivery_note}
+              onChange={(e) => setFormData({ ...formData, delivery_note: e.target.value })}
+              maxLength={200}
+              rows={2}
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+              placeholder="배송 시 요청사항을 입력하세요"
             />
           </div>
 

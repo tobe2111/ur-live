@@ -50,3 +50,11 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer
+
+# PWA manifest - MIME type (avoids "Manifest: Line: 1 Syntax error" in Chrome)
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+  Cache-Control: public, max-age=3600
+
+/*.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8

@@ -61,9 +61,30 @@ export class ProductRepository {
       params.push(filter.productType);
     }
 
-    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    // 정렬: ranking은 "실시간 인기" 가중합 (최근 24h 판매 + 전체 판매 + 평점 + 최신성)
+    // COALESCE로 null-safe; id DESC secondary로 pagination tie-break
+    let orderBy = 'created_at DESC, id DESC';
+    if (filter.sort === 'popular') {
+      orderBy = 'COALESCE(sold_count, 0) DESC, COALESCE(view_count, 0) DESC, id DESC';
+    } else if (filter.sort === 'price_low') {
+      orderBy = 'price ASC, id DESC';
+    } else if (filter.sort === 'price_high') {
+      orderBy = 'price DESC, id DESC';
+    } else if (filter.sort === 'rating') {
+      orderBy = 'COALESCE(avg_rating, 0) DESC, COALESCE(review_count, 0) DESC, id DESC';
+    } else if (filter.sort === 'ranking') {
+      // 실시간 랭킹: 판매량 * 3 + 조회수 * 0.1 + 평점 * 20 + 최신 가중(최근 7일 bonus)
+      orderBy = `(
+        COALESCE(sold_count, 0) * 3
+        + COALESCE(view_count, 0) * 0.1
+        + COALESCE(avg_rating, 0) * 20
+        + CASE WHEN datetime(created_at) > datetime('now', '-7 days') THEN 50 ELSE 0 END
+      ) DESC, id DESC`;
+    }
+
+    query += ` ORDER BY ${orderBy} LIMIT ? OFFSET ?`;
     params.push(limit, offset);
-    
+
     const result = await this.db.prepare(query).bind(...params).all<Product>();
     return result.results || [];
   }

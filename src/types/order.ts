@@ -85,6 +85,7 @@ export interface Order {
   delivered_at?: string
   cancelled_at?: string
   refunded_at?: string
+  refunded_amount?: number               // 0203 migration: 누적 환불 금액
   cancel_reason?: string
   refund_status?: 'pending' | 'completed' | 'failed'
   created_at: string

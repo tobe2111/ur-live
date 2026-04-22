@@ -96,6 +96,9 @@ const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
 // User 페이지들
 const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage'))
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
+const MyCouponsPage = lazy(() => import('./pages/MyCouponsPage'))
+const MyReviewsPage = lazy(() => import('./pages/MyReviewsPage'))
+const ReferralIndexPage = lazy(() => import('./pages/ReferralIndexPage'))
 const MyGroupBuysPage = lazy(() => import('./pages/MyGroupBuysPage'))
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 
@@ -344,7 +347,7 @@ function AppContent() {
       setStatusBarStyle(isLight ? 'light' : 'dark')
     }).catch(() => {})
   }, [location.pathname])
-  const fullScreenPrefixes = ['/checkout', '/payment', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog']
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
@@ -773,6 +776,17 @@ function AppContent() {
                 <MyOrdersPage />
               </ProtectedRoute>
             } />
+            <Route path="/my-coupons" element={
+              <ProtectedRoute requireUser>
+                <MyCouponsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-reviews" element={
+              <ProtectedRoute requireUser>
+                <MyReviewsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/referral" element={<ReferralIndexPage />} />
             <Route path="/account/settings" element={
               <ProtectedRoute requireUser>
                 <AccountSettingsPage />
