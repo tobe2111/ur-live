@@ -66,7 +66,7 @@ export function CustomModal({
   }
 
   const modalContent = (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn"
       onClick={(e) => {
         // Only close modal if clicking the overlay (not the modal content)
@@ -74,8 +74,12 @@ export function CustomModal({
           onClose()
         }
       }}
+      role="presentation"
     >
-      <div 
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? 'modal-title' : undefined}
         className={`bg-white rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp relative`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -83,12 +87,13 @@ export function CustomModal({
           <>
             {/* Custom Modal Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-              <h3 className="text-[17px] font-bold text-gray-900">
+              <h3 id="modal-title" className="text-[17px] font-bold text-gray-900">
                 {title}
               </h3>
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+                aria-label="닫기"
+                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>

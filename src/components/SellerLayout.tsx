@@ -106,6 +106,10 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
   function changeLang(code: string) {
     i18n.changeLanguage(code)
+    // v25 FIX: html lang 속성도 동기화 — 스크린리더가 올바른 TTS 음성 선택
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = code
+    }
     localStorage.setItem('i18nextLng', code)
     setLangOpen(false)
   }

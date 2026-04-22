@@ -57,6 +57,7 @@ export async function tossCancelPayment(
   secretKey: string,
   cancelReason: string,
   cancelAmount?: number,
+  idempotencyKey?: string,
 ): Promise<{ success: true; data: TossPaymentCancelResponse } | { success: false; code: string; message: string }> {
   const url = `${TOSS_API_BASE}/${encodeURIComponent(paymentKey)}/cancel`;
 
@@ -65,6 +66,11 @@ export async function tossCancelPayment(
     body.cancelAmount = cancelAmount;
   }
 
+  // v35 FIX: idempotency key 지원. 제공 안 되면 paymentKey + amount + reason 해시 기반 자동 생성
+  // 이중 호출(네트워크 재시도, 더블클릭) 시 Toss가 중복 취소 방지.
+  const idemKey = idempotencyKey
+    || `cancel-${paymentKey}-${cancelAmount ?? 'full'}-${cancelReason.slice(0, 20).replace(/\s/g, '_')}`;
+
   let res: Response;
   try {
     res = await fetch(url, {
@@ -72,6 +78,7 @@ export async function tossCancelPayment(
       headers: {
         'Authorization': makeTossAuthHeader(secretKey),
         'Content-Type': 'application/json',
+        'Idempotency-Key': idemKey,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(10000), // 10s timeout (critical path)
