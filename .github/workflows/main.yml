@@ -60,7 +60,23 @@ jobs:
           echo "✅ _worker.js exists"
           echo "✅ $JS_COUNT JS chunks in assets/"
           test $JS_COUNT -gt 50 || (echo "❌ Too few JS chunks ($JS_COUNT), build may be incomplete" && exit 1)
-          echo "✅ Build verification passed"
+
+          # 🛡️ Bundle size budget (2026-04-22 추가)
+          # 번들 비대로 인한 초기 로딩 지연 방지.
+          # 한계: _worker.js 3MB, 초기 entry JS 500KB, 총 client 50MB.
+          WORKER_SIZE=$(stat -c%s dist/client/_worker.js 2>/dev/null || stat -f%z dist/client/_worker.js)
+          echo "  _worker.js size: $(($WORKER_SIZE / 1024))KB"
+          test $WORKER_SIZE -lt 3145728 || (echo "❌ _worker.js 너무 큼 ($(($WORKER_SIZE/1024))KB > 3MB)" && exit 1)
+
+          ENTRY_SIZE=$(du -b dist/client/assets/index-*.js 2>/dev/null | head -1 | awk '{print $1}' || echo 0)
+          echo "  entry JS size: $(($ENTRY_SIZE / 1024))KB"
+          test $ENTRY_SIZE -lt 524288 || (echo "⚠️ entry JS 비대 ($(($ENTRY_SIZE/1024))KB > 500KB) — 코드 스플리팅 점검 권장"; true)
+
+          CLIENT_TOTAL=$(du -sb dist/client 2>/dev/null | awk '{print $1}')
+          echo "  total client size: $(($CLIENT_TOTAL / 1024 / 1024))MB"
+          test $CLIENT_TOTAL -lt 52428800 || (echo "❌ client 총 용량 초과 ($(($CLIENT_TOTAL/1024/1024))MB > 50MB)" && exit 1)
+
+          echo "✅ Build verification + size budget 통과"
 
       # 2026-04-22: Workers 프로젝트 제거 — 이 프로젝트는 Pages (with _worker.js) 구조.
       # 사용자가 이미 Pages(ur-live.pages.dev)에 모든 secret(JWT_SECRET 등)을 세팅함.
