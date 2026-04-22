@@ -31,19 +31,18 @@ export function useMultiTabSync() {
         // 같은 탭에서 로그인 처리 중이면 무시 (sessionStorage 플래그)
         if (sessionStorage.getItem('auth_processing')) return
 
-        // 10초 쿨다운 — 연속 reload 완전 차단
-        const now = Date.now()
-        if (now - lastReloadTime.current < 10000) return
-        lastReloadTime.current = now
-
-        // 로그아웃 감지 (값이 사라짐)
+        // v37 FIX: 로그아웃(oldValue 존재 + newValue 없음)은 즉시 처리 — 보안상 지연 금지
+        // 다른 이벤트만 10초 쿨다운 유지 (로그인 전환 시 연속 reload 방지).
         if (event.oldValue && !event.newValue) {
           window.location.href = '/'
           return
         }
 
-        // 로그인/사용자 전환은 reload 하지 않음
-        // (React 상태가 자동으로 업데이트됨 — Zustand persist가 처리)
+        const now = Date.now()
+        if (now - lastReloadTime.current < 10000) return
+        lastReloadTime.current = now
+
+        // 로그인/사용자 전환은 reload 하지 않음 (Zustand persist 처리)
         return
       }
 
