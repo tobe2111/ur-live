@@ -440,6 +440,83 @@ app.get('/api/_internal/repair-schema', async (c) => {
 // Dashboard/Logs 접근 없이 '왜 500인지' 찾기 위한 안전한 메타데이터 반환
 // ============================================================
 
+// ============================================================
+// 🩺 전수조사 스모크 테스트
+// GET /api/_internal/smoke-test
+// 모든 공개 API를 내부 fetch 로 호출하고 5xx 여부 리포트.
+// 인증 필요 없는 엔드포인트만 테스트 (401은 정상으로 간주).
+// ============================================================
+app.get('/api/_internal/smoke-test', async (c) => {
+  const origin = new URL(c.req.url).origin;
+  const endpoints: Array<{ path: string; method: 'GET' | 'POST'; body?: string }> = [
+    // Health & Version
+    { path: '/api/health', method: 'GET' },
+    { path: '/api/version', method: 'GET' },
+    // Products
+    { path: '/api/products?limit=3', method: 'GET' },
+    { path: '/api/products?limit=3&sort=ranking', method: 'GET' },
+    { path: '/api/products?limit=3&sort=popular', method: 'GET' },
+    { path: '/api/products?limit=3&featured=true', method: 'GET' },
+    // Streams
+    { path: '/api/streams', method: 'GET' },
+    // Search
+    { path: '/api/search?q=test&limit=3', method: 'GET' },
+    // Banners
+    { path: '/api/banners', method: 'GET' },
+    // Auth (expect 400/401 — just confirm NOT 500)
+    { path: '/api/auth/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
+    { path: '/api/seller/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
+    { path: '/api/admin/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
+    { path: '/api/agency/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
+    // Auth me (expect 401)
+    { path: '/api/auth/me', method: 'GET' },
+    // Cart (expect 401)
+    { path: '/api/cart', method: 'GET' },
+    // Orders (expect 401)
+    { path: '/api/orders', method: 'GET' },
+    // Wishlists (expect 401)
+    { path: '/api/wishlists/0', method: 'GET' },
+    // Shipping addresses (expect 401)
+    { path: '/api/shipping-addresses', method: 'GET' },
+    // Seller public
+    { path: '/api/sellers?limit=3', method: 'GET' },
+    // Points (expect 401)
+    { path: '/api/points/balance', method: 'GET' },
+    // Notifications (expect 401)
+    { path: '/api/notifications', method: 'GET' },
+  ];
+
+  const results: Array<{ path: string; status: number; ok: boolean; ms: number }> = [];
+  let fail5xx = 0;
+
+  for (const ep of endpoints) {
+    const start = Date.now();
+    try {
+      const res = await fetch(`${origin}${ep.path}`, {
+        method: ep.method,
+        headers: ep.body ? { 'Content-Type': 'application/json' } : {},
+        body: ep.body || undefined,
+      });
+      const ms = Date.now() - start;
+      const is5xx = res.status >= 500;
+      if (is5xx) fail5xx++;
+      results.push({ path: ep.path, status: res.status, ok: !is5xx, ms });
+    } catch (e: any) {
+      const ms = Date.now() - start;
+      fail5xx++;
+      results.push({ path: ep.path, status: 0, ok: false, ms });
+    }
+  }
+
+  return c.json({
+    success: fail5xx === 0,
+    total: endpoints.length,
+    passed: endpoints.length - fail5xx,
+    failed5xx: fail5xx,
+    results,
+  });
+});
+
 // 배포 검증용 — 현재 worker 빌드가 언제 / 어떤 커밋에서 빌드됐는지 즉시 확인
 // 이 핸들러의 존재 자체가 "최신 배포 반영" 증거
 app.get('/api/debug/build-info', requireAdmin(), (c) => {
