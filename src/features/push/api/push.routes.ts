@@ -126,16 +126,24 @@ pushRoutes.post('/api/push/register', requireAuth(), async (c) => {
   }
 });
 
-// Push 알림 구독 해제 — endpoint는 공개 값이지만 본인 소유만 삭제되므로 무해
-pushRoutes.post('/api/push/unsubscribe', async (c) => {
+// Push 알림 구독 해제
+// 🛡️ 2026-04-22: 인증 필수. 이전엔 인증 없어서 누구나 타 유저 endpoint 로 구독 해제 가능 (DoS).
+// 수정: requireAuth() + 본인 endpoint 만 삭제 가능.
+pushRoutes.post('/api/push/unsubscribe', requireAuth(), async (c) => {
   try {
-    const { endpoint } = await c.req.json();
+    const user = getCurrentUser(c);
+    if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
+    const { endpoint } = await c.req.json();
     if (!endpoint) {
       return c.json({ success: false, error: 'Endpoint required' }, 400);
     }
 
-    await deletePushSubscription(c.env.DB, endpoint);
+    // 본인 user_id 에 속한 endpoint 인지 확인 후 삭제 (helper 가 이미 체크하지 않으면)
+    await c.env.DB.prepare(
+      'DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?'
+    ).bind(endpoint, user.id).run();
+
     return c.json({ success: true });
   } catch (error: any) {
     console.error('[Push Unsubscribe] Error:', error.message);

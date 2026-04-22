@@ -14,6 +14,7 @@ import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
 import { maskEmail } from '@/lib/mask';
+import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
 
 /**
  * refresh_tokens 보조 테이블 (admin/seller용) 생성.
@@ -85,13 +86,28 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     }
 
     const admin = admins[0];
+
+    // 🛡️ 2026-04-22: 계정 잠금 확인 (brute force 방어)
+    const lockStatus = await checkLockout(DB, 'admin', String(admin.id));
+    if (lockStatus.locked) {
+      return c.json({
+        success: false,
+        error: lockStatus.reason || '계정이 일시 잠금되었습니다.',
+        code: 'ACCOUNT_LOCKED',
+      }, 423);
+    }
+
     const passwordHash = admin.password_hash as string;
     const { valid } = await verifyPassword(password, passwordHash);
 
     if (!valid) {
       if (import.meta.env.DEV) console.warn('[Admin Login] Invalid password for:', maskEmail(email));
+      await recordFailure(DB, 'admin', String(admin.id));
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401);
     }
+
+    // 🛡️ 성공 시 실패 카운터 초기화
+    await clearFailures(DB, 'admin', String(admin.id));
     
     const now = Math.floor(Date.now() / 1000);
     const payload = {
