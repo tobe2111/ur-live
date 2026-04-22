@@ -1362,10 +1362,19 @@ sellerManagementRoutes.get('/settlements/:id/download', async (c) => {
 
     if (!settlement) return c.json({ success: false, error: '정산 내역을 찾을 수 없습니다' }, 404);
 
+    // v34 CRITICAL FIX: 계좌번호 마스킹 (끝 4자리만 노출)
+    // CSV 파일이 이메일/메신저로 공유되어도 plaintext 유출 방지
+    const maskAccount = (acc: string | null | undefined): string => {
+      if (!acc) return '';
+      const s = String(acc);
+      if (s.length <= 4) return '****';
+      return '*'.repeat(Math.max(4, s.length - 4)) + s.slice(-4);
+    };
+
     // CSV 형태로 반환
     const csv = [
-      '정산ID,판매자ID,금액,상태,은행,계좌번호,신청일',
-      `${settlement.id},${settlement.seller_id},${settlement.amount},${settlement.status},${settlement.bank_name},${settlement.account_number},${settlement.created_at}`,
+      '정산ID,판매자ID,금액,상태,은행,계좌번호(마스킹),신청일',
+      `${settlement.id},${settlement.seller_id},${settlement.amount},${settlement.status},${settlement.bank_name ?? ''},${maskAccount(settlement.account_number)},${settlement.created_at}`,
     ].join('\n');
 
     return new Response(csv, {

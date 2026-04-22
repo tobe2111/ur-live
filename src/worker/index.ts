@@ -237,6 +237,45 @@ app.get('/health', (c) => c.json({
   environment: (c.env as Env).ENVIRONMENT ?? 'development',
 }));
 
+// v32 FIX: PWA manifest MIME type 명시 (Workers asset serving은 _headers 미지원)
+// Chrome "Manifest: Line: 1 Syntax error" 원인 — Worker가 HTML fallback으로 응답하거나
+// MIME이 text/plain으로 나올 때 발생. 명시적 intercept로 application/manifest+json 반환.
+app.get('/manifest.webmanifest', async (c) => {
+  try {
+    const assets = (c.env as any).ASSETS;
+    if (assets) {
+      const res = await assets.fetch(new Request(new URL('/manifest.webmanifest', c.req.url).toString()));
+      if (res && res.ok) {
+        const body = await res.text();
+        return new Response(body, {
+          headers: {
+            'Content-Type': 'application/manifest+json; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600',
+          },
+        });
+      }
+    }
+  } catch {}
+  // Fallback: 인라인 매니페스트
+  return new Response(JSON.stringify({
+    name: '유어딜',
+    short_name: '유어딜',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#020202',
+    theme_color: '#020202',
+    orientation: 'portrait',
+    icons: [
+      { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' },
+    ],
+  }), {
+    headers: {
+      'Content-Type': 'application/manifest+json; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+});
+
 app.get('/api/health', async (c) => {
   const env = c.env as Env;
   const checks: Record<string, string> = {
