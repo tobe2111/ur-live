@@ -96,6 +96,9 @@ const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
 // User 페이지들
 const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage'))
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
+const MyCouponsPage = lazy(() => import('./pages/MyCouponsPage'))
+const MyReviewsPage = lazy(() => import('./pages/MyReviewsPage'))
+const ReferralIndexPage = lazy(() => import('./pages/ReferralIndexPage'))
 const MyGroupBuysPage = lazy(() => import('./pages/MyGroupBuysPage'))
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 
@@ -773,6 +776,17 @@ function AppContent() {
                 <MyOrdersPage />
               </ProtectedRoute>
             } />
+            <Route path="/my-coupons" element={
+              <ProtectedRoute requireUser>
+                <MyCouponsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-reviews" element={
+              <ProtectedRoute requireUser>
+                <MyReviewsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/referral" element={<ReferralIndexPage />} />
             <Route path="/account/settings" element={
               <ProtectedRoute requireUser>
                 <AccountSettingsPage />

@@ -637,11 +637,11 @@ export default function UserProfilePage() {
         <div className="grid grid-cols-4 gap-2">
           {[
             { icon: '❤️', label: '찜', path: '/wishlist', tint: '#EC4899' },
-            { icon: '🎫', label: '쿠폰', path: '/browse', tint: '#F59E0B' },
+            { icon: '🎫', label: '쿠폰', path: '/my-coupons', tint: '#F59E0B' },
             { icon: '🎟️', label: '바우처', path: '/my-vouchers', tint: '#A78BFA' },
             { icon: '📦', label: '주문내역', path: '/my-orders', tint: '#60A5FA' },
             { icon: '📍', label: '배송지', path: '/mypage/addresses', tint: '#FBBF24' },
-            { icon: '📝', label: '리뷰', path: '/my-orders', tint: '#34D399' },
+            { icon: '📝', label: '리뷰', path: '/my-reviews', tint: '#34D399' },
             { icon: '👥', label: '친구초대', path: '/referral', tint: '#F472B6' },
             { icon: '⚙️', label: '설정', path: '/account/settings', tint: '#94A3B8' },
           ].map(m => (
