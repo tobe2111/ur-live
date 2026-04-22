@@ -57,14 +57,16 @@
 | orders | webhook_processed_at, webhook_event_id | 존재하지 않음 |
 | orders | cancel_fail_reason | cancel_reason |
 | order_items | price_snapshot | price |
-| order_items | product_thumbnail, product_sku | 존재하지 않음 |
 | live_streams | viewer_count | current_viewers |
 | donations | status | payment_status |
 
+> ℹ️ `order_items.product_thumbnail`, `order_items.product_sku`는 마이그레이션 0118에서 추가되어 **사용 가능**합니다.
+
 ### Status 값 대소문자 규칙
 - orders.status: **대문자** ('PENDING', 'PAID', 'DONE', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'REFUNDED')
-- payment_status: **소문자** ('pending', 'completed', 'failed', 'cancelled')
-- `payment_status = 'approved'`는 **존재하지 않음** → `status IN ('PAID','DONE')` 사용
+- payment_status: **소문자** — CHECK 제약으로 허용된 값: `'pending'`, `'approved'`, `'failed'`, `'cancelled'`, `'refunded'`
+- `payment_status = 'approved'`는 실제 CHECK 제약에 포함되어 있으므로 **사용 가능**합니다. (과거에는 금지로 기재되어 있었으나 정정)
+- 주문 "결제완료" 조건은 보통 `status IN ('PAID','DONE')` 또는 `payment_status = 'approved'` 모두 유효
 
 ### 검증 스크립트 실행
 커밋 전 반드시:

@@ -560,7 +560,7 @@ function CartPageContent() {
           </main>
 
           {/* v4 Bottom fixed CTA: "N원 주문하기" (bg-gray-900 text-white rounded-xl) */}
-          <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100">
+          <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 safe-bottom">
             <div className="mx-auto max-w-md px-4 py-3">
               <button
                 onClick={handleCheckout}

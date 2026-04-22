@@ -145,7 +145,10 @@ export default function AdminOrdersPage() {
       if (response.data.success) {
         setSellers(response.data.data.map((s: { id: number; name?: string; username?: string; business_name?: string }) => ({ id: s.id, name: s.name || s.username || s.business_name || `Seller ${s.id}` })))
       }
-    } catch { /* silent */ }
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[AdminOrders] loadSellers failed:', e)
+      toast.error('셀러 목록을 불러올 수 없습니다.')
+    }
   }
 
   function filterOrders() {

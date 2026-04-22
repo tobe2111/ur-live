@@ -39,7 +39,32 @@ export default function AdminPlatformSettingsPage() {
       .catch(() => {}).finally(() => setLoading(false))
   }, [])
 
+  function validateSetting(key: string, value: string): string | null {
+    const n = Number(value)
+    if (!Number.isFinite(n)) return `${key}: 숫자 값만 허용됩니다`
+    if (n < 0) return `${key}: 0 이상이어야 합니다`
+    // 수수료/할인율 (%) — 0~100 사이
+    if (key.includes('rate') || key.includes('percent')) {
+      if (n < 0 || n > 100) return `${key}: 0~100 사이 값만 허용됩니다`
+    }
+    // 금액/딜 — 상한 1억
+    if (key.includes('amount') || key.includes('fee') || key.includes('threshold') || key.includes('donation') || key.includes('reward')) {
+      if (n > 100_000_000) return `${key}: 1억 이하여야 합니다`
+    }
+    // 일(days) — 1~365
+    if (key.endsWith('_days')) {
+      if (n < 0 || n > 365) return `${key}: 0~365일 사이여야 합니다`
+    }
+    return null
+  }
+
   const save = async () => {
+    // Pre-save validation
+    for (const f of SETTINGS_FIELDS) {
+      const v = settings[f.key] ?? f.default
+      const err = validateSetting(f.key, v)
+      if (err) { toast.error(err); return }
+    }
     setSaving(true)
     try {
       await api.put('/api/admin/tools/settings', settings, h)

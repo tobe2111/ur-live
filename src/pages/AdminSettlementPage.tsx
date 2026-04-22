@@ -81,9 +81,21 @@ export default function AdminSettlementPage() {
     }
   }
 
-  async function updateSettlementStatus(orderId: number, status: string) {
+  async function updateSettlementStatus(orderId: number, status: string, currentStatus?: string) {
+    // Prevent silent reversal: if downgrading from completed → pending, require confirm + reason
+    let reason: string | undefined
+    if (currentStatus === 'completed' && status === 'pending') {
+      const confirmed = window.confirm('⚠️ 이미 지급 완료된 정산을 되돌리시겠습니까? 이 작업은 감사 로그에 기록됩니다.')
+      if (!confirmed) return
+      const input = window.prompt('되돌리기 사유를 입력하세요 (최소 5자):') || ''
+      if (input.trim().length < 5) {
+        toast.error('사유를 5자 이상 입력해주세요.')
+        return
+      }
+      reason = input.trim()
+    }
     try {
-      await api.patch(`/api/admin/settlement/${orderId}/status`, { status })
+      await api.patch(`/api/admin/settlement/${orderId}/status`, { status, reason })
       toast.success('정산 상태가 변경되었습니다')
       loadData()
     } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } }; message?: string }; toast.error(`상태 변경 실패: ${e.response?.data?.error || e.message}`) }
@@ -275,7 +287,7 @@ export default function AdminSettlementPage() {
                   <td className="px-4 py-3 text-xs text-gray-400">{fmtDate(record.created_at)}</td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => updateSettlementStatus(record.id, record.settlement_status === 'pending' ? 'completed' : 'pending')}
+                      onClick={() => updateSettlementStatus(record.id, record.settlement_status === 'pending' ? 'completed' : 'pending', record.settlement_status)}
                       className={`text-xs font-medium ${record.settlement_status === 'pending' ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                       {record.settlement_status === 'pending' ? '정산완료' : '대기로 변경'}
