@@ -83,7 +83,7 @@ export async function signInWithCustomToken(token: string): Promise<UserCredenti
     
     // Force token refresh in background
     credential.user.getIdToken(true).catch((err) => {
-      console.warn('[Firebase Auth] ⚠️ Token refresh failed:', err);
+      if (import.meta.env.DEV) console.warn('[Firebase Auth] ⚠️ Token refresh failed:', err);
     });
     
     return credential;

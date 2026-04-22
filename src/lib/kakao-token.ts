@@ -71,7 +71,7 @@ export async function getKakaoToken(
     checkStatus = checkRes.status;
   } catch (e) {
     // 카카오 서버 일시적 장애 — 기존 토큰 그대로 사용 (낙관적)
-    console.warn('[KakaoToken] access_token_info check failed, using cached token:', e);
+    if (import.meta.env.DEV) console.warn('[KakaoToken] access_token_info check failed, using cached token:', e);
     return { token: plainAccess, needsReauth: false };
   }
 
