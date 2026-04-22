@@ -44,11 +44,16 @@ stripeRouter.post('/create-intent', async (c) => {
       formBody.append(`metadata[${key}]`, String(value));
     }
 
+    // 🛡️ Idempotency 보장 — 클라이언트가 빠르게 2번 눌러도 동일 PaymentIntent 재사용
+    const clientIdempotencyKey = c.req.header('Idempotency-Key');
+    const idempotencyKey = clientIdempotencyKey || crypto.randomUUID();
+
     const stripeResponse = await fetch('https://api.stripe.com/v1/payment_intents', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${stripeSecretKey}`,
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Idempotency-Key': idempotencyKey,
       },
       body: formBody.toString(),
     });
