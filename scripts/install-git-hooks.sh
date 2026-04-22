@@ -56,17 +56,19 @@ git diff --cached -U0 --no-color -- '*.ts' '*.tsx' 2>/dev/null | awk '
 # esbuild alias 설정도 추가했지만 Pre-commit에서 다시 한번 검증 (double defense).
 worker_changed=$(echo "$staged_ts" | grep -E '^src/(worker|features|shared|lib)/' || true)
 
+# Worker 전용 경로 (확실히 Cloudflare Workers 런타임)
+worker_only_changed=$(echo "$staged_ts" | grep -E '^src/(worker/|features/[^/]+/api/)' || true)
+
 if [ -n "$worker_changed" ]; then
   echo "==> Pre-commit: Worker 경로 파일의 @/ dynamic import 검출..."
   dyn_viol=""
   for f in $worker_changed; do
     [ -f "$f" ] || continue
-    # 프론트 전용 파일 (stores/useAuthKR 등) 은 제외
+    # 프론트 전용 파일은 제외
     case "$f" in
       src/shared/stores/*|src/lib/firebase-auth*|src/lib/api.ts|src/lib/sentry.ts|src/lib/kakao-sdk*|src/lib/native.ts|src/client/*)
         continue ;;
     esac
-    # await import('@/...') 또는 import('@/...') 패턴
     matches=$(grep -nE "await[[:space:]]+import\(['\"]@/|=[[:space:]]*import\(['\"]@/" "$f" 2>/dev/null || true)
     if [ -n "$matches" ]; then
       dyn_viol="$dyn_viol\n$f:\n$matches"
@@ -80,6 +82,27 @@ if [ -n "$worker_changed" ]; then
     echo "  await import('@/foo/bar')  →  await import('../../foo/bar')"
     echo ""
     echo "이유: TypeScript paths alias는 런타임 존재 X. static import만 빌드 시 resolve됨."
+    exit 1
+  fi
+
+  # 🛡️ 브라우저 전용 패키지 검출 (worker에서 import하면 런타임 crash)
+  # @sentry/react, react, react-dom, react-router-dom 등 window/document 참조 패키지
+  echo "==> Pre-commit: Worker 코드에서 브라우저 전용 패키지 import 검출..."
+  browser_viol=""
+  BROWSER_ONLY_PATTERN='@sentry/react|from ['"'"'"]react['"'"'"]|from ['"'"'"]react-dom['"'"'"]|from ['"'"'"]react-router-dom['"'"'"]|from ['"'"'"]react-helmet-async['"'"'"]|@tanstack/react-query'
+  for f in $worker_only_changed; do
+    [ -f "$f" ] || continue
+    matches=$(grep -nE "import .* (from )?(['\"]?)(@sentry/react|react['\"]?$|react-dom|react-router-dom|react-helmet-async|@tanstack/react-query)" "$f" 2>/dev/null || true)
+    if [ -n "$matches" ]; then
+      browser_viol="$browser_viol\n$f:\n$matches"
+    fi
+  done
+  if [ -n "$browser_viol" ]; then
+    echo "❌ Worker 코드에 브라우저 전용 패키지 import 발견 — Cloudflare Workers에 window/document 없음:"
+    echo -e "$browser_viol"
+    echo ""
+    echo "해결: 순수 로직은 lib/ 또는 shared/ 에 분리 후 import."
+    echo "  예: '@/lib/sentry'의 maskEmail → '@/lib/mask'로 분리"
     exit 1
   fi
 
