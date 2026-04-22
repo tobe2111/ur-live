@@ -209,6 +209,26 @@ bash scripts/quality-check.sh
 - 마이페이지(`/user/profile`) → **`UserProfilePage.tsx`**
 - 라우트 확인: `App.tsx`의 `<Route>` 컴포넌트 확인 필수
 
+### 🛡️ /api/seller 라우터 매핑 도표 (2026-04-22 배치 118 · TD-013)
+
+`/api/seller` prefix 로 여러 라우터가 마운트됨. Non-overlapping 하도록 sub-path 분리.
+**새 엔드포인트 추가 시 이 표 먼저 확인.**
+
+| Prefix | 라우터 | 파일 | 등록 path |
+|---|---|---|---|
+| `/api/seller` | sellerAuthRoutes | `features/auth/api/seller-auth.routes.ts` | `/login`, `/register`, `/refresh`, `/forgot-password` |
+| `/api/seller` | sellerManagementRoutes | `features/seller/api/seller-management.routes.ts` | `/profile`, `/business-info`, `/stats`, `/settlements`, `/change-password`, `/upload-image`, `/register-from-user`, `/switch-to-*` |
+| `/api/seller` | sellerOrdersRoutes | `features/seller/api/seller-orders.routes.ts` | `/orders`, `/orders/:id/*`, `/products`, `/products/:id/*` |
+| `/api/seller` | sellerDonationsRoutes | `features/donations/api/seller-donations.routes.ts` | `/donations`, `/donations/summary`, `/donations/settlements` |
+| `/api/seller/analytics` | sellerAnalyticsRoutes | `features/seller/api/seller-analytics.routes.ts` | (전용 prefix) |
+| `/api/seller/streams` | sellerStreamsRoutes | `features/seller/api/seller-streams.routes.ts` | (전용 prefix) |
+| `/api/seller/alimtalk` | alimtalkRoutes | `features/alimtalk/api/alimtalk.routes.ts` | `/credits`, `/logs` 등 (전용 prefix) |
+| `/api/seller/restaurant-settlements` | sellerSettlementRoutes | (전용 prefix) |
+| `/api/seller/youtube` | youtubeRoutes | `features/seller/api/youtube.routes.ts` | (전용 prefix) |
+| `/api/sellers` | sellersRouter | `worker/routes/seller.routes.ts` | `/`, `/:id`, `/:id/public`, `/:sellerId/products-public` (복수형! 공개 조회용) |
+
+**주의**: `/api/seller` 복수 라우터는 path 충돌 시 **등록 순서** 대로 우선권. 현 순서는 auth → management → orders → donations. 새 라우터 추가 시 기존 path 와 겹치는지 먼저 확인.
+
 ### 자동 배포 규칙 (필수)
 - feature 브랜치에 push하면 **PostToolUse 훅**이 자동으로 main에 머지 & 푸시
 - 스크립트: `scripts/auto-merge-main.sh`

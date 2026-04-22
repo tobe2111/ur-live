@@ -136,10 +136,11 @@ api.interceptors.request.use(
     }
 
     // ── Admin API (/api/admin/*) ───────────────────────────────────────────
+    // 🛡️ 2026-04-22 Phase 2A: localStorage 없어도 cookie 로 인증 가능 (Phase 1 cookie 발급).
+    // throw 제거 — cookie 만으로도 서버에서 인증 통과.
     if (url.startsWith('/api/admin/')) {
       const token = localStorage.getItem('admin_token');
-      if (!token) throw new Error('Admin token missing - please login again');
-      config.headers['Authorization'] = `Bearer ${token}`;
+      if (token) config.headers['Authorization'] = `Bearer ${token}`;
       return config;
     }
 

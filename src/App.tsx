@@ -11,6 +11,7 @@ import OfflineBanner from './components/OfflineBanner'
 import CookieConsentBanner from './components/CookieConsentBanner'
 import BottomNav from '@/components/main/BottomNav'
 import SideBanner from '@/components/SideBanner'
+import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
@@ -855,7 +856,8 @@ function AppContent() {
           </div>
           {!hideBottomNav && <BottomNav />}
           {!fullScreen && <SideBanner />}
-          {/* 카카오 채널 상담 버튼 — SideBanner 컴포넌트에서 처리 */}
+          {/* 🛡️ 2026-04-22 배치 124: 카카오 상담 플로팅 버튼 (대시보드 외 모든 페이지) */}
+          {!fullScreen && <KakaoConsultButton />}
           </div>
         </Suspense>
       </FrameWrapper>

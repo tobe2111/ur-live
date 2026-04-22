@@ -358,14 +358,20 @@ export default function GroupBuyListPage() {
         </div>
       </div>
 
-      {/* 맛집 공구 시작 FAB */}
-      <button
-        onClick={() => navigate('/community-group-buy/new')}
-        className="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 bg-gray-900 text-white pl-3 pr-4 py-3 rounded-full shadow-lg active:scale-95 transition-transform"
-      >
-        <Plus className="w-5 h-5" />
-        <span className="text-[13px] font-bold">맛집 공구 시작</span>
-      </button>
+      {/* 맛집 공구 시작 FAB — 🛡️ 2026-04-22 배치 124:
+          1) 430px 컬럼 내부로 정렬 (PC viewport 밖으로 나가던 문제 수정)
+          2) bottom-36 으로 올림 (bottom-20 의 카카오 상담 버튼과 겹치지 않게) */}
+      <div className="fixed bottom-36 left-0 right-0 z-40 px-4 pointer-events-none">
+        <div className="max-w-[430px] mx-auto flex justify-end">
+          <button
+            onClick={() => navigate('/community-group-buy/new')}
+            className="pointer-events-auto flex items-center gap-1.5 bg-gray-900 text-white pl-3 pr-4 py-3 rounded-full shadow-lg active:scale-95 transition-transform"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="text-[13px] font-bold">맛집 공구 시작</span>
+          </button>
+        </div>
+      </div>
 
       {/* 콘텐츠 영역 */}
       <div className="px-4 py-4 pb-20">

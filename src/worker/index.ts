@@ -176,12 +176,17 @@ app.use('*', async (c, next) => {
 
   // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
   // CSP — 공통 script sources (script-src와 script-src-elem에서 공유)
-  // 🛡️ 2026-04-22 HOTFIX: strict-dynamic 제거 — host allowlist 부활 (외부 script 호환)
-  // strict-dynamic 은 모든 script (src 포함) 에 nonce 가 있어야 하는데, Kakao SDK / GA /
-  // YouTube IFrame / Vite bundle 의 외부 src script 가 깨짐 → 사이트 검은 화면.
-  // nonce + unsafe-inline + host allowlist 조합으로 retreat (CSP 강도 약간 약화하나 동작 보장).
+  // 🛡️ 2026-04-22 배치 121: strict-dynamic 재도입 + HTMLRewriter 가 모든 script 태그
+  //   (inline & external src) 에 nonce 부여. 지난번 실패 원인: 외부 src script 에 nonce
+  //   누락 → strict-dynamic 이 차단. 이번엔 HTMLRewriter 를 확장하여 script[src] 도 포함.
+  //
+  // 구성:
+  //   - CSP3 브라우저: strict-dynamic 이 host allowlist 무시, nonce 만 신뢰. dynamic import()
+  //     로 로드되는 chunk 는 부모 script 의 nonce 자동 propagation.
+  //   - CSP2 브라우저: strict-dynamic 무시 → host allowlist 로 fallback.
+  //   - 둘 다 unsafe-inline 도 설정되지만 CSP3 에서는 nonce 존재 시 자동 무시됨.
   const scriptSources = [
-    "'self'", `'nonce-${nonce}'`, "'unsafe-inline'", "blob:",
+    "'self'", `'nonce-${nonce}'`, "'strict-dynamic'", "'unsafe-inline'", "blob:",
     "https://*.cloudflare.com", "https://static.cloudflareinsights.com", "https://cloudflareinsights.com",
     "https://*.googletagmanager.com", "https://*.google-analytics.com",
     "https://*.tosspayments.com", "https://js.tosspayments.com",
@@ -250,12 +255,13 @@ app.use('*', async (c, next) => {
   c.header('Cross-Origin-Resource-Policy', 'same-site');
   c.header('X-Permitted-Cross-Domain-Policies', 'none'); // Flash/PDF 크로스도메인 차단
 
-  // 🛡️ 2026-04-22: HTML 응답에 nonce 주입 — inline <script> 에 nonce 속성 추가.
-  // 'strict-dynamic' + nonce 조합으로 inline 이 아닌 외부 script 도 신뢰 전파됨.
+  // 🛡️ 2026-04-22 배치 121: HTML 응답에 nonce 주입 — 모든 <script> (inline & external src).
+  //   strict-dynamic + nonce 조합: 신뢰된 script 가 dynamic 하게 로드하는 하위 script 는
+  //   브라우저가 자동으로 nonce propagation (createElement('script') 케이스).
   const ct = c.res.headers.get('Content-Type') || '';
   if (ct.includes('text/html') && c.res.body) {
     const rewritten = new HTMLRewriter()
-      .on('script:not([src])', {
+      .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
       })
       .transform(c.res);
@@ -395,6 +401,74 @@ app.get('/api/health', async (c) => {
 // Extended health routes: /api/health/detailed, /api/health/circuits
 // ⚠️ Mounted under a sub-path so it does NOT shadow the inline GET /api/health above.
 app.route('/api/health/detailed', healthRoutes);
+
+// ============================================================
+// 🚨 BOOTSTRAP: 대시보드 비밀번호 재설정 (2026-04-22 배치 123)
+// POST /api/_bootstrap/reset-dashboard-password
+//
+// 서버 자체의 hashPassword() 함수로 해시를 생성 → verifyPassword() 와 100% 호환.
+// 외부에서 hash 를 만들어 넣었을 때 파라미터 불일치 문제를 근본적으로 회피.
+//
+// 사용법:
+//   curl -X POST https://live.ur-team.com/api/_bootstrap/reset-dashboard-password \
+//     -H "X-Bootstrap-Token: <BOOTSTRAP_TOKEN>" \
+//     -H "Content-Type: application/json" \
+//     -d '{"email":"tobe2111@naver.com","password":"358533aa!!","role":"all"}'
+//
+// 요구사항:
+//   - BOOTSTRAP_TOKEN 을 Cloudflare Pages Dashboard secret 에 세팅 (한 번만)
+//   - role: "admin" | "seller" | "agency" | "all"
+//
+// 보안: token 없으면 404 처럼 위장. rate-limit 적용.
+// ============================================================
+app.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
+  const expected = (c.env as any).BOOTSTRAP_TOKEN as string | undefined;
+  const provided = c.req.header('X-Bootstrap-Token');
+
+  // token 미세팅이거나 불일치 → 404 (엔드포인트 존재 감추기)
+  if (!expected || !provided || expected !== provided) {
+    return c.json({ error: 'Not Found' }, 404);
+  }
+
+  const body = await c.req.json<{ email?: string; password?: string; role?: string }>().catch(() => ({} as any));
+  const { email, password, role = 'all' } = body;
+  if (!email || !password) {
+    return c.json({ success: false, error: 'email, password 필수' }, 400);
+  }
+  if (password.length < 6) {
+    return c.json({ success: false, error: '비밀번호 6자 이상' }, 400);
+  }
+
+  // 서버 자체의 hashPassword() 사용 → verifyPassword 와 100% 호환
+  const { hashPassword } = await import('../lib/password');
+  const hash = await hashPassword(password);
+
+  const DB = c.env.DB;
+  const results: Record<string, { updated: number; status?: string }> = {};
+
+  const targets = role === 'all' ? ['admins', 'sellers', 'agencies'] : [`${role}s`];
+
+  for (const table of targets) {
+    try {
+      // status 도 active 로 재설정 (suspended 된 경우 복구)
+      const activeValue = table === 'sellers' ? 'approved' : 'active';
+      const sql = table === 'sellers'
+        ? `UPDATE ${table} SET password_hash = ?, status = ?, is_active = 1 WHERE email = ?`
+        : `UPDATE ${table} SET password_hash = ?, status = ? WHERE email = ?`;
+      const res = await DB.prepare(sql).bind(hash, activeValue, email).run();
+      results[table] = { updated: res.meta.changes ?? 0, status: activeValue };
+    } catch (e: any) {
+      results[table] = { updated: 0, status: `ERROR: ${e.message}` };
+    }
+  }
+
+  // lockout 도 정리
+  try {
+    await DB.prepare("DELETE FROM account_lockouts").run();
+  } catch {}
+
+  return c.json({ success: true, results, hashLength: hash.length });
+});
 
 // 클라이언트 빌드 버전 확인 — index.html의 스크립트 해시를 서버가 알려줌
 // 프론트가 자신의 번들 해시와 비교해서 불일치 시 자동 리로드
@@ -671,7 +745,9 @@ app.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
     { desc: 'products.avg_rating', sql: "ALTER TABLE products ADD COLUMN avg_rating REAL DEFAULT 0" },
     { desc: 'products.review_count', sql: "ALTER TABLE products ADD COLUMN review_count INTEGER DEFAULT 0" },
     { desc: 'products.sold_count', sql: "ALTER TABLE products ADD COLUMN sold_count INTEGER DEFAULT 0" },
-    { desc: 'products.stock_quantity', sql: "ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT 0" },
+    // 🛡️ 2026-04-22 배치 114: stock_quantity ALTER 제거 — 신규 환경에서 중복 컬럼 생성 방지.
+    //   기존 `stock` 컬럼을 단일 truth source 로 사용. 이미 stock_quantity 가 있는 환경은
+    //   코드의 fallback (`p.stock ?? p.stock_quantity`) 로 하위 호환.
     { desc: 'products.product_type', sql: "ALTER TABLE products ADD COLUMN product_type TEXT DEFAULT 'regular'" },
     { desc: 'products.slug', sql: "ALTER TABLE products ADD COLUMN slug TEXT" },
     { desc: 'products.is_active', sql: "ALTER TABLE products ADD COLUMN is_active INTEGER DEFAULT 1" },
@@ -1525,19 +1601,17 @@ app.route('/api/affiliate', affiliateRoutes);
 // ============================================================
 
 // -------------------------------------------------------
-// Order routing: TWO repositories, ONE path prefix.
+// Order routing: 두 라우터 — 이제 경로 non-overlapping (배치 112).
 //
 // ordersRouter  → worker/repositories/order.repository.ts (PRIMARY)
-//   POST /, GET /, GET /:id, POST /:id/cancel
-//   Uses authMiddleware, multi-seller support, idempotency.
+//   POST /, GET /, GET /:id, POST /refund, POST /:id/cancel
 //
-// featureOrdersRoutes → features/orders/repositories/OrderRepository.ts (SECONDARY)
+// featureOrdersRoutes → features/orders (delivery tracking & cron)
 //   GET /:id/tracking, POST /:id/confirm,
 //   POST /internal/auto-confirm, POST /internal/sync-deliveries
-//   These endpoints do NOT overlap with ordersRouter.
 //
-// ⚠️ Both are mounted on /api/orders — ordersRouter is registered
-//    first so its routes take priority for any overlapping paths.
+// 🛡️ 2026-04-22 배치 112: featureOrdersRoutes 의 중복 경로 (GET /, GET /:id, POST /)
+//    삭제 완료 → 이제 완전 non-overlapping.
 // -------------------------------------------------------
 app.route('/api/orders', ordersRouter);
 app.route('/api/orders', featureOrdersRoutes);

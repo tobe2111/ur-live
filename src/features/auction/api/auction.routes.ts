@@ -56,6 +56,46 @@ async function ensureTables(DB: D1Database) {
       )
     `).run();
   } catch {}
+  // 🛡️ 2026-04-22 배치 115: deal balance escrow 테이블 (TD-007)
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS auction_holds (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        auction_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'released', 'consumed')),
+        created_at DATETIME DEFAULT (datetime('now')),
+        released_at DATETIME
+      )
+    `).run();
+  } catch {}
+  try {
+    await DB.prepare(
+      "CREATE INDEX IF NOT EXISTS idx_auction_holds_user_active ON auction_holds(user_id, status)"
+    ).run();
+  } catch {}
+  try {
+    await DB.prepare(
+      "CREATE INDEX IF NOT EXISTS idx_auction_holds_auction_active ON auction_holds(auction_id, status)"
+    ).run();
+  } catch {}
+}
+
+/**
+ * 🛡️ 2026-04-22 배치 115 (TD-007): 유저의 가용 balance 계산
+ * = user_points.balance - sum(active holds 금액)
+ * 세션 쿠키 유저 (숫자 id) / Firebase 유저 (uid) 모두 지원 — user_points.user_id 는 TEXT.
+ */
+async function getAvailableBalance(DB: D1Database, userId: string): Promise<number> {
+  const row = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+    .bind(userId).first<{ balance: number }>();
+  const balance = row?.balance ?? 0;
+  const holdRow = await DB.prepare(
+    "SELECT COALESCE(SUM(amount), 0) as total FROM auction_holds WHERE user_id = ? AND status = 'active'"
+  ).bind(userId).first<{ total: number }>();
+  const held = holdRow?.total ?? 0;
+  return Math.max(0, balance - held);
 }
 
 // POST /api/auction/create — 셀러가 경매 시작
@@ -96,10 +136,10 @@ auctionRoutes.post('/create', requireAuth(), async (c) => {
 });
 
 // POST /api/auction/:id/bid — 입찰
-// TODO: [CRITICAL BUSINESS] Auction bids do not reserve payment capacity.
-// Winner may refuse to pay, no runner-up promotion, no escrow.
-// Add escrow/deposit system (reserve deal balance on bid, refund on outbid) or
-// require max-bid deposit before architecting a full escrow mechanism.
+// 🛡️ 2026-04-22 배치 115 (TD-007): deal balance escrow 추가.
+//   - 입찰 시 해당 금액을 user_points 에서 hold (auction_holds)
+//   - 경쟁 입찰로 outbid 되면 hold 자동 해제
+//   - 입찰자는 balance 를 초과하는 금액으로 bid 불가 ("지불능력 증명")
 auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
@@ -140,6 +180,24 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
     return c.json({ success: false, error: `최소 ${(auction.current_price + auction.min_increment).toLocaleString()}원 이상 입찰해주세요` }, 400);
   }
 
+  // 🛡️ 배치 115: 지불 능력 검증 — 가용 balance >= amount
+  const userIdStr = String(user.id);
+  // 기존 본인 hold (이 경매에 대한) 확인 — self-outbid 시 차액만 검증
+  const existingHold = await DB.prepare(
+    "SELECT id, amount FROM auction_holds WHERE auction_id = ? AND user_id = ? AND status = 'active'"
+  ).bind(auctionId, userIdStr).first<{ id: number; amount: number }>();
+
+  const existingHoldAmount = existingHold?.amount ?? 0;
+  const available = await getAvailableBalance(DB, userIdStr);
+  // available 은 이미 existingHold 를 차감한 값 — 추가로 필요한 양은 (amount - existingHoldAmount)
+  const additionalRequired = amount - existingHoldAmount;
+  if (available < additionalRequired) {
+    return c.json({
+      success: false,
+      error: `딜 포인트가 부족합니다. 필요: ${amount.toLocaleString()}딜, 가용: ${(available + existingHoldAmount).toLocaleString()}딜`
+    }, 400);
+  }
+
   await DB.prepare('INSERT INTO auction_bids (auction_id, user_id, user_name, amount) VALUES (?, ?, ?, ?)')
     .bind(auctionId, user.id, user.name || '익명', amount).run();
 
@@ -152,7 +210,45 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
     return c.json({ success: false, error: '다른 입찰자가 더 높은 금액을 입찰했습니다. 다시 시도해주세요.' }, 409);
   }
 
+  // 🛡️ 배치 115: hold 관리
+  // 1) 이 경매의 다른 유저 active hold 해제 (outbid 된 유저)
+  await DB.prepare(
+    "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id != ? AND status = 'active'"
+  ).bind(auctionId, userIdStr).run();
+
+  // 2) 본인의 이전 hold 해제 (self-outbid 케이스)
+  if (existingHold) {
+    await DB.prepare(
+      "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE id = ?"
+    ).bind(existingHold.id).run();
+  }
+
+  // 3) 새 hold 생성
+  await DB.prepare(
+    "INSERT INTO auction_holds (auction_id, user_id, amount, status) VALUES (?, ?, ?, 'active')"
+  ).bind(auctionId, userIdStr, amount).run();
+
   return c.json({ success: true, data: { current_price: amount, bid_count: auction.bid_count + 1 } });
+});
+
+// GET /api/auction/holds/me — 내 활성 hold 목록 (UI 표시용)
+auctionRoutes.get('/holds/me', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  const { results } = await DB.prepare(
+    `SELECT h.id, h.auction_id, h.amount, h.created_at, a.title, a.status as auction_status
+     FROM auction_holds h
+     LEFT JOIN live_auctions a ON a.id = h.auction_id
+     WHERE h.user_id = ? AND h.status = 'active'
+     ORDER BY h.created_at DESC`
+  ).bind(String(user.id)).all();
+
+  const available = await getAvailableBalance(DB, String(user.id));
+  return c.json({ success: true, data: { holds: results, available_balance: available } });
 });
 
 // GET /api/auction/stream/:streamId — 현재 활성 경매
@@ -181,6 +277,8 @@ auctionRoutes.get('/stream/:streamId', async (c) => {
 });
 
 // POST /api/auction/:id/end — 경매 종료
+// 🛡️ 2026-04-22 배치 115: 경매 종료 시 winner 의 hold 만 유지, 나머지 release.
+//   cancel 케이스는 별도 로직 — 여기서는 정상 종료만 처리.
 auctionRoutes.post('/:id/end', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
@@ -189,7 +287,7 @@ auctionRoutes.post('/:id/end', requireAuth(), async (c) => {
   const auctionId = Number(c.req.param('id'));
 
   // ✅ OWNERSHIP FIX: only the auction's seller (or admin) can end it
-  const existing = await DB.prepare('SELECT seller_id FROM live_auctions WHERE id = ?').bind(auctionId).first<{ seller_id: number }>();
+  const existing = await DB.prepare('SELECT seller_id, winner_user_id FROM live_auctions WHERE id = ?').bind(auctionId).first<{ seller_id: number; winner_user_id: string | null }>();
   if (!existing) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
   if (user.type !== 'admin') {
     if (user.type !== 'seller' || Number(existing.seller_id) !== Number(user.id)) {
@@ -200,8 +298,47 @@ auctionRoutes.post('/:id/end', requireAuth(), async (c) => {
   await DB.prepare("UPDATE live_auctions SET status = 'ended' WHERE id = ? AND status = 'active'")
     .bind(auctionId).run();
 
+  // winner 이외의 active hold 해제 (이미 bid 단계에서 해제되었어야 하지만 방어적)
+  if (existing.winner_user_id) {
+    await DB.prepare(
+      "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id != ? AND status = 'active'"
+    ).bind(auctionId, existing.winner_user_id).run();
+  } else {
+    // winner 없음 (입찰 0건 종료) — 모든 hold 해제
+    await DB.prepare(
+      "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND status = 'active'"
+    ).bind(auctionId).run();
+  }
+
   const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
   return c.json({ success: true, data: auction });
+});
+
+// POST /api/auction/:id/cancel — 경매 취소 (모든 hold 해제)
+auctionRoutes.post('/:id/cancel', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+  const { DB } = c.env;
+  const auctionId = Number(c.req.param('id'));
+
+  const existing = await DB.prepare('SELECT seller_id FROM live_auctions WHERE id = ?').bind(auctionId).first<{ seller_id: number }>();
+  if (!existing) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
+  if (user.type !== 'admin') {
+    if (user.type !== 'seller' || Number(existing.seller_id) !== Number(user.id)) {
+      return c.json({ success: false, error: 'forbidden — not your auction' }, 403);
+    }
+  }
+
+  await DB.prepare("UPDATE live_auctions SET status = 'cancelled' WHERE id = ? AND status = 'active'")
+    .bind(auctionId).run();
+
+  // 모든 active hold 해제
+  await DB.prepare(
+    "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND status = 'active'"
+  ).bind(auctionId).run();
+
+  return c.json({ success: true });
 });
 
 // GET /api/auction/:id — 경매 상세
@@ -221,6 +358,9 @@ auctionRoutes.get('/:id', async (c) => {
 });
 
 // POST /api/auction/:id/purchase — 낙찰자 구매 (낙찰가로 주문 생성)
+// 🛡️ 2026-04-22 배치 115: hold 상태 조회 후 주문 데이터와 함께 반환.
+//   실제 hold consumption 은 체크아웃 완료 (주문 생성 시) 에 이뤄져야 하지만,
+//   현 MVP 에서는 /purchase 호출 시점에서 hold 를 주문 생성 플로우 로 넘김.
 auctionRoutes.post('/:id/purchase', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
@@ -242,7 +382,11 @@ auctionRoutes.post('/:id/purchase', requireAuth(), async (c) => {
     .bind(auction.product_id).first<any>();
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
 
-  // 주문 생성 데이터 반환 (프론트에서 체크아웃으로 이동)
+  // 🛡️ 배치 115: 유효한 hold 확인 (낙찰 후 release 되지 않았는지)
+  const hold = await DB.prepare(
+    "SELECT id, amount FROM auction_holds WHERE auction_id = ? AND user_id = ? AND status = 'active'"
+  ).bind(auctionId, String(user.id)).first<{ id: number; amount: number }>();
+
   return c.json({
     success: true,
     data: {
@@ -253,8 +397,26 @@ auctionRoutes.post('/:id/purchase', requireAuth(), async (c) => {
       original_price: product.price,
       seller_id: product.seller_id,
       auction_id: auctionId,
+      hold_id: hold?.id ?? null,
+      held_amount: hold?.amount ?? 0,
     }
   });
+});
+
+// POST /api/auction/:id/release-hold — 낙찰자가 구매 포기 시 hold 해제
+// 🛡️ 배치 115: 구매 거부 / 타임아웃 처리. 낙찰자 본인만 호출 가능.
+auctionRoutes.post('/:id/release-hold', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+  const { DB } = c.env;
+  const auctionId = Number(c.req.param('id'));
+
+  const result = await DB.prepare(
+    "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id = ? AND status = 'active'"
+  ).bind(auctionId, String(user.id)).run();
+
+  return c.json({ success: true, data: { released: (result.meta.changes ?? 0) > 0 } });
 });
 
 export { auctionRoutes };

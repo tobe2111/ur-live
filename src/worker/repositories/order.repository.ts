@@ -368,7 +368,7 @@ export class OrderRepository {
    * ✅ CONCURRENCY-SAFE: 낙관적 잠금(Optimistic Lock) 방식
    *
    * D1은 SELECT FOR UPDATE를 지원하지 않으나, batch()는 원자적으로
-   * 실행됩니다. 각 UPDATE에 `AND stock_quantity >= ?` 조건을 붙여
+   * 실행됩니다. 각 UPDATE에 `AND stock >= ?` 조건을 붙여
    * 재고가 충분한 경우에만 차감합니다.
    *
    * 반환값: { success: true } | { success: false; insufficientProduct: string }
@@ -379,7 +379,7 @@ export class OrderRepository {
     if (items.length === 0) return { success: true };
 
     // D1 batch()는 원자적: 한 구문이라도 실패하면 전체 롤백
-    // Conditional UPDATE: stock_quantity >= qty 조건 포함
+    // Conditional UPDATE: stock >= qty 조건 포함
     const statements = items.map(item => ({
       sql: `UPDATE products
             SET stock = stock - ?,
@@ -417,7 +417,7 @@ export class OrderRepository {
   /**
    * Mark order items as CONFIRMED when payment is confirmed.
    *
-   * stock_quantity is already decremented by reserveStock() at order creation time.
+   * stock is already decremented by reserveStock() at order creation time.
    * This method only updates order_items.status — no additional stock change needed.
    */
   async reduceStock(orderId: string): Promise<void> {

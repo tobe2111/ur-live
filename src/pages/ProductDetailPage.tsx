@@ -635,6 +635,8 @@ export default function ProductDetailPage() {
             <span className="text-[11px] text-gray-400">포인트 적립</span>
             <span className="text-[11px] font-bold text-pink-500">최대 {Math.round(displayPrice * 0.03).toLocaleString()}딜</span>
           </div>
+          {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
+          <div className="mt-1 text-[10.5px] text-gray-400">부가세 포함 (VAT 10%)</div>
         </section>
         <div style={{ height: 8, background: '#F9FAFB' }} />
 
