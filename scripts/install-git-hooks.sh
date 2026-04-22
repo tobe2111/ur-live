@@ -51,9 +51,38 @@ git diff --cached -U0 --no-color -- '*.ts' '*.tsx' 2>/dev/null | awk '
   /^[ -]/ { ln++ }
 ' | head -5
 
-# 🛡️ Worker 번들 실제 빌드 — TypeScript가 통과해도 esbuild가 터질 수 있음
+# 🛡️ 2026-04-22: Worker 코드에서 @/ dynamic import 검출 (런타임 crash 영구 방지)
+# TypeScript paths alias는 런타임엔 존재 안 하므로 dynamic import 문자열이 그대로 남아 crash.
+# esbuild alias 설정도 추가했지만 Pre-commit에서 다시 한번 검증 (double defense).
 worker_changed=$(echo "$staged_ts" | grep -E '^src/(worker|features|shared|lib)/' || true)
+
 if [ -n "$worker_changed" ]; then
+  echo "==> Pre-commit: Worker 경로 파일의 @/ dynamic import 검출..."
+  dyn_viol=""
+  for f in $worker_changed; do
+    [ -f "$f" ] || continue
+    # 프론트 전용 파일 (stores/useAuthKR 등) 은 제외
+    case "$f" in
+      src/shared/stores/*|src/lib/firebase-auth*|src/lib/api.ts|src/lib/sentry.ts|src/lib/kakao-sdk*|src/lib/native.ts|src/client/*)
+        continue ;;
+    esac
+    # await import('@/...') 또는 import('@/...') 패턴
+    matches=$(grep -nE "await[[:space:]]+import\(['\"]@/|=[[:space:]]*import\(['\"]@/" "$f" 2>/dev/null || true)
+    if [ -n "$matches" ]; then
+      dyn_viol="$dyn_viol\n$f:\n$matches"
+    fi
+  done
+  if [ -n "$dyn_viol" ]; then
+    echo "❌ Worker 코드에 @/ dynamic import 발견 — 런타임 crash 유발:"
+    echo -e "$dyn_viol"
+    echo ""
+    echo "해결: 상대경로로 변경하세요. 예:"
+    echo "  await import('@/foo/bar')  →  await import('../../foo/bar')"
+    echo ""
+    echo "이유: TypeScript paths alias는 런타임 존재 X. static import만 빌드 시 resolve됨."
+    exit 1
+  fi
+
   echo "==> Pre-commit: Worker 번들 빌드 (런타임 검증)..."
   npm run build:worker > /tmp/worker-build.log 2>&1 || {
     echo "❌ Worker 빌드 실패 — 런타임 crash 유발. 커밋 차단."
