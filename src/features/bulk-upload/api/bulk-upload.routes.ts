@@ -112,16 +112,29 @@ bulkUploadRoutes.post('/upload', requireAuth(), async (c) => {
   const results: { row: number; status: 'success' | 'error'; name?: string; error?: string }[] = [];
   let successCount = 0;
 
+  // 🛡️ 2026-04-22: CSV formula injection 방어
+  // Excel/Google Sheets 에서 수식 prefix (=, +, -, @, \t, \r) 로 시작하는 cell 은 수식으로 실행됨.
+  // 나중에 관리자가 export 해서 열면 악성 함수 실행 가능 (HYPERLINK, WEBSERVICE 등).
+  const stripFormula = (s: string): string => {
+    if (typeof s !== 'string' || !s) return s;
+    const first = s.charCodeAt(0);
+    // =, +, -, @, \t, \r, \x00 으로 시작하면 single-quote prefix 로 무력화
+    if (first === 0x3d || first === 0x2b || first === 0x2d || first === 0x40 || first === 0x09 || first === 0x0d || first === 0x00) {
+      return "'" + s;
+    }
+    return s;
+  };
+
   for (let i = 0; i < body.products.length; i++) {
     const p = body.products[i];
     try {
-      const name = p['상품명*'] || p['name'] || '';
+      const name = stripFormula(p['상품명*'] || p['name'] || '');
       const price = parseInt(p['판매가*'] || p['price'] || '0');
       const originalPrice = parseInt(p['정가(비교가격)'] || p['original_price'] || '0') || null;
       const stock = parseInt(p['재고수량*'] || p['stock'] || '0');
-      const categoryMain = p['대카테고리'] || p['category_main'] || '';
-      const categorySub = p['중카테고리'] || p['category_sub'] || '';
-      const description = p['상품설명'] || p['description'] || '';
+      const categoryMain = stripFormula(p['대카테고리'] || p['category_main'] || '');
+      const categorySub = stripFormula(p['중카테고리'] || p['category_sub'] || '');
+      const description = stripFormula(p['상품설명'] || p['description'] || '');
       const optionType = p['옵션타입(예:색상)'] || p['option_type'] || null;
       const optionValues = p['옵션값(예:블랙,화이트,네이비)'] || p['option_values'] || '';
       const minStockAlert = parseInt(p['최소재고알림'] || p['min_stock_alert'] || '5');

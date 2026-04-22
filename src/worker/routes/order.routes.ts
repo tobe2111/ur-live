@@ -531,6 +531,21 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       console.warn('[ORDERS] Commission reversal (refund) skipped:', e);
     }
 
+    // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 환불 금액만큼 포인트 환급
+    try {
+      const payMethod = (order as any).payment_method;
+      if (payMethod === 'deal_points' && refundAmount > 0) {
+        await c.env.DB.prepare(
+          'UPDATE user_points SET balance = balance + ? WHERE user_id = ?'
+        ).bind(refundAmount, String(order.user_id)).run();
+        await c.env.DB.prepare(
+          "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
+        ).bind(String(order.user_id), refundAmount, refundAmount, `[환불] 주문 환불 (order:${(order as any).order_number || body.order_id})`).run().catch(() => {});
+      }
+    } catch (e) {
+      console.error('[ORDERS] Points refund error:', e);
+    }
+
     // 유저에게 인앱 알림 (환불/주문 취소)
     try {
       const { notifyUser } = await import('../../lib/notifications');
@@ -666,22 +681,44 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
       await orderRepo.restoreStock(orderId);
 
       // ✅ 추천 커미션 회수 (cancel paid 경로)
+      // 🛡️ 2026-04-22: CAS 로 이중 회수 방어 (refund 와 동일 패턴)
       try {
-        await c.env.DB.prepare(
-          "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'granted'"
-        ).bind(orderId).run().catch(() => {});
+        const toRevoke = await c.env.DB.prepare(
+          "SELECT id, user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
+        ).bind(orderId).all<{ id: number; user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ id: number; user_id: string; amount: number }> }));
 
-        const commissions = await c.env.DB.prepare(
-          "SELECT user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'withdrawn'"
-        ).bind(orderId).all<{ user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ user_id: string; amount: number }> }));
-
-        for (const co of (commissions.results || [])) {
-          await c.env.DB.prepare(
-            'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
-          ).bind(co.amount, co.user_id).run().catch(() => {});
+        for (const co of (toRevoke.results || [])) {
+          const cas = await c.env.DB.prepare(
+            "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE id = ? AND status = 'granted'"
+          ).bind(co.id).run().catch(() => null);
+          if (cas && (cas.meta?.changes ?? 0) > 0) {
+            await c.env.DB.prepare(
+              'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
+            ).bind(co.amount, co.user_id).run().catch((err) => {
+              console.error('[ORDERS] user_points debit failed (cancel paid):', err);
+            });
+          }
         }
       } catch (e) {
-        console.warn('[ORDERS] Commission reversal (cancel paid) skipped:', e);
+        console.error('[ORDERS] Commission reversal (cancel paid) error:', e);
+      }
+
+      // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 포인트 환급 (payment_method='deal_points')
+      try {
+        const payMethod = (order as any).payment_method;
+        if (payMethod === 'deal_points') {
+          const refundPoints = cancelAmount ?? Number(order.total_amount ?? 0);
+          if (refundPoints > 0) {
+            await c.env.DB.prepare(
+              'UPDATE user_points SET balance = balance + ? WHERE user_id = ?'
+            ).bind(refundPoints, String(order.user_id)).run();
+            await c.env.DB.prepare(
+              "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
+            ).bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 취소 (order:${order.order_number})`).run().catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.error('[ORDERS] Points refund (cancel paid) error:', e);
       }
 
       // 주문 취소 알림
