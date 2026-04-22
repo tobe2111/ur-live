@@ -207,17 +207,27 @@ export class DatabaseHelper {
     }
     
     if (options?.orderBy) {
-      sql += ` ORDER BY ${options.orderBy} ${options.order || 'ASC'}`;
+      // 🛡️ 2026-04-22: SQL injection 방어 — orderBy 는 column 이름/콤마/공백/방향만 허용.
+      // 호출측이 실수로 user input 을 orderBy 에 넘기면 `'1; DROP TABLE'` 같은 문자열 차단.
+      const safeOrderBy = String(options.orderBy);
+      if (!/^[a-zA-Z0-9_,\s]+(\s+(ASC|DESC))?(\s*,\s*[a-zA-Z0-9_]+(\s+(ASC|DESC))?)*$/i.test(safeOrderBy)) {
+        throw new Error('Invalid orderBy clause');
+      }
+      const dir = options.order === 'DESC' ? 'DESC' : 'ASC';
+      sql += ` ORDER BY ${safeOrderBy} ${dir}`;
     }
-    
+
     if (options?.limit) {
-      sql += ` LIMIT ${options.limit}`;
-      
+      // limit/offset 도 정수 강제 (문자열 주입 차단)
+      const safeLimit = Math.max(1, Math.min(10000, Math.floor(Number(options.limit) || 0)));
+      sql += ` LIMIT ${safeLimit}`;
+
       if (options?.offset) {
-        sql += ` OFFSET ${options.offset}`;
+        const safeOffset = Math.max(0, Math.floor(Number(options.offset) || 0));
+        sql += ` OFFSET ${safeOffset}`;
       }
     }
-    
+
     return this.query<T>(sql, ...values);
   }
 

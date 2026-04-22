@@ -429,6 +429,16 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       }, 400);
     }
 
+    // 🛡️ 2026-04-22: payment_status 추가 검증 — 결제 미완료 주문 환불 차단
+    // status 가 PAID 여도 payment_status 가 pending/failed 이면 Toss 호출 시 404/inconsistent → DB 오염.
+    const payStatus = (order as any).payment_status;
+    if (payStatus && payStatus !== 'approved') {
+      return c.json({
+        success: false,
+        error: `결제가 완료되지 않은 주문입니다 (payment_status: ${payStatus})`,
+      }, 400);
+    }
+
     // Toss 결제 취소 API 호출 (실제 환불)
     const payInfo = await orderRepo.getPaymentInfo(body.order_id);
     const paymentKey = payInfo?.toss_payment_key;
