@@ -35,8 +35,8 @@ export function initSentry() {
         }),
       ],
 
-      // 트랜잭션 샘플링 (100% 추적)
-      tracesSampleRate: 1.0,
+      // 🛡️ 2026-04-22: 트랜잭션 샘플링 100% → 10% (Sentry 비용 절감, 운영자 1인 한도)
+      tracesSampleRate: 0.1,
 
       // 세션 재생
       replaysSessionSampleRate: 0.1,   // 10% 샘플링

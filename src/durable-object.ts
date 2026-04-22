@@ -1,20 +1,31 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { WSMessage, ProductChangeMessage, ViewerCountMessage, StreamStatusMessage } from './types';
 
-// 🛡️ 2026-04-22: DO 당 최대 동시 WebSocket 수 — 한 DO 로 공격자가 수만 connection 으로
-// 메모리 고갈 시도하는 것을 방어. 한 라이브 방송에 10k 관중은 현실적 상한.
+// 🛡️ 2026-04-22: DO 당 최대 동시 WebSocket 수
 const MAX_SESSIONS_PER_DO = 10_000;
 
 export class LiveStreamDurableObject extends DurableObject {
   private sessions: Set<WebSocket>;
   private viewerCount: number;
   private currentProduct: any;
+  private state: DurableObjectState;
 
   constructor(state: DurableObjectState, env: any) {
     super(state, env);
+    this.state = state;
     this.sessions = new Set();
     this.viewerCount = 0;
     this.currentProduct = null;
+
+    // 🛡️ 2026-04-22: DO 재시작 시 currentProduct 복원 (DO storage persistence)
+    // 이전: DO 가 재시작/migrate 되면 현재 상품 정보 손실 → 늦게 join 한 viewer 가 빈 화면.
+    // 수정: state.storage 에 저장 → 재시작해도 마지막 상품 유지.
+    state.blockConcurrencyWhile(async () => {
+      try {
+        const stored = await state.storage.get<any>('currentProduct');
+        if (stored) this.currentProduct = stored;
+      } catch {}
+    });
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -116,9 +127,11 @@ export class LiveStreamDurableObject extends DurableObject {
 
       const message: WSMessage = await request.json();
 
-      // 상품 변경 메시지인 경우 현재 상품 저장
+      // 상품 변경 메시지인 경우 현재 상품 저장 + DO storage persist
       if (message.type === 'product_change') {
         this.currentProduct = message.data;
+        // 🛡️ 2026-04-22: storage 영속화 (DO 재시작 후 복원용)
+        try { await this.state.storage.put('currentProduct', message.data); } catch {}
       }
 
       // 모든 연결된 클라이언트에게 브로드캐스트
