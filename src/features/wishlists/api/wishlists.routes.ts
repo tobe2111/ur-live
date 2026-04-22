@@ -77,7 +77,7 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
       FROM wishlists w
       JOIN products p ON w.product_id = p.id
       LEFT JOIN sellers s ON p.seller_id = s.id
-      WHERE w.user_id = ?
+      WHERE w.user_id = ? AND p.is_active = 1
       ORDER BY w.created_at DESC
       LIMIT ? OFFSET ?
     `).bind(userId, limit, offset).all();
@@ -260,7 +260,7 @@ wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
       FROM wishlists w
       JOIN products p ON w.product_id = p.id
       LEFT JOIN sellers s ON p.seller_id = s.id
-      WHERE w.user_id = ?
+      WHERE w.user_id = ? AND p.is_active = 1
       ORDER BY w.created_at DESC
       LIMIT ? OFFSET ?
     `).bind(userId, limit, offset).all();
