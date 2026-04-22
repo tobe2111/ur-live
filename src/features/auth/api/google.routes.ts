@@ -10,7 +10,6 @@ import { cors } from 'hono/cors';
 import { GoogleAuthService } from '../services/GoogleAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
 import { verifyFirebaseIdToken } from '@/lib/firebase-token-verify';
-import type { AuthResponse } from '../types';
 
 type Bindings = {
   DB: D1Database;

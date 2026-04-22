@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '@/lib/api'
-import { getAccessToken } from '@/utils/auth'
 
 const DONATION_GOAL = 10000
 

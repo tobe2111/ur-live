@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { loadTossPayments, type TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk'
 import { generateOrderId } from '@/utils/orderIdGenerator'

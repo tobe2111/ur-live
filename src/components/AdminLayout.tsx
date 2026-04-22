@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
-  Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Star, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
+  Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare,
   type LucideIcon
 } from 'lucide-react'
