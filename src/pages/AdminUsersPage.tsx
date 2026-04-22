@@ -5,18 +5,18 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { formatKST } from '@/utils/date'
 import {
-  Users, Search, Ban, ShieldCheck, ShieldX, ChevronDown, ChevronUp,
+  Users, Search, ChevronDown, ChevronUp,
   Loader2, ChevronLeft, ChevronRight
 } from 'lucide-react'
 
+// NOTE: users 테이블에는 deal_balance, status 컬럼이 존재하지 않습니다.
+// 포인트는 user_points 테이블 / 상태는 별도 관리 필요.
 interface User {
   id: number
   name: string
   email: string
   phone: string | null
   provider: string | null
-  deal_balance: number
-  status: 'active' | 'suspended' | 'banned'
   created_at: string
 }
 
@@ -26,33 +26,17 @@ interface UserDetail {
   review_count: number
 }
 
-const STATUS_OPTIONS = [
-  { value: '', label: '전체' },
-  { value: 'active', label: '활성' },
-  { value: 'suspended', label: '정지' },
-  { value: 'banned', label: '차단' },
-]
-
-const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  active:    { label: '활성', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  suspended: { label: '정지', color: 'text-amber-700',   bg: 'bg-amber-50' },
-  banned:    { label: '차단', color: 'text-red-700',     bg: 'bg-red-50' },
-}
-
 export default function AdminUsersPage() {
   const navigate = useNavigate()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [detailLoading, setDetailLoading] = useState<number | null>(null)
   const [details, setDetails] = useState<Record<number, UserDetail>>({})
-  const [actionLoading, setActionLoading] = useState<number | null>(null)
-  const [confirmDialog, setConfirmDialog] = useState<{ userId: number; action: string; label: string } | null>(null)
 
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   const LIMIT = 50
@@ -60,7 +44,7 @@ export default function AdminUsersPage() {
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
     loadUsers()
-  }, [page, statusFilter])
+  }, [page])
 
   async function loadUsers() {
     setLoading(true)
@@ -69,7 +53,6 @@ export default function AdminUsersPage() {
         page: String(page),
         limit: String(LIMIT),
         search,
-        status: statusFilter,
       })
       const res = await api.get(`/api/admin/users?${params}`, h)
       if (res.data.success) {
@@ -110,26 +93,6 @@ export default function AdminUsersPage() {
     }
   }
 
-  function openConfirm(userId: number, action: string, label: string) {
-    setConfirmDialog({ userId, action, label })
-  }
-
-  async function executeAction() {
-    if (!confirmDialog) return
-    const { userId, action } = confirmDialog
-    setActionLoading(userId)
-    setConfirmDialog(null)
-    try {
-      await api.patch(`/api/admin/users/${userId}/status`, { status: action }, h)
-      toast.success('상태가 변경되었습니다')
-      loadUsers()
-    } catch {
-      toast.error('상태 변경에 실패했습니다')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
   function getProviderLabel(provider: string | null) {
     if (!provider) return '-'
     const map: Record<string, string> = {
@@ -141,32 +104,6 @@ export default function AdminUsersPage() {
 
   return (
     <AdminLayout title="유저 관리">
-      {/* Confirm Dialog */}
-      {confirmDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-sm w-full mx-4 shadow-lg">
-            <h3 className="text-base font-bold text-gray-900 mb-2">확인</h3>
-            <p className="text-sm text-gray-700 mb-5">
-              이 유저를 <span className="font-semibold">{confirmDialog.label}</span> 하시겠습니까?
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setConfirmDialog(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={executeAction}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header Stats */}
       <div className="flex items-center gap-3 mb-1">
         <Users className="w-5 h-5 text-blue-600" />
@@ -196,21 +133,6 @@ export default function AdminUsersPage() {
             검색
           </button>
         </form>
-        <div className="flex gap-2">
-          {STATUS_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => { setStatusFilter(opt.value); setPage(1) }}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                statusFilter === opt.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Table */}
@@ -234,15 +156,12 @@ export default function AdminUsersPage() {
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">이메일</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">전화번호</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">가입방법</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">딜잔액</th>
-                  <th className="text-center px-4 py-3 font-semibold text-gray-700">상태</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">가입일</th>
                   <th className="text-center px-4 py-3 font-semibold text-gray-700">액션</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map(user => {
-                  const badge = STATUS_BADGE[user.status] || STATUS_BADGE.active
                   const isExpanded = expandedId === user.id
                   const detail = details[user.id]
                   const isDetailLoading = detailLoading === user.id
@@ -254,15 +173,6 @@ export default function AdminUsersPage() {
                         <td className="px-4 py-3 text-gray-700">{user.email || '-'}</td>
                         <td className="px-4 py-3 text-gray-700">{user.phone || '-'}</td>
                         <td className="px-4 py-3 text-gray-700">{getProviderLabel(user.provider)}</td>
-                        <td className="px-4 py-3 text-right text-gray-500 font-medium">
-                          {/* deal_balance는 users 테이블에 없음 — user_points 조회 필요 */}
-                          -
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${badge.color} ${badge.bg}`}>
-                            {badge.label}
-                          </span>
-                        </td>
                         <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                           {formatKST(user.created_at)}
                         </td>
@@ -275,54 +185,12 @@ export default function AdminUsersPage() {
                               상세
                               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </button>
-                            {actionLoading === user.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : (
-                              <>
-                                {user.status === 'active' && (
-                                  <button
-                                    onClick={() => openConfirm(user.id, 'suspended', '정지')}
-                                    className="px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors flex items-center gap-1"
-                                  >
-                                    <ShieldX className="w-3 h-3" />
-                                    정지
-                                  </button>
-                                )}
-                                {user.status === 'suspended' && (
-                                  <>
-                                    <button
-                                      onClick={() => openConfirm(user.id, 'active', '정지해제')}
-                                      className="px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1"
-                                    >
-                                      <ShieldCheck className="w-3 h-3" />
-                                      해제
-                                    </button>
-                                    <button
-                                      onClick={() => openConfirm(user.id, 'banned', '차단')}
-                                      className="px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1"
-                                    >
-                                      <Ban className="w-3 h-3" />
-                                      차단
-                                    </button>
-                                  </>
-                                )}
-                                {user.status === 'banned' && (
-                                  <button
-                                    onClick={() => openConfirm(user.id, 'active', '차단해제')}
-                                    className="px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1"
-                                  >
-                                    <ShieldCheck className="w-3 h-3" />
-                                    해제
-                                  </button>
-                                )}
-                              </>
-                            )}
                           </div>
                         </td>
                       </tr>
                       {isExpanded && (
                         <tr className="bg-blue-50/30">
-                          <td colSpan={9} className="px-4 py-4">
+                          <td colSpan={7} className="px-4 py-4">
                             {isDetailLoading ? (
                               <div className="flex items-center gap-2 text-sm text-gray-500">
                                 <Loader2 className="w-4 h-4 animate-spin" />

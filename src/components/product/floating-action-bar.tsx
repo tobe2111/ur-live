@@ -24,7 +24,16 @@ export function FloatingActionBar({
     : 0
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] bg-white border-t border-gray-100" style={{ padding: '10px 14px 22px' }}>
+    <div
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] bg-white border-t border-gray-100"
+      style={{
+        paddingLeft: 14,
+        paddingRight: 14,
+        paddingTop: 10,
+        // iOS safe-area: ensure content clears the home indicator
+        paddingBottom: 'max(22px, env(safe-area-inset-bottom))',
+      }}
+    >
       <div className="flex items-center gap-2">
         {onToggleWishlist && (
           <button

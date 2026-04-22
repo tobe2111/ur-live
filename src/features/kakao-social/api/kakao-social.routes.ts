@@ -9,7 +9,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { getKakaoToken, getKakaoTokenSimple, callKakaoApi } from '@/lib/kakao-token';
@@ -32,6 +32,7 @@ function scopeErrorResponse(c: any, requiredScope: string) {
     required_scope: requiredScope,
   }, 403);
 }
+
 
 // ── POST /message/broadcast — 나에게 카카오톡 메시지 보내기 ──
 kakaoSocialRoutes.post('/message/broadcast', requireAuth(), async (c) => {
@@ -230,8 +231,8 @@ kakaoSocialRoutes.post('/message/send-to-subscribers', async (c) => {
   return c.json({ success: true, data: { sent } });
 });
 
-// ── POST /test/message — 테스트용 카카오 메시지 발송 (서버 경유) ──
-kakaoSocialRoutes.post('/test/message', async (c) => {
+// ── POST /test/message — 테스트용 카카오 메시지 발송 (서버 경유, 어드민 전용) ──
+kakaoSocialRoutes.post('/test/message', requireAdmin(), async (c) => {
   const { access_token } = await c.req.json<{ access_token: string }>();
   if (!access_token) return c.json({ success: false, error: '토큰이 필요합니다' }, 400);
 
@@ -262,8 +263,8 @@ kakaoSocialRoutes.post('/test/message', async (c) => {
   }
 });
 
-// ── POST /test/calendar — 테스트용 카카오 캘린더 (서버 경유) ──
-kakaoSocialRoutes.post('/test/calendar', async (c) => {
+// ── POST /test/calendar — 테스트용 카카오 캘린더 (서버 경유, 어드민 전용) ──
+kakaoSocialRoutes.post('/test/calendar', requireAdmin(), async (c) => {
   const { access_token } = await c.req.json<{ access_token: string }>();
   if (!access_token) return c.json({ success: false, error: '토큰이 필요합니다' }, 400);
 
@@ -305,8 +306,8 @@ kakaoSocialRoutes.post('/test/calendar', async (c) => {
   }
 });
 
-// ── POST /test/friends — 친구 목록 조회 테스트 (서버 경유) ──
-kakaoSocialRoutes.post('/test/friends', async (c) => {
+// ── POST /test/friends — 친구 목록 조회 테스트 (서버 경유, 어드민 전용) ──
+kakaoSocialRoutes.post('/test/friends', requireAdmin(), async (c) => {
   const { access_token } = await c.req.json<{ access_token: string }>();
   if (!access_token) return c.json({ success: false, error: '토큰 필요' }, 400);
 
@@ -326,8 +327,8 @@ kakaoSocialRoutes.post('/test/friends', async (c) => {
   }
 });
 
-// ── POST /test/friend-message — 친구에게 메시지 전송 테스트 (서버 경유) ──
-kakaoSocialRoutes.post('/test/friend-message', async (c) => {
+// ── POST /test/friend-message — 친구에게 메시지 전송 테스트 (서버 경유, 어드민 전용) ──
+kakaoSocialRoutes.post('/test/friend-message', requireAdmin(), async (c) => {
   const { access_token, friend_uuid } = await c.req.json<{ access_token: string; friend_uuid?: string }>();
   if (!access_token) return c.json({ success: false, error: '토큰 필요' }, 400);
 

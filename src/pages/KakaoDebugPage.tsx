@@ -31,9 +31,8 @@ export default function KakaoDebugPage() {
     setLoading(true)
     const results: CheckResult[] = []
 
-    // 1. 환경 변수 확인
+    // 1. 환경 변수 확인 (REST API key는 서버 전용으로 이관됨 — /auth/kakao/start 경유)
     const kakaoAppKey = import.meta.env.VITE_KAKAO_APP_KEY
-    const kakaoRestApiKey = import.meta.env.VITE_KAKAO_REST_API_KEY
     const kakaoJsKey = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY
 
     results.push({
@@ -41,13 +40,6 @@ export default function KakaoDebugPage() {
       status: kakaoAppKey ? 'success' : 'error',
       message: kakaoAppKey ? `설정됨: ${kakaoAppKey.substring(0, 10)}...` : '❌ 설정되지 않음',
       details: kakaoAppKey || undefined
-    })
-
-    results.push({
-      name: 'VITE_KAKAO_REST_API_KEY',
-      status: kakaoRestApiKey ? 'success' : 'error',
-      message: kakaoRestApiKey ? `설정됨: ${kakaoRestApiKey.substring(0, 10)}...` : '❌ 설정되지 않음 - KOE101 오류의 주요 원인!',
-      details: kakaoRestApiKey || undefined
     })
 
     results.push({
@@ -85,16 +77,13 @@ export default function KakaoDebugPage() {
       details: '⚠️ 카카오 개발자 콘솔에 이 URI가 등록되어 있어야 합니다!'
     })
 
-    // 5. 카카오 OAuth URL 생성 테스트
-    if (kakaoRestApiKey) {
-      const testUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoRestApiKey}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`
-      results.push({
-        name: '카카오 로그인 URL',
-        status: 'success',
-        message: '테스트 URL 생성됨',
-        details: testUrl
-      })
-    }
+    // 5. 카카오 OAuth 시작점 (서버 생성 URL)
+    results.push({
+      name: '카카오 로그인 시작점',
+      status: 'success',
+      message: '/auth/kakao/start?redirect=/ 경유 (서버에서 client_id 주입)',
+      details: `${window.location.origin}/auth/kakao/start?redirect=/`
+    })
 
     setChecks(results)
     setLoading(false)
@@ -221,8 +210,8 @@ export default function KakaoDebugPage() {
                 <strong>카카오 개발자 콘솔</strong>에서 REST API 키 확인
               </li>
               <li>
-                <code className="bg-gray-100 px-2 py-1 rounded">.env.kr</code> 파일에{' '}
-                <code className="bg-gray-100 px-2 py-1 rounded">VITE_KAKAO_REST_API_KEY</code> 추가
+                서버 환경에 <code className="bg-gray-100 px-2 py-1 rounded">KAKAO_REST_API_KEY</code> 등록
+                (<code className="bg-gray-100 px-2 py-1 rounded">wrangler secret put KAKAO_REST_API_KEY</code>)
               </li>
               <li>
                 카카오 개발자 콘솔에서 <strong>Redirect URI</strong> 등록:

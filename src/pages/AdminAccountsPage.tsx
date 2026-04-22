@@ -21,9 +21,21 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   viewer: { label: '뷰어', color: 'bg-gray-100 text-gray-600' },
 }
 
+// 비밀번호 복잡도 검증: 8자 이상, 영문+숫자+특수문자 중 2가지 이상
+function validatePassword(pw: string): string | null {
+  if (!pw || pw.length < 8) return '비밀번호는 8자 이상이어야 합니다'
+  const hasLetter = /[A-Za-z]/.test(pw)
+  const hasDigit = /[0-9]/.test(pw)
+  const hasSymbol = /[^A-Za-z0-9]/.test(pw)
+  const types = [hasLetter, hasDigit, hasSymbol].filter(Boolean).length
+  if (types < 2) return '영문, 숫자, 특수문자 중 2가지 이상을 포함해야 합니다'
+  return null
+}
+
 export default function AdminAccountsPage() {
   const navigate = useNavigate()
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+  const currentAdminId = localStorage.getItem('admin_id') || ''
   const [admins, setAdmins] = useState<Admin[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -51,6 +63,8 @@ export default function AdminAccountsPage() {
 
   async function createAdmin() {
     if (!form.email || !form.password) { toast.error('이메일과 비밀번호를 입력하세요'); return }
+    const pwErr = validatePassword(form.password)
+    if (pwErr) { toast.error(pwErr); return }
     setSaving(true)
     try {
       const res = await api.post('/api/admin/admins', form, h)
@@ -68,6 +82,23 @@ export default function AdminAccountsPage() {
 
   async function updateAdmin() {
     if (!showEdit) return
+    // 자기 자신의 super_admin 권한 해제 방지
+    if (String(showEdit.id) === currentAdminId && showEdit.role === 'super_admin' && editForm.role !== 'super_admin') {
+      toast.error('본인의 super_admin 권한은 해제할 수 없습니다.')
+      return
+    }
+    // 마지막 super_admin 강등 방지 (프론트 1차 체크)
+    if (showEdit.role === 'super_admin' && editForm.role !== 'super_admin') {
+      const superAdminCount = admins.filter(a => a.role === 'super_admin').length
+      if (superAdminCount <= 1) {
+        toast.error('마지막 super_admin 계정의 권한은 해제할 수 없습니다.')
+        return
+      }
+    }
+    // 역할 변경 시 확인
+    if (editForm.role !== showEdit.role) {
+      if (!confirm(`역할을 "${showEdit.role}" → "${editForm.role}"(으)로 변경하시겠습니까?`)) return
+    }
     setSaving(true)
     try {
       const res = await api.patch(`/api/admin/admins/${showEdit.id}`, editForm, h)
@@ -83,6 +114,19 @@ export default function AdminAccountsPage() {
   }
 
   async function deleteAdmin(admin: Admin) {
+    // 본인 계정 삭제 방지
+    if (String(admin.id) === currentAdminId) {
+      toast.error('본인 계정은 삭제할 수 없습니다.')
+      return
+    }
+    // 마지막 super_admin 삭제 방지
+    if (admin.role === 'super_admin') {
+      const superAdminCount = admins.filter(a => a.role === 'super_admin').length
+      if (superAdminCount <= 1) {
+        toast.error('마지막 super_admin 계정은 삭제할 수 없습니다.')
+        return
+      }
+    }
     if (!confirm(`${admin.name || admin.email} 관리자를 삭제하시겠습니까?`)) return
     try {
       const res = await api.delete(`/api/admin/admins/${admin.id}`, h)
@@ -98,6 +142,8 @@ export default function AdminAccountsPage() {
 
   async function resetPassword() {
     if (!showResetPw || !newPassword) { toast.error('새 비밀번호를 입력하세요'); return }
+    const pwErr = validatePassword(newPassword)
+    if (pwErr) { toast.error(pwErr); return }
     setSaving(true)
     try {
       const res = await api.post(`/api/admin/admins/${showResetPw.id}/reset-password`, { newPassword }, h)

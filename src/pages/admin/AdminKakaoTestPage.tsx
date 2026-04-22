@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { ArrowLeft, CheckCircle, XCircle, Loader2, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
-const TEST_REST_API_KEY = '594661da7d2be9005172fb9a252f8ca4'
+const TEST_REST_API_KEY = import.meta.env.VITE_KAKAO_TEST_REST_API_KEY || ''
 const TEST_REDIRECT_URI = 'https://live.ur-team.com/admin/kakao-test/callback'
 
 const badgeBgMap: Record<string, string> = {
@@ -21,6 +21,10 @@ const btnBgMap: Record<string, string> = {
 }
 
 export default function AdminKakaoTestPage() {
+  // Block this debug/test page in production
+  if (import.meta.env.PROD) {
+    return <Navigate to="/admin" replace />
+  }
   const navigate = useNavigate()
   const [accessToken, setAccessToken] = useState(localStorage.getItem('kakao_test_token') || '')
   const [loading, setLoading] = useState(false)

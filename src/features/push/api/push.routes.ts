@@ -76,6 +76,56 @@ pushRoutes.post('/api/push/subscribe', requireAuth(), async (c) => {
   }
 });
 
+// 네이티브 (Capacitor) 푸시 토큰 등록 — FCM/APNS 토큰
+pushRoutes.post('/api/push/register', requireAuth(), async (c) => {
+  try {
+    const flags = await getFeatureFlags(c.env.SESSION_KV);
+    if (!flags.enable_push_notifications) {
+      return c.json({ success: true, skipped: true, reason: 'push_disabled' });
+    }
+
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const { token, platform } = await c.req.json<{ token?: string; platform?: string }>();
+    if (!token || typeof token !== 'string' || token.length < 10 || token.length > 4096) {
+      return c.json({ success: false, error: 'Invalid token' }, 400);
+    }
+    const plat = platform === 'ios' || platform === 'android' ? platform : 'unknown';
+
+    try {
+      await c.env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS native_push_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          user_type TEXT NOT NULL,
+          token TEXT NOT NULL UNIQUE,
+          platform TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT
+        )
+      `).run();
+    } catch {}
+
+    const userId = parseInt(String(authUser.id), 10);
+    const userType = authUser.type as 'user' | 'seller' | 'admin';
+    await c.env.DB.prepare(`
+      INSERT INTO native_push_tokens (user_id, user_type, token, platform)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(token) DO UPDATE SET
+        user_id = excluded.user_id,
+        user_type = excluded.user_type,
+        platform = excluded.platform,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(userId, userType, token, plat).run();
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    if (typeof console !== 'undefined') console.error('[Push Register] Error:', error?.message);
+    return c.json({ success: false, error: '토큰 등록에 실패했습니다.' }, 500);
+  }
+});
+
 // Push 알림 구독 해제 — endpoint는 공개 값이지만 본인 소유만 삭제되므로 무해
 pushRoutes.post('/api/push/unsubscribe', async (c) => {
   try {

@@ -51,6 +51,25 @@ export interface OrdersTable {
   paid_at: string | null
   status: string                 // TEXT NOT NULL DEFAULT 'PENDING'
   shipping_company: string | null
+  // Migration 0128: recipient/postal fields for shipping
+  recipient_name: string | null
+  recipient_phone: string | null
+  shipping_postal_code: string | null
+  // Migration 0203: partial refund tracking
+  refunded_amount: number        // INTEGER DEFAULT 0
+}
+
+// ============================================================
+// order_refund_history 테이블 (migration 0203)
+// 부분 환불 이력 추적
+// ============================================================
+export interface OrderRefundHistoryTable {
+  id: number
+  order_id: number              // INTEGER NOT NULL (FK → orders.id)
+  amount: number                // INTEGER NOT NULL
+  reason: string | null
+  toss_transaction_key: string | null
+  created_at: string
 }
 
 // ============================================================

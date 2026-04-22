@@ -2,18 +2,23 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- WCAG 1.4.4: pinch-zoom is required for accessibility. Do NOT re-add maximum-scale/user-scalable=no. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="유어딜" />
     <meta name="theme-color" content="#020202" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>유어딜 - 라이브 커머스</title>
 
     <!-- DNS prefetch + preconnect: 주요 외부 리소스 도메인 -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-    <link rel="dns-prefetch" href="https://www.youtube.com" />
-    <link rel="dns-prefetch" href="https://img.youtube.com" />
+    <link rel="preconnect" href="https://www.youtube.com" crossorigin />
+    <link rel="preconnect" href="https://img.youtube.com" crossorigin />
 
     <!-- Pretendard 웹폰트 -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />

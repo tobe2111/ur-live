@@ -433,6 +433,10 @@ html {
 .safe-area-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
+/* Apply this to any fixed bottom bar (CartPage, CheckoutPage, ProductDetailPage 하단 바 등) */
+.safe-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
 
 /* 키보드 열릴 때 하단 고정 요소 숨기기 */
 body.keyboard-open .hide-on-keyboard {

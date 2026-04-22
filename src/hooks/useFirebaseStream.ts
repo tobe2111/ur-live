@@ -228,21 +228,11 @@ export function useFirebaseConnectionMonitor(streamId: number | null, threshold 
           if (data?.viewer_count) {
             setViewerCount(data.viewer_count)
 
-            // threshold 이상일 때 Discord 알림 (한 번만)
+            // threshold 이상일 때 내부 로깅만 (Discord 알림은 서버 크론에서 처리)
             if (data.viewer_count >= threshold && !alertSentRef.current) {
-              console.warn(`⚠️ High viewer count: ${data.viewer_count} viewers`)
-              
-              // Discord Webhook 호출 (선택사항)
-              fetch('/api/discord/alert', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  message: `🔥 High traffic alert: Stream ${streamId} has ${data.viewer_count} viewers`,
-                  threshold,
-                  current: data.viewer_count,
-                }),
-              }).catch(console.error)
-
+              if (import.meta.env.DEV) {
+                console.warn(`⚠️ High viewer count: ${data.viewer_count} viewers (stream=${streamId})`)
+              }
               alertSentRef.current = true
             }
 

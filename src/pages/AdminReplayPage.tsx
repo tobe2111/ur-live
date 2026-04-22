@@ -55,14 +55,24 @@ export default function AdminReplayPage() {
     setProductSearch('')
   }
 
-  function extractVideoId(url: string): string {
+  // Returns extracted 11-char YouTube video ID or null if URL is invalid.
+  // Never fall back to the raw URL — that would pollute DB with bad values.
+  function extractVideoId(url: string): string | null {
+    if (!url) return null
+    // Accept bare 11-char video IDs (used when editing existing records)
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) return url.trim()
     const match = url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-    return match ? match[1] : url
+    return match ? match[1] : null
   }
 
   async function handleSubmit() {
     if (!form.seller_id || !form.title || !form.youtube_url) {
       toast.error('셀러, 제목, YouTube URL을 입력해주세요')
+      return
+    }
+    const videoId = extractVideoId(form.youtube_url)
+    if (!videoId) {
+      toast.error('유효한 YouTube URL을 입력해주세요')
       return
     }
     setSubmitting(true)
@@ -71,7 +81,7 @@ export default function AdminReplayPage() {
         await api.put(`/api/admin/streams/${editingId}`, {
           title: form.title,
           description: form.description,
-          youtube_video_id: extractVideoId(form.youtube_url),
+          youtube_video_id: videoId,
           product_ids: form.product_ids,
         }, { headers })
         toast.success('수정되었습니다')
@@ -118,7 +128,7 @@ export default function AdminReplayPage() {
     !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())
   )
 
-  const videoPreviewId = form.youtube_url ? extractVideoId(form.youtube_url) : ''
+  const videoPreviewId = form.youtube_url ? (extractVideoId(form.youtube_url) || '') : ''
 
   return (
     <AdminLayout title="다시보기 관리">

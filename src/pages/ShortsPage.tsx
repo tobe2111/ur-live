@@ -240,7 +240,7 @@ export default function ShortsPage() {
 
           return (
             <div
-              key={`${item.id}-${index}`}
+              key={item.id}
               data-index={index}
               className="h-full w-full snap-start snap-always relative"
             >

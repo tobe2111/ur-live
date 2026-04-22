@@ -133,6 +133,43 @@ interestRoutes.delete('/:id', requireAuth(), async (c) => {
   return c.json({ success: true, message: 'Interest removed successfully' });
 });
 
+// ── POST /api/interest/remove — Remove by product_id + type ────
+
+interestRoutes.post('/remove', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: 'Authentication required' }, 401);
+
+  const { DB } = c.env;
+  await ensureTable(DB);
+
+  const body = await c.req.json<{
+    product_id?: number;
+    restaurant_name?: string;
+    type?: 'restaurant' | 'product' | 'group_buy' | 'meal_voucher';
+  }>();
+
+  const userId = String(user.id);
+  const productId = body.product_id ?? null;
+  const restaurantName = body.restaurant_name ?? null;
+  const type = body.type === 'meal_voucher' ? 'product' : (body.type || 'product');
+
+  if (!productId && !restaurantName) {
+    return c.json({ success: false, error: 'product_id or restaurant_name required' }, 400);
+  }
+
+  if (productId) {
+    await DB.prepare(
+      'DELETE FROM user_interests WHERE user_id = ? AND product_id = ? AND type = ?'
+    ).bind(userId, productId, type).run();
+  } else if (restaurantName) {
+    await DB.prepare(
+      'DELETE FROM user_interests WHERE user_id = ? AND restaurant_name = ? AND type = ?'
+    ).bind(userId, restaurantName, type).run();
+  }
+
+  return c.json({ success: true, message: 'Interest removed' });
+});
+
 // ── GET /api/interest/my — List user's interests ───────────────
 
 interestRoutes.get('/my', requireAuth(), async (c) => {

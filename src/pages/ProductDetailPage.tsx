@@ -170,12 +170,13 @@ function ProductReviews({ productId }: { productId: number | string }) {
   const [reviews, setReviews] = useState<Review[]>([])
 
   useEffect(() => {
-    api.get(`/api/reviews/product/${productId}/summary`).then(r => {
-      if (r.data.success) setSummary(r.data.data)
-    }).catch(() => {})
-    api.get(`/api/reviews/product/${productId}?limit=5`).then(r => {
-      if (r.data.success) setReviews(r.data.data.reviews)
-    }).catch(() => {})
+    Promise.all([
+      api.get(`/api/reviews/product/${productId}/summary`).catch(() => null),
+      api.get(`/api/reviews/product/${productId}?limit=5`).catch(() => null),
+    ]).then(([sumRes, listRes]) => {
+      if (sumRes?.data?.success) setSummary(sumRes.data.data)
+      if (listRes?.data?.success) setReviews(listRes.data.data.reviews)
+    })
   }, [productId])
 
   const avgRating = summary?.avg_rating ?? 0

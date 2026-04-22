@@ -46,10 +46,13 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
   const kr = isKorea()
 
   const requestKakaoConsent = (scope: string) => {
-    const kakaoKey = import.meta.env.VITE_KAKAO_REST_API_KEY
-    const redirectUri = encodeURIComponent(`${window.location.origin}/auth/kakao/consent/callback`)
-    const state = encodeURIComponent(window.location.pathname)
-    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoKey}&redirect_uri=${redirectUri}&response_type=code&state=${state}&scope=${scope}`
+    // 서버 엔드포인트가 client_id를 포함해 Kakao authorize로 리다이렉트
+    // (VITE_KAKAO_REST_API_KEY를 프론트 번들에 노출하지 않음)
+    const params = new URLSearchParams({
+      scope,
+      return: window.location.pathname,
+    })
+    const url = `/auth/kakao/consent/start?${params.toString()}`
     const popup = window.open(url, 'kakao_consent', 'width=480,height=700,scrollbars=yes')
     if (!popup) { window.location.href = url; return }
     toast.info('카카오 권한 동의 후 다시 시도해주세요')

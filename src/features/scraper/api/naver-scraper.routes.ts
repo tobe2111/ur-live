@@ -262,6 +262,8 @@ naverScraper.post('/extract', async (c) => {
 // SECURITY (HIGH-4): rate limit — 시간당 10회 (외부 트래픽 남용 방지)
 // ════════════════════════════════════════════════════════════════════
 naverScraper.post('/scrape', rateLimit({ action: 'scraper_scrape', max: 10, windowSec: 3600 }), async (c) => {
+  const disabled = scraperDisabledResponse(c);
+  if (disabled) return disabled;
   if (!await verifyAdmin(c)) return c.json({ error: 'Admin only' }, 401);
 
   const { keyword } = await c.req.json<{ keyword: string }>();

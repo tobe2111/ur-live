@@ -129,26 +129,12 @@ export default function LoginPage() {
         return
       }
 
-      // ✅ 환경 변수 검증
-      const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
-
-      if (!KAKAO_REST_API_KEY) {
-        if (import.meta.env.DEV) console.error('[Kakao Login] ❌ VITE_KAKAO_REST_API_KEY 환경 변수가 설정되지 않았습니다')
-        setError('카카오 로그인 설정 오류입니다. 관리자에게 문의하세요. (KOE101)')
-        setLoading(false)
-        return
-      }
-
-      const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
-
-      // returnUrl을 state로 전달
+      // 서버가 client_id를 포함해 Kakao authorize로 리다이렉트 (CSRF state 쿠키 포함)
       const currentReturnUrl = searchParams.get('returnUrl')
         || sessionStorage.getItem('returnUrl')
         || '/'
-
-      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(currentReturnUrl)}`
-
-      window.location.href = kakaoAuthUrl
+      const params = new URLSearchParams({ redirect: currentReturnUrl })
+      window.location.href = `/auth/kakao/start?${params.toString()}`
 
     } catch (err: unknown) {
       if (import.meta.env.DEV) console.error('[Kakao Login] ❌ 오류 발생:', err)

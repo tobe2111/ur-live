@@ -125,6 +125,43 @@ kakaoRoutes.get('/start', async (c) => {
 });
 
 /**
+ * GET /auth/kakao/consent/start?scope=talk_calendar&return=/path
+ * 추가 권한(scope) 동의용 OAuth 시작점. 서버에서 authorize URL을 만들어
+ * Kakao로 리다이렉트 (client_id를 프론트 번들에 노출하지 않도록).
+ */
+kakaoRoutes.get('/consent/start', async (c) => {
+  const scopeRaw = c.req.query('scope') || '';
+  const returnRaw = c.req.query('return') || '/';
+
+  // Scope 화이트리스트 — Kakao가 지원하고 우리 앱이 사용하는 값만 허용
+  const ALLOWED_SCOPES = new Set([
+    'talk_message', 'talk_calendar', 'friends', 'profile_nickname',
+    'profile_image', 'account_email', 'birthday', 'birthyear',
+  ]);
+  const scopes = scopeRaw.split(',').map((s) => s.trim()).filter(Boolean);
+  if (scopes.length === 0 || scopes.some((s) => !ALLOWED_SCOPES.has(s))) {
+    return c.json({ success: false, error: 'invalid scope' }, 400);
+  }
+
+  const returnPath = safeRedirect(returnRaw);
+  const kakaoRestKey = c.env.KAKAO_REST_API_KEY;
+  if (!kakaoRestKey) {
+    return c.json({ success: false, error: 'Kakao not configured' }, 500);
+  }
+
+  const origin = new URL(c.req.url).origin;
+  const redirectUri = `${origin}/auth/kakao/consent/callback`;
+  const authUrl = new URL('https://kauth.kakao.com/oauth/authorize');
+  authUrl.searchParams.set('client_id', kakaoRestKey);
+  authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('scope', scopes.join(','));
+  authUrl.searchParams.set('state', returnPath);
+
+  return c.redirect(authUrl.toString(), 302);
+});
+
+/**
  * GET /auth/kakao/sync/callback
  * 카카오싱크 OAuth 리다이렉트 콜백
  */
