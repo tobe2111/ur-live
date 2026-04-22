@@ -92,6 +92,18 @@ export class LiveStreamDurableObject extends DurableObject {
 
   async handleBroadcast(request: Request): Promise<Response> {
     try {
+      // 🛡️ 2026-04-22: DO 레벨 권한 확인 (worker 의 X-Internal-Auth 헤더 신뢰)
+      // Worker 가 requireSeller/requireAdmin 통과 시에만 이 헤더를 세팅.
+      // DO 는 Worker 신뢰 (같은 account binding).
+      const internalAuth = request.headers.get('X-Internal-Auth');
+      const authUserType = request.headers.get('X-Auth-User-Type');
+      if (!internalAuth || (authUserType !== 'seller' && authUserType !== 'admin')) {
+        return new Response(JSON.stringify({ success: false, error: 'Broadcast requires seller/admin auth' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
       const message: WSMessage = await request.json();
 
       // 상품 변경 메시지인 경우 현재 상품 저장
@@ -106,9 +118,9 @@ export class LiveStreamDurableObject extends DurableObject {
         headers: { 'Content-Type': 'application/json' },
       });
     } catch (err) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: (err as Error).message 
+      return new Response(JSON.stringify({
+        success: false,
+        error: (err as Error).message
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
