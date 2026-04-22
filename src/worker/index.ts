@@ -448,72 +448,140 @@ app.get('/api/_internal/repair-schema', async (c) => {
 // ============================================================
 app.get('/api/_internal/smoke-test', async (c) => {
   const origin = new URL(c.req.url).origin;
-  const endpoints: Array<{ path: string; method: 'GET' | 'POST'; body?: string }> = [
-    // Health & Version
-    { path: '/api/health', method: 'GET' },
-    { path: '/api/version', method: 'GET' },
-    // Products
-    { path: '/api/products?limit=3', method: 'GET' },
-    { path: '/api/products?limit=3&sort=ranking', method: 'GET' },
-    { path: '/api/products?limit=3&sort=popular', method: 'GET' },
-    { path: '/api/products?limit=3&featured=true', method: 'GET' },
-    // Streams
-    { path: '/api/streams', method: 'GET' },
-    // Search
-    { path: '/api/search?q=test&limit=3', method: 'GET' },
-    // Banners
-    { path: '/api/banners', method: 'GET' },
-    // Auth (expect 400/401 — just confirm NOT 500)
-    { path: '/api/auth/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
-    { path: '/api/seller/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
-    { path: '/api/admin/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
-    { path: '/api/agency/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
-    // Auth me (expect 401)
-    { path: '/api/auth/me', method: 'GET' },
-    // Cart (expect 401)
-    { path: '/api/cart', method: 'GET' },
-    // Orders (expect 401)
-    { path: '/api/orders', method: 'GET' },
-    // Wishlists (expect 401)
-    { path: '/api/wishlists/0', method: 'GET' },
-    // Shipping addresses (expect 401)
-    { path: '/api/shipping-addresses', method: 'GET' },
-    // Seller public
-    { path: '/api/sellers?limit=3', method: 'GET' },
-    // Points (expect 401)
-    { path: '/api/points/balance', method: 'GET' },
-    // Notifications (expect 401)
-    { path: '/api/notifications', method: 'GET' },
+  const endpoints: Array<{ path: string; method: 'GET' | 'POST'; body?: string; cat: string }> = [
+    // ── 인프라 ──────────────────────────────────────────────
+    { cat: 'infra', path: '/api/health', method: 'GET' },
+    { cat: 'infra', path: '/api/health/detailed', method: 'GET' },
+    { cat: 'infra', path: '/api/version', method: 'GET' },
+
+    // ── 공개 상품/방송/배너/검색 ─────────────────────────
+    { cat: 'public', path: '/api/products?limit=3', method: 'GET' },
+    { cat: 'public', path: '/api/products?limit=3&sort=ranking', method: 'GET' },
+    { cat: 'public', path: '/api/products?limit=3&sort=popular', method: 'GET' },
+    { cat: 'public', path: '/api/products?limit=3&sort=rating', method: 'GET' },
+    { cat: 'public', path: '/api/products?limit=3&sort=price_low', method: 'GET' },
+    { cat: 'public', path: '/api/products?limit=3&sort=price_high', method: 'GET' },
+    { cat: 'public', path: '/api/products?limit=3&featured=true', method: 'GET' },
+    { cat: 'public', path: '/api/products?category=food&limit=3', method: 'GET' },
+    { cat: 'public', path: '/api/products/1', method: 'GET' },
+    { cat: 'public', path: '/api/products/1/options', method: 'GET' },
+    { cat: 'public', path: '/api/streams', method: 'GET' },
+    { cat: 'public', path: '/api/search?q=test&limit=3', method: 'GET' },
+    { cat: 'public', path: '/api/search/popular', method: 'GET' },
+    { cat: 'public', path: '/api/banners', method: 'GET' },
+    { cat: 'public', path: '/api/categories', method: 'GET' },
+    { cat: 'public', path: '/api/sellers?limit=3', method: 'GET' },
+
+    // ── 로그인 엔드포인트 (가짜 creds → 401 기대) ────────
+    { cat: 'auth', path: '/api/auth/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
+    { cat: 'auth', path: '/api/auth/register', method: 'POST', body: '{"email":"","password":"","name":""}' },
+    { cat: 'auth', path: '/api/seller/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
+    { cat: 'auth', path: '/api/admin/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
+    { cat: 'auth', path: '/api/agency/login', method: 'POST', body: '{"email":"smoke@test.com","password":"x"}' },
+    { cat: 'auth', path: '/api/seller/forgot-password', method: 'POST', body: '{"email":"smoke@test.com"}' },
+
+    // ── 유저 대시보드 엔드포인트 (401 기대, 500 금지) ────
+    { cat: 'user', path: '/api/auth/me', method: 'GET' },
+    { cat: 'user', path: '/api/cart', method: 'GET' },
+    { cat: 'user', path: '/api/orders', method: 'GET' },
+    { cat: 'user', path: '/api/orders/1/tracking', method: 'GET' },
+    { cat: 'user', path: '/api/wishlists/0', method: 'GET' },
+    { cat: 'user', path: '/api/shipping-addresses', method: 'GET' },
+    { cat: 'user', path: '/api/points/balance', method: 'GET' },
+    { cat: 'user', path: '/api/points/history', method: 'GET' },
+    { cat: 'user', path: '/api/notifications', method: 'GET' },
+    { cat: 'user', path: '/api/reviews?product_id=1', method: 'GET' },
+    { cat: 'user', path: '/api/coupons', method: 'GET' },
+    { cat: 'user', path: '/api/account/profile', method: 'GET' },
+    { cat: 'user', path: '/api/donations', method: 'GET' },
+    { cat: 'user', path: '/api/returns', method: 'GET' },
+
+    // ── 셀러 대시보드 엔드포인트 ────────────────────────
+    { cat: 'seller', path: '/api/seller/my-seller-status', method: 'GET' },
+    { cat: 'seller', path: '/api/seller/orders', method: 'GET' },
+    { cat: 'seller', path: '/api/seller/analytics/summary', method: 'GET' },
+    { cat: 'seller', path: '/api/seller/analytics/revenue', method: 'GET' },
+    { cat: 'seller', path: '/api/seller/analytics/top-products', method: 'GET' },
+    { cat: 'seller', path: '/api/seller/streams', method: 'GET' },
+    { cat: 'seller', path: '/api/seller/products', method: 'GET' },
+    { cat: 'seller', path: '/api/seller/coupons', method: 'GET' },
+    { cat: 'seller', path: '/api/seller/settlement', method: 'GET' },
+
+    // ── 어드민 대시보드 엔드포인트 ──────────────────────
+    { cat: 'admin', path: '/api/admin/users', method: 'GET' },
+    { cat: 'admin', path: '/api/admin/sellers', method: 'GET' },
+    { cat: 'admin', path: '/api/admin/orders', method: 'GET' },
+    { cat: 'admin', path: '/api/admin/tools/sellers', method: 'GET' },
+    { cat: 'admin', path: '/api/admin/tools/settlements', method: 'GET' },
+    { cat: 'admin', path: '/api/admin/metrics', method: 'GET' },
+    { cat: 'admin', path: '/api/admin/flags', method: 'GET' },
+    { cat: 'admin', path: '/api/admin/banners', method: 'GET' },
+    { cat: 'admin', path: '/api/admin/blog', method: 'GET' },
+    { cat: 'admin', path: '/api/admin/agencies', method: 'GET' },
+
+    // ── 에이전시 대시보드 ──────────────────────────────
+    { cat: 'agency', path: '/api/agency/me', method: 'GET' },
+    { cat: 'agency', path: '/api/agency/sellers', method: 'GET' },
+    { cat: 'agency', path: '/api/agency/analytics/summary', method: 'GET' },
+
+    // ── 결제 / 주문 ────────────────────────────────────
+    { cat: 'payment', path: '/api/payments/confirm', method: 'POST', body: '{"paymentKey":"x","orderId":"x","amount":1}' },
+    { cat: 'payment', path: '/api/payments/checkout-session', method: 'POST', body: '{}' },
+    { cat: 'payment', path: '/api/payment/stripe/create-intent', method: 'POST', body: '{}' },
+
+    // ── 실시간 / 스트리밍 ──────────────────────────────
+    { cat: 'stream', path: '/api/streams/1/chat/messages', method: 'GET' },
+    { cat: 'stream', path: '/api/streams/1/products', method: 'GET' },
+    { cat: 'stream', path: '/api/streams/1/current-product', method: 'GET' },
+
+    // ── 기타 ────────────────────────────────────────────
+    { cat: 'misc', path: '/api/push/vapid-public-key', method: 'GET' },
+    { cat: 'misc', path: '/api/affiliate/balance', method: 'GET' },
+    { cat: 'misc', path: '/api/cafe24/auth-url', method: 'GET' },
+    { cat: 'misc', path: '/api/shortcuts', method: 'GET' },
+    { cat: 'misc', path: '/api/csrf-token', method: 'GET' },
   ];
 
-  const results: Array<{ path: string; status: number; ok: boolean; ms: number }> = [];
+  const results: Array<{ cat: string; path: string; method: string; status: number; ok: boolean; ms: number }> = [];
+  const catStats: Record<string, { total: number; passed: number; failed: number }> = {};
   let fail5xx = 0;
 
   for (const ep of endpoints) {
     const start = Date.now();
+    let status = 0;
     try {
       const res = await fetch(`${origin}${ep.path}`, {
         method: ep.method,
         headers: ep.body ? { 'Content-Type': 'application/json' } : {},
         body: ep.body || undefined,
       });
-      const ms = Date.now() - start;
-      const is5xx = res.status >= 500;
-      if (is5xx) fail5xx++;
-      results.push({ path: ep.path, status: res.status, ok: !is5xx, ms });
-    } catch (e: any) {
-      const ms = Date.now() - start;
-      fail5xx++;
-      results.push({ path: ep.path, status: 0, ok: false, ms });
+      status = res.status;
+    } catch {
+      status = 0;
     }
+    const ms = Date.now() - start;
+    const is5xx = status >= 500 || status === 0;
+    if (is5xx) fail5xx++;
+
+    catStats[ep.cat] = catStats[ep.cat] || { total: 0, passed: 0, failed: 0 };
+    catStats[ep.cat].total++;
+    if (is5xx) catStats[ep.cat].failed++;
+    else catStats[ep.cat].passed++;
+
+    results.push({ cat: ep.cat, path: ep.path, method: ep.method, status, ok: !is5xx, ms });
   }
+
+  // 5xx 실패만 필터해서 bottom 에 요약
+  const failures = results.filter(r => !r.ok);
 
   return c.json({
     success: fail5xx === 0,
     total: endpoints.length,
     passed: endpoints.length - fail5xx,
     failed5xx: fail5xx,
-    results,
+    byCategory: catStats,
+    failures: failures.length > 0 ? failures : undefined,
+    allResults: results,
   });
 });
 
