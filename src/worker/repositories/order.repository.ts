@@ -44,7 +44,13 @@ export class OrderRepository {
     subtotal: number,
     shippingFee: number
   ): Promise<Order> {
-    const totalAmount = subtotal + shippingFee;
+    // 🛡️ 2026-04-22: 할인 로직 구현. 이전엔 discount_amount=0 hardcode → 쿠폰/포인트 미반영.
+    // request.discount_amount (쿠폰+포인트 합산) + 서버 검증 후 저장.
+    // 서버 재계산: total_amount = subtotal + shipping - discount (음수 방지)
+    const requestedDiscount = Number((request as any).discount_amount ?? 0);
+    // 검증: 0 <= discount <= subtotal+shipping (음수 결제 방지)
+    const safeDiscount = Math.max(0, Math.min(requestedDiscount, subtotal + shippingFee));
+    const totalAmount = Math.max(0, subtotal + shippingFee - safeDiscount);
 
     // Step 1: INSERT order — id 생략하여 INTEGER PRIMARY KEY AUTOINCREMENT 호환
     // seller_id 처리: 빈 문자열/null → DB 스키마에 따라 분기
@@ -62,7 +68,6 @@ export class OrderRepository {
       'idempotency_key', 'locale',
     ];
     const placeholders = columns.map(() => '?').join(', ');
-    // discount_amount = 0, currency = 'KRW', status = 'PENDING', locale = 'ko'는 값으로 직접 전달
     const values: any[] = [
       request.order_number,
       userId,
@@ -70,7 +75,7 @@ export class OrderRepository {
       ...(hasStreamId ? [(request as any).live_stream_id] : []),
       subtotal,
       shippingFee,
-      0,          // discount_amount
+      safeDiscount,  // 🛡️ 실제 할인 금액 저장 (이전: 0 hardcode)
       totalAmount,
       'KRW',      // currency
       'PENDING',  // status

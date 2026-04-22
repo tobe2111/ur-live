@@ -529,6 +529,9 @@ export default function CheckoutPage() {
         group_buy_discounts: groupBuyDiscounts,
         coupon_id: couponId || undefined,
         coupon_discount: couponDiscount || undefined,
+        // 🛡️ 2026-04-22: 통합 할인 — 서버 createOrder 가 검증 후 저장
+        discount_amount: (couponDiscount || 0) + (totalGroupBuyDiscount || 0) + (dealToUse || 0),
+        deal_used: dealToUse || undefined,
       })
 
       if (!response.data.success) {
