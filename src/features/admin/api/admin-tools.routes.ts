@@ -130,9 +130,27 @@ adminToolsRoutes.delete('/banners/:id', async (c) => {
 
 // ── 공지사항 발송 ──
 adminToolsRoutes.post('/notices', async (c) => {
-  const { title, message, target } = await c.req.json<{ title: string; message: string; target: 'all' | 'sellers' | 'users' }>()
+  const body = await c.req.json<{ title: string; message: string; target: 'all' | 'sellers' | 'users' }>()
+  const { target } = body
+  let { title, message } = body
+
   if (!title || !message) return c.json({ success: false, error: '제목과 내용 필수' }, 400)
 
+  // 🛡️ 2026-04-22: 입력 검증 + XSS 방어
+  if (typeof title !== 'string' || title.length > 200) {
+    return c.json({ success: false, error: '제목은 200자 이하' }, 400)
+  }
+  if (typeof message !== 'string' || message.length > 5000) {
+    return c.json({ success: false, error: '내용은 5000자 이하' }, 400)
+  }
+  if (!['all', 'sellers', 'users'].includes(target)) {
+    return c.json({ success: false, error: 'target 은 all/sellers/users 중 하나' }, 400)
+  }
+  // HTML 태그 제거 (특히 <script>)
+  title = title.replace(/<[^>]*>/g, '').slice(0, 200)
+  message = message.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '').replace(/<[^>]*on\w+=/gi, '<').slice(0, 5000)
+
+  let totalSent = 0
   if (target === 'sellers' || target === 'all') {
     const { results: sellers } = await c.env.DB.prepare("SELECT id FROM sellers WHERE status = 'approved'").all<{ id: number }>()
     if (sellers?.length) {
@@ -140,6 +158,7 @@ adminToolsRoutes.post('/notices', async (c) => {
         c.env.DB.prepare("INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, created_at) VALUES ('seller', ?, 'admin_notice', ?, ?, datetime('now'))")
           .bind(String(s.id), title, message))
       for (let i = 0; i < stmts.length; i += 50) await c.env.DB.batch(stmts.slice(i, i + 50))
+      totalSent += sellers.length
     }
   }
   if (target === 'users' || target === 'all') {
@@ -149,9 +168,18 @@ adminToolsRoutes.post('/notices', async (c) => {
         c.env.DB.prepare("INSERT INTO user_notifications (user_id, type, title, message, created_at) VALUES (?, 'admin_notice', ?, ?, datetime('now'))")
           .bind(u.id, title, message))
       for (let i = 0; i < stmts.length; i += 50) await c.env.DB.batch(stmts.slice(i, i + 50))
+      totalSent += users.length
     }
   }
-  return c.json({ success: true, message: '공지 발송 완료' })
+
+  // 🛡️ Audit log — 누가 언제 어떤 공지를 얼마나 발송했는지 추적
+  await writeAuditLog(c, {
+    action: 'notices.broadcast',
+    targetType: 'notifications',
+    after: { title, target, recipientCount: totalSent }
+  })
+
+  return c.json({ success: true, message: `공지 발송 완료 (${totalSent}명)` })
 })
 
 // ── 정산 일괄 처리 ──
