@@ -40,6 +40,7 @@ export interface Env {
   CAFE24_CLIENT_ID?: string;
   CAFE24_CLIENT_SECRET?: string;
   CAFE24_MALL_ID?: string;
+  CAFE24_WEBHOOK_SECRET?: string;
 
   // ---- Aligo (알림톡) ----
   ALIGO_API_KEY?: string;

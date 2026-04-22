@@ -1721,18 +1721,24 @@ sellerManagementRoutes.post('/alimtalk/send', async (c) => {
     let successCount = 0;
     let failedCount = 0;
 
-    // 잔액 선차감
-    await DB.prepare(
+    // 잔액 선차감 (CAS — balance >= totalCost 조건부 갱신)
+    const deductResult = await DB.prepare(
       `UPDATE alimtalk_accounts SET balance = balance - ?, updated_at = datetime('now') WHERE id = ? AND balance >= ?`
     ).bind(totalCost, account.id, totalCost).run();
 
+    // meta.changes === 0 이면 잔액 부족 또는 경쟁 갱신으로 차감 실패 — 발송 중단
+    if (!deductResult.meta?.changes) {
+      return c.json({ success: false, error: '크레딧이 부족합니다.' }, 402);
+    }
+
     for (const recipient of recipients) {
       try {
-        // 변수 치환
+        // 변수 치환 (regex metachar 주입 방지 — literal replace 사용)
         const mergedVars = { ...variables, ...recipient.variables };
         let message = template.template_content;
         for (const [key, value] of Object.entries(mergedVars)) {
-          message = message.replace(new RegExp(`#{${key}}`, 'g'), value);
+          const literal = `#{${key}}`;
+          message = message.split(literal).join(String(value ?? ''));
         }
 
         const result = await sendAlimtalk(

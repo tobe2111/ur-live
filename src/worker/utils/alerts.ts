@@ -13,6 +13,48 @@ export interface AlertPayload {
   context?: Record<string, unknown>;
 }
 
+// Keys whose values must never leak into alert webhooks (Discord/Slack).
+// Matching is case-insensitive on a substring basis, so `authToken`,
+// `refresh_token`, `paymentKey`, etc. are all caught by the core names.
+const SENSITIVE_KEYS = [
+  'password', 'passwd', 'pwd',
+  'token', 'accesstoken', 'refreshtoken',
+  'api_key', 'apikey',
+  'secret',
+  'paymentkey', 'payment_key',
+  'authorization', 'auth',
+  'cookie', 'set-cookie',
+  'jwt', 'bearer',
+  'ssn', 'card', 'cvc', 'cvv',
+] as const;
+
+function isSensitiveKey(key: string): boolean {
+  const lower = key.toLowerCase();
+  return SENSITIVE_KEYS.some((s) => lower.includes(s));
+}
+
+/**
+ * Recursively redact sensitive values in an arbitrary object.
+ * Caps recursion depth to guard against circular/huge payloads.
+ */
+function sanitizeContext(obj: unknown, depth = 0): unknown {
+  if (depth > 6) return '[TRUNCATED]';
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map((v) => sanitizeContext(v, depth + 1));
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (isSensitiveKey(k)) {
+      out[k] = '[REDACTED]';
+    } else if (v && typeof v === 'object') {
+      out[k] = sanitizeContext(v, depth + 1);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 /**
  * Send an alert to the configured webhook (Discord or Slack).
  * Uses AbortSignal.timeout(5000) to avoid blocking the worker.

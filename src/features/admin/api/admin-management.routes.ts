@@ -2270,9 +2270,22 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
           const data: any = await res.json();
           const text = data?.content?.[0]?.text || '[]';
 
-          // JSON 파싱 (```json 블록 제거)
+          // JSON 파싱 (```json 블록 제거) + 스키마 검증
           const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          const reviews: { content: string; rating: number }[] = JSON.parse(jsonStr);
+          const parsed: unknown = JSON.parse(jsonStr);
+          if (!Array.isArray(parsed)) {
+            throw new Error('Expected array response from Claude');
+          }
+          for (const r of parsed) {
+            if (
+              typeof r !== 'object' || r === null ||
+              typeof (r as any).rating !== 'number' ||
+              typeof (r as any).content !== 'string'
+            ) {
+              throw new Error('Invalid review schema');
+            }
+          }
+          const reviews = parsed as { content: string; rating: number }[];
 
           const stmts = reviews.map((r) => {
             const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
