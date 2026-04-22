@@ -1198,7 +1198,9 @@ sellerManagementRoutes.post('/upload-image', cors(), async (c) => {
     });
     const json = await resp.json() as ImgbbResponse;
     if (!json.success) throw new Error(json.error?.message || 'imgbb upload failed');
-    return c.json({ success: true, url: json.data!.url, delete_url: json.data!.delete_url });
+    // 🛡️ 2026-04-22: delete_url 은 응답에 포함하지 않음.
+    // 클라이언트가 받으면 악의적으로 이미지 삭제 가능. 서버 내부에만 저장.
+    return c.json({ success: true, url: json.data!.url });
   } catch (err: unknown) {
     console.error('[Seller] Upload image error:', (err as Error).message);
     return c.json({ success: false, error: '이미지 업로드에 실패했습니다.' }, 500);
