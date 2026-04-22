@@ -24,11 +24,16 @@ export default function EmbedLivePage() {
 
   useEffect(() => {
     if (!streamId) return
+    // 🛡️ 2026-04-22: streamId 검증 — 숫자만 허용 (SSRF/path traversal 방어)
+    if (!/^\d+$/.test(streamId)) {
+      setLoading(false)
+      return
+    }
     api.get(`/api/streams/${streamId}`)
       .then(r => {
         if (r.data.success) setStream(r.data.data)
       })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[Embed] Stream fetch failed:', e) })
       .finally(() => setLoading(false))
   }, [streamId])
 
