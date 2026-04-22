@@ -25,6 +25,11 @@ function sanitizeInternalPath(raw: string | undefined | null): string | null {
   if (!s.startsWith('/')) return null
   // 줄바꿈/공백 문자 섞인 경우 차단
   if (/[\r\n\t]/.test(s)) return null
+  // 🛡️ 2026-04-22: backslash URL rewrite trick 차단 (일부 파서가 '\' 를 '/' 로 변환)
+  if (s.includes('\\')) return null
+  // javascript:, data:, vbscript: 접두가 path 에 섞여 들어오는 경우 차단
+  const lower = s.toLowerCase()
+  if (lower.includes('javascript:') || lower.includes('data:') || lower.includes('vbscript:')) return null
   return s
 }
 

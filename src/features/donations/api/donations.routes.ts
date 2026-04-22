@@ -51,6 +51,24 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
   if (body.amount > 10_000_000) {
     return c.json({ success: false, error: '후원 금액은 최대 1천만원입니다' }, 400);
   }
+
+  // 🛡️ 2026-04-22: 일일 후원 한도 (user 당 5천만원/일) — 돈세탁/fraud 방어
+  try {
+    const dailyTotal = await c.env.DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM donations
+       WHERE user_id = ?
+         AND payment_status = 'approved'
+         AND created_at >= datetime('now', '-1 day')`
+    ).bind(String(userId)).first<{ total: number }>().catch(() => ({ total: 0 }));
+
+    const DAILY_CAP = 50_000_000;
+    if ((dailyTotal?.total ?? 0) + body.amount > DAILY_CAP) {
+      return c.json({
+        success: false,
+        error: '일일 후원 한도(5천만원)를 초과합니다. 24시간 후 다시 시도해주세요.',
+      }, 429);
+    }
+  } catch { /* 테이블/컬럼 미존재 시 skip (legacy) */ }
   // ✅ C2 FIX: cap message length + XSS 위험 문자 제거
   if (body.message && body.message.length > 500) {
     return c.json({ success: false, error: '메시지는 500자 이내로 작성해주세요.' }, 400);

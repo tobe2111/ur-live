@@ -94,8 +94,13 @@ async function ensureTables(DB: D1Database) {
 }
 
 // ── 초대 코드 생성 ────────────────────────────────────────────────────
+// 🛡️ 2026-04-22: Math.random → crypto.getRandomValues (guessable code 방어)
 function generateInviteCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[bytes[i] % chars.length];
+  return code;
 }
 
 // ── POST /create — 공동구매 생성 ──────────────────────────────────────

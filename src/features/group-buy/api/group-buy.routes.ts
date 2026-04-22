@@ -65,11 +65,13 @@ async function ensureTables(DB: D1Database) {
 }
 
 // 바우처 코드 생성
+// 🛡️ 2026-04-22: Math.random → crypto.getRandomValues (guessable code 방어)
 function generateVoucherCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = crypto.getRandomValues(new Uint8Array(8))
   let code = 'UR-'
   for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
+    code += chars.charAt(bytes[i] % chars.length)
     if (i === 3) code += '-'
   }
   return code

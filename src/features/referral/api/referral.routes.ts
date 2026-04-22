@@ -95,10 +95,12 @@ async function ensureTables(DB: D1Database) {
   } catch {}
 }
 
+// 🛡️ 2026-04-22: Math.random → crypto.getRandomValues (guessable code 방어)
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
   let code = '';
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 6; i++) code += chars[bytes[i] % chars.length];
   return code;
 }
 
