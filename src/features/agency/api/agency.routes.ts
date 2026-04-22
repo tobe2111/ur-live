@@ -491,8 +491,8 @@ app.get('/stats/batch', async (c) => {
 app.get('/orders', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
-  const page = Number(c.req.query('page') || 1)
-  const limit = Number(c.req.query('limit') || 20)
+  const page = Math.max(1, Number(c.req.query('page') || 1))
+  const limit = Math.min(Math.max(1, Number(c.req.query('limit') || 20)), 100)
   const offset = (page - 1) * limit
   const sellerId = c.req.query('seller_id')
 
@@ -946,7 +946,7 @@ app.post('/invite-seller', async (c) => {
   const existing = await c.env.DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first()
   if (existing) return c.json({ success: false, error: '이미 사용 중인 이메일입니다.' }, 409)
 
-  const { hashPassword: hashPw } = await import('@/lib/password')
+  const { hashPassword: hashPw } = await import('../../../lib/password')
   const hash = await hashPw(password)
 
   // 셀러 계정 생성 (승인 상태)

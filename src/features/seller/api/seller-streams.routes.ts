@@ -82,8 +82,8 @@ sellerStreamsRoutes.get('/', async (c) => {
     
     // Query parameters for filtering
     const status = c.req.query('status'); // 'scheduled', 'live', 'ended'
-    const limit = parseInt(c.req.query('limit') || '10');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = Math.min(Math.max(1, parseInt(c.req.query('limit') || '10')), 100);
+    const offset = Math.max(0, parseInt(c.req.query('offset') || '0'));
 
     let query = `
       SELECT
@@ -238,7 +238,7 @@ sellerStreamsRoutes.post('/', async (c) => {
 
     // 팔로워에게 방송 예고 알림
     try {
-      const { notifyFollowers } = await import('@/lib/notifications');
+      const { notifyFollowers } = await import('../../../lib/notifications');
       notifyFollowers(db, sellerId, 'stream_scheduled',
         `📺 새 라이브 예고!`,
         `${title}`,
@@ -352,7 +352,7 @@ sellerStreamsRoutes.put('/:id', async (c) => {
         c.executionCtx?.waitUntil?.(
           (async () => {
             try {
-              const { sendKakaoMessageToSubscribers, sendKakaoToFollowers } = await import('@/lib/notifications');
+              const { sendKakaoMessageToSubscribers, sendKakaoToFollowers } = await import('../../../lib/notifications');
               const stream = await db.prepare('SELECT title FROM live_streams WHERE id = ?').bind(streamId).first<{ title: string }>();
               const seller = await db.prepare('SELECT name FROM sellers WHERE id = ?').bind(sellerId).first<{ name: string }>();
               const sellerName = seller?.name || '셀러';
