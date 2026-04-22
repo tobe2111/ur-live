@@ -48,8 +48,21 @@ async function ensureTable(DB: D1Database): Promise<void> {
   }
 }
 
+/**
+ * Suggested TTLs.
+ *
+ * Payment-critical flows (Toss confirm, point charge) should use at least
+ * 7 days: if a retry arrives after the key expires we'd re-execute against
+ * Toss, potentially charging twice. Discord webhooks / audit-only flows
+ * can live with 24h.
+ */
+export const IDEMPOTENCY_TTL = {
+  DEFAULT: 24 * 60 * 60,          // 24h
+  PAYMENT: 7 * 24 * 60 * 60,      // 7 days — money paths
+} as const;
+
 export interface IdempotencyOptions {
-  /** TTL in seconds (default 24h). */
+  /** TTL in seconds (default 24h, use IDEMPOTENCY_TTL.PAYMENT for money paths). */
   ttlSeconds?: number;
   /**
    * How to behave when the same (key, user) request is already **in progress**
@@ -88,7 +101,7 @@ export async function idempotentWrite<T>(
     // Missing inputs → fall back to un-guarded execution (defensive).
     return operation();
   }
-  const ttlSeconds = opts.ttlSeconds ?? 24 * 60 * 60;
+  const ttlSeconds = opts.ttlSeconds ?? IDEMPOTENCY_TTL.DEFAULT;
   const userIdStr = String(userId);
 
   await ensureTable(DB);

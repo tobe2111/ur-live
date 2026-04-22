@@ -28,6 +28,21 @@ communityGroupBuyRoutes.use('*', cors({
 }));
 
 // ── 테이블 자동 생성 + 마이그레이션 ───────────────────────────────────
+async function ensureRefundTable(DB: D1Database) {
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS community_group_buy_refunds (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        refunded_at DATETIME DEFAULT (datetime('now')),
+        UNIQUE(group_id, user_id)
+      )
+    `).run();
+  } catch { /* exists */ }
+}
+
 async function ensureTables(DB: D1Database) {
   try {
     await DB.prepare(`
@@ -554,8 +569,19 @@ communityGroupBuyRoutes.post('/:id/refund', requireAuth(), async (c) => {
   // user_points 테이블 보장
   await ensureUserPointsTable(DB);
 
+  // SECURITY (HIGH-6): 환불 idempotency 테이블 보장
+  await ensureRefundTable(DB);
+
   let refundCount = 0;
   for (const member of members) {
+    // SECURITY (HIGH-6): 동일 group_id + user_id 중복 환불 방지
+    const alreadyRefunded = await queryFirst<{ id: number }>(
+      DB,
+      'SELECT id FROM community_group_buy_refunds WHERE group_id = ? AND user_id = ?',
+      [group.id, member.user_id],
+    );
+    if (alreadyRefunded) continue; // 이미 환불 처리됨
+
     // 딜 포인트 환불 — user_points UPSERT
     try {
       const existingPts = await queryFirst<{ balance: number }>(
@@ -597,6 +623,17 @@ communityGroupBuyRoutes.post('/:id/refund', requireAuth(), async (c) => {
       "UPDATE community_group_buy_members SET status = 'refunded' WHERE id = ?",
       [member.id],
     );
+
+    // SECURITY (HIGH-6): idempotency 기록 (UNIQUE 제약으로 중복 삽입 방지)
+    try {
+      await executeRun(
+        DB,
+        "INSERT OR IGNORE INTO community_group_buy_refunds (group_id, user_id, amount, refunded_at) VALUES (?, ?, ?, datetime('now'))",
+        [group.id, member.user_id, member.deposit_amount],
+      );
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn('[refund-idempotency]', e);
+    }
 
     refundCount++;
   }
@@ -664,14 +701,18 @@ communityGroupBuyRoutes.patch('/:id/status', requireAuth(), async (c) => {
   });
 });
 
-// ── GET /popular — 50명 이상 그룹 (어드민 대시보드 Phase 2) ───────────
+// ── GET /popular — 50명 이상 그룹 (공개 목록) ───────────────────────────
+// SECURITY (MED-3): 공개 엔드포인트이므로 PII(주소, 전화, 생성자 id) 제외
 communityGroupBuyRoutes.get('/popular', async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
   const groups = await executeQuery<any>(
     DB,
-    `SELECT * FROM community_group_buys
+    `SELECT id, restaurant_name, proposed_price, confirmed_price,
+            confirmed_discount_percent, deposit_per_person, target_count,
+            current_count, status, invite_code, expires_at, created_at
+     FROM community_group_buys
      WHERE current_count >= 50
      ORDER BY current_count DESC
      LIMIT 50`,

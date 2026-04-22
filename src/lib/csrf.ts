@@ -1,10 +1,26 @@
 /**
  * CSRF (Cross-Site Request Forgery) Protection
- * 
+ *
  * 토큰 기반 CSRF 보호 구현
  * - 세션별 고유 토큰 생성
  * - 요청 시 토큰 검증
  * - Double Submit Cookie 패턴 사용
+ *
+ * ⚠️ KNOWN LIMITATION — Double Submit without session binding:
+ *    The plain Double Submit Cookie pattern only verifies that the header
+ *    value matches the cookie value. If an attacker controls any subdomain
+ *    (e.g. compromised blog.example.com) they can SET the csrf_token cookie
+ *    on the parent domain and then forge requests — their chosen cookie
+ *    value will match their chosen header value.
+ *
+ *    Mitigations in place:
+ *      1. SameSite=Strict on the cookie (blocks most cross-site sends).
+ *      2. Bearer-token requests skip CSRF (Authorization header can't be set
+ *         cross-origin without CORS pre-flight).
+ *
+ *    For stronger protection use `generateSignedCsrfToken(sessionId, secret)`
+ *    and `verifySignedCsrfToken(...)` below, which HMAC-bind the token to a
+ *    server-side session identifier. Migration is tracked as a follow-up.
  */
 
 import { Context } from 'hono';
@@ -23,6 +39,72 @@ export function generateCsrfToken(): string {
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
+}
+
+// ──────────────────────────────────────────────────────────────
+// Session-bound (HMAC) CSRF tokens
+// ──────────────────────────────────────────────────────────────
+//
+// Format: base64url(random16).base64url(HMAC-SHA256(secret, sessionId))
+//
+// Attacker cannot forge a valid second half without the server secret, so
+// even if they force-set the csrf_token cookie from a subdomain, the HMAC
+// portion will still be bound to the ACTUAL session (which they don't have).
+
+function b64urlEncode(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+async function hmacSessionId(sessionId: string, secret: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(sessionId));
+  return b64urlEncode(new Uint8Array(sig));
+}
+
+/**
+ * Generate a CSRF token bound (via HMAC) to the server-side session.
+ * Defends against subdomain cookie-forcing attacks that defeat plain
+ * Double-Submit.
+ */
+export async function generateSignedCsrfToken(
+  sessionId: string,
+  secret: string,
+): Promise<string> {
+  if (!sessionId || !secret) {
+    throw new Error('generateSignedCsrfToken: sessionId and secret are required');
+  }
+  const rand = new Uint8Array(16);
+  crypto.getRandomValues(rand);
+  const randPart = b64urlEncode(rand);
+  const sigPart = await hmacSessionId(sessionId, secret);
+  return `${randPart}.${sigPart}`;
+}
+
+/**
+ * Verify a session-bound CSRF token. Returns true only if the signature
+ * part was produced by our server (via `secret`) for this exact `sessionId`.
+ */
+export async function verifySignedCsrfToken(
+  token: string | undefined,
+  sessionId: string,
+  secret: string,
+): Promise<boolean> {
+  if (!token || !sessionId || !secret) return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  const [, providedSig] = parts;
+  const expectedSig = await hmacSessionId(sessionId, secret);
+  return timingSafeEqualStr(providedSig, expectedSig);
 }
 
 /** Constant-time string comparison to avoid timing leaks on token check. */

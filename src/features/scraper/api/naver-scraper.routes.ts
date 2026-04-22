@@ -11,6 +11,7 @@
 
 import { Hono } from 'hono';
 import type { Env } from '../../../worker/types/env';
+import { rateLimit } from '../../../worker/middleware/rate-limit';
 
 const naverScraper = new Hono<{ Bindings: Env }>();
 
@@ -233,8 +234,9 @@ naverScraper.post('/extract', async (c) => {
 
 // ════════════════════════════════════════════════════════════════════
 // 통합: 1단계 + 2단계 한번에 (빠른 테스트용, 키워드당 ~10개)
+// SECURITY (HIGH-4): rate limit — 시간당 10회 (외부 트래픽 남용 방지)
 // ════════════════════════════════════════════════════════════════════
-naverScraper.post('/scrape', async (c) => {
+naverScraper.post('/scrape', rateLimit({ action: 'scraper_scrape', max: 10, windowSec: 3600 }), async (c) => {
   if (!await verifyAdmin(c)) return c.json({ error: 'Admin only' }, 401);
 
   const { keyword } = await c.req.json<{ keyword: string }>();

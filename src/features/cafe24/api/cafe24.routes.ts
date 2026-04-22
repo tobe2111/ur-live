@@ -11,6 +11,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { requireAdmin } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
@@ -49,6 +50,15 @@ cafe24Routes.get('/auth-url', requireAdmin() as any, async (c) => {
   const scopes = 'mall.read_product,mall.write_product,mall.read_order,mall.write_order';
   const state = crypto.randomUUID();
 
+  // SECURITY (MED-1): CSRF 방지를 위해 state를 HttpOnly 쿠키에 저장
+  setCookie(c, 'cafe24_oauth_state', state, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Lax',
+    path: '/',
+    maxAge: 600, // 10분
+  });
+
   const authUrl =
     `https://${CAFE24_MALL_ID}.cafe24api.com/api/v2/oauth/authorize` +
     `?response_type=code` +
@@ -67,12 +77,22 @@ cafe24Routes.get('/callback', async (c) => {
 
   const code = c.req.query('code');
   const error = c.req.query('error');
+  const receivedState = c.req.query('state');
 
   if (error || !code) {
     // Redirect back to admin page with error
     const adminUrl = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24?error=${error || 'no_code'}`;
     return c.redirect(adminUrl);
   }
+
+  // SECURITY (MED-1): state 파라미터 검증 (CSRF 방지)
+  const cookieState = getCookie(c, 'cafe24_oauth_state');
+  if (!receivedState || !cookieState || receivedState !== cookieState) {
+    deleteCookie(c, 'cafe24_oauth_state', { path: '/' });
+    const adminUrl = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24?error=invalid_state`;
+    return c.redirect(adminUrl);
+  }
+  deleteCookie(c, 'cafe24_oauth_state', { path: '/' });
 
   if (!CAFE24_CLIENT_ID || !CAFE24_CLIENT_SECRET || !CAFE24_MALL_ID) {
     return c.json({ success: false, error: 'Cafe24 환경변수 누락' }, 500);
@@ -179,15 +199,44 @@ cafe24Routes.post('/disconnect', requireAdmin() as any, async (c) => {
 
 // ── POST /webhook ──────────────────────────────────────────────────
 // Cafe24 webhook for product changes (optional, for auto-sync)
+// SECURITY: HMAC-SHA256 서명 검증 (X-Cafe24-Hmac-Sha256 헤더)
 cafe24Routes.post('/webhook', async (c) => {
-  const { DB, CAFE24_CLIENT_ID, CAFE24_CLIENT_SECRET, CAFE24_MALL_ID } = c.env;
+  const { DB, CAFE24_CLIENT_ID, CAFE24_CLIENT_SECRET, CAFE24_MALL_ID, CAFE24_WEBHOOK_SECRET } = c.env;
 
   if (!CAFE24_MALL_ID || !CAFE24_CLIENT_ID || !CAFE24_CLIENT_SECRET) {
     return c.json({ success: false }, 400);
   }
 
+  // Webhook 시크릿 미설정 시 요청 거부 (안전 기본값)
+  if (!CAFE24_WEBHOOK_SECRET) {
+    return c.json({ success: false, error: 'webhook not configured' }, 503);
+  }
+
+  const signature = c.req.header('X-Cafe24-Hmac-Sha256') || '';
+  const rawBody = await c.req.text();
+
   try {
-    const body = await c.req.json();
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(CAFE24_WEBHOOK_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
+    const sigBuf = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
+    const computed = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+
+    if (!signature || signature !== computed) {
+      return c.json({ success: false, error: 'Invalid signature' }, 401);
+    }
+  } catch (err) {
+    console.error('[Cafe24 Webhook] Signature verification failed:', err);
+    return c.json({ success: false, error: 'Signature verification failed' }, 401);
+  }
+
+  try {
+    const body = JSON.parse(rawBody);
     const eventType = body.event_no;
 
     // product events: product create/update/delete

@@ -83,8 +83,9 @@ export async function ensurePointTransactionsTable(DB: D1Database): Promise<void
         created_at DATETIME DEFAULT (datetime('now'))
       )
     `).run()
-  } catch {
+  } catch (e) {
     // Already exists — fine.
+    logDev('ensurePointTransactionsTable', e)
   }
 }
 
