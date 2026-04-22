@@ -14,6 +14,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
 import { hashPassword, validatePasswordComplexity } from '@/lib/password';
+import { requireSeller, getCurrentUser } from '@/worker/middleware/auth';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { ApiError } from '@/shared/types/common';
 import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE, MIN_PASSWORD_LENGTH } from '@/shared/constants';
@@ -1520,14 +1521,11 @@ sellerManagementRoutes.post('/products/:id/options', async (c) => {
 // GET   /api/seller/alimtalk/messages — 발송 내역
 // POST  /api/seller/alimtalk/charge   — 충전 요청
 
-sellerManagementRoutes.get('/alimtalk', async (c) => {
+sellerManagementRoutes.get('/alimtalk', requireSeller(), async (c) => {
   const { DB } = c.env;
   try {
-    const sellerIdRaw = c.req.header('Authorization');
-    const payload = sellerIdRaw?.startsWith('Bearer ')
-      ? JSON.parse(atob(sellerIdRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-      : null;
-    const sellerId = payload?.seller_id;
+    const authUser = getCurrentUser(c);
+    const sellerId = authUser?.id;
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const account = await DB.prepare(
@@ -1549,14 +1547,11 @@ sellerManagementRoutes.get('/alimtalk', async (c) => {
   }
 });
 
-sellerManagementRoutes.post('/alimtalk', async (c) => {
+sellerManagementRoutes.post('/alimtalk', requireSeller(), async (c) => {
   const { DB } = c.env;
   try {
-    const sellerIdRaw = c.req.header('Authorization');
-    const payload = sellerIdRaw?.startsWith('Bearer ')
-      ? JSON.parse(atob(sellerIdRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-      : null;
-    const sellerId = payload?.seller_id;
+    const authUser = getCurrentUser(c);
+    const sellerId = authUser?.id;
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const body = await c.req.json<{
@@ -1595,14 +1590,11 @@ sellerManagementRoutes.post('/alimtalk', async (c) => {
 });
 
 // ─── GET /api/seller/alimtalk/balance — 잔액 조회 ──────────────────────
-sellerManagementRoutes.get('/alimtalk/balance', async (c) => {
+sellerManagementRoutes.get('/alimtalk/balance', requireSeller(), async (c) => {
   const { DB } = c.env;
   try {
-    const sellerIdRaw = c.req.header('Authorization');
-    const payload = sellerIdRaw?.startsWith('Bearer ')
-      ? JSON.parse(atob(sellerIdRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-      : null;
-    const sellerId = payload?.seller_id;
+    const authUser = getCurrentUser(c);
+    const sellerId = authUser?.id;
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const account = await DB.prepare(
@@ -1617,14 +1609,11 @@ sellerManagementRoutes.get('/alimtalk/balance', async (c) => {
 });
 
 // ─── POST /api/seller/alimtalk/test — 테스트 발송 ──────────────────────
-sellerManagementRoutes.post('/alimtalk/test', async (c) => {
+sellerManagementRoutes.post('/alimtalk/test', requireSeller(), async (c) => {
   const { DB } = c.env;
   try {
-    const sellerIdRaw = c.req.header('Authorization');
-    const payload = sellerIdRaw?.startsWith('Bearer ')
-      ? JSON.parse(atob(sellerIdRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-      : null;
-    const sellerId = payload?.seller_id;
+    const authUser = getCurrentUser(c);
+    const sellerId = authUser?.id;
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const { phone } = await c.req.json<{ phone: string }>();
@@ -1667,14 +1656,11 @@ sellerManagementRoutes.post('/alimtalk/test', async (c) => {
 });
 
 // ─── POST /api/seller/alimtalk/send — 알림톡 발송 ──────────────────────
-sellerManagementRoutes.post('/alimtalk/send', async (c) => {
+sellerManagementRoutes.post('/alimtalk/send', requireSeller(), async (c) => {
   const { DB } = c.env;
   try {
-    const sellerIdRaw = c.req.header('Authorization');
-    const payload = sellerIdRaw?.startsWith('Bearer ')
-      ? JSON.parse(atob(sellerIdRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-      : null;
-    const sellerId = payload?.seller_id;
+    const authUser = getCurrentUser(c);
+    const sellerId = authUser?.id;
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const body = await c.req.json<{
@@ -1781,14 +1767,11 @@ sellerManagementRoutes.post('/alimtalk/send', async (c) => {
 });
 
 // ─── GET /api/seller/alimtalk/messages — 발송 내역 ──────────────────────
-sellerManagementRoutes.get('/alimtalk/messages', async (c) => {
+sellerManagementRoutes.get('/alimtalk/messages', requireSeller(), async (c) => {
   const { DB } = c.env;
   try {
-    const sellerIdRaw = c.req.header('Authorization');
-    const payload = sellerIdRaw?.startsWith('Bearer ')
-      ? JSON.parse(atob(sellerIdRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-      : null;
-    const sellerId = payload?.seller_id;
+    const authUser = getCurrentUser(c);
+    const sellerId = authUser?.id;
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const page = parseInt(c.req.query('page') || '1', 10);
@@ -1822,14 +1805,11 @@ sellerManagementRoutes.get('/alimtalk/messages', async (c) => {
 });
 
 // ─── POST /api/seller/alimtalk/charge — 충전 요청 ──────────────────────
-sellerManagementRoutes.post('/alimtalk/charge', async (c) => {
+sellerManagementRoutes.post('/alimtalk/charge', requireSeller(), async (c) => {
   const { DB } = c.env;
   try {
-    const sellerIdRaw = c.req.header('Authorization');
-    const payload = sellerIdRaw?.startsWith('Bearer ')
-      ? JSON.parse(atob(sellerIdRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-      : null;
-    const sellerId = payload?.seller_id;
+    const authUser = getCurrentUser(c);
+    const sellerId = authUser?.id;
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const body = await c.req.json<{ amount: number; payment_method?: string }>();

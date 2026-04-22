@@ -17,7 +17,6 @@ import type { Env } from './types/env';
 import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
-import { productsRouter } from './routes/product.routes';
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
 import { stripeRouter } from './routes/stripe.routes';
@@ -515,11 +514,6 @@ app.route('/api/streams', streamsRouter);
 // ============================================================
 // Product & Seller Routes
 // ============================================================
-
-// ✅ Feature products 가 먼저 처리 (응답 포맷: { success, data: [...], pagination })
-// Worker-native productsRouter는 Hono 라우트 겹침 방지를 위해 주석 처리
-// (featureProductsRoutes가 GET / 와 GET /:id 를 모두 처리함)
-// app.route('/api/products', productsRouter); // 제거: featureProductsRoutes와 충돌
 
 // Feature products (extended CRUD) — 유일한 /api/products 핸들러
 app.route('/api/products', featureProductsRoutes);
