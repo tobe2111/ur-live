@@ -758,6 +758,105 @@ app.get('/api/_internal/smoke-test', async (c) => {
   });
 });
 
+// ============================================================
+// 🩺 인증 스모크 테스트
+// GET /api/_internal/smoke-test-auth
+// 임시 JWT 토큰을 생성해 보호된 GET 엔드포인트를 호출.
+// 5xx = 인증 통과 후 핸들러 자체가 크래시한다는 뜻 → 실패로 카운트.
+// ============================================================
+app.get('/api/_internal/smoke-test-auth', async (c) => {
+  const { sign } = await import('hono/jwt');
+  const origin = new URL(c.req.url).origin;
+  const jwtSecret = (c.env as any).JWT_SECRET;
+
+  if (!jwtSecret) {
+    return c.json({ success: false, error: 'JWT_SECRET not configured' }, 500);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+
+  // Admin token — also works for user-level endpoints
+  const adminToken = await sign(
+    { sub: '0', email: 'smoke@test.internal', type: 'admin', role: 'super_admin', iat: now, exp: now + 60 },
+    jwtSecret
+  );
+
+  // Seller token — for seller-scoped endpoints
+  const sellerToken = await sign(
+    { sub: '0', email: 'smoke@test.internal', type: 'seller', seller_id: 0, iat: now, exp: now + 60 },
+    jwtSecret
+  );
+
+  const endpoints: Array<{ path: string; token: string; cat: string }> = [
+    // ── 어드민 ──────────────────────────────────────────
+    { cat: 'admin', path: '/api/admin/users', token: adminToken },
+    { cat: 'admin', path: '/api/admin/sellers', token: adminToken },
+    { cat: 'admin', path: '/api/admin/orders', token: adminToken },
+    { cat: 'admin', path: '/api/admin/banners', token: adminToken },
+    { cat: 'admin', path: '/api/admin/agencies', token: adminToken },
+    { cat: 'admin', path: '/api/admin/metrics', token: adminToken },
+    { cat: 'admin', path: '/api/admin/flags', token: adminToken },
+    { cat: 'admin', path: '/api/admin/blog', token: adminToken },
+    { cat: 'admin', path: '/api/admin/tools/sellers', token: adminToken },
+    { cat: 'admin', path: '/api/admin/tools/settlements', token: adminToken },
+
+    // ── 유저 (admin token으로 호출 — sub=0) ─────────────
+    { cat: 'user', path: '/api/orders', token: adminToken },
+    { cat: 'user', path: '/api/cart', token: adminToken },
+    { cat: 'user', path: '/api/points/balance', token: adminToken },
+    { cat: 'user', path: '/api/points/history', token: adminToken },
+    { cat: 'user', path: '/api/notifications', token: adminToken },
+    { cat: 'user', path: '/api/shipping-addresses', token: adminToken },
+    { cat: 'user', path: '/api/wishlists/0', token: adminToken },
+
+    // ── 셀러 ──────────────────────────────────────────
+    { cat: 'seller', path: '/api/seller/orders', token: sellerToken },
+    { cat: 'seller', path: '/api/seller/products', token: sellerToken },
+  ];
+
+  // Total: 19 subrequests — well within 45 limit
+
+  const results: Array<{ cat: string; path: string; status: number; ok: boolean; ms: number }> = [];
+  const catStats: Record<string, { total: number; passed: number; failed: number }> = {};
+  let fail5xx = 0;
+
+  for (const ep of endpoints) {
+    const start = Date.now();
+    let status = 0;
+    try {
+      const res = await fetch(`${origin}${ep.path}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${ep.token}` },
+      });
+      status = res.status;
+    } catch {
+      status = 0;
+    }
+    const ms = Date.now() - start;
+    const is5xx = status >= 500 || status === 0;
+    if (is5xx) fail5xx++;
+
+    catStats[ep.cat] = catStats[ep.cat] || { total: 0, passed: 0, failed: 0 };
+    catStats[ep.cat].total++;
+    if (is5xx) catStats[ep.cat].failed++;
+    else catStats[ep.cat].passed++;
+
+    results.push({ cat: ep.cat, path: ep.path, status, ok: !is5xx, ms });
+  }
+
+  const failures = results.filter(r => !r.ok);
+
+  return c.json({
+    success: fail5xx === 0,
+    tested: endpoints.length,
+    passed: endpoints.length - fail5xx,
+    failed5xx: fail5xx,
+    byCategory: catStats,
+    failures: failures.length > 0 ? failures : undefined,
+    allResults: results,
+  });
+});
+
 // 배포 검증용 — 현재 worker 빌드가 언제 / 어떤 커밋에서 빌드됐는지 즉시 확인
 // 이 핸들러의 존재 자체가 "최신 배포 반영" 증거
 app.get('/api/debug/build-info', requireAdmin(), (c) => {
