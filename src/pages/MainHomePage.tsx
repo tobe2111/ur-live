@@ -58,13 +58,13 @@ function RecentlyViewed() {
       <h2 className="text-[15px] font-bold text-white mb-3">최근 본 상품</h2>
       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
         {items.map(p => (
-          <div key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-28 cursor-pointer">
+          <button type="button" key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-28 cursor-pointer text-left">
             <div className="aspect-square bg-[#1A1A1A] rounded-xl overflow-hidden">
               {p.image && <img src={p.image} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />}
             </div>
             <p className="text-xs text-gray-300 mt-1.5 truncate">{p.name}</p>
             <p className="text-xs font-bold text-white">{p.price?.toLocaleString()}원</p>
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -347,7 +347,7 @@ export default function MainHomePage() {
               const timeLabel = schedDate ? schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
               return (
                 <div key={s.id} className="shrink-0 w-[170px] text-left">
-                  <div onClick={() => navigate(`/live/${s.id}`)} className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1A1A1A] cursor-pointer">
+                  <button type="button" onClick={() => navigate(`/live/${s.id}`)} className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-[#1A1A1A] cursor-pointer text-left">
                     {thumb && <img src={thumb} alt={s.title || '예정 방송'} loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-500 px-2 py-0.5 rounded-md">
@@ -358,7 +358,7 @@ export default function MainHomePage() {
                       {timeLabel && <p className="text-[18px] font-black text-white">{timeLabel}</p>}
                       <p className="text-[10px] text-white/70 truncate">@{s.seller_name || '셀러'}</p>
                     </div>
-                  </div>
+                  </button>
                   <p className="text-[11px] text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
                   <div className="mt-1.5">
                     <BroadcastNotifyButton streamId={s.id} compact />
@@ -454,7 +454,7 @@ export default function MainHomePage() {
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left">
                     <div className="relative rounded-lg overflow-hidden aspect-square bg-[#1A1A1A]">
-                      {p.image_url && <img src={p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />}
+                      {p.image_url && <img src={p.image_url} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />}
                       {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
                     </div>
                     <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>

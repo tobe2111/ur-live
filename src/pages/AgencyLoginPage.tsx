@@ -96,36 +96,41 @@ export default function AgencyLoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
+                <label htmlFor="agency-email" className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
+                    id="agency-email"
                     type="email"
                     required
                     value={formData.email}
                     onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
                     placeholder="agency@example.com"
+                    aria-label="이메일"
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
+                <label htmlFor="agency-password" className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
+                    id="agency-password"
                     type={showPw ? 'text' : 'password'}
                     required
                     value={formData.password}
                     onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
                     placeholder="비밀번호 입력"
+                    aria-label="비밀번호"
                     className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw(!showPw)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 보기'}
                   >
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
