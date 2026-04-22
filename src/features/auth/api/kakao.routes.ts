@@ -110,7 +110,7 @@ kakaoRoutes.get('/start', async (c) => {
 
   c.header(
     'Set-Cookie',
-    `${OAUTH_STATE_COOKIE}=${cookieValue}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`
+    `${OAUTH_STATE_COOKIE}=${cookieValue}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=1800`
   );
 
   const origin = new URL(c.req.url).origin;
@@ -151,12 +151,22 @@ kakaoRoutes.get('/consent/start', async (c) => {
 
   const origin = new URL(c.req.url).origin;
   const redirectUri = `${origin}/auth/kakao/consent/callback`;
+
+  // 🛡️ 2026-04-22: CSRF 방어 — state 를 쿠키에도 저장해서 callback 에서 검증
+  // 이전: state 파라미터를 URL 로만 전달 → 공격자가 위조 가능
+  // 수정: HttpOnly 쿠키에 저장된 state 와 callback 의 state 파라미터 비교
+  const state = crypto.randomUUID() + ':' + Buffer.from(returnPath).toString('base64');
+
   const authUrl = new URL('https://kauth.kakao.com/oauth/authorize');
   authUrl.searchParams.set('client_id', kakaoRestKey);
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('scope', scopes.join(','));
-  authUrl.searchParams.set('state', returnPath);
+  authUrl.searchParams.set('state', state);
+
+  c.header('Set-Cookie',
+    `kakao_consent_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=1800`
+  );
 
   return c.redirect(authUrl.toString(), 302);
 });

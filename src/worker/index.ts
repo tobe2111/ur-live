@@ -351,7 +351,9 @@ app.route('/api/health/detailed', healthRoutes);
 // GET /api/_internal/health-dashboard
 // DB latency, 테이블 행 수, 최근 에러 수, 배포 시점 등 운영자용 종합 지표
 // ============================================================
-app.get('/api/_internal/health-dashboard', async (c) => {
+// 🛡️ 2026-04-22: admin 전용 (또는 INTERNAL_OPS_TOKEN 헤더 매치).
+// 이전: 누구나 호출 가능 → DB 스키마 조작, 내부 구조 노출 위험.
+app.get('/api/_internal/health-dashboard', requireAdmin(), async (c) => {
   const env = c.env as any;
   const DB = env.DB as D1Database;
   const start = Date.now();
@@ -571,7 +573,8 @@ async function ensureMigrationTrackingTable(DB: D1Database) {
   `).run().catch(() => {});
 }
 
-app.get('/api/_internal/repair-schema', async (c) => {
+// 🛡️ 2026-04-22: admin 전용. 이전: 공개 → 누구나 DB 스키마 수정 가능 (CRITICAL)
+app.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
   const env = c.env as any;
   const DB = env.DB as D1Database;
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
@@ -831,7 +834,8 @@ app.get('/api/_internal/repair-schema', async (c) => {
 // 모든 공개 API를 내부 fetch 로 호출하고 5xx 여부 리포트.
 // 인증 필요 없는 엔드포인트만 테스트 (401은 정상으로 간주).
 // ============================================================
-app.get('/api/_internal/smoke-test', async (c) => {
+// 🛡️ 2026-04-22: admin 전용. 내부 엔드포인트 구조 노출 차단.
+app.get('/api/_internal/smoke-test', requireAdmin(), async (c) => {
   const origin = new URL(c.req.url).origin;
   // 🛡️ Cloudflare Workers 의 subrequest 제한(50/invocation) 회피를 위해 chunk 지원.
   // /api/_internal/smoke-test          → 자동으로 처음 45개만

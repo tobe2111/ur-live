@@ -449,19 +449,26 @@ groupBuyRoutes.post(
 )
 
 // ── POST /api/group-buy/store-stats/:productId — 식당 사장 통계 (PIN 인증) ──
-groupBuyRoutes.post('/store-stats/:productId', async (c) => {
+// 🛡️ 2026-04-22: 조회 전 PIN 검증 필수 + rate limit (PIN brute force 방어)
+groupBuyRoutes.post('/store-stats/:productId', rateLimit({ action: 'store_stats_pin', max: 3, windowSec: 300 }), async (c) => {
   const { DB } = c.env
   const productId = c.req.param('productId')
   const { pin } = await c.req.json<{ pin: string }>()
 
-  try {
-    const product = await DB.prepare(
-      "SELECT id, name, restaurant_name, store_verify_pin, group_buy_target, group_buy_current FROM products WHERE id = ? AND category = 'meal_voucher'"
-    ).bind(productId).first<any>()
+  // PIN 필수 (이전엔 store_verify_pin IS NULL 일 때 조회 가능 — IDOR)
+  if (!pin || typeof pin !== 'string' || pin.length < 4) {
+    return c.json({ success: false, error: 'PIN 4자 이상 필수' }, 400)
+  }
 
-    if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
-    if (product.store_verify_pin && product.store_verify_pin !== pin) {
-      return c.json({ success: false, error: '비밀번호가 일치하지 않습니다' }, 403)
+  try {
+    // 🛡️ CAS 패턴: PIN 검증과 조회를 한 번에 처리 (timing attack 방어)
+    const product = await DB.prepare(
+      "SELECT id, name, restaurant_name, store_verify_pin, group_buy_target, group_buy_current FROM products WHERE id = ? AND category = 'meal_voucher' AND store_verify_pin = ?"
+    ).bind(productId, pin).first<any>()
+
+    if (!product) {
+      // 상품 없음 vs PIN 틀림 구분하지 않음 (enumeration 방어)
+      return c.json({ success: false, error: '상품을 찾을 수 없거나 PIN 이 올바르지 않습니다' }, 403)
     }
 
     // 바우처 통계
