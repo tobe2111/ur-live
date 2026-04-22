@@ -21,6 +21,7 @@ import {
   internalServerErrorResponse
 } from '@/worker/utils/response';
 import { maskEmail } from '@/lib/mask';
+import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
 
 type Bindings = {
   DB: D1Database;
@@ -199,17 +200,32 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       }, 403);
     }
 
+    // 🛡️ 2026-04-22: 계정 잠금 확인 (brute force 방어)
+    const lockStatus = await checkLockout(DB, 'seller', String(seller.id));
+    if (lockStatus.locked) {
+      return c.json<AuthResponse>({
+        success: false,
+        error: lockStatus.reason || '계정이 일시 잠금되었습니다.',
+        code: 'ACCOUNT_LOCKED',
+      }, 423); // 423 Locked
+    }
+
     // 3. 비밀번호 검증
     const passwordHash = seller.password_hash as string;
     const { valid } = await verifyPassword(password, passwordHash);
 
     if (!valid) {
       if (import.meta.env.DEV) console.warn('[Seller Login] Invalid password for:', maskEmail(email));
+      // 🛡️ 실패 카운터 증가
+      await recordFailure(DB, 'seller', String(seller.id));
       return c.json<AuthResponse>({
         success: false,
         error: '이메일 또는 비밀번호가 올바르지 않습니다.'
       }, 401);
     }
+
+    // 🛡️ 성공 시 실패 카운터 초기화
+    await clearFailures(DB, 'seller', String(seller.id));
     
     // 4. JWT 생성
     const payload = {

@@ -64,6 +64,7 @@ import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/
 import { requireAdmin } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
 import { rateLimit } from './middleware/rate-limit';
+import { botProtection } from './middleware/bot-detection';
 import { bodyLimit } from './middleware/body-limit';
 import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 
@@ -1355,6 +1356,18 @@ app.route('/api/auth', authTokenRoutes);
 // Feature: Kakao OAuth  →  /auth/kakao/sync/callback + /api/auth/kakao/*
 app.route('/auth/kakao', kakaoRoutes);
 app.route('/api/auth/kakao', kakaoRoutes);
+
+// 🛡️ 2026-04-22: 민감 endpoint 에 bot protection 적용 — 자동화 도구 차단
+// 합법 bot (Googlebot, Kakao 등) 은 allowlist 로 통과.
+app.use('/api/auth/register', botProtection());
+app.use('/api/auth/login', botProtection());
+app.use('/api/seller/register', botProtection());
+app.use('/api/seller/login', botProtection());
+app.use('/api/admin/login', botProtection());
+app.use('/api/agency/login', botProtection());
+app.use('/api/auth/forgot-password', botProtection());
+app.use('/api/seller/forgot-password', botProtection());
+app.use('/api/agency/forgot-password', botProtection());
 
 // Feature: Admin auth — rate limited: 5 attempts per 5 min per IP
 app.use('/api/admin/login', rateLimit({ action: 'admin_login', max: 5, windowSec: 300 }));
