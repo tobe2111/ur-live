@@ -322,7 +322,9 @@ adminManagementRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
-    const { reason } = await c.req.json();
+    const { reason: rawReason } = await c.req.json<{ reason?: string }>();
+    // 🛡️ 길이 제한 (DB bloat 방지)
+    const reason = typeof rawReason === 'string' ? rawReason.slice(0, 500) : null;
     const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     await executeQuery(DB, `UPDATE sellers SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
@@ -1268,7 +1270,7 @@ adminManagementRoutes.post('/settlement/execute', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const body = await c.req.json<{ period_start?: string; period_end?: string }>().catch(() => ({} as { period_start?: string; period_end?: string }));
-    const { calculateAutoSettlement, executeSettlement } = await import('@/lib/settlement-automation');
+    const { calculateAutoSettlement, executeSettlement } = await import('../../../lib/settlement-automation');
 
     // Preview mode: if dry_run query param is set, only calculate without executing
     const dryRun = c.req.query('dry_run') === 'true';
@@ -1393,8 +1395,10 @@ adminManagementRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => 
     const params: (string | null)[] = [status];
 
     if (status === 'CANCELLED' && cancel_reason) {
+      // 🛡️ 길이 제한 (DB bloat 방지)
+      const safeCancelReason = typeof cancel_reason === 'string' ? cancel_reason.slice(0, 500) : null;
       updates.push('cancel_reason = ?', 'cancelled_at = datetime(\'now\')');
-      params.push(cancel_reason);
+      params.push(safeCancelReason);
     }
     if (status === 'DELIVERED') {
       updates.push('delivered_at = datetime(\'now\')');
@@ -1402,7 +1406,7 @@ adminManagementRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => 
 
     // ✅ CONCURRENCY: state-machine CAS so admin cannot corrupt order flow
     // (e.g. DELIVERED → PENDING) or race with webhooks/seller updates.
-    const { statusesThatCanReach } = await import('@/worker/utils/state-machine');
+    const { statusesThatCanReach } = await import('../../../worker/utils/state-machine');
     const allowedPrev = statusesThatCanReach(status);
     if (allowedPrev.length === 0) {
       return c.json({ success: false, error: `상태 전환 불가: ${status}` }, 400);
@@ -1504,7 +1508,7 @@ adminManagementRoutes.patch('/orders/bulk-status', cors(), async (c) => {
     // ✅ CONCURRENCY: enforce state machine — skip rows whose current state
     // cannot legally transition to `status`. This prevents bulk ops from
     // regressing e.g. DELIVERED → SHIPPING.
-    const { statusesThatCanReach } = await import('@/worker/utils/state-machine');
+    const { statusesThatCanReach } = await import('../../../worker/utils/state-machine');
     const allowedPrev = statusesThatCanReach(status);
     if (allowedPrev.length === 0) {
       return c.json({ success: false, error: `잘못된 상태 값: ${status}` }, 400);
@@ -2452,9 +2456,29 @@ adminManagementRoutes.get('/coupons', cors(), async (c) => {
 adminManagementRoutes.post('/coupons', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const { code, name, type, value, min_order_amount, max_discount, total_count, expires_at } = await c.req.json();
-    if (!code || !name || !type || !value) return c.json({ success: false, error: '필수 항목 누락' }, 400);
-    await DB.prepare(`INSERT INTO coupons (code, name, type, value, min_order_amount, max_discount, total_count, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(code, name, type, value, min_order_amount || 0, max_discount || null, total_count || 0, expires_at || null).run();
+    const body = await c.req.json<{
+      code?: string; name?: string; type?: string; value?: number;
+      min_order_amount?: number; max_discount?: number; total_count?: number; expires_at?: string
+    }>();
+    const { code, name, type, value } = body;
+    if (!code || !name || !type || value === undefined) return c.json({ success: false, error: '필수 항목 누락' }, 400);
+
+    // 🛡️ 입력 검증 — 타입/길이/범위 (DB bloat + 논리 에러 방지)
+    if (typeof code !== 'string' || code.length > 50) return c.json({ success: false, error: 'code 50자 이하' }, 400);
+    if (typeof name !== 'string' || name.length > 100) return c.json({ success: false, error: 'name 100자 이하' }, 400);
+    if (!['percent', 'fixed'].includes(String(type))) return c.json({ success: false, error: 'type은 percent/fixed' }, 400);
+    const valNum = Number(value);
+    if (!Number.isFinite(valNum) || valNum < 0 || valNum > 10_000_000) return c.json({ success: false, error: 'value 0~1천만' }, 400);
+
+    const minOrder = Number(body.min_order_amount || 0);
+    const maxDisc = body.max_discount == null ? null : Number(body.max_discount);
+    const totalCnt = Number(body.total_count || 0);
+    if (!Number.isFinite(minOrder) || minOrder < 0) return c.json({ success: false, error: 'min_order_amount 음수 불가' }, 400);
+    if (maxDisc !== null && (!Number.isFinite(maxDisc) || maxDisc < 0)) return c.json({ success: false, error: 'max_discount 음수 불가' }, 400);
+    if (!Number.isFinite(totalCnt) || totalCnt < 0) return c.json({ success: false, error: 'total_count 음수 불가' }, 400);
+
+    await DB.prepare(`INSERT INTO coupons (code, name, type, value, min_order_amount, max_discount, total_count, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(code, name, type, valNum, minOrder, maxDisc, totalCnt, body.expires_at || null).run();
     return c.json({ success: true, message: '쿠폰이 생성되었습니다' });
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
