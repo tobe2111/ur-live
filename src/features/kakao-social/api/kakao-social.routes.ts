@@ -223,6 +223,7 @@ kakaoSocialRoutes.post('/message/send-to-subscribers', async (c) => {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: `template_object=${encodeURIComponent(templateObject)}`,
+          signal: AbortSignal.timeout(10_000),
         });
         sent++;
       } catch {}
@@ -253,6 +254,7 @@ kakaoSocialRoutes.post('/test/message', requireAdmin(), async (c) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `template_object=${encodeURIComponent(templateObject)}`,
+      signal: AbortSignal.timeout(10_000),
     });
     const data: any = await res.json();
 
@@ -287,6 +289,7 @@ kakaoSocialRoutes.post('/test/calendar', requireAdmin(), async (c) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `event=${encodeURIComponent(JSON.stringify(event))}`,
+      signal: AbortSignal.timeout(10_000),
     });
     const createData: any = await createRes.json();
 
@@ -299,6 +302,7 @@ kakaoSocialRoutes.post('/test/calendar', requireAdmin(), async (c) => {
     await fetch(`https://kapi.kakao.com/v2/api/calendar/delete/event?event_id=${createData.event_id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${access_token}` },
+      signal: AbortSignal.timeout(10_000),
     });
 
     return c.json({ success: true, detail: `일정 생성 성공 (event_id: ${createData.event_id}) → 삭제 완료` });
