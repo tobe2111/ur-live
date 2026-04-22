@@ -7,6 +7,9 @@ import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd } from '@/components/SEO'
 import SharePrompt from '@/components/SharePrompt'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
+// 🛡️ 2026-04-22: HeroBanner 통합 — 어드민 등록 배너가 메인페이지에 표시되도록 연결
+// 이전: HeroBanner 컴포넌트 존재하지만 MainHomePage 에 import 안 됨 → 어드민 배너 등록해도 메인에 안 뜸
+// 🛡️ 2026-04-22: HeroBanner 별도 섹션 제거. 어드민 배너를 Region Hero 의 배경 이미지로 사용 (풀스크린).
 
 interface LiveStream {
   id: number; title: string; youtube_video_id?: string; status: string
@@ -96,6 +99,8 @@ export default function MainHomePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [cartCount, setCartCount] = useState(0)
+  // 🛡️ 2026-04-22: 알림 unread badge 실시간 동기화 (이전: static red dot)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     // ✅ UX C2 FIX: API 응답은 { success, data: { items: [...], summary } } 구조
@@ -110,6 +115,46 @@ export default function MainHomePage() {
     })
   }, [])
 
+  // 🛡️ 알림 unread 수 동기화 — 60초마다 갱신, 비로그인이면 0
+  useEffect(() => {
+    let cancelled = false
+    const fetchUnread = () => {
+      api.get('/api/notifications/unread-count').then(res => {
+        if (cancelled) return
+        const c = Number(res.data?.count ?? 0)
+        setUnreadCount(Number.isFinite(c) && c >= 0 ? c : 0)
+      }).catch(() => { if (!cancelled) setUnreadCount(0) })
+    }
+    fetchUnread()
+    const id = setInterval(fetchUnread, 60_000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
+
+  // 🛡️ 2026-04-22: 신상품 추가 (별도 state)
+  const [newProducts, setNewProducts] = useState<Product[]>([])
+
+  // 🛡️ 어드민 등록 배너 — Region Hero 의 풀스크린 배경 이미지로 사용
+  // 어드민이 /admin/banners 에서 등록한 image_url + link_url 을 그대로 표시.
+  // 여러 배너 등록 시 display_order 순으로 첫 번째 배너만 Hero 배경에 사용 (나머지는 추후 carousel 가능).
+  const [heroBanner, setHeroBanner] = useState<{ id: number; image_url: string; link_url: string | null; title: string } | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    api.get('/api/banners').then(res => {
+      if (cancelled) return
+      const banners = res.data?.data || []
+      if (banners.length > 0) {
+        const b = banners[0]
+        setHeroBanner({
+          id: b.id,
+          image_url: b.image_url,
+          link_url: b.link_url,
+          title: b.title || ''
+        })
+      }
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
   useEffect(() => {
     document.title = '유어딜 - 라이브 커머스'
     Promise.allSettled([
@@ -118,7 +163,8 @@ export default function MainHomePage() {
       axios.get('/api/streams?status=ended&limit=6'),
       api.get('/api/group-buy/products?status=active'),
       api.get('/api/products?limit=12&sort=ranking&featured=true'),
-    ]).then(([liveRes, schedRes, endedRes, mealRes, prodRes]) => {
+      api.get('/api/products?limit=8&sort=latest'),  // 🛡️ 신상품
+    ]).then(([liveRes, schedRes, endedRes, mealRes, prodRes, newRes]) => {
       if (liveRes.status === 'fulfilled' && liveRes.value.data.success) setLiveStreams(liveRes.value.data.data || [])
       if (schedRes.status === 'fulfilled' && schedRes.value.data.success) setScheduledStreams(schedRes.value.data.data || [])
       if (endedRes.status === 'fulfilled' && endedRes.value.data.success) setEndedStreams(endedRes.value.data.data || [])
@@ -152,9 +198,14 @@ export default function MainHomePage() {
         </Link>
         <div className="flex items-center gap-1 text-gray-200">
           <button onClick={() => navigate('/search')} className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
-          <button onClick={() => navigate('/notifications')} className="p-1.5 relative">
+          <button onClick={() => navigate('/notifications')} aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 (읽지 않음)` : '알림'} className="p-1.5 relative">
             <Bell className="h-5 w-5" strokeWidth={1.5} />
-            <span className="absolute top-1 right-1 rounded-full w-1.5 h-1.5 bg-[#EF4444]" />
+            {/* 🛡️ 2026-04-22: static red dot → 실제 unread count badge */}
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
           <button onClick={() => navigate('/cart')} className="p-1.5 relative">
             <ShoppingCart className="h-5 w-5" strokeWidth={1.5} />
@@ -167,10 +218,32 @@ export default function MainHomePage() {
         </div>
       </div>
 
-      {/* ═══ Region Hero ═══ */}
+      {/* ═══ Region Hero (어드민 배너를 풀스크린 배경으로) ═══
+           🛡️ 2026-04-22: 어드민 등록 배너(image_url)를 우선 배경으로 사용.
+           - 배너 등록되어 있으면: 배너 이미지가 배경, 배너 클릭 시 link_url 이동
+           - 배너 없으면: 기존처럼 featured 상품 이미지를 배경으로 fallback */}
       <div className="relative" style={{ height: 300, background: '#000' }}>
-        {featured?.image_url && <img src={featured.image_url} alt={featured?.name || '배너'} className="absolute inset-0 w-full h-full object-cover opacity-55" />}
+        {/* 배경 이미지 (어드민 배너 우선, fallback featured) */}
+        {(heroBanner?.image_url || featured?.image_url) && (
+          <img
+            src={heroBanner?.image_url || featured?.image_url}
+            alt={heroBanner?.title || featured?.name || '배너'}
+            className="absolute inset-0 w-full h-full object-cover opacity-55"
+          />
+        )}
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 30%, rgba(0,0,0,0) 55%, rgba(5,5,5,1) 100%)' }} />
+        {/* 배너 클릭 핸들러 (link_url 있을 때) — 텍스트/CTA 버튼 위 z-index 보다 낮게 */}
+        {heroBanner?.link_url && (
+          <button
+            onClick={() => {
+              const link = String(heroBanner.link_url || '').trim()
+              if (link.startsWith('/') && !link.startsWith('//')) navigate(link)
+              else if (link.startsWith('http://') || link.startsWith('https://')) window.open(link, '_blank', 'noopener,noreferrer')
+            }}
+            aria-label={`배너: ${heroBanner.title}`}
+            className="absolute inset-0 z-0 cursor-pointer"
+          />
+        )}
 
         {/* Region + featured content */}
         <div className="absolute top-4 left-4 right-4 z-10">
