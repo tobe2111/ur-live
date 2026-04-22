@@ -39,14 +39,27 @@ export function ProfileTab({ userName, userEmail, userProfileImage, onLogout }: 
       {/* Profile Card */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-center gap-4 mb-6">
-          <img
-            src={userProfileImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName)}
-            alt={userName}
-            className="w-20 h-20 rounded-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName)
-            }}
-          />
+          {/* 🛡️ 2026-04-22: ui-avatars.com (외부 서비스) → 내부 SVG. GDPR/privacy + 외부 의존성 제거 */}
+          {userProfileImage ? (
+            <img
+              src={userProfileImage}
+              alt={userName}
+              className="w-20 h-20 rounded-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const fallback = target.nextElementSibling as HTMLElement | null
+                if (fallback) fallback.style.display = 'flex'
+              }}
+            />
+          ) : null}
+          <div
+            className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white text-2xl font-bold"
+            style={{ display: userProfileImage ? 'none' : 'flex' }}
+            aria-label={userName}
+          >
+            {(userName || '?').charAt(0).toUpperCase()}
+          </div>
           <div>
             <h2 className="text-[21px] font-semibold text-[#1d1d1f] mb-1">
               {userName}
