@@ -149,6 +149,7 @@ export async function requestKakaoChannelAuth(
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
+    signal: AbortSignal.timeout(15_000),
     body: createFormData({
       token,
       userid: env.ALIGO_USER_ID,
@@ -181,6 +182,7 @@ export async function registerKakaoChannel(
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
+    signal: AbortSignal.timeout(15_000),
     body: createFormData({
       token,
       userid: env.ALIGO_USER_ID,
@@ -211,6 +213,7 @@ export async function getKakaoChannels(
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
+    signal: AbortSignal.timeout(15_000),
     body: createFormData({
       token,
       userid: env.ALIGO_USER_ID
@@ -242,6 +245,7 @@ export async function registerTemplate(
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
+    signal: AbortSignal.timeout(15_000),
     body: createFormData({
       token,
       userid: env.ALIGO_USER_ID,
@@ -275,6 +279,7 @@ export async function getTemplates(
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
+    signal: AbortSignal.timeout(15_000),
     body: createFormData({
       token,
       userid: env.ALIGO_USER_ID,
@@ -305,11 +310,13 @@ export async function sendAlimtalk(
     // 버튼 JSON 변환
     const buttonJson = data.buttons ? JSON.stringify({ button: data.buttons }) : undefined
 
+    // 🛡️ 2026-04-22: 10초 timeout 추가 — Aligo 느릴 때 worker 타임아웃 방어
     const response = await fetch('https://smartsms.aligo.in/admin/api/akv10/alimtalk/send/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
+      signal: AbortSignal.timeout(10_000),
       body: createFormData({
         token,
         userid: env.ALIGO_USER_ID,
@@ -371,6 +378,7 @@ export async function getAlimtalkResult(
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
+    signal: AbortSignal.timeout(15_000),
     body: createFormData({
       token,
       userid: env.ALIGO_USER_ID,
