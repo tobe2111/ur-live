@@ -176,8 +176,12 @@ app.use('*', async (c, next) => {
 
   // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
   // CSP — 공통 script sources (script-src와 script-src-elem에서 공유)
+  // 🛡️ 2026-04-22 HOTFIX: strict-dynamic 제거 — host allowlist 부활 (외부 script 호환)
+  // strict-dynamic 은 모든 script (src 포함) 에 nonce 가 있어야 하는데, Kakao SDK / GA /
+  // YouTube IFrame / Vite bundle 의 외부 src script 가 깨짐 → 사이트 검은 화면.
+  // nonce + unsafe-inline + host allowlist 조합으로 retreat (CSP 강도 약간 약화하나 동작 보장).
   const scriptSources = [
-    "'self'", `'nonce-${nonce}'`, "'strict-dynamic'", "'unsafe-inline'", "blob:",
+    "'self'", `'nonce-${nonce}'`, "'unsafe-inline'", "blob:",
     "https://*.cloudflare.com", "https://static.cloudflareinsights.com", "https://cloudflareinsights.com",
     "https://*.googletagmanager.com", "https://*.google-analytics.com",
     "https://*.tosspayments.com", "https://js.tosspayments.com",
