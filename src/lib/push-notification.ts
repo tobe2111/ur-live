@@ -116,7 +116,7 @@ export async function deletePushSubscription(
 
 /**
  * 푸시 알림 발송
- * 
+ *
  * web-push 라이브러리 사용 (npm install web-push)
  * Cloudflare Workers에서는 fetch API로 직접 구현
  */
@@ -130,6 +130,88 @@ export async function deletePushSubscription(
  */
 export type PushSendResult = 'ok' | 'gone' | 'transient'
 
+// ──────────────────────────────────────────────────────────────────────────
+// VAPID JWT signing (ES256 / P-256 ECDSA)
+//   Workers runtime supports WebCrypto, so we can sign without a library.
+//   Private key is expected as base64url (32-byte raw d scalar) — the format
+//   produced by `npx web-push generate-vapid-keys` after stripping PEM.
+// ──────────────────────────────────────────────────────────────────────────
+
+function base64UrlEncode(input: ArrayBuffer | Uint8Array | string): string {
+  let bytes: Uint8Array
+  if (typeof input === 'string') {
+    bytes = new TextEncoder().encode(input)
+  } else if (input instanceof Uint8Array) {
+    bytes = input
+  } else {
+    bytes = new Uint8Array(input)
+  }
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+}
+
+function base64UrlDecode(s: string): Uint8Array {
+  const pad = s.length % 4 === 0 ? '' : '='.repeat(4 - (s.length % 4))
+  const b64 = (s + pad).replace(/-/g, '+').replace(/_/g, '/')
+  const binary = atob(b64)
+  const out = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i)
+  return out
+}
+
+/**
+ * Build a VAPID Authorization header value (vapid scheme, RFC 8292).
+ * @param audience   Origin of the push endpoint (e.g. "https://fcm.googleapis.com")
+ * @param vapidPrivateKey  base64url-encoded P-256 private key (raw 32-byte d scalar)
+ * @param vapidPublicKey   base64url-encoded P-256 public key (uncompressed 65 bytes)
+ * @param subject    "mailto:..." or "https://..." per RFC 8292
+ */
+async function buildVapidAuthHeader(
+  audience: string,
+  vapidPrivateKey: string,
+  vapidPublicKey: string,
+  subject: string
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000)
+  const header = { typ: 'JWT', alg: 'ES256' }
+  const payload = {
+    aud: audience,
+    exp: now + 12 * 3600, // 12 hours (RFC 8292 recommends ≤ 24h)
+    sub: subject,
+  }
+  const headerB64 = base64UrlEncode(JSON.stringify(header))
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload))
+  const signInput = `${headerB64}.${payloadB64}`
+
+  // Import raw P-256 private key as a JWK (WebCrypto can't import raw 32-byte d directly)
+  // We derive the JWK (d, x, y) from the provided private+public keys.
+  const d = vapidPrivateKey
+  const pub = base64UrlDecode(vapidPublicKey)
+  if (pub.length !== 65 || pub[0] !== 0x04) {
+    throw new Error('VAPID public key must be uncompressed P-256 (65 bytes, 0x04-prefix)')
+  }
+  const x = base64UrlEncode(pub.slice(1, 33))
+  const y = base64UrlEncode(pub.slice(33, 65))
+
+  const key = await crypto.subtle.importKey(
+    'jwk',
+    { kty: 'EC', crv: 'P-256', d, x, y, ext: true },
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    key,
+    new TextEncoder().encode(signInput)
+  )
+  const sigB64 = base64UrlEncode(new Uint8Array(signature))
+
+  // RFC 8292: `vapid t=<jwt>, k=<public key>`
+  return `vapid t=${signInput}.${sigB64}, k=${vapidPublicKey}`
+}
+
 export async function sendPushNotification(
   subscription: PushSubscription,
   payload: PushNotificationPayload,
@@ -137,38 +219,62 @@ export async function sendPushNotification(
   vapidPrivateKey: string,
   vapidSubject: string
 ): Promise<PushSendResult> {
+  // `payload` is unused because RFC 8291 aes128gcm encryption is not yet
+  // implemented — we only send the auth tickle. Kept in the signature so
+  // callers don't have to change when encryption lands.
+  void payload;
   try {
-    // Web Push Protocol 구현
-    // 참고: https://developers.google.com/web/fundamentals/push-notifications/
-    //
-    // NOTE: VAPID JWT signing is NOT yet implemented — most FCM/Mozilla
-    // endpoints will reject the request with 401/403. Do NOT treat that as
-    // a dead endpoint; treat it as transient so the subscription survives
-    // until VAPID signing lands.
+    // VAPID is required by FCM/Mozilla push endpoints. Without correctly
+    // signed creds the push provider returns 401/403 — treat that as transient
+    // so we don't wipe subscriptions on a bad deploy.
+    if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
+      if (typeof console !== 'undefined') {
+        console.warn('[Push] VAPID keys missing — skipping send (subscription preserved)')
+      }
+      return 'transient'
+    }
 
-    const payloadString = JSON.stringify(payload)
+    let audience: string
+    try {
+      audience = new URL(subscription.endpoint).origin
+    } catch {
+      return 'transient'
+    }
 
-    // 실제 구현은 web-push 라이브러리 사용 권장
-    // 여기서는 개념적 구조만 제시
+    let authHeader: string
+    try {
+      authHeader = await buildVapidAuthHeader(
+        audience,
+        vapidPrivateKey,
+        vapidPublicKey,
+        vapidSubject.startsWith('mailto:') || vapidSubject.startsWith('https:')
+          ? vapidSubject
+          : `mailto:${vapidSubject}`
+      )
+    } catch (signErr) {
+      console.error('[Push] VAPID signing failed:', signErr)
+      return 'transient'
+    }
 
+    // NOTE: Payload encryption (aes128gcm per RFC 8291) is NOT implemented
+    // here. For a richer payload pipeline, prefer a mature library. We send
+    // an empty body so providers still deliver a "tickle" notification.
     const response = await fetch(subscription.endpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Authorization': authHeader,
         'TTL': '86400', // 24시간
-        // VAPID 인증 헤더 추가 필요
-        // 'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`
       },
-      body: payloadString
+      body: null,
     })
 
-    if (response.status === 201 || response.status === 200) {
+    if (response.status === 201 || response.status === 200 || response.status === 202) {
       return 'ok'
-    } else if (response.status === 410) {
-      // 구독 만료 — caller should delete
+    } else if (response.status === 410 || response.status === 404) {
+      // 구독 만료/삭제 — caller should delete
       return 'gone'
     } else {
-      // 401/403 (VAPID 미구현), 4xx/5xx, etc → 일시적 실패로 취급. 구독 유지.
+      // 401/403 (auth issue), 4xx/5xx → 일시적 실패로 취급. 구독 유지.
       console.error('[Push] Failed to send notification:', response.status)
       return 'transient'
     }

@@ -40,6 +40,7 @@ import { googleRoutes } from '../features/auth/api/google.routes';
 import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
+import { resendWebhookRoutes } from '../features/notifications/api/resend-webhook.routes';
 import { ordersRoutes as featureOrdersRoutes } from '../features/orders/api/orders.routes';
 import { paymentRoutes as featurePaymentRoutes } from '../features/payments/api/payment.routes';
 import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
@@ -589,6 +590,9 @@ app.route('/api/cart', cartRoutes);
 
 // Notifications
 app.route('/api/notifications', notificationsRoutes);
+
+// Resend email webhook (bounce / complaint → suppression list)
+app.route('/api/webhooks/resend', resendWebhookRoutes);
 
 // Shipping addresses
 app.route('/api/shipping-addresses', shippingAddressRoutes);

@@ -13,6 +13,7 @@ interface Seller {
   sns_instagram?: string; sns_youtube?: string; sns_facebook?: string; sns_twitter?: string
   kakao_chat_link?: string; website_url?: string; created_at: string
   business_number?: string; email?: string; phone?: string
+  ceo_name?: string; mail_order_number?: string; business_address?: string
 }
 interface LiveStream {
   id: number; title: string; youtube_video_id?: string; status: string; viewer_count?: number
@@ -628,22 +629,38 @@ export default function SellerPublicPage() {
                 ) : null}
               </div>
             </section>
-            {/* 사업자 정보 + 연락처 */}
+            {/* 사업자 정보 + 연락처 (전자상거래법: 필수 표시 항목) */}
             <section className="bg-[#121212] rounded-xl p-4">
               <h3 className={`text-sm font-bold ${T.text} mb-3`}>{t('seller.publicPage.sellerInfo')}</h3>
               <div className="text-sm text-gray-400 space-y-2">
-                {seller.business_name && (
-                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.businessName')}</span><span className="text-xs">{seller.business_name}</span></div>
-                )}
-                {seller.name && (
-                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.representative')}</span><span className="text-xs">{seller.name}</span></div>
-                )}
-                {seller.business_number && (
-                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.businessNumber')}</span><span className="text-xs">{seller.business_number}</span></div>
-                )}
-                {seller.email && (
-                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">{t('common.email')}</span><span className="text-xs">{seller.email}</span></div>
-                )}
+                <div className="flex">
+                  <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.businessName')}</span>
+                  <span className="text-xs">{seller.business_name || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.representative')}</span>
+                  <span className="text-xs">{seller.ceo_name || seller.name || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.businessNumber')}</span>
+                  <span className="text-xs">{seller.business_number || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-24 text-gray-400 shrink-0 text-xs">통신판매업신고번호</span>
+                  <span className="text-xs">{seller.mail_order_number || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-24 text-gray-400 shrink-0 text-xs">주소</span>
+                  <span className="text-xs">{seller.business_address || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-24 text-gray-400 shrink-0 text-xs">전화번호</span>
+                  <span className="text-xs">{seller.phone || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-24 text-gray-400 shrink-0 text-xs">{t('common.email')}</span>
+                  <span className="text-xs">{seller.email || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                </div>
               </div>
               {/* 연락 수단 */}
               <div className="flex gap-2 mt-3">

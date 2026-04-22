@@ -7,11 +7,32 @@
  *   통합:  POST /scrape   → 1단계+2단계 자동 (키워드당 ~10개, 빠른 테스트용)
  *
  * 프론트엔드가 collect → extract × N 반복으로 무제한 수집 가능
+ *
+ * ⚠️ [LEGAL/PIPA] 개인정보 보호법 리스크
+ *    수집된 이메일·전화번호를 마케팅 발송 목적으로 활용하려면
+ *    정보주체의 사전 명시적 동의가 필수입니다 (제15조, 제22조).
+ *    현재 구현은 동의 플로우가 없으므로 기본적으로 비활성화하고,
+ *    `SCRAPER_ENABLED=true` 환경에서만 관리자 연구·내부 분석용으로 제한합니다.
+ *    기본 환경에서는 503을 반환합니다.
  */
 
 import { Hono } from 'hono';
 import type { Env } from '../../../worker/types/env';
 import { rateLimit } from '../../../worker/middleware/rate-limit';
+
+/**
+ * 크롤러 기능 활성화 가드. SCRAPER_ENABLED가 'true'가 아니면 503을 반환.
+ * PIPA 동의 플로우가 구현되기 전까지 프로덕션에서는 절대 활성화하지 말 것.
+ */
+function scraperDisabledResponse(c: { env: Env; json: (data: unknown, status?: number) => Response }): Response | null {
+  if (c.env.SCRAPER_ENABLED !== 'true') {
+    return c.json(
+      { success: false, error: '이 기능은 현재 비활성화 상태입니다. (PIPA 동의 플로우 준비 중)' },
+      503
+    );
+  }
+  return null;
+}
 
 const naverScraper = new Hono<{ Bindings: Env }>();
 
@@ -66,6 +87,8 @@ async function ensureTable(DB: D1Database) {
 // 1단계: 광고주 URL 수집 (subrequest ~15)
 // ════════════════════════════════════════════════════════════════════
 naverScraper.post('/collect', async (c) => {
+  const disabled = scraperDisabledResponse(c);
+  if (disabled) return disabled;
   if (!await verifyAdmin(c)) return c.json({ error: 'Admin only' }, 401);
 
   const { keyword, pages = 3 } = await c.req.json<{ keyword: string; pages?: number }>();
@@ -157,6 +180,8 @@ naverScraper.post('/collect', async (c) => {
 // 2단계: 이메일 추출 (URL 배치, subrequest ~15)
 // ════════════════════════════════════════════════════════════════════
 naverScraper.post('/extract', async (c) => {
+  const disabled = scraperDisabledResponse(c);
+  if (disabled) return disabled;
   if (!await verifyAdmin(c)) return c.json({ error: 'Admin only' }, 401);
 
   const { keyword, advertisers, sessionName } = await c.req.json<{

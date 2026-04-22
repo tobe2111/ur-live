@@ -202,8 +202,67 @@ export function checkAuthError(error: unknown): boolean {
  */
 export function showErrorToast(error: unknown, context?: Record<string, any>): string {
   const message = logAndFormatError(error, context)
-  
+
   // CustomModal이나 Toast 라이브러리와 연동
   // 여기서는 메시지만 반환
   return message
+}
+
+// ── 사용자-친화적 에러 메시지 ──────────────────────────────────────────────
+// 서버 에러 메시지에 DB 제약조건, SQL, 스택 트레이스 등 민감한 내부 정보가
+// 노출될 수 있으므로 toast에 그대로 표시하지 않는다. 알려진 code를 우선
+// 매핑하고, 길이/위험 패턴을 걸러낸 뒤에만 서버 메시지를 그대로 사용한다.
+
+const KNOWN_ERROR_CODES: Record<string, string> = {
+  INSUFFICIENT_BALANCE: '잔액이 부족합니다.',
+  OUT_OF_STOCK: '재고가 부족합니다.',
+  INVALID_COUPON: '쿠폰이 유효하지 않습니다.',
+  PAYMENT_KEY_MISSING: '결제 정보를 찾을 수 없습니다. 고객센터에 문의해 주세요.',
+  CIRCUIT_OPEN: '결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.',
+  ALREADY_CANCELED_PAYMENT: '이미 취소된 결제입니다.',
+  EXCEED_CANCEL_AMOUNT: '환불 금액이 결제 금액을 초과합니다.',
+  NOT_CANCELABLE_PAYMENT: '취소할 수 없는 결제입니다.',
+  FORBIDDEN_CONSECUTIVE_REQUEST: '잠시 후 다시 시도해 주세요.',
+}
+
+// 민감한 내부 정보가 들어 있을 수 있는 패턴
+const UNSAFE_MESSAGE_PATTERNS =
+  /\b(SQL|SQLITE|CONSTRAINT|TypeError|ReferenceError|undefined is not|Cannot read|stack|at \w+\s*\()\b/i
+
+/**
+ * 사용자에게 보여주기 안전한 에러 메시지로 변환.
+ * - 알려진 code는 한국어 고정 메시지로 매핑
+ * - axios 에러의 경우 기존 handleApiError 로직으로 정규화
+ * - DB 제약/스택 트레이스 등 패턴이 보이면 일반 메시지로 대체
+ */
+export function getUserFriendlyError(error: unknown, fallback = '요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'): string {
+  // axios 에러 우선 처리 (data.code / data.error 접근)
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as { code?: string; error?: string } | undefined
+    if (data?.code && KNOWN_ERROR_CODES[data.code]) {
+      return KNOWN_ERROR_CODES[data.code]
+    }
+    if (typeof data?.error === 'string') {
+      const msg = data.error
+      if (msg.length < 200 && !UNSAFE_MESSAGE_PATTERNS.test(msg)) {
+        return msg
+      }
+    }
+    const status = error.response?.status
+    if (status && ERROR_CODE_MESSAGES[status]) {
+      return ERROR_CODE_MESSAGES[status]
+    }
+    return fallback
+  }
+
+  // 일반 객체/에러에서 code/message 추출
+  const e = error as { code?: string; message?: string } | null | undefined
+  if (e?.code && KNOWN_ERROR_CODES[e.code]) {
+    return KNOWN_ERROR_CODES[e.code]
+  }
+  const msg = typeof e?.message === 'string' ? e.message : ''
+  if (msg && msg.length < 200 && !UNSAFE_MESSAGE_PATTERNS.test(msg)) {
+    return msg
+  }
+  return fallback
 }

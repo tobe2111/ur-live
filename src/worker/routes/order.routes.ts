@@ -473,6 +473,26 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     });
     await orderRepo.restoreStock(body.order_id);
 
+    // ✅ 환불 시 추천 커미션도 회수 (webhook path 동등화)
+    //    Best-effort — tables may not exist in every environment.
+    try {
+      await c.env.DB.prepare(
+        "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'granted'"
+      ).bind(body.order_id).run().catch(() => {});
+
+      const commissions = await c.env.DB.prepare(
+        "SELECT user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'withdrawn'"
+      ).bind(body.order_id).all<{ user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ user_id: string; amount: number }> }));
+
+      for (const co of (commissions.results || [])) {
+        await c.env.DB.prepare(
+          'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
+        ).bind(co.amount, co.user_id).run().catch(() => {});
+      }
+    } catch (e) {
+      console.warn('[ORDERS] Commission reversal (refund) skipped:', e);
+    }
+
     // 유저에게 인앱 알림 (환불/주문 취소)
     try {
       const { notifyUser } = await import('../../lib/notifications');
@@ -590,6 +610,25 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
 
       // 재고 복구
       await orderRepo.restoreStock(orderId);
+
+      // ✅ 추천 커미션 회수 (cancel paid 경로)
+      try {
+        await c.env.DB.prepare(
+          "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'granted'"
+        ).bind(orderId).run().catch(() => {});
+
+        const commissions = await c.env.DB.prepare(
+          "SELECT user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'withdrawn'"
+        ).bind(orderId).all<{ user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ user_id: string; amount: number }> }));
+
+        for (const co of (commissions.results || [])) {
+          await c.env.DB.prepare(
+            'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
+          ).bind(co.amount, co.user_id).run().catch(() => {});
+        }
+      } catch (e) {
+        console.warn('[ORDERS] Commission reversal (cancel paid) skipped:', e);
+      }
 
       // 주문 취소 알림
       createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(() => {});

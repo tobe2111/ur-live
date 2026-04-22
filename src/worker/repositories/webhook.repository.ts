@@ -83,15 +83,25 @@ export class WebhookEventRepository {
   }
 
   /**
-   * Mark event as skipped (already processed)
+   * Mark event as skipped (already processed or intentionally unhandled).
+   * Optional reason is persisted to `error_message` for audit.
    */
-  async markSkipped(eventId: string): Promise<void> {
-    await this.qb.execute(
-      `UPDATE webhook_events 
-       SET status = 'SKIPPED', processed_at = datetime('now')
-       WHERE id = ?`,
-      [eventId]
-    );
+  async markSkipped(eventId: string, reason?: string): Promise<void> {
+    if (reason) {
+      await this.qb.execute(
+        `UPDATE webhook_events
+         SET status = 'SKIPPED', error_message = ?, processed_at = datetime('now')
+         WHERE id = ?`,
+        [reason, eventId]
+      );
+    } else {
+      await this.qb.execute(
+        `UPDATE webhook_events
+         SET status = 'SKIPPED', processed_at = datetime('now')
+         WHERE id = ?`,
+        [eventId]
+      );
+    }
   }
 
   /**

@@ -494,7 +494,7 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-white">
       <SEO
         title={product.name}
-        description={product.description?.slice(0, 160) || `${product.name} - 유어딜에서 최저가로 구매하세요`}
+        description={product.description?.slice(0, 160) || `${product.name} - 유어딜에서 만나보세요`}
         image={product.image_url}
         url={`/products/${product.id}`}
         type="product"

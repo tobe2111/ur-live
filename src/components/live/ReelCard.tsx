@@ -252,6 +252,8 @@ export default function ReelCard({
   const [showPlayButton, setShowPlayButton] = useState(true)
   const showPlayButtonRef = useRef(true)
   const [autoplayFailed, setAutoplayFailed] = useState(false)
+  // v15-4: YouTube iframe API error code별 사용자 안내 메시지
+  const [playerError, setPlayerError] = useState<string | null>(null)
   const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
 
   // Cart & Purchase state
@@ -478,9 +480,26 @@ export default function ReelCard({
             },
             onError: (event: YTPlayerEvent) => {
               if (!isMounted) return
-              if (import.meta.env.DEV) console.error(`[ReelCard] YouTube player error for video ${stream.youtube_video_id}:`, event.data)
-              // Error codes: 2=invalid ID, 5=HTML5 error, 100=not found, 101/150=embedding disabled
-              setShowPlayButton(true)
+              if (import.meta.env.DEV) console.warn(`[YT] Player error for video ${stream.youtube_video_id}:`, event.data)
+              // YouTube iframe API 공식 에러 코드:
+              //   2  = invalid video ID
+              //   5  = HTML5 player 재생 오류
+              //   100 = video not found / deleted
+              //   101 = private video (embed disallowed)
+              //   150 = same as 101 (owner disabled embedding)
+              switch (event.data) {
+                case 2:
+                case 100:
+                case 101:
+                case 150:
+                  setPlayerError('이 영상을 재생할 수 없습니다. 셀러에게 문의해주세요.')
+                  break
+                case 5:
+                  setPlayerError('브라우저 호환성 문제입니다. 새로고침해주세요.')
+                  break
+                default:
+                  setShowPlayButton(true)
+              }
             },
           },
         })
@@ -1000,8 +1019,24 @@ export default function ReelCard({
         <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
       )}
 
+      {/* v15-4: YouTube 재생 오류 안내 오버레이 */}
+      {playerError && stream.status !== 'scheduled' && (
+        <div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 px-6 text-center"
+          role="alert"
+        >
+          <div className="h-16 w-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            </svg>
+          </div>
+          <p className="text-white text-lg font-bold mb-1">재생할 수 없는 영상</p>
+          <p className="text-white/70 text-sm">{playerError}</p>
+        </div>
+      )}
+
       {/* 라이브/종료 방송: 로딩 → 자동재생 → 실패 시 탭 유도 */}
-      {stream.status !== 'scheduled' && showPlayButton && (
+      {stream.status !== 'scheduled' && !playerError && showPlayButton && (
         <button
           onClick={playerReady ? handleVideoClick : undefined}
           className={`absolute inset-0 z-10 flex flex-col items-center justify-center transition-all ${

@@ -16,9 +16,29 @@ import { sendSellerAlimtalk } from '../../features/alimtalk/send';
 import { buildOrderConfirmMessage } from '../../features/alimtalk/aligo';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { logInfo, logError, logWarn } from '../utils/logger';
+import { sendAlert } from '../utils/alerts';
 
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
+
+// Toss error code → 사용자 친화 메시지 맵 (v15-3)
+// Toss가 반환하는 기술적 에러 코드를 한국어 안내 문구로 변환합니다.
+const TOSS_ERROR_MESSAGES: Record<string, string> = {
+  'REJECT_CARD_COMPANY': '카드사에서 결제를 거부했습니다. 다른 카드로 시도해주세요.',
+  'INVALID_CARD_EXPIRATION': '카드 유효기간이 올바르지 않습니다.',
+  'INVALID_CARD_INSTALLMENT_PLAN': '할부 개월 수가 올바르지 않습니다.',
+  'EXCEED_MAX_DAILY_PAYMENT_COUNT': '일일 결제 한도를 초과했습니다.',
+  'EXCEED_MAX_AUTH_COUNT': '인증 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.',
+  'INSUFFICIENT_BALANCE': '잔액이 부족합니다.',
+  'INVALID_PIN': '비밀번호가 올바르지 않습니다.',
+  'ALREADY_PROCESSED_PAYMENT': '이미 처리된 결제입니다.',
+  'INVALID_PASSWORD': '카드 비밀번호가 올바르지 않습니다.',
+  'NOT_ENOUGH_BALANCE_FOR_INSTALLMENT': '할부에 필요한 잔액이 부족합니다.',
+  'EXPIRED_CARD': '만료된 카드입니다.',
+  'INVALID_CARD_NUMBER': '카드 번호가 올바르지 않습니다.',
+  'CARD_PROCESSING_ERROR': '카드 처리 중 오류가 발생했습니다.',
+  'UNAUTHORIZED_PAYMENT': '인증되지 않은 결제입니다.',
+};
 
 const paymentsRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -159,9 +179,14 @@ paymentsRouter.post('/confirm', async (c) => {
         return c.json({ success: true, data: { orders: updatedOrders } });
       }
 
+      // v15-3: 사용자 친화 메시지로 Toss 에러 코드 변환
+      const errorMessage = tossError.code
+        ? (TOSS_ERROR_MESSAGES[tossError.code] || tossError.message || '결제 처리 중 오류가 발생했습니다.')
+        : '결제 처리 중 오류가 발생했습니다.';
+
       return c.json({
         success: false,
-        error: tossError.message ?? '결제 확인에 실패했습니다',
+        error: errorMessage,
         code: tossError.code,
       }, 400);
     }
@@ -185,12 +210,53 @@ paymentsRouter.post('/confirm', async (c) => {
     }
 
     // Update all orders to DONE
-    await orderRepo.updateStatus(orderNumber, 'DONE', {
-      toss_payment_key: tossData.paymentKey,
-      toss_order_id: orderNumber,
-      payment_method: tossData.method,
-      paid_at: tossData.approvedAt,
-    });
+    // ⚠️  If this UPDATE fails after Toss confirmed the payment, the order
+    //    will be stuck PENDING forever while the customer has been charged.
+    //    Queue a reconciliation record + alert ops so we can recover.
+    try {
+      await orderRepo.updateStatus(orderNumber, 'DONE', {
+        toss_payment_key: tossData.paymentKey,
+        toss_order_id: orderNumber,
+        payment_method: tossData.method,
+        paid_at: tossData.approvedAt,
+      });
+    } catch (dbErr) {
+      logError('toss.confirm.db_update_failed', {
+        orderNumber,
+        orderIds: orders.map(o => o.id),
+        error: (dbErr as Error).message,
+      });
+      // Queue for reconciliation — table may not exist in every env, best-effort.
+      await c.env.DB.prepare(`
+        INSERT INTO webhook_events (id, source, event_type, payload, status, order_number, created_at)
+        VALUES (?, 'internal', 'payment_update_retry', ?, 'FAILED', ?, datetime('now'))
+      `).bind(
+        `retry_${orderNumber}_${Date.now()}`,
+        JSON.stringify({ paymentKey, orderIds: orders.map(o => o.id), totalAmount }),
+        orderNumber,
+      ).run().catch(() => {});
+
+      // Alert ops — critical: customer paid but DB didn't update.
+      await sendAlert(c.env, {
+        severity: 'critical',
+        title: 'DB update failed after Toss confirm',
+        message: `Order ${orderNumber} paid at Toss but status update failed.`,
+        context: {
+          orderNumber,
+          orderIds: orders.map(o => o.id),
+          error: String(dbErr).slice(0, 200),
+        },
+      }).catch(() => {});
+
+      // Do not call reduceStock — order rows weren't updated either. Return
+      // success to client so they see the payment-success page (the money is
+      // at Toss); reconciliation cron will catch up.
+      return c.json({
+        success: true,
+        data: { orders, payment: tossData },
+        warning: 'PAYMENT_CONFIRMED_DB_DEFERRED',
+      });
+    }
 
     // Reduce stock
     for (const order of orders) {
