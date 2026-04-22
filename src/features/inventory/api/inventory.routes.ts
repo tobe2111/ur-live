@@ -146,10 +146,19 @@ inventoryRoutes.post('/stock/in', requireAuth(), async (c) => {
     .bind(product_id).first<{ id: number; stock: number; seller_id: number }>();
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
 
-  const stockAfter = product.stock + quantity;
+  // 🛡️ 원자적 증가 (lost update race 방지)
+  // 기존: SELECT 후 계산해서 UPDATE SET = 절대값 → 두 요청 동시 시 재고 누락
+  // 수정: UPDATE SET = stock + ? → DB가 순서대로 처리 (SQLite write lock)
+  const result = await DB.prepare(
+    "UPDATE products SET stock = stock + ?, updated_at = datetime('now') WHERE id = ?"
+  ).bind(quantity, product_id).run();
+  if (!result.meta?.changes) {
+    return c.json({ success: false, error: '재고 업데이트 실패' }, 500);
+  }
 
-  await DB.prepare('UPDATE products SET stock = ?, updated_at = datetime(\'now\') WHERE id = ?')
-    .bind(stockAfter, product_id).run();
+  // 이후 기록용 (움직임 로그 — 정확한 stock_after 다시 조회)
+  const after = await DB.prepare('SELECT stock FROM products WHERE id = ?').bind(product_id).first<{ stock: number }>();
+  const stockAfter = after?.stock ?? (product.stock + quantity);
 
   await DB.prepare(`
     INSERT INTO stock_movements (product_id, seller_id, type, quantity, stock_before, stock_after, reason, memo, created_by)

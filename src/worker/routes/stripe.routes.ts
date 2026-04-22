@@ -48,6 +48,7 @@ stripeRouter.post('/create-intent', async (c) => {
     const clientIdempotencyKey = c.req.header('Idempotency-Key');
     const idempotencyKey = clientIdempotencyKey || crypto.randomUUID();
 
+    // 🛡️ 타임아웃 — Stripe 느리면 10초 후 중단 (유저 대기 방지)
     const stripeResponse = await fetch('https://api.stripe.com/v1/payment_intents', {
       method: 'POST',
       headers: {
@@ -56,6 +57,7 @@ stripeRouter.post('/create-intent', async (c) => {
         'Idempotency-Key': idempotencyKey,
       },
       body: formBody.toString(),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!stripeResponse.ok) {
