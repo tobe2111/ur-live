@@ -215,10 +215,11 @@ productsRoutes.post('/', tightCors(), rateLimit({ action: 'product_create', max:
   const { DB } = c.env;
 
   try {
-    // Authorization: seller or admin only
+    // Authorization: admin only (정책: 상품 등록은 어드민 전용.
+    // 셀러는 라이브 방송 중 기존 상품을 연결해 판매)
     const user = getCurrentUser(c);
-    if (!user || (user.type !== 'seller' && user.type !== 'admin')) {
-      return c.json({ success: false, error: '셀러 권한이 필요합니다.' }, 403);
+    if (!user || user.type !== 'admin') {
+      return c.json({ success: false, error: '어드민 권한이 필요합니다.' }, 403);
     }
 
     const data: ProductCreateInput = await c.req.json();
@@ -249,10 +250,8 @@ productsRoutes.post('/', tightCors(), rateLimit({ action: 'product_create', max:
     data.price = price;
     data.stock_quantity = stock;
 
-    // For sellers, force seller_id to the authenticated seller (prevent spoofing)
-    if (user.type === 'seller') {
-      data.seller_id = Number(user.id);
-    }
+    // 어드민 전용 엔드포인트이므로 seller_id 는 요청 body 값을 신뢰 (어드민이 명시)
+    // 셀러 상품 등록은 별도 POST /api/seller/products 경로 사용
 
     const service = new ProductService(DB);
     const product = await service.createProduct(data);
@@ -279,10 +278,10 @@ productsRoutes.put('/:id', tightCors(), requireAuth(), async (c) => {
   const { DB } = c.env;
 
   try {
-    // Authorization: seller or admin only
+    // Authorization: admin only (정책: 상품 CRUD 는 어드민 전용)
     const user = getCurrentUser(c);
-    if (!user || (user.type !== 'seller' && user.type !== 'admin')) {
-      return c.json({ success: false, error: '셀러 권한이 필요합니다.' }, 403);
+    if (!user || user.type !== 'admin') {
+      return c.json({ success: false, error: '어드민 권한이 필요합니다.' }, 403);
     }
 
     const id = Number(c.req.param('id'));
@@ -342,10 +341,10 @@ productsRoutes.delete('/:id', tightCors(), requireAuth(), async (c) => {
   const { DB } = c.env;
 
   try {
-    // Authorization: seller or admin only
+    // Authorization: admin only (정책: 상품 CRUD 는 어드민 전용)
     const user = getCurrentUser(c);
-    if (!user || (user.type !== 'seller' && user.type !== 'admin')) {
-      return c.json({ success: false, error: '셀러 권한이 필요합니다.' }, 403);
+    if (!user || user.type !== 'admin') {
+      return c.json({ success: false, error: '어드민 권한이 필요합니다.' }, 403);
     }
 
     const id = Number(c.req.param('id'));
