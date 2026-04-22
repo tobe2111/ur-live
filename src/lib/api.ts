@@ -87,6 +87,8 @@ const PUBLIC_API_PATHS = [
   '/api/seller/register',
   '/api/seller/public/',
   '/api/admin/login',
+  '/api/agency/login',
+  '/api/agency/register',
   '/api/debug',
   '/api/search',
 ];
@@ -372,6 +374,8 @@ api.interceptors.response.use(
         ? '/seller/login'
         : currentPath.startsWith('/admin')
         ? '/admin/login'
+        : currentPath.startsWith('/agency')
+        ? '/agency/login'
         : '/login';
       return Promise.reject(error);
     }
