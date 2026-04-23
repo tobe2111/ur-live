@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { Play } from 'lucide-react'
 
 export default function SellerStreamNewPage() {
   const { t } = useTranslation()
@@ -206,23 +209,22 @@ export default function SellerStreamNewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header — 🛡️ 2026-04-22 배치 131: 스타일 모던화 */}
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+    <SellerLayout title={t('seller.createStream')}>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
+        <DashboardPageHeader
+          title={t('seller.createStream')}
+          subtitle={t('seller.createStreamSubtitle') || '라이브 스트림 등록'}
+          icon={<Play className="h-5 w-5" />}
+          actions={
             <button
               onClick={goBack}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
             >
               &larr; {t('seller.goBack')}
             </button>
-            <h1 className="text-lg font-bold text-gray-900">{t('seller.createStream')}</h1>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+          }
+        />
         <div className="bg-white rounded-lg shadow p-8">
           {/* YouTube Info Display */}
           {youtubeInfo && (
@@ -563,6 +565,6 @@ export default function SellerStreamNewPage() {
           )}
         </div>
       </div>
-    </div>
+    </SellerLayout>
   )
 }

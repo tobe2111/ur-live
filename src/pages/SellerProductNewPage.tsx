@@ -17,6 +17,8 @@ import {
   Download
 } from 'lucide-react'
 import { downloadSellerTemplate } from '@/utils/product-template'
+import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 
 interface LiveStream {
   id: number
@@ -170,30 +172,24 @@ export default function SellerProductNewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header — 🛡️ 2026-04-22 배치 131: 스타일 모던화 */}
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-4xl items-center px-4 py-3 sm:px-6">
-          <button
-            onClick={() => navigate('/seller/products')}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>{t('seller.backToProductList')}</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        {/* Title */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <Package className="h-5 w-5" />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{t('seller.productCreate')}</h1>
-          </div>
+    <SellerLayout title={t('seller.productCreate')}>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
+        <DashboardPageHeader
+          title={t('seller.productCreate')}
+          subtitle={t('seller.newProductDesc')}
+          icon={<Package className="h-5 w-5" />}
+          actions={
+            <button
+              onClick={() => navigate('/seller/products')}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>{t('seller.backToProductList')}</span>
+            </button>
+          }
+        />
+        <div className="mb-8 hidden">
           <p className="text-sm text-gray-500">
             {t('seller.newProductDesc')}
           </p>
@@ -584,6 +580,6 @@ export default function SellerProductNewPage() {
           </div>
         </form>
       </div>
-    </div>
+    </SellerLayout>
   )
 }
