@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -28,6 +29,7 @@ interface AdminOption {
 const LIMIT = 50
 
 export default function AdminAuditLogPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [logs, setLogs] = useState<AuditLog[]>([])
@@ -120,10 +122,10 @@ export default function AdminAuditLogPage() {
   }
 
   return (
-    <AdminLayout title="감사 로그">
+    <AdminLayout title={t('admin.pages.auditLog')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="감사 로그"
+          title={t('admin.pages.auditLog')}
           subtitle="어드민 접근/수정 이력 (immutable audit trail)"
           icon={<Shield className="h-5 w-5" />}
         />

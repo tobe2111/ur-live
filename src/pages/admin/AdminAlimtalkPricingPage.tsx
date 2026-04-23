@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -42,6 +43,7 @@ interface EditState {
 }
 
 export default function AdminAlimtalkPricingPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [packages, setPackages] = useState<AlimtalkPackage[]>([])
   const [accounts, setAccounts] = useState<SellerCreditRow[]>([])
@@ -144,10 +146,10 @@ export default function AdminAlimtalkPricingPage() {
   }
 
   return (
-    <AdminLayout title="브랜드메시지 관리">
+    <AdminLayout title={t('admin.pages.alimtalk')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="브랜드메시지 관리"
+          title={t('admin.pages.alimtalk')}
           subtitle="알림톡 발송 현황 · 수익 · 패키지 가격"
           icon={<MessageSquare className="h-5 w-5" />}
         />

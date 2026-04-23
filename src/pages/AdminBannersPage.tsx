@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -25,6 +26,7 @@ const EMPTY_FORM = {
 }
 
 export default function AdminBannersPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)
@@ -118,10 +120,10 @@ export default function AdminBannersPage() {
   }
 
   return (
-    <AdminLayout title="배너 관리">
+    <AdminLayout title={t('admin.pages.banners')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="배너 관리"
+          title={t('admin.pages.banners')}
           subtitle="메인 배너 등록 · 표시 순서 관리"
           icon={<ImageIcon className="h-5 w-5" />}
           actions={

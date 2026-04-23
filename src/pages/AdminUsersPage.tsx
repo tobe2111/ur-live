@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -28,6 +29,7 @@ interface UserDetail {
 }
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -104,11 +106,11 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <AdminLayout title="유저 관리">
+    <AdminLayout title={t('admin.pages.users')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 135: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="유저 관리"
+          title={t('admin.pages.users')}
           subtitle={!loading ? `총 ${totalCount.toLocaleString()}명` : '불러오는 중...'}
           icon={<Users className="h-5 w-5" />}
         />

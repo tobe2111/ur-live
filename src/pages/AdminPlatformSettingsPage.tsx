@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -27,6 +28,7 @@ const SETTINGS_FIELDS = [
 ]
 
 export default function AdminPlatformSettingsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
@@ -79,10 +81,10 @@ export default function AdminPlatformSettingsPage() {
   }
 
   return (
-    <AdminLayout title="플랫폼 설정">
+    <AdminLayout title={t('admin.pages.platformSettings')}>
       <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="플랫폼 설정"
+          title={t('admin.pages.platformSettings')}
           subtitle="수수료율, 정책, 기본값 등 플랫폼 파라미터"
           icon={<Settings className="h-5 w-5" />}
           actions={

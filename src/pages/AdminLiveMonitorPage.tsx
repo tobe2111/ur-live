@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -37,6 +38,7 @@ function formatDuration(startDate: string): string {
 }
 
 export default function AdminLiveMonitorPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
@@ -93,10 +95,10 @@ export default function AdminLiveMonitorPage() {
   }
 
   return (
-    <AdminLayout title="라이브 모니터링">
+    <AdminLayout title={t('admin.pages.liveMonitor')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="라이브 모니터링"
+          title={t('admin.pages.liveMonitor')}
           subtitle="진행 중인 라이브 방송 실시간 현황"
           icon={<Radio className="h-5 w-5" />}
           actions={

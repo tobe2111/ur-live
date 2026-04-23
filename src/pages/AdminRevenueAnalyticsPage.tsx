@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -68,6 +69,7 @@ function fmt(n: number | null | undefined): string {
 }
 
 export default function AdminRevenueAnalyticsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('30d')
@@ -130,10 +132,10 @@ export default function AdminRevenueAnalyticsPage() {
   ]
 
   return (
-    <AdminLayout title="매출 분석">
+    <AdminLayout title={t('admin.pages.revenue')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="매출 분석"
+          title={t('admin.pages.revenue')}
           subtitle="기간별 매출·주문·고객 분석"
           icon={<BarChart2 className="h-5 w-5" />}
         />

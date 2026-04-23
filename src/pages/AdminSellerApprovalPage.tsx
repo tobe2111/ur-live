@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -7,6 +8,7 @@ import { UserCheck, UserX, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AdminSellerApprovalPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [sellers, setSellers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,10 +39,10 @@ export default function AdminSellerApprovalPage() {
   }
 
   return (
-    <AdminLayout title="셀러 승인">
+    <AdminLayout title={t('admin.pages.sellerApproval')}>
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="셀러 승인 대기"
+          title={t('admin.pages.sellerApproval')}
           subtitle="신규 셀러 가입 승인/거절"
           icon={<UserCheck className="h-5 w-5" />}
         />
