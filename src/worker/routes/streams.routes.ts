@@ -402,24 +402,58 @@ streamsRouter.post('/:id/current-product', async (c) => {
 });
 
 // ── GET /api/streams/:id/viewer-count ─────────────────────────────────────────
+// 2026-04-23 배치 164: 실제 활성 세션 기반 집계로 교체 (P1 분석 정확도)
+//   이전: live_streams.viewer_count / current_viewers 컬럼값 단순 조회 → 누적만 되고
+//         leave 시 감소 없음, heartbeat 중복 집계로 허수.
+//   개선: live_stream_views 의 최근 120초 heartbeat 세션 수 = 현재 시청자.
+//         peak_viewers, manual_viewer_count 도 함께 반환.
 streamsRouter.get('/:id/viewer-count', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
 
-    // viewer_count 컬럼이 없을 수 있으므로 안전하게 조회
-    let viewerCount = 0;
+    let live = 0;
+    let peak = 0;
+    let manual: number | null = null;
+
     try {
       const row = await db
-        .prepare('SELECT viewer_count FROM live_streams WHERE id = ?')
-        .bind(streamId)
-        .first<{ viewer_count: number }>();
-      viewerCount = row?.viewer_count ?? 0;
+        .prepare(
+          `SELECT
+             (SELECT COUNT(*) FROM live_stream_views
+              WHERE live_stream_id = ?
+                AND last_heartbeat IS NOT NULL
+                AND last_heartbeat > datetime('now', '-120 seconds')
+                AND left_at IS NULL) as live_count,
+             ls.peak_viewers, ls.manual_viewer_count
+           FROM live_streams ls WHERE ls.id = ?`
+        )
+        .bind(streamId, streamId)
+        .first<{ live_count: number; peak_viewers: number | null; manual_viewer_count: number | null }>();
+      live = Number(row?.live_count ?? 0);
+      peak = Number(row?.peak_viewers ?? 0);
+      manual = row?.manual_viewer_count ?? null;
     } catch {
-      // viewer_count 컬럼 없음 — 0 반환
+      // Fallback: 컬럼 누락 환경 대응
+      try {
+        const r = await db
+          .prepare('SELECT current_viewers FROM live_streams WHERE id = ?')
+          .bind(streamId)
+          .first<{ current_viewers: number }>();
+        live = Number(r?.current_viewers ?? 0);
+      } catch { /* ignore */ }
     }
 
-    return c.json({ success: true, data: { viewer_count: viewerCount } });
+    const display = manual !== null ? manual : live;
+    return c.json({
+      success: true,
+      data: {
+        viewer_count: display,
+        live_viewers: live,
+        peak_viewers: peak,
+        manual_viewer_count: manual,
+      },
+    });
   } catch (err: unknown) {
     console.error('[Streams] Viewer count error:', err);
     return c.json({ success: false, error: 'Failed to fetch viewer count' }, 500);
@@ -477,27 +511,165 @@ streamsRouter.put('/:id/viewer-count', async (c) => {
 });
 
 // ── POST /api/streams/:id/viewer/join ─────────────────────────────────────────
+// 2026-04-23 배치 164: 세션 기반 중복 제거 + peak_viewers 집계 (P1 분석 정확도)
+//   이전: 매 heartbeat 마다 current_viewers +1 → 1명이 30초마다 계속 증가하는 허수.
+//   개선: X-Session-ID 헤더로 unique 식별. 신규 세션만 카운트 증가 + peak 갱신.
+//         기존 세션의 heartbeat 는 last_heartbeat 만 갱신.
 streamsRouter.post('/:id/viewer/join', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    const sessionId = c.req.header('X-Session-ID') || c.req.header('x-session-id');
+    if (!sessionId || sessionId.length < 8 || sessionId.length > 128) {
+      return c.json({ success: false, error: 'X-Session-ID header required' }, 400);
+    }
 
-    // 시청자 수 증가 (viewer_count 컬럼이 없는 경우 silently ignore)
-    await db
-      .prepare(
-        `UPDATE live_streams
-         SET current_viewers = COALESCE(current_viewers, 0) + 1,
-             updated_at   = datetime('now')
-         WHERE id = ?`
-      )
-      .bind(streamId)
-      .run()
-      .catch(() => {});
+    // 인증 사용자는 user_id 도 기록 (unique_viewers 정확도 향상)
+    let userId: string | null = null;
+    try {
+      const auth = c.req.header('Authorization');
+      if (auth?.startsWith('Bearer ')) {
+        const { verify } = await import('hono/jwt');
+        const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256') as { id?: number | string };
+        if (payload?.id !== undefined) userId = String(payload.id);
+      }
+    } catch { /* anonymous view */ }
 
-    return c.json({ success: true });
+    // 1) INSERT OR IGNORE → meta.changes 로 신규 여부 판단
+    //    UNIQUE(live_stream_id, session_id) 인덱스 덕분에 같은 세션은 무시됨.
+    let isNewSession = false;
+    try {
+      const ins = await db
+        .prepare(
+          `INSERT OR IGNORE INTO live_stream_views
+             (live_stream_id, user_id, session_id, joined_at, last_heartbeat)
+           VALUES (?, ?, ?, datetime('now'), datetime('now'))`
+        )
+        .bind(streamId, userId, sessionId)
+        .run();
+      isNewSession = (ins.meta?.changes ?? 0) > 0;
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[Streams] lsv insert failed:', e);
+    }
+
+    // 2) heartbeat 갱신 (신규든 기존이든)
+    try {
+      await db
+        .prepare(
+          `UPDATE live_stream_views
+           SET last_heartbeat = datetime('now'),
+               left_at = NULL,
+               user_id = COALESCE(user_id, ?)
+           WHERE live_stream_id = ? AND session_id = ?`
+        )
+        .bind(userId, streamId, sessionId)
+        .run();
+    } catch { /* ignore */ }
+
+    // 활성 세션 수 재계산 → current_viewers + peak_viewers 업데이트 (신규 세션일 때만)
+    if (isNewSession) {
+      try {
+        const row = await db
+          .prepare(
+            `SELECT COUNT(*) as live FROM live_stream_views
+             WHERE live_stream_id = ?
+               AND last_heartbeat > datetime('now', '-120 seconds')
+               AND left_at IS NULL`
+          )
+          .bind(streamId)
+          .first<{ live: number }>();
+        const liveNow = Number(row?.live ?? 0);
+        await db
+          .prepare(
+            `UPDATE live_streams
+             SET current_viewers = ?,
+                 peak_viewers = MAX(COALESCE(peak_viewers, 0), ?),
+                 total_viewers = COALESCE(total_viewers, 0) + 1,
+                 updated_at = datetime('now')
+             WHERE id = ?`
+          )
+          .bind(liveNow, liveNow, streamId)
+          .run()
+          .catch(() => {});
+      } catch { /* non-fatal */ }
+    } else {
+      // heartbeat: current_viewers 만 주기적으로 재동기화 (TTL 만료된 세션 반영)
+      try {
+        const row = await db
+          .prepare(
+            `SELECT COUNT(*) as live FROM live_stream_views
+             WHERE live_stream_id = ?
+               AND last_heartbeat > datetime('now', '-120 seconds')
+               AND left_at IS NULL`
+          )
+          .bind(streamId)
+          .first<{ live: number }>();
+        await db
+          .prepare(
+            `UPDATE live_streams SET current_viewers = ?, updated_at = datetime('now') WHERE id = ?`
+          )
+          .bind(Number(row?.live ?? 0), streamId)
+          .run()
+          .catch(() => {});
+      } catch { /* ignore */ }
+    }
+
+    return c.json({ success: true, data: { new_session: isNewSession } });
   } catch (err: unknown) {
     console.error('[Streams] Viewer join error:', err);
     return c.json({ success: false, error: 'Failed to join stream' }, 500);
+  }
+});
+
+// ── POST /api/streams/:id/viewer/leave ────────────────────────────────────────
+// 2026-04-23 배치 164: 페이지 언로드 시 sendBeacon 으로 호출 (P1 분석 정확도)
+//   watch_duration 계산 + current_viewers 즉시 반영.
+streamsRouter.post('/:id/viewer/leave', async (c) => {
+  try {
+    const db = c.env.DB;
+    const streamId = c.req.param('id');
+    // sendBeacon 은 커스텀 헤더 불가 → query string fallback 지원
+    const sessionId =
+      c.req.header('X-Session-ID') ||
+      c.req.header('x-session-id') ||
+      c.req.query('s');
+    if (!sessionId) return c.json({ success: true }); // noop — beacon 은 best-effort
+
+    await db
+      .prepare(
+        `UPDATE live_stream_views
+         SET left_at = datetime('now'),
+             watch_duration = CAST((julianday(datetime('now')) - julianday(joined_at)) * 86400 AS INTEGER)
+         WHERE live_stream_id = ? AND session_id = ? AND left_at IS NULL`
+      )
+      .bind(streamId, sessionId)
+      .run()
+      .catch(() => {});
+
+    // current_viewers 즉시 재동기화
+    try {
+      const row = await db
+        .prepare(
+          `SELECT COUNT(*) as live FROM live_stream_views
+           WHERE live_stream_id = ?
+             AND last_heartbeat > datetime('now', '-120 seconds')
+             AND left_at IS NULL`
+        )
+        .bind(streamId)
+        .first<{ live: number }>();
+      await db
+        .prepare(
+          `UPDATE live_streams SET current_viewers = ?, updated_at = datetime('now') WHERE id = ?`
+        )
+        .bind(Number(row?.live ?? 0), streamId)
+        .run()
+        .catch(() => {});
+    } catch { /* ignore */ }
+
+    return c.json({ success: true });
+  } catch (err: unknown) {
+    if (import.meta.env.DEV) console.error('[Streams] Viewer leave error:', err);
+    return c.json({ success: false, error: 'Failed to leave stream' }, 500);
   }
 });
 

@@ -410,8 +410,52 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
     { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.pcBroadcast'), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600' },
     { key: 'prism' as const, icon: Smartphone, label: t('seller.liveBroadcast.naverPrism'), desc: t('seller.liveBroadcast.mobile'), active: 'border-green-400 bg-green-50', iconActive: 'text-green-600' },
   ]
+  // 🛡️ 2026-04-23 배치 164: 1-click quick start (P1 UX 단순화)
+  //   클릭 한 번으로 기본값(오늘 날짜 제목 + 최근 상품 3개 + quick 방식)으로 방송 생성.
+  //   세부 설정이 필요한 사용자는 아래 폼을 이용.
+  const canQuickStart = sellableProducts.length > 0 && !creating
+  const handleQuickStart = () => {
+    if (!canQuickStart) return
+    // 오늘 날짜 + 시간으로 자동 제목
+    const now = new Date()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    const dd = String(now.getDate()).padStart(2, '0')
+    const hh = String(now.getHours()).padStart(2, '0')
+    const autoTitle = t('seller.liveBroadcast.quickAutoTitle', { date: `${mm}/${dd}`, hour: `${hh}` }) as string
+    setTitle(autoTitle)
+    // 최근 상품 최대 5개 자동 선택
+    const recent = sellableProducts.slice(0, 5).map(p => p.id)
+    recent.forEach(id => { if (!selectedProducts.includes(id)) toggleProduct(id) })
+    setMethod('quick')
+    // 상태 업데이트 후 다음 틱에 방송 생성
+    setTimeout(() => onCreate(), 50)
+  }
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+    <div className="space-y-4">
+      {/* ⚡ Quick Start 카드 */}
+      <button
+        onClick={handleQuickStart}
+        disabled={!canQuickStart}
+        className="w-full bg-gradient-to-r from-pink-500 via-red-500 to-orange-500 hover:from-pink-600 hover:via-red-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl p-5 text-left transition-all active:scale-[0.99] shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+            <Zap className="w-6 h-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-bold">{t('seller.liveBroadcast.quickStartOneClick')}</p>
+            <p className="text-xs text-white/90 mt-0.5">{t('seller.liveBroadcast.quickStartOneClickDesc')}</p>
+          </div>
+          <Play className="w-5 h-5 shrink-0" />
+        </div>
+      </button>
+
+      <div className="flex items-center gap-3 text-xs text-gray-400">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span>{t('seller.liveBroadcast.orCustomize')}</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
       <div>
         <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.enterBroadcastInfo')}</h2>
         <p className="text-xs text-gray-500 mt-0.5">{t('seller.liveBroadcast.enterBroadcastInfoDesc')}</p>
@@ -528,6 +572,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         {creating ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Radio className="h-5 w-5 mr-2" />}
         {creating ? t('seller.liveBroadcast.creating') : t('seller.liveBroadcast.createBroadcast')}
       </Button>
+      </div>
     </div>
   )
 }

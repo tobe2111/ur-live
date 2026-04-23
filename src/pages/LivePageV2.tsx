@@ -398,13 +398,30 @@ export default function LivePageV2() {
     joinViewer()
     fetchViewerCount()
 
-    // 30초마다 Heartbeat 전송 (KV TTL 60초) — heartbeat 는 항상 fixed interval
+    // 30초마다 Heartbeat 전송 (heartbeat TTL 120초)
     const heartbeatInterval = setInterval(joinViewer, 30000)
+
+    // 🛡️ 2026-04-23 배치 164: 페이지 이탈 시 leave beacon (P1 분석 정확도)
+    //   sendBeacon 은 페이지 언로드에도 안정적으로 전송. watch_duration 계산용.
+    const leaveBeacon = () => {
+      try {
+        const url = `/api/streams/${currentStream.id}/viewer/leave`
+        const blob = new Blob([JSON.stringify({ session_id: sessionId })], { type: 'application/json' })
+        // sendBeacon 은 커스텀 헤더 불가 → body 에 세션 포함 + 쿼리스트링 보조
+        navigator.sendBeacon?.(`${url}?s=${encodeURIComponent(sessionId)}`, blob)
+      } catch { /* best-effort */ }
+    }
+    const onPageHide = () => leaveBeacon()
+    window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('beforeunload', onPageHide)
 
     return () => {
       cancelled = true
       clearInterval(heartbeatInterval)
       if (viewerCountTimer) clearTimeout(viewerCountTimer)
+      window.removeEventListener('pagehide', onPageHide)
+      window.removeEventListener('beforeunload', onPageHide)
+      leaveBeacon()
     }
   }, [currentStream?.id])
 
