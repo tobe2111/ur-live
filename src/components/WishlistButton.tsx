@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '@/lib/api'
 
 interface WishlistButtonProps {
   productId: number
@@ -49,7 +49,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
   // 찜 상태 확인
   const checkWishlistStatus = async () => {
     try {
-      const response = await axios.get(`/api/wishlists/check/${userId}/${productId}`)
+      const response = await api.get(`/api/wishlists/check/${userId}/${productId}`)
       if (response.data.success) {
         setIsWishlisted(response.data.data.isWishlisted)
         setWishlistId(response.data.data.wishlistId)
@@ -80,7 +80,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
     try {
       if (isWishlisted) {
         // 찜 취소
-        await axios.delete(`/api/wishlists/product/${productId}?userId=${userId}`)
+        await api.delete(`/api/wishlists/product/${productId}?userId=${userId}`)
         setIsWishlisted(false)
         setWishlistId(null)
         
@@ -88,7 +88,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
         showToast('찜 목록에서 삭제되었습니다.')
       } else {
         // 찜하기
-        const response = await axios.post('/api/wishlists', {
+        const response = await api.post('/api/wishlists', {
           userId,
           productId
         })
