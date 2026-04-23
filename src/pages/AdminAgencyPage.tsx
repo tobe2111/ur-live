@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle, KeyRound } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle, KeyRound, Users } from 'lucide-react'
 
 interface Agency {
   id: number
@@ -195,7 +196,22 @@ export default function AdminAgencyPage() {
 
   return (
     <AdminLayout title="에이전시 관리">
-      <div className="flex items-center justify-between">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="에이전시 관리"
+          subtitle={`총 ${agencies.length}개 에이전시`}
+          icon={<Users className="h-5 w-5" />}
+          actions={
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              에이전시 추가
+            </button>
+          }
+        />
+      <div className="hidden flex items-center justify-between">
         <p className="text-sm text-gray-500">총 {agencies.length}개 에이전시</p>
         <button
           onClick={openCreate}
@@ -467,6 +483,7 @@ export default function AdminAgencyPage() {
           </div>
         </div>
       )}
+      </div>
     </AdminLayout>
   )
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Radio, Eye, Clock, StopCircle, RefreshCw, ExternalLink } from 'lucide-react'
 
 interface LiveStream {
@@ -92,17 +93,22 @@ export default function AdminLiveMonitorPage() {
   }
 
   return (
-    <AdminLayout title="라이브 모니터링" headerRight={
-      <div className="flex items-center gap-2">
-        <button onClick={() => setAutoRefresh(!autoRefresh)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-            autoRefresh ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-          }`}>
-          <RefreshCw className={`w-3 h-3 ${autoRefresh ? 'animate-spin' : ''}`} style={autoRefresh ? { animationDuration: '3s' } : {}} />
-          {autoRefresh ? '자동 갱신 ON' : '자동 갱신 OFF'}
-        </button>
-      </div>
-    }>
+    <AdminLayout title="라이브 모니터링">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="라이브 모니터링"
+          subtitle="진행 중인 라이브 방송 실시간 현황"
+          icon={<Radio className="h-5 w-5" />}
+          actions={
+            <button onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                autoRefresh ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+              }`}>
+              <RefreshCw className={`h-3.5 w-3.5 ${autoRefresh ? 'animate-spin' : ''}`} style={autoRefresh ? { animationDuration: '3s' } : {}} />
+              {autoRefresh ? '자동 갱신 ON' : '자동 갱신 OFF'}
+            </button>
+          }
+        />
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : (
@@ -205,6 +211,7 @@ export default function AdminLiveMonitorPage() {
           </div>
         </>
       )}
+      </div>
     </AdminLayout>
   )
 }

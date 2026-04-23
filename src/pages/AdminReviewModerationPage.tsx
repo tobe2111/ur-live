@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Star, Eye, EyeOff, Trash2, MessageSquare, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Review {
@@ -111,6 +112,12 @@ export default function AdminReviewModerationPage() {
 
   return (
     <AdminLayout title="리뷰 관리">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="리뷰 관리"
+          subtitle="상품 리뷰 승인/숨김/삭제 · 부적절 리뷰 모더레이션"
+          icon={<MessageSquare className="h-5 w-5" />}
+        />
       {/* 통계 카드 */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -232,6 +239,7 @@ export default function AdminReviewModerationPage() {
           </button>
         </div>
       )}
+      </div>
     </AdminLayout>
   )
 }

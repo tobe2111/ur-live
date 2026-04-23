@@ -9,6 +9,8 @@ import {
   Search, MoreVertical, Bell, Send, Shield, Radio, Activity, FileText
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { LayoutDashboard } from 'lucide-react'
 import { formatKST, formatKSTDate } from '@/utils/date'
 
 interface ApiError {
@@ -430,6 +432,12 @@ export default function AdminPage() {
 
   return (
     <AdminLayout title="관리자 대시보드" pendingCount={pendingSellers.length}>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="관리자 대시보드"
+          subtitle="유어딜 전체 운영 현황 — 셀러 승인·매출·주문·정산"
+          icon={<LayoutDashboard className="h-5 w-5" />}
+        />
       {/* Rejection Modal */}
       {rejectModalOpen && selectedSeller && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -851,6 +859,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+      </div>
     </AdminLayout>
   )
 }
