@@ -119,16 +119,13 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
 
   return (
     <>
-      {/* 선물하기 버튼 */}
+      {/* 선물하기 버튼 — 아이콘 전용 (다른 액션 버튼과 크기 통일) */}
       <button
         onClick={() => setShowSheet(true)}
-        className="flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500/20 backdrop-blur-sm transition-all active:scale-90"
         aria-label="선물하기"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500/20 backdrop-blur-sm">
-          <Gift className="h-5 w-5 text-pink-400" />
-        </div>
-        <span className="text-[9px] font-medium text-white/80">선물하기</span>
+        <Gift className="h-5 w-5 text-pink-400" />
       </button>
 
       {/* 후원 센터 알림 애니메이션 */}

@@ -25,9 +25,10 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: '운영',
     items: [
-      { path: '/admin',               label: '대시보드',      icon: LayoutDashboard, exact: true },
-      { path: '/admin/revenue',       label: '매출 분석',     icon: BarChart3 },
-      { path: '/admin/live-monitor',  label: '라이브 모니터', icon: Radio },
+      { path: '/admin',                  label: '대시보드',      icon: LayoutDashboard, exact: true },
+      { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
+      { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
+      { path: '/admin/live-monitor',     label: '라이브 모니터', icon: Radio },
     ],
   },
   {

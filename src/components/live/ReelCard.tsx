@@ -1115,10 +1115,10 @@ export default function ReelCard({
         {/* Spacer pushes content to bottom */}
         <div className="flex-1" />
 
-        {/* Content area */}
-        <div className="pointer-events-auto relative flex flex-col px-4 pb-3">
+        {/* Content area — safe area 대응 */}
+        <div className="pointer-events-auto relative flex flex-col px-3 pb-safe" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
           {/* Chat + action icons row */}
-          <div className="flex items-end gap-3 mb-2.5">
+          <div className="flex items-end gap-2 mb-2">
             {/* Live chat feed - left side, wide */}
             <div className="min-w-0 flex-1">
               <LiveChat
@@ -1128,7 +1128,7 @@ export default function ReelCard({
             </div>
 
             {/* Chat + Heart + Donate + Share buttons - right side */}
-            <div className="flex flex-col items-center gap-2.5 shrink-0 pb-1 mr-1">
+            <div className="flex flex-col items-center gap-3 shrink-0 pb-1 mr-2.5">
               {/* 하트 반응 */}
               <HeartReaction />
               <button
@@ -1230,14 +1230,14 @@ export default function ReelCard({
             </div>
           </div>
           )}
-          {/* v4 Cinema: 구매 버튼 2열 — 상품 있을 때만 표시 */}
+          {/* 구매 버튼 2열 — 더 큰 터치 타겟 + 시각적 강조 */}
           {currentProduct && (
-          <div className="grid grid-cols-2 w-full rounded-2xl overflow-hidden mt-1.5" style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <div className="grid grid-cols-2 gap-1.5 w-full mt-2">
             <button
               onClick={handleAddToCart}
               disabled={!currentProduct || addingToCart}
-              className="py-2.5 text-center text-[13px] font-bold text-white active:scale-[0.98] transition-transform disabled:opacity-40"
-              style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}
+              className="py-3 text-center text-sm font-bold text-white rounded-xl active:scale-[0.97] transition-all disabled:opacity-40"
+              style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)' }}
             >
               {addingToCart ? '추가 중...' : '장바구니'}
             </button>
@@ -1245,8 +1245,8 @@ export default function ReelCard({
               <button
                 onClick={handleChangeProduct}
                 disabled={changingProduct || isCurrentProduct}
-                className="py-2.5 text-center text-[13px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-40"
-                style={{ background: 'linear-gradient(90deg, #EF4444, #EC4899)' }}
+                className="py-3 text-center text-sm font-extrabold text-white rounded-xl active:scale-[0.97] transition-all disabled:opacity-40"
+                style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
               >
                 {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 소개 중' : '🔄 변경'}
               </button>
@@ -1257,8 +1257,8 @@ export default function ReelCard({
                   else showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
                 }}
                 disabled={!currentProduct}
-                className="py-2.5 text-center text-[13px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-40"
-                style={{ background: 'linear-gradient(90deg, #EF4444, #EC4899)' }}
+                className="py-3 text-center text-sm font-extrabold text-white rounded-xl active:scale-[0.97] transition-all disabled:opacity-40"
+                style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
               >
                 바로 구매
               </button>
