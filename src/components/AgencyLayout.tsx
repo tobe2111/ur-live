@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import {
   LayoutDashboard, Users, ShoppingBag, BarChart2, LogOut, Menu, X,
   Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
-  TrendingUp, Radio, UserPlus, type LucideIcon
+  TrendingUp, Radio, UserPlus, BookOpen, type LucideIcon
 } from 'lucide-react'
 
 interface NavItem {
@@ -54,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/agency/settlements', label: '정산 관리',   icon: TrendingUp },
       { path: '/agency/contracts',   label: '계약 관리',   icon: FileText },
       { path: '/agency/notices',     label: '셀러 공지',   icon: Bell },
+      { path: '/agency/guide',       label: '운영 가이드',  icon: BookOpen },
       { path: '/agency/profile',     label: '프로필 설정',  icon: Settings },
     ],
   },

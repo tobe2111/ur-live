@@ -59,6 +59,8 @@ const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const SellerGroupBuyPage = lazy(() => import('./pages/SellerGroupBuyPage'))
 const SellerBundlesPage = lazy(() => import('./pages/SellerBundlesPage'))
+const SellerGuidePage = lazy(() => import('./pages/SellerGuidePage'))
+const AgencyGuidePage = lazy(() => import('./pages/AgencyGuidePage'))
 const SellerMealVoucherNewPage = lazy(() => import('./pages/SellerMealVoucherNewPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
@@ -520,6 +522,11 @@ function AppContent() {
                 <ErrorBoundary><SellerBundlesPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
+            <Route path="/seller/guide" element={
+              <ProtectedRoute requireSeller>
+                <ErrorBoundary><SellerGuidePage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
             <Route path="/seller/meal-voucher/new" element={
               <ProtectedRoute requireSeller>
                 <ErrorBoundary><SellerMealVoucherNewPage /></ErrorBoundary>
@@ -710,6 +717,7 @@ function AppContent() {
             <Route path="/agency/orders" element={<AgencyAuthGuard><AgencyOrdersPage /></AgencyAuthGuard>} />
             <Route path="/agency/streams" element={<AgencyAuthGuard><AgencyStreamsPage /></AgencyAuthGuard>} />
             <Route path="/agency/stats" element={<AgencyAuthGuard><AgencyStatsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/guide" element={<AgencyAuthGuard><AgencyGuidePage /></AgencyAuthGuard>} />
             <Route path="/agency/settlements" element={<AgencyAuthGuard><AgencySettlementsPage /></AgencyAuthGuard>} />
             <Route path="/agency/ranking" element={<AgencyAuthGuard><AgencyRankingPage /></AgencyAuthGuard>} />
             <Route path="/agency/schedule" element={<AgencyAuthGuard><AgencySchedulePage /></AgencyAuthGuard>} />
