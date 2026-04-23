@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -7,6 +8,7 @@ import { FileText, Plus, Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AgencyContractsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [contracts, setContracts] = useState<any[]>([])
   const [sellers, setSellers] = useState<any[]>([])
@@ -55,12 +57,12 @@ export default function AgencyContractsPage() {
   const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <AgencyLayout title="계약 관리">
+    <AgencyLayout title={t('agency.contracts')}>
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="셀러 계약 관리"
-          subtitle="에이전시 소속 셀러의 계약 정보 관리"
+          title={t('agency.contracts')}
+          subtitle={t('agency.contractsSubtitle')}
           icon={<FileText className="h-5 w-5" />}
           actions={
             <button onClick={() => setShowForm(!showForm)}

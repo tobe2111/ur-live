@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
@@ -7,6 +8,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Edit2, Package, Loader2, ArrowLeft } from 'lucide-react'
 
 export default function AgencyProductsPage() {
+  const { t } = useTranslation()
   const { sellerId } = useParams<{ sellerId: string }>()
   const navigate = useNavigate()
   const [products, setProducts] = useState<any[]>([])

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
@@ -6,6 +7,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { DollarSign, CheckCircle, Clock, Loader2, ArrowRight, Banknote } from 'lucide-react'
 
 export default function AgencySettlementsPage() {
+  const { t } = useTranslation()
   const [data, setData] = useState<any[]>([])
   const [summary, setSummary] = useState<any>({})
   const [loading, setLoading] = useState(true)
@@ -41,12 +43,12 @@ export default function AgencySettlementsPage() {
   }
 
   return (
-    <AgencyLayout title="정산 관리">
+    <AgencyLayout title={t('agency.settlements')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="정산 관리"
-          subtitle="에이전시 정산 신청 및 이력"
+          title={t('agency.settlements')}
+          subtitle={t('agency.settlementsSubtitle')}
           icon={<DollarSign className="h-5 w-5" />}
         />
 

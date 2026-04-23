@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Trophy, Users } from 'lucide-react'
 
 export default function AgencyRankingPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [sellers, setSellers] = useState<any[]>([])
   const [metric, setMetric] = useState<'revenue' | 'orders'>('revenue')
@@ -30,12 +32,12 @@ export default function AgencyRankingPage() {
   const badges = ['👑', '💎', '⭐']
 
   return (
-    <AgencyLayout title="셀러 랭킹">
+    <AgencyLayout title={t('agency.ranking')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="셀러 성과 랭킹"
-          subtitle="소속 셀러의 매출/주문 순위"
+          title={t('agency.ranking')}
+          subtitle={t('agency.rankingSubtitle')}
           icon={<Trophy className="h-5 w-5" />}
           actions={
             <div className="inline-flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
@@ -52,7 +54,7 @@ export default function AgencyRankingPage() {
         {loading ? (
           <DashboardLoading />
         ) : sellers.length === 0 ? (
-          <DashboardEmptyState icon={<Users className="h-7 w-7" />} title="소속 셀러가 없습니다" />
+          <DashboardEmptyState icon={<Users className="h-7 w-7" />} title={t('agency.noSellers')} />
         ) : (
           <div className="space-y-3">
             {sellers.map((s: { id: number; name: string; business_name?: string; total_revenue?: number; total_orders?: number; live_count?: number; avg_rating?: number; total_followers?: number; total_reviews?: number }, i: number) => (

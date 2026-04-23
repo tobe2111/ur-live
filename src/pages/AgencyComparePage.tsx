@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { BarChart2 } from 'lucide-react'
 
 export default function AgencyComparePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,12 +31,12 @@ export default function AgencyComparePage() {
   const maxRevenue = Math.max(...data.map(d => d.revenue), 1)
 
   return (
-    <AgencyLayout title="셀러 비교">
+    <AgencyLayout title={t('agency.compare')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        {/* 🛡️ 2026-04-22 배치 130+157: 디자인 시스템 + i18n 적용 */}
         <DashboardPageHeader
-          title="셀러 성과 비교"
-          subtitle="기간별 매출, 주문, 라이브 비교"
+          title={t('agency.compare')}
+          subtitle={t('agency.compareSubtitle')}
           icon={<BarChart2 className="h-5 w-5" />}
           actions={
             <div className="inline-flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
@@ -48,7 +50,7 @@ export default function AgencyComparePage() {
           }
         />
         {loading ? <DashboardLoading /> : data.length === 0 ? (
-          <DashboardEmptyState icon={<BarChart2 className="h-7 w-7" />} title="데이터가 없습니다" description="아직 비교할 셀러가 등록되지 않았어요" />
+          <DashboardEmptyState icon={<BarChart2 className="h-7 w-7" />} title={t('agency.noData')} description={t('agency.noSellers')} />
         ) : (
           <div className="space-y-3">
             {data.map((s, i) => (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
@@ -7,6 +8,7 @@ import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Save, Loader2, Settings } from 'lucide-react'
 
 export default function AgencyProfilePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [profile, setProfile] = useState<any>(null)
   const [form, setForm] = useState({ name: '', contact_name: '', phone: '' })
@@ -42,15 +44,15 @@ export default function AgencyProfilePage() {
     finally { setSaving(false) }
   }
 
-  if (loading) return <AgencyLayout title="프로필"><div className="mx-auto max-w-xl p-6"><DashboardLoading /></div></AgencyLayout>
+  if (loading) return <AgencyLayout title={t('agency.profile')}><div className="mx-auto max-w-xl p-6"><DashboardLoading /></div></AgencyLayout>
 
   return (
-    <AgencyLayout title="프로필 설정">
+    <AgencyLayout title={t('agency.profile')}>
       <div className="mx-auto max-w-xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="에이전시 프로필"
-          subtitle="에이전시 기본 정보 관리"
+          title={t('agency.profile')}
+          subtitle={t('agency.profileSubtitle')}
           icon={<Settings className="h-5 w-5" />}
         />
 

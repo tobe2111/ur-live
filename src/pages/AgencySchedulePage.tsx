@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { ChevronLeft, ChevronRight, Play, Clock, Loader2, Calendar } from 'lucide-react'
 
 export default function AgencySchedulePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [streams, setStreams] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,12 +47,12 @@ export default function AgencySchedulePage() {
   const days = ['일', '월', '화', '수', '목', '금', '토']
 
   return (
-    <AgencyLayout title="방송 캘린더">
+    <AgencyLayout title={t('agency.schedule')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="방송 캘린더"
-          subtitle="소속 셀러의 라이브 일정"
+          title={t('agency.schedule')}
+          subtitle={t('agency.scheduleSubtitle')}
           icon={<Calendar className="h-5 w-5" />}
           actions={
             <div className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-1">
