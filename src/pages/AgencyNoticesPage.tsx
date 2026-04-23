@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Send, Loader2, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
@@ -45,8 +46,13 @@ export default function AgencyNoticesPage() {
 
   return (
     <AgencyLayout title="셀러 공지사항">
-      <div className="p-6 max-w-3xl">
-        <h1 className="text-xl font-bold text-gray-900 mb-6">셀러 공지사항</h1>
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="셀러 공지사항"
+          subtitle="소속 셀러에게 일괄 공지 전송 및 이력 관리"
+          icon={<Bell className="h-5 w-5" />}
+        />
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
           <h2 className="text-sm font-bold text-gray-900 mb-3">새 공지 작성</h2>

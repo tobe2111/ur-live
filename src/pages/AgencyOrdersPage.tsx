@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { ShoppingBag } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -69,6 +71,13 @@ export default function AgencyOrdersPage() {
 
   return (
     <AgencyLayout title="주문 현황">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="주문 현황"
+          subtitle="소속 셀러의 주문 내역"
+          icon={<ShoppingBag className="h-5 w-5" />}
+        />
       <div className="bg-white rounded-xl border border-gray-200">
         {/* Filters */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
@@ -136,6 +145,7 @@ export default function AgencyOrdersPage() {
             </button>
           </div>
         )}
+      </div>
       </div>
     </AgencyLayout>
   )

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { FileText, Plus, Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
@@ -55,14 +56,19 @@ export default function AgencyContractsPage() {
 
   return (
     <AgencyLayout title="계약 관리">
-      <div className="p-6 max-w-4xl">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-900">셀러 계약 관리</h1>
-          <button onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold flex items-center gap-1.5">
-            <Plus className="w-4 h-4" /> 계약 등록
-          </button>
-        </div>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="셀러 계약 관리"
+          subtitle="에이전시 소속 셀러의 계약 정보 관리"
+          icon={<FileText className="h-5 w-5" />}
+          actions={
+            <button onClick={() => setShowForm(!showForm)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+              <Plus className="h-3.5 w-3.5" /> 계약 등록
+            </button>
+          }
+        />
 
         {showForm && (
           <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">

@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { LayoutDashboard } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
@@ -477,6 +479,13 @@ export default function AgencyPage() {
 
   return (
     <AgencyLayout title={t('seller.dashboard')}>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.dashboard')}
+          subtitle={t('agency.dashboardSubtitle') || '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브'}
+          icon={<LayoutDashboard className="h-5 w-5" />}
+        />
       {/* 0. 월간 매출 목표 진행률 */}
       <div className="bg-white rounded-2xl p-4 border border-[#E8EAEE]">
         <div className="flex items-center justify-between mb-2 gap-2">
@@ -838,6 +847,7 @@ export default function AgencyPage() {
           </div>
         </div>
       )}
+      </div>
     </AgencyLayout>
   )
 }

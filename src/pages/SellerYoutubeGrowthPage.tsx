@@ -5,6 +5,7 @@ import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Youtube, Loader2, CheckCircle, Clock, XCircle, Users } from 'lucide-react'
 
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
@@ -171,7 +172,13 @@ export default function SellerYoutubeGrowthPage() {
 
   return (
     <SellerLayout title={t('seller.youtubeGrowth')}>
-      <div className="space-y-6">
+      <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.youtubeGrowth')}
+          subtitle={t('seller.youtubeGrowthSubtitle') || '유튜브 구독자 증가 서비스'}
+          icon={<Youtube className="h-5 w-5" />}
+        />
         {/* 안내 */}
         <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-5 border border-red-100">
           <div className="flex items-start gap-3">

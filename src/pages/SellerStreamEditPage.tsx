@@ -5,6 +5,8 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { ArrowLeft, Loader2, Play, Edit, Trash2 } from 'lucide-react'
 import { formatKST } from '@/utils/date'
+import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 
 interface Stream {
   id: number
@@ -175,28 +177,28 @@ export default function SellerStreamEditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigate('/seller')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>{t('seller.backToDashboard')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <SellerLayout title={t('seller.streamManagement')}>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
+        <DashboardPageHeader
+          title={t('seller.streamManagement')}
+          subtitle={t('seller.streamEditSubtitle') || '라이브 스트림 상세 관리'}
+          icon={<Play className="h-5 w-5" />}
+          actions={
+            <button
+              onClick={() => navigate('/seller')}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>{t('seller.backToDashboard')}</span>
+            </button>
+          }
+        />
         {/* Title */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Play className="w-10 h-10 text-blue-600" />
-              <h1 className="text-3xl font-bold text-gray-900">{t('seller.streamManagement')}</h1>
+            <div className="flex items-center gap-3 hidden">
+              <h1 className="text-xl font-bold tracking-tight text-gray-900">{t('seller.streamManagement')}</h1>
             </div>
             <button
               onClick={handleDelete}
@@ -326,6 +328,6 @@ export default function SellerStreamEditPage() {
           </div>
         </form>
       </div>
-    </div>
+    </SellerLayout>
   )
 }

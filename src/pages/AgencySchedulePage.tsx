@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
-import { ChevronLeft, ChevronRight, Play, Clock, Loader2 } from 'lucide-react'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { ChevronLeft, ChevronRight, Play, Clock, Loader2, Calendar } from 'lucide-react'
 
 export default function AgencySchedulePage() {
   const navigate = useNavigate()
@@ -45,17 +46,22 @@ export default function AgencySchedulePage() {
 
   return (
     <AgencyLayout title="방송 캘린더">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-900">방송 캘린더</h1>
-          <div className="flex items-center gap-3">
-            <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronLeft className="w-5 h-5" /></button>
-            <span className="text-sm font-bold text-gray-900 min-w-[120px] text-center">
-              {year}년 {month + 1}월
-            </span>
-            <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronRight className="w-5 h-5" /></button>
-          </div>
-        </div>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="방송 캘린더"
+          subtitle="소속 셀러의 라이브 일정"
+          icon={<Calendar className="h-5 w-5" />}
+          actions={
+            <div className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-1">
+              <button onClick={prevMonth} className="rounded-lg p-1.5 hover:bg-gray-100"><ChevronLeft className="h-4 w-4" /></button>
+              <span className="min-w-[100px] text-center text-xs font-semibold text-gray-900">
+                {year}년 {month + 1}월
+              </span>
+              <button onClick={nextMonth} className="rounded-lg p-1.5 hover:bg-gray-100"><ChevronRight className="h-4 w-4" /></button>
+            </div>
+          }
+        />
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>

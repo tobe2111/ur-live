@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Ticket, Plus, Trash2, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
@@ -46,14 +47,19 @@ export default function SellerCouponsPage() {
 
   return (
     <SellerLayout title={t('seller.coupons.title')}>
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-gray-900">{t('seller.coupons.title')}</h1>
-          <button onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold flex items-center gap-1.5">
-            <Plus className="w-4 h-4" /> {t('seller.coupons.create')}
-          </button>
-        </div>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.coupons.title')}
+          subtitle={t('seller.coupons.subtitle') || '쿠폰 발급 및 사용 이력'}
+          icon={<Ticket className="h-5 w-5" />}
+          actions={
+            <button onClick={() => setShowForm(!showForm)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+              <Plus className="h-3.5 w-3.5" /> {t('seller.coupons.create')}
+            </button>
+          }
+        />
 
         {showForm && (
           <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">

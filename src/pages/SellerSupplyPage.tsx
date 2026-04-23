@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import {
   Truck, Package, Loader2,
   Search, CheckCircle, XCircle, Clock,
@@ -152,7 +153,13 @@ export default function SellerSupplyPage() {
 
   return (
     <SellerLayout title={t('seller.supplyProducts')}>
-      <div className="max-w-3xl mx-auto">
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.supplyProducts')}
+          subtitle={t('seller.supplySubtitle') || '공급 상품 요청 및 관리'}
+          icon={<ShoppingBag className="h-5 w-5" />}
+        />
         {/* Tabs */}
         <div className="flex gap-1 mb-5 border-b border-gray-200">
           <button

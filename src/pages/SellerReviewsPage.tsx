@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
-import { Star, MessageCircle, Loader2 } from 'lucide-react'
+import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
+import { Star, MessageCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function SellerReviewsPage() {
@@ -31,10 +32,15 @@ export default function SellerReviewsPage() {
 
   return (
     <SellerLayout title={t('seller.reviews.title')}>
-      <div className="p-6">
-        <h1 className="text-xl font-bold text-gray-900 mb-4">{t('seller.reviews.title')}</h1>
-        {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div> : reviews.length === 0 ? (
-          <p className="text-center py-12 text-gray-500">{t('seller.reviews.empty')}</p>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.reviews.title')}
+          subtitle={t('seller.reviews.subtitle') || '상품 리뷰 관리 및 답변'}
+          icon={<Star className="h-5 w-5" />}
+        />
+        {loading ? <DashboardLoading /> : reviews.length === 0 ? (
+          <DashboardEmptyState icon={<Star className="h-7 w-7" />} title={t('seller.reviews.empty')} />
         ) : (
           <div className="space-y-3">
             {reviews.map(r => (

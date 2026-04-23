@@ -17,6 +17,8 @@ import {
   Download
 } from 'lucide-react'
 import { downloadSellerTemplate } from '@/utils/product-template'
+import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 
 interface LiveStream {
   id: number
@@ -170,29 +172,25 @@ export default function SellerProductNewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigate('/seller/products')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>{t('seller.backToProductList')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Title */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Package className="w-10 h-10 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">{t('seller.productCreate')}</h1>
-          </div>
-          <p className="text-gray-600 mt-2">
+    <SellerLayout title={t('seller.productCreate')}>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
+        <DashboardPageHeader
+          title={t('seller.productCreate')}
+          subtitle={t('seller.newProductDesc')}
+          icon={<Package className="h-5 w-5" />}
+          actions={
+            <button
+              onClick={() => navigate('/seller/products')}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>{t('seller.backToProductList')}</span>
+            </button>
+          }
+        />
+        <div className="mb-8 hidden">
+          <p className="text-sm text-gray-500">
             {t('seller.newProductDesc')}
           </p>
           <button
@@ -582,6 +580,6 @@ export default function SellerProductNewPage() {
           </div>
         </form>
       </div>
-    </div>
+    </SellerLayout>
   )
 }

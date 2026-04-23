@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Play, Users, Clock, Radio } from 'lucide-react'
@@ -53,6 +54,13 @@ export default function AgencyStreamsPage() {
 
   return (
     <AgencyLayout title="라이브 현황">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="라이브 현황"
+          subtitle="소속 셀러의 라이브 방송 현황"
+          icon={<Radio className="h-5 w-5" />}
+        />
       {/* Live summary */}
       {liveCount > 0 && (
         <div className="bg-rose-50 border border-rose-200 rounded-xl px-5 py-4 flex items-center gap-3">
@@ -127,6 +135,7 @@ export default function AgencyStreamsPage() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </AgencyLayout>
   )

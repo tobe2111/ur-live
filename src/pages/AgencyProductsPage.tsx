@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Edit2, Package, Loader2, ArrowLeft } from 'lucide-react'
 
 export default function AgencyProductsPage() {
@@ -51,23 +52,24 @@ export default function AgencyProductsPage() {
 
   return (
     <AgencyLayout title={`${sellerName} 상품 관리`}>
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/agency/sellers')} className="p-2 hover:bg-gray-100 rounded-lg">
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">{sellerName} 상품 관리</h1>
-              <p className="text-xs text-gray-500">{products.length}개 상품</p>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={`${sellerName} 상품 관리`}
+          subtitle={`${products.length}개 상품`}
+          icon={<Package className="h-5 w-5" />}
+          actions={
+            <div className="flex items-center gap-2">
+              <button onClick={() => navigate('/agency/sellers')} className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                <ArrowLeft className="h-3.5 w-3.5" /> 셀러 목록
+              </button>
+              <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', description: '', price: 0, original_price: 0, stock: 100, image_url: '', category: 'general' }) }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+                <Plus className="h-3.5 w-3.5" /> 상품 등록
+              </button>
             </div>
-          </div>
-          <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', description: '', price: 0, original_price: 0, stock: 100, image_url: '', category: 'general' }) }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold">
-            <Plus className="w-4 h-4" /> 상품 등록
-          </button>
-        </div>
-
+          }
+        />
         {showForm && (
           <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4 space-y-3">
             <h2 className="text-sm font-bold text-gray-900">{editingId ? '상품 수정' : '새 상품 등록'}</h2>

@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { Play } from 'lucide-react'
 
 export default function SellerStreamNewPage() {
   const { t } = useTranslation()
@@ -206,23 +209,22 @@ export default function SellerStreamNewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <SellerLayout title={t('seller.createStream')}>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
+        <DashboardPageHeader
+          title={t('seller.createStream')}
+          subtitle={t('seller.createStreamSubtitle') || '라이브 스트림 등록'}
+          icon={<Play className="h-5 w-5" />}
+          actions={
             <button
               onClick={goBack}
-              className="text-gray-600 hover:text-gray-900"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
             >
               &larr; {t('seller.goBack')}
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">{t('seller.createStream')}</h1>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 py-8">
+          }
+        />
         <div className="bg-white rounded-lg shadow p-8">
           {/* YouTube Info Display */}
           {youtubeInfo && (
@@ -563,6 +565,6 @@ export default function SellerStreamNewPage() {
           )}
         </div>
       </div>
-    </div>
+    </SellerLayout>
   )
 }

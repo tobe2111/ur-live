@@ -7,6 +7,7 @@ import { Heart, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, CreditCard } 
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { formatKSTDate } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader, DashboardStatCard } from '@/components/dashboard'
 
 interface DonationRow {
   id: number
@@ -128,24 +129,20 @@ export default function SellerDonationsPage() {
 
   return (
     <SellerLayout title={t('seller.donations')}>
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.donations')}
+          subtitle={t('seller.donationsSubtitle') || '후원 수신 및 정산 내역'}
+          icon={<Heart className="h-5 w-5" />}
+        />
         {/* 요약 카드 */}
         {summary && (
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            {[
-              { label: t('seller.totalReceivedDonations'), value: `${fmt(summary.total_received)}${t('common.won')}`, icon: <TrendingUp className="w-4 h-4" />, color: 'text-pink-500', bg: 'bg-pink-50' },
-              { label: t('seller.settlementAvailable'), value: `${fmt(summary.available_amount)}${t('common.won')}`, icon: <CreditCard className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: t('seller.settlementCompleted'), value: `${fmt(summary.total_settled)}${t('common.won')}`, icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-              { label: t('seller.settlementPendingAmount'), value: `${fmt(summary.pending_settlement)}${t('common.won')}`, icon: <Clock className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
-            ].map(c => (
-              <div key={c.label} className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500">{c.label}</span>
-                  <div className={`w-7 h-7 rounded-lg ${c.bg} ${c.color} flex items-center justify-center`}>{c.icon}</div>
-                </div>
-                <p className="text-base font-bold text-gray-900">{c.value}</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 gap-3">
+            <DashboardStatCard label={t('seller.totalReceivedDonations')} value={`${fmt(summary.total_received)}${t('common.won')}`} icon={<TrendingUp className="h-4 w-4" />} accent="rose" />
+            <DashboardStatCard label={t('seller.settlementAvailable')} value={`${fmt(summary.available_amount)}${t('common.won')}`} icon={<CreditCard className="h-4 w-4" />} accent="green" />
+            <DashboardStatCard label={t('seller.settlementCompleted')} value={`${fmt(summary.total_settled)}${t('common.won')}`} icon={<CheckCircle2 className="h-4 w-4" />} accent="blue" />
+            <DashboardStatCard label={t('seller.settlementPendingAmount')} value={`${fmt(summary.pending_settlement)}${t('common.won')}`} icon={<Clock className="h-4 w-4" />} accent="amber" />
           </div>
         )}
 
