@@ -356,12 +356,22 @@ app.post('/reset-password', cors(), rateLimit({ action: 'agency_reset_password',
       }, 400)
     }
 
+    // 🛡️ 2026-04-22 배치 161: 토큰 원자적 소비 (CAS) — 재사용 공격 차단.
+    //   이전: UPDATE password → DELETE token. 두 요청이 동시 도착 시 둘 다 password reset 성공.
+    //   개선: DELETE 먼저 (rowsAffected==1 확인) → 통과한 요청만 UPDATE. 한 번만 reset 가능.
+    const del = await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run()
+    if ((del.meta?.changes ?? 0) === 0) {
+      return c.json({
+        success: false,
+        error: '토큰이 이미 사용되었습니다. 비밀번호 재설정을 다시 요청해주세요.',
+        code: 'USED_RESET_TOKEN'
+      }, 400)
+    }
+
     const hash = await hashPassword(newPassword)
     await DB.prepare(`
       UPDATE agencies SET password_hash = ?, updated_at = datetime('now') WHERE id = ?
     `).bind(hash, row.user_id).run()
-
-    await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(() => {})
 
     // 🛡️ 2026-04-22: 비번 변경 시 기존 refresh token 전부 revoke
     await DB.prepare(
@@ -386,7 +396,9 @@ app.get('/profile', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id } = c.get('agency') as { id: number; email: string }
   const agency = await c.env.DB.prepare(
-    'SELECT id, name, contact_name, email, phone, status, commission_rate, created_at FROM agencies WHERE id = ?'
+    `SELECT id, name, contact_name, email, phone, status, commission_rate, created_at,
+            bank_name, bank_account, account_holder
+     FROM agencies WHERE id = ?`
   ).bind(id).first()
   if (!agency) return c.json({ success: false, error: 'Not found' }, 404)
   return c.json({ success: true, data: agency })
@@ -859,15 +871,35 @@ app.get('/returns', async (c) => {
 })
 
 // ── PUT /profile — 에이전시 프로필 수정 ──────────────────────────
+// 🛡️ 2026-04-22 배치 162: 은행 계좌 필드 추가 (정산 플로우 마비 P0 fix).
+//   이전: bank_name/bank_account/account_holder 를 /settlements/request 가 조회만 하고
+//   저장은 어디서도 안 해 정산이 불가능. 이 PUT 에서 저장 허용.
 app.put('/profile', async (c) => {
   const { id } = c.get('agency') as { id: number }
-  const body = await c.req.json<{ name?: string; contact_name?: string; phone?: string }>()
+  const body = await c.req.json<{
+    name?: string; contact_name?: string; phone?: string;
+    bank_name?: string; bank_account?: string; account_holder?: string;
+  }>()
+
+  // 입력 검증
+  if (body.bank_account !== undefined && !/^[\d-]{5,30}$/.test(body.bank_account)) {
+    return c.json({ success: false, error: '계좌번호는 숫자와 하이픈(-)만 허용됩니다' }, 400)
+  }
+  if (body.bank_name !== undefined && (body.bank_name.length < 1 || body.bank_name.length > 30)) {
+    return c.json({ success: false, error: '은행명은 1~30자여야 합니다' }, 400)
+  }
+  if (body.account_holder !== undefined && (body.account_holder.length < 1 || body.account_holder.length > 30)) {
+    return c.json({ success: false, error: '예금주는 1~30자여야 합니다' }, 400)
+  }
 
   const updates: string[] = []
   const params: unknown[] = []
   if (body.name) { updates.push('name = ?'); params.push(body.name) }
   if (body.contact_name) { updates.push('contact_name = ?'); params.push(body.contact_name) }
   if (body.phone) { updates.push('phone = ?'); params.push(body.phone) }
+  if (body.bank_name !== undefined) { updates.push('bank_name = ?'); params.push(body.bank_name) }
+  if (body.bank_account !== undefined) { updates.push('bank_account = ?'); params.push(body.bank_account) }
+  if (body.account_holder !== undefined) { updates.push('account_holder = ?'); params.push(body.account_holder) }
 
   if (updates.length > 0) {
     updates.push("updated_at = datetime('now')")

@@ -368,15 +368,29 @@ export default function LivePageV2() {
       }
     }
 
-    // 시청자 수 조회
+    // 🛡️ 2026-04-22 배치 163: exponential backoff 재연결 (P0 fix)
+    //   이전: 실패해도 10s 고정 interval 유지 → 네트워크 장애 시 복구 불가.
+    //   개선: 연속 실패 시 backoff 10s → 20s → 40s → 80s (최대 2분),
+    //   성공 시 즉시 복귀.
+    let consecutiveFailures = 0
+    let viewerCountTimer: ReturnType<typeof setTimeout> | null = null
+    let cancelled = false
+
     const fetchViewerCount = async () => {
       try {
         const response = await api.get(`/api/streams/${currentStream.id}/viewer-count`)
         if (response.data.success) {
           setViewerCount(response.data.data.viewer_count)
+          consecutiveFailures = 0  // 성공 시 리셋
         }
       } catch (error) {
-        if (import.meta.env.DEV) console.error('[LivePageV2] Failed to fetch viewer count:', error)
+        consecutiveFailures++
+        if (import.meta.env.DEV) console.warn(`[LivePageV2] viewer count fetch failed (streak ${consecutiveFailures}):`, error)
+      } finally {
+        if (cancelled) return
+        // backoff: 10s base × 2^min(failures, 3) = 10/20/40/80s
+        const delay = 10_000 * Math.pow(2, Math.min(consecutiveFailures, 3))
+        viewerCountTimer = setTimeout(fetchViewerCount, delay)
       }
     }
 
@@ -384,15 +398,13 @@ export default function LivePageV2() {
     joinViewer()
     fetchViewerCount()
 
-    // 30초마다 Heartbeat 전송 (KV TTL 60초)
+    // 30초마다 Heartbeat 전송 (KV TTL 60초) — heartbeat 는 항상 fixed interval
     const heartbeatInterval = setInterval(joinViewer, 30000)
 
-    // 10초마다 시청자 수 조회
-    const countInterval = setInterval(fetchViewerCount, 10000)
-
     return () => {
+      cancelled = true
       clearInterval(heartbeatInterval)
-      clearInterval(countInterval)
+      if (viewerCountTimer) clearTimeout(viewerCountTimer)
     }
   }, [currentStream?.id])
 

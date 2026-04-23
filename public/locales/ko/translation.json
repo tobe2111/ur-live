@@ -1533,7 +1533,8 @@
     },
     "hidePassword": "비밀번호 숨기기",
     "showPassword": "비밀번호 보기",
-    "viewPublicProfile": "공개 프로필 보기"
+    "viewPublicProfile": "공개 프로필 보기",
+    "agencyInviteJoin": "에이전시 초대를 통한 가입"
   },
   "admin": {
     "login": {

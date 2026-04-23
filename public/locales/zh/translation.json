@@ -1536,7 +1536,8 @@
     },
     "hidePassword": "隐藏密码",
     "showPassword": "显示密码",
-    "viewPublicProfile": "查看公开资料"
+    "viewPublicProfile": "查看公开资料",
+    "agencyInviteJoin": "通过代理邀请加入"
   },
   "admin": {
     "login": {

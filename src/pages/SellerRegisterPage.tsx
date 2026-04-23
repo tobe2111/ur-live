@@ -108,7 +108,7 @@ export default function SellerRegisterPage() {
           <p className="text-gray-600 mt-2">{t('seller.sellerRegistration')}</p>
           {agencyId && (
             <div className="mt-3 inline-flex items-center gap-1.5 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-xs font-medium">
-              <span>🤝</span> 에이전시 초대를 통한 가입
+              <span>🤝</span> {t('seller.agencyInviteJoin')}
             </div>
           )}
         </div>

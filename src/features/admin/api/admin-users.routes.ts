@@ -85,6 +85,10 @@ adminUsersRoutes.patch('/users/:id/status', cors(), async (c) => {
   try {
     const DB = c.env.DB;
     const userId = c.req.param('id');
+    // 🛡️ 2026-04-22 배치 160: userId 빈값 검증 (empty string 으로 전체 조회되는 버그 차단)
+    if (!userId || userId.trim().length === 0) {
+      return c.json({ success: false, error: 'Invalid user ID' }, 400);
+    }
     const { status } = await c.req.json<{ status: string }>();
 
     if (!['active', 'suspended', 'banned'].includes(status)) {
@@ -119,6 +123,10 @@ adminUsersRoutes.get('/users/:id', cors(), async (c) => {
   try {
     const DB = c.env.DB;
     const userId = c.req.param('id');
+    // 🛡️ 2026-04-22 배치 160: userId 빈값 검증
+    if (!userId || userId.trim().length === 0) {
+      return c.json({ success: false, error: 'Invalid user ID' }, 400);
+    }
 
     const users = await executeQuery<UserRow>(DB,
       `SELECT id, name, email, phone, created_at
