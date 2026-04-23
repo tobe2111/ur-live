@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Search, ShoppingCart, Eye, Play, Clock, Bell, MapPin, ChevronDown } from 'lucide-react'
 import api from '@/lib/api'
+import { isLoggedInSync } from '@/utils/auth'
 import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd } from '@/components/SEO'
 import SharePrompt from '@/components/SharePrompt'
@@ -115,9 +116,13 @@ export default function MainHomePage() {
   }, [])
 
   // 🛡️ 알림 unread 수 동기화 — 60초마다 갱신, 비로그인이면 0
+  // 🛡️ 2026-04-23 배치 175: 비로그인 상태에서 호출 시 401 → Sentry 스팸 + 강제 로그아웃 유발.
+  //   로그인 여부를 먼저 체크하고, 로그인한 경우에만 API 호출.
   useEffect(() => {
+    if (!isLoggedInSync()) { setUnreadCount(0); return }
     let cancelled = false
     const fetchUnread = () => {
+      if (!isLoggedInSync()) { setUnreadCount(0); return }
       api.get('/api/notifications/unread-count').then(res => {
         if (cancelled) return
         const c = Number(res.data?.count ?? 0)
