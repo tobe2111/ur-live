@@ -27,7 +27,7 @@ export async function requestTossRefund(
   reason: string,
   secretKey: string,
   cancelAmount?: number
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; code?: string; retryable?: boolean; status?: number }> {
   try {
     const body: Record<string, unknown> = { cancelReason: reason }
     if (cancelAmount !== undefined && cancelAmount > 0) {
@@ -39,21 +39,33 @@ export async function requestTossRefund(
       headers: {
         'Authorization': `Basic ${btoa(secretKey + ':')}`,
         'Content-Type': 'application/json',
+        'Idempotency-Key': `refund-${paymentKey}-${cancelAmount ?? 'full'}`,
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10000),
     })
 
     if (!response.ok) {
-      const errBody = await response.json().catch(() => ({ message: 'Unknown Toss error' })) as { message?: string }
-      return { success: false, error: errBody.message || `Toss API error: ${response.status}` }
+      const errBody = await response.json().catch(() => ({ code: 'UNKNOWN', message: 'Unknown Toss error' })) as { code?: string; message?: string }
+      const code = errBody.code || 'UNKNOWN'
+      const isRetryable = ['PROVIDER_ERROR', 'FAILED_INTERNAL_SYSTEM_PROCESSING'].includes(code)
+      return {
+        success: false,
+        error: errBody.message || `Toss API error: ${response.status}`,
+        code,
+        retryable: isRetryable,
+        status: response.status,
+      }
     }
 
     return { success: true }
   } catch (error) {
-    console.error('❌ Toss 환불 요청 실패:', error)
+    const isTimeout = error instanceof DOMException && error.name === 'AbortError'
     return {
       success: false,
-      error: error instanceof Error ? error.message : '환불 요청 실패',
+      error: isTimeout ? '환불 요청 타임아웃 (10초 초과)' : (error instanceof Error ? error.message : '환불 요청 실패'),
+      code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR',
+      retryable: true,
     }
   }
 }

@@ -143,7 +143,7 @@ export async function confirmTossPayment(
   orderId: string,
   amount: number,
   secretKey: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; code?: string }> {
   try {
     const response = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
       method: 'POST',
@@ -153,20 +153,25 @@ export async function confirmTossPayment(
         'Idempotency-Key': orderId,
       },
       body: JSON.stringify({ paymentKey, orderId, amount }),
+      signal: AbortSignal.timeout(15000),
     })
 
     if (!response.ok) {
-      const errBody = await response.json().catch(() => ({ message: 'Unknown Toss error' })) as { message?: string }
-      return { success: false, error: errBody.message || `Toss API error: ${response.status}` }
+      const errBody = await response.json().catch(() => ({ code: 'UNKNOWN', message: 'Unknown Toss error' })) as { code?: string; message?: string }
+      return {
+        success: false,
+        error: errBody.message || `Toss API error: ${response.status}`,
+        code: errBody.code,
+      }
     }
 
-    // Toss payment confirmed
     return { success: true }
   } catch (error) {
-    console.error('❌ Toss 결제 승인 실패:', error)
+    const isTimeout = error instanceof DOMException && error.name === 'AbortError'
     return {
       success: false,
-      error: error instanceof Error ? error.message : '결제 승인 실패',
+      error: isTimeout ? '결제 승인 타임아웃' : (error instanceof Error ? error.message : '결제 승인 실패'),
+      code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR',
     }
   }
 }
