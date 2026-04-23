@@ -419,4 +419,93 @@ auctionRoutes.post('/:id/release-hold', requireAuth(), async (c) => {
   return c.json({ success: true, data: { released: (result.meta.changes ?? 0) > 0 } });
 });
 
+// POST /api/auction/:id/promote-runner-up — 낙찰자 결제 거부 시 차순위 자동 승격
+// 🛡️ 2026-04-22 배치 133 (TD-007 확장): runner-up 승격 로직.
+//   1) 현 winner 의 hold 해제
+//   2) 차순위 (current_price 에서 두 번째로 높은 bid) 를 winner 로 승격
+//   3) 새 winner 에 대한 hold 생성
+//   4) 경매 current_price / winner_user_id / winner_name 업데이트
+//
+//   셀러 또는 admin 이 호출 (낙찰자 결제 거부 확인 후 수동 트리거).
+auctionRoutes.post('/:id/promote-runner-up', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  const auctionId = Number(c.req.param('id'));
+  const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
+  if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
+  if (auction.status !== 'ended') return c.json({ success: false, error: '종료된 경매에서만 승격 가능' }, 400);
+
+  // 권한: 셀러 본인 또는 admin
+  if (user.type !== 'admin') {
+    if (user.type !== 'seller' || Number(auction.seller_id) !== Number(user.id)) {
+      return c.json({ success: false, error: 'forbidden' }, 403);
+    }
+  }
+
+  const currentWinnerId = auction.winner_user_id;
+  if (!currentWinnerId) {
+    return c.json({ success: false, error: '현재 낙찰자가 없습니다' }, 400);
+  }
+
+  // 1) 현 winner hold 해제
+  await DB.prepare(
+    "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id = ? AND status = 'active'"
+  ).bind(auctionId, currentWinnerId).run();
+
+  // 2) 차순위 bid 조회 (현 winner 제외, 금액 내림차순 첫 번째)
+  const runnerUp = await DB.prepare(
+    `SELECT user_id, user_name, amount FROM auction_bids
+     WHERE auction_id = ? AND user_id != ?
+     ORDER BY amount DESC LIMIT 1`
+  ).bind(auctionId, currentWinnerId).first<{ user_id: string; user_name: string; amount: number }>();
+
+  if (!runnerUp) {
+    // 다른 입찰자 없음 — 경매 무효 처리
+    await DB.prepare(
+      "UPDATE live_auctions SET winner_user_id = NULL, winner_name = NULL WHERE id = ?"
+    ).bind(auctionId).run();
+    return c.json({
+      success: true,
+      data: { promoted: false, reason: '다른 입찰자가 없어 낙찰자 없음 처리됨' },
+    });
+  }
+
+  // 3) 차순위 가용 balance 확인
+  const available = await getAvailableBalance(DB, runnerUp.user_id);
+  if (available < runnerUp.amount) {
+    // 차순위도 잔액 부족 — winner 만 비우고 재시도 유도
+    await DB.prepare(
+      "UPDATE live_auctions SET winner_user_id = NULL, winner_name = NULL WHERE id = ?"
+    ).bind(auctionId).run();
+    return c.json({
+      success: true,
+      data: {
+        promoted: false,
+        reason: `차순위 입찰자(${runnerUp.user_name})도 잔액 부족 (${available.toLocaleString()}딜 < ${runnerUp.amount.toLocaleString()}딜)`,
+      },
+    });
+  }
+
+  // 4) winner 교체 + hold 생성
+  await DB.prepare(
+    'UPDATE live_auctions SET current_price = ?, winner_user_id = ?, winner_name = ? WHERE id = ?'
+  ).bind(runnerUp.amount, runnerUp.user_id, runnerUp.user_name, auctionId).run();
+
+  await DB.prepare(
+    "INSERT INTO auction_holds (auction_id, user_id, amount, status) VALUES (?, ?, ?, 'active')"
+  ).bind(auctionId, runnerUp.user_id, runnerUp.amount).run();
+
+  return c.json({
+    success: true,
+    data: {
+      promoted: true,
+      new_winner: { user_id: runnerUp.user_id, user_name: runnerUp.user_name, amount: runnerUp.amount },
+    },
+  });
+});
+
 export { auctionRoutes };
