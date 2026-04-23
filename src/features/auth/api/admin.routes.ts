@@ -9,7 +9,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
-import { rateLimit } from '@/worker/middleware/rate-limit';
 import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
@@ -53,7 +52,7 @@ export const adminRoutes = new Hono<{ Bindings: Bindings }>();
  * POST /api/admin/login
  * 관리자 로그인
  */
-adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, windowSec: 300 }), async (c) => {
+adminRoutes.post('/login', cors(), async (c) => {
   const { DB, JWT_SECRET } = c.env;
   
   try {
