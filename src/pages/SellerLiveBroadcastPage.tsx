@@ -53,7 +53,18 @@ interface LiveStream {
 }
 
 type WizardStep = 'info' | 'setup' | 'live'
+// 송출 도구 (streaming tool): 셀러가 영상을 어떻게 push 할지
 type StreamMethod = 'youtube' | 'obs' | 'prism' | 'quick'
+// 목적지 플랫폼 (destination): 시청자가 어디서 보는지
+type Destination = 'youtube' | 'tiktok' | 'chzzk' | 'soop'
+
+// ── 멀티플랫폼 API 타입 ────────────────────────────────────────────
+interface DestinationPlatform {
+  key: string; label: string; status: 'available' | 'coming_soon' | 'deprecated'
+  icon: string; region: string
+  features: { rtmp_ingest: boolean; chat_relay: boolean; product_overlay: boolean; oauth_required: boolean }
+  eta?: string; note?: string
+}
 
 // ── 스텝 인디케이터 ────────────────────────────────────────────────
 function StepIndicator({ step }: { step: WizardStep }) {
@@ -126,6 +137,8 @@ export default function SellerLiveBroadcastPage() {
   // 위저드 상태
   const [step, setStep] = useState<WizardStep>('info')
   const [method, setMethod] = useState<StreamMethod>('obs')
+  const [destination, setDestination] = useState<Destination>('youtube')
+  const [destinations, setDestinations] = useState<DestinationPlatform[]>([])
   const [currentStream, setCurrentStream] = useState<LiveStream | null>(null)
 
   // Step 1 폼
@@ -167,10 +180,11 @@ export default function SellerLiveBroadcastPage() {
   async function loadData() {
     try {
       setLoading(true); setLoadError(null)
-      const [chRes, prRes, stRes] = await Promise.allSettled([
+      const [chRes, prRes, stRes, dRes] = await Promise.allSettled([
         api.get('/api/seller/youtube/channels'),
         api.get('/api/seller/products'),
         api.get('/api/seller/streams'),
+        api.get('/api/platforms/destinations'),
       ])
       if (chRes.status === 'fulfilled' && chRes.value.data?.success)
         setChannels(chRes.value.data.data || [])
@@ -178,6 +192,8 @@ export default function SellerLiveBroadcastPage() {
         setProducts(prRes.value.data.data || [])
       if (stRes.status === 'fulfilled' && stRes.value.data?.success)
         setStreams(stRes.value.data.data || [])
+      if (dRes.status === 'fulfilled' && dRes.value.data?.success)
+        setDestinations(dRes.value.data.data || [])
     } catch { setLoadError(t('seller.liveBroadcast.dataLoadFailed')) }
     finally { setLoading(false) }
   }
@@ -335,6 +351,8 @@ export default function SellerLiveBroadcastPage() {
             selectedProducts={selectedProducts}
             toggleProduct={(id: number) => setSelectedProducts(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
             method={method} setMethod={setMethod}
+            destination={destination} setDestination={setDestination}
+            destinations={destinations}
             creating={creating} onCreate={createBroadcast}
             navigate={navigate}
           />
@@ -390,13 +408,17 @@ interface StepInfoProps {
   scheduledTime: string; setScheduledTime: (v: string) => void
   sellableProducts: Product[]; selectedProducts: number[]; toggleProduct: (id: number) => void
   method: StreamMethod; setMethod: (v: StreamMethod) => void
+  destination: Destination; setDestination: (v: Destination) => void
+  destinations: DestinationPlatform[]
   creating: boolean; onCreate: () => void
   navigate: ReturnType<typeof useNavigate>
 }
 
 function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, setThumbnailUrl, privacy, setPrivacy,
   isScheduled, setIsScheduled, scheduledDate, setScheduledDate, scheduledTime, setScheduledTime,
-  sellableProducts, selectedProducts, toggleProduct, method, setMethod, creating, onCreate, navigate
+  sellableProducts, selectedProducts, toggleProduct, method, setMethod,
+  destination, setDestination, destinations,
+  creating, onCreate, navigate
 }: StepInfoProps) {
   const { t } = useTranslation()
   const privacyOptions: { key: 'public' | 'unlisted' | 'private'; icon: typeof Globe; label: string; desc: string }[] = [
@@ -550,9 +572,50 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         )}
       </div>
 
-      {/* 방송 방식 */}
+      {/* 🛡️ 2026-04-23 배치 166: 목적지 플랫폼 선택 (시청자가 어디서 볼 것인지) */}
+      {destinations.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.destination')}</label>
+          <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.destinationDesc')}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {destinations.map(d => {
+              const isAvailable = d.status === 'available'
+              const isSelected = destination === d.key
+              return (
+                <button
+                  key={d.key}
+                  onClick={() => isAvailable && setDestination(d.key as Destination)}
+                  disabled={!isAvailable}
+                  className={`relative p-3 rounded-xl border-2 text-left transition-all ${
+                    !isAvailable
+                      ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                      : isSelected
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                  }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>{d.label}</span>
+                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
+                  </div>
+                  {!isAvailable && (
+                    <p className="text-[10px] text-amber-600 font-medium">
+                      {t('seller.liveBroadcast.comingSoon')}{d.eta ? ` · ${d.eta}` : ''}
+                    </p>
+                  )}
+                  {d.note && !isAvailable && (
+                    <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-2">{d.note}</p>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 송출 도구 (Streaming Tool) — 어떤 도구로 RTMP 를 푸시할지 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">{t('seller.liveBroadcast.broadcastMethod')}</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.streamingTool')}</label>
+        <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.streamingToolDesc')}</p>
         <div className="grid grid-cols-3 gap-3">
           {methodOptions.map(m => (
             <button key={m.key} onClick={() => setMethod(m.key)}

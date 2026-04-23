@@ -17,8 +17,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAccessToken } from '@/utils/auth'
-import type { ChatMessage } from './useFirebaseChat'
-import type { StreamData } from './useFirebaseStream'
+import type { ChatMessage, StreamData } from '@/types/live-stream'
 
 export interface DonationEvent {
   donorName: string
