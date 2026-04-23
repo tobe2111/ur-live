@@ -277,8 +277,14 @@ app.post('/oauth/callback', async (c) => {
     }, 401)
   }
 
-  const { code } = await c.req.json()
-  
+  let code: string | undefined
+  try {
+    const body = await c.req.json()
+    code = body.code
+  } catch {
+    return c.json({ success: false, error: 'Invalid request body' }, 400)
+  }
+
   if (!code) {
     return c.json({
       success: false,

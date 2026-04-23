@@ -3,7 +3,7 @@
  * Handles OAuth redirect and token exchange
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
@@ -13,8 +13,11 @@ export default function YouTubeCallbackPage() {
   const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
+  const calledRef = useRef(false)
 
   useEffect(() => {
+    if (calledRef.current) return
+    calledRef.current = true
     handleCallback()
   }, [])
 

@@ -184,6 +184,7 @@ export class YouTubeAPIService {
     }
 
     const data = await response.json() as YouTubeChannelListResponse
+    if (!data.items) return []
     return data.items.map((item: YouTubeChannelItem) => ({
       id: item.id,
       title: item.snippet.title,
@@ -499,8 +500,9 @@ export class YouTubeAPIService {
     }
 
     const data = await response.json() as YouTubeBroadcastListResponse
-    const item = data.items[0]
-    
+    const item = data.items?.[0]
+    if (!item) throw new Error('Broadcast not found or not accessible')
+
     return {
       id: item.id,
       title: item.snippet.title,
