@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { UserCheck, UserX, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
@@ -37,10 +38,14 @@ export default function AdminSellerApprovalPage() {
 
   return (
     <AdminLayout title="셀러 승인">
-      <div className="p-6 max-w-4xl">
-        <h1 className="text-xl font-bold text-gray-900 mb-4">셀러 승인 대기</h1>
-        {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div> : sellers.length === 0 ? (
-          <p className="text-center py-12 text-gray-500">승인 대기 셀러가 없습니다</p>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="셀러 승인 대기"
+          subtitle="신규 셀러 가입 승인/거절"
+          icon={<UserCheck className="h-5 w-5" />}
+        />
+        {loading ? <DashboardLoading /> : sellers.length === 0 ? (
+          <DashboardEmptyState icon={<UserCheck className="h-7 w-7" />} title="승인 대기 셀러가 없습니다" />
         ) : (
           <div className="space-y-3">
             {sellers.map(s => (

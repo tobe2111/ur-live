@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { TrendingUp, DollarSign, ShoppingCart, BarChart2, Loader2 } from 'lucide-react'
 
 // Recharts lazy load (377KB → 차트 영역만 지연 로드)
@@ -130,6 +131,12 @@ export default function AdminRevenueAnalyticsPage() {
 
   return (
     <AdminLayout title="매출 분석">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="매출 분석"
+          subtitle="기간별 매출·주문·고객 분석"
+          icon={<BarChart2 className="h-5 w-5" />}
+        />
       {/* Period Selector */}
       <div className="flex gap-2">
         {PERIOD_OPTIONS.map(opt => (
@@ -287,6 +294,7 @@ export default function AdminRevenueAnalyticsPage() {
           </div>
         </>
       )}
+      </div>
     </AdminLayout>
   )
 }

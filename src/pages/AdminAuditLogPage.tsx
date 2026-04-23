@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Shield, ChevronDown, ChevronUp, Filter, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { formatDate } from '@/shared/utils'
 
@@ -120,6 +121,12 @@ export default function AdminAuditLogPage() {
 
   return (
     <AdminLayout title="감사 로그">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="감사 로그"
+          subtitle="어드민 접근/수정 이력 (immutable audit trail)"
+          icon={<Shield className="h-5 w-5" />}
+        />
       {/* Filter Section */}
       <div className="bg-white rounded-xl shadow-sm p-4">
         <button
@@ -306,6 +313,7 @@ export default function AdminAuditLogPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </AdminLayout>
   )

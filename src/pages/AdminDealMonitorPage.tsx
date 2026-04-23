@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Gift, TrendingUp, Users, Zap, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 
@@ -140,6 +141,12 @@ export default function AdminDealMonitorPage() {
 
   return (
     <AdminLayout title="딜 충전 모니터링">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="딜 충전 모니터링"
+          subtitle="유저 포인트 충전 및 소비 현황"
+          icon={<Gift className="h-5 w-5" />}
+        />
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -339,6 +346,7 @@ export default function AdminDealMonitorPage() {
             </button>
           </div>
         )}
+      </div>
       </div>
     </AdminLayout>
   )

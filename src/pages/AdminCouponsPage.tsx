@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Ticket, Copy, Send, X } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 
 interface Coupon {
   id: number; code: string; name: string; type: string; value: number
@@ -118,20 +119,21 @@ export default function AdminCouponsPage() {
 
   return (
     <AdminLayout title="쿠폰 관리">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">쿠폰 관리</h1>
-            <p className="text-sm text-gray-500 mt-1">할인 쿠폰 생성 및 관리</p>
-          </div>
-          <button
-            onClick={() => { setShowForm(!showForm); if (!showForm) generateCode() }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            쿠폰 생성
-          </button>
-        </div>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="쿠폰 관리"
+          subtitle="할인 쿠폰 생성 및 관리"
+          icon={<Ticket className="h-5 w-5" />}
+          actions={
+            <button
+              onClick={() => { setShowForm(!showForm); if (!showForm) generateCode() }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              쿠폰 생성
+            </button>
+          }
+        />
 
         {/* 쿠폰 생성 폼 */}
         {showForm && (
