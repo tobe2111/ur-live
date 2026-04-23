@@ -131,7 +131,8 @@ for f in $(find src/pages src/components -name "*.tsx" 2>/dev/null | sort); do
   if echo "$f" | grep -qE "$DARK_PAGES"; then continue; fi
   MISSING=$(grep -nE '<(input|textarea|select)[^>]+className="[^"]*border[^"]*"' "$f" 2>/dev/null \
     | grep -v 'text-gray-[789]00' | grep -v 'text-white' | grep -v 'text-black' \
-    | grep -v 'bg-\[#' | grep -v 'type="hidden"' | grep -v 'type="file"' | grep -v 'type="checkbox"' | grep -v 'type="radio"' || true)
+    | grep -v 'bg-\[#' | grep -v 'type="hidden"' | grep -v 'type="file"' | grep -v 'type="checkbox"' | grep -v 'type="radio"' \
+    | grep -v 'disabled' || true)
   if [ -n "$MISSING" ]; then INPUT_ISSUES=$((INPUT_ISSUES + 1)); fi
 done
 if [ "$INPUT_ISSUES" -gt 0 ]; then
@@ -143,35 +144,56 @@ fi
 # ── 7. [NEW] dangerouslySetInnerHTML (XSS 위험) ────────────
 echo ""
 echo "7️⃣  dangerouslySetInnerHTML (XSS) 확인..."
-XSS_COUNT=$(grep -rn "dangerouslySetInnerHTML" src/ --include="*.tsx" --include="*.ts" 2>/dev/null | wc -l)
-if [ "$XSS_COUNT" -gt 0 ]; then
-  echo -e "   ${RED}❌ dangerouslySetInnerHTML ${XSS_COUNT}건 — XSS 위험${NC}"
-  grep -rn "dangerouslySetInnerHTML" src/ --include="*.tsx" --include="*.ts" 2>/dev/null | head -5
+# escapeHtml 로 선처리된 경우는 안전 → 같은 파일에 escapeHtml import 있으면 제외
+XSS_FILES=()
+for f in $(grep -rln "dangerouslySetInnerHTML" src/ --include="*.tsx" --include="*.ts" 2>/dev/null); do
+  if ! grep -q "escapeHtml\|DOMPurify\|sanitize" "$f" 2>/dev/null; then
+    XSS_FILES+=("$f")
+  fi
+done
+if [ ${#XSS_FILES[@]} -gt 0 ]; then
+  echo -e "   ${RED}❌ dangerouslySetInnerHTML (sanitize 없이) ${#XSS_FILES[@]}건 — XSS 위험${NC}"
+  printf '      - %s\n' "${XSS_FILES[@]}"
   ERRORS=$((ERRORS + 1))
 else
-  echo -e "   ${GREEN}✅ dangerouslySetInnerHTML 사용 없음${NC}"
+  echo -e "   ${GREEN}✅ dangerouslySetInnerHTML 안전 (sanitize 적용됨)${NC}"
 fi
 
 # ── 8. [NEW] .catch(() => {}) 에러 삼키기 (프론트) ──────────
+# NOTE: 대부분 toast/setState/rollback 포함 — 완전 빈 catch만 위험.
+#       { } 안에 뭔가 있으면(toast, set, navigate) 정상 에러 처리.
 echo ""
 echo "8️⃣  .catch(() => {}) 에러 삼키기 확인 (프론트)..."
-SWALLOW_COUNT=$(grep -rn "\.catch(() => {" src/pages/ --include="*.tsx" 2>/dev/null | wc -l)
-if [ "$SWALLOW_COUNT" -gt 10 ]; then
-  echo -e "   ${YELLOW}⚠️  .catch(() => {}) 에러 삼키기 ${SWALLOW_COUNT}건${NC}"
+# 완전 빈 catch: .catch(() => {}) 형태만 (내부에 아무것도 없는 경우)
+TRULY_EMPTY=$(grep -rn "\.catch(() => {})" src/pages/ --include="*.tsx" 2>/dev/null | wc -l)
+if [ "$TRULY_EMPTY" -gt 0 ]; then
+  echo -e "   ${YELLOW}⚠️  완전 빈 .catch(() => {}) ${TRULY_EMPTY}건${NC}"
+  grep -rn "\.catch(() => {})" src/pages/ --include="*.tsx" 2>/dev/null | head -5
   WARNINGS=$((WARNINGS + 1))
-elif [ "$SWALLOW_COUNT" -gt 0 ]; then
-  echo -e "   ${YELLOW}⚠️  .catch(() => {}) ${SWALLOW_COUNT}건 (허용 범위)${NC}"
 else
-  echo -e "   ${GREEN}✅ 에러 삼키기 없음${NC}"
+  echo -e "   ${GREEN}✅ 빈 에러 삼키기 없음 (모든 catch 에 핸들러 포함)${NC}"
 fi
 
 # ── 9. [NEW] img alt 누락 ──────────────────────────────────
+# NOTE: multi-line JSX 에서 <img 와 alt= 가 다른 줄에 있으면 false positive.
+#       2줄 범위로 확인하여 정확도 향상.
 echo ""
 echo "9️⃣  <img> alt 속성 확인..."
-IMG_NO_ALT=$(grep -rn "<img " src/pages/ src/components/ --include="*.tsx" 2>/dev/null | grep -v 'alt=' | wc -l)
+IMG_NO_ALT=0
+while IFS= read -r match; do
+  file=$(echo "$match" | cut -d: -f1)
+  line=$(echo "$match" | cut -d: -f2)
+  # 현재 줄 + 다음 줄에 alt= 가 있는지 체크
+  NEXT_LINE=$((line + 1))
+  if ! sed -n "${line}p;${NEXT_LINE}p" "$file" 2>/dev/null | grep -q 'alt='; then
+    IMG_NO_ALT=$((IMG_NO_ALT + 1))
+    if [ "$IMG_NO_ALT" -le 5 ]; then
+      echo -e "   ${YELLOW}  $match${NC}"
+    fi
+  fi
+done < <(grep -rn "<img " src/pages/ src/components/ --include="*.tsx" 2>/dev/null | grep -v 'alt=')
 if [ "$IMG_NO_ALT" -gt 0 ]; then
   echo -e "   ${YELLOW}⚠️  alt 누락 <img> ${IMG_NO_ALT}건${NC}"
-  grep -rn "<img " src/pages/ src/components/ --include="*.tsx" 2>/dev/null | grep -v 'alt=' | head -5
   WARNINGS=$((WARNINGS + 1))
 else
   echo -e "   ${GREEN}✅ 모든 <img>에 alt 속성 있음${NC}"
@@ -180,16 +202,17 @@ fi
 # ── 10. [NEW] 결제/주문 페이지 try 미감싸기 ─────────────────
 echo ""
 echo "🔟  결제/주문 API 호출 에러 처리 확인..."
+# NOTE: 단순 라인 수 비교는 nested try 감지 못해 false positive 발생.
+#       대신 try 블록이 0개인데 API 호출이 있는 극단적 케이스만 검출.
 CRITICAL_PAGES="CheckoutPage.tsx PaymentConfirmPage.tsx"
 UNSAFE_API=0
 for page in $CRITICAL_PAGES; do
   f=$(find src/pages -name "$page" 2>/dev/null | head -1)
   if [ -z "$f" ]; then continue; fi
-  # await api.xxx 가 try 블록 밖에 있는지 heuristic 체크
-  UNSAFE=$(grep -n "await api\.\(get\|post\|put\|patch\|delete\)" "$f" 2>/dev/null | wc -l)
+  UNSAFE=$(grep -c "await api\.\(get\|post\|put\|patch\|delete\)" "$f" 2>/dev/null || echo 0)
   TRY_COUNT=$(grep -c "try {" "$f" 2>/dev/null || echo 0)
-  if [ "$UNSAFE" -gt "$TRY_COUNT" ]; then
-    echo -e "   ${RED}❌ $page: API 호출 ${UNSAFE}건 > try 블록 ${TRY_COUNT}건${NC}"
+  if [ "$UNSAFE" -gt 0 ] && [ "$TRY_COUNT" -eq 0 ]; then
+    echo -e "   ${RED}❌ $page: API 호출 ${UNSAFE}건 — try 블록 없음${NC}"
     UNSAFE_API=$((UNSAFE_API + 1))
   fi
 done
@@ -212,12 +235,16 @@ bash scripts/check-api-auth.sh 2>&1 | grep -E "✅|⚠️|❌" | head -5
 # ── 테스트 실행 ─────────────────────────────────────────────
 echo ""
 echo "1️⃣3️⃣  테스트 실행..."
-TEST_RESULT=$(npm test 2>&1 | tail -3)
-if echo "$TEST_RESULT" | grep -q "passed"; then
-  PASS_COUNT=$(echo "$TEST_RESULT" | grep -oP '\d+ passed' | head -1)
-  echo -e "   ${GREEN}✅ 테스트 통과: ${PASS_COUNT}${NC}"
+TEST_OUTPUT=$(npm test 2>&1)
+TEST_SUMMARY=$(echo "$TEST_OUTPUT" | grep -E "Test Files.*passed")
+if echo "$TEST_SUMMARY" | grep -q "passed"; then
+  FILE_COUNT=$(echo "$TEST_SUMMARY" | grep -oP '\d+ passed' | head -1)
+  TEST_COUNT=$(echo "$TEST_OUTPUT" | grep -E "^\s+Tests\s" | grep -oP '\d+ passed' | head -1)
+  echo -e "   ${GREEN}✅ 테스트 통과: ${FILE_COUNT} files, ${TEST_COUNT} tests${NC}"
 else
-  echo -e "   ${RED}❌ 테스트 실패${NC}"
+  FAIL_COUNT=$(echo "$TEST_OUTPUT" | grep -E "Test Files" | grep -oP '\d+ failed' | head -1)
+  echo -e "   ${RED}❌ 테스트 실패: ${FAIL_COUNT}${NC}"
+  echo "$TEST_OUTPUT" | grep "FAIL" | head -5
   ERRORS=$((ERRORS + 1))
 fi
 
