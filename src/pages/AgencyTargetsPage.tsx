@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -6,6 +7,7 @@ import { Target, Check, Users } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AgencyTargetsPage() {
+  const { t } = useTranslation()
   const [targets, setTargets] = useState<any[]>([])
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
   const [loading, setLoading] = useState(true)
@@ -34,12 +36,11 @@ export default function AgencyTargetsPage() {
   }
 
   return (
-    <AgencyLayout title="매출 목표">
+    <AgencyLayout title={t('agency.targets')}>
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
-        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="셀러 매출 목표"
-          subtitle="월별 셀러 매출 목표 설정 및 달성률 추적"
+          title={t('agency.targets')}
+          subtitle={t('agency.targetsSubtitle')}
           icon={<Target className="h-5 w-5" />}
           actions={
             <input type="month" value={month} onChange={e => setMonth(e.target.value)}
@@ -50,7 +51,7 @@ export default function AgencyTargetsPage() {
         {loading ? (
           <DashboardLoading />
         ) : targets.length === 0 ? (
-          <DashboardEmptyState icon={<Users className="h-7 w-7" />} title="소속 셀러가 없습니다" />
+          <DashboardEmptyState icon={<Users className="h-7 w-7" />} title={t('agency.noSellers')} />
         ) : (
           <div className="space-y-3">
             {targets.map((t: { seller_id: number; seller_name: string; target_amount: number; current_amount: number }) => {

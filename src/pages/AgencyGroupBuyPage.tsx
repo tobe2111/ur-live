@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { ShoppingBag as ShoppingBagIcon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown } from 'lucide-react'
@@ -174,6 +175,7 @@ function generateContract(groupBuy: GroupBuy) {
 type TabKey = 'popular' | 'all' | 'negotiating' | 'confirmed'
 
 export default function AgencyGroupBuyPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [groupBuys, setGroupBuys] = useState<GroupBuy[]>([])
   const [stats, setStats] = useState<Stats>({ active: 0, total_participants: 0, negotiating: 0, confirmed: 0 })
@@ -252,12 +254,12 @@ export default function AgencyGroupBuyPage() {
   ]
 
   return (
-    <AgencyLayout title="공동구매 관리">
+    <AgencyLayout title={t('agency.groupBuy')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="공동구매 관리"
-          subtitle="진행중/확정/협상 공구 통합 관리"
+          title={t('agency.groupBuy')}
+          subtitle={t('agency.groupBuySubtitle')}
           icon={<ShoppingBagIcon className="h-5 w-5" />}
         />
       {/* Summary Cards */}

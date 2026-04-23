@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { ShoppingBag } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -39,6 +40,7 @@ function PayBadge({ status }: { status: string }) {
 }
 
 export default function AgencyOrdersPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [sellers, setSellers] = useState<Seller[]>([])
@@ -70,12 +72,12 @@ export default function AgencyOrdersPage() {
   const totalPages = Math.ceil(total / limit)
 
   return (
-    <AgencyLayout title="주문 현황">
+    <AgencyLayout title={t('agency.orders')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="주문 현황"
-          subtitle="소속 셀러의 주문 내역"
+          title={t('agency.orders')}
+          subtitle={t('agency.ordersSubtitle')}
           icon={<ShoppingBag className="h-5 w-5" />}
         />
       <div className="bg-white rounded-xl border border-gray-200">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Play, Users, Clock, Radio } from 'lucide-react'
@@ -33,6 +34,7 @@ function StreamStatusBadge({ status }: { status: string }) {
 }
 
 export default function AgencyStreamsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [streams, setStreams] = useState<Stream[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,12 +55,12 @@ export default function AgencyStreamsPage() {
   const liveCount = streams.filter(s => s.status === 'live').length
 
   return (
-    <AgencyLayout title="라이브 현황">
+    <AgencyLayout title={t('agency.streams')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="라이브 현황"
-          subtitle="소속 셀러의 라이브 방송 현황"
+          title={t('agency.streams')}
+          subtitle={t('agency.streamsSubtitle')}
           icon={<Radio className="h-5 w-5" />}
         />
       {/* Live summary */}

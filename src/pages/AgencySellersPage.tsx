@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Users as UsersIcon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Search, TrendingUp, ShoppingBag, Play } from 'lucide-react'
@@ -39,6 +40,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function AgencySellersPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [sellers, setSellers] = useState<Seller[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,12 +85,12 @@ export default function AgencySellersPage() {
   )
 
   return (
-    <AgencyLayout title="셀러 관리">
+    <AgencyLayout title={t('agency.sellers')}>
       <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="셀러 관리"
-          subtitle="소속 셀러 목록 및 상세 관리"
+          title={t('agency.sellers')}
+          subtitle={t('agency.sellersSubtitle')}
           icon={<UsersIcon className="h-5 w-5" />}
         />
       <div className="flex gap-5">

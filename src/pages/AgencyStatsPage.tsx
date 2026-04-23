@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { BarChart2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { TrendingUp, ShoppingBag, Play, Users, ArrowUpDown, Trophy } from 'lucide-react'
@@ -45,6 +46,7 @@ type ComparisonSortKey = 'revenue' | 'order_count' | 'voucher_usage_rate' | 'gro
 type Period = '7d' | '30d' | '90d'
 
 export default function AgencyStatsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [sellers, setSellers] = useState<Seller[]>([])
   const [stats, setStats] = useState<SellerStat[]>([])
@@ -134,12 +136,12 @@ export default function AgencyStatsPage() {
   }), { revenue: 0, orders: 0, net_revenue: 0, streams: 0, viewers: 0 })
 
   return (
-    <AgencyLayout title="통계 분석">
+    <AgencyLayout title={t('agency.stats')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="통계 분석"
-          subtitle="기간별 매출·주문·라이브 통합 분석"
+          title={t('agency.stats')}
+          subtitle={t('agency.statsSubtitle')}
           icon={<BarChart2 className="h-5 w-5" />}
         />
       {/* Period selector */}

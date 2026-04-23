@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { RotateCcw } from 'lucide-react'
 
 export default function AgencyReturnsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [returns, setReturns] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,19 +37,18 @@ export default function AgencyReturnsPage() {
   }
 
   return (
-    <AgencyLayout title="반품/CS">
+    <AgencyLayout title={t('agency.returns')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title="반품/CS 현황"
-          subtitle="셀러 반품 신청 및 환불 처리 내역"
+          title={t('agency.returns')}
+          subtitle={t('agency.returnsSubtitle')}
           icon={<RotateCcw className="h-5 w-5" />}
         />
 
         {loading ? (
           <DashboardLoading />
         ) : returns.length === 0 ? (
-          <DashboardEmptyState icon={<RotateCcw className="h-7 w-7" />} title="반품/CS 내역이 없습니다" />
+          <DashboardEmptyState icon={<RotateCcw className="h-7 w-7" />} title={t('agency.noReturns')} />
         ) : (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <table className="w-full text-sm">
