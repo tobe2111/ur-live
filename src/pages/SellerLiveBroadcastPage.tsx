@@ -245,7 +245,7 @@ export default function SellerLiveBroadcastPage() {
         }
       } catch { /* silent */ }
     }
-    const interval = setInterval(poll, 8000)
+    const interval = setInterval(poll, 3000)
     return () => clearInterval(interval)
   }, [step, currentStream])
 
@@ -281,9 +281,11 @@ export default function SellerLiveBroadcastPage() {
     finally { setConnectingYouTube(false) }
   }
 
-  async function createBroadcast() {
-    if (!title.trim()) { toast.error(t('seller.liveBroadcast.enterTitle')); return }
-    if (selectedProducts.length === 0) { toast.error(t('seller.liveBroadcast.selectOneProduct')); return }
+  async function createBroadcast(overrides?: { title?: string; productIds?: number[] }) {
+    const effectiveTitle = overrides?.title ?? title
+    const effectiveProducts = overrides?.productIds ?? selectedProducts
+    if (!effectiveTitle.trim()) { toast.error(t('seller.liveBroadcast.enterTitle')); return }
+    if (effectiveProducts.length === 0) { toast.error(t('seller.liveBroadcast.selectOneProduct')); return }
     try {
       setCreating(true)
       let scheduledStartTime = new Date().toISOString()
@@ -291,9 +293,9 @@ export default function SellerLiveBroadcastPage() {
         scheduledStartTime = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
 
       const res = await api.post('/api/seller/youtube/live/create', {
-        title: title.trim(), description: description.trim(),
+        title: effectiveTitle.trim(), description: description.trim(),
         thumbnail_url: thumbnailUrl.trim() || undefined,
-        product_ids: selectedProducts,
+        product_ids: effectiveProducts,
         scheduled_start_time: scheduledStartTime,
         privacy_status: privacy,
       })
@@ -508,7 +510,7 @@ interface StepInfoProps {
   method: StreamMethod; setMethod: (v: StreamMethod) => void
   destination: Destination; setDestination: (v: Destination) => void
   destinations: DestinationPlatform[]
-  creating: boolean; onCreate: () => void
+  creating: boolean; onCreate: (overrides?: { title?: string; productIds?: number[] }) => void
   navigate: ReturnType<typeof useNavigate>
 }
 
@@ -536,19 +538,17 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
   const canQuickStart = sellableProducts.length > 0 && !creating
   const handleQuickStart = () => {
     if (!canQuickStart) return
-    // 오늘 날짜 + 시간으로 자동 제목
     const now = new Date()
     const mm = String(now.getMonth() + 1).padStart(2, '0')
     const dd = String(now.getDate()).padStart(2, '0')
     const hh = String(now.getHours()).padStart(2, '0')
     const autoTitle = t('seller.liveBroadcast.quickAutoTitle', { date: `${mm}/${dd}`, hour: `${hh}` }) as string
+    const productIds = sellableProducts.slice(0, 5).map(p => p.id)
     setTitle(autoTitle)
-    // 최근 상품 최대 5개 자동 선택
-    const recent = sellableProducts.slice(0, 5).map(p => p.id)
-    recent.forEach(id => { if (!selectedProducts.includes(id)) toggleProduct(id) })
+    setSelectedProducts(productIds)
     setMethod('quick')
-    // 상태 업데이트 후 다음 틱에 방송 생성
-    setTimeout(() => onCreate(), 50)
+    // 값을 직접 전달 — state 반영 타이밍에 의존하지 않음
+    onCreate({ title: autoTitle, productIds })
   }
   return (
     <div className="space-y-4">
@@ -882,14 +882,30 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
         </div>
       )}
 
-      <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700">
-          <ArrowLeft className="w-4 h-4" /> {t('common.cancel')}
-        </button>
-        <div className="flex-1" />
-        <Button onClick={onGoLive} className="bg-red-600 hover:bg-red-700 text-white">
-          <Radio className="w-4 h-4 mr-2" /> {t('seller.liveBroadcast.goLive')}
-        </Button>
+      <div className="pt-3 border-t border-gray-100 space-y-3">
+        {(method === 'obs' || method === 'prism') && (
+          <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+            <span className="flex gap-1 shrink-0">
+              {[0, 0.2, 0.4].map((d, i) => (
+                <span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce"
+                  style={{ animationDelay: `${d}s` }} />
+              ))}
+            </span>
+            <p className="text-xs text-blue-700 flex-1">
+              {method === 'obs' ? 'OBS' : 'Prism'}에서 스트리밍을 시작하면 자동으로 방송이 시작됩니다
+            </p>
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600">
+            <ArrowLeft className="w-4 h-4" /> {t('common.cancel')}
+          </button>
+          <div className="flex-1" />
+          <button onClick={onGoLive}
+            className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
+            {t('seller.liveBroadcast.goLive')}
+          </button>
+        </div>
       </div>
     </div>
   )
