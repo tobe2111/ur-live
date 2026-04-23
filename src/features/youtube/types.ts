@@ -54,7 +54,7 @@ export interface YouTubeLiveSetup {
 }
 
 export interface SellerYouTubeAuth {
-  id?: number
+  id: number
   seller_id: number
   google_email: string
   access_token: string

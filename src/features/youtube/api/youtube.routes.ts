@@ -332,16 +332,24 @@ app.post('/oauth/callback', async (c) => {
     ).bind(sellerId, channel.id).first<{ id: number }>()
 
     if (existing) {
-      await c.env.DB.prepare(`
-        UPDATE seller_youtube_oauth SET
-          access_token = ?, refresh_token = ?, expires_at = ?,
-          google_email = ?, channel_thumbnail = ?, subscriber_count = ?,
-          is_active = 1, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).bind(
-        tokens.access_token, tokens.refresh_token, tokens.expires_at,
-        googleEmail, channel.thumbnail, channel.subscriberCount, existing.id
-      ).run()
+      // Only overwrite refresh_token if Google returned a new one (prompt=consent always does,
+      // but guard against empty string wiping a valid existing token)
+      const refreshTokenToSave = tokens.refresh_token || null
+      const sql = refreshTokenToSave
+        ? `UPDATE seller_youtube_oauth SET
+             access_token = ?, refresh_token = ?, expires_at = ?,
+             google_email = ?, channel_thumbnail = ?, subscriber_count = ?,
+             is_active = 1, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+        : `UPDATE seller_youtube_oauth SET
+             access_token = ?, expires_at = ?,
+             google_email = ?, channel_thumbnail = ?, subscriber_count = ?,
+             is_active = 1, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+      const params = refreshTokenToSave
+        ? [tokens.access_token, refreshTokenToSave, tokens.expires_at, googleEmail, channel.thumbnail, channel.subscriberCount, existing.id]
+        : [tokens.access_token, tokens.expires_at, googleEmail, channel.thumbnail, channel.subscriberCount, existing.id]
+      await c.env.DB.prepare(sql).bind(...params).run()
     } else {
       await c.env.DB.prepare(`
         INSERT INTO seller_youtube_oauth (
