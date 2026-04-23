@@ -11,7 +11,7 @@ import {
   Youtube, Loader2, ExternalLink, Radio, Play,
   VideoIcon, CheckCircle2, AlertCircle, Copy,
   Smartphone, ArrowLeft, Gavel, Zap,
-  Globe, EyeOff, Lock, Users
+  Globe, EyeOff, Lock, Users, AlertTriangle
 } from 'lucide-react'
 import { isSellerAuthenticated } from '@/lib/seller-auth'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
@@ -26,6 +26,7 @@ interface YouTubeChannel {
   subscriber_count: number
   is_active: boolean
   has_persistent_key?: boolean
+  token_expired?: boolean
 }
 
 interface Product {
@@ -308,13 +309,19 @@ export default function SellerLiveBroadcastPage() {
         })
         setStep('setup')
       } else {
-        if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error(t('seller.liveBroadcast.youtubeReauthRequired'))
-        else toast.error(res.data?.error || t('seller.liveBroadcast.createFailed'))
+        if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
+          setChannels(prev => prev.map(ch => ({ ...ch, token_expired: true })))
+        } else {
+          toast.error(res.data?.error || t('seller.liveBroadcast.createFailed'))
+        }
       }
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error_code?: string; error?: string } } }
-      if (axiosErr.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') toast.error(t('seller.liveBroadcast.youtubeReauthRequired'))
-      else toast.error(axiosErr.response?.data?.error || t('seller.liveBroadcast.createFailed'))
+      if (axiosErr.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
+        setChannels(prev => prev.map(ch => ({ ...ch, token_expired: true })))
+      } else {
+        toast.error(axiosErr.response?.data?.error || t('seller.liveBroadcast.createFailed'))
+      }
     } finally { setCreating(false) }
   }
 
@@ -403,8 +410,28 @@ export default function SellerLiveBroadcastPage() {
             <p className="text-sm font-semibold text-gray-900 truncate">{channels[0]?.channel_title}</p>
             <p className="text-xs text-gray-400">{String(t('seller.liveBroadcast.subscribers', { count: channels[0]?.subscriber_count?.toLocaleString() || '0' } as Record<string, string>))}</p>
           </div>
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
+          {channels[0]?.token_expired
+            ? <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">만료</span>
+            : <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
+          }
         </div>
+
+        {/* YouTube 토큰 만료 경고 배너 */}
+        {channels[0]?.token_expired && (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+            <p className="text-sm text-amber-800 flex-1">YouTube 연동이 만료됐어요. 재연동 후 방송을 시작할 수 있습니다.</p>
+            <Button
+              onClick={connectYouTube}
+              disabled={connectingYouTube}
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white flex-shrink-0"
+            >
+              {connectingYouTube ? <Loader2 className="h-3 w-3 animate-spin" /> : <Youtube className="h-3 w-3 mr-1" />}
+              재연동
+            </Button>
+          </div>
+        )}
 
         <StepIndicator step={step} />
 
