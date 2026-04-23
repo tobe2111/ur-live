@@ -102,7 +102,7 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
     if (!sellerId) return
     api.get(`/api/social/follow/${sellerId}`).then(r => {
       if (r.data.success) setFollowing(r.data.data?.following || false)
-    }).catch(() => {})
+    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [sellerId])
 
   return (

@@ -73,7 +73,7 @@ export default function RestaurantMapPage() {
           setRestaurants(r.data.data || [])
         }
       })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [])
 

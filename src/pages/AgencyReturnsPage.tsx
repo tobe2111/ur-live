@@ -21,7 +21,7 @@ export default function AgencyReturnsPage() {
   useEffect(() => {
     api.get('/api/agency/returns', { headers })
       .then(r => { if (r.data.success) setReturns(r.data.data || []) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [])
 

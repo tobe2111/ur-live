@@ -941,7 +941,7 @@ function AdminActivityFeed() {
         const list = r.data.data?.orders || r.data.data || []
         if (list.length > lastCountRef.current && lastCountRef.current > 0) {
           // 새 주문 알림
-          try { new Audio('/static/notification.mp3').play().catch(() => {}) } catch {}
+          try { new Audio('/static/notification.mp3').play().catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }) } catch {}
         }
         lastCountRef.current = list.length
         if (r.data.success) setOrders(list)

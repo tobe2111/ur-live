@@ -23,7 +23,7 @@ export default function AgencyRankingPage() {
     setLoading(true)
     api.get(`/api/agency/ranking?metric=${metric}`, { headers })
       .then(r => { if (r.data.success) setSellers(r.data.data || []) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [metric])
 

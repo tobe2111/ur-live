@@ -14,7 +14,7 @@ export default function AgencySettlementsPage() {
   function load() {
     api.get('/api/agency/settlements')
       .then(r => { if (r.data.success) { setData(r.data.data || []); setSummary(r.data.summary || {}) } })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }
 

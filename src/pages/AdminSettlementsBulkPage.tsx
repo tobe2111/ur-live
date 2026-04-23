@@ -22,7 +22,7 @@ export default function AdminSettlementsBulkPage() {
   useEffect(() => {
     api.get('/api/admin/tools/settlements/pending', h)
       .then(r => { if (r.data.success) setPending(r.data.data || []) })
-      .catch(() => {}).finally(() => setLoading(false))
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }, [])
 
   const toggleAll = () => setSelected(selected.length === pending.length ? [] : pending.map(p => p.seller_id))

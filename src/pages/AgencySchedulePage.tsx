@@ -22,7 +22,7 @@ export default function AgencySchedulePage() {
   useEffect(() => {
     api.get('/api/agency/schedule', { headers })
       .then(r => { if (r.data.success) setStreams(r.data.data || []) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [])
 

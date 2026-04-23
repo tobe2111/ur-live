@@ -41,7 +41,7 @@ export default function AdminPlatformSettingsPage() {
   useEffect(() => {
     api.get('/api/admin/tools/settings', h)
       .then(r => { if (r.data.success) setSettings(r.data.data || {}) })
-      .catch(() => {}).finally(() => setLoading(false))
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }, [])
 
   function validateSetting(key: string, value: string): string | null {

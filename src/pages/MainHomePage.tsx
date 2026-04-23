@@ -151,7 +151,7 @@ export default function MainHomePage() {
           title: b.title || ''
         })
       }
-    }).catch(() => {})
+    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     return () => { cancelled = true }
   }, [])
 

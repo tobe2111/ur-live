@@ -67,7 +67,7 @@ export default function SellerMealVoucherNewPage() {
             setSuggestedImages(res.data.data.items.map((img: any) => (img.link || '').replace(/^http:\/\//, 'https://')).filter(Boolean))
           }
         })
-        .catch(() => {})
+        .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
         .finally(() => setLoadingImages(false))
     }
   }

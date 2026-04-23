@@ -27,7 +27,7 @@ export default function AgencyProductsPage() {
       if (prodRes.data.success) setProducts(prodRes.data.data || [])
       const seller = (sellersRes.data.data || []).find((s: { id: number | string; name?: string }) => String(s.id) === sellerId)
       if (seller) setSellerName(seller.name)
-    }).catch(() => {})
+    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [sellerId])
 

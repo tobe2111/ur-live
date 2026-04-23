@@ -83,7 +83,7 @@ export default function ShortsPage() {
             // 조회수 증가
             const item = shorts[idx]
             if (item && typeof item.id === 'number') {
-              api.post(`/api/shorts/${item.id}/view`).catch(() => {})
+              api.post(`/api/shorts/${item.id}/view`).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
             }
 
             // 끝에 가까우면 더 로드

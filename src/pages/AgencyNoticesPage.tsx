@@ -25,7 +25,7 @@ export default function AgencyNoticesPage() {
   useEffect(() => {
     api.get('/api/agency/notices', { headers })
       .then(r => { if (r.data.success) setNotices(r.data.data || []) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [])
 

@@ -33,13 +33,13 @@ export default function PointsChargePage() {
     Promise.all([
       api.get('/api/points/balance').then(r => {
         if (r.data.success) setBalance(r.data.data.balance)
-      }).catch(() => {}),
+      }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }),
       api.get('/api/points/charge-options').then(r => {
         if (r.data.success) {
           setOptions(r.data.data)
           setSelected(r.data.data[1] ?? r.data.data[0])
         }
-      }).catch(() => {}),
+      }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }),
     ]).finally(() => setLoading(false))
   }, [userId, navigate])
 

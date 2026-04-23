@@ -17,7 +17,7 @@ export default function SellerReviewsPage() {
   useEffect(() => {
     api.get('/api/seller/analytics/reviews', getAuthHeaders())
       .then(r => { if (r.data.success) setReviews(r.data.data || []) })
-      .catch(() => {}).finally(() => setLoading(false))
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }, [])
 
   const submitReply = async (reviewId: number) => {

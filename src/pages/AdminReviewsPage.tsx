@@ -32,7 +32,7 @@ export default function AdminReviewsPage() {
   useEffect(() => {
     api.get('/api/admin/products', { headers })
       .then(r => { if (r.data.success) setProducts(r.data.data || []) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [])
 

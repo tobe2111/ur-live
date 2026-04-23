@@ -73,7 +73,7 @@ export default function MyVouchersPage() {
   useEffect(() => {
     api.get('/api/vouchers/my')
       .then(r => { if (r.data.success) setVouchers(r.data.data || []) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [])
 

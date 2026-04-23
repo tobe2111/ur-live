@@ -738,7 +738,7 @@ function FollowButton({ sellerId }: { sellerId: string }) {
   useEffect(() => {
     api.get(`/api/social/follow/${sellerId}`).then(r => {
       if (r.data.success) setFollowing(r.data.data.following)
-    }).catch(() => {})
+    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [sellerId])
 
   return (

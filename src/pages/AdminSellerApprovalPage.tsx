@@ -22,7 +22,7 @@ export default function AdminSellerApprovalPage() {
     setLoading(true)
     api.get('/api/admin/tools/sellers/pending', h)
       .then(r => { if (r.data.success) setSellers(r.data.data || []) })
-      .catch(() => {}).finally(() => setLoading(false))
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
 

@@ -24,7 +24,7 @@ const StripeCheckout = lazy(() =>
 
 // 토스 SDK 프리로드 — 체크아웃 진입 전에 로드 시작
 if (typeof window !== 'undefined') {
-  import('@tosspayments/tosspayments-sdk').catch(() => {})
+  import('@tosspayments/tosspayments-sdk').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
 }
 
 declare global {

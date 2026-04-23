@@ -46,7 +46,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
           if (deal && deal.status === 'active') setShow(false)
           setDeal(null)
         }
-      }).catch(() => {})
+      }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     }
     poll()
     const iv = setInterval(poll, 2000)

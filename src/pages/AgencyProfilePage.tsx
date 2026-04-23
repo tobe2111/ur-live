@@ -29,7 +29,7 @@ export default function AgencyProfilePage() {
           setForm({ name: r.data.data.name || '', contact_name: r.data.data.contact_name || '', phone: r.data.data.phone || '' })
         }
       })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [])
 

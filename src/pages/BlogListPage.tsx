@@ -19,7 +19,7 @@ export default function BlogListPage() {
     const url = selectedTag ? `/api/blog/public?tag=${selectedTag}` : '/api/blog/public'
     api.get(url)
       .then(r => { if (r.data.success) setPosts(r.data.data || []) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [selectedTag])
 

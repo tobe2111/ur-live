@@ -38,7 +38,7 @@ export default function SellerLoginPage() {
         const { seller, accessToken, refreshToken } = response.data.data
         clearFirebaseTokenCache()
         clearAuthData('user')
-        import('@/lib/firebase-auth').then(({ signOut }) => signOut()).catch(() => {})
+        import('@/lib/firebase-auth').then(({ signOut }) => signOut()).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
         localStorage.setItem('seller_token', accessToken)
         localStorage.setItem('access_token', accessToken)
         localStorage.setItem('seller_refresh_token', refreshToken)

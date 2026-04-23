@@ -68,7 +68,7 @@ export default function KakaoCallbackPage() {
           api.post('/api/cart', {
             product_id: tempCart.productId, quantity: tempCart.quantity,
             price_snapshot: tempCart.priceSnapshot, live_stream_id: tempCart.liveStreamId,
-          }).catch(() => {}).finally(() => clearTempCartItem())
+          }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => clearTempCartItem())
         }
 
         // ── returnUrl 결정 & 이동 ──

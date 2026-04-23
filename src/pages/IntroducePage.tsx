@@ -12,7 +12,7 @@ export default function IntroducePage() {
   const [faqOpen, setFaqOpen] = useState<number | null>(0)
 
   useEffect(() => {
-    api.get('/api/streams?status=live').then(r => { if (r.data.success) setLiveStreams(r.data.data?.slice(0, 4) || []) }).catch(() => {})
+    api.get('/api/streams?status=live').then(r => { if (r.data.success) setLiveStreams(r.data.data?.slice(0, 4) || []) }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [])
 
   const faqs = [

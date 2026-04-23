@@ -79,7 +79,7 @@ export default function ProductGrid() {
           setProducts(r.data.data)
         }
       })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[ProductGrid] fetch failed:', e) })
       .finally(() => setLoading(false))
   }, [])
 
