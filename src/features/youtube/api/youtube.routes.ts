@@ -371,6 +371,7 @@ app.get('/channels', async (c) => {
         default_rtmp_url: a.default_rtmp_url || null,
         default_rtmp_key: a.default_rtmp_key || null,
         has_persistent_key: !!a.default_stream_id,
+        token_expired: a.expires_at < Date.now() + 5 * 60 * 1000,
       }))
     })
   } catch (error: unknown) {
