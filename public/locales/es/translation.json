@@ -1452,7 +1452,8 @@
       "requestAgain": "Solicitar restablecimiento de contraseña de nuevo"
     },
     "hidePassword": "Ocultar contraseña",
-    "showPassword": "Mostrar contraseña"
+    "showPassword": "Mostrar contraseña",
+    "viewPublicProfile": "Ver perfil público"
   },
   "admin": {
     "login": {

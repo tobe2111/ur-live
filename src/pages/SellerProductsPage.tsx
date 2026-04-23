@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
 import {
   Package,
   Plus,
@@ -152,96 +153,94 @@ export default function SellerProductsPage() {
 
   return (
     <SellerLayout title={t('seller.nav.products')}>
-      <div className="max-w-7xl mx-auto">
-        {/* Title & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
-          <div>
-            <div className="flex items-center gap-2 sm:gap-3 mb-2">
-              <Package className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-blue-600" />
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{t('seller.nav.products')}</h1>
-            </div>
-            <p className="text-sm sm:text-base text-gray-600">
-              {t('seller.manageProducts')}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              onClick={downloadSellerTemplate}
-              variant="outline"
-              className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2.5 flex items-center gap-1.5 justify-center text-sm flex-1 sm:flex-none"
-            >
-              <Download className="w-4 h-4" />
-              <span>{t('seller.bulkTemplateDownload')}</span>
-            </Button>
-            <Button
-              onClick={() => setShowBulkUpload(true)}
-              variant="outline"
-              className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 px-3 py-2.5 flex items-center gap-1.5 justify-center text-sm flex-1 sm:flex-none"
-            >
-              <Upload className="w-4 h-4" />
-              <span>{t('seller.bulkUpload')}</span>
-            </Button>
-            <Button
-              onClick={() => navigate('/seller/products/new')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 flex items-center gap-2 justify-center text-sm flex-1 sm:flex-none"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('seller.addProduct')}</span>
-            </Button>
-          </div>
-        </div>
+      <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 127: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.nav.products')}
+          subtitle={t('seller.manageProducts')}
+          icon={<Package className="h-5 w-5" />}
+          actions={
+            <>
+              <Button
+                onClick={downloadSellerTemplate}
+                variant="outline"
+                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 h-9 px-3 text-xs"
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                <span>{t('seller.bulkTemplateDownload')}</span>
+              </Button>
+              <Button
+                onClick={() => setShowBulkUpload(true)}
+                variant="outline"
+                className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 h-9 px-3 text-xs"
+              >
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                <span>{t('seller.bulkUpload')}</span>
+              </Button>
+              <Button
+                onClick={() => navigate('/seller/products/new')}
+                className="h-9 bg-blue-600 px-3 text-xs text-white hover:bg-blue-700"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                <span>{t('seller.addProduct')}</span>
+              </Button>
+            </>
+          }
+        />
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4">
             <div className="flex items-center gap-2 text-red-700">
-              <Trash2 className="w-5 h-5" />
-              <p>{error}</p>
+              <Trash2 className="h-5 w-5" />
+              <p className="text-sm font-medium">{error}</p>
             </div>
-            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('seller.retryButton')}</button>
+            <button onClick={() => window.location.reload()} className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white">
+              {t('seller.retryButton')}
+            </button>
           </div>
         )}
 
         {/* 탭: 내 상품 / 공급 상품 */}
-        <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
+        <div className="mb-4 inline-flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
           <button
             onClick={() => setActiveTab('my')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'my' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              activeTab === 'my' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            {t('seller.myProducts')} ({products.length})
+            {t('seller.myProducts')} <span className="ml-1 opacity-70">{products.length}</span>
           </button>
           <button
             onClick={() => setActiveTab('supply')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'supply' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              activeTab === 'supply' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            {t('seller.supplyProductsTab')} ({supplyProducts.length})
+            {t('seller.supplyProductsTab')} <span className="ml-1 opacity-70">{supplyProducts.length}</span>
           </button>
         </div>
 
         {/* Loading */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-          </div>
+          <DashboardLoading variant="skeleton" rows={4} />
         ) : (
           /* Products List */
           <div>
             {(activeTab === 'my' ? products : supplyProducts).length === 0 ? (
-              <div className="bg-white rounded-lg shadow-sm border text-center py-12 sm:py-20">
-                <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-sm sm:text-base text-gray-600 mb-4">{t('seller.noProductsRegistered')}</p>
-                <Button
-                  onClick={() => navigate('/seller/products/new')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base"
-                >
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  {t('seller.firstProductRegister')}
-                </Button>
-              </div>
+              <DashboardEmptyState
+                icon={<Package className="h-7 w-7" />}
+                title={t('seller.noProductsRegistered')}
+                action={
+                  <Button
+                    onClick={() => navigate('/seller/products/new')}
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('seller.firstProductRegister')}
+                  </Button>
+                }
+              />
             ) : (
               <>
                 {/* Desktop Table View - Hidden on mobile */}

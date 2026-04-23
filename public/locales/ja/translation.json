@@ -1532,7 +1532,8 @@
       "requestAgain": "パスワードリセットを再リクエスト"
     },
     "hidePassword": "パスワードを隠す",
-    "showPassword": "パスワードを表示"
+    "showPassword": "パスワードを表示",
+    "viewPublicProfile": "公開プロフィールを見る"
   },
   "admin": {
     "login": {

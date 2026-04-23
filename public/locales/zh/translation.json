@@ -1535,7 +1535,8 @@
       "requestAgain": "再次申请密码重置"
     },
     "hidePassword": "隐藏密码",
-    "showPassword": "显示密码"
+    "showPassword": "显示密码",
+    "viewPublicProfile": "查看公开资料"
   },
   "admin": {
     "login": {

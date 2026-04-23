@@ -219,19 +219,28 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       </nav>
 
       {/* Bottom */}
+      {/* 🛡️ 2026-04-22 배치 126: '설정' → 셀러 프로필 편집 페이지 (이전엔 공개 프로필로 가던 UX 버그)
+                                  '유저로 돌아가기' → 유저 마이페이지 (이전엔 메인 홈 — 모호한 UX) */}
       <div className="px-4 py-3 space-y-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <Link
-          to={`/profile/${localStorage.getItem('seller_username') || localStorage.getItem('seller_id') || ''}`}
+          to="/seller/profile"
           className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
         >
           <Settings size={13} strokeWidth={2} />
           {t('seller.settings')}
         </Link>
+        <Link
+          to={`/profile/${localStorage.getItem('seller_username') || localStorage.getItem('seller_id') || ''}`}
+          className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
+        >
+          <Globe size={13} strokeWidth={2} />
+          {t('seller.viewPublicProfile') || '공개 프로필 보기'}
+        </Link>
         {localStorage.getItem('user_id') && (
           <button
             onClick={() => {
-              toast.success(t('seller.layout.backToMain'))
-              navigate('/')
+              toast.success(t('seller.layout.backToUser'))
+              navigate('/user/profile')
             }}
             className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-blue-400 hover:text-blue-300 transition-colors"
           >
