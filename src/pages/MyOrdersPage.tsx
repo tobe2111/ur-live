@@ -596,6 +596,16 @@ export default function MyOrdersPage() {
               <p className="font-semibold text-gray-900">{cancelModal.orderNumber}</p>
             </div>
 
+            {/* 🛡️ 배치 170: 환불 가이드 (셀프서비스 안내) */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+              <p className="text-xs font-bold text-blue-800 mb-1">💡 환불 안내</p>
+              <ul className="text-[11px] text-blue-700 space-y-0.5">
+                <li>• 결제 취소 시 결제 수단으로 <span className="font-semibold">자동 환불</span>됩니다</li>
+                <li>• 카드 결제: 3~5 영업일 내 환불 | 포인트 결제: 즉시 환불</li>
+                <li>• 배송 시작 후에는 반품 절차가 필요합니다</li>
+              </ul>
+            </div>
+
             {/* Cancel Reason */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-600 mb-2">

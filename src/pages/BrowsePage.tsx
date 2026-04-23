@@ -1,10 +1,64 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
+import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List, Clock } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
+
+interface RecentProduct {
+  id: number
+  name: string
+  price?: number
+  image?: string
+}
+
+function RecentlyViewedSection() {
+  const navigate = useNavigate()
+  const [items, setItems] = useState<RecentProduct[]>([])
+
+  useEffect(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
+      setItems(raw.slice(0, 10))
+    } catch {
+      // ignore parse errors
+    }
+  }, [])
+
+  if (items.length === 0) return null
+
+  return (
+    <div className="mb-5">
+      <div className="flex items-center gap-1.5 mb-3">
+        <Clock className="w-4 h-4 text-gray-400" />
+        <h2 className="text-[13px] font-bold text-gray-900">최근 본 상품</h2>
+      </div>
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+        {items.map(p => (
+          <button
+            type="button"
+            key={p.id}
+            onClick={() => navigate(`/products/${p.id}`)}
+            className="shrink-0 w-24 cursor-pointer text-left"
+          >
+            <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
+              {p.image ? (
+                <img src={p.image} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gray-100" />
+              )}
+            </div>
+            <p className="text-[11px] text-gray-600 mt-1.5 truncate">{p.name}</p>
+            {p.price != null && (
+              <p className="text-[12px] font-bold text-gray-900">{p.price.toLocaleString()}원</p>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 interface Product {
   id: number
@@ -372,6 +426,9 @@ export default function BrowsePage() {
             <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100" />
           </div>
         )}
+
+        {/* 최근 본 상품 */}
+        <RecentlyViewedSection />
 
         {/* v4 Editorial Grid — hero + 2열 */}
         {loading ? (
