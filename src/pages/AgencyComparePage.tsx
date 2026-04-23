@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
-import { BarChart2, Loader2 } from 'lucide-react'
+import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
+import { BarChart2 } from 'lucide-react'
 
 export default function AgencyComparePage() {
   const navigate = useNavigate()
@@ -29,20 +30,25 @@ export default function AgencyComparePage() {
 
   return (
     <AgencyLayout title="셀러 비교">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-900">셀러 성과 비교</h1>
-          <div className="flex gap-2">
-            {[{ v: '7', l: '7일' }, { v: '30', l: '30일' }, { v: '90', l: '90일' }].map(p => (
-              <button key={p.v} onClick={() => setPeriod(p.v)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${period === p.v ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                {p.l}
-              </button>
-            ))}
-          </div>
-        </div>
-        {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div> : data.length === 0 ? (
-          <p className="text-center py-12 text-gray-500">데이터가 없습니다</p>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="셀러 성과 비교"
+          subtitle="기간별 매출, 주문, 라이브 비교"
+          icon={<BarChart2 className="h-5 w-5" />}
+          actions={
+            <div className="inline-flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+              {[{ v: '7', l: '7일' }, { v: '30', l: '30일' }, { v: '90', l: '90일' }].map(p => (
+                <button key={p.v} onClick={() => setPeriod(p.v)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${period === p.v ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+                  {p.l}
+                </button>
+              ))}
+            </div>
+          }
+        />
+        {loading ? <DashboardLoading /> : data.length === 0 ? (
+          <DashboardEmptyState icon={<BarChart2 className="h-7 w-7" />} title="데이터가 없습니다" description="아직 비교할 셀러가 등록되지 않았어요" />
         ) : (
           <div className="space-y-3">
             {data.map((s, i) => (

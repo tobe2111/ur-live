@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { BarChart2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { TrendingUp, ShoppingBag, Play, Users, ArrowUpDown, Trophy } from 'lucide-react'
@@ -133,6 +135,13 @@ export default function AgencyStatsPage() {
 
   return (
     <AgencyLayout title="통계 분석">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="통계 분석"
+          subtitle="기간별 매출·주문·라이브 통합 분석"
+          icon={<BarChart2 className="h-5 w-5" />}
+        />
       {/* Period selector */}
       <div className="flex items-center gap-2">
         {(['7d', '30d', '90d'] as Period[]).map(p => (
@@ -323,6 +332,7 @@ export default function AgencyStatsPage() {
             </table>
           </div>
         )}
+      </div>
       </div>
     </AgencyLayout>
   )

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
-import { Target, Loader2, Check } from 'lucide-react'
+import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
+import { Target, Check, Users } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AgencyTargetsPage() {
@@ -34,17 +35,22 @@ export default function AgencyTargetsPage() {
 
   return (
     <AgencyLayout title="매출 목표">
-      <div className="p-6 max-w-4xl">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-900">셀러 매출 목표</h1>
-          <input type="month" value={month} onChange={e => setMonth(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-        </div>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="셀러 매출 목표"
+          subtitle="월별 셀러 매출 목표 설정 및 달성률 추적"
+          icon={<Target className="h-5 w-5" />}
+          actions={
+            <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900" />
+          }
+        />
 
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+          <DashboardLoading />
         ) : targets.length === 0 ? (
-          <p className="text-center py-12 text-gray-500">소속 셀러가 없습니다</p>
+          <DashboardEmptyState icon={<Users className="h-7 w-7" />} title="소속 셀러가 없습니다" />
         ) : (
           <div className="space-y-3">
             {targets.map((t: { seller_id: number; seller_name: string; target_amount: number; current_amount: number }) => {

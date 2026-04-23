@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
-import { Trophy, Star, Users, ShoppingBag, TrendingUp, Loader2 } from 'lucide-react'
+import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
+import { Trophy, Users } from 'lucide-react'
 
 export default function AgencyRankingPage() {
   const navigate = useNavigate()
@@ -30,23 +31,28 @@ export default function AgencyRankingPage() {
 
   return (
     <AgencyLayout title="셀러 랭킹">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-900">셀러 성과 랭킹</h1>
-          <div className="flex gap-2">
-            {[{ key: 'revenue' as const, label: '매출순' }, { key: 'orders' as const, label: '주문순' }].map(m => (
-              <button key={m.key} onClick={() => setMetric(m.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${metric === m.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="셀러 성과 랭킹"
+          subtitle="소속 셀러의 매출/주문 순위"
+          icon={<Trophy className="h-5 w-5" />}
+          actions={
+            <div className="inline-flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+              {[{ key: 'revenue' as const, label: '매출순' }, { key: 'orders' as const, label: '주문순' }].map(m => (
+                <button key={m.key} onClick={() => setMetric(m.key)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${metric === m.key ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          }
+        />
 
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+          <DashboardLoading />
         ) : sellers.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">소속 셀러가 없습니다</div>
+          <DashboardEmptyState icon={<Users className="h-7 w-7" />} title="소속 셀러가 없습니다" />
         ) : (
           <div className="space-y-3">
             {sellers.map((s: { id: number; name: string; business_name?: string; total_revenue?: number; total_orders?: number; live_count?: number; avg_rating?: number; total_followers?: number; total_reviews?: number }, i: number) => (

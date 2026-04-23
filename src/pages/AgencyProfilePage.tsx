@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
-import { Save, Loader2 } from 'lucide-react'
+import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
+import { Save, Loader2, Settings } from 'lucide-react'
 
 export default function AgencyProfilePage() {
   const navigate = useNavigate()
@@ -41,12 +42,17 @@ export default function AgencyProfilePage() {
     finally { setSaving(false) }
   }
 
-  if (loading) return <AgencyLayout title="프로필"><div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div></AgencyLayout>
+  if (loading) return <AgencyLayout title="프로필"><div className="mx-auto max-w-xl p-6"><DashboardLoading /></div></AgencyLayout>
 
   return (
     <AgencyLayout title="프로필 설정">
-      <div className="max-w-xl mx-auto p-6 space-y-6">
-        <h1 className="text-xl font-bold text-gray-900">에이전시 프로필</h1>
+      <div className="mx-auto max-w-xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="에이전시 프로필"
+          subtitle="에이전시 기본 정보 관리"
+          icon={<Settings className="h-5 w-5" />}
+        />
 
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
           <div>

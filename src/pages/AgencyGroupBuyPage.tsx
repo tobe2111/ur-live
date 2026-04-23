@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { ShoppingBag as ShoppingBagIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown } from 'lucide-react'
@@ -251,6 +253,13 @@ export default function AgencyGroupBuyPage() {
 
   return (
     <AgencyLayout title="공동구매 관리">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="공동구매 관리"
+          subtitle="진행중/확정/협상 공구 통합 관리"
+          icon={<ShoppingBagIcon className="h-5 w-5" />}
+        />
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <StatCard label="진행중 공구 수" value={String(stats.active)} icon={ShoppingBag} color="bg-blue-600" />
@@ -367,6 +376,7 @@ export default function AgencyGroupBuyPage() {
           onConfirm={(price, discount) => confirmDeal(confirmTarget.id, price, discount)}
         />
       )}
+      </div>
     </AgencyLayout>
   )
 }
