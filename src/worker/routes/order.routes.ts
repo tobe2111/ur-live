@@ -227,7 +227,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
 
     // ── 동시성 안전 재고 차감 (Optimistic Lock) ─────────────────
     // D1 batch()는 원자적으로 실행됩니다.
-    // 각 UPDATE에 `AND stock_quantity >= qty` 조건을 포함하여
+    // 각 UPDATE에 `AND stock >= qty` 조건을 포함하여
     // 동시 주문으로 인한 초과 판매를 방지합니다.
     const stockResult = await orderRepo.reserveStock(
       orderItems.map(i => ({

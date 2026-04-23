@@ -496,6 +496,17 @@ export default function SellerSettlementsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(settlement.status)}
+                        {/* 🛡️ 배치 170: 예상 입금일 표시 */}
+                        {settlement.status === 'pending' && (
+                          <p className="text-[10px] text-amber-600 mt-0.5">
+                            {t('seller.settlementEstimate', '예상 입금: 요청 후 영업일 3~5일')}
+                          </p>
+                        )}
+                        {settlement.status === 'approved' && (
+                          <p className="text-[10px] text-blue-600 mt-0.5">
+                            {t('seller.settlementApprovedEstimate', '입금 예정: 1~2 영업일 내')}
+                          </p>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">

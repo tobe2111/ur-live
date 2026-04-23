@@ -277,7 +277,7 @@ export default function SellerPublicPage() {
                 onKeyDown={e => e.key === 'Enter' && saveEdit('name', editName)}
               />
               <button onClick={() => saveEdit('name', editName)} disabled={saving} className="p-1.5 bg-pink-500 rounded-full text-white"><Check className="w-3.5 h-3.5" /></button>
-              <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="p-1.5 bg-gray-200 rounded-full text-gray-500"><X className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setEditingField(null)} aria-label={t('common.cancelEdit')} className="p-1.5 bg-gray-200 rounded-full text-gray-500"><X className="w-3.5 h-3.5" /></button>
             </div>
           ) : (
             <h1 className={`text-xl font-extrabold ${T.text} group`} onClick={() => startEdit('name')}>
@@ -332,7 +332,7 @@ export default function SellerPublicPage() {
               <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
               {(seller as any)?.average_rating != null
                 ? Number((seller as any).average_rating).toFixed(1)
-                : <span className="text-gray-500 text-xs">신규</span>}
+                : <span className="text-gray-500 text-xs">{t('common.new')}</span>}
             </p>
           </div>
         </div>
@@ -658,23 +658,23 @@ export default function SellerPublicPage() {
               <div className="text-sm text-gray-400 space-y-2">
                 <div className="flex">
                   <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.businessName')}</span>
-                  <span className="text-xs">{seller.business_name || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                  <span className="text-xs">{seller.business_name || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
                 </div>
                 <div className="flex">
                   <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.representative')}</span>
-                  <span className="text-xs">{seller.ceo_name || seller.name || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                  <span className="text-xs">{seller.ceo_name || seller.name || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
                 </div>
                 <div className="flex">
                   <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.businessNumber')}</span>
-                  <span className="text-xs">{seller.business_number || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                  <span className="text-xs">{seller.business_number || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
                 </div>
                 <div className="flex">
-                  <span className="w-24 text-gray-400 shrink-0 text-xs">통신판매업신고번호</span>
-                  <span className="text-xs">{seller.mail_order_number || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                  <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.mailOrderNumber')}</span>
+                  <span className="text-xs">{seller.mail_order_number || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
                 </div>
                 <div className="flex">
-                  <span className="w-24 text-gray-400 shrink-0 text-xs">주소</span>
-                  <span className="text-xs">{seller.business_address || <span className="text-gray-500">(정보 미등록)</span>}</span>
+                  <span className="w-24 text-gray-400 shrink-0 text-xs">{t('common.address')}</span>
+                  <span className="text-xs">{seller.business_address || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
                 </div>
                 {/* 🛡️ 2026-04-22: 셀러 phone/email 공개 노출 제거 (개인정보 보호법 / PIPA)
                     - 공개 프로필에서 평문 노출은 spam/scam 위험 + 법적 위험

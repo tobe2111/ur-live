@@ -17,8 +17,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAccessToken } from '@/utils/auth'
-import type { ChatMessage } from './useFirebaseChat'
-import type { StreamData } from './useFirebaseStream'
+import type { ChatMessage, StreamData } from '@/types/live-stream'
 
 export interface DonationEvent {
   donorName: string
@@ -46,6 +45,9 @@ export interface UseLiveStreamWebSocketReturn {
 
   // Donations
   lastDonation: DonationEvent | null
+
+  // Flash Sales
+  activeFlashSale: any
 }
 
 export function useLiveStreamWebSocket(
@@ -58,6 +60,7 @@ export function useLiveStreamWebSocket(
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastDonation, setLastDonation] = useState<DonationEvent | null>(null)
+  const [activeFlashSale, setActiveFlashSale] = useState<any>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectAttemptsRef = useRef(0)
@@ -216,6 +219,8 @@ export function useLiveStreamWebSocket(
             )
           } else if (msg.type === 'donation') {
             setLastDonation(msg.data as DonationEvent)
+          } else if (msg.type === 'flash_sale') {
+            setActiveFlashSale(msg.data)
           }
         } catch (e) {
           if (import.meta.env.DEV) console.error('[WS] Message parse error:', e)
@@ -277,5 +282,6 @@ export function useLiveStreamWebSocket(
     addLocalMessage,
     streamData,
     lastDonation,
+    activeFlashSale,
   }
 }

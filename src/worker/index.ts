@@ -70,6 +70,7 @@ import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { donationsRoutes } from '../features/donations/api/donations.routes';
 import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
+import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
 import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
@@ -829,6 +830,11 @@ app.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
     { desc: 'live_streams.current_viewers', sql: "ALTER TABLE live_streams ADD COLUMN current_viewers INTEGER DEFAULT 0" },
     { desc: 'live_streams.total_viewers', sql: "ALTER TABLE live_streams ADD COLUMN total_viewers INTEGER DEFAULT 0" },
     { desc: 'live_streams.like_count', sql: "ALTER TABLE live_streams ADD COLUMN like_count INTEGER DEFAULT 0" },
+    // 2026-04-23 배치 164: 라이브 분석 정확도 개선 (P1)
+    { desc: 'live_streams.peak_viewers', sql: "ALTER TABLE live_streams ADD COLUMN peak_viewers INTEGER DEFAULT 0" },
+    { desc: 'live_stream_views.last_heartbeat', sql: "ALTER TABLE live_stream_views ADD COLUMN last_heartbeat TEXT" },
+    { desc: 'idx_lsv_stream_session', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_lsv_stream_session ON live_stream_views(live_stream_id, session_id)" },
+    { desc: 'idx_lsv_stream_heartbeat', sql: "CREATE INDEX IF NOT EXISTS idx_lsv_stream_heartbeat ON live_stream_views(live_stream_id, last_heartbeat)" },
 
     // ── donations ──────────────────────────────────
     { desc: 'donations.payment_status', sql: "ALTER TABLE donations ADD COLUMN payment_status TEXT DEFAULT 'pending'" },
@@ -980,6 +986,28 @@ app.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
       entry_code TEXT,
       entry_method TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
+    { name: 'product_bundles', sql: `CREATE TABLE IF NOT EXISTS product_bundles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      seller_id INTEGER NOT NULL,
+      discount_type TEXT DEFAULT 'percent' CHECK(discount_type IN ('percent', 'fixed')),
+      discount_value REAL DEFAULT 0,
+      image_url TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (seller_id) REFERENCES sellers(id)
+    )` },
+    { name: 'product_bundle_items', sql: `CREATE TABLE IF NOT EXISTS product_bundle_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bundle_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      quantity INTEGER DEFAULT 1,
+      FOREIGN KEY (bundle_id) REFERENCES product_bundles(id) ON DELETE CASCADE,
+      FOREIGN KEY (product_id) REFERENCES products(id)
     )` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
@@ -2010,11 +2038,21 @@ import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 app.route('/api/agency', agencyRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
 
+// 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
+import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
+app.route('/api/bundles', bundlePublicRoutes);
+app.route('/api/bundles', bundleCartRoutes);
+app.route('/api/seller/bundles', bundleSellerRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
 app.route('/api/youtube', youtubeRoutes); // legacy path alias
 app.route('/api/youtube/chat', youtubeChatRoutes);
+
+// 🛡️ 2026-04-23 배치 164: 다중 플랫폼 stub (TikTok / Naver Chzzk / SOOP)
+//   GET /api/platforms 로 지원 플랫폼 상태 조회. 미구현 플랫폼은 501 반환.
+app.route('/api', multiPlatformRoutes);
 
 // Live stream real-time (SSE fallback + WebSocket → DO + chat messages)
 app.route('/api/live', liveSseRoutes);

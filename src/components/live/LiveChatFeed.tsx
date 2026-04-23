@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
-import type { ChatMessage } from '@/hooks/useFirebaseChat'
+import type { ChatMessage } from '@/types/live-stream'
 
 interface LiveChatProps {
   messages: ChatMessage[]

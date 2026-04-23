@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import type { ProductData } from './useFirebaseStream'
+import type { ProductData } from '@/types/live-stream'
 
 const POLL_INTERVAL_MS = 5000
 

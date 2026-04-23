@@ -44,6 +44,7 @@ const NAV_GROUPS: {
     labelKey: 'seller.layout.sales',
     items: [
       { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package },
+      { path: '/seller/bundles', labelKey: 'seller.nav.bundles', icon: Package },
       { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket },
       { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag },
       { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3 },

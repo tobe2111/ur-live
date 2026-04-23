@@ -53,7 +53,18 @@ interface LiveStream {
 }
 
 type WizardStep = 'info' | 'setup' | 'live'
+// 송출 도구 (streaming tool): 셀러가 영상을 어떻게 push 할지
 type StreamMethod = 'youtube' | 'obs' | 'prism' | 'quick'
+// 목적지 플랫폼 (destination): 시청자가 어디서 보는지
+type Destination = 'youtube' | 'tiktok' | 'chzzk' | 'soop'
+
+// ── 멀티플랫폼 API 타입 ────────────────────────────────────────────
+interface DestinationPlatform {
+  key: string; label: string; status: 'available' | 'coming_soon' | 'deprecated'
+  icon: string; region: string
+  features: { rtmp_ingest: boolean; chat_relay: boolean; product_overlay: boolean; oauth_required: boolean }
+  eta?: string; note?: string
+}
 
 // ── 스텝 인디케이터 ────────────────────────────────────────────────
 function StepIndicator({ step }: { step: WizardStep }) {
@@ -81,6 +92,77 @@ function StepIndicator({ step }: { step: WizardStep }) {
           )}
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── 권장 프리셋 블록 (OBS/Prism 세팅 안내) ──────────────────────────
+// 🛡️ 2026-04-23 배치 167: /api/platforms/streaming-tools/:tool/preset 로부터 로드.
+//   사용자가 프리셋을 선택하면 해상도/비트레이트/키프레임/오디오 값을 한 번에 확인 가능.
+interface ToolPreset {
+  label: string; resolution: string; fps: number
+  video_bitrate_kbps: number; audio_bitrate_kbps: number
+  keyframe_interval_sec: number; buffer_sec: number
+  recommended_for: string
+}
+function RecommendedPresetBlock({ tool }: { tool: string }) {
+  const { t } = useTranslation()
+  const [presets, setPresets] = useState<ToolPreset[] | null>(null)
+  const [selected, setSelected] = useState(1) // default: 1080p 30fps
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    api.get(`/api/platforms/streaming-tools/${tool}/preset`)
+      .then(res => { if (active && res.data?.success) setPresets(res.data.data.presets || []) })
+      .catch(() => { /* non-critical */ })
+    return () => { active = false }
+  }, [tool])
+
+  if (!presets || presets.length === 0) return null
+  const p = presets[Math.min(selected, presets.length - 1)]
+
+  return (
+    <div className="mt-2 border border-gray-200 rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full px-3 py-2 flex items-center justify-between bg-gray-50 hover:bg-gray-100 text-left">
+        <span className="text-xs font-semibold text-gray-700">⚙️ {t('seller.liveBroadcast.recommendedPreset')}</span>
+        <span className="text-xs text-gray-500">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="p-3 space-y-2 bg-white">
+          <div className="flex gap-1">
+            {presets.map((preset, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setSelected(i)}
+                className={`flex-1 px-2 py-1 text-[11px] font-medium rounded border ${
+                  selected === i ? 'bg-blue-50 border-blue-400 text-blue-700' : 'bg-white border-gray-200 text-gray-600'
+                }`}>
+                {preset.label.split(' ')[0]}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <PresetRow label={t('seller.liveBroadcast.presetResolution')} value={`${p.resolution} @ ${p.fps}fps`} />
+            <PresetRow label={t('seller.liveBroadcast.presetVideoBitrate')} value={`${p.video_bitrate_kbps.toLocaleString()} kbps`} />
+            <PresetRow label={t('seller.liveBroadcast.presetAudioBitrate')} value={`${p.audio_bitrate_kbps} kbps`} />
+            <PresetRow label={t('seller.liveBroadcast.presetKeyframe')} value={`${p.keyframe_interval_sec}s`} />
+          </div>
+          <p className="text-[10px] text-gray-400 pt-1 border-t border-gray-100">{p.recommended_for}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+function PresetRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-gray-400">{label}</span>
+      <span className="font-mono font-semibold text-gray-900">{value}</span>
     </div>
   )
 }
@@ -126,6 +208,8 @@ export default function SellerLiveBroadcastPage() {
   // 위저드 상태
   const [step, setStep] = useState<WizardStep>('info')
   const [method, setMethod] = useState<StreamMethod>('obs')
+  const [destination, setDestination] = useState<Destination>('youtube')
+  const [destinations, setDestinations] = useState<DestinationPlatform[]>([])
   const [currentStream, setCurrentStream] = useState<LiveStream | null>(null)
 
   // Step 1 폼
@@ -167,10 +251,11 @@ export default function SellerLiveBroadcastPage() {
   async function loadData() {
     try {
       setLoading(true); setLoadError(null)
-      const [chRes, prRes, stRes] = await Promise.allSettled([
+      const [chRes, prRes, stRes, dRes] = await Promise.allSettled([
         api.get('/api/seller/youtube/channels'),
         api.get('/api/seller/products'),
         api.get('/api/seller/streams'),
+        api.get('/api/platforms/destinations'),
       ])
       if (chRes.status === 'fulfilled' && chRes.value.data?.success)
         setChannels(chRes.value.data.data || [])
@@ -178,6 +263,8 @@ export default function SellerLiveBroadcastPage() {
         setProducts(prRes.value.data.data || [])
       if (stRes.status === 'fulfilled' && stRes.value.data?.success)
         setStreams(stRes.value.data.data || [])
+      if (dRes.status === 'fulfilled' && dRes.value.data?.success)
+        setDestinations(dRes.value.data.data || [])
     } catch { setLoadError(t('seller.liveBroadcast.dataLoadFailed')) }
     finally { setLoading(false) }
   }
@@ -335,6 +422,8 @@ export default function SellerLiveBroadcastPage() {
             selectedProducts={selectedProducts}
             toggleProduct={(id: number) => setSelectedProducts(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
             method={method} setMethod={setMethod}
+            destination={destination} setDestination={setDestination}
+            destinations={destinations}
             creating={creating} onCreate={createBroadcast}
             navigate={navigate}
           />
@@ -390,13 +479,17 @@ interface StepInfoProps {
   scheduledTime: string; setScheduledTime: (v: string) => void
   sellableProducts: Product[]; selectedProducts: number[]; toggleProduct: (id: number) => void
   method: StreamMethod; setMethod: (v: StreamMethod) => void
+  destination: Destination; setDestination: (v: Destination) => void
+  destinations: DestinationPlatform[]
   creating: boolean; onCreate: () => void
   navigate: ReturnType<typeof useNavigate>
 }
 
 function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, setThumbnailUrl, privacy, setPrivacy,
   isScheduled, setIsScheduled, scheduledDate, setScheduledDate, scheduledTime, setScheduledTime,
-  sellableProducts, selectedProducts, toggleProduct, method, setMethod, creating, onCreate, navigate
+  sellableProducts, selectedProducts, toggleProduct, method, setMethod,
+  destination, setDestination, destinations,
+  creating, onCreate, navigate
 }: StepInfoProps) {
   const { t } = useTranslation()
   const privacyOptions: { key: 'public' | 'unlisted' | 'private'; icon: typeof Globe; label: string; desc: string }[] = [
@@ -410,8 +503,52 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
     { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.pcBroadcast'), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600' },
     { key: 'prism' as const, icon: Smartphone, label: t('seller.liveBroadcast.naverPrism'), desc: t('seller.liveBroadcast.mobile'), active: 'border-green-400 bg-green-50', iconActive: 'text-green-600' },
   ]
+  // 🛡️ 2026-04-23 배치 164: 1-click quick start (P1 UX 단순화)
+  //   클릭 한 번으로 기본값(오늘 날짜 제목 + 최근 상품 3개 + quick 방식)으로 방송 생성.
+  //   세부 설정이 필요한 사용자는 아래 폼을 이용.
+  const canQuickStart = sellableProducts.length > 0 && !creating
+  const handleQuickStart = () => {
+    if (!canQuickStart) return
+    // 오늘 날짜 + 시간으로 자동 제목
+    const now = new Date()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    const dd = String(now.getDate()).padStart(2, '0')
+    const hh = String(now.getHours()).padStart(2, '0')
+    const autoTitle = t('seller.liveBroadcast.quickAutoTitle', { date: `${mm}/${dd}`, hour: `${hh}` }) as string
+    setTitle(autoTitle)
+    // 최근 상품 최대 5개 자동 선택
+    const recent = sellableProducts.slice(0, 5).map(p => p.id)
+    recent.forEach(id => { if (!selectedProducts.includes(id)) toggleProduct(id) })
+    setMethod('quick')
+    // 상태 업데이트 후 다음 틱에 방송 생성
+    setTimeout(() => onCreate(), 50)
+  }
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+    <div className="space-y-4">
+      {/* ⚡ Quick Start 카드 */}
+      <button
+        onClick={handleQuickStart}
+        disabled={!canQuickStart}
+        className="w-full bg-gradient-to-r from-pink-500 via-red-500 to-orange-500 hover:from-pink-600 hover:via-red-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl p-5 text-left transition-all active:scale-[0.99] shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+            <Zap className="w-6 h-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-bold">{t('seller.liveBroadcast.quickStartOneClick')}</p>
+            <p className="text-xs text-white/90 mt-0.5">{t('seller.liveBroadcast.quickStartOneClickDesc')}</p>
+          </div>
+          <Play className="w-5 h-5 shrink-0" />
+        </div>
+      </button>
+
+      <div className="flex items-center gap-3 text-xs text-gray-400">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span>{t('seller.liveBroadcast.orCustomize')}</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
       <div>
         <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.enterBroadcastInfo')}</h2>
         <p className="text-xs text-gray-500 mt-0.5">{t('seller.liveBroadcast.enterBroadcastInfoDesc')}</p>
@@ -506,9 +643,50 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         )}
       </div>
 
-      {/* 방송 방식 */}
+      {/* 🛡️ 2026-04-23 배치 166: 목적지 플랫폼 선택 (시청자가 어디서 볼 것인지) */}
+      {destinations.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.destination')}</label>
+          <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.destinationDesc')}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {destinations.map(d => {
+              const isAvailable = d.status === 'available'
+              const isSelected = destination === d.key
+              return (
+                <button
+                  key={d.key}
+                  onClick={() => isAvailable && setDestination(d.key as Destination)}
+                  disabled={!isAvailable}
+                  className={`relative p-3 rounded-xl border-2 text-left transition-all ${
+                    !isAvailable
+                      ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                      : isSelected
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                  }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>{d.label}</span>
+                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
+                  </div>
+                  {!isAvailable && (
+                    <p className="text-[10px] text-amber-600 font-medium">
+                      {t('seller.liveBroadcast.comingSoon')}{d.eta ? ` · ${d.eta}` : ''}
+                    </p>
+                  )}
+                  {d.note && !isAvailable && (
+                    <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-2">{d.note}</p>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 송출 도구 (Streaming Tool) — 어떤 도구로 RTMP 를 푸시할지 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">{t('seller.liveBroadcast.broadcastMethod')}</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.streamingTool')}</label>
+        <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.streamingToolDesc')}</p>
         <div className="grid grid-cols-3 gap-3">
           {methodOptions.map(m => (
             <button key={m.key} onClick={() => setMethod(m.key)}
@@ -528,6 +706,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         {creating ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Radio className="h-5 w-5 mr-2" />}
         {creating ? t('seller.liveBroadcast.creating') : t('seller.liveBroadcast.createBroadcast')}
       </Button>
+      </div>
     </div>
   )
 }
@@ -648,6 +827,7 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
                 <div className="space-y-2">
                   <RtmpBlock label="RTMP URL" value={stream.rtmp_url} fieldKey="rtmp_url" copiedField={copiedField} onCopy={onCopy} />
                   {stream.rtmp_key && <RtmpBlock label={t('seller.liveBroadcast.streamKey')} value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
+                  <RecommendedPresetBlock tool="obs" />
                   <button onClick={() => onCopy(`URL: ${stream.rtmp_url}\nKey: ${stream.rtmp_key}`, 'all')}
                     className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors">
                     {copiedField === 'all' ? t('seller.liveBroadcast.copyDone') : t('seller.liveBroadcast.copyAll')}
@@ -922,6 +1102,18 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
             <option value={0}>{t('seller.liveBroadcast.selectProductRequired')}</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}{t('common.won')})</option>)}
           </select>
+          {/* 퀵 프리셋 */}
+          <div className="flex gap-1.5">
+            {[60, 180, 300].map(sec => (
+              <button key={sec} type="button"
+                onClick={() => setDealForm(f => ({ ...f, duration_seconds: sec }))}
+                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg border ${
+                  dealForm.duration_seconds === sec ? 'bg-red-500 text-white border-red-500' : 'bg-white text-red-600 border-red-200'
+                }`}>
+                {sec < 60 ? `${sec}s` : `${sec / 60}분`}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-3 gap-2">
             {([['discount_percent', t('seller.liveBroadcast.discountPercent')], ['max_claims', t('common.quantity')], ['duration_seconds', t('seller.liveBroadcast.durationSec')]] as const).map(([key, label]) => (
               <div key={key}>

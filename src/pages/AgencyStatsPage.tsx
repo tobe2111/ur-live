@@ -6,7 +6,7 @@ import { BarChart2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { TrendingUp, ShoppingBag, Play, Users, ArrowUpDown, Trophy } from 'lucide-react'
+import { TrendingUp, ShoppingBag, Play, Users, ArrowUpDown, Trophy, DollarSign } from 'lucide-react'
 
 interface Seller {
   id: number
@@ -54,6 +54,9 @@ export default function AgencyStatsPage() {
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<'revenue' | 'orders' | 'streams'>('revenue')
 
+  // Agency commission rate
+  const [commissionRate, setCommissionRate] = useState(2.0)
+
   // Restaurant comparison state
   const [comparison, setComparison] = useState<ComparisonRow[]>([])
   const [comparisonLoading, setComparisonLoading] = useState(false)
@@ -68,6 +71,13 @@ export default function AgencyStatsPage() {
     api.get('/api/agency/sellers', { headers })
       .then(r => setSellers(r.data.data || []))
       .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
+    // Fetch agency profile for commission rate
+    api.get('/api/agency/profile', { headers })
+      .then(r => {
+        const rate = r.data?.data?.commission_rate
+        if (typeof rate === 'number' && rate > 0) setCommissionRate(rate)
+      })
+      .catch(() => {})
   }, [token])
 
   useEffect(() => {
@@ -160,9 +170,10 @@ export default function AgencyStatsPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: '총 매출', value: `${(totals.revenue / 10000).toFixed(0)}만원`, icon: TrendingUp, color: 'bg-blue-600' },
+          { label: '수수료 수익', value: `${Math.round(totals.revenue * commissionRate / 100).toLocaleString()}원`, icon: DollarSign, color: 'bg-indigo-600' },
           { label: '총 주문', value: `${totals.orders}건`, icon: ShoppingBag, color: 'bg-emerald-500' },
           { label: '총 라이브', value: `${totals.streams}회`, icon: Play, color: 'bg-rose-500' },
           { label: '총 시청자', value: `${totals.viewers.toLocaleString()}명`, icon: Users, color: 'bg-violet-500' },
@@ -184,7 +195,12 @@ export default function AgencyStatsPage() {
       {/* Seller ranking table */}
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">셀러별 성과</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-900">셀러별 성과 비교</h2>
+            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">
+              수수료율 {commissionRate}%
+            </span>
+          </div>
           <div className="flex items-center gap-1">
             <span className="text-xs text-gray-400 mr-2">정렬:</span>
             {(['revenue', 'orders', 'streams'] as const).map(s => (
@@ -210,32 +226,54 @@ export default function AgencyStatsPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  {['순위', '셀러', '매출', '주문', '셀러수익', '라이브', '시청자'].map(h => (
+                  {['순위', '셀러', '매출', '주문', '수수료 수익', '셀러수익', '라이브', '시청자'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {sorted.map((s, i) => (
-                  <tr key={s.seller.id} className="hover:bg-gray-50">
+                {sorted.map((s, i) => {
+                  const revenue = s.orders?.revenue ?? 0
+                  const commission = Math.round(revenue * commissionRate / 100)
+                  const maxRevenue = sorted[0]?.orders?.revenue ?? 1
+                  const revenuePercent = maxRevenue > 0 ? Math.round((revenue / maxRevenue) * 100) : 0
+                  return (
+                  <tr key={s.seller.id} className={`hover:bg-gray-50 ${i < 3 ? 'bg-gray-50/50' : ''}`}>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
                         i === 0 ? 'bg-yellow-100 text-yellow-700' :
-                        i === 1 ? 'bg-gray-100 text-gray-600' :
+                        i === 1 ? 'bg-gray-200 text-gray-600' :
                         i === 2 ? 'bg-orange-100 text-orange-600' :
                         'text-gray-400'
                       }`}>
-                        {i + 1}
+                        {i === 0 ? <Trophy className="w-3.5 h-3.5" /> : i + 1}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{s.seller.business_name || s.seller.name}</p>
                       <p className="text-xs text-gray-400">{s.seller.email}</p>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-gray-900">
-                      {((s.orders?.revenue ?? 0) / 10000).toFixed(1)}만원
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-900 whitespace-nowrap">
+                          {(revenue / 10000).toFixed(1)}만원
+                        </span>
+                        {i < sorted.length && sorted.length > 1 && (
+                          <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden hidden sm:block">
+                            <div
+                              className="h-full bg-blue-500 rounded-full"
+                              style={{ width: `${revenuePercent}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{s.orders?.order_count ?? 0}건</td>
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-indigo-600">
+                        {commission.toLocaleString()}원
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-gray-700">
                       {((s.orders?.net_revenue ?? 0) / 10000).toFixed(1)}만원
                     </td>
@@ -244,7 +282,8 @@ export default function AgencyStatsPage() {
                       {(s.streams?.total_viewers ?? 0).toLocaleString()}명
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

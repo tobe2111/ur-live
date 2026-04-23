@@ -89,8 +89,12 @@ export interface Product {
   price: number;
   compare_at_price?: number;
   currency: string;
-  stock_quantity: number;
-  stock?: number; // legacy alias for stock_quantity
+  /**
+   * @deprecated Use `stock` (canonical per migration 0114 / production-schema.ts).
+   * Legacy DBs may have this column; code has fallback via COALESCE(stock, stock_quantity, 0).
+   */
+  stock_quantity?: number;
+  stock: number;
   sku?: string;
   thumbnail_url?: string;
   images: string[];

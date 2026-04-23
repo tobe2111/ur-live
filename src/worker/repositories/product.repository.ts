@@ -105,6 +105,7 @@ export class ProductRepository {
       price: Number(row['price'] ?? 0),
       compare_at_price: row['compare_at_price'] ? Number(row['compare_at_price']) : undefined,
       currency: String(row['currency'] ?? 'KRW'),
+      stock: Number(row['stock'] ?? row['stock_quantity'] ?? 0),
       stock_quantity: Number(row['stock_quantity'] ?? row['stock'] ?? 0),
       sku: row['sku'] ? String(row['sku']) : undefined,
       thumbnail_url: row['thumbnail_url'] ? String(row['thumbnail_url']) : undefined,

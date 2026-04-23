@@ -138,11 +138,44 @@ timedealRoutes.post('/create', requireAuth(), async (c) => {
     ],
   );
 
+  const dealId = result.meta.last_row_id;
+
+  // Broadcast flash_sale event to all viewers via Durable Object (non-fatal)
+  try {
+    if (c.env.LIVE_STREAM) {
+      const flashSaleMessage = {
+        type: 'flash_sale',
+        data: {
+          deal_id: dealId,
+          product_id: product_id,
+          product_name: product.name,
+          original_price: product.price,
+          deal_price: dealPrice,
+          discount_percent: discount_percent,
+          max_claims: max_claims || 10,
+          claimed_count: 0,
+          duration_seconds: dur,
+          expires_at: expiresAt,
+        },
+        timestamp: Date.now(),
+      };
+      const doId = c.env.LIVE_STREAM.idFromName(String(stream_id));
+      const stub = c.env.LIVE_STREAM.get(doId);
+      await stub.fetch(new Request('https://internal/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Internal-Auth': '1', 'X-Auth-User-Type': 'seller' },
+        body: JSON.stringify(flashSaleMessage),
+      }) as any);
+    }
+  } catch (e) {
+    if (import.meta.env.DEV) console.error('[TimeDeal] DO broadcast failed:', e);
+  }
+
   return c.json(
     {
       success: true,
       data: {
-        id: result.meta.last_row_id,
+        id: dealId,
         deal_price: dealPrice,
         expires_at: expiresAt,
         is_group_buy: !!groupBuyFlag,

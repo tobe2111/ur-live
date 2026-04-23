@@ -6,7 +6,7 @@ import { Users as UsersIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Search, TrendingUp, ShoppingBag, Play } from 'lucide-react'
+import { Search, TrendingUp, ShoppingBag, Play, UserPlus, Copy, Link, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Seller {
   id: number
@@ -37,6 +37,81 @@ function StatusBadge({ status }: { status: string }) {
   }
   const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-600' }
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
+}
+
+function InviteSellerPanel({ sellerCount }: { sellerCount: number }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const agencyId = localStorage.getItem('agency_id')
+  const inviteUrl = `https://live.ur-team.com/seller/register?agency=${agencyId}`
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl)
+      setCopied(true)
+      toast.success(t('agency.inviteLinkCopied'))
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error(t('common.copyFailed'))
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 mb-5">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors rounded-xl"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+            <UserPlus className="w-4.5 h-4.5 text-indigo-600" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">{t('agency.influencerInvite')}</h3>
+            <p className="text-xs text-gray-500">{t('agency.shareLink')}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium text-gray-500">{t('agency.recruitedSellers', { count: sellerCount })}</span>
+          {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 space-y-3">
+          <div className="border-t border-gray-100 pt-4">
+            <label className="text-xs font-medium text-gray-600 mb-1.5 block flex items-center gap-1.5">
+              <Link className="w-3.5 h-3.5 text-gray-400" />
+              {t('agency.influencerInvite')} URL
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs text-gray-700 truncate font-mono select-all">
+                {inviteUrl}
+              </div>
+              <button
+                onClick={handleCopy}
+                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${
+                  copied
+                    ? 'bg-green-600 text-white'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+              >
+                {copied ? (
+                  <><CheckCircle2 className="w-3.5 h-3.5" />{t('common.copied')}</>
+                ) : (
+                  <><Copy className="w-3.5 h-3.5" />{t('common.copy')}</>
+                )}
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400">
+            이 링크로 가입한 셀러는 자동으로 에이전시에 소속됩니다.
+          </p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AgencySellersPage() {
@@ -93,6 +168,10 @@ export default function AgencySellersPage() {
           subtitle={t('agency.sellersSubtitle')}
           icon={<UsersIcon className="h-5 w-5" />}
         />
+
+      {/* Invite Seller Section */}
+      <InviteSellerPanel sellerCount={sellers.length} />
+
       <div className="flex gap-5">
         {/* Seller list */}
         <div className="flex-1 min-w-0">

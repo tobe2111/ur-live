@@ -4,8 +4,20 @@ import type { WSMessage, ProductChangeMessage, ViewerCountMessage, StreamStatusM
 // 🛡️ 2026-04-22: DO 당 최대 동시 WebSocket 수
 const MAX_SESSIONS_PER_DO = 10_000;
 
+// 🛡️ 2026-04-23 배치 164: chat rate limit 상수
+const CHAT_MAX_LEN = 300;
+const CHAT_RATE_LIMIT = 5;       // 5 msgs
+const CHAT_RATE_WINDOW_MS = 3000; // per 3 seconds
+
+interface ChatSession {
+  ws: WebSocket;
+  userId: string | null;
+  recentTimes: number[]; // rate limit sliding window
+}
+
 export class LiveStreamDurableObject extends DurableObject {
   private sessions: Set<WebSocket>;
+  private chatSessions: Map<WebSocket, ChatSession>;
   private viewerCount: number;
   private currentProduct: any;
   private state: DurableObjectState;
@@ -14,6 +26,7 @@ export class LiveStreamDurableObject extends DurableObject {
     super(state, env);
     this.state = state;
     this.sessions = new Set();
+    this.chatSessions = new Map();
     this.viewerCount = 0;
     this.currentProduct = null;
 
@@ -41,7 +54,9 @@ export class LiveStreamDurableObject extends DurableObject {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
-      this.handleSession(server);
+      // 🛡️ Worker 가 검증한 user_id 전달받아 DO 세션에 바인딩
+      const authedUserId = request.headers.get('x-auth-user-id');
+      this.handleSession(server, authedUserId);
 
       return new Response(null, {
         status: 101,
@@ -66,9 +81,10 @@ export class LiveStreamDurableObject extends DurableObject {
     return new Response('Not Found', { status: 404 });
   }
 
-  handleSession(webSocket: WebSocket) {
+  handleSession(webSocket: WebSocket, userId: string | null = null) {
     webSocket.accept();
     this.sessions.add(webSocket);
+    this.chatSessions.set(webSocket, { ws: webSocket, userId, recentTimes: [] });
     this.viewerCount++;
 
     // 시청자 수 브로드캐스트
@@ -94,6 +110,7 @@ export class LiveStreamDurableObject extends DurableObject {
 
     webSocket.addEventListener('close', () => {
       this.sessions.delete(webSocket);
+      this.chatSessions.delete(webSocket);
       // 🛡️ viewerCount 하한선 보장 (음수 방지)
       this.viewerCount = Math.max(0, this.viewerCount - 1);
       this.broadcastViewerCount();
@@ -102,13 +119,54 @@ export class LiveStreamDurableObject extends DurableObject {
     webSocket.addEventListener('error', (err) => {
       console.error('WebSocket error:', err);
       this.sessions.delete(webSocket);
+      this.chatSessions.delete(webSocket);
       this.viewerCount = Math.max(0, this.viewerCount - 1);
     });
   }
 
   handleMessage(webSocket: WebSocket, message: any) {
-    // 클라이언트로부터의 메시지 처리
-    // 필요한 경우 추가 로직 구현
+    // 🛡️ 2026-04-23 배치 164: 채팅 메시지 처리 (WebSocket 전환 기초)
+    //   클라이언트가 { type: 'chat_message', data: { text } } 전송 시 검증 후 브로드캐스트.
+    //   - 익명 차단 (user_id 없으면 거부)
+    //   - 길이/rate limit
+    //   - XSS 방지를 위해 서버단에서 stripTags 후 브로드캐스트
+    if (!message || typeof message !== 'object') return;
+
+    if (message.type === 'chat_message') {
+      const sess = this.chatSessions.get(webSocket);
+      if (!sess) return;
+      if (!sess.userId) {
+        webSocket.send(JSON.stringify({ type: 'chat_error', data: { code: 'AUTH_REQUIRED' }, timestamp: Date.now() }));
+        return;
+      }
+
+      const text = typeof message.data?.text === 'string' ? message.data.text : '';
+      const clean = text.replace(/<[^>]*>/g, '').trim();
+      if (!clean || clean.length === 0) return;
+      if (clean.length > CHAT_MAX_LEN) {
+        webSocket.send(JSON.stringify({ type: 'chat_error', data: { code: 'TOO_LONG', max: CHAT_MAX_LEN }, timestamp: Date.now() }));
+        return;
+      }
+
+      // Sliding window rate limit
+      const now = Date.now();
+      sess.recentTimes = sess.recentTimes.filter(t => now - t < CHAT_RATE_WINDOW_MS);
+      if (sess.recentTimes.length >= CHAT_RATE_LIMIT) {
+        webSocket.send(JSON.stringify({ type: 'chat_error', data: { code: 'RATE_LIMIT' }, timestamp: Date.now() }));
+        return;
+      }
+      sess.recentTimes.push(now);
+
+      this.broadcast({
+        type: 'chat_message',
+        data: {
+          user_id: sess.userId,
+          text: clean,
+          display_name: typeof message.data?.display_name === 'string' ? String(message.data.display_name).slice(0, 30) : null,
+        },
+        timestamp: now,
+      });
+    }
   }
 
   async handleBroadcast(request: Request): Promise<Response> {

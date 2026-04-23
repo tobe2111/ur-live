@@ -189,7 +189,8 @@ export default function SellerProductNewPage() {
             </button>
           }
         />
-        <div className="mb-8 hidden">
+        {/* 🛡️ 2026-04-23 배치 170: CSV 대량 업로드 UI 활성화 (이전: hidden) */}
+        <div className="mb-8">
           <p className="text-sm text-gray-500">
             {t('seller.newProductDesc')}
           </p>

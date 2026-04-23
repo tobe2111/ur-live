@@ -91,6 +91,61 @@ const Skel = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
 )
 
+// 🛡️ 2026-04-23 배치 170: 셀러 온보딩 체크리스트
+function OnboardingChecklist({ stats, hasBank }: { stats: DashboardStats; hasBank: boolean }) {
+  const { t } = useTranslation()
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem('seller_onboarding_done') === '1')
+  if (dismissed) return null
+
+  const steps = [
+    { key: 'product', done: (stats.totalProducts ?? 0) > 0, label: t('seller.onboarding.addProduct', '첫 상품 등록'), path: '/seller/products/new', icon: Package },
+    { key: 'bank', done: hasBank, label: t('seller.onboarding.bankAccount', '정산 계좌 등록'), path: '/seller/profile', icon: CreditCard },
+    { key: 'live', done: (stats.totalStreams ?? 0) > 0, label: t('seller.onboarding.firstLive', '첫 라이브 방송'), path: '/seller/live-broadcast', icon: Radio },
+    { key: 'order', done: (stats.totalOrders ?? 0) > 0, label: t('seller.onboarding.firstOrder', '첫 주문 받기'), path: '#', icon: ShoppingBag },
+  ]
+  const doneCount = steps.filter(s => s.done).length
+  const allDone = doneCount === steps.length
+  if (allDone) {
+    localStorage.setItem('seller_onboarding_done', '1')
+    return null
+  }
+  const progress = Math.round((doneCount / steps.length) * 100)
+
+  return (
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-gray-900">{t('seller.onboarding.title', '🚀 시작 가이드')}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{t('seller.onboarding.subtitle', '아래 단계를 완료하면 판매를 시작할 수 있어요')}</p>
+        </div>
+        <button onClick={() => { setDismissed(true); localStorage.setItem('seller_onboarding_done', '1') }}
+          className="text-xs text-gray-400 hover:text-gray-600">
+          {t('common.dismiss', '닫기')}
+        </button>
+      </div>
+      <div className="w-full bg-blue-100 rounded-full h-2">
+        <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+      </div>
+      <p className="text-[11px] text-blue-700 font-medium">{doneCount}/{steps.length} {t('seller.onboarding.completed', '완료')}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {steps.map(s => (
+          <Link key={s.key} to={s.done ? '#' : s.path}
+            className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs transition-all ${
+              s.done
+                ? 'bg-green-50 border-green-200 text-green-700'
+                : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+            }`}>
+            {s.done
+              ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+              : <s.icon className="w-4 h-4 text-gray-400 shrink-0" />}
+            <span className={s.done ? 'line-through' : 'font-medium'}>{s.label}</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 const STATUS_CONFIG_BASE: Record<string, { labelKey: string; color: string; bg: string; icon: React.ReactNode }> = {
   PENDING:   { labelKey: 'seller.statusPending',   color: '#D97706', bg: '#FEF3C7', icon: <Clock className="w-3 h-3" /> },
@@ -111,6 +166,7 @@ export default function SellerPage() {
   const isInfluencer = sellerType === 'influencer' || sellerType === 'both'
 
   // Stats
+  const [hasBank, setHasBank] = useState(false)
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0, totalOrders: 0, activeStreams: 0, totalViewers: 0,
     pendingOrders: 0, cancelledOrders: 0, completedOrders: 0, avgOrderValue: 0
@@ -196,6 +252,21 @@ export default function SellerPage() {
             setNewOrderIds(newIds)
             if (newOrderTimerRef.current) clearTimeout(newOrderTimerRef.current)
             newOrderTimerRef.current = setTimeout(() => setNewOrderIds(new Set()), 12000)
+
+            // 🛡️ 2026-04-23 배치 170: 신규 주문 알림 (브라우저 Notification + 사운드)
+            try {
+              if (Notification.permission === 'granted') {
+                new Notification('🛒 새 주문이 들어왔어요!', {
+                  body: `${newIds.size}건의 새 주문을 확인하세요`,
+                  icon: '/favicon.ico',
+                })
+              } else if (Notification.permission === 'default') {
+                Notification.requestPermission()
+              }
+              const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeWj4J1aGBneIONkpGLgXRtZ2l4hI+UkYyBdWxnbHqFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1')
+              audio.volume = 0.3
+              audio.play().catch(() => {})
+            } catch { /* non-critical */ }
           }
           lastMaxIdRef.current = maxId
         }
@@ -224,13 +295,19 @@ export default function SellerPage() {
       const token = getSellerToken()
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
-      const [dashRes, streamsRes, stockRes, followerRes, productsRes] = await Promise.allSettled([
+      const [dashRes, streamsRes, stockRes, followerRes, productsRes, profileRes] = await Promise.allSettled([
         api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
         api.get('/api/seller/streams', { headers }),
         api.get('/api/inventory/stock/alerts', { headers }),
         api.get(`/api/social/followers/${getSellerId()}`),
         api.get('/api/seller/products', { headers }),
+        api.get('/api/seller/profile', { headers }),
       ])
+      // 온보딩 체크: 정산 계좌 등록 여부
+      if (profileRes.status === 'fulfilled' && profileRes.value.data?.success) {
+        const p = profileRes.value.data.data
+        setHasBank(!!(p?.bank_name && p?.bank_account))
+      }
 
       // 캐시 저장용 스냅샷
       const snapshot: Record<string, unknown> = { ts: Date.now() }
@@ -482,6 +559,9 @@ export default function SellerPage() {
           subtitle={t('seller.dashboardSubtitle') || '셀러 대시보드 — 매출 / 주문 / 라이브 현황'}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
+
+        {/* 🛡️ 2026-04-23 배치 170: 셀러 온보딩 가이드 (신규 셀러만 표시) */}
+        <OnboardingChecklist stats={stats} hasBank={hasBank} />
 
           {/* ── 월간 매출 목표 진행률 ── */}
           <div className="bg-white rounded-2xl p-4 border border-[#E8EAEE]">
