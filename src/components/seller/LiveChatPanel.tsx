@@ -2,109 +2,136 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Send } from 'lucide-react'
 import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
 import { getSellerToken } from '@/lib/seller-auth'
+import { useLiveStreamWebSocket } from '@/hooks/useLiveStreamWebSocket'
 
-interface ChatMsg {
+/**
+ * 🛡️ 2026-04-23 배치 167: 셀러 LiveChatPanel 을 WebSocket DO 기반으로 통합.
+ *   이전: YouTube polling 만 사용 (5초 간격). 시청자 채팅이 seller 에게 안 보임.
+ *   개선: useLiveStreamWebSocket 훅으로 DO WebSocket 연결 → 시청자 메시지 실시간 수신.
+ *         셀러 메시지는 REST /api/chat/:id/messages (isSeller=true) 로 전송 →
+ *         D1 저장 + DO 가 모든 뷰어에게 broadcast. YouTube 도 best-effort 동시 전송.
+ */
+
+interface UnifiedMsg {
   id: string
   author: string
   message: string
   timestamp: number
-  source: 'kakao' | 'youtube' | 'seller'
+  source: 'kakao' | 'youtube' | 'seller' | 'viewer' | 'system'
   avatarUrl?: string
 }
 
 export default function LiveChatPanel({ streamId }: { streamId: number }) {
   const { t } = useTranslation()
-  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [ytMessages, setYtMessages] = useState<UnifiedMsg[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const seenIds = useRef<Set<string>>(new Set())
+  const seenYtIds = useRef<Set<string>>(new Set())
 
-  // 채팅 폴링 (카카오 WebSocket + YouTube API)
+  // ── WebSocket (ur-live native) 채팅 수신 ─────────────────────────
+  const {
+    messages: wsMessages,
+    isConnected,
+    sendMessage: sendChatMessage,
+  } = useLiveStreamWebSocket(streamId, true, false)
+
+  // ── YouTube 채팅 polling (보조) ──────────────────────────────────
   useEffect(() => {
     let active = true
-
     const poll = async () => {
-      // YouTube 채팅
       try {
         const res = await api.get(`/api/youtube/chat/chat/${streamId}`)
-        if (res.data.success && res.data.data?.messages) {
-          const ytMsgs: ChatMsg[] = res.data.data.messages.map((m: any) => ({
-            id: `yt-${m.id}`,
-            author: m.author,
-            message: m.message,
-            timestamp: m.timestamp,
-            source: 'youtube' as const,
-            avatarUrl: m.avatarUrl,
-          }))
-          if (active) {
-            setMessages(prev => {
-              const newMsgs = ytMsgs.filter(m => !seenIds.current.has(m.id))
-              newMsgs.forEach(m => seenIds.current.add(m.id))
-              return [...prev, ...newMsgs].sort((a, b) => a.timestamp - b.timestamp).slice(-50)
-            })
+        if (res.data.success && res.data.data?.messages && active) {
+          const ytMsgs: UnifiedMsg[] = res.data.data.messages
+            .filter((m: { id: string }) => !seenYtIds.current.has(`yt-${m.id}`))
+            .map((m: { id: string; author: string; message: string; timestamp: number; avatarUrl?: string }) => ({
+              id: `yt-${m.id}`,
+              author: m.author,
+              message: m.message,
+              timestamp: m.timestamp,
+              source: 'youtube' as const,
+              avatarUrl: m.avatarUrl,
+            }))
+          ytMsgs.forEach((m) => seenYtIds.current.add(m.id))
+          if (ytMsgs.length > 0) {
+            setYtMessages((prev) => [...prev, ...ytMsgs].slice(-200))
           }
         }
       } catch { /* YouTube 채팅 비활성 */ }
     }
-
     poll()
     const interval = setInterval(poll, 5000)
     return () => { active = false; clearInterval(interval) }
   }, [streamId])
+
+  // ── 메시지 통합 (WebSocket + YouTube) ────────────────────────────
+  const allMessages: UnifiedMsg[] = [
+    ...wsMessages.map((m) => ({
+      id: m.id,
+      author: m.userName,
+      message: m.message,
+      timestamp: m.timestamp,
+      source: (m.isSeller ? 'seller' : m.isAdmin ? 'system' : 'viewer') as UnifiedMsg['source'],
+    })),
+    ...ytMessages,
+  ]
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .slice(-50)
 
   // 자동 스크롤
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages])
+  }, [allMessages.length])
 
-  // 셀러 메시지 전송
+  // ── 셀러 메시지 전송 (ur-live native → DO broadcast + YouTube) ───
   async function sendMessage() {
     if (!input.trim() || sending) return
     setSending(true)
-    try {
-      // WebSocket DO에 메시지 전송
-      const sellerName = localStorage.getItem('seller_name') || t('seller.liveChat.seller')
-      const msg: ChatMsg = {
-        id: `seller-${Date.now()}`,
-        author: sellerName,
-        message: input.trim(),
-        timestamp: Date.now(),
-        source: 'seller',
-      }
-      setMessages(prev => [...prev, msg])
-      seenIds.current.add(msg.id)
-      setInput('')
+    const text = input.trim()
+    const sellerName = localStorage.getItem('seller_name') || t('seller.liveChat.seller')
+    const sellerId = parseInt(localStorage.getItem('seller_id') || '0', 10) || 0
+    setInput('')
 
-      // YouTube 채팅에도 전송
-      try {
-        await api.post(`/api/youtube/chat/chat/${streamId}`, {
-          message: input.trim(),
-        }, { headers: { Authorization: `Bearer ${getSellerToken()}` } })
-      } catch { /* YouTube 전송 실패는 무시 */ }
-    } finally {
-      setSending(false)
+    try {
+      // ur-live native — D1 저장 + DO broadcast
+      await sendChatMessage(text, sellerId, sellerName, 'streamer')
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[LiveChatPanel] ur-live send failed:', e)
     }
+
+    // YouTube 동시 전송 (best-effort)
+    try {
+      await api.post(
+        `/api/youtube/chat/chat/${streamId}`,
+        { message: text },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      )
+    } catch { /* YouTube 전송 실패는 무시 */ }
+
+    setSending(false)
   }
 
   return (
     <div className="flex flex-col h-[300px] lg:h-auto">
       {/* 채팅 헤더 */}
       <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
-        <span className="text-xs font-bold text-gray-900">{t('seller.liveChat.title')}</span>
-        <span className="text-[10px] text-gray-500">{t('seller.liveChat.messageCount', { count: messages.length })}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-gray-900">{t('seller.liveChat.title')}</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
+        </div>
+        <span className="text-[10px] text-gray-500">{t('seller.liveChat.messageCount', { count: allMessages.length })}</span>
       </div>
 
       {/* 메시지 목록 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 min-h-0">
-        {messages.length === 0 ? (
+        {allMessages.length === 0 ? (
           <p className="text-center text-xs text-gray-400 py-8">{t('seller.liveChat.empty')}</p>
         ) : (
-          messages.map(msg => (
+          allMessages.map(msg => (
             <div key={msg.id} className="flex items-start gap-1.5">
               {/* 소스 아이콘 */}
               {msg.source === 'youtube' ? (
@@ -115,13 +142,21 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
                 <span className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                   <span className="text-[7px] text-white font-bold">S</span>
                 </span>
+              ) : msg.source === 'system' ? (
+                <span className="w-3.5 h-3.5 bg-gray-700 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-[7px] text-white font-bold">!</span>
+                </span>
               ) : (
-                <svg viewBox="0 0 24 24" fill="#FEE500" className="w-3.5 h-3.5 shrink-0 mt-0.5">
-                  <path d="M12 3c-5.523 0-10 3.694-10 8.25 0 2.904 1.887 5.46 4.726 6.924-.157.564-.57 2.044-.652 2.362-.101.395.145.39.305.284.125-.083 1.994-1.355 2.808-1.907A11.59 11.59 0 0 0 12 19.5c5.523 0 10-3.694 10-8.25S17.523 3 12 3z" />
-                </svg>
+                <span className="w-3.5 h-3.5 bg-gray-300 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-[7px] text-white font-bold">V</span>
+                </span>
               )}
               <p className="text-[11px] leading-snug">
-                <span className={`font-bold ${msg.source === 'seller' ? 'text-blue-600' : 'text-gray-900'}`}>{msg.author}</span>
+                <span className={`font-bold ${
+                  msg.source === 'seller' ? 'text-blue-600' :
+                  msg.source === 'system' ? 'text-gray-700' :
+                  'text-gray-900'
+                }`}>{msg.author}</span>
                 <span className="text-gray-600"> {msg.message}</span>
               </p>
             </div>
