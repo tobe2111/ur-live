@@ -1587,6 +1587,33 @@
       "deleteFailed": "削除失敗",
       "enterNewPw": "新しいパスワードを入力してください",
       "pwChangeFailed": "パスワード変更失敗"
+    },
+    "pages": {
+      "dashboard": "管理ダッシュボード",
+      "users": "ユーザー管理",
+      "sellers": "セラー管理",
+      "sellerApproval": "セラー承認待ち",
+      "orders": "注文管理",
+      "products": "商品管理",
+      "coupons": "クーポン管理",
+      "notices": "お知らせ",
+      "banners": "バナー管理",
+      "revenue": "売上分析",
+      "deals": "ディール充電モニタリング",
+      "liveMonitor": "ライブモニタリング",
+      "reviews": "レビュー管理",
+      "reviewModeration": "レビューモデレーション",
+      "settlement": "精算ダッシュボード",
+      "settlementsBulk": "一括精算",
+      "platformSettings": "プラットフォーム設定",
+      "auditLog": "監査ログ",
+      "replay": "リプレイ管理",
+      "health": "システム状態",
+      "blog": "ブログ管理",
+      "agency": "エージェンシー管理",
+      "cafe24": "Cafe24連携",
+      "alimtalk": "ブランドメッセージ",
+      "sampleRequests": "サンプル申請"
     }
   },
   "agency": {

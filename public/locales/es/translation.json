@@ -1507,6 +1507,33 @@
       "deleteFailed": "Error al eliminar",
       "enterNewPw": "Por favor, introduce una nueva contraseña",
       "pwChangeFailed": "Error al cambiar contraseña"
+    },
+    "pages": {
+      "dashboard": "Panel admin",
+      "users": "Usuarios",
+      "sellers": "Vendedores",
+      "sellerApproval": "Aprobaciones",
+      "orders": "Pedidos",
+      "products": "Productos",
+      "coupons": "Cupones",
+      "notices": "Avisos",
+      "banners": "Banners",
+      "revenue": "Ingresos",
+      "deals": "Cargas",
+      "liveMonitor": "Monitor",
+      "reviews": "Reseñas",
+      "reviewModeration": "Moderación",
+      "settlement": "Liquidaciones",
+      "settlementsBulk": "Liquidación masiva",
+      "platformSettings": "Configuración",
+      "auditLog": "Registro",
+      "replay": "Repeticiones",
+      "health": "Estado",
+      "blog": "Blog",
+      "agency": "Agencias",
+      "cafe24": "Cafe24",
+      "alimtalk": "Mensajes",
+      "sampleRequests": "Muestras"
     }
   },
   "agency": {

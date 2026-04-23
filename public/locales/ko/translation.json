@@ -1587,6 +1587,33 @@
       "deleteFailed": "삭제 실패",
       "enterNewPw": "새 비밀번호를 입력하세요",
       "pwChangeFailed": "비밀번호 변경 실패"
+    },
+    "pages": {
+      "dashboard": "관리자 대시보드",
+      "users": "유저 관리",
+      "sellers": "셀러 관리",
+      "sellerApproval": "셀러 승인 대기",
+      "orders": "주문 관리",
+      "products": "상품 관리",
+      "coupons": "쿠폰 관리",
+      "notices": "공지사항 발송",
+      "banners": "배너 관리",
+      "revenue": "매출 분석",
+      "deals": "딜 충전 모니터링",
+      "liveMonitor": "라이브 모니터링",
+      "reviews": "리뷰 관리",
+      "reviewModeration": "리뷰 관리",
+      "settlement": "정산 대시보드",
+      "settlementsBulk": "정산 일괄 처리",
+      "platformSettings": "플랫폼 설정",
+      "auditLog": "감사 로그",
+      "replay": "다시보기 관리",
+      "health": "시스템 상태",
+      "blog": "블로그 관리",
+      "agency": "에이전시 관리",
+      "cafe24": "Cafe24 연동",
+      "alimtalk": "브랜드메시지 관리",
+      "sampleRequests": "샘플 신청 관리"
     }
   },
   "agency": {

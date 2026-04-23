@@ -1590,6 +1590,33 @@
       "deleteFailed": "删除失败",
       "enterNewPw": "请输入新密码",
       "pwChangeFailed": "更改密码失败"
+    },
+    "pages": {
+      "dashboard": "管理仪表板",
+      "users": "用户管理",
+      "sellers": "卖家管理",
+      "sellerApproval": "卖家审批",
+      "orders": "订单管理",
+      "products": "产品管理",
+      "coupons": "优惠券",
+      "notices": "公告",
+      "banners": "横幅管理",
+      "revenue": "销售分析",
+      "deals": "充值监控",
+      "liveMonitor": "直播监控",
+      "reviews": "评论管理",
+      "reviewModeration": "评论审核",
+      "settlement": "结算",
+      "settlementsBulk": "批量结算",
+      "platformSettings": "平台设置",
+      "auditLog": "审计日志",
+      "replay": "回放管理",
+      "health": "系统健康",
+      "blog": "博客管理",
+      "agency": "代理管理",
+      "cafe24": "Cafe24集成",
+      "alimtalk": "品牌消息",
+      "sampleRequests": "样品申请"
     }
   },
   "agency": {

@@ -1507,6 +1507,33 @@
       "deleteFailed": "Échec de la suppression",
       "enterNewPw": "Veuillez saisir un nouveau mot de passe",
       "pwChangeFailed": "Échec du changement de mot de passe"
+    },
+    "pages": {
+      "dashboard": "Tableau de bord admin",
+      "users": "Utilisateurs",
+      "sellers": "Vendeurs",
+      "sellerApproval": "Approbations",
+      "orders": "Commandes",
+      "products": "Produits",
+      "coupons": "Coupons",
+      "notices": "Avis",
+      "banners": "Bannières",
+      "revenue": "Revenus",
+      "deals": "Recharges",
+      "liveMonitor": "Moniteur",
+      "reviews": "Avis",
+      "reviewModeration": "Modération",
+      "settlement": "Règlements",
+      "settlementsBulk": "Règlement groupé",
+      "platformSettings": "Paramètres",
+      "auditLog": "Journal",
+      "replay": "Rediffusions",
+      "health": "État",
+      "blog": "Blog",
+      "agency": "Agences",
+      "cafe24": "Cafe24",
+      "alimtalk": "Messages",
+      "sampleRequests": "Échantillons"
     }
   },
   "agency": {
