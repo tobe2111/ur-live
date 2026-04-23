@@ -1533,7 +1533,8 @@
     },
     "hidePassword": "Hide password",
     "showPassword": "Show password",
-    "viewPublicProfile": "View public profile"
+    "viewPublicProfile": "View public profile",
+    "agencyInviteJoin": "Joining via agency invitation"
   },
   "admin": {
     "login": {

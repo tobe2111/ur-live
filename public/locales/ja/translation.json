@@ -1533,7 +1533,8 @@
     },
     "hidePassword": "パスワードを隠す",
     "showPassword": "パスワードを表示",
-    "viewPublicProfile": "公開プロフィールを見る"
+    "viewPublicProfile": "公開プロフィールを見る",
+    "agencyInviteJoin": "エージェンシー招待による参加"
   },
   "admin": {
     "login": {

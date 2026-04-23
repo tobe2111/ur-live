@@ -1453,7 +1453,8 @@
     },
     "hidePassword": "Masquer le mot de passe",
     "showPassword": "Afficher le mot de passe",
-    "viewPublicProfile": "Voir le profil public"
+    "viewPublicProfile": "Voir le profil public",
+    "agencyInviteJoin": "Inscription via invitation d'agence"
   },
   "admin": {
     "login": {
