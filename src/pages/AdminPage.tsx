@@ -483,7 +483,7 @@ export default function AdminPage() {
                 <p className="text-sm font-medium text-gray-900">{alert.title}</p>
                 <p className="text-xs text-gray-500">{alert.message}</p>
               </div>
-              <button onClick={() => dismissAlert(i)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+              <button onClick={() => dismissAlert(i)} aria-label="알림 닫기" className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
             </div>
           ))}
         </div>

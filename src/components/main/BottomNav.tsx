@@ -130,7 +130,7 @@ export default function BottomNav() {
                     <h3 className="text-lg font-bold text-white">
                       {isSeller ? '라이브 방송' : !isLoggedIn ? '로그인이 필요합니다' : '셀러로 시작하기'}
                     </h3>
-                    <button onClick={() => setSheetOpen(false)} className="p-1 rounded-full hover:bg-white/10">
+                    <button onClick={() => setSheetOpen(false)} aria-label="시트 닫기" className="p-1 rounded-full hover:bg-white/10">
                       <X className="w-5 h-5 text-gray-500" />
                     </button>
                   </div>

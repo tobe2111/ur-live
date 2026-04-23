@@ -277,7 +277,7 @@ export default function SellerPublicPage() {
                 onKeyDown={e => e.key === 'Enter' && saveEdit('name', editName)}
               />
               <button onClick={() => saveEdit('name', editName)} disabled={saving} className="p-1.5 bg-pink-500 rounded-full text-white"><Check className="w-3.5 h-3.5" /></button>
-              <button onClick={() => setEditingField(null)} className="p-1.5 bg-gray-200 rounded-full text-gray-500"><X className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="p-1.5 bg-gray-200 rounded-full text-gray-500"><X className="w-3.5 h-3.5" /></button>
             </div>
           ) : (
             <h1 className={`text-xl font-extrabold ${T.text} group`} onClick={() => startEdit('name')}>
@@ -611,7 +611,7 @@ export default function SellerPublicPage() {
                     <input autoFocus value={editInsta} onChange={e => setEditInsta(e.target.value)} placeholder="https://instagram.com/..."
                       className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-[#121212]" />
                     <button onClick={() => saveEdit('instagram', editInsta)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-[#1A1A1A] text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-[#1A1A1A] text-xs rounded-lg"><X className="w-3 h-3" /></button>
                   </div>
                 ) : seller.sns_instagram ? (
                   <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('instagram')}>
@@ -628,7 +628,7 @@ export default function SellerPublicPage() {
                     <input autoFocus value={editYoutube} onChange={e => setEditYoutube(e.target.value)} placeholder="https://youtube.com/..."
                       className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-[#121212]" />
                     <button onClick={() => saveEdit('youtube', editYoutube)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-[#1A1A1A] text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-[#1A1A1A] text-xs rounded-lg"><X className="w-3 h-3" /></button>
                   </div>
                 ) : seller.sns_youtube ? (
                   <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('youtube')}>
@@ -645,7 +645,7 @@ export default function SellerPublicPage() {
                     <input autoFocus value={editKakao} onChange={e => setEditKakao(e.target.value)} placeholder="https://open.kakao.com/..."
                       className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-[#121212]" />
                     <button onClick={() => saveEdit('kakao', editKakao)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-[#1A1A1A] text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-[#1A1A1A] text-xs rounded-lg"><X className="w-3 h-3" /></button>
                   </div>
                 ) : isOwner && !seller.kakao_chat_link ? (
                   <button onClick={() => startEdit('kakao')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> {t('seller.publicPage.addKakaoChat')}</button>
