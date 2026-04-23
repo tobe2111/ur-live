@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { formatKST } from '@/utils/date'
 import {
   Store, Link2, Unlink, RefreshCw, Loader2,
@@ -119,7 +120,12 @@ export default function AdminCafe24Page() {
 
   return (
     <AdminLayout title="Cafe24 연동">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="Cafe24 연동"
+          subtitle="상품 자동 동기화를 위한 Cafe24 OAuth 연결"
+          icon={<Store className="h-5 w-5" />}
+        />
         {/* Status Card */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-4">

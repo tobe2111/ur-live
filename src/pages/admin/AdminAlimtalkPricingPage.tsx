@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { MessageSquare, DollarSign, Users, TrendingUp, Edit2, Save, X, Plus, Eye, EyeOff } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 
@@ -144,6 +145,12 @@ export default function AdminAlimtalkPricingPage() {
 
   return (
     <AdminLayout title="브랜드메시지 관리">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="브랜드메시지 관리"
+          subtitle="알림톡 발송 현황 · 수익 · 패키지 가격"
+          icon={<MessageSquare className="h-5 w-5" />}
+        />
       {/* 통계 카드 */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -362,6 +369,7 @@ export default function AdminAlimtalkPricingPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </AdminLayout>
   )

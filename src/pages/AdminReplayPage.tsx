@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Play, ExternalLink, Search, Edit2, X, Check, Youtube } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 
 interface Stream {
   id: number; title: string; description?: string; youtube_video_id?: string
@@ -132,20 +133,21 @@ export default function AdminReplayPage() {
 
   return (
     <AdminLayout title="다시보기 관리">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">다시보기 관리</h1>
-            <p className="text-sm text-gray-500 mt-1">YouTube 영상 + 상품을 연결하여 다시보기 콘텐츠 생성</p>
-          </div>
-          <button
-            onClick={() => { setShowForm(!showForm); if (editingId) resetForm() }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700"
-          >
-            <Plus className="w-4 h-4" />
-            다시보기 생성
-          </button>
-        </div>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="다시보기 관리"
+          subtitle="YouTube 영상 + 상품을 연결하여 다시보기 콘텐츠 생성"
+          icon={<Youtube className="h-5 w-5" />}
+          actions={
+            <button
+              onClick={() => { setShowForm(!showForm); if (editingId) resetForm() }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              다시보기 생성
+            </button>
+          }
+        />
 
         {/* 생성/수정 폼 */}
         {showForm && (

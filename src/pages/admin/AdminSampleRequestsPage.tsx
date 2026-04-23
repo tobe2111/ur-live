@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight, MessageSquare
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { formatKSTDate } from '@/utils/date'
 
 interface SampleRequest {
@@ -96,7 +97,12 @@ export default function AdminSampleRequestsPage() {
 
   return (
     <AdminLayout title="샘플 신청 관리">
-      <div className="max-w-4xl mx-auto">
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="샘플 신청 관리"
+          subtitle={`총 ${total}건 · 대기 ${pendingCount}건`}
+          icon={<Package className="h-5 w-5" />}
+        />
         {/* 필터 탭 */}
         <div className="flex gap-2 mb-5">
           {[

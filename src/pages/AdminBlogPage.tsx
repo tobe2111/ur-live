@@ -7,10 +7,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
 import {
   Plus, Edit2, Trash2, Eye, EyeOff,
-  Loader2, ArrowLeft, Save, Send
+  Loader2, ArrowLeft, Save, Send, FileText
 } from 'lucide-react'
 
 interface BlogPost {
@@ -179,16 +180,17 @@ export default function AdminBlogPage() {
   // ── 목록 뷰 ────────────────────────────────────────────────
   if (view === 'list') return (
     <AdminLayout title="블로그 관리">
-      <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">블로그 관리</h1>
-            <p className="text-sm text-gray-500 mt-1">글을 작성하고 docs.ur-team.com에 발행하세요</p>
-          </div>
-          <Button onClick={() => openEdit()} className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="w-4 h-4 mr-2" /> 새 글 작성
-          </Button>
-        </div>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="블로그 관리"
+          subtitle="글을 작성하고 docs.ur-team.com에 발행하세요"
+          icon={<FileText className="h-5 w-5" />}
+          actions={
+            <Button onClick={() => openEdit()} className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3 text-xs">
+              <Plus className="w-3.5 h-3.5 mr-1.5" /> 새 글 작성
+            </Button>
+          }
+        />
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>

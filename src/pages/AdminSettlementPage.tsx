@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { DollarSign, TrendingUp, Users, Download, CheckCircle, Clock } from 'lucide-react'
 
 interface SettlementStats {
@@ -160,14 +161,18 @@ export default function AdminSettlementPage() {
   const pendingOrders = records.filter(r => r.settlement_status === 'pending')
 
   return (
-    <AdminLayout
-      title="정산 대시보드"
-      headerRight={
-        <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700">
-          <Download className="w-3.5 h-3.5" /> CSV 다운로드
-        </button>
-      }
-    >
+    <AdminLayout title="정산 대시보드">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="정산 대시보드"
+          subtitle="셀러별 정산 현황 · CSV 내보내기"
+          icon={<DollarSign className="h-5 w-5" />}
+          actions={
+            <button onClick={exportCSV} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">
+              <Download className="h-3.5 w-3.5" /> CSV 다운로드
+            </button>
+          }
+        />
       {/* 기간 필터 */}
       <div className="flex items-center gap-2">
         {[['today', '오늘'], ['week', '이번 주'], ['month', '이번 달'], ['all', '전체']].map(([v, l]) => (
@@ -298,6 +303,7 @@ export default function AdminSettlementPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </AdminLayout>
   )
