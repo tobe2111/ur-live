@@ -38,6 +38,7 @@ import { adminSideBannersRoutes } from '../features/admin/api/admin-side-banners
 import { adminSettlementsRoutes } from '../features/admin/api/admin-settlements.routes';
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
+import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
@@ -1670,6 +1671,8 @@ adminApp.route('/', adminSettlementsRoutes);
 adminApp.route('/', adminStatsRoutes);
 // 🛡️ 2026-04-22 배치 146 (TD-006 부분): admin-sellers 분리 (272줄)
 adminApp.route('/', adminSellersRoutes);
+// 🛡️ 2026-04-22 배치 148 (TD-006 부분): admin-products + sample-requests 분리
+adminApp.route('/', adminProductsRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
