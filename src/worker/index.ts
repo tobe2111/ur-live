@@ -947,6 +947,28 @@ app.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
       entry_method TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )` },
+    // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
+    { name: 'product_bundles', sql: `CREATE TABLE IF NOT EXISTS product_bundles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      seller_id INTEGER NOT NULL,
+      discount_type TEXT DEFAULT 'percent' CHECK(discount_type IN ('percent', 'fixed')),
+      discount_value REAL DEFAULT 0,
+      image_url TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (seller_id) REFERENCES sellers(id)
+    )` },
+    { name: 'product_bundle_items', sql: `CREATE TABLE IF NOT EXISTS product_bundle_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bundle_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      quantity INTEGER DEFAULT 1,
+      FOREIGN KEY (bundle_id) REFERENCES product_bundles(id) ON DELETE CASCADE,
+      FOREIGN KEY (product_id) REFERENCES products(id)
+    )` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {
@@ -1975,6 +1997,12 @@ import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 app.route('/api/agency', agencyRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
+
+// 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
+import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
+app.route('/api/bundles', bundlePublicRoutes);
+app.route('/api/bundles', bundleCartRoutes);
+app.route('/api/seller/bundles', bundleSellerRoutes);
 
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments

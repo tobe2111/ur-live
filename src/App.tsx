@@ -58,6 +58,7 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const SellerGroupBuyPage = lazy(() => import('./pages/SellerGroupBuyPage'))
+const SellerBundlesPage = lazy(() => import('./pages/SellerBundlesPage'))
 const SellerMealVoucherNewPage = lazy(() => import('./pages/SellerMealVoucherNewPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
@@ -511,6 +512,11 @@ function AppContent() {
             <Route path="/seller/group-buy" element={
               <ProtectedRoute requireSeller>
                 <ErrorBoundary><SellerGroupBuyPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/bundles" element={
+              <ProtectedRoute requireSeller>
+                <ErrorBoundary><SellerBundlesPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/seller/meal-voucher/new" element={

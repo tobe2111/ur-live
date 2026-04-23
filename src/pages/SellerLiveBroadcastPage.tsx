@@ -1102,6 +1102,18 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
             <option value={0}>{t('seller.liveBroadcast.selectProductRequired')}</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}{t('common.won')})</option>)}
           </select>
+          {/* 퀵 프리셋 */}
+          <div className="flex gap-1.5">
+            {[60, 180, 300].map(sec => (
+              <button key={sec} type="button"
+                onClick={() => setDealForm(f => ({ ...f, duration_seconds: sec }))}
+                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg border ${
+                  dealForm.duration_seconds === sec ? 'bg-red-500 text-white border-red-500' : 'bg-white text-red-600 border-red-200'
+                }`}>
+                {sec < 60 ? `${sec}s` : `${sec / 60}분`}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-3 gap-2">
             {([['discount_percent', t('seller.liveBroadcast.discountPercent')], ['max_claims', t('common.quantity')], ['duration_seconds', t('seller.liveBroadcast.durationSec')]] as const).map(([key, label]) => (
               <div key={key}>

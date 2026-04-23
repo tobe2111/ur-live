@@ -1491,11 +1491,21 @@
     },
     "nav": {
       "products": "Products",
+      "bundles": "Bundles",
       "mealVoucher": "Meal Vouchers",
       "reviews": "Reviews",
       "coupons": "Coupons",
       "liveBroadcast": "Live Broadcast"
     },
+    "bundlesSubtitle": "Bundle multiple products for set discounts",
+    "bundleCreate": "Create Bundle",
+    "bundleEdit": "Edit Bundle",
+    "bundleName": "Bundle Name",
+    "bundleProducts": "Select Products",
+    "noBundles": "No bundles yet",
+    "discountType": "Discount Type",
+    "discountPercent": "Discount %",
+    "discountAmount": "Discount Amount",
     "shortsSync": {
       "syncComplete": "Sync complete",
       "syncFailed": "Sync failed",
