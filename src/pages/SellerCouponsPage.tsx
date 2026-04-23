@@ -18,7 +18,7 @@ export default function SellerCouponsPage() {
     setLoading(true)
     api.get('/api/seller/analytics/coupons', getAuthHeaders())
       .then(r => { if (r.data.success) setCoupons(r.data.data || []) })
-      .catch(() => {}).finally(() => setLoading(false))
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
 

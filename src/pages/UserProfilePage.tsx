@@ -124,7 +124,7 @@ function OrderStatusBar() {
           })
           setCounts(c)
         }
-      }).catch(() => {})
+      }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     })
   }, [])
 
@@ -320,7 +320,7 @@ function SellerSwitchCard() {
     import('@/lib/api').then(({ default: api }) => {
       api.get('/api/seller/my-seller-status')
         .then(r => { if (r.data.success) setStatus(r.data.data) })
-        .catch(() => {})
+        .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
         .finally(() => setLoading(false))
     })
   }

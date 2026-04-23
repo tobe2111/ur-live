@@ -292,7 +292,7 @@ export default function ProductDetailPage() {
     if (id) {
       api.get(`/api/reviews/product/${id}/summary`).then(r => {
         if (r.data.success) setReviewSummary(r.data.data)
-      }).catch(() => {})
+      }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     }
   }, [id])
 
@@ -333,7 +333,7 @@ export default function ProductDetailPage() {
         const found = r.data.data.items.some((item: { product_id: string | number }) => String(item.product_id) === String(id))
         setIsWishlisted(found)
       }
-    }).catch(() => {})
+    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [id, isLoggedIn])
 
   async function handleToggleWishlist() {
@@ -824,7 +824,7 @@ function ReferralSection({
         if (cancelled) return
         if (r.data.success) setGroups((r.data.data || []) as ActiveGroup[])
       })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => { if (!cancelled) setLoadingGroups(false) })
     return () => { cancelled = true }
   }, [productId])

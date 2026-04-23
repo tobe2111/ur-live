@@ -23,7 +23,7 @@ export default function AgencyComparePage() {
     setLoading(true)
     api.get(`/api/agency/sellers/compare?period=${period}`, { headers })
       .then(r => { if (r.data.success) setData(r.data.data || []) })
-      .catch(() => {}).finally(() => setLoading(false))
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }, [period])
 
   const maxRevenue = Math.max(...data.map(d => d.revenue), 1)

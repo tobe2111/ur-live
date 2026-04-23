@@ -87,19 +87,19 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         }
         if (status) setAgencyStatus(status)
       })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[AgencyLayout] profile fetch failed:', e) })
     api.get('/api/agency/sellers', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
         const sellers = r.data?.data || []
         setSellerCount(sellers.length)
       })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[AgencyLayout] sellers fetch failed:', e) })
     api.get('/api/agency/stats', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
         const rev = r.data?.data?.revenue_30d
         if (typeof rev === 'number') setRevenue30d(rev)
       })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[AgencyLayout] stats fetch failed:', e) })
   }, [])
 
   // 인증 파트너 라벨은 status === 'approved'일 때만 표시 (그 외엔 일반 파트너)

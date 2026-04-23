@@ -406,7 +406,7 @@ function CartPageContent() {
     }
 
     // 토스 SDK 프리로드 (체크아웃 진입 전)
-    import('@tosspayments/tosspayments-sdk').catch(() => {})
+    import('@tosspayments/tosspayments-sdk').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     const selectedItems = cartItems.filter(item => selectedIds.has(item.id))
     navigate('/checkout', {
       state: {

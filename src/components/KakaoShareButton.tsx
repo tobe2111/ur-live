@@ -52,10 +52,10 @@ export default function KakaoShareButton({ title, description, imageUrl, link, b
         await shareKakao(title, description, imageUrl, fullUrl, buttonText)
       } catch {
         // 카카오 실패 시 일반 공유로 폴백
-        await shareNative(title, description, fullUrl).catch(() => {})
+        await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       }
     } else {
-      await shareNative(title, description, fullUrl).catch(() => {})
+      await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     }
   }
 

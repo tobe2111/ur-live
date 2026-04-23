@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { formatKST } from '@/utils/date'
 import {
   Users, Search, ChevronDown, ChevronUp,
@@ -104,14 +105,13 @@ export default function AdminUsersPage() {
 
   return (
     <AdminLayout title="유저 관리">
-      {/* Header Stats */}
-      <div className="flex items-center gap-3 mb-1">
-        <Users className="w-5 h-5 text-blue-600" />
-        <h2 className="text-lg font-bold text-gray-900">유저 관리</h2>
-        {!loading && (
-          <span className="text-sm text-gray-500">총 {totalCount.toLocaleString()}명</span>
-        )}
-      </div>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 135: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title="유저 관리"
+          subtitle={!loading ? `총 ${totalCount.toLocaleString()}명` : '불러오는 중...'}
+          icon={<Users className="h-5 w-5" />}
+        />
 
       {/* Search & Filter */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row gap-3">
@@ -252,6 +252,7 @@ export default function AdminUsersPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </AdminLayout>
   )

@@ -23,7 +23,7 @@ export default function BlogDetailPage() {
     window.scrollTo(0, 0)
     api.get(`/api/blog/public/${slug}`)
       .then(r => { if (r.data.success) setPost(r.data.data) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [slug])
 

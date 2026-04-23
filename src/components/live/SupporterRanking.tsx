@@ -32,7 +32,7 @@ export default function SupporterRanking({ sellerId, compact = false }: Props) {
           setStats(r.data.data.stats || { supporter_count: 0, total_donations: 0 })
         }
       })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[SupporterRanking] fetch failed:', e) })
       .finally(() => setLoading(false))
   }, [sellerId])
 

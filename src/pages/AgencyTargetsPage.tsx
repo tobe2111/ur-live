@@ -17,7 +17,7 @@ export default function AgencyTargetsPage() {
     setLoading(true)
     api.get(`/api/agency/targets?month=${m}`, { headers })
       .then(r => { if (r.data.success) setTargets(r.data.data || []) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }
 

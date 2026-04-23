@@ -30,7 +30,7 @@ export default function AgencyContractsPage() {
     ]).then(([c, s]) => {
       setContracts(c.data.data || [])
       setSellers(s.data.data || [])
-    }).catch(() => {}).finally(() => setLoading(false))
+    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
 

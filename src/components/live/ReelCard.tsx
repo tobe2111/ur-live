@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2 } from 'lucide-react'
-import axios from 'axios'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
@@ -312,7 +311,7 @@ export default function ReelCard({
     const pollYouTubeChat = async () => {
       try {
         const url = `/api/youtube/chat/chat/${stream.id}${ytPageTokenRef.current ? `?pageToken=${ytPageTokenRef.current}` : ''}`
-        const res = await axios.get(url)
+        const res = await api.get(url)
         if (res.data.success && res.data.data?.messages) {
           const ytMsgs: ChatMessage[] = res.data.data.messages.map((m: any) => ({
             id: `yt-${m.id}`,
@@ -628,7 +627,7 @@ export default function ReelCard({
     if (newProductId && newProductId !== currentProduct?.id) {
       const loadNewProduct = async () => {
         try {
-          const response = await axios.get(`/api/streams/${stream.id}/current-product`)
+          const response = await api.get(`/api/streams/${stream.id}/current-product`)
           if (response.data.success && response.data.data) {
             const newProduct = response.data.data
             if (!newProduct) return
@@ -674,7 +673,7 @@ export default function ReelCard({
 
     const loadInitialProduct = async () => {
       try {
-        const response = await axios.get(`/api/streams/${stream.id}/current-product`)
+        const response = await api.get(`/api/streams/${stream.id}/current-product`)
         if (response.data.success && response.data.data) {
           setCurrentProduct(response.data.data)
         } else if (response.data.success && !response.data.data) {

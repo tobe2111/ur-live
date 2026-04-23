@@ -31,7 +31,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
         } else {
           setAuction(null)
         }
-      }).catch(() => {})
+      }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     }
     poll()
     const iv = setInterval(poll, 3000)

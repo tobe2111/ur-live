@@ -50,7 +50,7 @@ function NotificationList() {
   useEffect(() => {
     api.get('/api/agency/notifications', { headers })
       .then(r => { if (r.data.success) setNotifs((r.data.data || []).slice(0, 5)) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [])
   if (notifs.length === 0) return <p className="text-xs text-gray-400">{t('agency.noNewNotifications')}</p>
   return (
@@ -102,7 +102,7 @@ function InviteLinkSection() {
         const sellers = r.data.data || []
         setRecruitedCount(sellers.length)
       })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [])
 
   const handleCopy = async () => {
@@ -165,7 +165,7 @@ function RevenueTrendChart() {
       .then(r => {
         if (r.data.success) setDaily(r.data.data || [])
       })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [])
 

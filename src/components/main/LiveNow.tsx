@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Eye } from 'lucide-react'
-import axios from 'axios'
+import api from '@/lib/api'
 
 interface LiveStream {
   id: number
@@ -30,7 +30,7 @@ export default function LiveNow() {
 
   const loadLiveStreams = async () => {
     try {
-      const response = await axios.get('/api/streams?status=live')
+      const response = await api.get('/api/streams?status=live')
       if (response.data.success && response.data.data.length > 0) {
         setLiveStreams(response.data.data.slice(0, 4))
       } else {

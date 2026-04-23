@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import axios from 'axios'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { isLoggedInSync, getUserIdSync } from '@/utils/auth'
@@ -51,7 +50,8 @@ const WishlistPage: React.FC = () => {
     try {
       setLoading(true)
       // ✅ UX C3 FIX: auth-implicit endpoint (IDOR 방지, URL에 userId 노출 금지)
-      const response = await axios.get('/api/wishlists')
+      // 🛡️ 2026-04-22 배치 137: axios → api (auth interceptor 적용되어야 requireAuth 통과)
+      const response = await api.get('/api/wishlists')
 
       if (response.data.success) {
         setWishlists(response.data.data.items)

@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, Eye } from 'lucide-react'
 import SEO from '@/components/SEO'
-import axios from 'axios'
 import api from '@/lib/api'
 import { formatViewers } from '@/components/live/LiveUtils'
 import ReelCard from '@/components/live/ReelCard'
@@ -102,7 +101,7 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
     if (!sellerId) return
     api.get(`/api/social/follow/${sellerId}`).then(r => {
       if (r.data.success) setFollowing(r.data.data?.following || false)
-    }).catch(() => {})
+    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [sellerId])
 
   return (
@@ -245,7 +244,7 @@ export default function LivePageV2() {
         if (shouldShowSingleStream && streamId) {
           // DIRECT LINK: Load only the requested stream
           try {
-            const singleStreamResponse = await axios.get(`/api/streams/${streamId}`)
+            const singleStreamResponse = await api.get(`/api/streams/${streamId}`)
             
             if (singleStreamResponse.data.success && singleStreamResponse.data.data) {
               streams = [singleStreamResponse.data.data]
@@ -256,7 +255,7 @@ export default function LivePageV2() {
         } else {
           // HOMEPAGE LINK: Load ALL active streams
           try {
-            const streamsResponse = await axios.get('/api/streams')
+            const streamsResponse = await api.get('/api/streams')
             
             if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
               streams = streamsResponse.data.data
@@ -361,7 +360,7 @@ export default function LivePageV2() {
     // 시청자 등록 (Heartbeat)
     const joinViewer = async () => {
       try {
-        await axios.post(`/api/streams/${currentStream.id}/viewer/join`, {}, {
+        await api.post(`/api/streams/${currentStream.id}/viewer/join`, {}, {
           headers: { 'X-Session-ID': sessionId }
         })
       } catch (error) {
@@ -372,7 +371,7 @@ export default function LivePageV2() {
     // 시청자 수 조회
     const fetchViewerCount = async () => {
       try {
-        const response = await axios.get(`/api/streams/${currentStream.id}/viewer-count`)
+        const response = await api.get(`/api/streams/${currentStream.id}/viewer-count`)
         if (response.data.success) {
           setViewerCount(response.data.data.viewer_count)
         }

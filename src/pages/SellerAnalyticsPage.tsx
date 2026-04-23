@@ -27,7 +27,7 @@ export default function SellerAnalyticsPage() {
   useEffect(() => {
     api.get('/api/seller/analytics/detailed', getAuthHeaders())
       .then(r => { if (r.data.success) setDetailedData(r.data.data) })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [])
 
   const load = () => {
@@ -35,7 +35,7 @@ export default function SellerAnalyticsPage() {
     const url = tab === 'revenue' ? `/api/seller/analytics/chart/revenue?days=${days}`
       : tab === 'customers' ? '/api/seller/analytics/customers'
       : '/api/seller/analytics/products/performance'
-    api.get(url, getAuthHeaders()).then(r => { if (r.data.success) setData(r.data.data) }).catch(() => {}).finally(() => setLoading(false))
+    api.get(url, getAuthHeaders()).then(r => { if (r.data.success) setData(r.data.data) }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }
 
   return (

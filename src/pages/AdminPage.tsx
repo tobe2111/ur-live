@@ -662,7 +662,7 @@ export default function AdminPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">판매자 관리</h2>
-          <button onClick={loadData} className="p-1.5 rounded-lg hover:bg-gray-100">
+          <button onClick={loadData} aria-label="데이터 새로고침" className="p-1.5 rounded-lg hover:bg-gray-100">
             <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
           </button>
         </div>
@@ -941,7 +941,7 @@ function AdminActivityFeed() {
         const list = r.data.data?.orders || r.data.data || []
         if (list.length > lastCountRef.current && lastCountRef.current > 0) {
           // 새 주문 알림
-          try { new Audio('/static/notification.mp3').play().catch(() => {}) } catch {}
+          try { new Audio('/static/notification.mp3').play().catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }) } catch {}
         }
         lastCountRef.current = list.length
         if (r.data.success) setOrders(list)

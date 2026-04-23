@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Search, ShoppingCart, Eye, Play, Clock, Bell, MapPin, ChevronDown } from 'lucide-react'
 import api from '@/lib/api'
-import axios from 'axios'
 import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd } from '@/components/SEO'
 import SharePrompt from '@/components/SharePrompt'
@@ -104,7 +103,7 @@ export default function MainHomePage() {
 
   useEffect(() => {
     // ✅ UX C2 FIX: API 응답은 { success, data: { items: [...], summary } } 구조
-    axios.get('/api/cart').then(res => {
+    api.get('/api/cart').then(res => {
       if (res.data?.success) {
         const items = res.data.data?.items || (Array.isArray(res.data.data) ? res.data.data : [])
         const count = items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0)
@@ -151,16 +150,16 @@ export default function MainHomePage() {
           title: b.title || ''
         })
       }
-    }).catch(() => {})
+    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
     document.title = '유어딜 - 라이브 커머스'
     Promise.allSettled([
-      axios.get('/api/streams?status=live'),
-      axios.get('/api/streams?status=scheduled'),
-      axios.get('/api/streams?status=ended&limit=6'),
+      api.get('/api/streams?status=live'),
+      api.get('/api/streams?status=scheduled'),
+      api.get('/api/streams?status=ended&limit=6'),
       api.get('/api/group-buy/products?status=active'),
       api.get('/api/products?limit=12&sort=ranking&featured=true'),
       api.get('/api/products?limit=8&sort=latest'),  // 🛡️ 신상품

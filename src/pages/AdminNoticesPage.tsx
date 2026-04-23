@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
-import { Send, Loader2 } from 'lucide-react'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { Send, Loader2, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AdminNoticesPage() {
@@ -32,8 +33,12 @@ export default function AdminNoticesPage() {
 
   return (
     <AdminLayout title="공지사항">
-      <div className="p-6 max-w-3xl">
-        <h1 className="text-xl font-bold text-gray-900 mb-6">공지사항 발송</h1>
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="공지사항 발송"
+          subtitle="유저/셀러 대상 공지 발송 및 이력"
+          icon={<Bell className="h-5 w-5" />}
+        />
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">발송 대상</label>

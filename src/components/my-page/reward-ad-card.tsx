@@ -48,7 +48,7 @@ export function RewardAdCard() {
   useEffect(() => {
     api.get('/api/points/ad-reward/status')
       .then(r => { if (r.data.success) setStatus(r.data.data) })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[RewardAdCard] status fetch failed:', e) })
   }, [])
 
   const showRewardedAd = useCallback(async () => {
