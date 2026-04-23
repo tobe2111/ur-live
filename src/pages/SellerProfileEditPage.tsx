@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import {
   Save,
   User,
@@ -342,11 +343,8 @@ export default function SellerProfileEditPage() {
   if (loading) {
     return (
       <SellerLayout title={t('seller.profileEdit')}>
-        <div className="flex items-center justify-center py-32">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-sm text-gray-500">{t('seller.profileLoading')}</p>
-          </div>
+        <div className="mx-auto max-w-[980px] p-4 sm:p-6 lg:p-8">
+          <DashboardLoading text={t('seller.profileLoading')} />
         </div>
       </SellerLayout>
     )
@@ -354,19 +352,26 @@ export default function SellerProfileEditPage() {
 
   return (
     <SellerLayout title={t('seller.profileEdit')}>
-      <div className="max-w-[980px] mx-auto">
+      <div className="mx-auto max-w-[980px] space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.profileEdit')}
+          subtitle={t('seller.profileEditSubtitle') || '셀러 프로필 · 소개 · SNS 링크 관리'}
+          icon={<User className="h-5 w-5" />}
+        />
+
         {/* Success/Error Messages */}
         {successMessage && (
-          <div className="mb-6 p-4 bg-[#34c759]/10 border border-[#34c759]/30 rounded-xl flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-[#34c759] flex-shrink-0" />
-            <p className="text-[15px] text-[#34c759] font-medium">{successMessage}</p>
+          <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+            <p className="text-sm font-medium text-emerald-700">{successMessage}</p>
           </div>
         )}
 
         {errorMessage && (
-          <div className="mb-6 p-4 bg-[#ff3b30]/10 border border-[#ff3b30]/30 rounded-xl flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-[#ff3b30] flex-shrink-0" />
-            <p className="text-[15px] text-[#ff3b30] font-medium">{errorMessage}</p>
+          <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
+            <p className="text-sm font-medium text-red-700">{errorMessage}</p>
           </div>
         )}
 

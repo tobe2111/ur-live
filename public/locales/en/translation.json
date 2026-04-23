@@ -1532,7 +1532,8 @@
       "requestAgain": "Request Password Reset Again"
     },
     "hidePassword": "Hide password",
-    "showPassword": "Show password"
+    "showPassword": "Show password",
+    "viewPublicProfile": "View public profile"
   },
   "admin": {
     "login": {

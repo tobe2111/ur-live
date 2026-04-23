@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader, DashboardStatCard, DashboardLoading } from '@/components/dashboard'
 import { BarChart2, Users, Package, Loader2, TrendingUp, Repeat, ArrowUpRight } from 'lucide-react'
 
 // Recharts lazy load (377KB → 차트 영역만 지연 로드)
@@ -39,60 +40,59 @@ export default function SellerAnalyticsPage() {
 
   return (
     <SellerLayout title={t('seller.analyticsTitle')}>
-      <div className="p-6">
-        <h1 className="text-xl font-bold text-gray-900 mb-4">{t('seller.analyticsTitle')}</h1>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.analyticsTitle')}
+          subtitle={t('seller.analyticsSubtitle') || '매출, 고객, 상품 퍼포먼스 분석'}
+          icon={<BarChart2 className="h-5 w-5" />}
+        />
 
-        {/* KPI 카드 (전환율 + 재구��율) */}
+        {/* KPI 카드 */}
         {detailedData && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1.5 mb-1">
-                <TrendingUp className="w-4 h-4 text-blue-500" />
-                <p className="text-xs text-gray-500">{t('seller.conversionRate')}</p>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{detailedData.conversion_rate}%</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Repeat className="w-4 h-4 text-green-500" />
-                <p className="text-xs text-gray-500">{t('seller.repeatPurchaseRate')}</p>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{detailedData.repeat_purchase_rate}%</p>
-              <p className="text-[10px] text-gray-400">
-                {t('seller.repeatBuyers')} {detailedData.repeat_buyers}{t('seller.persons')} / {detailedData.total_buyers}{t('seller.persons')}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Users className="w-4 h-4 text-purple-500" />
-                <p className="text-xs text-gray-500">{t('seller.totalCustomersLabel')}</p>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{detailedData.total_buyers}{t('seller.persons')}</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1.5 mb-1">
-                <ArrowUpRight className="w-4 h-4 text-orange-500" />
-                <p className="text-xs text-gray-500">{t('seller.repeatBuyers')}</p>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{detailedData.repeat_buyers}{t('seller.persons')}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <DashboardStatCard
+              label={t('seller.conversionRate')}
+              value={`${detailedData.conversion_rate}%`}
+              icon={<TrendingUp className="h-4 w-4" />}
+              accent="blue"
+            />
+            <DashboardStatCard
+              label={t('seller.repeatPurchaseRate')}
+              value={`${detailedData.repeat_purchase_rate}%`}
+              hint={`${detailedData.repeat_buyers}${t('seller.persons')} / ${detailedData.total_buyers}${t('seller.persons')}`}
+              icon={<Repeat className="h-4 w-4" />}
+              accent="green"
+            />
+            <DashboardStatCard
+              label={t('seller.totalCustomersLabel')}
+              value={`${detailedData.total_buyers}${t('seller.persons')}`}
+              icon={<Users className="h-4 w-4" />}
+              accent="violet"
+            />
+            <DashboardStatCard
+              label={t('seller.repeatBuyers')}
+              value={`${detailedData.repeat_buyers}${t('seller.persons')}`}
+              icon={<ArrowUpRight className="h-4 w-4" />}
+              accent="amber"
+            />
           </div>
         )}
 
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-wrap gap-2">
           {[
             { key: 'revenue', label: t('seller.revenueChart'), icon: BarChart2 },
             { key: 'customers', label: t('seller.customerAnalysis'), icon: Users },
             { key: 'products', label: t('seller.productPerformance'), icon: Package },
           ].map(tabItem => (
             <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 ${tab === tabItem.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-              <tabItem.icon className="w-4 h-4" />{tabItem.label}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
+              <tabItem.icon className="h-4 w-4" />{tabItem.label}
             </button>
           ))}
         </div>
 
-        {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div> : (
+        {loading ? <DashboardLoading /> : (
           <>
             {tab === 'revenue' && data && (
               <div>

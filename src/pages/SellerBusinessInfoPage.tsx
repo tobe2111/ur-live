@@ -6,13 +6,15 @@ import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader, DashboardCard, DashboardLoading } from '@/components/dashboard'
 import {
   Building2,
   CheckCircle2,
   AlertCircle,
   Loader2,
   FileText,
-  Search
+  Search,
+  CreditCard
 } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 
@@ -31,6 +33,12 @@ interface BusinessInfo {
   is_verified: boolean
   verified_at: string | null
   created_at: string
+}
+
+interface BankInfo {
+  bank_name: string
+  bank_account: string
+  account_holder: string
 }
 
 // Daum Postcode type definition
@@ -63,10 +71,63 @@ export default function SellerBusinessInfoPage() {
     email: ''
   })
 
+  // 🛡️ 2026-04-22 배치 128: 계좌 정보 섹션 추가 (이전엔 등록 UI 자체가 없어서 settlements 버그 유발)
+  const [bankInfo, setBankInfo] = useState<BankInfo>({
+    bank_name: '',
+    bank_account: '',
+    account_holder: '',
+  })
+  const [bankSubmitting, setBankSubmitting] = useState(false)
+
   useEffect(() => {
     loadBusinessInfo()
+    loadBankInfo()
     loadDaumPostcodeScript()
   }, [])
+
+  async function loadBankInfo() {
+    try {
+      const response = await api.get('/api/seller/profile')
+      if (response.data.success && response.data.data) {
+        const s = response.data.data
+        setBankInfo({
+          bank_name: s.bank_name || '',
+          bank_account: s.bank_account || '',
+          account_holder: s.account_holder || s.name || '',
+        })
+      }
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('[BusinessInfo] load bank info failed:', err)
+    }
+  }
+
+  async function handleBankSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!bankInfo.bank_name.trim() || !bankInfo.bank_account.trim() || !bankInfo.account_holder.trim()) {
+      toast.error(t('seller.bankInfoRequired'))
+      return
+    }
+    setBankSubmitting(true)
+    try {
+      const response = await api.post('/api/seller/profile', {
+        bank_name: bankInfo.bank_name.trim(),
+        bank_account: bankInfo.bank_account.trim(),
+        account_holder: bankInfo.account_holder.trim(),
+      })
+      if (response.data.success) {
+        // localStorage 동기화 — SellerSettlementsPage 가 이것을 읽음
+        localStorage.setItem('seller_bank_name', bankInfo.bank_name.trim())
+        localStorage.setItem('seller_account_number', bankInfo.bank_account.trim())
+        localStorage.setItem('seller_account_holder', bankInfo.account_holder.trim())
+        toast.success(t('seller.bankInfoSaved') || '계좌 정보가 저장되었습니다')
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) console.error('[BusinessInfo] save bank info failed:', error)
+      toast.error(t('seller.bankInfoSaveFailed') || '계좌 정보 저장에 실패했습니다')
+    } finally {
+      setBankSubmitting(false)
+    }
+  }
 
   function loadDaumPostcodeScript() {
     const script = document.createElement('script')
@@ -220,52 +281,48 @@ export default function SellerBusinessInfoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-      </div>
+      <SellerLayout title={t('seller.businessInfoManagement')}>
+        <div className="mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
+          <DashboardLoading text={t('common.loading') || '불러오는 중...'} />
+        </div>
+      </SellerLayout>
     )
   }
 
   return (
     <SellerLayout title={t('seller.businessInfoManagement')}>
-      <div className="max-w-4xl mx-auto">
-        {/* Title */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Building2 className="w-10 h-10 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">{t('seller.businessInfoManagement')}</h1>
-          </div>
-          <p className="text-gray-600 mt-2">
-            {t('seller.businessInfoDesc')}
-          </p>
-        </div>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 128: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.businessInfoManagement')}
+          subtitle={t('seller.businessInfoDesc')}
+          icon={<Building2 className="h-5 w-5" />}
+        />
 
         {/* Status Banner */}
         {businessInfo && (
-          <div className={`mb-6 p-4 rounded-lg border ${
+          <div className={`rounded-2xl border p-4 ${
             businessInfo.is_verified
-              ? 'bg-green-50 border-green-200'
-              : 'bg-yellow-50 border-yellow-200'
+              ? 'border-emerald-200 bg-emerald-50'
+              : 'border-amber-200 bg-amber-50'
           }`}>
             <div className="flex items-center gap-3">
               {businessInfo.is_verified ? (
                 <>
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   <div>
-                    <p className="font-medium text-green-900">{t('seller.verificationApproved')}</p>
-                    <p className="text-sm text-green-700">
+                    <p className="text-sm font-semibold text-emerald-900">{t('seller.verificationApproved')}</p>
+                    <p className="text-xs text-emerald-700">
                       {businessInfo.verified_at && t('seller.verifiedAt', { date: formatKST(businessInfo.verified_at) })}
                     </p>
                   </div>
                 </>
               ) : (
                 <>
-                  <AlertCircle className="w-5 h-5 text-yellow-600" />
+                  <AlertCircle className="h-5 w-5 text-amber-600" />
                   <div>
-                    <p className="font-medium text-yellow-900">{t('seller.verificationPending')}</p>
-                    <p className="text-sm text-yellow-700">
-                      {t('seller.verificationPendingDesc')}
-                    </p>
+                    <p className="text-sm font-semibold text-amber-900">{t('seller.verificationPending')}</p>
+                    <p className="text-xs text-amber-700">{t('seller.verificationPendingDesc')}</p>
                   </div>
                 </>
               )}
@@ -275,26 +332,26 @@ export default function SellerBusinessInfoPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
             <div className="flex items-center gap-2 text-red-700">
-              <AlertCircle className="w-5 h-5" />
-              <p>{error}</p>
+              <AlertCircle className="h-5 w-5" />
+              <p className="text-sm font-medium">{error}</p>
             </div>
           </div>
         )}
 
         {/* Success Message */}
         {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-2 text-green-700">
-              <CheckCircle2 className="w-5 h-5" />
-              <p>{success}</p>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <CheckCircle2 className="h-5 w-5" />
+              <p className="text-sm font-medium">{success}</p>
             </div>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('seller.businessNumber')} <span className="text-red-500">*</span>
@@ -539,6 +596,74 @@ export default function SellerBusinessInfoPage() {
             </div>
           </div>
         </form>
+
+        {/* 🛡️ 2026-04-22 배치 128: 계좌 정보 섹션 (정산용) */}
+        <DashboardCard
+          title={t('seller.bankInfo') || '정산 계좌 정보'}
+          subtitle={t('seller.bankInfoDesc') || '정산금 입금 받을 계좌입니다. 본인 명의 계좌만 사용 가능합니다.'}
+        >
+          <form onSubmit={handleBankSubmit} className="space-y-4" id="bank-info-section">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                {t('seller.bankName') || '은행명'} <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={bankInfo.bank_name}
+                onChange={e => setBankInfo(prev => ({ ...prev, bank_name: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">은행을 선택해주세요</option>
+                {['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','SC제일은행','한국씨티은행','케이뱅크','카카오뱅크','토스뱅크','새마을금고','신협','우체국','부산은행','경남은행','대구은행','광주은행','전북은행','제주은행','수협은행','산업은행'].map(b => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                  {t('seller.accountNumber') || '계좌번호'} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={bankInfo.bank_account}
+                  onChange={e => setBankInfo(prev => ({ ...prev, bank_account: e.target.value.replace(/[^\d-]/g, '') }))}
+                  placeholder="000-000-0000000"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                  {t('seller.accountHolder') || '예금주'} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={bankInfo.account_holder}
+                  onChange={e => setBankInfo(prev => ({ ...prev, account_holder: e.target.value }))}
+                  placeholder="홍길동"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
+              <CreditCard className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+              <p>정산 요청 시 이 계좌로 입금됩니다. 계좌 정보가 정확한지 확인해주세요.</p>
+            </div>
+            <Button
+              type="submit"
+              disabled={bankSubmitting}
+              className="w-full rounded-lg bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {bankSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t('seller.savingInfo')}
+                </span>
+              ) : (
+                t('seller.saveBankInfo') || '계좌 정보 저장'
+              )}
+            </Button>
+          </form>
+        </DashboardCard>
       </div>
     </SellerLayout>
   )

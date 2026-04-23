@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader, DashboardStatCard, DashboardCard, DashboardLoading } from '@/components/dashboard'
 import {
   DollarSign,
   Calendar,
@@ -290,23 +291,34 @@ export default function SellerSettlementsPage() {
 
   return (
     <SellerLayout title={t('seller.revenue')} headerRight={headerRight}>
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 128: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.revenue')}
+          subtitle={t('seller.settlements.notice') || '정산 관리'}
+          icon={<DollarSign className="h-5 w-5" />}
+        />
+
         {/* 정산 안내 */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-700">
-          <p className="font-bold mb-1">📋 {t('seller.settlements.notice')}</p>
-          <p>• {t('seller.settlements.noticeCycle')}</p>
-          <p>• {t('seller.settlements.noticeConfirmed')}</p>
-          <p>• {t('seller.settlements.noticeCommission')}</p>
-        </div>
+        <DashboardCard>
+          <div className="space-y-1.5 text-sm">
+            <p className="font-semibold text-gray-900">📋 {t('seller.settlements.notice')}</p>
+            <ul className="space-y-0.5 text-xs text-gray-600">
+              <li>• {t('seller.settlements.noticeCycle')}</li>
+              <li>• {t('seller.settlements.noticeConfirmed')}</li>
+              <li>• {t('seller.settlements.noticeCommission')}</li>
+            </ul>
+          </div>
+        </DashboardCard>
 
         {/* Bank info warning */}
         {!hasBankInfo && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-700">
-            <p className="font-bold mb-1">{t('seller.bankInfoMissing')}</p>
-            <p>{t('seller.bankInfoMissingDesc')}</p>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+            <p className="font-semibold text-amber-900">{t('seller.bankInfoMissing')}</p>
+            <p className="mt-0.5 text-xs">{t('seller.bankInfoMissingDesc')}</p>
             <button
-              onClick={() => navigate('/seller/profile?tab=business')}
-              className="mt-2 px-4 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700"
+              onClick={() => navigate('/seller/business-info#bank-info-section')}
+              className="mt-3 rounded-lg bg-amber-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
             >
               {t('seller.registerBankInfo')}
             </button>
@@ -315,58 +327,35 @@ export default function SellerSettlementsPage() {
 
         {/* Statistics Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Clock className="w-8 h-8 text-yellow-600" />
-                <div>
-                  <p className="text-sm text-gray-600">{t('common.pending')}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total_pending}</p>
-                </div>
-              </div>
-              <p className="text-sm text-yellow-600 font-medium">
-                ₩{stats.pending_amount.toLocaleString()}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <CheckCircle className="w-8 h-8 text-blue-600" />
-                <div>
-                  <p className="text-sm text-gray-600">{t('common.completed')}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total_approved}</p>
-                </div>
-              </div>
-              <p className="text-sm text-blue-600 font-medium">
-                ₩{stats.approved_amount.toLocaleString()}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <DollarSign className="w-8 h-8 text-green-600" />
-                <div>
-                  <p className="text-sm text-gray-600">{t('common.paid')}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total_paid}</p>
-                </div>
-              </div>
-              <p className="text-sm text-green-600 font-medium">
-                ₩{stats.paid_amount.toLocaleString()}
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white col-span-1 md:col-span-3">
-              <div className="flex items-center gap-3 mb-2">
-                <TrendingUp className="w-10 h-10" />
-                <div>
-                  <p className="text-sm opacity-90">{t('common.settlement')}</p>
-                  <p className="text-3xl font-bold">
-                    ₩{(stats.pending_amount + stats.approved_amount + stats.paid_amount).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-              <p className="text-sm opacity-75">{t('seller.allPeriod')}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <DashboardStatCard
+              label={t('common.pending')}
+              value={`₩${stats.pending_amount.toLocaleString()}`}
+              hint={`${stats.total_pending}건`}
+              icon={<Clock className="h-4 w-4" />}
+              accent="amber"
+            />
+            <DashboardStatCard
+              label={t('common.completed')}
+              value={`₩${stats.approved_amount.toLocaleString()}`}
+              hint={`${stats.total_approved}건`}
+              icon={<CheckCircle className="h-4 w-4" />}
+              accent="blue"
+            />
+            <DashboardStatCard
+              label={t('common.paid')}
+              value={`₩${stats.paid_amount.toLocaleString()}`}
+              hint={`${stats.total_paid}건`}
+              icon={<DollarSign className="h-4 w-4" />}
+              accent="green"
+            />
+            <DashboardStatCard
+              label={t('common.settlement')}
+              value={`₩${(stats.pending_amount + stats.approved_amount + stats.paid_amount).toLocaleString()}`}
+              hint={t('seller.allPeriod')}
+              icon={<TrendingUp className="h-4 w-4" />}
+              accent="violet"
+            />
           </div>
         )}
 

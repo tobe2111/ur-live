@@ -1532,7 +1532,8 @@
       "requestAgain": "비밀번호 재설정 다시 요청"
     },
     "hidePassword": "비밀번호 숨기기",
-    "showPassword": "비밀번호 보기"
+    "showPassword": "비밀번호 보기",
+    "viewPublicProfile": "공개 프로필 보기"
   },
   "admin": {
     "login": {
