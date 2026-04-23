@@ -77,7 +77,7 @@ export default function AgencyStatsPage() {
         const rate = r.data?.data?.commission_rate
         if (typeof rate === 'number' && rate > 0) setCommissionRate(rate)
       })
-      .catch(() => {})
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [token])
 
   useEffect(() => {

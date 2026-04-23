@@ -164,8 +164,8 @@ fi
 #       { } 안에 뭔가 있으면(toast, set, navigate) 정상 에러 처리.
 echo ""
 echo "8️⃣  .catch(() => {}) 에러 삼키기 확인 (프론트)..."
-# 완전 빈 catch: .catch(() => {}) 형태만 (내부에 아무것도 없는 경우)
-TRULY_EMPTY=$(grep -rn "\.catch(() => {})" src/pages/ --include="*.tsx" 2>/dev/null | wc -l)
+# 완전 빈 catch: .catch(() => {}) 형태만 (audio.play() 는 autoplay 정책상 의도적 빈 catch)
+TRULY_EMPTY=$(grep -rn "\.catch(() => {})" src/pages/ --include="*.tsx" 2>/dev/null | grep -v "audio\.\|\.play()" | wc -l)
 if [ "$TRULY_EMPTY" -gt 0 ]; then
   echo -e "   ${YELLOW}⚠️  완전 빈 .catch(() => {}) ${TRULY_EMPTY}건${NC}"
   grep -rn "\.catch(() => {})" src/pages/ --include="*.tsx" 2>/dev/null | head -5
@@ -183,9 +183,9 @@ IMG_NO_ALT=0
 while IFS= read -r match; do
   file=$(echo "$match" | cut -d: -f1)
   line=$(echo "$match" | cut -d: -f2)
-  # 현재 줄 + 다음 줄에 alt= 가 있는지 체크
-  NEXT_LINE=$((line + 1))
-  if ! sed -n "${line}p;${NEXT_LINE}p" "$file" 2>/dev/null | grep -q 'alt='; then
+  # 현재 줄 + 다음 2줄에 alt= 가 있는지 체크 (multi-line JSX)
+  END_LINE=$((line + 2))
+  if ! sed -n "${line},${END_LINE}p" "$file" 2>/dev/null | grep -q 'alt='; then
     IMG_NO_ALT=$((IMG_NO_ALT + 1))
     if [ "$IMG_NO_ALT" -le 5 ]; then
       echo -e "   ${YELLOW}  $match${NC}"
