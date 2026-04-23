@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Bell, X, Check } from 'lucide-react'
 import api from '@/lib/api'
+import { isLoggedInSync } from '@/utils/auth'
 import { useNavigate } from 'react-router-dom'
 
 interface Notification {
@@ -28,6 +29,9 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
 
   // 알림 조회
   async function loadNotifications() {
+    // 🛡️ 2026-04-23 배치 175: 비로그인 상태에서 호출 시 401 → Sentry 스팸.
+    //   로그인 여부 먼저 체크.
+    if (!isLoggedInSync()) { setUnreadCount(0); setNotifications([]); return }
     try {
       setLoading(true)
       const response = await api.get('/api/notifications')

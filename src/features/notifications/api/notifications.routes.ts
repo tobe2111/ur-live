@@ -21,6 +21,42 @@ export const notificationsRoutes = new Hono<{ Bindings: Bindings; Variables: Var
 
 // ─── Auth Middleware ────────────────────────────────────────────────────────
 notificationsRoutes.use('*', cors());
+
+// 🛡️ 2026-04-23 배치 175: /unread-count 는 비로그인 시에도 호출되는 홈 bell polling 엔드포인트.
+//   401 반환 대신 { count: 0 } 반환해서 Sentry 스팸 + 강제 로그아웃 방지.
+notificationsRoutes.get('/unread-count', async (c) => {
+  const auth = c.req.header('Authorization');
+  if (!auth?.startsWith('Bearer ')) {
+    return c.json({ success: true, count: 0 });
+  }
+  try {
+    const { verify } = await import('hono/jwt');
+    const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256') as { id?: string | number; type?: string };
+    const userId = payload?.id?.toString() || '';
+    const userType = payload?.type || 'user';
+    if (!userId) return c.json({ success: true, count: 0 });
+
+    const { DB } = c.env;
+    let count = 0;
+    try {
+      const r1 = await DB.prepare(
+        `SELECT COUNT(*) as c FROM user_notifications WHERE user_id = ? AND is_read = 0`
+      ).bind(userId).first<{ c: number }>();
+      count += r1?.c ?? 0;
+    } catch {}
+    try {
+      const r2 = await DB.prepare(
+        `SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = 0`
+      ).bind(userId, userType).first<{ c: number }>();
+      count += r2?.c ?? 0;
+    } catch {}
+    return c.json({ success: true, count });
+  } catch {
+    // 토큰 무효 — 조용히 0 반환 (401 스팸 방지)
+    return c.json({ success: true, count: 0 });
+  }
+});
+
 notificationsRoutes.use('*', requireAuth());
 
 // 🛡️ 2026-04-22: 두 테이블 (notifications + user_notifications) 모두 조회.
@@ -70,31 +106,7 @@ notificationsRoutes.get('/', async (c) => {
   }
 });
 
-// ─── GET /api/notifications/unread-count ────────────────────────────────────
-notificationsRoutes.get('/unread-count', async (c) => {
-  const { DB } = c.env;
-  try {
-    const user = c.get('user') as AuthUser;
-    const userId = user?.id?.toString() || '';
-    const userType = user?.type || 'user';
-    let count = 0;
-    try {
-      const r1 = await DB.prepare(
-        `SELECT COUNT(*) as c FROM user_notifications WHERE user_id = ? AND is_read = 0`
-      ).bind(userId).first<{ c: number }>();
-      count += r1?.c ?? 0;
-    } catch {}
-    try {
-      const r2 = await DB.prepare(
-        `SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = 0`
-      ).bind(userId, userType).first<{ c: number }>();
-      count += r2?.c ?? 0;
-    } catch {}
-    return c.json({ success: true, count });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
+// /unread-count 는 위 (requireAuth 이전) 에 선언됨 — 비로그인 시 0 반환
 
 // 🛡️ 2026-04-22: id prefix (un_/n_) 로 source 테이블 식별
 // 클라이언트가 보낸 id 가 unified_id 형식이면 prefix 로 라우팅, 아니면 양쪽 모두 시도.

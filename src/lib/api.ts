@@ -347,6 +347,14 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      // 🛡️ 2026-04-23 배치 175: 비로그인 상태에서 401 발생은 정상 동작 (이미 로그아웃됨).
+      //   Sentry 스팸 + 강제 리다이렉트 방지. 조용히 reject.
+      const hasAnyAuth = localStorage.getItem('user_id') || localStorage.getItem('user_type') ||
+                         localStorage.getItem('seller_token') || localStorage.getItem('admin_token') || localStorage.getItem('agency_token');
+      if (!hasAnyAuth) {
+        return Promise.reject(error);
+      }
+
       // 세션 쿠키 유저는 쿠키가 유효한지 확인 후 처리
       const isSessionCookieUser = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id');
       if (isSessionCookieUser) {
