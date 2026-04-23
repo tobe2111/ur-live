@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -7,6 +8,7 @@ import { DollarSign, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 export default function AdminSettlementsBulkPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [pending, setPending] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,10 +44,10 @@ export default function AdminSettlementsBulkPage() {
   }
 
   return (
-    <AdminLayout title="정산 일괄 처리">
+    <AdminLayout title={t('admin.pages.settlementsBulk')}>
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="정산 일괄 처리"
+          title={t('admin.pages.settlementsBulk')}
           subtitle="선택된 정산 건 한 번에 처리"
           icon={<DollarSign className="h-5 w-5" />}
           actions={selected.length > 0 ? (

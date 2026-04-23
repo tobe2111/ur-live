@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -26,6 +27,7 @@ function getToken() {
 }
 
 export default function AdminCafe24Page() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<Cafe24Status | null>(null)
   const [loading, setLoading] = useState(true)
@@ -119,10 +121,10 @@ export default function AdminCafe24Page() {
   }
 
   return (
-    <AdminLayout title="Cafe24 연동">
+    <AdminLayout title={t('admin.pages.cafe24')}>
       <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="Cafe24 연동"
+          title={t('admin.pages.cafe24')}
           subtitle="상품 자동 동기화를 위한 Cafe24 OAuth 연결"
           icon={<Store className="h-5 w-5" />}
         />

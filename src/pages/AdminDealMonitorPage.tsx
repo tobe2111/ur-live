@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -59,6 +60,7 @@ function fmt(n: number | null | undefined): string {
 }
 
 export default function AdminDealMonitorPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<DealStats | null>(null)
@@ -140,10 +142,10 @@ export default function AdminDealMonitorPage() {
   const s = stats
 
   return (
-    <AdminLayout title="딜 충전 모니터링">
+    <AdminLayout title={t('admin.pages.deals')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="딜 충전 모니터링"
+          title={t('admin.pages.deals')}
           subtitle="유저 포인트 충전 및 소비 현황"
           icon={<Gift className="h-5 w-5" />}
         />

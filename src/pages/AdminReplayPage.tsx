@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Play, ExternalLink, Search, Edit2, X, Check, Youtube } from 'lucide-react'
@@ -16,6 +17,7 @@ interface Seller { id: number; name: string }
 interface Product { id: number; name: string; price: number; image_url?: string }
 
 export default function AdminReplayPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [streams, setStreams] = useState<Stream[]>([])
   const [sellers, setSellers] = useState<Seller[]>([])
@@ -132,10 +134,10 @@ export default function AdminReplayPage() {
   const videoPreviewId = form.youtube_url ? (extractVideoId(form.youtube_url) || '') : ''
 
   return (
-    <AdminLayout title="다시보기 관리">
+    <AdminLayout title={t('admin.pages.replay')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="다시보기 관리"
+          title={t('admin.pages.replay')}
           subtitle="YouTube 영상 + 상품을 연결하여 다시보기 콘텐츠 생성"
           icon={<Youtube className="h-5 w-5" />}
           actions={

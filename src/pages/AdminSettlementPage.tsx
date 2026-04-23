@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -43,6 +44,7 @@ interface SettlementRecord {
 }
 
 export default function AdminSettlementPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('all')
@@ -161,10 +163,10 @@ export default function AdminSettlementPage() {
   const pendingOrders = records.filter(r => r.settlement_status === 'pending')
 
   return (
-    <AdminLayout title="정산 대시보드">
+    <AdminLayout title={t('admin.pages.settlement')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="정산 대시보드"
+          title={t('admin.pages.settlement')}
           subtitle="셀러별 정산 현황 · CSV 내보내기"
           icon={<DollarSign className="h-5 w-5" />}
           actions={

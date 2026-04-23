@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -51,6 +52,7 @@ function MetricCard({
 }
 
 export default function AdminHealthPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -108,11 +110,11 @@ export default function AdminHealthPage() {
     : 'ok'
 
   return (
-    <AdminLayout title="시스템 상태">
-      <SEO title="시스템 상태" description="실시간 시스템 헬스 모니터링" url="/admin/health" noindex />
+    <AdminLayout title={t('admin.pages.health')}>
+      <SEO title={t('admin.pages.health')} description="실시간 시스템 헬스 모니터링" url="/admin/health" noindex />
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="시스템 상태"
+          title={t('admin.pages.health')}
           subtitle={`10초마다 자동 갱신 · 마지막 갱신: ${lastFetched ? lastFetched.toLocaleTimeString('ko-KR') : '—'}`}
           icon={<Activity className="h-5 w-5" />}
           actions={

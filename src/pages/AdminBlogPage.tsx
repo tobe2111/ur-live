@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -48,6 +49,7 @@ function parseTags(raw: string): string[] {
 }
 
 export default function AdminBlogPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const editId = searchParams.get('edit')
@@ -179,10 +181,10 @@ export default function AdminBlogPage() {
 
   // ── 목록 뷰 ────────────────────────────────────────────────
   if (view === 'list') return (
-    <AdminLayout title="블로그 관리">
+    <AdminLayout title={t('admin.pages.blog')}>
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="블로그 관리"
+          title={t('admin.pages.blog')}
           subtitle="글을 작성하고 docs.ur-team.com에 발행하세요"
           icon={<FileText className="h-5 w-5" />}
           actions={
@@ -254,7 +256,7 @@ export default function AdminBlogPage() {
 
   // ── 에디터 뷰 ───────────────────────────────────────────────
   return (
-    <AdminLayout title="블로그 관리">
+    <AdminLayout title={t('admin.pages.blog')}>
       <div className="max-w-3xl mx-auto py-8 px-4 space-y-5">
         {/* 헤더 */}
         <div className="flex items-center justify-between">

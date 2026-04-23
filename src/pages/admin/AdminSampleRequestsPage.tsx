@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
@@ -35,6 +36,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Cl
 }
 
 export default function AdminSampleRequestsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [items, setItems] = useState<SampleRequest[]>([])
   const [total, setTotal] = useState(0)
@@ -96,10 +98,10 @@ export default function AdminSampleRequestsPage() {
   const pendingCount = items.filter(i => i.status === 'PENDING').length
 
   return (
-    <AdminLayout title="샘플 신청 관리">
+    <AdminLayout title={t('admin.pages.sampleRequests')}>
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="샘플 신청 관리"
+          title={t('admin.pages.sampleRequests')}
           subtitle={`총 ${total}건 · 대기 ${pendingCount}건`}
           icon={<Package className="h-5 w-5" />}
         />

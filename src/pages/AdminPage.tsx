@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { clearAuthData } from '@/utils/auth'
@@ -84,6 +85,7 @@ const Skel = ({ className }: { className?: string }) => (
 )
 
 export default function AdminPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [sellers, setSellers] = useState<Seller[]>([])
   const [pendingSellers, setPendingSellers] = useState<Seller[]>([])
@@ -431,10 +433,10 @@ export default function AdminPage() {
   }
 
   return (
-    <AdminLayout title="관리자 대시보드" pendingCount={pendingSellers.length}>
+    <AdminLayout title={t('admin.pages.dashboard')} pendingCount={pendingSellers.length}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="관리자 대시보드"
+          title={t('admin.pages.dashboard')}
           subtitle="유어딜 전체 운영 현황 — 셀러 승인·매출·주문·정산"
           icon={<LayoutDashboard className="h-5 w-5" />}
         />

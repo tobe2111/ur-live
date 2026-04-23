@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Ticket, Copy, Send, X } from 'lucide-react'
@@ -16,6 +17,7 @@ interface Coupon {
 type Segment = 'all' | 'vip' | 'new' | 'dormant' | 'active'
 
 export default function AdminCouponsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [coupons, setCoupons] = useState<Coupon[]>([])
   const [loading, setLoading] = useState(true)
@@ -118,10 +120,10 @@ export default function AdminCouponsPage() {
   }
 
   return (
-    <AdminLayout title="쿠폰 관리">
+    <AdminLayout title={t('admin.pages.coupons')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="쿠폰 관리"
+          title={t('admin.pages.coupons')}
           subtitle="할인 쿠폰 생성 및 관리"
           icon={<Ticket className="h-5 w-5" />}
           actions={

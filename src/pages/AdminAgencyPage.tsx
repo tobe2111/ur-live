@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle, KeyRound, Users } from 'lucide-react'
@@ -29,6 +30,7 @@ type ModalMode = 'create' | 'edit' | null
 const initForm = { name: '', contact_name: '', email: '', password: '', phone: '', status: 'active' }
 
 export default function AdminAgencyPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [agencies, setAgencies] = useState<Agency[]>([])
   const [unassigned, setUnassigned] = useState<Seller[]>([])
@@ -195,10 +197,10 @@ export default function AdminAgencyPage() {
   }
 
   return (
-    <AdminLayout title="에이전시 관리">
+    <AdminLayout title={t('admin.pages.agency')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="에이전시 관리"
+          title={t('admin.pages.agency')}
           subtitle={`총 ${agencies.length}개 에이전시`}
           icon={<Users className="h-5 w-5" />}
           actions={

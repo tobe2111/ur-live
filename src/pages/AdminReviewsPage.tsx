@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Star, Loader2, Trash2, Sparkles, FileText } from 'lucide-react'
@@ -11,6 +12,7 @@ interface Product {
 }
 
 export default function AdminReviewsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null)
@@ -75,11 +77,11 @@ export default function AdminReviewsPage() {
   const selectedProductInfo = products.find(p => p.id === selectedProduct)
 
   if (loading) {
-    return <AdminLayout title="리뷰 관리"><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div></AdminLayout>
+    return <AdminLayout title={t('admin.pages.reviews')}><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div></AdminLayout>
   }
 
   return (
-    <AdminLayout title="리뷰 관리">
+    <AdminLayout title={t('admin.pages.reviews')}>
       <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="리뷰 자동 생성"
