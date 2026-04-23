@@ -320,31 +320,33 @@ app.post('/oauth/callback', async (c) => {
     // For now, use channel ID as identifier
     const googleEmail = channel.customUrl || `${channel.id}@youtube.com`
 
-    // Save to database
-    const result = await c.env.DB.prepare(`
-      INSERT INTO seller_youtube_oauth (
-        seller_id, google_email, access_token, refresh_token, expires_at,
-        channel_id, channel_title, channel_thumbnail, subscriber_count
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(seller_id, channel_id) DO UPDATE SET
-        access_token = excluded.access_token,
-        refresh_token = excluded.refresh_token,
-        expires_at = excluded.expires_at,
-        channel_thumbnail = excluded.channel_thumbnail,
-        subscriber_count = excluded.subscriber_count,
-        is_active = 1,
-        updated_at = CURRENT_TIMESTAMP
-    `).bind(
-      sellerId,
-      googleEmail,
-      tokens.access_token,
-      tokens.refresh_token,
-      tokens.expires_at,
-      channel.id,
-      channel.title,
-      channel.thumbnail,
-      channel.subscriberCount
-    ).run()
+    // Save to database — manual upsert to avoid ON CONFLICT constraint dependency
+    const existing = await c.env.DB.prepare(
+      'SELECT id FROM seller_youtube_oauth WHERE seller_id = ? AND channel_id = ?'
+    ).bind(sellerId, channel.id).first<{ id: number }>()
+
+    if (existing) {
+      await c.env.DB.prepare(`
+        UPDATE seller_youtube_oauth SET
+          access_token = ?, refresh_token = ?, expires_at = ?,
+          google_email = ?, channel_thumbnail = ?, subscriber_count = ?,
+          is_active = 1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(
+        tokens.access_token, tokens.refresh_token, tokens.expires_at,
+        googleEmail, channel.thumbnail, channel.subscriberCount, existing.id
+      ).run()
+    } else {
+      await c.env.DB.prepare(`
+        INSERT INTO seller_youtube_oauth (
+          seller_id, google_email, access_token, refresh_token, expires_at,
+          channel_id, channel_title, channel_thumbnail, subscriber_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        sellerId, googleEmail, tokens.access_token, tokens.refresh_token, tokens.expires_at,
+        channel.id, channel.title, channel.thumbnail, channel.subscriberCount
+      ).run()
+    }
 
     return c.json({
       success: true,
@@ -355,9 +357,10 @@ app.post('/oauth/callback', async (c) => {
     })
   } catch (error: unknown) {
     console.error('[YouTube OAuth] Error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
     return c.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to authenticate with YouTube'
+      error: msg
     }, 500)
   }
 })
