@@ -142,15 +142,31 @@ function getToken(authHeader: string | undefined) {
 }
 
 // ── 미들웨어: agency 인증 ──────────────────────────────────────
+// 🛡️ 2026-04-22 배치 147: Phase 2A cookie fallback 추가 (이전: Bearer 전용).
+//   Admin/Seller 와 일관성 확보 — Bearer 토큰 없어도 ur_agency_session 쿠키로 인증 가능.
 const requireAgency = async (c: AgencyCtx, next: Next) => {
-  const payload = await verifyAgencyToken(c.env.JWT_SECRET, getToken(c.req.header('Authorization')) ?? '')
+  // 1) Bearer 토큰 우선
+  let payload = await verifyAgencyToken(c.env.JWT_SECRET, getToken(c.req.header('Authorization')) ?? '')
+
+  // 2) Bearer 실패 시 cookie fallback
+  if (!payload) {
+    try {
+      const { parseSessionCookie } = await import('../../../worker/utils/session')
+      const sess = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['agency'])
+      if (sess && sess.userId) {
+        payload = { id: Number(sess.userId), email: sess.email || '' }
+      }
+    } catch { /* cookie parse failure — fall through to 401 */ }
+  }
+
   if (!payload) return c.json({ success: false, error: '인증이 필요합니다.' }, 401)
   c.set('agency', payload)
   return next()
 }
 
 // ── POST /register (공개) ─────────────────────────────────────
-app.post('/register', cors(), async (c) => {
+// 🛡️ 2026-04-22 배치 147: rate limit 추가 (spam registration 차단 버그 fix)
+app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, windowSec: 3600 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { name, contact_name, email, password, phone } = await c.req.json<{
     name: string; contact_name: string; email: string; password: string; phone?: string
@@ -158,6 +174,16 @@ app.post('/register', cors(), async (c) => {
 
   if (!name || !contact_name || !email || !password) {
     return c.json({ success: false, error: '에이전시명, 담당자명, 이메일, 비밀번호는 필수입니다.' }, 400)
+  }
+  // 🛡️ 입력 길이 검증
+  if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
+    return c.json({ success: false, error: '에이전시명은 1~100자여야 합니다.' }, 400)
+  }
+  if (typeof contact_name !== 'string' || contact_name.length < 1 || contact_name.length > 50) {
+    return c.json({ success: false, error: '담당자명은 1~50자여야 합니다.' }, 400)
+  }
+  if (typeof email !== 'string' || email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return c.json({ success: false, error: '유효한 이메일을 입력해주세요.' }, 400)
   }
   const pwCheck = validatePasswordComplexity(password)
   if (!pwCheck.ok) {
@@ -892,6 +918,7 @@ app.put('/notifications/read-all', async (c) => {
 })
 
 // ── POST /sellers/:id/products — 셀러 대신 상품 등록 ──────────────
+// 🛡️ 2026-04-22 배치 147: 입력 검증 강화 (음수/상한 체크 누락 버그 fix)
 app.post('/sellers/:id/products', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
@@ -906,13 +933,29 @@ app.post('/sellers/:id/products', async (c) => {
     stock?: number; image_url?: string; category?: string;
   }>()
 
-  if (!body.name || !body.price) return c.json({ success: false, error: '상품명과 가격은 필수입니다.' }, 400)
+  if (!body.name || body.price === undefined) return c.json({ success: false, error: '상품명과 가격은 필수입니다.' }, 400)
+  // 🛡️ 입력 검증 — 길이/범위 (타 엔드포인트와 일관된 정책)
+  if (typeof body.name !== 'string' || body.name.length < 1 || body.name.length > 200) {
+    return c.json({ success: false, error: '상품명은 1~200자여야 합니다.' }, 400)
+  }
+  const priceNum = Number(body.price)
+  if (!Number.isFinite(priceNum) || priceNum < 0 || priceNum > 100_000_000) {
+    return c.json({ success: false, error: '가격은 0~1억원 사이여야 합니다.' }, 400)
+  }
+  const originalPrice = body.original_price === undefined ? priceNum : Number(body.original_price)
+  if (!Number.isFinite(originalPrice) || originalPrice < 0 || originalPrice > 100_000_000) {
+    return c.json({ success: false, error: '정가는 0~1억원 사이여야 합니다.' }, 400)
+  }
+  const stockNum = body.stock === undefined ? 100 : Number(body.stock)
+  if (!Number.isFinite(stockNum) || stockNum < 0 || stockNum > 1_000_000) {
+    return c.json({ success: false, error: '재고는 0~100만 사이여야 합니다.' }, 400)
+  }
 
   const result = await c.env.DB.prepare(`
     INSERT INTO products (seller_id, name, description, price, original_price, stock, image_url, category, is_active, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
-  `).bind(sellerId, body.name, body.description || null, body.price, body.original_price || body.price,
-    body.stock || 100, body.image_url || null, body.category || 'general').run()
+  `).bind(sellerId, body.name, body.description || null, priceNum, originalPrice,
+    stockNum, body.image_url || null, body.category || 'general').run()
 
   return c.json({ success: true, data: { id: result.meta.last_row_id } }, 201)
 })
@@ -937,13 +980,30 @@ app.put('/sellers/:id/products/:productId', async (c) => {
     stock?: number; image_url?: string; is_active?: boolean;
   }>()
 
+  // 🛡️ 2026-04-22 배치 147: 입력 검증 추가
+  if (body.name !== undefined && (typeof body.name !== 'string' || body.name.length < 1 || body.name.length > 200)) {
+    return c.json({ success: false, error: '상품명은 1~200자여야 합니다.' }, 400)
+  }
+  if (body.price !== undefined) {
+    const n = Number(body.price)
+    if (!Number.isFinite(n) || n < 0 || n > 100_000_000) return c.json({ success: false, error: '가격은 0~1억원 사이여야 합니다.' }, 400)
+  }
+  if (body.original_price !== undefined) {
+    const n = Number(body.original_price)
+    if (!Number.isFinite(n) || n < 0 || n > 100_000_000) return c.json({ success: false, error: '정가는 0~1억원 사이여야 합니다.' }, 400)
+  }
+  if (body.stock !== undefined) {
+    const n = Number(body.stock)
+    if (!Number.isFinite(n) || n < 0 || n > 1_000_000) return c.json({ success: false, error: '재고는 0~100만 사이여야 합니다.' }, 400)
+  }
+
   const updates: string[] = ["updated_at = datetime('now')"]
   const params: unknown[] = []
   if (body.name) { updates.push('name = ?'); params.push(body.name) }
   if (body.description !== undefined) { updates.push('description = ?'); params.push(body.description) }
-  if (body.price) { updates.push('price = ?'); params.push(body.price) }
-  if (body.original_price) { updates.push('original_price = ?'); params.push(body.original_price) }
-  if (body.stock !== undefined) { updates.push('stock = ?'); params.push(body.stock) }
+  if (body.price !== undefined) { updates.push('price = ?'); params.push(Number(body.price)) }
+  if (body.original_price !== undefined) { updates.push('original_price = ?'); params.push(Number(body.original_price)) }
+  if (body.stock !== undefined) { updates.push('stock = ?'); params.push(Number(body.stock)) }
   if (body.image_url !== undefined) { updates.push('image_url = ?'); params.push(body.image_url) }
   if (body.is_active !== undefined) { updates.push('is_active = ?'); params.push(body.is_active ? 1 : 0) }
 
@@ -978,7 +1038,8 @@ app.post('/sellers/:id/streams', async (c) => {
 })
 
 // ── POST /invite-seller — 셀러 초대 (에이전시가 셀러 계정 생성) ─────
-app.post('/invite-seller', async (c) => {
+// 🛡️ 2026-04-22 배치 147: rate limit + 비밀번호 복잡도 검증 추가
+app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, windowSec: 3600 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
 
@@ -987,6 +1048,17 @@ app.post('/invite-seller', async (c) => {
   }>()
 
   if (!name || !email || !password) return c.json({ success: false, error: '이름, 이메일, 비밀번호는 필수입니다.' }, 400)
+  // 🛡️ 입력 검증
+  if (typeof name !== 'string' || name.length < 1 || name.length > 50) {
+    return c.json({ success: false, error: '셀러명은 1~50자여야 합니다.' }, 400)
+  }
+  if (typeof email !== 'string' || email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return c.json({ success: false, error: '유효한 이메일을 입력해주세요.' }, 400)
+  }
+  const pwCheck = validatePasswordComplexity(password)
+  if (!pwCheck.ok) {
+    return c.json({ success: false, error: pwCheck.error }, 400)
+  }
 
   // 이미 존재하는 이메일 확인
   const existing = await c.env.DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first()
