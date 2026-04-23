@@ -969,6 +969,19 @@ app.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
       FOREIGN KEY (bundle_id) REFERENCES product_bundles(id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES products(id)
     )` },
+    // 🛡️ 2026-04-23 배치 174: 운영 가이드 테이블 (어드민/셀러/에이전시)
+    { name: 'operation_guides', sql: `CREATE TABLE IF NOT EXISTS operation_guides (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guide_type TEXT NOT NULL CHECK(guide_type IN ('admin', 'seller', 'agency')),
+      section_key TEXT NOT NULL,
+      section_icon TEXT,
+      section_title TEXT NOT NULL,
+      section_order INTEGER DEFAULT 0,
+      content_md TEXT NOT NULL,
+      updated_by INTEGER,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(guide_type, section_key)
+    )` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {
@@ -2003,6 +2016,10 @@ import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../fea
 app.route('/api/bundles', bundlePublicRoutes);
 app.route('/api/bundles', bundleCartRoutes);
 app.route('/api/seller/bundles', bundleSellerRoutes);
+
+// 🛡️ 2026-04-23 배치 174: 운영 가이드 (어드민 편집, 셀러/에이전시 읽기)
+import { guideRoutes } from '../features/guides/api/guide.routes';
+app.route('/api/guides', guideRoutes);
 
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments

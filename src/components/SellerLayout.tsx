@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity, Ticket, Star, BarChart2
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity, Ticket, Star, BarChart2, BookOpen
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
@@ -65,6 +65,7 @@ const NAV_GROUPS: {
     items: [
       { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2 },
       { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', icon: Bell },
+      { path: '/seller/guide', labelKey: 'seller.nav.guide', icon: BookOpen },
     ],
   },
 ]
