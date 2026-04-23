@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 
 interface Short {
   id: number
@@ -129,7 +130,13 @@ export default function SellerShortsPage() {
 
   return (
     <SellerLayout title={t('seller.shortsManage')}>
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.shortsManage')}
+          subtitle={t('seller.shortsSubtitle') || '쇼츠 동영상 업로드 및 관리'}
+          icon={<Video className="h-5 w-5" />}
+        />
         {/* 버튼 그룹 */}
         <div className="flex gap-2 mb-5">
           <button

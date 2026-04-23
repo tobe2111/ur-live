@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
-import { Package, AlertTriangle, Plus, Minus, BarChart3, QrCode, Search, ArrowUpDown, Camera, X } from 'lucide-react'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { Package, AlertTriangle, Plus, Minus, BarChart3, QrCode, Search, ArrowUpDown, Camera, X, ArchiveRestore } from 'lucide-react'
 import JsBarcode from 'jsbarcode'
 
 interface Product {
@@ -251,6 +252,13 @@ export default function SellerInventoryPage() {
 
   return (
     <SellerLayout title={t('seller.inventory')}>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.inventory')}
+          subtitle={t('seller.inventorySubtitle') || '재고 관리 · 바코드 스캔 · 입출고 이력'}
+          icon={<ArchiveRestore className="h-5 w-5" />}
+        />
       {/* 바코드 스캔 */}
       <div className="bg-white rounded-xl shadow-sm p-5">
         <div className="flex gap-2">
@@ -568,6 +576,7 @@ export default function SellerInventoryPage() {
           </div>
         </div>
       )}
+      </div>
     </SellerLayout>
   )
 }

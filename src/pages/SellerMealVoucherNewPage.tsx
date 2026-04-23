@@ -7,6 +7,7 @@ import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 
 export default function SellerMealVoucherNewPage() {
   const { t } = useTranslation()
@@ -148,7 +149,12 @@ export default function SellerMealVoucherNewPage() {
 
   return (
     <SellerLayout title={t('seller.mealVoucher.title')}>
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title={t('seller.mealVoucher.title')}
+          subtitle={t('seller.mealVoucher.subtitle') || '식사권/공동구매 상품 등록'}
+          icon={<Utensils className="h-5 w-5" />}
+        />
         <form onSubmit={handleSubmit} className="space-y-6">
 
           {/* 1. 맛집 정보 — 카카오맵 검색 (가장 위) */}

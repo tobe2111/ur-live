@@ -8,10 +8,11 @@ import {
   ChevronRight, RefreshCw, ArrowUpRight,
   AlertCircle, CheckCircle2, Truck, XCircle,
   AlertTriangle, CreditCard, ArchiveRestore, Users,
-  Utensils, Gift, Radio, MapPin
+  Utensils, Gift, Radio, MapPin, LayoutDashboard
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 
 // recharts lazy load (377KB → 대시보드 진입 시 차트 영역만 지연 로드)
 const LazyChart = lazy(() => import('recharts').then(m => ({
@@ -474,6 +475,13 @@ export default function SellerPage() {
 
   return (
     <SellerLayout title={t('seller.dashboard')} headerRight={headerRight} pendingOrders={stats.pendingOrders}>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.dashboard')}
+          subtitle={t('seller.dashboardSubtitle') || '셀러 대시보드 — 매출 / 주문 / 라이브 현황'}
+          icon={<LayoutDashboard className="h-5 w-5" />}
+        />
 
           {/* ── 월간 매출 목표 진행률 ── */}
           <div className="bg-white rounded-2xl p-4 border border-[#E8EAEE]">
@@ -1014,6 +1022,7 @@ export default function SellerPage() {
             </div>
           )}
 
+      </div>
     </SellerLayout>
   )
 }

@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { formatKSTDate } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import {
   Youtube, Loader2, ExternalLink, Radio, Play,
   VideoIcon, CheckCircle2, AlertCircle, Copy,
@@ -298,7 +299,13 @@ export default function SellerLiveBroadcastPage() {
   // ── 메인 렌더 (위저드) ────────────────────────────────────────
   return (
     <SellerLayout title={t('seller.nav.liveBroadcast')}>
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.nav.liveBroadcast')}
+          subtitle={t('seller.liveBroadcastSubtitle') || '라이브 방송 시작 및 관리'}
+          icon={<Youtube className="h-5 w-5" />}
+        />
 
         {/* 연동 채널 */}
         <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-gray-200 mb-5">

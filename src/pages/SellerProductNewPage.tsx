@@ -171,28 +171,30 @@ export default function SellerProductNewPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+      {/* Header — 🛡️ 2026-04-22 배치 131: 스타일 모던화 */}
+      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-4xl items-center px-4 py-3 sm:px-6">
           <button
             onClick={() => navigate('/seller/products')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="h-4 w-4" />
             <span>{t('seller.backToProductList')}</span>
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         {/* Title */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <Package className="w-10 h-10 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">{t('seller.productCreate')}</h1>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <Package className="h-5 w-5" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{t('seller.productCreate')}</h1>
           </div>
-          <p className="text-gray-600 mt-2">
+          <p className="text-sm text-gray-500">
             {t('seller.newProductDesc')}
           </p>
           <button

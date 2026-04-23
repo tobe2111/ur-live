@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 
 interface GroupBuyProduct {
   id: number; name: string; price: number; image_url?: string
@@ -49,7 +50,13 @@ export default function SellerGroupBuyPage() {
 
   return (
     <SellerLayout title={t('seller.nav.mealVoucher')}>
-      <div className="max-w-3xl mx-auto space-y-5">
+      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.nav.mealVoucher')}
+          subtitle={t('seller.groupBuySubtitle') || '공동구매 / 식사권 관리'}
+          icon={<Ticket className="h-5 w-5" />}
+        />
 
         {/* 요약 카드 */}
         <div className="grid grid-cols-3 gap-3">

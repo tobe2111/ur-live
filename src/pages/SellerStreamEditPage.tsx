@@ -176,27 +176,29 @@ export default function SellerStreamEditPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+      {/* Header — 🛡️ 2026-04-22 배치 131: 스타일 모던화 */}
+      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-4xl items-center px-4 py-3 sm:px-6">
           <button
             onClick={() => navigate('/seller')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="h-4 w-4" />
             <span>{t('seller.backToDashboard')}</span>
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         {/* Title */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Play className="w-10 h-10 text-blue-600" />
-              <h1 className="text-3xl font-bold text-gray-900">{t('seller.streamManagement')}</h1>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <Play className="h-5 w-5" />
+              </div>
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{t('seller.streamManagement')}</h1>
             </div>
             <button
               onClick={handleDelete}

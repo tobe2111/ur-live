@@ -207,22 +207,22 @@ export default function SellerStreamNewPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      {/* Header — 🛡️ 2026-04-22 배치 131: 스타일 모던화 */}
+      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
             <button
               onClick={goBack}
-              className="text-gray-600 hover:text-gray-900"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               &larr; {t('seller.goBack')}
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">{t('seller.createStream')}</h1>
+            <h1 className="text-lg font-bold text-gray-900">{t('seller.createStream')}</h1>
           </div>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <div className="bg-white rounded-lg shadow p-8">
           {/* YouTube Info Display */}
           {youtubeInfo && (
