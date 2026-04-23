@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { UserCog, Plus, Trash2, Key, Edit2, X } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 
@@ -166,13 +167,20 @@ export default function AdminAccountsPage() {
   }
 
   return (
-    <AdminLayout title={t('admin.accounts.pageTitle')} headerRight={
-      <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700">
-        <Plus className="w-3.5 h-3.5" /> {t('admin.accounts.newAdmin')}
-      </button>
-    }>
+    <AdminLayout title={t('admin.accounts.pageTitle')}>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title={t('admin.accounts.pageTitle')}
+          subtitle={t('admin.accounts.listHeader', { count: admins.length })}
+          icon={<UserCog className="h-5 w-5" />}
+          actions={
+            <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+              <Plus className="h-3.5 w-3.5" /> {t('admin.accounts.newAdmin')}
+            </button>
+          }
+        />
       {loading ? (
-        <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
+        <DashboardLoading />
       ) : (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
@@ -294,6 +302,7 @@ export default function AdminAccountsPage() {
           </div>
         </div>
       )}
+      </div>
     </AdminLayout>
   )
 }

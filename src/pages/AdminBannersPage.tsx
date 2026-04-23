@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Link as LinkIcon, Image as ImageIcon, X } from 'lucide-react'
 
 interface Banner {
@@ -117,14 +118,18 @@ export default function AdminBannersPage() {
   }
 
   return (
-    <AdminLayout
-      title="배너 관리"
-      headerRight={
-        <button onClick={handleNew} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
-          <Plus className="w-3.5 h-3.5" /> 새 배너 추가
-        </button>
-      }
-    >
+    <AdminLayout title="배너 관리">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="배너 관리"
+          subtitle="메인 배너 등록 · 표시 순서 관리"
+          icon={<ImageIcon className="h-5 w-5" />}
+          actions={
+            <button onClick={handleNew} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+              <Plus className="h-3.5 w-3.5" /> 새 배너 추가
+            </button>
+          }
+        />
       {/* 알림 */}
       {alertMsg && (
         <div className={`p-4 rounded-xl text-sm font-medium ${alertMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
@@ -248,6 +253,7 @@ export default function AdminBannersPage() {
             </div>
           </div>
         ))}
+      </div>
       </div>
     </AdminLayout>
   )

@@ -1846,109 +1846,9 @@ adminManagementRoutes.get('/donations/stats', cors(), async (c) => {
   }
 });
 
-// ─── 사이드 배너 관리 (PC Side Banner, Cookat 스타일) ─────────────────────────
-
-// Auto-create side_banners table if it doesn't exist
-async function ensureSideBannersTable(DB: D1Database) {
-  try {
-    await DB.prepare(`
-      CREATE TABLE IF NOT EXISTS side_banners (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        image_url TEXT NOT NULL,
-        link_url TEXT,
-        is_active INTEGER DEFAULT 1,
-        sort_order INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT (datetime('now'))
-      )
-    `).run();
-  } catch {
-    // Table might already exist, ignore errors
-  }
-}
-
-// GET /api/admin/side-banners — 사이드 배너 목록
-adminManagementRoutes.get('/side-banners', cors(), async (c) => {
-  const { DB } = c.env;
-  try {
-    await ensureSideBannersTable(DB);
-    const { results } = await DB.prepare(
-      `SELECT id, title, image_url, link_url, is_active, sort_order, created_at
-       FROM side_banners ORDER BY sort_order ASC, created_at DESC`
-    ).all();
-    return c.json({ success: true, data: results ?? [] });
-  } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
-  }
-});
-
-// POST /api/admin/side-banners — 사이드 배너 생성
-adminManagementRoutes.post('/side-banners', cors(), async (c) => {
-  const { DB } = c.env;
-  try {
-    await ensureSideBannersTable(DB);
-    const body = await c.req.json<{ title: string; image_url: string; link_url?: string; is_active?: boolean; sort_order?: number }>();
-    if (!body.title || !body.image_url) {
-      return c.json({ success: false, error: '제목과 이미지 URL은 필수입니다.' }, 400);
-    }
-    const result = await DB.prepare(
-      `INSERT INTO side_banners (title, image_url, link_url, is_active, sort_order)
-       VALUES (?, ?, ?, ?, ?)`
-    ).bind(
-      body.title,
-      body.image_url,
-      body.link_url || null,
-      body.is_active !== undefined ? (body.is_active ? 1 : 0) : 1,
-      body.sort_order ?? 0
-    ).run();
-    return c.json({ success: true, data: { id: result.meta.last_row_id, title: body.title } });
-  } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
-  }
-});
-
-// PUT /api/admin/side-banners/:id — 사이드 배너 수정
-adminManagementRoutes.put('/side-banners/:id', cors(), async (c) => {
-  const { DB } = c.env;
-  const id = c.req.param('id');
-  try {
-    await ensureSideBannersTable(DB);
-    const existing = await DB.prepare('SELECT id FROM side_banners WHERE id = ?').bind(id).first();
-    if (!existing) return c.json({ success: false, error: '사이드 배너를 찾을 수 없습니다' }, 404);
-
-    const body = await c.req.json<{ title?: string; image_url?: string; link_url?: string; is_active?: boolean; sort_order?: number }>();
-    const fields: string[] = [];
-    const values: (string | number | null)[] = [];
-    if (body.title !== undefined)     { fields.push('title = ?');     values.push(body.title); }
-    if (body.image_url !== undefined) { fields.push('image_url = ?'); values.push(body.image_url); }
-    if (body.link_url !== undefined)  { fields.push('link_url = ?');  values.push(body.link_url || null); }
-    if (body.is_active !== undefined) { fields.push('is_active = ?'); values.push(body.is_active ? 1 : 0); }
-    if (body.sort_order !== undefined){ fields.push('sort_order = ?');values.push(body.sort_order); }
-    if (fields.length === 0) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400);
-    values.push(parseInt(id));
-    await DB.prepare(
-      `UPDATE side_banners SET ${fields.join(', ')} WHERE id = ?`
-    ).bind(...values).run();
-    return c.json({ success: true, data: { id } });
-  } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
-  }
-});
-
-// DELETE /api/admin/side-banners/:id — 사이드 배너 삭제
-adminManagementRoutes.delete('/side-banners/:id', cors(), async (c) => {
-  const { DB } = c.env;
-  const id = c.req.param('id');
-  try {
-    await ensureSideBannersTable(DB);
-    const existing = await DB.prepare('SELECT id FROM side_banners WHERE id = ?').bind(id).first();
-    if (!existing) return c.json({ success: false, error: '사이드 배너를 찾을 수 없습니다' }, 404);
-    await DB.prepare('DELETE FROM side_banners WHERE id = ?').bind(id).run();
-    return c.json({ success: true, data: { id } });
-  } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
-  }
-});
+// ─── 사이드 배너 관리 ──────────────────────────────────────────────────────────
+// 🛡️ 2026-04-22 배치 141 (TD-006 부분): admin-side-banners.routes.ts 로 이관.
+// worker/index.ts 에서 adminApp.route('/', adminSideBannersRoutes) 으로 마운트됨.
 
 // PATCH /api/admin/donations/settlements/:id - 정산 완료/거부
 adminManagementRoutes.patch('/donations/settlements/:id', cors(), async (c) => {
@@ -2392,16 +2292,9 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
 });
 
 // ── 리뷰 삭제 ──
-adminManagementRoutes.delete('/reviews/:id', cors(), async (c) => {
-  try {
-    const DB = c.env.DB;
-    const id = c.req.param('id');
-    await DB.prepare('DELETE FROM product_reviews WHERE id = ?').bind(id).run();
-    return c.json({ success: true, message: '리뷰가 삭제되었습니다' });
-  } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
-  }
-});
+// 🛡️ 2026-04-22 배치 140 BUG FIX: 이전 핸들러는 product_reviews 테이블 (존재 안 함) 을
+//   삭제하는 잘못된 코드였고, 올바른 reviews 테이블 삭제 핸들러 (line ~3058) 를 shadow
+//   했음. 제거 → 올바른 핸들러가 실행되도록.
 
 // ── 리뷰 목록 (상품별) ──
 adminManagementRoutes.get('/reviews/product/:productId', cors(), async (c) => {

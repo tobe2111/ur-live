@@ -34,6 +34,7 @@ import { edgeCache } from './middleware/edge-cache';
 import { accountRoutes } from '../features/account/api/account.routes';
 import { adminManagementRoutes, adminBannersRoutes, adminFlagsRoutes } from '../features/admin/api/index';
 import { adminCouponsRoutes } from '../features/admin/api/admin-coupons.routes';
+import { adminSideBannersRoutes } from '../features/admin/api/admin-side-banners.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
@@ -1698,6 +1699,8 @@ adminApp.route('/metrics', adminMetricsRoutes);
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
 adminApp.route('/', adminCouponsRoutes);
+// 🛡️ 2026-04-22 배치 141 (TD-006 부분): admin-side-banners 분리
+adminApp.route('/', adminSideBannersRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
