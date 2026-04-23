@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardStatCard, DashboardLoading } from '@/components/dashboard'
 import api from '@/lib/api'
 import {
   Eye, Users, MessageCircle, ShoppingBag, TrendingUp,
@@ -290,23 +291,13 @@ function StreamAnalyticsDetail({ streamId }: { streamId: string }) {
         </div>
       </div>
 
-      {/* Summary stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {[
-          { label: t('seller.uniqueViewers'), value: views.unique_viewers, icon: <Eye className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: t('seller.avgWatchTimeLabel'), value: fmtDuration(views.avg_watch_time), icon: <Clock className="w-4 h-4" />, color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: t('seller.chatCountLabel'), value: chat.total_messages, icon: <MessageCircle className="w-4 h-4" />, color: 'text-orange-600', bg: 'bg-orange-50' },
-          { label: t('seller.orderLabelAnalytics'), value: orders.total_orders, icon: <ShoppingBag className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: t('seller.salesLabelAnalytics'), value: fmtPrice(orders.total_revenue), icon: <DollarSign className="w-4 h-4" />, color: 'text-red-600', bg: 'bg-red-50' },
-        ].map(card => (
-          <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm">
-            <div className={`inline-flex p-1.5 rounded-lg ${card.bg} mb-2`}>
-              <span className={card.color}>{card.icon}</span>
-            </div>
-            <p className="text-lg font-bold text-gray-900">{card.value}</p>
-            <p className="text-[11px] text-gray-500">{card.label}</p>
-          </div>
-        ))}
+      {/* Summary stat cards — 🛡️ 2026-04-22 배치 129: 디자인 시스템 통일 */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <DashboardStatCard label={t('seller.uniqueViewers')} value={views.unique_viewers} icon={<Eye className="h-4 w-4" />} accent="blue" />
+        <DashboardStatCard label={t('seller.avgWatchTimeLabel')} value={fmtDuration(views.avg_watch_time)} icon={<Clock className="h-4 w-4" />} accent="violet" />
+        <DashboardStatCard label={t('seller.chatCountLabel')} value={chat.total_messages} icon={<MessageCircle className="h-4 w-4" />} accent="amber" />
+        <DashboardStatCard label={t('seller.orderLabelAnalytics')} value={orders.total_orders} icon={<ShoppingBag className="h-4 w-4" />} accent="green" />
+        <DashboardStatCard label={t('seller.salesLabelAnalytics')} value={fmtPrice(orders.total_revenue)} icon={<DollarSign className="h-4 w-4" />} accent="rose" />
       </div>
 
       {/* Tabs */}

@@ -197,14 +197,20 @@ export default function SellerAlimtalkPage() {
 
   return (
     <SellerLayout title={t('seller.brandMessage')} headerRight={headerRight}>
-      <div className="max-w-2xl mx-auto">
-        {/* Balance Card */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-5 text-white mb-5 shadow">
-          <p className="text-xs text-blue-100 mb-1">{t('seller.brandMessageCredits')}</p>
-          <p className="text-3xl font-bold">{balance.toLocaleString()}<span className="text-lg font-normal ml-1">{t('seller.creditsUnit')}</span></p>
-          <p className="text-xs text-blue-100 mt-2">
-            {t('seller.brandMessageDesc')}
-          </p>
+      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 129: 리디자인 */}
+        {/* Balance Card — 모던 그라데이션 */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-6 text-white shadow-lg">
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10" />
+          <div className="absolute -bottom-8 -right-2 h-16 w-16 rounded-full bg-white/10" />
+          <div className="relative">
+            <p className="text-xs font-medium text-blue-100">{t('seller.brandMessageCredits')}</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+              {balance.toLocaleString()}
+              <span className="ml-1 text-lg font-normal">{t('seller.creditsUnit')}</span>
+            </p>
+            <p className="mt-2 text-xs text-blue-100/90">{t('seller.brandMessageDesc')}</p>
+          </div>
         </div>
 
         {/* Tabs */}

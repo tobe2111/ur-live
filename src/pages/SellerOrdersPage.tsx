@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
 import {
   Package,
   Truck,
@@ -372,36 +373,25 @@ export default function SellerOrdersPage() {
 
   return (
     <SellerLayout title={t('seller.orders')}>
-      <div className="max-w-7xl mx-auto">
-        {/* Title */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <Package className="w-10 h-10 text-blue-600" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{t('seller.orders')}</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  {t('seller.totalFiltered', { total: orders.length, filtered: filteredOrders.length })}
-                </p>
-              </div>
-            </div>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.orders')}
+          subtitle={t('seller.totalFiltered', { total: orders.length, filtered: filteredOrders.length })}
+          icon={<Package className="h-5 w-5" />}
+          actions={
             <Button
               onClick={exportToCSV}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              className="h-9 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700"
             >
-              <Download className="w-4 h-4" />
+              <Download className="mr-1.5 h-3.5 w-3.5" />
               {t('seller.csvDownload')}
             </Button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">{t('seller.filterLabel')}</h2>
-          </div>
-
+        <DashboardCard title={t('seller.filterLabel')} actions={<Filter className="h-4 w-4 text-gray-400" />}>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Status Filter */}
             <div>
@@ -481,7 +471,7 @@ export default function SellerOrdersPage() {
               </Button>
             </div>
           )}
-        </div>
+        </DashboardCard>
 
         {/* Error Message */}
         {error && (
