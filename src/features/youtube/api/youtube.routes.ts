@@ -31,13 +31,22 @@ interface JwtPayload {
 
 interface SellerYouTubeAuthRow {
   id: number
+  seller_id: number
   channel_id: string
   channel_title: string
   channel_thumbnail: string
   subscriber_count: number
   google_email: string
+  access_token: string
+  refresh_token: string
+  expires_at: number
+  default_stream_id?: string
+  default_rtmp_url?: string
+  default_rtmp_key?: string
+  has_persistent_key?: number
   is_active: number
   created_at: string
+  updated_at: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -80,6 +89,24 @@ async function ensureYouTubeTables(DB: D1Database) {
       )
     `).run()
   } catch { /* already exists */ }
+
+  // seller_youtube_oauth 누락 컬럼 추가
+  const oauthColumns = [
+    'expires_at INTEGER NOT NULL DEFAULT 0',
+    'google_email TEXT',
+    'channel_title TEXT',
+    'channel_thumbnail TEXT',
+    'subscriber_count INTEGER DEFAULT 0',
+    'default_stream_id TEXT',
+    'default_rtmp_url TEXT',
+    'default_rtmp_key TEXT',
+    'has_persistent_key INTEGER DEFAULT 0',
+    'is_active INTEGER DEFAULT 1',
+    'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP',
+  ]
+  for (const col of oauthColumns) {
+    try { await DB.prepare(`ALTER TABLE seller_youtube_oauth ADD COLUMN ${col}`).run() } catch { /* exists */ }
+  }
 
   // live_streams에 누락 컬럼 추가 (SQLite에서 이미 있으면 에러 → catch)
   const columns = [
