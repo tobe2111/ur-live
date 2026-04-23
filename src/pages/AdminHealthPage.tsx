@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { Activity, RefreshCw } from 'lucide-react'
 
@@ -109,26 +110,21 @@ export default function AdminHealthPage() {
   return (
     <AdminLayout title="시스템 상태">
       <SEO title="시스템 상태" description="실시간 시스템 헬스 모니터링" url="/admin/health" noindex />
-      <div className="mx-auto max-w-6xl p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-              <Activity className="h-6 w-6 text-gray-700" />
-              시스템 상태
-            </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              10초마다 자동 갱신 · 마지막 갱신:{' '}
-              {lastFetched ? lastFetched.toLocaleTimeString('ko-KR') : '—'}
-            </p>
-          </div>
-          <button
-            onClick={load}
-            className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            <RefreshCw className="h-4 w-4" />
-            새로고침
-          </button>
-        </div>
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="시스템 상태"
+          subtitle={`10초마다 자동 갱신 · 마지막 갱신: ${lastFetched ? lastFetched.toLocaleTimeString('ko-KR') : '—'}`}
+          icon={<Activity className="h-5 w-5" />}
+          actions={
+            <button
+              onClick={load}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              새로고침
+            </button>
+          }
+        />
 
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
