@@ -213,12 +213,51 @@ function AppContent() {
       // ── 카카오 로그인 성공: localStorage 즉시 설정 ──
       localStorage.setItem('user_type', 'user')
       localStorage.setItem('user_id', urlParams.get('userId')!)
+      localStorage.setItem('session_login', 'true')
       const userName = urlParams.get('userName')
       const userEmail = urlParams.get('userEmail')
       const profileImage = urlParams.get('profileImage')
       if (userName) localStorage.setItem('user_name', userName)
       if (userEmail) localStorage.setItem('user_email', userEmail)
       if (profileImage) localStorage.setItem('user_profile_image', profileImage.replace(/^http:\/\//, 'https://'))
+
+      // 🛡️ linked seller/agency token transfer (Worker sync/callback 이 세팅한 cookie 읽기)
+      // 카카오 연동된 셀러/에이전시는 이 시점에 seller_token/agency_token 자동 획득
+      const readCookie = (name: string): string | null => {
+        const match = new RegExp(`(?:^|;\\s*)${name}=([^;]+)`).exec(document.cookie)
+        return match ? decodeURIComponent(match[1]) : null
+      }
+      const clearCookie = (name: string) => {
+        document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure`
+      }
+      const sellerToken = readCookie('ur_pending_seller_token')
+      if (sellerToken) {
+        localStorage.setItem('seller_token', sellerToken)
+        const sellerInfoRaw = readCookie('ur_pending_seller_info')
+        if (sellerInfoRaw) {
+          try {
+            const info = JSON.parse(sellerInfoRaw)
+            if (info.id) localStorage.setItem('seller_id', String(info.id))
+            if (info.business_name) localStorage.setItem('seller_name', info.business_name)
+          } catch { /* ignore */ }
+        }
+        clearCookie('ur_pending_seller_token')
+        clearCookie('ur_pending_seller_info')
+      }
+      const agencyToken = readCookie('ur_pending_agency_token')
+      if (agencyToken) {
+        localStorage.setItem('agency_token', agencyToken)
+        const agencyInfoRaw = readCookie('ur_pending_agency_info')
+        if (agencyInfoRaw) {
+          try {
+            const info = JSON.parse(agencyInfoRaw)
+            if (info.id) localStorage.setItem('agency_id', String(info.id))
+            if (info.name) localStorage.setItem('agency_name', info.name)
+          } catch { /* ignore */ }
+        }
+        clearCookie('ur_pending_agency_token')
+        clearCookie('ur_pending_agency_info')
+      }
 
       // URL 정리 (auth 파라미터 제거)
       urlParams.delete('login'); urlParams.delete('userId'); urlParams.delete('userName')

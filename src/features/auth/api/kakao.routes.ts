@@ -331,6 +331,35 @@ kakaoRoutes.get('/sync/callback', async (c) => {
         console.error('[Kakao Sync] Session cookie creation failed:', e);
       }
 
+      // 🛡️ linked seller/agency JWT 자동 발급 → 프론트엔드 localStorage 로 이전하도록 transfer cookie
+      try {
+        const linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
+        // JS-readable cookie (HttpOnly 없음) — 프론트엔드 페이지 로드 시 즉시 읽어서 localStorage 로 이동 후 삭제
+        // 60초 만료 — 짧은 윈도우로 XSS 노출 최소화
+        if (linkedRoles.seller_token) {
+          c.header('Set-Cookie',
+            `ur_pending_seller_token=${linkedRoles.seller_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
+            { append: true });
+          if (linkedRoles.seller) {
+            c.header('Set-Cookie',
+              `ur_pending_seller_info=${encodeURIComponent(JSON.stringify({ id: linkedRoles.seller.id, business_name: linkedRoles.seller.business_name || '' }))}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
+              { append: true });
+          }
+        }
+        if (linkedRoles.agency_token) {
+          c.header('Set-Cookie',
+            `ur_pending_agency_token=${linkedRoles.agency_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
+            { append: true });
+          if (linkedRoles.agency) {
+            c.header('Set-Cookie',
+              `ur_pending_agency_info=${encodeURIComponent(JSON.stringify({ id: linkedRoles.agency.id, name: linkedRoles.agency.name || '' }))}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
+              { append: true });
+          }
+        }
+      } catch (e) {
+        console.error('[Kakao Sync] Linked role tokens issuance failed:', e);
+      }
+
       const stateUrl = new URL(redirectTarget, 'https://dummy.com');
       // 한국: 세션 쿠키로 인증하므로 firebase_token 불필요
       // 글로벌: Firebase customToken 필요
