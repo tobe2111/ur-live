@@ -1,6 +1,58 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils } from 'lucide-react'
+import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils, Loader2 } from 'lucide-react'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+
+// 카카오 유저가 같은 계정을 셀러로 확장 — register-from-user 래퍼.
+// 완료 시 localStorage 에 seller_token 세팅, 이후 한 세션으로 양쪽 권한 동시 보유.
+function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
+  const [upgrading, setUpgrading] = useState(false)
+
+  async function upgrade() {
+    setUpgrading(true)
+    try {
+      const res = await api.post('/api/seller/register-from-user')
+      if (res.data?.success) {
+        const token = res.data.data?.token || res.data.data?.seller_token
+        if (token) {
+          localStorage.setItem('seller_token', token)
+          localStorage.setItem('user_type', 'seller')
+        }
+        toast.success('셀러 권한이 활성화됐어요!')
+        onDone()
+      } else {
+        toast.error(res.data?.error || '셀러 전환 실패')
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } } }
+      toast.error(err.response?.data?.error || '셀러 전환 실패')
+    } finally { setUpgrading(false) }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center py-2">
+        <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-red-100 to-pink-100 flex items-center justify-center">
+          <Radio className="w-7 h-7 text-red-500" />
+        </div>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          지금 계정에 셀러 권한을 추가합니다<br />
+          <span className="text-gray-500 text-xs">별도 가입·로그인 없이 한 번에</span>
+        </p>
+      </div>
+
+      <button
+        onClick={upgrade}
+        disabled={upgrading}
+        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 disabled:opacity-50 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+      >
+        {upgrading ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5" />}
+        {upgrading ? '활성화 중...' : '셀러로 시작하기'}
+      </button>
+    </div>
+  )
+}
 
 export default function BottomNav() {
   const navigate = useNavigate()
@@ -179,37 +231,11 @@ export default function BottomNav() {
                     </div>
                   )}
 
-                  {/* Logged in but not seller */}
+                  {/* Logged in but not seller — 기존 계정 확장 (register-from-user) */}
                   {isLoggedIn && !isSeller && (
-                    <div className="space-y-4">
-                      <div className="text-center py-2">
-                        <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-red-100 to-pink-100 flex items-center justify-center">
-                          <Radio className="w-7 h-7 text-red-500" />
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          셀러가 되어 라이브 방송을 시작하세요!<br />
-                          <span className="text-gray-400">누구나 무료로 셀러 등록이 가능합니다</span>
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/register') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <UserPlus className="w-5 h-5" />
-                        셀러 등록하기
-                      </button>
-
-                      <p className="text-center text-[11px] text-gray-400">
-                        이미 셀러 계정이 있나요?{' '}
-                        <button
-                          onClick={() => { setSheetOpen(false); navigate('/seller/login') }}
-                          className="text-blue-500 font-medium"
-                        >
-                          셀러 로그인
-                        </button>
-                      </p>
-                    </div>
+                    <SellerUpgradePanel
+                      onDone={() => { setSheetOpen(false); navigate('/seller/live-broadcast') }}
+                    />
                   )}
 
                   {/* Not logged in — 셀러 전용 */}
