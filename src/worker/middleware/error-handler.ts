@@ -86,7 +86,8 @@ async function sendToSentry(
   error: Error,
   errorResponse: ErrorResponse
 ): Promise<void> {
-  const sentryDsn = (c.env as any).SENTRY_DSN || (c.env as any).VITE_SENTRY_DSN;
+  const env = c.env as { SENTRY_DSN?: string };
+  const sentryDsn = env.SENTRY_DSN;
 
   if (!sentryDsn) {
     return;
@@ -235,7 +236,7 @@ export async function globalErrorHandler(
   });
 
   // 사용자에게 에러 응답 반환
-  return c.json(errorResponse, errorResponse.statusCode as any);
+  return c.json(errorResponse, errorResponse.statusCode as 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 | 503);
 }
 
 /**

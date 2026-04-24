@@ -7,8 +7,8 @@ export const debugRoutes = new Hono<{ Bindings: Env }>();
 debugRoutes.get('/api/debug/build-info', requireAdmin(), (c) => {
   return c.json({
     success: true,
-    commitSha: (c.env as any).BUILD_SHA || 'unknown',
-    buildTimestamp: (c.env as any).BUILD_TIMESTAMP || 'unknown',
+    commitSha: c.env.BUILD_SHA || 'unknown',
+    buildTimestamp: c.env.BUILD_TIMESTAMP || 'unknown',
     markers: {
       whoamiEndpoint: true,
       buildInfoEndpoint: true,
@@ -28,21 +28,21 @@ debugRoutes.get('/api/debug/whoami', requireAdmin(), async (c) => {
   const sessionCookieNames = ['ur_session', 'firebase_token', 'seller_session', 'admin_session'];
   const presentSessionCookies = sessionCookieNames.filter(n => cookieNames.includes(n));
 
-  let tokenInfo: any = null;
+  let tokenInfo: { valid: boolean; type?: unknown; sub?: string | null; exp?: unknown; expired?: unknown; error?: string } | null = null;
   if (hasAuthHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
     try {
       const { verify } = await import('hono/jwt');
-      const payload = await verify(token, c.env.JWT_SECRET, 'HS256');
+      const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as Record<string, unknown>;
       tokenInfo = {
         valid: true,
-        type: (payload as any).type,
-        sub: (payload as any).sub ? String((payload as any).sub).slice(0, 8) + '...' : null,
-        exp: (payload as any).exp,
-        expired: (payload as any).exp && (payload as any).exp < Math.floor(Date.now() / 1000),
+        type: payload['type'],
+        sub: payload['sub'] ? String(payload['sub']).slice(0, 8) + '...' : null,
+        exp: payload['exp'],
+        expired: payload['exp'] && (payload['exp'] as number) < Math.floor(Date.now() / 1000),
       };
-    } catch (err: any) {
-      tokenInfo = { valid: false, error: String(err?.message || err).slice(0, 100) };
+    } catch (err: unknown) {
+      tokenInfo = { valid: false, error: String((err as Error)?.message || err).slice(0, 100) };
     }
   }
 
@@ -66,13 +66,13 @@ debugRoutes.get('/api/debug/whoami', requireAdmin(), async (c) => {
     env: {
       hasJwtSecret: !!c.env.JWT_SECRET,
       hasDb: !!c.env.DB,
-      environment: (c.env as any).ENVIRONMENT || 'unknown',
+      environment: c.env.ENVIRONMENT || 'unknown',
     },
   });
 });
 
 debugRoutes.get('/api/debug/auth-trace', requireAdmin(), async (c) => {
-  const steps: any[] = [];
+  const steps: Record<string, unknown>[] = [];
   try {
     const authHeader = c.req.header('Authorization') || '';
     steps.push({ step: 'headers', authHeaderPresent: !!authHeader });
@@ -82,10 +82,10 @@ debugRoutes.get('/api/debug/auth-trace', requireAdmin(), async (c) => {
       steps.push({ step: 'bearer-found', length: token.length });
       try {
         const { verify } = await import('hono/jwt');
-        const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as any;
-        steps.push({ step: 'jwt-verified', type: payload.type, sub: String(payload.sub).slice(0, 6) + '...' });
-      } catch (e: any) {
-        steps.push({ step: 'jwt-error', error: String(e?.message || e).slice(0, 100) });
+        const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as Record<string, unknown>;
+        steps.push({ step: 'jwt-verified', type: payload['type'], sub: String(payload['sub']).slice(0, 6) + '...' });
+      } catch (e: unknown) {
+        steps.push({ step: 'jwt-error', error: String((e as Error)?.message || e).slice(0, 100) });
       }
     }
 

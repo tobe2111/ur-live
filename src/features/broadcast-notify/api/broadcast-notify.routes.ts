@@ -49,14 +49,14 @@ broadcastNotifyRoutes.post('/subscribe/:streamId', requireAuth(), async (c) => {
   await ensureTables(DB);
 
   const streamId = c.req.param('streamId');
-  const body = await c.req.json<{ phone?: string }>().catch(() => ({}));
+  const body = await c.req.json<{ phone?: string }>().catch(() => ({} as { phone?: string }));
 
   // 스트림 존재 확인
   const stream = await DB.prepare('SELECT id, title, scheduled_at FROM live_streams WHERE id = ?')
     .bind(streamId).first();
   if (!stream) return c.json({ success: false, error: '방송을 찾을 수 없습니다' }, 404);
 
-  const phone = (body as any)?.phone?.replace(/-/g, '') || '';
+  const phone = (body.phone ?? '').replace(/-/g, '');
   const notifyAlimtalk = phone ? 1 : 0;
 
   try {
@@ -173,17 +173,17 @@ broadcastNotifyRoutes.post('/send/:streamId', requireAuth(), async (c) => {
     if (sub.notify_alimtalk && sub.user_phone) {
       try {
         const { sendAlimtalk } = await import('../../../features/alimtalk/aligo');
-        const aligoApiKey = (c.env as any).ALIGO_API_KEY;
-        const aligoUserId = (c.env as any).ALIGO_USER_ID;
-        const aligoSenderKey = (c.env as any).ALIGO_SENDER_KEY;
+        const aligoApiKey = c.env.ALIGO_API_KEY;
+        const aligoUserId = c.env.ALIGO_USER_ID;
+        const aligoSenderKey = c.env.ALIGO_SENDER_KEY;
 
         if (aligoApiKey && aligoUserId && aligoSenderKey) {
           await sendAlimtalk({
             apikey: aligoApiKey,
             userid: aligoUserId,
             senderkey: aligoSenderKey,
-            tpl_code: (c.env as any).ALIMTALK_BROADCAST_TPL || 'TBD',
-            sender: (c.env as any).ALIGO_SENDER_PHONE || '',
+            tpl_code: c.env.ALIMTALK_BROADCAST_TPL || 'TBD',
+            sender: c.env.ALIGO_SENDER_PHONE || '',
             receiver_1: sub.user_phone,
             recvname_1: sub.user_name || '고객',
             subject_1: '라이브 방송 시작 알림',

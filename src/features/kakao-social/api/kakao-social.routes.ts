@@ -55,10 +55,10 @@ kakaoSocialRoutes.post('/message/broadcast', requireAuth(), async (c) => {
     buttons: [{ title: '라이브 시청하기', link: { web_url: `https://live.ur-team.com/live/${stream_id}`, mobile_web_url: `https://live.ur-team.com/live/${stream_id}` } }],
   });
 
-  const result = await callKakaoApi(DB, user.id, (c.env as any).KAKAO_REST_API_KEY,
+  const result = await callKakaoApi(DB, user.id, c.env.KAKAO_REST_API_KEY ?? '',
     'https://kapi.kakao.com/v2/api/talk/memo/default/send',
     { body: `template_object=${encodeURIComponent(templateObject)}` },
-    (c.env as any).DATA_ENCRYPTION_KEY,
+    c.env.DATA_ENCRYPTION_KEY ?? '',
   );
 
   if (result.needsReauth) {
@@ -104,7 +104,7 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
     color: 'RED',
   };
 
-  const result = await callKakaoApi(DB, user.id, (c.env as any).KAKAO_REST_API_KEY,
+  const result = await callKakaoApi(DB, user.id, c.env.KAKAO_REST_API_KEY ?? '',
     'https://kapi.kakao.com/v2/api/calendar/create/event',
     { body: `event=${encodeURIComponent(JSON.stringify(event))}` }
   );
@@ -190,11 +190,11 @@ kakaoSocialRoutes.post('/message/send-to-subscribers', async (c) => {
   `).bind(stream_id).all<{ user_id: string; kakao_access_token: string }>();
 
   let sent = 0;
-  const kakaoApiKey = (c.env as any).KAKAO_REST_API_KEY;
+  const kakaoApiKey = c.env.KAKAO_REST_API_KEY;
   if (subs) {
     for (const sub of subs) {
       try {
-        const freshToken = await getKakaoTokenSimple(DB, sub.user_id, kakaoApiKey, (c.env as any).DATA_ENCRYPTION_KEY);
+        const freshToken = await getKakaoTokenSimple(DB, sub.user_id, kakaoApiKey ?? '', c.env.DATA_ENCRYPTION_KEY ?? '');
         if (!freshToken) continue;
         const templateObject = JSON.stringify({
           object_type: 'feed',

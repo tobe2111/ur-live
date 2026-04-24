@@ -5,7 +5,7 @@
 // ============================================================
 
 import { Hono } from 'hono';
-import type { Context, Next } from 'hono';
+import type { Context, MiddlewareHandler, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timing } from 'hono/timing';
@@ -149,12 +149,12 @@ app.use('*', logger());
 // Bulk-upload routes apply a larger limit locally if needed.
 app.use('/api/*', bodyLimit(1_000_000));
 app.use('/api/*', i18nMiddleware);
-app.use('/api/*', rateLimiterMiddleware as any);
+app.use('/api/*', rateLimiterMiddleware as MiddlewareHandler);
 
 // CORS — multi-region support
 app.use('*', cors({
   origin: (origin, c) => {
-    const env = (c as any).env as Env;
+    const env = c.env as Env;
     const allowed: string[] = [
       ...ALLOWED_ORIGINS,
       ...(env?.FRONTEND_URL ? [env.FRONTEND_URL] : []),
@@ -321,7 +321,7 @@ app.post('/api/csp-report', async (c) => {
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
           )
         `).run();
-        const body = (report as any)['csp-report'] || report;
+        const body = (report as Record<string, unknown>)['csp-report'] ?? report;
         await c.env.DB.prepare(`
           INSERT INTO csp_violations
             (blocked_uri, violated_directive, document_uri, source_file, line_number, user_agent, ip)
@@ -404,7 +404,7 @@ app.route('/api/health/detailed', healthRoutes);
 //     -d '{"email":"...","password":"...","role":"all|admin|seller|agency"}'
 // ============================================================
 app.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
-  const expected = (c.env as any).BOOTSTRAP_TOKEN as string | undefined;
+  const expected = c.env.BOOTSTRAP_TOKEN;
   const provided = c.req.header('X-Bootstrap-Token');
 
   // BOOTSTRAP_TOKEN 미세팅 or 헤더 불일치 → 404 (엔드포인트 존재 감추기)
@@ -460,8 +460,8 @@ app.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
 // 🛡️ 2026-04-22: admin 전용 (또는 INTERNAL_OPS_TOKEN 헤더 매치).
 // 이전: 누구나 호출 가능 → DB 스키마 조작, 내부 구조 노출 위험.
 app.get('/api/_internal/health-dashboard', requireAdmin(), async (c) => {
-  const env = c.env as any;
-  const DB = env.DB as D1Database;
+  const env = c.env;
+  const DB = env.DB;
   const start = Date.now();
 
   // DB latency 측정
@@ -1197,7 +1197,7 @@ app.get('/api/image/resize', async (c) => {
           quality,
           format: 'webp',
         }
-      } as any
+      } as Record<string, unknown>
     });
 
     const headers = new Headers(response.headers);

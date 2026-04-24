@@ -65,6 +65,7 @@ export interface Env {
   // ---- Email (Resend) ----
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
+  RESEND_WEBHOOK_SECRET?: string;
 
   // ---- Monitoring ----
   DISCORD_WEBHOOK_URL?: string;
@@ -99,4 +100,18 @@ export interface Env {
   // Note: env.ASSETS is automatically available when [assets] is configured
   // No explicit binding needed in wrangler.toml
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
+
+  // ---- Build Info (injected at deploy time) ----
+  BUILD_SHA?: string;
+  BUILD_TIMESTAMP?: string;
+
+  // ---- Bootstrap / Internal ----
+  BOOTSTRAP_TOKEN?: string;
+  INTERNAL_CRON_TOKEN?: string;
+
+  // ---- Alimtalk Templates ----
+  ALIMTALK_BROADCAST_TPL?: string;
+
+  // ---- Refresh Token ----
+  REFRESH_TOKEN_SECRET?: string;
 }
