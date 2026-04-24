@@ -46,7 +46,10 @@ const CHARGE_AMOUNTS = [
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
 // user_points는 shared helper 사용; point_transactions는 이 파일에만 필요한
 // CHECK 제약(type IN ('charge','donate','refund','ad_reward'))이 있어 로컬 유지.
+let _pointsTablesEnsured = false
 async function ensureTables(DB: D1Database) {
+  if (_pointsTablesEnsured) return
+  _pointsTablesEnsured = true
   await ensureUserPointsTable(DB);
   try {
     await DB.prepare(`

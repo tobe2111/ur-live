@@ -11,6 +11,7 @@
 import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 const authTokenRoutes = new Hono<{ Bindings: Env }>();
 
@@ -45,7 +46,7 @@ const authTokenRoutes = new Hono<{ Bindings: Env }>();
  *     }
  *   }
  */
-authTokenRoutes.post('/id-token', async (c) => {
+authTokenRoutes.post('/id-token', rateLimit({ action: 'auth_id_token', max: 20, windowSec: 60 }), async (c) => {
   try {
     // Parse request body
     const body = await c.req.json().catch(() => ({}));

@@ -26,7 +26,10 @@ shortsRoutes.use('*', cors({
 }))
 
 // 테이블 자동 생성
+let _shortsTablesEnsured = false
 async function ensureTables(DB: D1Database) {
+  if (_shortsTablesEnsured) return
+  _shortsTablesEnsured = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS shorts (
