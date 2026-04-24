@@ -425,6 +425,7 @@
       "obsStreamFailed": "OBS 推流启动失败",
       "obsScenes": "场景切换",
       "obsNetworkHealth": "网络状态",
+      "obsLivePreview": "OBS 实时预览",
       "dataLoadFailed": "데이터를 불러오지 못했습니다.",
       "youtubeApiNotSet": "YouTube API가 설정되지 않았습니다.",
       "youtubeConnectFailed": "YouTube 연동에 실패했습니다.",

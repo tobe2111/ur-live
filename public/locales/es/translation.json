@@ -342,6 +342,7 @@
       "obsStreamFailed": "Error al iniciar transmisión OBS",
       "obsScenes": "Escenas",
       "obsNetworkHealth": "Red",
+      "obsLivePreview": "Vista previa OBS en vivo",
       "dataLoadFailed": "데이터를 불러오지 못했습니다.",
       "youtubeApiNotSet": "YouTube API가 설정되지 않았습니다.",
       "youtubeConnectFailed": "YouTube 연동에 실패했습니다.",

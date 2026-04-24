@@ -431,6 +431,7 @@
       "obsStreamFailed": "OBS 스트리밍 시작 실패",
       "obsScenes": "씬 전환",
       "obsNetworkHealth": "네트워크 상태",
+      "obsLivePreview": "OBS 실시간 미리보기",
       "dataLoadFailed": "데이터를 불러오지 못했습니다.",
       "youtubeApiNotSet": "YouTube API가 설정되지 않았습니다.",
       "youtubeConnectFailed": "YouTube 연동에 실패했습니다.",

@@ -18,6 +18,7 @@ import { isSellerAuthenticated } from '@/lib/seller-auth'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
 import LiveChatPanel from '@/components/seller/LiveChatPanel'
 import { InlineCameraPreview } from '@/components/streaming/InlineCameraPreview'
+import { BroadcastDiagnostic } from '@/components/streaming/BroadcastDiagnostic'
 import { OBSWebSocketClient, type OBSConnectConfig, type OBSStatus, saveOBSConfig, loadOBSConfig, clearOBSConfig } from '@/lib/obs-websocket'
 import { downloadOBSProfile } from '@/lib/obs-profile'
 
@@ -979,7 +980,6 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
   const canQuickStart = sellableProducts.length > 0 && !creating
   const handleQuickStart = () => {
     if (!canQuickStart) return
-    // i18n 로케일 기반 자동 포맷 (한국식 → ko, 미국식 → en, etc.)
     const now = new Date()
     const lng = (typeof navigator !== 'undefined' && navigator.language) || 'ko'
     const dateFmt = new Intl.DateTimeFormat(lng, { month: 'short', day: 'numeric' }).format(now)
@@ -990,6 +990,17 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
     setSelectedProducts(productIds)
     setMethod('quick')
     onCreate({ title: autoTitle, productIds })
+  }
+
+  // 테스트 방송: unlisted + [TEST] 제목. 셀러가 파이프라인 검증 후 삭제.
+  const handleTestBroadcast = () => {
+    if (sellableProducts.length === 0 || creating) return
+    const testTitle = `[TEST] ${new Date().toLocaleTimeString()}`
+    setTitle(testTitle)
+    setPrivacy('unlisted')
+    setSelectedProducts([sellableProducts[0].id])
+    onCreate({ title: testTitle, productIds: [sellableProducts[0].id] })
+    toast.info('테스트 방송을 생성했습니다. 송출 도구에서 시작 후 파이프라인 확인해보세요.')
   }
   // 토큰 만료 시 폼 전체 차단 + 재연동 CTA
   if (tokenExpired) {
@@ -1019,14 +1030,23 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
           <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.enterBroadcastInfo')}</h2>
           <p className="text-xs text-gray-500 mt-0.5">{t('seller.liveBroadcast.enterBroadcastInfoDesc')}</p>
         </div>
-        {/* Quick Start: 작은 보조 버튼으로 이동 */}
-        {canQuickStart && (
-          <button onClick={handleQuickStart}
-            className="text-xs bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1 shrink-0">
-            <Zap className="w-3 h-3" />
-            {t('seller.liveBroadcast.quickStart')}
-          </button>
-        )}
+        {/* Quick Start + Test broadcast */}
+        <div className="flex gap-1.5 shrink-0">
+          {sellableProducts.length > 0 && (
+            <button onClick={handleTestBroadcast} disabled={creating}
+              className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-full font-medium disabled:opacity-50"
+              title="비공개 테스트 방송으로 파이프라인 검증">
+              🧪 테스트
+            </button>
+          )}
+          {canQuickStart && (
+            <button onClick={handleQuickStart}
+              className="text-xs bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1">
+              <Zap className="w-3 h-3" />
+              {t('seller.liveBroadcast.quickStart')}
+            </button>
+          )}
+        </div>
         {templates.length > 0 && (
           <div className="relative shrink-0">
             <button onClick={() => setShowTemplates(v => !v)}
@@ -1401,6 +1421,22 @@ function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy }: {
     return () => { off(); client.disconnect() }
   }, [])
 
+  // 연결됨 & 스트리밍 중 → 3초마다 OBS 씬 미리보기 스크린샷
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!connected || !clientRef.current) return
+    let active = true
+    const tick = async () => {
+      try {
+        const img = await clientRef.current?.getPreviewScreenshot()
+        if (active && img) setPreviewUrl(img)
+      } catch { /* silent */ }
+    }
+    tick()
+    const id = setInterval(tick, 3000)
+    return () => { active = false; clearInterval(id) }
+  }, [connected, obsStatus.currentScene])
+
   async function connect() {
     if (!clientRef.current) clientRef.current = new OBSWebSocketClient()
     setConnecting(true)
@@ -1541,6 +1577,16 @@ function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy }: {
         </button>
       </div>
 
+      {/* 씬 미리보기 썸네일 (실제 OBS 출력) */}
+      {previewUrl && (
+        <div className="bg-black rounded-lg overflow-hidden">
+          <img src={previewUrl} alt="OBS preview" className="w-full aspect-video object-contain" />
+          <p className="text-[10px] text-white/70 px-2 py-1 bg-black/60">
+            🎬 {t('seller.liveBroadcast.obsLivePreview')} · {obsStatus.currentScene}
+          </p>
+        </div>
+      )}
+
       {obsStatus.outputActive ? (
         <div className="bg-red-500 text-white rounded-lg px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1625,9 +1671,11 @@ function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStream; accent: 
   const popupRef = useRef<Window | null>(null)
   const openedRef = useRef(false)
   const vid = stream.youtube_video_id || stream.youtube_broadcast_id
+  // ?ur_stream_id 로 우리 Chrome Extension 에 streamId 전달
+  //   → Extension content-studio.js 가 사이드바 iframe 을 /embed/live/:id 로 자동 연결
   const studioUrl = vid
-    ? `https://studio.youtube.com/video/${vid}/livestreaming`
-    : 'https://studio.youtube.com/channel/UC/livestreaming'
+    ? `https://studio.youtube.com/video/${vid}/livestreaming?ur_stream_id=${stream.id}`
+    : `https://studio.youtube.com/channel/UC/livestreaming?ur_stream_id=${stream.id}`
 
   function openPopup() {
     const w = Math.min(1280, Math.floor(window.screen.availWidth * 0.85))
@@ -1703,6 +1751,7 @@ interface StepSetupProps {
 function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, onBack }: StepSetupProps) {
   const { t } = useTranslation()
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
+  const [showDiagnostic, setShowDiagnostic] = useState(false)
 
   // P1-5: 예약 방송이고 시작 시간이 30분 이상 미래면 카운트다운 화면
   const scheduledTime = stream.scheduled_at ? new Date(stream.scheduled_at).getTime() : 0
@@ -1768,12 +1817,19 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
             <ArrowLeft className="w-4 h-4" /> {t('common.cancel')}
           </button>
           <div className="flex-1" />
+          <button onClick={() => setShowDiagnostic(true)}
+            className="text-[11px] text-blue-500 hover:text-blue-700 underline underline-offset-2">
+            🔍 감지 안 되나요?
+          </button>
           <button onClick={onGoLive}
             className="text-[11px] text-gray-300 hover:text-gray-500 underline underline-offset-2">
             {t('seller.liveBroadcast.manualStartHint')}
           </button>
         </div>
       </div>
+      {showDiagnostic && (
+        <BroadcastDiagnostic streamId={stream.id} method={method} onClose={() => setShowDiagnostic(false)} />
+      )}
     </div>
   )
 }
@@ -1794,7 +1850,7 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
   const pipUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Document Picture-in-Picture API (Chrome 116+)
-  // DOM 이동 대신 가벼운 "라이브 상태 위젯" 을 PiP 창에 렌더 — 항상 화면 위에.
+  // 가벼운 컨트롤 센터: LIVE 뱃지, 타이머, 현재 상품, 다음 상품 버튼들
   async function togglePiP() {
     // @ts-expect-error: documentPictureInPicture is not in standard DOM types yet
     const dpip = window.documentPictureInPicture
@@ -1807,7 +1863,7 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
       return
     }
     try {
-      const pipWin = await dpip.requestWindow({ width: 280, height: 120 })
+      const pipWin = await dpip.requestWindow({ width: 320, height: 420 })
       pipWindowRef.current = pipWin
       pipWin.document.title = 'UR Live — 방송 중'
       pipWin.document.body.style.margin = '0'
@@ -1815,24 +1871,71 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
       pipWin.document.body.style.background = '#0a0a0a'
       pipWin.document.body.style.color = 'white'
       pipWin.document.body.innerHTML = `
-        <div style="padding:12px;display:flex;flex-direction:column;gap:8px;height:100vh;box-sizing:border-box">
+        <div style="padding:12px;display:flex;flex-direction:column;gap:10px;height:100vh;box-sizing:border-box">
           <div style="display:flex;align-items:center;gap:6px">
             <span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;animation:pulse 1s infinite"></span>
             <span style="font-size:11px;font-weight:700;color:#ef4444;letter-spacing:0.5px">LIVE</span>
             <span id="pip-elapsed" style="font-size:11px;font-family:monospace;color:#a1a1aa;margin-left:4px"></span>
           </div>
           <p id="pip-title" style="font-size:13px;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></p>
-          <div id="pip-stats" style="font-size:10px;color:#a1a1aa;display:flex;gap:8px;margin-top:auto"></div>
+          <div style="font-size:10px;color:#71717a;margin-top:-4px">현재 상품</div>
+          <div id="pip-current-product" style="background:#18181b;border-radius:8px;padding:8px;display:flex;gap:8px;align-items:center">
+            <div id="pip-product-img" style="width:40px;height:40px;border-radius:6px;background:#27272a;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <p id="pip-product-name" style="font-size:12px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></p>
+              <p id="pip-product-price" style="font-size:10px;color:#a1a1aa;margin:2px 0 0"></p>
+            </div>
+          </div>
+          <div style="font-size:10px;color:#71717a">상품 전환</div>
+          <div id="pip-product-list" style="display:flex;flex-direction:column;gap:4px;overflow-y:auto;flex:1"></div>
         </div>
-        <style>@keyframes pulse { 50% { opacity:0.4 } }</style>
+        <style>
+          @keyframes pulse { 50% { opacity:0.4 } }
+          .pip-btn { background:#18181b;border:none;color:white;padding:8px;border-radius:6px;cursor:pointer;text-align:left;font-size:11px;display:flex;gap:6px;align-items:center }
+          .pip-btn:hover { background:#27272a }
+          .pip-btn.active { background:#dc2626 }
+        </style>
       `
       setPipActive(true)
+
       const updatePiP = () => {
         if (!pipWin.document) return
         const titleEl = pipWin.document.getElementById('pip-title')
         const elapsedEl = pipWin.document.getElementById('pip-elapsed')
         if (titleEl) titleEl.textContent = stream.title
         if (elapsedEl) elapsedEl.textContent = elapsed
+
+        // 현재 상품
+        const currentP = products.find(p => p.id === stream.current_product_id)
+        const imgEl = pipWin.document.getElementById('pip-product-img') as HTMLElement
+        const nameEl = pipWin.document.getElementById('pip-product-name')
+        const priceEl = pipWin.document.getElementById('pip-product-price')
+        if (currentP && imgEl && nameEl && priceEl) {
+          imgEl.style.background = currentP.image_url ? `url(${currentP.image_url}) center/cover` : '#27272a'
+          nameEl.textContent = currentP.name
+          priceEl.textContent = `₩${currentP.price.toLocaleString()}`
+        }
+
+        // 상품 전환 리스트
+        const listEl = pipWin.document.getElementById('pip-product-list')
+        if (listEl) {
+          listEl.innerHTML = ''
+          products.forEach(p => {
+            const btn = pipWin.document.createElement('button')
+            btn.className = 'pip-btn' + (p.id === stream.current_product_id ? ' active' : '')
+            btn.innerHTML = `
+              <span style="width:20px;height:20px;border-radius:4px;${p.image_url ? `background:url(${p.image_url}) center/cover` : 'background:#27272a'};flex-shrink:0"></span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+            `
+            btn.onclick = async () => {
+              try {
+                await api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: p.id })
+                onChangeProduct(p.id)
+              } catch { /* ignore */ }
+            }
+            listEl.appendChild(btn)
+          })
+        }
       }
       updatePiP()
       pipUpdateIntervalRef.current = setInterval(updatePiP, 1000)
@@ -1841,7 +1944,7 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
         pipWindowRef.current = null
         setPipActive(false)
       })
-    } catch { /* user cancelled or blocked */ }
+    } catch { /* cancelled or blocked */ }
   }
 
   // cleanup on unmount
@@ -1984,8 +2087,20 @@ function LiveStatsBar({ streamId }: { streamId: number }) {
     let active = true
     const fetchStats = async () => {
       try {
-        const res = await api.get(`/api/seller/streams/${streamId}/live-stats`)
-        if (active && res.data?.success) setStats(res.data.data)
+        // 병렬로 우리 DB stats + YouTube Live API stats 조회, viewer_count 는 YouTube 값 우선
+        const [ours, yt] = await Promise.allSettled([
+          api.get(`/api/seller/streams/${streamId}/live-stats`),
+          api.get(`/api/seller/youtube/live/${streamId}/youtube-stats`),
+        ])
+        if (!active) return
+        const next: LiveStats = { viewer_count: 0, chat_count: 0, order_count: 0, revenue: 0 }
+        if (ours.status === 'fulfilled' && ours.value.data?.success) {
+          Object.assign(next, ours.value.data.data)
+        }
+        if (yt.status === 'fulfilled' && yt.value.data?.success) {
+          next.viewer_count = yt.value.data.data.concurrent_viewers || next.viewer_count
+        }
+        setStats(next)
       } catch { /* silent */ }
     }
     fetchStats()

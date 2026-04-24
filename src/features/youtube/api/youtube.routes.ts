@@ -781,6 +781,53 @@ app.get('/live/:id/status', async (c) => {
 })
 
 /**
+ * GET /api/youtube/live/:id/youtube-stats
+ * YouTube Live API 로부터 실시간 시청자/좋아요 등 조회.
+ * Step 3 대시보드에서 OBS 미연결 사용자도 metrics 확인 가능.
+ */
+app.get('/live/:id/youtube-stats', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const streamId = parseInt(c.req.param('id'))
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+  if (!clientId || !clientSecret) return c.json({ success: false, error: 'YouTube API not configured' }, 500)
+
+  try {
+    const stream = await c.env.DB.prepare(
+      'SELECT youtube_video_id FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first<{ youtube_video_id: string }>()
+    if (!stream?.youtube_video_id) return c.json({ success: false, error: 'Stream not found' }, 404)
+
+    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    if (!accessToken) return c.json({ success: false, error: 'YouTube auth required' }, 401)
+
+    // videos.list 로 liveStreamingDetails + statistics 조회
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,statistics&id=${stream.youtube_video_id}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    if (!res.ok) return c.json({ success: false, error: `YouTube API ${res.status}` }, 500)
+    const data = await res.json() as { items?: Array<{ liveStreamingDetails?: { concurrentViewers?: string; actualStartTime?: string }; statistics?: { viewCount?: string; likeCount?: string } }> }
+    const item = data.items?.[0]
+
+    return c.json({
+      success: true,
+      data: {
+        concurrent_viewers: parseInt(item?.liveStreamingDetails?.concurrentViewers || '0'),
+        total_views: parseInt(item?.statistics?.viewCount || '0'),
+        like_count: parseInt(item?.statistics?.likeCount || '0'),
+        actual_start_time: item?.liveStreamingDetails?.actualStartTime,
+      }
+    })
+  } catch (error: unknown) {
+    return c.json({ success: false, error: error instanceof Error ? error.message : 'Failed' }, 500)
+  }
+})
+
+/**
  * POST /api/youtube/live/:id/end
  * End broadcast
  */

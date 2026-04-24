@@ -424,6 +424,7 @@
       "obsStreamFailed": "OBS 配信開始失敗",
       "obsScenes": "シーン切替",
       "obsNetworkHealth": "ネットワーク",
+      "obsLivePreview": "OBS リアルタイム プレビュー",
       "dataLoadFailed": "データの読み込みに失敗しました。",
       "youtubeApiNotSet": "YouTube APIが設定されていません。",
       "youtubeConnectFailed": "YouTube連携に失敗しました。",

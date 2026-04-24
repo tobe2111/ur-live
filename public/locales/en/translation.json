@@ -425,6 +425,7 @@
       "obsStreamFailed": "Failed to start OBS streaming",
       "obsScenes": "Scenes",
       "obsNetworkHealth": "Network",
+      "obsLivePreview": "OBS Live Preview",
       "dataLoadFailed": "Failed to load data.",
       "youtubeApiNotSet": "YouTube API is not configured.",
       "youtubeConnectFailed": "Failed to connect YouTube.",
