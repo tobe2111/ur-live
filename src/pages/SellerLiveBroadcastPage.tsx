@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
@@ -8,10 +8,11 @@ import { formatKSTDate } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import {
-  Youtube, Loader2, ExternalLink, Radio, Play,
+  Youtube, Loader2, Radio, Play,
   VideoIcon, CheckCircle2, AlertCircle, Copy,
   Smartphone, ArrowLeft, Gavel, Zap,
-  Globe, EyeOff, Lock, Users, AlertTriangle
+  Globe, EyeOff, Lock, Users, AlertTriangle,
+  Eye, MessageSquare, ShoppingBag, DollarSign
 } from 'lucide-react'
 import { isSellerAuthenticated } from '@/lib/seller-auth'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
@@ -193,10 +194,26 @@ function RtmpBlock({ label, value, fieldKey, copiedField, onCopy }: {
   )
 }
 
+// ── 송출 도구 마지막 선택 기억 ──────────────────────────────────
+const METHOD_STORAGE_KEY = 'seller_live_last_method'
+function getLastUsedMethod(): StreamMethod {
+  try {
+    const v = localStorage.getItem(METHOD_STORAGE_KEY)
+    if (v === 'youtube' || v === 'obs' || v === 'prism' || v === 'quick') return v
+  } catch { /* SSR or blocked */ }
+  // 디바이스 기반 추천: 모바일 → prism, PC → obs
+  if (typeof window !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)) return 'prism'
+  return 'obs'
+}
+function rememberMethod(m: StreamMethod) {
+  try { localStorage.setItem(METHOD_STORAGE_KEY, m) } catch { /* ignore */ }
+}
+
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────
 export default function SellerLiveBroadcastPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { streamId: urlStreamId } = useParams<{ streamId?: string }>()
 
   // 데이터
   const [channels, setChannels] = useState<YouTubeChannel[]>([])
@@ -208,7 +225,7 @@ export default function SellerLiveBroadcastPage() {
 
   // 위저드 상태
   const [step, setStep] = useState<WizardStep>('info')
-  const [method, setMethod] = useState<StreamMethod>('obs')
+  const [method, setMethod] = useState<StreamMethod>(() => getLastUsedMethod())
   const [destination, setDestination] = useState<Destination>('youtube')
   const [destinations, setDestinations] = useState<DestinationPlatform[]>([])
   const [currentStream, setCurrentStream] = useState<LiveStream | null>(null)
@@ -226,13 +243,51 @@ export default function SellerLiveBroadcastPage() {
   // UI
   const [creating, setCreating] = useState(false)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const restoredRef = useRef(false)
 
   useEffect(() => {
     if (!isSellerAuthenticated()) { navigate('/seller/login'); return }
     loadData()
   }, [navigate])
 
-  // Step 2: OBS/Prism 연결 자동 감지 폴링
+  // URL streamId 기반 상태 복원 (새로고침 / 직접 진입 대응)
+  useEffect(() => {
+    if (!urlStreamId || restoredRef.current) return
+    restoredRef.current = true
+    const id = parseInt(urlStreamId)
+    if (!Number.isFinite(id)) return
+    ;(async () => {
+      try {
+        const res = await api.get(`/api/seller/streams/${id}`)
+        if (!res.data?.success || !res.data.stream) {
+          navigate('/seller/live-broadcast', { replace: true })
+          return
+        }
+        const s = res.data.stream
+        if (s.status === 'ended') {
+          navigate('/seller/live-broadcast', { replace: true })
+          return
+        }
+        setCurrentStream({
+          id: s.id,
+          title: s.title,
+          youtube_video_id: s.youtube_video_id || '',
+          youtube_broadcast_id: s.youtube_broadcast_id,
+          youtube_url: s.youtube_video_id ? `https://www.youtube.com/watch?v=${s.youtube_video_id}` : undefined,
+          rtmp_url: s.rtmp_url,
+          rtmp_key: s.rtmp_key,
+          status: s.status,
+          viewer_count: 0,
+          current_product_id: s.current_product_id,
+        })
+        setStep(s.status === 'live' ? 'live' : 'setup')
+      } catch {
+        navigate('/seller/live-broadcast', { replace: true })
+      }
+    })()
+  }, [urlStreamId, navigate])
+
+  // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링
   useEffect(() => {
     if (step !== 'setup' || !currentStream) return
     const poll = async () => {
@@ -302,7 +357,7 @@ export default function SellerLiveBroadcastPage() {
       if (res.data?.success) {
         const d = res.data.data
         setCurrentStream({
-          id: d.stream_id, title: title.trim(),
+          id: d.stream_id, title: effectiveTitle.trim(),
           youtube_video_id: d.broadcast?.id || '',
           youtube_broadcast_id: d.broadcast?.id,
           youtube_url: d.youtube_url,
@@ -310,6 +365,8 @@ export default function SellerLiveBroadcastPage() {
           status: 'scheduled', viewer_count: 0,
         })
         setStep('setup')
+        rememberMethod(method)
+        navigate(`/seller/live-broadcast/${d.stream_id}`, { replace: true })
       } else {
         if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
           setChannels(prev => prev.map(ch => ({ ...ch, token_expired: true })))
@@ -344,6 +401,8 @@ export default function SellerLiveBroadcastPage() {
       toast.success(t('seller.liveBroadcast.ended'))
       setCurrentStream(null); setStep('info')
       setTitle(''); setDescription(''); setSelectedProducts([])
+      navigate('/seller/live-broadcast', { replace: true })
+      restoredRef.current = false
       await loadData()
     } catch { toast.error(t('seller.liveBroadcast.endFailed')) }
   }
@@ -738,6 +797,67 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
   )
 }
 
+// ── YouTube Studio 대기 화면 (Quick / YouTube 공통) ─────────────
+// Step 2 진입 시 자동으로 Studio 새 탭 오픈 + 자동 감지 안내.
+// onGoLive() 호출 안 함 — 폴링이 YouTube live 상태 감지 시에만 전환.
+function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStream; accent: 'pink' | 'red' }) {
+  const { t } = useTranslation()
+  const openedRef = useRef(false)
+  const vid = stream.youtube_video_id || stream.youtube_broadcast_id
+  const studioUrl = vid
+    ? `https://studio.youtube.com/video/${vid}/livestreaming`
+    : 'https://studio.youtube.com/channel/UC/livestreaming'
+
+  useEffect(() => {
+    if (openedRef.current) return
+    openedRef.current = true
+    const tid = setTimeout(() => {
+      try { window.open(studioUrl, '_blank', 'noopener') } catch { /* blocked */ }
+    }, 200)
+    return () => clearTimeout(tid)
+  }, [studioUrl])
+
+  const colorMap = {
+    pink: { bg: 'bg-pink-50', border: 'border-pink-200', icon: 'bg-pink-100 text-pink-600', dot: 'bg-pink-400', accent: 'text-pink-700' },
+    red: { bg: 'bg-red-50', border: 'border-red-200', icon: 'bg-red-100 text-red-600', dot: 'bg-red-400', accent: 'text-red-700' },
+  }[accent]
+
+  function reopenStudio() {
+    try { window.open(studioUrl, '_blank', 'noopener') } catch { /* blocked */ }
+  }
+
+  return (
+    <div className={`${colorMap.bg} border ${colorMap.border} rounded-xl p-5 space-y-4`}>
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 ${colorMap.icon} rounded-xl flex items-center justify-center`}>
+          <Youtube className="w-5 h-5" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-gray-900">{t('seller.liveBroadcast.studioOpened')}</p>
+          <p className="text-xs text-gray-600 mt-0.5">{t('seller.liveBroadcast.studioOpenedDesc')}</p>
+        </div>
+      </div>
+
+      <div className={`flex items-center gap-2 bg-white/60 rounded-lg px-3 py-2.5 border ${colorMap.border}`}>
+        <span className="flex gap-1 shrink-0">
+          {[0, 0.2, 0.4].map((d, i) => (
+            <span key={i} className={`w-1.5 h-1.5 rounded-full ${colorMap.dot} animate-bounce`}
+              style={{ animationDelay: `${d}s` }} />
+          ))}
+        </span>
+        <p className={`text-xs font-medium ${colorMap.accent} flex-1`}>
+          {t('seller.liveBroadcast.autoDetecting')}
+        </p>
+      </div>
+
+      <button onClick={reopenStudio}
+        className="w-full text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">
+        {t('seller.liveBroadcast.reopenStudio')}
+      </button>
+    </div>
+  )
+}
+
 // ── Step 2: 연결 설정 ────────────────────────────────────────────
 interface StepSetupProps {
   stream: LiveStream; method: StreamMethod; channels: YouTubeChannel[]
@@ -762,63 +882,11 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
         </div>
       </div>
 
-      {method === 'quick' && (
-        <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
-              <Play className="w-4 h-4 text-pink-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{t('seller.liveBroadcast.quickStartTitle')}</p>
-              <p className="text-xs text-gray-500">{t('seller.liveBroadcast.quickStartTitleDesc')}</p>
-            </div>
-          </div>
-          {[t('seller.liveBroadcast.quickStep1'), t('seller.liveBroadcast.quickStep2'), t('seller.liveBroadcast.quickStep3'), t('seller.liveBroadcast.quickStep4')].map((s, i) => (
-            <div key={i} className="flex items-start gap-2 text-sm text-gray-700">
-              <span className="w-5 h-5 rounded-full bg-pink-100 text-pink-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-              {s}
-            </div>
-          ))}
-          <Button onClick={() => {
-            onGoLive()
-            const vid = stream.youtube_video_id || stream.youtube_broadcast_id
-            if (vid) {
-              window.open(`https://studio.youtube.com/video/${vid}/livestreaming`, '_blank')
-            } else {
-              toast.info(t('seller.liveBroadcast.createFirst'))
-            }
-          }} className="w-full bg-pink-600 hover:bg-pink-700 text-white mt-2">
-            <Play className="w-4 h-4 mr-2" /> {t('seller.liveBroadcast.createAndOpenStudio')}
-          </Button>
-          <p className="text-[10px] text-gray-400 text-center">{t('seller.liveBroadcast.youtubeApiAutoNote')}</p>
-        </div>
-      )}
-
-      {method === 'youtube' && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-              <Youtube className="w-4 h-4 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{t('seller.liveBroadcast.ytStudioTitle')}</p>
-              <p className="text-xs text-gray-500">{t('seller.liveBroadcast.ytStudioDesc')}</p>
-            </div>
-          </div>
-          {[t('seller.liveBroadcast.ytStep1'), t('seller.liveBroadcast.ytStep2'), t('seller.liveBroadcast.ytStep3'), t('seller.liveBroadcast.ytStep4')].map((s, i) => (
-            <div key={i} className="flex items-start gap-2 text-sm text-gray-700">
-              <span className="w-5 h-5 rounded-full bg-red-100 text-red-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-              {s}
-            </div>
-          ))}
-          <Button onClick={() => {
-            onGoLive()
-            const vid = stream.youtube_video_id || stream.youtube_broadcast_id
-            window.open(vid ? `https://studio.youtube.com/video/${vid}/livestreaming` : 'https://studio.youtube.com/channel/UC/livestreaming', '_blank')
-          }} className="w-full bg-red-600 hover:bg-red-700 text-white mt-2">
-            <ExternalLink className="w-4 h-4 mr-2" /> {t('seller.liveBroadcast.openYtStudio')}
-          </Button>
-        </div>
+      {(method === 'quick' || method === 'youtube') && (
+        <YouTubeStudioWaiting
+          stream={stream}
+          accent={method === 'quick' ? 'pink' : 'red'}
+        />
       )}
 
       {method === 'obs' && (
@@ -902,8 +970,8 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
           </button>
           <div className="flex-1" />
           <button onClick={onGoLive}
-            className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
-            {t('seller.liveBroadcast.goLive')}
+            className="text-[11px] text-gray-300 hover:text-gray-500 underline underline-offset-2">
+            {t('seller.liveBroadcast.manualStartHint')}
           </button>
         </div>
       </div>
@@ -919,38 +987,48 @@ interface StepLiveProps {
 
 function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLiveProps) {
   const { t } = useTranslation()
+  const startedAtRef = useRef(Date.now())
+  const [elapsed, setElapsed] = useState('00:00')
+
+  // 방송 경과 시간 타이머
+  useEffect(() => {
+    const tick = () => {
+      const sec = Math.floor((Date.now() - startedAtRef.current) / 1000)
+      const h = Math.floor(sec / 3600)
+      const m = Math.floor((sec % 3600) / 60)
+      const s = sec % 60
+      setElapsed(h > 0
+        ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+        : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [])
+
   return (
     <div className="space-y-4">
       {/* 상태 바 */}
       <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-200">
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-full shrink-0">
             <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> LIVE
           </span>
-          <p className="text-sm font-semibold text-gray-900 truncate max-w-[200px]">{stream.title}</p>
+          <span className="text-xs font-mono text-gray-500 shrink-0">{elapsed}</span>
+          <p className="text-sm font-semibold text-gray-900 truncate">{stream.title}</p>
         </div>
-        <Button onClick={onEndStream} size="sm" variant="destructive">{t('seller.liveBroadcast.endBroadcast')}</Button>
+        <Button onClick={onEndStream} size="sm" variant="destructive" className="shrink-0">{t('seller.liveBroadcast.endBroadcast')}</Button>
       </div>
+
+      {/* 실시간 통계 카운터 */}
+      <LiveStatsBar streamId={stream.id} />
 
       {/* 시청자 링크 공유 */}
       <ShareLiveLink streamId={stream.id} />
 
-      {/* 영상 + 채팅 */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="flex flex-col lg:flex-row">
-          {stream.youtube_video_id && (
-            <div className="lg:w-1/2 bg-black">
-              <div className="aspect-video">
-                <iframe src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=0&mute=1`}
-                  title={t('seller.live')} className="w-full h-full"
-                  allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-              </div>
-            </div>
-          )}
-          <div className={`${stream.youtube_video_id ? 'lg:w-1/2' : 'w-full'} flex flex-col border-t lg:border-t-0 lg:border-l border-gray-100`} style={{ minHeight: 320 }}>
-            <LiveChatPanel streamId={stream.id} />
-          </div>
-        </div>
+      {/* 채팅 (영상 미리보기 제거 — YouTube embed는 30초 지연으로 모니터링 무의미) */}
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ minHeight: 320 }}>
+        <LiveChatPanel streamId={stream.id} />
       </div>
 
       {/* 상품 전환 + 경매/타임딜 */}
@@ -993,8 +1071,53 @@ interface StreamListProps {
   streams: LiveStream[]; onManage: (stream: LiveStream) => void
 }
 
+// ── 라이브 실시간 통계 카운터 ────────────────────────────────────
+interface LiveStats { viewer_count: number; chat_count: number; order_count: number; revenue: number }
+function LiveStatsBar({ streamId }: { streamId: number }) {
+  const { t } = useTranslation()
+  const [stats, setStats] = useState<LiveStats>({ viewer_count: 0, chat_count: 0, order_count: 0, revenue: 0 })
+
+  useEffect(() => {
+    let active = true
+    const fetchStats = async () => {
+      try {
+        const res = await api.get(`/api/seller/streams/${streamId}/live-stats`)
+        if (active && res.data?.success) setStats(res.data.data)
+      } catch { /* silent */ }
+    }
+    fetchStats()
+    const id = setInterval(fetchStats, 5000)
+    return () => { active = false; clearInterval(id) }
+  }, [streamId])
+
+  const ordersUnit = t('seller.liveBroadcast.ordersUnit')
+  const items = [
+    { icon: Eye, label: t('seller.liveBroadcast.statsViewers'), value: stats.viewer_count.toLocaleString(), color: 'text-blue-600' },
+    { icon: MessageSquare, label: t('seller.liveBroadcast.statsChat'), value: stats.chat_count.toLocaleString(), color: 'text-purple-600' },
+    { icon: ShoppingBag, label: t('seller.liveBroadcast.statsOrders'), value: `${stats.order_count}${ordersUnit}`, color: 'text-amber-600' },
+    { icon: DollarSign, label: t('seller.liveBroadcast.statsRevenue'), value: `₩${stats.revenue.toLocaleString()}`, color: 'text-green-600' },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {items.map(({ icon: Icon, label, value, color }) => (
+        <div key={label} className="bg-white rounded-xl border border-gray-200 px-3 py-2.5 flex items-center gap-2.5">
+          <div className={`w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center ${color}`}>
+            <Icon className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] text-gray-500 leading-tight">{label}</p>
+            <p className="text-sm font-bold text-gray-900 truncate">{value}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── 시청자 링크 공유 ─────────────────────────────────────────────
 function ShareLiveLink({ streamId }: { streamId: number }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const url = `https://live.ur-team.com/live/${streamId}`
 
@@ -1007,8 +1130,8 @@ function ShareLiveLink({ streamId }: { streamId: number }) {
   return (
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-4 py-3">
       <p className="text-xs font-semibold text-blue-800 mb-2">
-        시청자에게 이 링크를 공유하세요
-        <span className="ml-1 font-normal text-blue-600">— 후원·상품·경매 기능이 모두 활성화돼요</span>
+        {t('seller.liveBroadcast.shareLinkTitle')}
+        <span className="ml-1 font-normal text-blue-600">— {t('seller.liveBroadcast.shareLinkDesc')}</span>
       </p>
       <div className="flex gap-2">
         <code className="flex-1 text-xs font-mono bg-white border border-blue-100 rounded-lg px-3 py-2 text-blue-900 truncate">
@@ -1023,7 +1146,7 @@ function ShareLiveLink({ streamId }: { streamId: number }) {
           }`}
         >
           {copied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-          {copied ? '복사됨' : '복사'}
+          {copied ? t('seller.liveBroadcast.copied') : t('seller.liveBroadcast.copy')}
         </button>
       </div>
     </div>

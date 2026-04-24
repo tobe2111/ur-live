@@ -537,6 +537,11 @@ function AppContent() {
                 <SellerLiveBroadcastPage />
               </ProtectedRoute>
             } />
+            <Route path="/seller/live-broadcast/:streamId" element={
+              <ProtectedRoute requireSeller>
+                <SellerLiveBroadcastPage />
+              </ProtectedRoute>
+            } />
             <Route path="/seller/live-analytics" element={
               <ProtectedRoute requireSeller>
                 <SellerLiveAnalyticsPage />

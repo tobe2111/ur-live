@@ -156,8 +156,10 @@ sellerStreamsRoutes.get('/:id', async (c) => {
     const stream = await db.prepare(`
       SELECT
         id, seller_id, title, description,
-        youtube_video_id, status,
-        ended_at, created_at, updated_at
+        youtube_video_id, youtube_broadcast_id, youtube_live_chat_id,
+        rtmp_url, rtmp_key, youtube_embed_url,
+        thumbnail_url, current_product_id, status,
+        scheduled_at, ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ? AND seller_id = ?
     `).bind(streamId, sellerId).first<Record<string, unknown>>();
@@ -704,6 +706,57 @@ sellerStreamsRoutes.post('/:id/change-product', async (c) => {
     await cacheInvalidate(c.env.SESSION_KV, `stream:${streamId}`);
 
     return c.json({ success: true, message: '상품이 변경되었습니다' });
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
+/**
+ * GET /api/seller/streams/:id/live-stats
+ * 라이브 진행 중 실시간 통계 (시청자/채팅/주문/매출)
+ */
+sellerStreamsRoutes.get('/:id/live-stats', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+    const streamId = c.req.param('id');
+    const db = c.env.DB;
+
+    const stream = await db.prepare(
+      'SELECT id, current_viewers FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first<{ id: number; current_viewers?: number }>();
+    if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404);
+
+    let chatCount = 0;
+    try {
+      const r = await db.prepare(
+        'SELECT COUNT(*) as c FROM chat_messages WHERE live_stream_id = ?'
+      ).bind(streamId).first<{ c: number }>();
+      chatCount = r?.c || 0;
+    } catch { /* table may not exist */ }
+
+    let orderCount = 0;
+    let revenue = 0;
+    try {
+      const r = await db.prepare(`
+        SELECT COUNT(*) as c, COALESCE(SUM(total_amount), 0) as r
+        FROM orders
+        WHERE live_stream_id = ? AND status IN ('PAID','DONE','SHIPPING','DELIVERED')
+      `).bind(streamId).first<{ c: number; r: number }>();
+      orderCount = r?.c || 0;
+      revenue = r?.r || 0;
+    } catch { /* columns may differ */ }
+
+    return c.json({
+      success: true,
+      data: {
+        viewer_count: stream.current_viewers || 0,
+        chat_count: chatCount,
+        order_count: orderCount,
+        revenue,
+      }
+    });
   } catch (error: unknown) {
     return c.json({ success: false, error: (error as Error).message }, 500);
   }
