@@ -45,9 +45,18 @@ export default function BottomNav() {
     setProfileImage(localStorage.getItem('user_profile_image'))
   }, [location.pathname])
 
+  // 🛡️ 카카오 로그인 / 이메일 비번 로그인 / 레거시 토큰 모두 감지
+  // - 이메일/비번 셀러: user_type='seller' + seller_token
+  // - 카카오 로그인 (linked 셀러): user_type='user' + session_login + seller_token (백엔드가 자동 발급)
+  // - 에이전시: 동일 패턴
   const userType = localStorage.getItem('user_type')
-  const isLoggedIn = !!localStorage.getItem('access_token')
-  const isSeller = userType === 'seller'
+  const hasSessionLogin = !!localStorage.getItem('session_login')
+  const hasAccessToken = !!localStorage.getItem('access_token')
+  const hasSellerToken = !!localStorage.getItem('seller_token')
+  const hasAgencyToken = !!localStorage.getItem('agency_token')
+  const isLoggedIn = hasAccessToken || hasSessionLogin || hasSellerToken || hasAgencyToken
+  const isSeller = userType === 'seller' || hasSellerToken
+  const isAgency = userType === 'agency' || hasAgencyToken
 
   const leftItems = [
     { icon: Home, label: '홈', path: '/' },
@@ -161,14 +170,14 @@ export default function BottomNav() {
                   {/* Close */}
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-white">
-                      {isSeller ? '라이브 방송' : !isLoggedIn ? '로그인이 필요합니다' : '셀러로 시작하기'}
+                      {isSeller ? '라이브 방송' : isAgency ? '에이전시' : !isLoggedIn ? '로그인이 필요합니다' : '셀러로 시작하기'}
                     </h3>
                     <button onClick={() => setSheetOpen(false)} aria-label="시트 닫기" className="p-1 rounded-full hover:bg-white/10">
                       <X className="w-5 h-5 text-gray-500" />
                     </button>
                   </div>
 
-                  {/* Seller: live + 식사권 + dashboard */}
+                  {/* Seller: live + 식사권 + dashboard (+ agency 겸직이면 아래 블록도) */}
                   {isSeller && (
                     <div className="space-y-3">
                       <button
@@ -212,8 +221,42 @@ export default function BottomNav() {
                     </div>
                   )}
 
-                  {/* Logged in but not seller — 기존 계정 확장 (register-from-user) */}
-                  {isLoggedIn && !isSeller && (
+                  {/* 에이전시 권한도 있으면 (셀러 + 에이전시 겸직) 별도 링크 */}
+                  {isSeller && isAgency && (
+                    <button
+                      onClick={() => { setSheetOpen(false); navigate('/agency') }}
+                      className="w-full mt-2 flex items-center gap-3 p-3 bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                        <span className="text-lg">💼</span>
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-[13px] font-bold text-white">에이전시 대시보드</p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">소속 셀러 관리</p>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* 에이전시만 있고 셀러 아님 */}
+                  {!isSeller && isAgency && (
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => { setSheetOpen(false); navigate('/agency') }}
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl active:scale-[0.98] transition-transform"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                          <span className="text-xl">💼</span>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-[15px] font-bold text-white">에이전시 대시보드</p>
+                          <p className="text-[12px] text-white/70 mt-0.5">소속 셀러 관리, 계약, 정산</p>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Logged in but no seller/agency role — 권한 추가 유도 */}
+                  {isLoggedIn && !isSeller && !isAgency && (
                     <SellerUpgradePanel
                       onDone={() => { setSheetOpen(false) }}
                     />

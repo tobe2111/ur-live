@@ -12,6 +12,11 @@ export default function AgencyLoginPage() {
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
 
+  // 🛡️ 카카오 세션 있는데 에이전시 권한 없음 → 안내
+  const kakaoLinkedButNoAgency =
+    typeof window !== 'undefined' &&
+    !!localStorage.getItem('session_login') && !localStorage.getItem('agency_token')
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -164,6 +169,23 @@ export default function AgencyLoginPage() {
                 <span>또는</span>
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
+
+              {kakaoLinkedButNoAgency && (
+                <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800">
+                  <p className="font-bold mb-1">⚠ 현재 카카오 계정엔 에이전시 권한이 없어요</p>
+                  <p className="mb-2">아래 방법 중 하나로 해결하세요:</p>
+                  <ul className="space-y-1 list-disc pl-4">
+                    <li>기존 이메일/비번 에이전시라면 먼저 로그인 → 프로필에서 "카카오 연동"</li>
+                    <li>
+                      에이전시가 처음이라면{' '}
+                      <Link to="/agency/register/business" className="text-blue-600 font-semibold underline">
+                        에이전시 신청하기
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => {

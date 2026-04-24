@@ -20,6 +20,10 @@ export default function SellerLoginPage() {
     if (saved) { setFormData(prev => ({ ...prev, email: saved })); setRememberMe(true) }
   }, [])
 
+  // 🛡️ 카카오 세션 있는데 셀러 권한 없음 → 안내 배너
+  const kakaoLinkedButNoSeller =
+    !!localStorage.getItem('session_login') && !localStorage.getItem('seller_token')
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -236,6 +240,26 @@ export default function SellerLoginPage() {
                 <span>또는</span>
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
+
+              {/* 카카오 로그인했는데 셀러 권한 미연동인 경우 안내 */}
+              {kakaoLinkedButNoSeller && (
+                <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800">
+                  <p className="font-bold mb-1">⚠ 현재 카카오 계정엔 셀러 권한이 없어요</p>
+                  <p className="mb-2">아래 방법 중 하나로 해결하세요:</p>
+                  <ul className="space-y-1 list-disc pl-4">
+                    <li>
+                      기존 이메일/비번 셀러라면 먼저 로그인 → 프로필에서 "카카오 연동"
+                    </li>
+                    <li>
+                      셀러가 처음이라면{' '}
+                      <Link to="/seller/register/business" className="text-blue-600 font-semibold underline">
+                        셀러 신청하기
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => {
