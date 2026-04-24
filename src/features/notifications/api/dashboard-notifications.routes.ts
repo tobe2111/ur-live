@@ -85,7 +85,7 @@ dashboardNotificationsRoutes.get('/', requireAuth(), async (c) => {
   }
 
   const { results } = await DB.prepare(
-    `SELECT * FROM dashboard_notifications WHERE ${whereClause} ORDER BY created_at DESC LIMIT ?`
+    `SELECT id, recipient_type, recipient_id, type, title, message, link, is_read, created_at FROM dashboard_notifications WHERE ${whereClause} ORDER BY created_at DESC LIMIT ?`
   ).bind(...params, limit).all();
 
   // Unread count

@@ -291,7 +291,7 @@ adminMiscRoutes.get('/settings/commission', cors(), async (c) => {
       await DB.prepare(`UPDATE platform_settings SET value = '5' WHERE key = 'commission_rate_meal_voucher' AND value = '10'`).run();
     } catch { /* exists */ }
 
-    const { results } = await DB.prepare("SELECT * FROM platform_settings WHERE key LIKE 'commission_%' ORDER BY key").all();
+    const { results } = await DB.prepare("SELECT key, value, description, updated_at FROM platform_settings WHERE key LIKE 'commission_%' ORDER BY key").all();
     return c.json({ success: true, data: results ?? [] });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);

@@ -200,7 +200,7 @@ youtubeGrowthRoutes.get('/my', requireAuth(), async (c) => {
   if (!seller) return c.json({ success: true, data: [] });
 
   const { results } = await DB.prepare(
-    "SELECT * FROM youtube_growth_requests WHERE seller_id = ? AND payment_status = 'paid' ORDER BY requested_at DESC"
+    "SELECT id, seller_id, channel_url, current_subscribers, target_subscribers, price, order_id, payment_key, payment_status, status, admin_memo, requested_at, completed_at FROM youtube_growth_requests WHERE seller_id = ? AND payment_status = 'paid' ORDER BY requested_at DESC"
   ).bind(seller.id).all();
 
   return c.json({ success: true, data: results ?? [] });

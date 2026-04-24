@@ -106,7 +106,7 @@ streamsProductsRouter.get('/:id/current-product', async (c) => {
     }
 
     const product = await db
-      .prepare('SELECT * FROM products WHERE id = ?')
+      .prepare('SELECT id, name, description, price, original_price, discount_rate, image_url, stock, category, live_stream_id, is_active, created_at, updated_at, seller_id, version, detail_images, sold_count, view_count, avg_rating, review_count FROM products WHERE id = ?')
       .bind(stream.current_product_id)
       .first();
 

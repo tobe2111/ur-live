@@ -197,7 +197,7 @@ adminReviewGeneratorRoutes.get('/reviews/product/:productId', cors(), async (c) 
   try {
     const DB = c.env.DB;
     const productId = c.req.param('productId');
-    const { results } = await DB.prepare('SELECT * FROM product_reviews WHERE product_id = ? ORDER BY created_at DESC LIMIT 100').bind(productId).all();
+    const { results } = await DB.prepare('SELECT id, product_id, user_id, order_id, rating, content, images, is_visible, created_at, updated_at FROM product_reviews WHERE product_id = ? ORDER BY created_at DESC LIMIT 100').bind(productId).all();
     return c.json({ success: true, data: results ?? [] });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);

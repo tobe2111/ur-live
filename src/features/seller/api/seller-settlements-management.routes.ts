@@ -84,7 +84,7 @@ sellerSettlementsManagementRoutes.get('/settlements', async (c) => {
     const limit = parseInt(c.req.query('limit') || '20');
     const offset = parseInt(c.req.query('offset') || '0');
     const rows = await db.prepare(
-      'SELECT * FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
+      'SELECT id, seller_id, amount, bank_name, account_number, account_holder, status, created_at FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
     ).bind(sellerId, limit, offset).all().catch(() => ({ results: [] }));
     const count = await db.prepare('SELECT COUNT(*) as total FROM settlements WHERE seller_id = ?')
       .bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 }));
@@ -237,7 +237,7 @@ sellerSettlementsManagementRoutes.get('/settlements/:id/download', async (c) => 
   const settlementId = c.req.param('id');
   try {
     const settlement = await DB.prepare(
-      `SELECT * FROM settlements WHERE id = ? AND seller_id = ?`
+      `SELECT id, seller_id, amount, bank_name, account_number, account_holder, status, created_at FROM settlements WHERE id = ? AND seller_id = ?`
     ).bind(settlementId, sellerId).first<SettlementRow>();
 
     if (!settlement) return c.json({ success: false, error: '정산 내역을 찾을 수 없습니다' }, 404);

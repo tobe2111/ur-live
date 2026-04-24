@@ -17,7 +17,15 @@ export class OrderRepository {
    */
   async findById(id: number): Promise<Order | null> {
     const result = await this.db.prepare(`
-      SELECT * FROM orders WHERE id = ?
+      SELECT id, order_number, user_id, total_amount, payment_key, payment_status,
+             shipping_address, shipping_name, shipping_phone, live_stream_id,
+             created_at, updated_at, shipping_memo, courier, tracking_number,
+             shipped_at, delivered_at, seller_id, commission_rate, commission_amount,
+             seller_amount, cancelled_at, cancel_reason, settlement_status, settled_at,
+             subtotal, shipping_fee, discount_amount, currency, idempotency_key, locale,
+             toss_order_id, toss_payment_key, payment_method, paid_at, status,
+             shipping_company, recipient_name, recipient_phone, shipping_postal_code, refunded_amount
+      FROM orders WHERE id = ?
     `).bind(id).first<Order>();
     
     return result || null;
@@ -28,7 +36,15 @@ export class OrderRepository {
    */
   async findByOrderNumber(orderNumber: string): Promise<Order | null> {
     const result = await this.db.prepare(`
-      SELECT * FROM orders WHERE order_number = ?
+      SELECT id, order_number, user_id, total_amount, payment_key, payment_status,
+             shipping_address, shipping_name, shipping_phone, live_stream_id,
+             created_at, updated_at, shipping_memo, courier, tracking_number,
+             shipped_at, delivered_at, seller_id, commission_rate, commission_amount,
+             seller_amount, cancelled_at, cancel_reason, settlement_status, settled_at,
+             subtotal, shipping_fee, discount_amount, currency, idempotency_key, locale,
+             toss_order_id, toss_payment_key, payment_method, paid_at, status,
+             shipping_company, recipient_name, recipient_phone, shipping_postal_code, refunded_amount
+      FROM orders WHERE order_number = ?
     `).bind(orderNumber).first<Order>();
     
     return result || null;
@@ -38,7 +54,15 @@ export class OrderRepository {
    * 필터 조건으로 주문 목록 조회
    */
   async findAll(filter: OrderFilter, limit: number = 20, offset: number = 0): Promise<Order[]> {
-    let query = `SELECT * FROM orders WHERE 1=1`;
+    let query = `SELECT id, order_number, user_id, total_amount, payment_key, payment_status,
+             shipping_address, shipping_name, shipping_phone, live_stream_id,
+             created_at, updated_at, shipping_memo, courier, tracking_number,
+             shipped_at, delivered_at, seller_id, commission_rate, commission_amount,
+             seller_amount, cancelled_at, cancel_reason, settlement_status, settled_at,
+             subtotal, shipping_fee, discount_amount, currency, idempotency_key, locale,
+             toss_order_id, toss_payment_key, payment_method, paid_at, status,
+             shipping_company, recipient_name, recipient_phone, shipping_postal_code, refunded_amount
+      FROM orders WHERE 1=1`;
     const params: any[] = [];
     
     if (filter.userId) {

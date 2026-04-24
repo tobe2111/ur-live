@@ -153,7 +153,7 @@ sellerAnalyticsRoutes.get('/coupons', requireAuth(), async (c) => {
   try { await c.env.DB.prepare("ALTER TABLE coupons ADD COLUMN seller_id INTEGER").run() } catch {}
 
   const { results } = await c.env.DB.prepare(`
-    SELECT * FROM coupons WHERE seller_id = ? ORDER BY created_at DESC
+    SELECT id, code, name, type, value, min_order_amount, max_discount, total_count, used_count, seller_id, is_active, starts_at, expires_at, created_at FROM coupons WHERE seller_id = ? ORDER BY created_at DESC
   `).bind(sellerId).all()
 
   return c.json({ success: true, data: results || [] })

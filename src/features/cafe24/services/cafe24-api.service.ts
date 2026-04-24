@@ -184,7 +184,7 @@ export async function getStoredTokens(
   kek?: string,
 ): Promise<Cafe24TokenRow | null> {
   const row = await db
-    .prepare('SELECT * FROM cafe24_auth WHERE mall_id = ? LIMIT 1')
+    .prepare('SELECT id, mall_id, access_token, refresh_token, expires_at, scopes, created_at, updated_at FROM cafe24_auth WHERE mall_id = ? LIMIT 1')
     .bind(mallId)
     .first<Cafe24TokenRow>();
   if (!row) return null;

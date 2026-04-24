@@ -188,7 +188,7 @@ referralRoutes.post('/join/:code', requireAuth(), async (c) => {
   const code = c.req.param('code');
   const group = await queryFirst<any>(
     DB,
-    "SELECT * FROM referral_groups WHERE invite_code = ? AND status = 'open'",
+    "SELECT id, product_id, creator_user_id, creator_name, invite_code, target_count, current_count, discount_per_person, discount_percent, tiers, status, expires_at, created_at FROM referral_groups WHERE invite_code = ? AND status = 'open'",
     [code],
   );
 
@@ -406,7 +406,7 @@ referralRoutes.get('/:code', optionalAuth(), async (c) => {
   const code = c.req.param('code');
   const group = await queryFirst<any>(
     DB,
-    'SELECT * FROM referral_groups WHERE invite_code = ?',
+    'SELECT id, product_id, creator_user_id, creator_name, invite_code, target_count, current_count, discount_per_person, discount_percent, tiers, status, expires_at, created_at FROM referral_groups WHERE invite_code = ?',
     [code],
   );
   if (!group) return c.json({ success: false, error: '그룹을 찾을 수 없습니다' }, 404);

@@ -13,7 +13,10 @@ export class ProductRepository {
    */
   async findById(id: number): Promise<Product | null> {
     const result = await this.db.prepare(`
-      SELECT * FROM products WHERE id = ? AND is_active = 1
+      SELECT id, name, description, price, original_price, discount_rate, image_url, stock, category,
+             live_stream_id, is_active, created_at, updated_at, seller_id, version, detail_images,
+             sold_count, view_count, avg_rating, review_count
+      FROM products WHERE id = ? AND is_active = 1
     `).bind(id).first<Product>();
     
     return result || null;
@@ -25,7 +28,10 @@ export class ProductRepository {
   async findAll(filter: ProductFilter, offset: number = 0, limit: number = 20): Promise<Product[]> {
     // 🛡️ 2026-04-22: suspended/inactive seller 상품 숨김 (검색/브라우즈 방어)
     // seller_id NULL (cafe24 등) 은 통과, seller is_active=0 이면 상품 숨김.
-    let query = `SELECT * FROM products WHERE is_active = 1
+    let query = `SELECT id, name, description, price, original_price, discount_rate, image_url, stock, category,
+             live_stream_id, is_active, created_at, updated_at, seller_id, version, detail_images,
+             sold_count, view_count, avg_rating, review_count
+      FROM products WHERE is_active = 1
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
     const params: any[] = [];
     

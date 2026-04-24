@@ -249,7 +249,7 @@ bundleCartRoutes.post('/:id/add-to-cart', cors(), async (c) => {
 
     // 번들 존재 + 활성 확인
     const bundle = await DB.prepare(
-      'SELECT * FROM product_bundles WHERE id = ? AND is_active = 1'
+      'SELECT id, name, description, seller_id, discount_type, discount_value, image_url, is_active, created_at, updated_at FROM product_bundles WHERE id = ? AND is_active = 1'
     ).bind(bundleId).first<BundleRow>()
     if (!bundle) return c.json({ success: false, error: '번들을 찾을 수 없습니다' }, 404)
 

@@ -84,7 +84,7 @@ app.get('/notifications', async (c) => {
     `).run().catch(() => {})
 
     const { results } = await c.env.DB.prepare(
-      'SELECT * FROM agency_notifications WHERE agency_id = ? ORDER BY created_at DESC LIMIT 30'
+      'SELECT id, agency_id, type, title, message, link, is_read, created_at FROM agency_notifications WHERE agency_id = ? ORDER BY created_at DESC LIMIT 30'
     ).bind(agencyId).all()
 
     const unread = await c.env.DB.prepare(

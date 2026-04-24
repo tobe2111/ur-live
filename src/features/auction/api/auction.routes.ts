@@ -156,7 +156,7 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
   }
 
   const auction = await DB.prepare(
-    "SELECT * FROM live_auctions WHERE id = ? AND status = 'active'"
+    "SELECT id, stream_id, seller_id, product_id, title, start_price, current_price, min_increment, bid_count, winner_user_id, winner_name, status, duration_seconds, started_at, ends_at, created_at FROM live_auctions WHERE id = ? AND status = 'active'"
   ).bind(auctionId).first<any>();
 
   if (!auction) return c.json({ success: false, error: '활성 경매가 없습니다' }, 404);
@@ -258,7 +258,7 @@ auctionRoutes.get('/stream/:streamId', async (c) => {
 
   const streamId = c.req.param('streamId');
   const auction = await DB.prepare(
-    "SELECT * FROM live_auctions WHERE stream_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1"
+    "SELECT id, stream_id, seller_id, product_id, title, start_price, current_price, min_increment, bid_count, winner_user_id, winner_name, status, duration_seconds, started_at, ends_at, created_at FROM live_auctions WHERE stream_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1"
   ).bind(streamId).first<any>();
 
   if (!auction) return c.json({ success: true, data: null });
@@ -310,7 +310,7 @@ auctionRoutes.post('/:id/end', requireAuth(), async (c) => {
     ).bind(auctionId).run();
   }
 
-  const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
+  const auction = await DB.prepare('SELECT id, stream_id, seller_id, product_id, title, start_price, current_price, min_increment, bid_count, winner_user_id, winner_name, status, duration_seconds, started_at, ends_at, created_at FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
   return c.json({ success: true, data: auction });
 });
 
@@ -346,7 +346,7 @@ auctionRoutes.get('/:id', async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?')
+  const auction = await DB.prepare('SELECT id, stream_id, seller_id, product_id, title, start_price, current_price, min_increment, bid_count, winner_user_id, winner_name, status, duration_seconds, started_at, ends_at, created_at FROM live_auctions WHERE id = ?')
     .bind(c.req.param('id')).first<any>();
   if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
 
@@ -369,7 +369,7 @@ auctionRoutes.post('/:id/purchase', requireAuth(), async (c) => {
   await ensureTables(DB);
 
   const auctionId = Number(c.req.param('id'));
-  const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
+  const auction = await DB.prepare('SELECT id, stream_id, seller_id, product_id, title, start_price, current_price, min_increment, bid_count, winner_user_id, winner_name, status, duration_seconds, started_at, ends_at, created_at FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
 
   if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
   if (auction.status !== 'ended') return c.json({ success: false, error: '아직 종료되지 않은 경매입니다' }, 400);
@@ -435,7 +435,7 @@ auctionRoutes.post('/:id/promote-runner-up', requireAuth(), async (c) => {
   await ensureTables(DB);
 
   const auctionId = Number(c.req.param('id'));
-  const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
+  const auction = await DB.prepare('SELECT id, stream_id, seller_id, product_id, title, start_price, current_price, min_increment, bid_count, winner_user_id, winner_name, status, duration_seconds, started_at, ends_at, created_at FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
   if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
   if (auction.status !== 'ended') return c.json({ success: false, error: '종료된 경매에서만 승격 가능' }, 400);
 

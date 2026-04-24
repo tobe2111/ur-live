@@ -147,7 +147,7 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
   try {
     // 상품 확인
     const product = await DB.prepare(
-      "SELECT * FROM products WHERE id = ? AND category = 'meal_voucher' AND is_active = 1"
+      "SELECT id, name, description, price, original_price, discount_rate, image_url, stock, category, live_stream_id, is_active, created_at, updated_at, seller_id, version, detail_images, sold_count, view_count, avg_rating, review_count FROM products WHERE id = ? AND category = 'meal_voucher' AND is_active = 1"
     ).bind(productId).first<any>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
@@ -338,7 +338,7 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
 
   try {
     const product = await DB.prepare(
-      "SELECT * FROM products WHERE id = ? AND category = 'meal_voucher'"
+      "SELECT id, name, description, price, original_price, discount_rate, image_url, stock, category, live_stream_id, is_active, created_at, updated_at, seller_id, version, detail_images, sold_count, view_count, avg_rating, review_count FROM products WHERE id = ? AND category = 'meal_voucher'"
     ).bind(productId).first<any>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)

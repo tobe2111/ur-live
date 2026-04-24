@@ -71,7 +71,7 @@ app.get('/public', async (c) => {
 app.get('/public/:slug', async (c) => {
   await ensureBlogTable(c.env.DB)
   const post = await c.env.DB.prepare(`
-    SELECT * FROM blog_posts WHERE slug = ? AND is_published = 1
+    SELECT id, slug, title, summary, content, tags, author, thumbnail_url, is_published, published_at, created_at, updated_at FROM blog_posts WHERE slug = ? AND is_published = 1
   `).bind(c.req.param('slug')).first()
 
   if (!post) return c.json({ success: false, error: 'Not found' }, 404)
@@ -103,7 +103,7 @@ app.get('/', async (c) => {
 app.get('/:id', async (c) => {
   await ensureBlogTable(c.env.DB)
   const post = await c.env.DB.prepare(
-    'SELECT * FROM blog_posts WHERE id = ?'
+    'SELECT id, slug, title, summary, content, tags, author, thumbnail_url, is_published, published_at, created_at, updated_at FROM blog_posts WHERE id = ?'
   ).bind(Number(c.req.param('id'))).first()
   if (!post) return c.json({ success: false, error: 'Not found' }, 404)
   return c.json({ success: true, data: post })

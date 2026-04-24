@@ -92,7 +92,7 @@ sectionsRoutes.get('/admin', requireAuth(), async (c) => {
   await ensureTables(DB);
 
   const { results: sections } = await DB.prepare(
-    'SELECT * FROM homepage_sections ORDER BY sort_order ASC'
+    'SELECT id, title, subtitle, sort_order, is_active, layout, created_at, updated_at FROM homepage_sections ORDER BY sort_order ASC'
   ).all();
 
   const result = [];

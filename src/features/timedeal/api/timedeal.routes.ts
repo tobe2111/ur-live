@@ -195,7 +195,7 @@ timedealRoutes.get('/stream/:streamId', async (c) => {
   const streamId = c.req.param('streamId');
   const deal = await queryFirst<any>(
     DB,
-    "SELECT * FROM time_deals WHERE stream_id = ? AND status IN ('active', 'achieved') ORDER BY id DESC LIMIT 1",
+    "SELECT id, stream_id, seller_id, product_id, product_name, original_price, deal_price, discount_percent, max_claims, claimed_count, duration_seconds, is_group_buy, target_participants, bonus_discount_percent, status, triggered_at, expires_at, created_at FROM time_deals WHERE stream_id = ? AND status IN ('active', 'achieved') ORDER BY id DESC LIMIT 1",
     [streamId],
   );
 
@@ -245,7 +245,7 @@ timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
   const dealId = Number(c.req.param('id'));
   const deal = await queryFirst<any>(
     DB,
-    "SELECT * FROM time_deals WHERE id = ? AND status IN ('active', 'achieved')",
+    "SELECT id, stream_id, seller_id, product_id, product_name, original_price, deal_price, discount_percent, max_claims, claimed_count, duration_seconds, is_group_buy, target_participants, bonus_discount_percent, status, triggered_at, expires_at, created_at FROM time_deals WHERE id = ? AND status IN ('active', 'achieved')",
     [dealId],
   );
 
@@ -330,7 +330,7 @@ timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
 timedealRoutes.get('/:id', async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
-  const deal = await DB.prepare('SELECT * FROM time_deals WHERE id = ?').bind(c.req.param('id')).first<any>();
+  const deal = await DB.prepare('SELECT id, stream_id, seller_id, product_id, product_name, original_price, deal_price, discount_percent, max_claims, claimed_count, duration_seconds, is_group_buy, target_participants, bonus_discount_percent, status, triggered_at, expires_at, created_at FROM time_deals WHERE id = ?').bind(c.req.param('id')).first<any>();
   if (!deal) return c.json({ success: false, error: '타임딜을 찾을 수 없습니다' }, 404);
   return c.json({ success: true, data: deal });
 });

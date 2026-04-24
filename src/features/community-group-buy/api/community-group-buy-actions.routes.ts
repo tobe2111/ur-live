@@ -131,7 +131,7 @@ communityGroupBuyActionsRoutes.post('/join/:code', requireAuth(), async (c) => {
   // 공동구매 조회
   const group = await queryFirst<any>(
     DB,
-    "SELECT * FROM community_group_buys WHERE invite_code = ?",
+    "SELECT id, creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count, current_count, total_deposited, status, invite_code, confirmed_price, confirmed_discount_percent, restaurant_seller_id, expires_at, created_at FROM community_group_buys WHERE invite_code = ?",
     [code],
   );
 
@@ -282,7 +282,7 @@ communityGroupBuyActionsRoutes.patch('/:id/confirm', requireAuth(), async (c) =>
 
   const group = await queryFirst<any>(
     DB,
-    'SELECT * FROM community_group_buys WHERE id = ?',
+    'SELECT id, creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count, current_count, total_deposited, status, invite_code, confirmed_price, confirmed_discount_percent, restaurant_seller_id, expires_at, created_at FROM community_group_buys WHERE id = ?',
     [groupId],
   );
 
@@ -336,7 +336,7 @@ communityGroupBuyActionsRoutes.post('/:id/refund', requireAuth(), async (c) => {
 
   const group = await queryFirst<any>(
     DB,
-    'SELECT * FROM community_group_buys WHERE id = ?',
+    'SELECT id, creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count, current_count, total_deposited, status, invite_code, confirmed_price, confirmed_discount_percent, restaurant_seller_id, expires_at, created_at FROM community_group_buys WHERE id = ?',
     [groupId],
   );
 
@@ -361,7 +361,7 @@ communityGroupBuyActionsRoutes.post('/:id/refund', requireAuth(), async (c) => {
   // 모든 deposited 상태 멤버에게 보증금 환불
   const members = await executeQuery<any>(
     DB,
-    "SELECT * FROM community_group_buy_members WHERE group_buy_id = ? AND status = 'deposited'",
+    "SELECT id, group_buy_id, user_id, user_name, deposit_amount, status, joined_at FROM community_group_buy_members WHERE group_buy_id = ? AND status = 'deposited'",
     [group.id],
   );
 
@@ -478,7 +478,7 @@ communityGroupBuyActionsRoutes.patch('/:id/status', requireAuth(), async (c) => 
 
   const group = await queryFirst<any>(
     DB,
-    'SELECT * FROM community_group_buys WHERE id = ?',
+    'SELECT id, creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count, current_count, total_deposited, status, invite_code, confirmed_price, confirmed_discount_percent, restaurant_seller_id, expires_at, created_at FROM community_group_buys WHERE id = ?',
     [groupId],
   );
 

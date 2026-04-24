@@ -27,7 +27,7 @@ bannerRoutes.get('/', async (c) => {
     const now = new Date().toISOString();
 
     const banners = await DB.prepare(`
-      SELECT * FROM banners
+      SELECT id, title, image_url, link_url, description, is_active, display_order, start_date, end_date, created_at FROM banners
       WHERE is_active = 1
         AND (start_date IS NULL OR start_date <= ?)
         AND (end_date IS NULL OR end_date >= ?)

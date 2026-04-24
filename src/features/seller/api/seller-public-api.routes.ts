@@ -140,7 +140,7 @@ sellerPublicApiRoutes.post('/products/:id/options', async (c) => {
     }
 
     const updated = await DB.prepare(
-      `SELECT * FROM product_options WHERE product_id = ? ORDER BY option_type, option_value`
+      `SELECT id, product_id, option_type, option_value, price_adjustment, stock, created_at FROM product_options WHERE product_id = ? ORDER BY option_type, option_value`
     ).bind(productId).all();
 
     return c.json({ success: true, data: updated.results || [] }, 201);

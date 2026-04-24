@@ -64,7 +64,7 @@ socialRoutes.get('/notifications', requireAuth(), async (c) => {
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
   await ensureTables(DB)
-  const { results } = await DB.prepare("SELECT * FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50").bind(String(user.id)).all()
+  const { results } = await DB.prepare("SELECT id, user_id, type, title, message, link, is_read, created_at FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50").bind(String(user.id)).all()
   return c.json({ success: true, data: results ?? [] })
 })
 

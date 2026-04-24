@@ -373,7 +373,7 @@ export async function getSettlementReport(
   settlementId: number
 ): Promise<SettlementReport | null> {
   const settlement = await DB.prepare(`
-    SELECT * FROM settlements WHERE id = ?
+    SELECT id, period_start, period_end, total_sales, total_platform_fee, total_settlement, status, generated_at, completed_at, created_at FROM settlements WHERE id = ?
   `).bind(settlementId).first<SettlementRow>()
 
   if (!settlement) {

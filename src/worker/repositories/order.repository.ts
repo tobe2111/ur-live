@@ -147,7 +147,10 @@ export class OrderRepository {
     if (!row) return null;
 
     const items = await this.qb.queryMany<Record<string, unknown>>(
-      'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
+      `SELECT id, order_id, product_id, option_id, quantity, price,
+              product_name, option_info, product_image, seller_id,
+              unit_price, subtotal, currency, options, status
+       FROM order_items WHERE order_id = ? ORDER BY id`,
       [orderId]
     );
 
@@ -170,7 +173,10 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
+          `SELECT id, order_id, product_id, option_id, quantity, price,
+                  product_name, option_info, product_image, seller_id,
+                  unit_price, subtotal, currency, options, status
+           FROM order_items WHERE order_id = ? ORDER BY id`,
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -209,7 +215,10 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
+          `SELECT id, order_id, product_id, option_id, quantity, price,
+                  product_name, option_info, product_image, seller_id,
+                  unit_price, subtotal, currency, options, status
+           FROM order_items WHERE order_id = ? ORDER BY id`,
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -506,7 +515,16 @@ export class OrderRepository {
    */
   async findByIdempotencyKey(key: string, userId: string): Promise<Order | null> {
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      'SELECT * FROM orders WHERE idempotency_key = ? AND user_id = ?',
+      `SELECT id, order_number, user_id, total_amount, payment_key, payment_status,
+              shipping_address, shipping_name, shipping_phone, live_stream_id,
+              created_at, updated_at, shipping_memo, courier, tracking_number,
+              shipped_at, delivered_at, seller_id, commission_rate, commission_amount,
+              seller_amount, cancelled_at, cancel_reason, settlement_status, settled_at,
+              subtotal, shipping_fee, discount_amount, currency, idempotency_key, locale,
+              toss_order_id, toss_payment_key, payment_method, paid_at, status,
+              shipping_company, recipient_name, recipient_phone, shipping_postal_code,
+              refunded_amount
+       FROM orders WHERE idempotency_key = ? AND user_id = ?`,
       [key, userId]
     );
     if (!row) return null;

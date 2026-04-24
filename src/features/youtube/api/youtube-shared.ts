@@ -174,12 +174,12 @@ export async function getValidAccessToken(
 ): Promise<string | null> {
   const auth = channelOAuthId
     ? await db.prepare(`
-        SELECT * FROM seller_youtube_oauth
+        SELECT id, seller_id, google_email, access_token, refresh_token, expires_at, channel_id, channel_title, channel_thumbnail, subscriber_count, default_stream_id, default_rtmp_url, default_rtmp_key, has_persistent_key, is_active, created_at, updated_at FROM seller_youtube_oauth
         WHERE seller_id = ? AND id = ? AND is_active = 1
         LIMIT 1
       `).bind(sellerId, channelOAuthId).first<SellerYouTubeAuth>()
     : await db.prepare(`
-        SELECT * FROM seller_youtube_oauth
+        SELECT id, seller_id, google_email, access_token, refresh_token, expires_at, channel_id, channel_title, channel_thumbnail, subscriber_count, default_stream_id, default_rtmp_url, default_rtmp_key, has_persistent_key, is_active, created_at, updated_at FROM seller_youtube_oauth
         WHERE seller_id = ? AND is_active = 1
         ORDER BY created_at DESC LIMIT 1
       `).bind(sellerId).first<SellerYouTubeAuth>()

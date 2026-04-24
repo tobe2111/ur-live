@@ -138,7 +138,7 @@ broadcastNotifyRoutes.post('/send/:streamId', requireAuth(), async (c) => {
 
   // 미발송 구독자 조회
   const { results: subs } = await DB.prepare(
-    'SELECT * FROM broadcast_subscriptions WHERE stream_id = ? AND notified = 0'
+    'SELECT id, stream_id, user_id, user_name, user_phone, notify_alimtalk, notify_inapp, notified, created_at FROM broadcast_subscriptions WHERE stream_id = ? AND notified = 0'
   ).bind(streamId).all<any>();
 
   if (!subs || subs.length === 0) return c.json({ success: true, data: { sent: 0 } });

@@ -37,7 +37,9 @@ adminCouponsRoutes.get('/coupons', cors(), async (c) => {
   try {
     const DB = c.env.DB;
     await ensureCouponsTable(DB);
-    const { results } = await DB.prepare('SELECT * FROM coupons ORDER BY created_at DESC').all();
+    const { results } = await DB.prepare(
+      'SELECT id, code, name, type, value, min_order_amount, max_discount, total_count, used_count, seller_id, is_active, starts_at, expires_at, created_at FROM coupons ORDER BY created_at DESC'
+    ).all();
     return c.json({ success: true, data: results ?? [] });
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
@@ -92,7 +94,7 @@ adminCouponsRoutes.post('/coupons/:id/send-segment', cors(), async (c) => {
       return c.json({ success: false, error: '유효하지 않은 세그먼트' }, 400);
     }
 
-    const coupon = await DB.prepare('SELECT * FROM coupons WHERE id = ?').bind(couponId).first<Record<string, unknown>>();
+    const coupon = await DB.prepare('SELECT id, code, name, type, value, min_order_amount, max_discount, total_count, used_count, seller_id, is_active, starts_at, expires_at, created_at FROM coupons WHERE id = ?').bind(couponId).first<Record<string, unknown>>();
     if (!coupon) return c.json({ success: false, error: '쿠폰을 찾을 수 없습니다' }, 404);
 
     try {

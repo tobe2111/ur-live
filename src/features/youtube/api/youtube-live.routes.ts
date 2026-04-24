@@ -233,7 +233,7 @@ app.post('/live/:id/start', async (c) => {
   try {
     // Get stream info
     const stream = await c.env.DB.prepare(`
-      SELECT * FROM live_streams WHERE id = ? AND seller_id = ?
+      SELECT id, title, description, youtube_video_id, status, current_product_id, created_at, updated_at, seller_id, scheduled_at, seller_instagram, seller_youtube FROM live_streams WHERE id = ? AND seller_id = ?
     `).bind(streamId, sellerId).first()
 
     if (!stream) {
@@ -314,7 +314,7 @@ app.get('/live/:id/status', async (c) => {
 
   try {
     const stream = await c.env.DB.prepare(`
-      SELECT * FROM live_streams WHERE id = ? AND seller_id = ?
+      SELECT id, title, description, youtube_video_id, status, current_product_id, created_at, updated_at, seller_id, scheduled_at, seller_instagram, seller_youtube FROM live_streams WHERE id = ? AND seller_id = ?
     `).bind(streamId, sellerId).first()
 
     if (!stream) {
@@ -448,7 +448,7 @@ app.post('/live/:id/end', async (c) => {
 
   try {
     const stream = await c.env.DB.prepare(`
-      SELECT * FROM live_streams WHERE id = ? AND seller_id = ?
+      SELECT id, title, description, youtube_video_id, status, current_product_id, created_at, updated_at, seller_id, scheduled_at, seller_instagram, seller_youtube FROM live_streams WHERE id = ? AND seller_id = ?
     `).bind(streamId, sellerId).first()
 
     if (!stream) {

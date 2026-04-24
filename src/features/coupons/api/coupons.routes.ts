@@ -21,7 +21,7 @@ couponRoutes.post('/apply', rateLimit({ action: 'coupon_apply', max: 10, windowS
   await ensureTables(DB)
   const { code, order_amount } = await c.req.json<{ code: string; order_amount: number }>()
 
-  const coupon = await DB.prepare("SELECT * FROM coupons WHERE code = ? AND is_active = 1").bind(code).first<any>()
+  const coupon = await DB.prepare("SELECT id, code, name, type, value, min_order_amount, max_discount, total_count, used_count, seller_id, is_active, starts_at, expires_at, created_at FROM coupons WHERE code = ? AND is_active = 1").bind(code).first<any>()
   if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 404)
   if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) return c.json({ success: false, error: '만료된 쿠폰입니다' }, 400)
   if (coupon.total_count > 0 && coupon.used_count >= coupon.total_count) return c.json({ success: false, error: '쿠폰이 모두 소진되었습니다' }, 400)
@@ -180,7 +180,7 @@ couponRoutes.get('/claim/:code', requireAuth(), async (c) => {
   await ensureTables(DB)
   const code = c.req.param('code')
 
-  const coupon = await DB.prepare("SELECT * FROM coupons WHERE code = ? AND is_active = 1").bind(code).first<Record<string, unknown>>()
+  const coupon = await DB.prepare("SELECT id, code, name, type, value, min_order_amount, max_discount, total_count, used_count, seller_id, is_active, starts_at, expires_at, created_at FROM coupons WHERE code = ? AND is_active = 1").bind(code).first<Record<string, unknown>>()
   if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 404)
   if (coupon.expires_at && new Date(coupon.expires_at as string) < new Date()) return c.json({ success: false, error: '만료된 쿠폰입니다' }, 400)
   if ((coupon.total_count as number) > 0 && (coupon.used_count as number) >= (coupon.total_count as number)) return c.json({ success: false, error: '쿠폰이 모두 소진되었습니다' }, 400)

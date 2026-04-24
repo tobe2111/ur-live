@@ -24,7 +24,7 @@ communityGroupBuyBrowseRoutes.get('/detail/:code', async (c) => {
 
   const group = await queryFirst<any>(
     DB,
-    'SELECT * FROM community_group_buys WHERE invite_code = ?',
+    'SELECT id, creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count, current_count, total_deposited, status, invite_code, confirmed_price, confirmed_discount_percent, restaurant_seller_id, expires_at, created_at FROM community_group_buys WHERE invite_code = ?',
     [code],
   );
 
@@ -79,7 +79,7 @@ communityGroupBuyBrowseRoutes.get('/list', async (c) => {
 
   const groups = await executeQuery<any>(
     DB,
-    `SELECT * FROM community_group_buys
+    `SELECT id, creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count, current_count, total_deposited, status, invite_code, confirmed_price, confirmed_discount_percent, restaurant_seller_id, expires_at, created_at FROM community_group_buys
      WHERE status = ?
      ORDER BY ${orderBy}
      LIMIT ? OFFSET ?`,
@@ -111,7 +111,7 @@ communityGroupBuyBrowseRoutes.get('/my', requireAuth(), async (c) => {
   // 내가 생성한 공동구매
   const created = await executeQuery<any>(
     DB,
-    `SELECT * FROM community_group_buys WHERE creator_user_id = ? ORDER BY created_at DESC`,
+    `SELECT id, creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count, current_count, total_deposited, status, invite_code, confirmed_price, confirmed_discount_percent, restaurant_seller_id, expires_at, created_at FROM community_group_buys WHERE creator_user_id = ? ORDER BY created_at DESC`,
     [userId],
   );
 

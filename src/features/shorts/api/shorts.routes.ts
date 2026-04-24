@@ -197,7 +197,7 @@ shortsRoutes.get('/seller/list', requireAuth(), async (c) => {
   if (!seller) return c.json({ success: true, data: [] })
 
   const { results } = await DB.prepare(
-    "SELECT * FROM shorts WHERE seller_id = ? AND status != 'deleted' ORDER BY created_at DESC"
+    "SELECT id, seller_id, title, description, video_url, youtube_video_id, thumbnail_url, duration, view_count, like_count, status, product_id, created_at, updated_at FROM shorts WHERE seller_id = ? AND status != 'deleted' ORDER BY created_at DESC"
   ).bind(seller.id).all()
 
   return c.json({ success: true, data: results ?? [] })

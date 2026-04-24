@@ -200,7 +200,7 @@ app.get('/channels', async (c) => {
 
   try {
     const auth = await c.env.DB.prepare(`
-      SELECT * FROM seller_youtube_oauth
+      SELECT id, seller_id, google_email, access_token, refresh_token, expires_at, channel_id, channel_title, channel_thumbnail, subscriber_count, default_stream_id, default_rtmp_url, default_rtmp_key, has_persistent_key, is_active, created_at, updated_at FROM seller_youtube_oauth
       WHERE seller_id = ? AND is_active = 1
       ORDER BY created_at DESC
     `).bind(sellerId).all()
