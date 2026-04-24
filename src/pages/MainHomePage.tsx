@@ -325,28 +325,21 @@ export default function MainHomePage() {
           )}
         </div>
 
-        {/* Bottom CTA — 달성 임박 하이라이트 */}
-        {(() => {
-          const fTarget = featured?.group_buy_target || 0
-          const fCurrent = featured?.group_buy_current || 0
-          const fRemaining = Math.max(0, fTarget - fCurrent)
-          const fPct = fTarget ? Math.min(100, Math.round(fCurrent / fTarget * 100)) : 0
-          const fNearAchieve = fPct >= 80 && fPct < 100
-          return (
-            <div className="absolute bottom-4 left-4 right-4 flex items-center gap-2 z-10">
-              <div className={`flex-1 rounded-xl p-2.5 flex items-center gap-2 backdrop-blur-md border ${fNearAchieve ? 'bg-amber-500/25 border-amber-400/60' : 'bg-red-500/[0.18] border-red-500/40'}`}>
-                <Clock className={`w-3.5 h-3.5 shrink-0 ${fNearAchieve ? 'text-amber-200' : 'text-red-300'}`} />
-                <div>
-                  <p className="text-[11px] text-white font-bold leading-tight">{featured ? fmtEnd(featured.group_buy_deadline) : '진행 중'}</p>
-                  <p className={`text-[10px] font-extrabold ${fNearAchieve ? 'text-amber-200 animate-pulse' : 'text-red-300'}`}>
-                    {featured && fNearAchieve && fRemaining > 0 ? `🔥 ${fRemaining}명만 더!` : featured ? `${fCurrent}/${fTarget}명 모집 중` : ''}
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => featured && navigate(`/products/${featured.id}`)} className="rounded-xl px-4 py-3 shrink-0 bg-white text-black text-[12px] font-extrabold">참여하기</button>
+        {/* Bottom CTA */}
+        <div className="absolute bottom-4 left-4 right-4 flex items-center gap-2 z-10">
+          <div className="flex-1 rounded-xl p-2.5 flex items-center gap-2 bg-red-500/[0.18] backdrop-blur-md border border-red-500/40">
+            <Clock className="w-3.5 h-3.5 text-red-300 shrink-0" />
+            <div>
+              <p className="text-[11px] text-white font-bold leading-tight">{featured ? fmtEnd(featured.group_buy_deadline) : '진행 중'}</p>
+              <p className="text-[10px] text-red-300 font-semibold">
+                {featured && (featured.group_buy_current || 0) > 0
+                  ? `지금 ${featured.group_buy_current}명 구매 중`
+                  : '마감 임박'}
+              </p>
             </div>
-          )
-        })()}
+          </div>
+          <button onClick={() => featured && navigate(`/products/${featured.id}`)} className="rounded-xl px-4 py-3 shrink-0 bg-white text-black text-[12px] font-extrabold">구매하기</button>
+        </div>
       </div>
 
       {/* ═══ Quick 3-entry ═══ */}
@@ -395,16 +388,12 @@ export default function MainHomePage() {
 
         <div className="space-y-2">
           {displayMeals.slice(0, 5).map((m, i) => {
-            const target = m.group_buy_target || 0
             const current = m.group_buy_current || 0
-            const pct = target ? Math.min(100, Math.round(current / target * 100)) : 0
-            const remaining = Math.max(0, target - current)
             const d = disc(m.price, m.original_price)
             const isClosing = m.group_buy_deadline && (new Date(m.group_buy_deadline).getTime() - Date.now()) < 3600000
-            const nearAchieve = pct >= 80 && pct < 100
-            const achieved = pct >= 100
+            const isHot = current >= 20 // 사회적 증명: 20명 이상 구매 시 인기 표시
             return (
-              <button key={m.id} onClick={() => navigate(`/products/${m.id}`)} className={`w-full flex items-center gap-3 rounded-xl p-2.5 text-left border ${nearAchieve ? 'bg-amber-500/[0.08] border-amber-400/40' : achieved ? 'bg-green-500/[0.08] border-green-400/40' : 'bg-[#0B0B0B] border-[#151515]'}`}>
+              <button key={m.id} onClick={() => navigate(`/products/${m.id}`)} className="w-full flex items-center gap-3 rounded-xl p-2.5 text-left bg-[#0B0B0B] border border-[#151515]">
                 <span className="text-[20px] font-black w-[22px] shrink-0" style={{ color: i < 3 ? '#FBBF24' : '#6B7280', letterSpacing: '-0.03em' }}>{i + 1}</span>
                 <div className="rounded-lg overflow-hidden shrink-0 relative w-[68px] h-[68px] bg-[#1A1A1A]">
                   {m.image_url && <img src={m.image_url} alt={m.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />}
@@ -412,8 +401,7 @@ export default function MainHomePage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1 mb-1 flex-wrap">
                     <span className="text-[9px] font-extrabold px-1 rounded bg-[#FDE68A] text-[#78350F]">🍽 {m.restaurant_address?.split(' ')[0] || '맛집'}</span>
-                    {achieved && <span className="text-[9px] font-extrabold px-1 rounded bg-[#10B981] text-white">✓ 달성</span>}
-                    {!achieved && nearAchieve && <span className="text-[9px] font-extrabold px-1 rounded bg-amber-500 text-white animate-pulse">🔥 임박</span>}
+                    {isHot && <span className="text-[9px] font-extrabold px-1 rounded bg-pink-500 text-white">🔥 HOT</span>}
                     {isClosing && <span className="text-[9px] font-extrabold px-1 rounded bg-[#EF4444] text-white">⏰ 곧 마감</span>}
                   </div>
                   <p className="text-[12px] text-white font-bold leading-tight line-clamp-2">{m.name}</p>
@@ -421,16 +409,11 @@ export default function MainHomePage() {
                     {d > 0 && <span className="text-[11px] font-extrabold text-red-400">{d}%</span>}
                     <span className="text-[12px] font-extrabold text-white">{m.price.toLocaleString()}원</span>
                   </div>
-                  <div className="mt-1.5 rounded-full h-[4px] bg-[#1A1A1A] overflow-hidden">
-                    <div className={`rounded-full h-[4px] transition-all ${achieved ? 'bg-green-500' : nearAchieve ? 'bg-gradient-to-r from-amber-400 to-orange-500 animate-pulse' : 'bg-[#FBBF24]'}`} style={{ width: `${pct}%` }} />
-                  </div>
-                  <p className={`text-[10px] mt-1 font-semibold ${nearAchieve ? 'text-amber-300' : achieved ? 'text-green-300' : 'text-gray-400'}`}>
-                    {achieved
-                      ? `🎉 ${current}명 달성!`
-                      : remaining <= 5
-                      ? `${remaining}명만 더 모이면 달성!`
-                      : `${current}/${target}명 · ${pct}%`}
-                  </p>
+                  {current > 0 && (
+                    <p className="text-[10px] mt-1.5 text-gray-400">
+                      👥 <span className="font-semibold text-gray-200">{current}명</span> 구매 중
+                    </p>
+                  )}
                 </div>
               </button>
             )
