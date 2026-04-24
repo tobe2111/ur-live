@@ -35,7 +35,9 @@ const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
 
 // ── 테이블 자동 생성 ──────────────────────────────────────────
+let _agencyTablesEnsured = false;
 async function ensureAgencyTables(DB: D1Database) {
+  if (_agencyTablesEnsured) return;
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agencies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,6 +69,7 @@ async function ensureAgencyTables(DB: D1Database) {
       UNIQUE(agency_id, seller_id)
     )
   `).run().catch(() => {})
+  _agencyTablesEnsured = true;
 }
 
 // ── 비밀번호 재설정 토큰 테이블 보장 ─────────────────────────
