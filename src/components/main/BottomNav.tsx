@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift } from 'lucide-react'
+import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils } from 'lucide-react'
 
 export default function BottomNav() {
   const navigate = useNavigate()
@@ -135,7 +135,7 @@ export default function BottomNav() {
                     </button>
                   </div>
 
-                  {/* Seller: live + dashboard */}
+                  {/* Seller: live + 식사권 + dashboard */}
                   {isSeller && (
                     <div className="space-y-3">
                       <button
@@ -148,6 +148,19 @@ export default function BottomNav() {
                         <div className="text-left">
                           <p className="text-[15px] font-bold text-white">라이브 방송 시작하기</p>
                           <p className="text-[12px] text-white/70 mt-0.5">YouTube 연동으로 바로 방송 시작</p>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl active:scale-[0.98] transition-transform"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                          <Utensils className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-[15px] font-bold text-white">식사권 상품 등록</p>
+                          <p className="text-[12px] text-white/80 mt-0.5">맛집 식사권을 공구 상품으로 올리기</p>
                         </div>
                       </button>
 
