@@ -19,7 +19,8 @@ import PrismQRCode from '@/components/streaming/PrismQRCode'
 import LiveChatPanel from '@/components/seller/LiveChatPanel'
 import { InlineCameraPreview } from '@/components/streaming/InlineCameraPreview'
 import { BroadcastDiagnostic } from '@/components/streaming/BroadcastDiagnostic'
-import { OBSWebSocketClient, type OBSConnectConfig, type OBSStatus, saveOBSConfig, loadOBSConfig, clearOBSConfig } from '@/lib/obs-websocket'
+import { FirstTimeTutorial, hasSeenTutorial } from '@/components/streaming/FirstTimeTutorial'
+import { OBSWebSocketClient, type OBSConnectConfig, type OBSStatus, saveOBSConfig, loadOBSConfig, clearOBSConfig, hasOBSExtension } from '@/lib/obs-websocket'
 import { downloadOBSProfile } from '@/lib/obs-profile'
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -485,6 +486,8 @@ export default function SellerLiveBroadcastPage() {
   const [recapStream, setRecapStream] = useState<LiveStream | null>(null)
   const [recapStats, setRecapStats] = useState<{ duration: string; viewers: number; chat: number; orders: number; revenue: number } | null>(null)
   const [pollFailures, setPollFailures] = useState(0)
+  const [transitionCountdown, setTransitionCountdown] = useState<number | null>(null)
+  const [showTutorial, setShowTutorial] = useState(false)
   const restoredRef = useRef(false)
   const liveStartTimeRef = useRef<number>(0)
 
@@ -492,6 +495,14 @@ export default function SellerLiveBroadcastPage() {
     if (!isSellerAuthenticated()) { navigate('/seller/login'); return }
     loadData()
   }, [navigate])
+
+  // 첫 방문 셀러에게 튜토리얼 1회 노출 (채널 있고 방송 기록 없을 때)
+  useEffect(() => {
+    if (loading || channels.length === 0) return
+    if (streams.length === 0 && !hasSeenTutorial()) {
+      setShowTutorial(true)
+    }
+  }, [loading, channels.length, streams.length])
 
   // URL streamId 기반 상태 복원 (새로고침 / 직접 진입 대응)
   useEffect(() => {
@@ -546,24 +557,37 @@ export default function SellerLiveBroadcastPage() {
     if (active) navigate(`/seller/live-broadcast/${active.id}`, { replace: true })
   }, [streams, urlStreamId, loading, navigate])
 
-  // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링 (P2-10: 실패 카운터)
+  // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링
   useEffect(() => {
-    if (step !== 'setup' || !currentStream) return
+    if (step !== 'setup' || !currentStream || transitionCountdown !== null) return
     const poll = async () => {
       try {
         const res = await api.get(`/api/seller/youtube/live/${currentStream.id}/status`)
         setPollFailures(0)
         if (res.data?.success && res.data.data?.synced && res.data.data?.status === 'live') {
-          toast.success(t('seller.liveBroadcast.broadcastStartedAuto'))
-          setCurrentStream(s => s ? { ...s, status: 'live' } : s)
-          setStep('live')
-          liveStartTimeRef.current = Date.now()
+          // 감지됨 → 3-2-1 카운트다운 → 전환
+          setTransitionCountdown(3)
         }
       } catch { setPollFailures(c => c + 1) }
     }
     const interval = setInterval(poll, 3000)
     return () => clearInterval(interval)
-  }, [step, currentStream, t])
+  }, [step, currentStream, transitionCountdown])
+
+  // 카운트다운 tick
+  useEffect(() => {
+    if (transitionCountdown === null) return
+    if (transitionCountdown === 0) {
+      toast.success(t('seller.liveBroadcast.broadcastStartedAuto'))
+      setCurrentStream(s => s ? { ...s, status: 'live' } : s)
+      setStep('live')
+      liveStartTimeRef.current = Date.now()
+      setTransitionCountdown(null)
+      return
+    }
+    const id = setTimeout(() => setTransitionCountdown(c => (c !== null ? c - 1 : null)), 1000)
+    return () => clearTimeout(id)
+  }, [transitionCountdown, t])
 
   async function loadData() {
     try {
@@ -843,6 +867,27 @@ export default function SellerLiveBroadcastPage() {
           <div className="fixed bottom-4 right-4 z-40 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 shadow-lg flex items-center gap-2.5 max-w-xs">
             <Loader2 className="w-4 h-4 text-amber-600 animate-spin shrink-0" />
             <p className="text-xs text-amber-800">{t('seller.liveBroadcast.reconnecting')}</p>
+          </div>
+        )}
+
+        {/* 첫 방송 셀러 튜토리얼 */}
+        {showTutorial && (
+          <FirstTimeTutorial onClose={() => setShowTutorial(false)} />
+        )}
+
+        {/* 스트림 감지 시 3-2-1 카운트다운 풀스크린 */}
+        {transitionCountdown !== null && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <div className="inline-flex items-center gap-2 text-red-400 text-sm font-bold">
+                <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                스트림 감지됨
+              </div>
+              <div className="text-white text-[140px] font-black leading-none tabular-nums">
+                {transitionCountdown === 0 ? '▶' : transitionCountdown}
+              </div>
+              <p className="text-gray-300 text-base">잠시 후 라이브 대시보드로 이동합니다</p>
+            </div>
           </div>
         )}
 
@@ -1515,7 +1560,9 @@ function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy }: {
           </div>
         )}
 
-        {/* OBS 원격 제어 연결 */}
+        {/* OBS 원격 제어 연결 — Extension 있거나 localhost dev 에서만 노출
+            (HTTPS 프로덕션에서는 Mixed Content 로 작동 안 함 → 숨김) */}
+        {(hasOBSExtension() || (typeof window !== 'undefined' && window.location.protocol !== 'https:')) && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
           {!showSetup ? (
             <button onClick={() => setShowSetup(true)}
@@ -1560,6 +1607,7 @@ function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy }: {
             </div>
           )}
         </div>
+        )}
       </div>
     )
   }
@@ -1752,6 +1800,17 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
   const { t } = useTranslation()
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
   const [showDiagnostic, setShowDiagnostic] = useState(false)
+  const [autoDiagnosticShown, setAutoDiagnosticShown] = useState(false)
+
+  // 30초 경과 + 여전히 setup 상태 = 송출이 감지 안 되고 있음 → 진단 자동 제안
+  useEffect(() => {
+    if (autoDiagnosticShown) return
+    const id = setTimeout(() => {
+      setShowDiagnostic(true)
+      setAutoDiagnosticShown(true)
+    }, 30000)
+    return () => clearTimeout(id)
+  }, [autoDiagnosticShown])
 
   // P1-5: 예약 방송이고 시작 시간이 30분 이상 미래면 카운트다운 화면
   const scheduledTime = stream.scheduled_at ? new Date(stream.scheduled_at).getTime() : 0
