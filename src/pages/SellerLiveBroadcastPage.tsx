@@ -17,6 +17,7 @@ import {
 import { isSellerAuthenticated } from '@/lib/seller-auth'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
 import LiveChatPanel from '@/components/seller/LiveChatPanel'
+import { OBSWebSocketClient, type OBSConnectConfig, type OBSStatus, saveOBSConfig, loadOBSConfig, clearOBSConfig } from '@/lib/obs-websocket'
 
 // ── Types ──────────────────────────────────────────────────────────
 interface YouTubeChannel {
@@ -1315,34 +1316,258 @@ function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStream; onB
   )
 }
 
+// ── OBS 원격 제어 (obs-websocket v5) ────────────────────────────
+// OBS 28+ 는 Tools → WebSocket Server Settings 에서 활성화 가능.
+// 셀러가 한 번 연결 설정을 저장하면 이후엔 우리 앱에서 OBS 시작/중지/씬 전환.
+function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy }: {
+  stream: LiveStream; hasPersistentKey: boolean
+  copiedField: string | null; onCopy: (v: string, k: string) => void
+}) {
+  const { t } = useTranslation()
+  const clientRef = useRef<OBSWebSocketClient | null>(null)
+  const [connected, setConnected] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [showSetup, setShowSetup] = useState(false)
+  const [setupForm, setSetupForm] = useState<OBSConnectConfig>(() =>
+    loadOBSConfig() || { host: 'localhost', port: 4455, password: '' })
+  const [obsStatus, setObsStatus] = useState<OBSStatus>({ outputActive: false })
+  const [starting, setStarting] = useState(false)
+
+  // 저장된 설정 있으면 자동 연결 시도
+  useEffect(() => {
+    const cfg = loadOBSConfig()
+    if (!cfg) return
+    const client = new OBSWebSocketClient()
+    clientRef.current = client
+    const off = client.onStatusChange(s => setObsStatus(prev => ({ ...prev, ...s })))
+    setConnecting(true)
+    client.connect(cfg).then(ok => {
+      setConnected(ok)
+      setConnecting(false)
+    })
+    return () => { off(); client.disconnect() }
+  }, [])
+
+  async function connect() {
+    if (!clientRef.current) clientRef.current = new OBSWebSocketClient()
+    setConnecting(true)
+    const ok = await clientRef.current.connect(setupForm)
+    setConnecting(false)
+    if (ok) {
+      saveOBSConfig(setupForm)
+      setConnected(true)
+      setShowSetup(false)
+      toast.success(t('seller.liveBroadcast.obsConnected'))
+    } else {
+      toast.error(t('seller.liveBroadcast.obsConnectFailed'))
+    }
+  }
+
+  function disconnect() {
+    clientRef.current?.disconnect()
+    clientRef.current = null
+    clearOBSConfig()
+    setConnected(false)
+  }
+
+  async function startOBSStream() {
+    if (!clientRef.current || !stream.rtmp_url || !stream.rtmp_key) return
+    setStarting(true)
+    try {
+      // 1) OBS에 RTMP 대상 세팅
+      await clientRef.current.setRtmpTarget(stream.rtmp_url, stream.rtmp_key)
+      // 2) 스트리밍 시작
+      await clientRef.current.startStreaming()
+      toast.success(t('seller.liveBroadcast.obsStreamStarted'))
+    } catch {
+      toast.error(t('seller.liveBroadcast.obsStreamFailed'))
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  // ── 미연결: 연결 UI OR 기존 RTMP 복사 fallback ─────────────────
+  if (!connected) {
+    return (
+      <div className="space-y-3">
+        {hasPersistentKey ? (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-800">{t('seller.liveBroadcast.rtmpSetupDone')}</p>
+              <p className="text-xs text-green-700">{t('seller.liveBroadcast.obsJustStart')}</p>
+            </div>
+          </div>
+        ) : stream.rtmp_url && (
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-purple-700">{t('seller.liveBroadcast.obsRtmpSetupDesc')}</p>
+            <button onClick={() => onCopy(`URL: ${stream.rtmp_url}\nKey: ${stream.rtmp_key}`, 'all')}
+              className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+              {copiedField === 'all' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedField === 'all' ? t('seller.liveBroadcast.copyDone') : 'RTMP URL + Key 복사'}
+            </button>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-purple-700 hover:text-purple-900 select-none">개별 복사 + 권장 설정 보기</summary>
+              <div className="mt-2 space-y-2">
+                <RtmpBlock label="RTMP URL" value={stream.rtmp_url} fieldKey="rtmp_url" copiedField={copiedField} onCopy={onCopy} />
+                {stream.rtmp_key && <RtmpBlock label={t('seller.liveBroadcast.streamKey')} value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
+                <RecommendedPresetBlock tool="obs" />
+              </div>
+            </details>
+          </div>
+        )}
+
+        {/* OBS 원격 제어 연결 */}
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+          {!showSetup ? (
+            <button onClick={() => setShowSetup(true)}
+              className="w-full flex items-center justify-between text-left">
+              <div>
+                <p className="text-sm font-semibold text-blue-900">✨ {t('seller.liveBroadcast.obsRemoteTitle')}</p>
+                <p className="text-[11px] text-blue-700 mt-0.5">{t('seller.liveBroadcast.obsRemoteDesc')}</p>
+              </div>
+              <span className="text-xs text-blue-600 shrink-0 ml-2">{t('seller.liveBroadcast.obsSetup')} →</span>
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-blue-900">{t('seller.liveBroadcast.obsConnectTitle')}</p>
+              <p className="text-[10px] text-blue-700">
+                OBS → Tools → WebSocket Server Settings 에서 Enable + Password 설정 후 아래 입력
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={setupForm.host} onChange={e => setSetupForm(f => ({ ...f, host: e.target.value }))}
+                  placeholder="localhost"
+                  className="px-2 py-1.5 border border-blue-200 rounded-lg text-xs text-gray-900 bg-white" />
+                <input type="number" value={setupForm.port} onChange={e => setSetupForm(f => ({ ...f, port: Number(e.target.value) || 4455 }))}
+                  placeholder="4455"
+                  className="px-2 py-1.5 border border-blue-200 rounded-lg text-xs text-gray-900 bg-white" />
+              </div>
+              <input type="password" value={setupForm.password || ''}
+                onChange={e => setSetupForm(f => ({ ...f, password: e.target.value }))}
+                placeholder={t('seller.liveBroadcast.obsPassword') as string}
+                className="w-full px-2 py-1.5 border border-blue-200 rounded-lg text-xs text-gray-900 bg-white" />
+              <div className="flex gap-2">
+                <button onClick={() => setShowSetup(false)}
+                  className="flex-1 py-2 bg-white border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold">
+                  {t('common.cancel')}
+                </button>
+                <button onClick={connect} disabled={connecting}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50">
+                  {connecting ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : t('seller.liveBroadcast.obsConnect')}
+                </button>
+              </div>
+              <p className="text-[9px] text-blue-600 mt-1">
+                💡 HTTPS 브라우저에서 ws://localhost 연결은 Mixed Content 로 차단될 수 있어요. 개발 환경 먼저 테스트 권장.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── 연결됨: 원격 제어 UI ────────────────────────────────────────
+  return (
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <p className="text-sm font-bold text-blue-900">{t('seller.liveBroadcast.obsConnectedTitle')}</p>
+        </div>
+        <button onClick={disconnect} className="text-[10px] text-blue-600 hover:text-blue-800 underline">
+          {t('seller.liveBroadcast.obsDisconnect')}
+        </button>
+      </div>
+
+      {obsStatus.outputActive ? (
+        <div className="bg-red-500 text-white rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            <span className="text-sm font-bold">{t('seller.liveBroadcast.obsStreaming')}</span>
+            {obsStatus.outputTimecode && <span className="text-xs font-mono opacity-90">{obsStatus.outputTimecode}</span>}
+          </div>
+        </div>
+      ) : (
+        <button onClick={startOBSStream} disabled={starting || !stream.rtmp_url}
+          className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+          {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />}
+          {t('seller.liveBroadcast.obsStartFromApp')}
+        </button>
+      )}
+
+      {/* 씬 전환 */}
+      {obsStatus.sceneList && obsStatus.sceneList.length > 1 && (
+        <div>
+          <p className="text-[10px] font-semibold text-blue-700 mb-1.5">{t('seller.liveBroadcast.obsScenes')}</p>
+          <div className="flex gap-1.5 flex-wrap">
+            {obsStatus.sceneList.map(scene => (
+              <button key={scene}
+                onClick={() => clientRef.current?.switchScene(scene)}
+                className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
+                  obsStatus.currentScene === scene
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400'
+                }`}>
+                {scene}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {obsStatus.outputCongestion !== undefined && obsStatus.outputActive && (
+        <div className="text-[10px] text-blue-700">
+          {t('seller.liveBroadcast.obsNetworkHealth')}: {obsStatus.outputCongestion < 0.3 ? '🟢 좋음' : obsStatus.outputCongestion < 0.7 ? '🟡 보통' : '🔴 혼잡'}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── YouTube Studio 대기 화면 (Quick / YouTube 공통) ─────────────
-// Step 2 진입 시 자동으로 Studio 새 탭 오픈 + 자동 감지 안내.
+// Step 2 진입 시 자동으로 Studio 팝업 오픈 + 자동 감지 안내.
 // onGoLive() 호출 안 함 — 폴링이 YouTube live 상태 감지 시에만 전환.
+// stream.status === 'live' 가 되면 부모가 이 컴포넌트를 unmount → cleanup에서 팝업 자동 닫힘.
 function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStream; accent: 'pink' | 'red' }) {
   const { t } = useTranslation()
+  const popupRef = useRef<Window | null>(null)
   const openedRef = useRef(false)
   const vid = stream.youtube_video_id || stream.youtube_broadcast_id
   const studioUrl = vid
     ? `https://studio.youtube.com/video/${vid}/livestreaming`
     : 'https://studio.youtube.com/channel/UC/livestreaming'
 
+  function openPopup() {
+    const w = Math.min(1280, Math.floor(window.screen.availWidth * 0.85))
+    const h = Math.min(820, Math.floor(window.screen.availHeight * 0.85))
+    const left = Math.floor((window.screen.availWidth - w) / 2)
+    const top = Math.floor((window.screen.availHeight - h) / 2)
+    const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},noopener`
+    try {
+      const p = window.open(studioUrl, 'ur-yt-studio', features)
+      if (p) popupRef.current = p
+    } catch { /* blocked */ }
+  }
+
   useEffect(() => {
     if (openedRef.current) return
     openedRef.current = true
-    const tid = setTimeout(() => {
-      try { window.open(studioUrl, '_blank', 'noopener') } catch { /* blocked */ }
-    }, 200)
-    return () => clearTimeout(tid)
-  }, [studioUrl])
+    const tid = setTimeout(openPopup, 200)
+    return () => {
+      clearTimeout(tid)
+      // 컴포넌트 unmount 시 (= live 전환 시) 팝업 자동 닫기
+      try {
+        if (popupRef.current && !popupRef.current.closed) popupRef.current.close()
+      } catch { /* ignore */ }
+      popupRef.current = null
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const colorMap = {
     pink: { bg: 'bg-pink-50', border: 'border-pink-200', icon: 'bg-pink-100 text-pink-600', dot: 'bg-pink-400', accent: 'text-pink-700' },
     red: { bg: 'bg-red-50', border: 'border-red-200', icon: 'bg-red-100 text-red-600', dot: 'bg-red-400', accent: 'text-red-700' },
   }[accent]
-
-  function reopenStudio() {
-    try { window.open(studioUrl, '_blank', 'noopener') } catch { /* blocked */ }
-  }
 
   return (
     <div className={`${colorMap.bg} border ${colorMap.border} rounded-xl p-5 space-y-4`}>
@@ -1368,7 +1593,7 @@ function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStream; accent: 
         </p>
       </div>
 
-      <button onClick={reopenStudio}
+      <button onClick={openPopup}
         className="w-full text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">
         {t('seller.liveBroadcast.reopenStudio')}
       </button>
@@ -1410,34 +1635,7 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
       )}
 
       {method === 'obs' && (
-        <div className="space-y-3">
-          {hasPersistentKey ? (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-green-800">{t('seller.liveBroadcast.rtmpSetupDone')}</p>
-                <p className="text-xs text-green-700">{t('seller.liveBroadcast.obsJustStart')}</p>
-              </div>
-            </div>
-          ) : stream.rtmp_url && (
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
-              <p className="text-xs font-semibold text-purple-700">{t('seller.liveBroadcast.obsRtmpSetupDesc')}</p>
-              <button onClick={() => onCopy(`URL: ${stream.rtmp_url}\nKey: ${stream.rtmp_key}`, 'all')}
-                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
-                {copiedField === 'all' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copiedField === 'all' ? t('seller.liveBroadcast.copyDone') : 'RTMP URL + Key 복사'}
-              </button>
-              <details className="text-xs">
-                <summary className="cursor-pointer text-purple-700 hover:text-purple-900 select-none">개별 복사 + 권장 설정 보기</summary>
-                <div className="mt-2 space-y-2">
-                  <RtmpBlock label="RTMP URL" value={stream.rtmp_url} fieldKey="rtmp_url" copiedField={copiedField} onCopy={onCopy} />
-                  {stream.rtmp_key && <RtmpBlock label={t('seller.liveBroadcast.streamKey')} value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
-                  <RecommendedPresetBlock tool="obs" />
-                </div>
-              </details>
-            </div>
-          )}
-        </div>
+        <OBSRemoteControl stream={stream} hasPersistentKey={!!hasPersistentKey} copiedField={copiedField} onCopy={onCopy} />
       )}
 
       {method === 'prism' && (
