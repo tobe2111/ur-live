@@ -315,7 +315,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
             referrer_id: referrerId,
             order_id: order.id,
             product_id: request.items?.[0]?.product_id,
-            product_name: (request.items?.[0] as any)?.product_name,
+            product_name: request.items?.[0]?.product_name,
             buyer_id: String(userId),
             order_amount: order.total_amount,
           }),
@@ -431,7 +431,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
 
     // 🛡️ 2026-04-22: payment_status 추가 검증 — 결제 미완료 주문 환불 차단
     // status 가 PAID 여도 payment_status 가 pending/failed 이면 Toss 호출 시 404/inconsistent → DB 오염.
-    const payStatus = (order as any).payment_status;
+    const payStatus = order.payment_status;
     if (payStatus && payStatus !== 'approved') {
       return c.json({
         success: false,
@@ -533,14 +533,14 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
 
     // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 환불 금액만큼 포인트 환급
     try {
-      const payMethod = (order as any).payment_method;
+      const payMethod = order.payment_method;
       if (payMethod === 'deal_points' && refundAmount > 0) {
         await c.env.DB.prepare(
           'UPDATE user_points SET balance = balance + ? WHERE user_id = ?'
         ).bind(refundAmount, String(order.user_id)).run();
         await c.env.DB.prepare(
           "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-        ).bind(String(order.user_id), refundAmount, refundAmount, `[환불] 주문 환불 (order:${(order as any).order_number || body.order_id})`).run().catch(() => {});
+        ).bind(String(order.user_id), refundAmount, refundAmount, `[환불] 주문 환불 (order:${order.order_number || body.order_id})`).run().catch(() => {});
       }
     } catch (e) {
       console.error('[ORDERS] Points refund error:', e);
@@ -549,7 +549,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     // 유저에게 인앱 알림 (환불/주문 취소)
     try {
       const { notifyUser } = await import('../../lib/notifications');
-      await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${(order as any).order_number || body.order_id}`, '/my-orders');
+      await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${order.order_number || body.order_id}`, '/my-orders');
     } catch {} // fire and forget
 
     const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
@@ -705,7 +705,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
 
       // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 포인트 환급 (payment_method='deal_points')
       try {
-        const payMethod = (order as any).payment_method;
+        const payMethod = order.payment_method;
         if (payMethod === 'deal_points') {
           const refundPoints = cancelAmount ?? Number(order.total_amount ?? 0);
           if (refundPoints > 0) {

@@ -9,6 +9,7 @@
 // ============================================================
 
 import { Hono } from 'hono'
+import type { MiddlewareHandler } from 'hono'
 import type { Env } from '../types/env'
 import { handleChatSSE, handleLiveStreamSSE } from '../../lib/sse-realtime'
 import { optionalAuth, getCurrentUser, requireSellerOrAdmin } from '../middleware/auth'
@@ -32,13 +33,13 @@ const RECENT_CHAT_CACHE = new Map<string, { message: string; at: number }>()
 // ── SSE fallback: GET /api/live/:liveId/chat/sse ────────────────────────────
 liveSseRoutes.get('/:liveId/chat/sse', (c) => {
   const { liveId } = c.req.param()
-  return handleChatSSE(liveId, c.env as any)
+  return handleChatSSE(liveId, c.env)
 })
 
 // ── SSE fallback: GET /api/live/:liveId/sse ─────────────────────────────────
 liveSseRoutes.get('/:liveId/sse', (c) => {
   const { liveId } = c.req.param()
-  return handleLiveStreamSSE(liveId, c.env as any)
+  return handleLiveStreamSSE(liveId, c.env)
 })
 
 // ── Initial chat messages: GET /api/live/:liveId/chat/messages ───────────────
@@ -125,7 +126,7 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
   if (tokenFromQuery && c.env.JWT_SECRET) {
     try {
       const { verify } = await import('hono/jwt')
-      const payload = await verify(tokenFromQuery, c.env.JWT_SECRET, 'HS256') as any
+      const payload = await verify(tokenFromQuery, c.env.JWT_SECRET, 'HS256') as Record<string, unknown>
       if (payload && (payload.sub || payload.user_id || payload.id)) {
         authenticatedUserId = String(payload.sub || payload.user_id || payload.id)
       }
@@ -148,12 +149,10 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
     } else {
       headers.delete('x-auth-user-id') // 클라이언트가 직접 보낸 값 제거
     }
-    const forwardedReq = new Request(c.req.raw.url, {
+    return stub.fetch(c.req.raw.url, {
       method: c.req.raw.method,
       headers,
-      body: c.req.raw.body,
-    })
-    return stub.fetch(forwardedReq as any) as any
+    }) as unknown as Response
   } catch (err) {
     console.error('[WS] Durable Object proxy failed:', err)
     return c.json({ error: 'WebSocket connection failed', fallback: 'sse' }, 503)
@@ -174,7 +173,7 @@ liveSseRoutes.post('/:liveId/broadcast', requireSellerOrAdmin(), async (c) => {
   const stub = c.env.LIVE_STREAM.get(doId)
 
   // 🛡️ 2026-04-22: DO 에 인증 증빙 전달 — DO 자체 인증 체크용
-  await stub.fetch(new Request('https://internal/broadcast', {
+  await stub.fetch('https://internal/broadcast', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -183,7 +182,7 @@ liveSseRoutes.post('/:liveId/broadcast', requireSellerOrAdmin(), async (c) => {
       'X-Auth-User-Id': String(user?.id ?? ''),
     },
     body: JSON.stringify(body),
-  }) as any)
+  })
 
   return c.json({ success: true })
 })
@@ -317,7 +316,7 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
     try {
       const doId = c.env.LIVE_STREAM.idFromName(liveId)
       const stub = c.env.LIVE_STREAM.get(doId)
-      await stub.fetch(new Request('https://internal/broadcast', {
+      await stub.fetch('https://internal/broadcast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -333,7 +332,7 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
           },
           timestamp: Date.now(),
         }),
-      }) as any)
+      })
     } catch (err) {
       // Non-fatal: message already saved to D1
       console.error('[Chat] DO broadcast failed:', err)
@@ -347,7 +346,7 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
 // 🛡️ 2026-04-22: 채팅 모더레이션 — 셀러/어드민이 혐오/스팸 메시지 숨김.
 // 본인 방의 메시지만 삭제 가능 (live_stream.seller_id === authenticated seller).
 // admin 은 모든 메시지 삭제 가능.
-chatRoutes.delete('/:liveId/messages/:messageId', requireSellerOrAdmin() as any, async (c) => {
+chatRoutes.delete('/:liveId/messages/:messageId', requireSellerOrAdmin() as MiddlewareHandler, async (c) => {
   const { liveId, messageId } = c.req.param()
   const msgIdNum = Number(messageId)
   if (!Number.isInteger(msgIdNum) || msgIdNum <= 0) {
@@ -384,7 +383,7 @@ chatRoutes.delete('/:liveId/messages/:messageId', requireSellerOrAdmin() as any,
       try {
         const doId = c.env.LIVE_STREAM.idFromName(liveId)
         const stub = c.env.LIVE_STREAM.get(doId)
-        await stub.fetch(new Request('https://internal/broadcast', {
+        await stub.fetch('https://internal/broadcast', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -396,7 +395,7 @@ chatRoutes.delete('/:liveId/messages/:messageId', requireSellerOrAdmin() as any,
             data: { id: msgIdNum, deleted_by: user.type },
             timestamp: Date.now(),
           }),
-        }) as any)
+        })
       } catch (err) {
         console.error('[Chat] Delete broadcast failed:', err)
       }

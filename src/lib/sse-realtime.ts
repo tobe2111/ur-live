@@ -8,10 +8,7 @@
  * - 재고 알림
  */
 
-interface Env {
-  DB: D1Database
-  LIVE_CACHE: KVNamespace
-}
+import type { Env } from '../worker/types/env'
 
 interface SSEMessage {
   // 🛡️ 2026-04-22: chat_delete, product_change, donation, stream_status 추가 (DO 와 동기)

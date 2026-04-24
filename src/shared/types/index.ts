@@ -173,6 +173,7 @@ export interface Order {
   shipping_memo?: string;
   tracking_number?: string;
   tracking_company?: string;
+  payment_status?: 'pending' | 'approved' | 'failed' | 'cancelled' | 'refunded';
   cancelled_at?: string;
   cancel_reason?: string;
   refunded_amount?: number;
@@ -263,6 +264,7 @@ export interface CreateOrderRequest {
     product_id: string;
     quantity: number;
     options?: Record<string, string>;
+    product_name?: string;
   }[];
   shipping_address: ShippingAddress;
   shipping_name: string;
