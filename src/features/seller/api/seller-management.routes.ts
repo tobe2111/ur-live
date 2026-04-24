@@ -443,21 +443,31 @@ sellerManagementRoutes.get('/my-seller-status', async (c) => {
     ).bind(sessionUser.userId).first<Record<string, any>>();
 
     if (!seller) {
-      return c.json({ success: true, data: { has_seller: false } });
+      // 백워드 호환: `has_seller`(구) + `linked`(신) 둘 다 제공
+      return c.json({ success: true, data: { has_seller: false, linked: false } });
     }
 
     return c.json({
       success: true,
       data: {
+        // 구 스키마 (UserProfilePage)
         has_seller: true,
         seller_id: seller.id,
         status: seller.status,
         seller_type: seller.seller_type,
         business_name: seller.business_name,
+        // 신 스키마 (SellerWaitingPage, SellerRegisterBusinessPage) — 에이전시 /my-agency-status 와 동일
+        linked: true,
+        seller: {
+          id: seller.id,
+          status: seller.status,
+          seller_type: seller.seller_type,
+          business_name: seller.business_name,
+        },
       },
     });
   } catch (error) {
-    console.error('my-seller-status error:', error);
+    if (import.meta.env.DEV) console.error('my-seller-status error:', error);
     return c.json({ success: false, error: '상태 확인 실패' }, 500);
   }
 });
