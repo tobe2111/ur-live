@@ -1,39 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils } from 'lucide-react'
-
-// 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
-function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
-  const navigate = useNavigate()
-  return (
-    <div className="space-y-4">
-      <div className="text-center py-2">
-        <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-red-100 to-pink-100 flex items-center justify-center">
-          <Radio className="w-7 h-7 text-red-500" />
-        </div>
-        <p className="text-sm text-gray-300 leading-relaxed">
-          지금 카카오 계정에 셀러 권한을 추가합니다<br />
-          <span className="text-gray-500 text-xs">별도 가입·로그인 없이 한 번에</span>
-        </p>
-      </div>
-
-      <button
-        onClick={() => { onDone(); navigate('/seller/register/business') }}
-        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
-      >
-        <UserPlus className="w-5 h-5" />
-        셀러로 시작하기
-      </button>
-
-      <button
-        onClick={() => { onDone(); navigate('/agency/register/business') }}
-        className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-[13px] rounded-xl"
-      >
-        에이전시로 등록하기 →
-      </button>
-    </div>
-  )
-}
+import {
+  Home, ShoppingCart, User, Plus, X, Radio, LayoutDashboard,
+  UserPlus, LogIn, Gift, Utensils, Users, Zap, MapPin,
+  Calendar, Package, Building2, Share2,
+} from 'lucide-react'
+import { toast } from '@/hooks/useToast'
 
 export default function BottomNav() {
   const navigate = useNavigate()
@@ -45,10 +17,6 @@ export default function BottomNav() {
     setProfileImage(localStorage.getItem('user_profile_image'))
   }, [location.pathname])
 
-  // 🛡️ 카카오 로그인 / 이메일 비번 로그인 / 레거시 토큰 모두 감지
-  // - 이메일/비번 셀러: user_type='seller' + seller_token
-  // - 카카오 로그인 (linked 셀러): user_type='user' + session_login + seller_token (백엔드가 자동 발급)
-  // - 에이전시: 동일 패턴
   const userType = localStorage.getItem('user_type')
   const hasSessionLogin = !!localStorage.getItem('session_login')
   const hasAccessToken = !!localStorage.getItem('access_token')
@@ -58,67 +26,32 @@ export default function BottomNav() {
   const isSeller = userType === 'seller' || hasSellerToken
   const isAgency = userType === 'agency' || hasAgencyToken
 
-  const leftItems = [
-    { icon: Home, label: '홈', path: '/' },
-    { icon: Play, label: '쇼츠', path: '/shorts' },
-  ]
+  const close = () => setSheetOpen(false)
+  const go = (path: string) => { close(); navigate(path) }
 
-  const rightItems = [
-    { icon: Gift, label: '공구', path: '/group-buy' },
-    { icon: ShoppingCart, label: '쇼핑', path: '/browse' },
-    { icon: User, label: '마이', path: '/user/profile' },
-  ]
+  function copyAgencyInvite() {
+    const agencyId = localStorage.getItem('agency_id')
+    if (!agencyId) { toast.error('에이전시 정보를 찾을 수 없습니다'); return }
+    const url = `https://live.ur-team.com/seller/register?agency=${agencyId}`
+    navigator.clipboard.writeText(url)
+      .then(() => { toast.success('셀러 초대 링크가 복사되었습니다!'); close() })
+      .catch(() => toast.error('링크 복사에 실패했습니다'))
+  }
 
   const isActivePath = (path: string) => {
     const cur = location.pathname
     if (cur === path) return true
     if (path !== '/' && cur.startsWith(path)) return true
-    // v37 FIX: 마이페이지 범주에 /my-* 및 관련 계정/주문 경로 포함
-    if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-vouchers|my-group-buys|wishlist|interest-list|account|mypage)(\/|$)/.test(cur)) {
-      return true
-    }
+    if (
+      path === '/user/profile' &&
+      /^\/(my-orders|my-coupons|my-reviews|my-vouchers|my-group-buys|wishlist|interest-list|account|mypage)(\/|$)/.test(cur)
+    ) return true
     return false
-  }
-
-  const renderItem = ({ icon: Icon, label, path }: typeof leftItems[0]) => {
-    const active = isActivePath(path)
-    const isMyTab = path === '/user/profile'
-
-    return (
-      <button
-        key={label}
-        onClick={() => navigate(path)}
-        className="flex-1 flex flex-col items-center justify-center h-full"
-        aria-label={label}
-      >
-        {isMyTab && profileImage ? (
-          <img
-            src={profileImage}
-            alt="Profile"
-            className={`h-6 w-6 rounded-full object-cover transition-all ${
-              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#020202]' : 'opacity-60'
-            }`}
-            onError={() => setProfileImage(null)}
-          />
-        ) : (
-          <Icon
-            size={22}
-            className={active ? 'text-white' : 'text-gray-500'}
-            strokeWidth={active ? 2 : 1.5}
-          />
-        )}
-        <span className={`text-[9px] mt-0.5 ${
-          active ? 'font-bold text-white' : 'text-gray-500'
-        }`}>
-          {label}
-        </span>
-      </button>
-    )
   }
 
   return (
     <>
-      {/* Nav bar */}
+      {/* ── 네비게이션 바: 홈 / 공구 / + / 쇼핑 / 마이 ── */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[9999] pointer-events-none hide-on-keyboard">
         <div className="pointer-events-auto">
           <nav
@@ -126,172 +59,285 @@ export default function BottomNav() {
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <div className="flex items-center h-14">
-              {leftItems.map(renderItem)}
+              <NavBtn icon={Home} label="홈" active={isActivePath('/')} onClick={() => navigate('/')} />
+              <NavBtn icon={Gift} label="공구" active={isActivePath('/group-buy')} onClick={() => navigate('/group-buy')} />
 
-              {/* Center + button */}
+              {/* 중앙 + 버튼 */}
               <div className="flex-1 flex items-center justify-center">
                 <button
                   onClick={() => setSheetOpen(true)}
                   className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-500 shadow-lg shadow-red-500/30 active:scale-90 transition-transform"
-                  aria-label="라이브 시작"
+                  aria-label="액션 메뉴"
                 >
                   <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
                 </button>
               </div>
 
-              {rightItems.map(renderItem)}
+              <NavBtn icon={ShoppingCart} label="쇼핑" active={isActivePath('/browse')} onClick={() => navigate('/browse')} />
+              <NavBtn
+                icon={User}
+                label="마이"
+                active={isActivePath('/user/profile')}
+                onClick={() => navigate('/user/profile')}
+                profileImage={profileImage}
+                onImageError={() => setProfileImage(null)}
+              />
             </div>
           </nav>
         </div>
       </div>
 
-      {/* Bottom Sheet */}
+      {/* ── 바텀 시트 ── */}
       {sheetOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-[10000] bg-black/50 animate-overlay-in"
-            onClick={() => setSheetOpen(false)}
+            onClick={close}
           />
-
-          {/* Sheet */}
           <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[10001] animate-sheet-up">
-            <div>
-              <div
-                className="bg-[#121212] rounded-t-3xl"
-                style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
-              >
-                {/* Handle */}
-                <div className="flex justify-center pt-3 pb-2">
-                  <div className="w-10 h-1 bg-gray-600 rounded-full" />
+            <div
+              className="bg-[#121212] rounded-t-3xl"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
+            >
+              {/* 핸들 */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-10 h-1 bg-gray-600 rounded-full" />
+              </div>
+
+              <div className="px-5 pb-5 space-y-4">
+                {/* 헤더 */}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-white">무엇을 해볼까요?</h3>
+                  <button onClick={close} aria-label="닫기" className="p-1 rounded-full hover:bg-white/10">
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
                 </div>
 
-                <div className="px-6 pb-6">
-                  {/* Close */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-white">
-                      {isSeller ? '라이브 방송' : isAgency ? '에이전시' : !isLoggedIn ? '로그인이 필요합니다' : '셀러로 시작하기'}
-                    </h3>
-                    <button onClick={() => setSheetOpen(false)} aria-label="시트 닫기" className="p-1 rounded-full hover:bg-white/10">
-                      <X className="w-5 h-5 text-gray-500" />
-                    </button>
-                  </div>
-
-                  {/* Seller: live + 식사권 + dashboard (+ agency 겸직이면 아래 블록도) */}
-                  {isSeller && (
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/live-broadcast') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Radio className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">라이브 방송 시작하기</p>
-                          <p className="text-[12px] text-white/70 mt-0.5">YouTube 연동으로 바로 방송 시작</p>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Utensils className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">식사권 상품 등록</p>
-                          <p className="text-[12px] text-white/80 mt-0.5">맛집 식사권을 공구 상품으로 올리기</p>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller') }}
-                        className="w-full flex items-center gap-4 p-4 bg-[#1A1A1A] rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-[#333] flex items-center justify-center">
-                          <LayoutDashboard className="w-6 h-6 text-gray-600" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">셀러 대시보드</p>
-                          <p className="text-[12px] text-gray-500 mt-0.5">상품 관리, 주문, 매출 확인</p>
-                        </div>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* 에이전시 권한도 있으면 (셀러 + 에이전시 겸직) 별도 링크 */}
-                  {isSeller && isAgency && (
+                {/* ── 비로그인 ── */}
+                {!isLoggedIn && (
+                  <div className="space-y-3">
                     <button
-                      onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                      className="w-full mt-2 flex items-center gap-3 p-3 bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
+                      onClick={() => { close(); window.location.href = '/auth/kakao/start?intent=user&redirect=/' }}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                        <span className="text-lg">💼</span>
+                      <span className="text-lg">💬</span>
+                      카카오로 시작하기
+                    </button>
+                    <div className="flex border-t border-white/5 pt-1 gap-1">
+                      <TertiaryLink icon={LogIn} label="셀러 로그인" onClick={() => go('/seller/login')} />
+                      <div className="w-px bg-white/10" />
+                      <TertiaryLink icon={Building2} label="에이전시 로그인" onClick={() => go('/agency/login')} />
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 셀러 섹션 ── */}
+                {isSeller && (
+                  <div className="space-y-2.5">
+                    {isAgency && <Divider label="셀러 활동" />}
+
+                    {/* 라이브 방송 — primary */}
+                    <button
+                      onClick={() => go('/seller/live-broadcast')}
+                      className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <Radio className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-left flex-1">
-                        <p className="text-[13px] font-bold text-white">에이전시 대시보드</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">소속 셀러 관리</p>
+                      <div className="text-left">
+                        <p className="text-[15px] font-bold text-white">라이브 방송 시작</p>
+                        <p className="text-[12px] text-white/70 mt-0.5">YouTube 연동으로 바로 방송 시작</p>
                       </div>
                     </button>
-                  )}
 
-                  {/* 에이전시만 있고 셀러 아님 */}
-                  {!isSeller && isAgency && (
-                    <div className="space-y-3">
+                    {/* 3열 그리드 */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <ActionTile icon={Calendar} label="방송 예약" color="bg-orange-500/70" onClick={() => go('/seller/streams/new')} />
+                      <ActionTile icon={Utensils} label="식사권 등록" color="bg-amber-500/70" onClick={() => go('/seller/meal-voucher/new')} />
+                      <ActionTile icon={Package} label="상품 등록" color="bg-blue-500/70" onClick={() => go('/seller/products/new')} />
+                    </div>
+
+                    {/* 대시보드 링크 */}
+                    <button
+                      onClick={() => go('/seller')}
+                      className="w-full flex items-center gap-3 p-3 bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-[#2A2A2A] flex items-center justify-center">
+                        <LayoutDashboard className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <span className="text-[13px] font-semibold text-gray-300">셀러 대시보드</span>
+                    </button>
+
+                    {/* 에이전시 없으면 전환 링크 */}
+                    {!isAgency && (
+                      <div className="flex justify-center pt-0.5">
+                        <TertiaryLink icon={Building2} label="에이전시 만들기" onClick={() => go('/agency/register/business')} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── 에이전시 섹션 ── */}
+                {isAgency && (
+                  <div className="space-y-2.5">
+                    {isSeller && <Divider label="에이전시" />}
+
+                    <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl active:scale-[0.98] transition-transform"
+                        onClick={() => go('/agency')}
+                        className="flex items-center gap-3 p-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl active:scale-[0.98] transition-transform"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <span className="text-xl">💼</span>
+                        <Building2 className="w-5 h-5 text-white shrink-0" />
+                        <div className="text-left min-w-0">
+                          <p className="text-[13px] font-bold text-white">대시보드</p>
+                          <p className="text-[10px] text-white/60 mt-0.5 truncate">셀러 관리·정산</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={copyAgencyInvite}
+                        className="flex items-center gap-3 p-3.5 bg-[#1A1A1A] hover:bg-[#222] rounded-2xl active:scale-[0.98] transition-transform"
+                      >
+                        <UserPlus className="w-5 h-5 text-purple-400 shrink-0" />
+                        <div className="text-left min-w-0">
+                          <p className="text-[13px] font-bold text-white">셀러 초대</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5 truncate">초대 링크 복사</p>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* 셀러 없으면 활동 링크 */}
+                    {!isSeller && (
+                      <button
+                        onClick={() => go('/seller/register/business')}
+                        className="w-full flex items-center gap-3 p-3 bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98]"
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-[#2A2A2A] flex items-center justify-center">
+                          <Radio className="w-4 h-4 text-gray-400" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">에이전시 대시보드</p>
-                          <p className="text-[12px] text-white/70 mt-0.5">소속 셀러 관리, 계약, 정산</p>
+                          <p className="text-[13px] font-bold text-white">셀러로 활동하기</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">에이전시 계정에 셀러 권한 추가</p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* ── 일반 활동 섹션 — 로그인한 모든 유저 ── */}
+                {isLoggedIn && (
+                  <div className="space-y-2.5">
+                    {(isSeller || isAgency) && <Divider label="일반 활동" />}
+
+                    {/* 공구 만들기 + 친구 초대 */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => go('/referral')}
+                        className="flex items-center gap-3 p-3.5 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl active:scale-[0.98] transition-transform"
+                      >
+                        <Users className="w-5 h-5 text-white shrink-0" />
+                        <div className="text-left min-w-0">
+                          <p className="text-[13px] font-bold text-white">공구 만들기</p>
+                          <p className="text-[10px] text-white/60 mt-0.5 truncate">친구랑 함께 더 싸게</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => go('/referral')}
+                        className="flex items-center gap-3 p-3.5 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl active:scale-[0.98] transition-transform"
+                      >
+                        <Share2 className="w-5 h-5 text-white shrink-0" />
+                        <div className="text-left min-w-0">
+                          <p className="text-[13px] font-bold text-white">친구 초대</p>
+                          <p className="text-[10px] text-white/60 mt-0.5 truncate">딜 포인트 보상</p>
                         </div>
                       </button>
                     </div>
-                  )}
 
-                  {/* Logged in but no seller/agency role — 권한 추가 유도 */}
-                  {isLoggedIn && !isSeller && !isAgency && (
-                    <SellerUpgradePanel
-                      onDone={() => { setSheetOpen(false) }}
-                    />
-                  )}
-
-                  {/* Not logged in — 셀러 전용 */}
-                  {!isLoggedIn && (
-                    <div className="space-y-3">
-                      <p className="text-sm text-gray-400 mb-2">
-                        셀러 계정으로 로그인하세요.
-                      </p>
-
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/login') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <LogIn className="w-5 h-5" />
-                        셀러 로그인
-                      </button>
-
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/register') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#1A1A1A] text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <UserPlus className="w-5 h-5" />
-                        셀러 회원가입
-                      </button>
+                    {/* 맛집 추천 + 딜 충전 */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <ActionTile icon={MapPin} label="맛집 추천" color="bg-amber-500/70" onClick={() => go('/restaurant-map')} />
+                      <ActionTile icon={Zap} label="딜 충전" color="bg-yellow-500/70" onClick={() => go('/points/charge')} />
                     </div>
-                  )}
-                </div>
+
+                    {/* 셀러/에이전시 아닌 유저만 전환 링크 표시 */}
+                    {!isSeller && !isAgency && (
+                      <div className="flex border-t border-white/5 pt-1.5 gap-1">
+                        <TertiaryLink icon={Radio} label="셀러 되기" onClick={() => go('/seller/register/business')} />
+                        <div className="w-px bg-white/10" />
+                        <TertiaryLink icon={Building2} label="에이전시 만들기" onClick={() => go('/agency/register/business')} />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </>
       )}
     </>
+  )
+}
+
+// ── 서브 컴포넌트 ──────────────────────────────────
+
+function NavBtn({
+  icon: Icon, label, active, onClick, profileImage, onImageError,
+}: {
+  icon: React.ElementType; label: string; active: boolean; onClick: () => void
+  profileImage?: string | null; onImageError?: () => void
+}) {
+  return (
+    <button onClick={onClick} className="flex-1 flex flex-col items-center justify-center h-full" aria-label={label}>
+      {label === '마이' && profileImage ? (
+        <img
+          src={profileImage}
+          alt=""
+          className={`h-6 w-6 rounded-full object-cover ${active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#020202]' : 'opacity-60'}`}
+          onError={onImageError}
+        />
+      ) : (
+        <Icon size={22} className={active ? 'text-white' : 'text-gray-500'} strokeWidth={active ? 2 : 1.5} />
+      )}
+      <span className={`text-[9px] mt-0.5 ${active ? 'font-bold text-white' : 'text-gray-500'}`}>{label}</span>
+    </button>
+  )
+}
+
+function Divider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-px flex-1 bg-white/10" />
+      <span className="text-[10px] text-gray-600 font-semibold tracking-wider">{label}</span>
+      <div className="h-px flex-1 bg-white/10" />
+    </div>
+  )
+}
+
+function ActionTile({ icon: Icon, label, color, onClick }: {
+  icon: React.ElementType; label: string; color: string; onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 p-3 bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
+    >
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color}`}>
+        <Icon className="w-4 h-4 text-white" />
+      </div>
+      <span className="text-[11px] text-gray-300 font-semibold">{label}</span>
+    </button>
+  )
+}
+
+function TertiaryLink({ icon: Icon, label, onClick }: {
+  icon: React.ElementType; label: string; onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[12px] text-gray-500 hover:text-gray-300 transition-colors"
+    >
+      <Icon className="w-3.5 h-3.5" />
+      {label}
+    </button>
   )
 }
