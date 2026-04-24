@@ -50,9 +50,9 @@ export function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStre
           try {
             await obsClientRef.current!.setRtmpTarget(stream.rtmp_url!, stream.rtmp_key!)
             await obsClientRef.current!.startStreaming()
-            toast.success('⏰ 예약 시간 도달. OBS 자동 시작!')
+            toast.success(t('seller.liveBroadcast.obsAutoStartTriggered'))
           } catch {
-            toast.error('OBS 자동 시작 실패. 수동으로 시작해주세요.')
+            toast.error(t('seller.liveBroadcast.obsAutoStartFailed'))
           }
         })()
       }
@@ -92,8 +92,8 @@ export function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStre
         <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
           <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
           <div className="flex-1 text-xs text-green-800">
-            <p className="font-semibold">✨ OBS 자동 시작 활성화됨</p>
-            <p className="text-[11px] mt-0.5">예약 시간이 되면 OBS가 자동으로 스트리밍 시작됩니다. 컴퓨터만 켜둬주세요.</p>
+            <p className="font-semibold">{t('seller.liveBroadcast.obsAutoStartEnabled')}</p>
+            <p className="text-[11px] mt-0.5">{t('seller.liveBroadcast.obsAutoStartDesc')}</p>
           </div>
         </div>
       )}

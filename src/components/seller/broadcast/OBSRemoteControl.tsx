@@ -123,7 +123,7 @@ export function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy
               {copiedField === 'all' ? t('seller.liveBroadcast.copyDone') : 'RTMP URL + Key 복사'}
             </button>
             <details className="text-xs">
-              <summary className="cursor-pointer text-purple-700 hover:text-purple-900 select-none">개별 복사 + 권장 설정 보기</summary>
+              <summary className="cursor-pointer text-purple-700 hover:text-purple-900 select-none">{t('seller.liveBroadcast.obsIndividualCopy')}</summary>
               <div className="mt-2 space-y-2">
                 <RtmpBlock label="RTMP URL" value={stream.rtmp_url} fieldKey="rtmp_url" copiedField={copiedField} onCopy={onCopy} />
                 {stream.rtmp_key && <RtmpBlock label={t('seller.liveBroadcast.streamKey')} value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
@@ -268,7 +268,7 @@ export function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy
             const kbps = sec > 0 ? Math.round((obsStatus.outputBytes * 8) / sec / 1000) : 0
             return (
               <div className="bg-white/60 rounded-md px-2 py-1.5 text-center">
-                <p className="text-blue-600">비트레이트</p>
+                <p className="text-blue-600">{t('seller.liveBroadcast.bitrate')}</p>
                 <p className="font-bold text-gray-900">{kbps.toLocaleString()} kbps</p>
               </div>
             )
@@ -279,7 +279,7 @@ export function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy
             const pct = total > 0 ? (drop / total) * 100 : 0
             return (
               <div className="bg-white/60 rounded-md px-2 py-1.5 text-center">
-                <p className="text-blue-600">드롭 프레임</p>
+                <p className="text-blue-600">{t('seller.liveBroadcast.dropFrames')}</p>
                 <p className={`font-bold ${pct < 1 ? 'text-gray-900' : pct < 5 ? 'text-amber-600' : 'text-red-600'}`}>
                   {drop} ({pct.toFixed(1)}%)
                 </p>

@@ -121,7 +121,7 @@ export function edgeCache(options: CacheOptions) {
     }
 
     const cacheKey = generateCacheKey(c, options.cacheKey);
-    const cache = (caches as any).default;
+    const cache = (caches as unknown as { default: Cache }).default;
 
     // 1. 캐시에서 조회
     let response = await cache.match(cacheKey);

@@ -16,10 +16,11 @@ import { krEnvSchema, worldEnvSchema, workerEnvSchema } from './env-schema';
 // ============================================
 function formatValidationError(error: z.ZodError, region?: string): string {
   // ✅ undefined/null 안전 처리
-  const errors = ((error as any)?.errors || error?.issues || [])
-    .filter((err: any) => err != null)
-    .map((err: any) => {
-      const path = Array.isArray(err.path) ? err.path.join('.') : 'unknown';
+  const issues = error?.issues || []
+  const errors = issues
+    .filter((err) => err != null)
+    .map((err) => {
+      const path = Array.isArray(err.path) ? err.path.map(String).join('.') : 'unknown';
       return `  ❌ ${path}: ${err.message || 'Unknown error'}`;
     });
 

@@ -154,7 +154,7 @@ export class APICacheStrategy {
       do {
         const result = await this.kvNamespace.list({ prefix, cursor })
         keys.push(...result.keys.map((k) => k.name))
-        cursor = (result as any).cursor
+        cursor = (result as { cursor?: string }).cursor
       } while (cursor)
     } catch (error) {
       console.error('[Cache] List keys error:', error)

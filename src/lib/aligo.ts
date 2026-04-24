@@ -334,11 +334,11 @@ export async function sendAlimtalk(
     if (result.result_code !== '1') {
       console.error('[Aligo] ❌ 알림톡 발송 실패:', result.message)
       // 🛡️ 2026-04-22: 잔액 부족(-2) 시 Discord 즉시 알림 — 운영자가 충전 누락 인지
-      if (String(result.result_code) === '-2' && (env as any).DISCORD_WEBHOOK_URL) {
+      if (String(result.result_code) === '-2' && env.DISCORD_WEBHOOK_URL) {
         try {
           const { sendDiscordAlert } = await import('../worker/utils/discord-alert')
           await sendDiscordAlert(
-            (env as any).DISCORD_WEBHOOK_URL,
+            env.DISCORD_WEBHOOK_URL,
             '⚠️ Aligo 알림톡 잔액 부족',
             `알림톡 발송 실패 — Aligo 계정 잔액 충전 필요\n수신자: ${data.to.slice(0, 4)}***\n응답: ${result.message}`,
             'error'

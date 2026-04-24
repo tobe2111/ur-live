@@ -212,7 +212,7 @@ export function createErrorHandler() {
         }
       };
       
-      return c.json(response, err.statusCode as any);
+      return c.json(response, err.statusCode as Parameters<typeof c.json>[1]);
     }
 
     // Handle unexpected errors

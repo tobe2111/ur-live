@@ -52,7 +52,7 @@ export function StepLive({ stream, products, onChangeProduct, onEndStream }: Ste
             <span id="pip-elapsed" style="font-size:11px;font-family:monospace;color:#a1a1aa;margin-left:4px"></span>
           </div>
           <p id="pip-title" style="font-size:13px;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></p>
-          <div style="font-size:10px;color:#71717a;margin-top:-4px">현재 상품</div>
+          <div style="font-size:10px;color:#71717a;margin-top:-4px">${t('seller.liveBroadcast.currentProduct')}</div>
           <div id="pip-current-product" style="background:#18181b;border-radius:8px;padding:8px;display:flex;gap:8px;align-items:center">
             <div id="pip-product-img" style="width:40px;height:40px;border-radius:6px;background:#27272a;flex-shrink:0"></div>
             <div style="flex:1;min-width:0">
@@ -60,7 +60,7 @@ export function StepLive({ stream, products, onChangeProduct, onEndStream }: Ste
               <p id="pip-product-price" style="font-size:10px;color:#a1a1aa;margin:2px 0 0"></p>
             </div>
           </div>
-          <div style="font-size:10px;color:#71717a">상품 전환</div>
+          <div style="font-size:10px;color:#71717a">${t('seller.liveBroadcast.switchProduct')}</div>
           <div id="pip-product-list" style="display:flex;flex-direction:column;gap:4px;overflow-y:auto;flex:1"></div>
         </div>
         <style>
@@ -184,7 +184,7 @@ export function StepLive({ stream, products, onChangeProduct, onEndStream }: Ste
           </button>
           <button onClick={() => setShowShortcuts(v => !v)}
             className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold"
-            title="키보드 단축키 (?)">
+            title={t('seller.liveBroadcast.keyboardShortcutHint') as string}>
             ?
           </button>
           <Button onClick={onEndStream} size="sm" variant="destructive">{t('seller.liveBroadcast.endBroadcast')}</Button>

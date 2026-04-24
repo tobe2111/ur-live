@@ -131,7 +131,7 @@ export function StepInfo({ title, setTitle, description, setDescription, thumbna
     setPrivacy('unlisted')
     setSelectedProducts([sellableProducts[0].id])
     onCreate({ title: testTitle, productIds: [sellableProducts[0].id] })
-    toast.info('테스트 방송을 생성했습니다. 송출 도구에서 시작 후 파이프라인 확인해보세요.')
+    toast.info(t('seller.liveBroadcast.testBroadcastCreated'))
   }
   // 토큰 만료 시 폼 전체 차단 + 재연동 CTA
   if (tokenExpired) {
@@ -141,13 +141,13 @@ export function StepInfo({ title, setTitle, description, setDescription, thumbna
           <AlertTriangle className="w-8 h-8 text-amber-600" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-amber-900 mb-1">YouTube 연동이 만료됐어요</h3>
-          <p className="text-sm text-amber-700">방송을 시작하려면 채널을 다시 연동해야 합니다.<br/>약 30초 소요됩니다.</p>
+          <h3 className="text-lg font-bold text-amber-900 mb-1">{t('seller.liveBroadcast.reauthTitle')}</h3>
+          <p className="text-sm text-amber-700">{t('seller.liveBroadcast.reauthDesc')}</p>
         </div>
         <Button onClick={onReauthenticate} disabled={connectingYouTube}
           className="bg-red-600 hover:bg-red-700 text-white px-8 h-11 text-sm font-semibold">
           {connectingYouTube ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Youtube className="w-4 h-4 mr-2" />}
-          지금 재연동하기
+          {t('seller.liveBroadcast.reauthNow')}
         </Button>
       </div>
     )
@@ -166,7 +166,7 @@ export function StepInfo({ title, setTitle, description, setDescription, thumbna
           {sellableProducts.length > 0 && (
             <button onClick={handleTestBroadcast} disabled={creating}
               className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-full font-medium disabled:opacity-50"
-              title="비공개 테스트 방송으로 파이프라인 검증">
+              title={t('seller.liveBroadcast.testBroadcastTitle') as string}>
               🧪 테스트
             </button>
           )}
@@ -390,7 +390,7 @@ export function StepInfo({ title, setTitle, description, setDescription, thumbna
       {showSaveTemplate && (
         <PromptModal
           title={t('seller.liveBroadcast.templateNamePrompt')}
-          placeholder="예: 매주 화요일 신상 라이브"
+          placeholder={t('seller.liveBroadcast.templateNamePlaceholder') as string}
           confirmLabel={t('seller.liveBroadcast.templateSaved').replace(/되었습니다|saved/i, '저장')}
           onConfirm={handleSaveTemplate}
           onCancel={() => setShowSaveTemplate(false)}
