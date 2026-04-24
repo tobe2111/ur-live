@@ -32,11 +32,38 @@ function tryPrismDeepLink(rtmpUrl: string, rtmpKey: string): Promise<boolean> {
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
-    // 첫 번째 스키마 시도
     window.location.href = candidates[0]
-    // 2초 후에도 페이지 포커스 유지 = 앱 안 열림
     setTimeout(() => {
       if (!resolved && Date.now() - start > 1800) {
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+        resolve(false)
+      }
+    }, 2000)
+  })
+}
+
+/**
+ * Larix Broadcaster deep link (공식 지원).
+ * https://softvelum.com/larix/mobilesettings/
+ * 스키마: larix://set/?name=...&url=...&mode=audio+video
+ */
+function tryLarixDeepLink(rtmpUrl: string, rtmpKey: string, title: string): Promise<boolean> {
+  return new Promise(resolve => {
+    // Larix 는 URL 에 key 가 포함된 형태를 기대: rtmp://server/app/KEY
+    const fullUrl = rtmpUrl.endsWith('/') ? `${rtmpUrl}${rtmpKey}` : `${rtmpUrl}/${rtmpKey}`
+    const link = `larix://set/?name=${encodeURIComponent(title || 'UR Live')}&url=${encodeURIComponent(fullUrl)}&mode=audio%2Bvideo`
+    let resolved = false
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        resolved = true
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+        resolve(true)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.location.href = link
+    setTimeout(() => {
+      if (!resolved) {
         document.removeEventListener('visibilitychange', onVisibilityChange)
         resolve(false)
       }
@@ -53,12 +80,19 @@ interface PrismQRCodeProps {
 export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCodeProps) {
   const [copied, setCopied] = useState<'url' | 'key' | null>(null)
   const [deeplinkStatus, setDeeplinkStatus] = useState<'idle' | 'trying' | 'failed'>('idle')
+  const [larixStatus, setLarixStatus] = useState<'idle' | 'trying' | 'failed'>('idle')
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)
 
   async function openPrismDirectly() {
     setDeeplinkStatus('trying')
     const ok = await tryPrismDeepLink(rtmpUrl, rtmpKey)
     setDeeplinkStatus(ok ? 'idle' : 'failed')
+  }
+
+  async function openLarixDirectly() {
+    setLarixStatus('trying')
+    const ok = await tryLarixDeepLink(rtmpUrl, rtmpKey, streamTitle)
+    setLarixStatus(ok ? 'idle' : 'failed')
   }
 
   // Generate mobile-friendly auto-fill URL
@@ -99,21 +133,38 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
           <p>→ 복사 버튼 2번만 누르면 완료!</p>
         </div>
 
-        {/* 모바일에서 보고 있으면 Prism 앱 바로 열기 시도 */}
+        {/* 모바일에서 보고 있으면 앱 바로 열기 시도 (Prism + Larix 둘 다 지원) */}
         {isMobile && (
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
             <Button
               onClick={openPrismDirectly}
               disabled={deeplinkStatus === 'trying'}
               className="w-full bg-green-600 hover:bg-green-700 text-white"
             >
-              {deeplinkStatus === 'trying' ? '앱 열기 시도 중...' : '🚀 Prism 앱 바로 열기'}
+              {deeplinkStatus === 'trying' ? 'Prism 열기 시도 중...' : '🚀 Prism 앱 바로 열기'}
             </Button>
             {deeplinkStatus === 'failed' && (
-              <p className="text-[11px] text-amber-700 mt-2">
-                앱을 열 수 없어요. Prism 설치 확인 또는 아래 수동 복사로 진행하세요.
+              <p className="text-[11px] text-amber-700">
+                Prism 앱을 열 수 없어요. 아래 Larix 로도 시도 가능합니다.
               </p>
             )}
+            {/* Larix 대체 옵션 */}
+            <Button
+              onClick={openLarixDirectly}
+              disabled={larixStatus === 'trying'}
+              variant="outline"
+              className="w-full border-indigo-300 text-indigo-700"
+            >
+              {larixStatus === 'trying' ? 'Larix 열기 시도 중...' : '📡 Larix 로 열기 (대체)'}
+            </Button>
+            {larixStatus === 'failed' && (
+              <p className="text-[11px] text-gray-500">
+                Larix 도 설치 안 된 것 같아요. 아래 QR 또는 복사로 진행하세요.
+              </p>
+            )}
+            <p className="text-[10px] text-gray-400 leading-relaxed">
+              💡 <strong>Larix</strong> 는 Prism 이 열리지 않거나 RTMP 자동 입력이 안 될 때 대체 앱. 무료, Custom RTMP URL scheme 공식 지원.
+            </p>
           </div>
         )}
       </div>

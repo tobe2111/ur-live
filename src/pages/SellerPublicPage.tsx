@@ -163,6 +163,42 @@ export default function SellerPublicPage() {
       .finally(() => setLoading(false))
   }, [sellerId])
 
+  // 실시간 라이브 감지 — 공개 페이지 머물러 있을 때 셀러가 라이브 시작하면 즉시 반영
+  // 30초마다 streams 만 재조회 (가벼운 쿼리)
+  useEffect(() => {
+    if (!seller) return
+    const numericId = seller.id
+    let prevLiveCount = streams.filter(s => s.status === 'live').length
+
+    const poll = async () => {
+      try {
+        const res = await api.get(`/api/streams?seller_id=${numericId}&limit=20`)
+        const fresh: LiveStream[] = res.data.data || []
+        const freshLiveCount = fresh.filter(s => s.status === 'live').length
+        setStreams(fresh)
+
+        // 라이브 시작 감지 (0 → 1+)
+        if (prevLiveCount === 0 && freshLiveCount > 0) {
+          const liveStream = fresh.find(s => s.status === 'live')
+          toast.success(`${seller.name} 셀러의 라이브가 시작됐어요!`)
+          if (liveStream) {
+            // 배너 확인 용이하게 소리 없는 vibration (모바일)
+            try { if ('vibrate' in navigator) navigator.vibrate(200) } catch { /* ignore */ }
+          }
+        }
+        // 라이브 종료 감지 (1+ → 0)
+        if (prevLiveCount > 0 && freshLiveCount === 0) {
+          toast.info('라이브 방송이 종료됐어요.')
+        }
+        prevLiveCount = freshLiveCount
+      } catch { /* silent */ }
+    }
+
+    const id = setInterval(poll, 30000)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seller?.id])
+
   if (loading) return (
     <div className="min-h-screen bg-[#020202] dark flex items-center justify-center">
       <Loader2 className="w-8 h-8 animate-spin text-pink-500" />

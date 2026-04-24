@@ -1737,6 +1737,17 @@ function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStream; accent: 
     } catch { /* blocked */ }
   }
 
+  // YouTube 공식 앱 Deep link (모바일) — 구독자 50+ 필요 (YouTube 정책)
+  // 설치된 YouTube 앱을 직접 엶 → 새로운 앱 설치 부담 0
+  function openYouTubeApp() {
+    // Universal link / App Store scheme
+    // iOS: youtube:// / Android: vnd.youtube:// OR 그냥 https 링크 (자동 앱 열기)
+    const videoUrl = vid ? `https://www.youtube.com/watch?v=${vid}` : 'https://m.youtube.com/'
+    try {
+      window.location.href = videoUrl
+    } catch { /* ignore */ }
+  }
+
   useEffect(() => {
     if (openedRef.current) return
     openedRef.current = true
@@ -1785,6 +1796,14 @@ function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStream; accent: 
         className="w-full text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">
         {t('seller.liveBroadcast.reopenStudio')}
       </button>
+
+      {/* 모바일 기기 접속 시 YouTube 앱 딥링크 대안 제시 */}
+      {typeof navigator !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent) && (
+        <button onClick={openYouTubeApp}
+          className="w-full mt-1 py-2 bg-white/70 hover:bg-white border border-red-200 text-red-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
+          📱 YouTube 앱에서 열기
+        </button>
+      )}
     </div>
   )
 }
