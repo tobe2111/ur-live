@@ -1510,12 +1510,7 @@ app.put('/contracts/:id', async (c: AgencyCtx) => {
 app.post('/link-kakao', async (c: AgencyCtx) => {
   try {
     const agencyId = c.get('agency').id
-    const { code, redirect_uri } = await c.req.json<{ code: string; redirect_uri: string }>()
-    if (!code) return c.json({ success: false, error: 'Authorization code 누락' }, 400)
-
     const DB = c.env.DB
-    const kakaoKey = (c.env as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY
-    if (!kakaoKey) return c.json({ success: false, error: '카카오 API 설정 누락' }, 500)
 
     const agency = await DB.prepare(
       'SELECT id, linked_user_id FROM agencies WHERE id = ?'
@@ -1525,27 +1520,53 @@ app.post('/link-kakao', async (c: AgencyCtx) => {
       return c.json({ success: false, error: '이미 카카오 계정이 연동되어 있습니다.' }, 409)
     }
 
-    const { KakaoAuthService } = await import('../../auth/services/KakaoAuthService')
-    const kakao = new KakaoAuthService(DB, kakaoKey)
-    const tokenData = await kakao.exchangeCodeFull(code, redirect_uri)
-    const kakaoUser = await kakao.getUserInfo(tokenData.access_token)
-    const user = await kakao.upsertUser(kakaoUser)
+    // 두 가지 연동 모드:
+    //  1) 세션 기반 (권장, 팝업 플로우): body 비움 → 세션 쿠키의 userId 사용.
+    //  2) code 기반 (구 플로우 호환): code + redirect_uri 전달.
+    const body = await c.req.json<{ code?: string; redirect_uri?: string }>().catch(() => ({} as { code?: string; redirect_uri?: string }))
+
+    let kakaoUserId: number | null = null
+    let kakaoUserInfo: { name?: string; email?: string } = {}
+
+    if (body.code) {
+      const kakaoKey = (c.env as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY
+      if (!kakaoKey) return c.json({ success: false, error: '카카오 API 설정 누락' }, 500)
+      const { KakaoAuthService } = await import('../../auth/services/KakaoAuthService')
+      const kakao = new KakaoAuthService(DB, kakaoKey)
+      const tokenData = await kakao.exchangeCodeFull(body.code, body.redirect_uri || '')
+      const kakaoUser = await kakao.getUserInfo(tokenData.access_token)
+      const user = await kakao.upsertUser(kakaoUser)
+      kakaoUserId = user.id
+      kakaoUserInfo = { name: user.name, email: user.email }
+    } else {
+      const { parseSessionCookie } = await import('../../../worker/utils/session')
+      const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user'])
+      if (!sessionUser) {
+        return c.json({ success: false, error: '카카오 로그인이 필요합니다. 팝업에서 카카오 인증을 완료해주세요.' }, 400)
+      }
+      const userId = Number(sessionUser.userId)
+      if (!Number.isFinite(userId)) {
+        return c.json({ success: false, error: '세션이 유효하지 않습니다.' }, 400)
+      }
+      kakaoUserId = userId
+      kakaoUserInfo = { name: sessionUser.name, email: sessionUser.email }
+    }
 
     const otherLink = await DB.prepare(
       'SELECT id FROM agencies WHERE linked_user_id = ? AND id != ?'
-    ).bind(user.id, agencyId).first<{ id: number }>()
+    ).bind(kakaoUserId, agencyId).first<{ id: number }>()
     if (otherLink) {
       return c.json({ success: false, error: '이 카카오 계정은 이미 다른 에이전시에 연동되어 있습니다.' }, 409)
     }
 
     await DB.prepare(
       "UPDATE agencies SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?"
-    ).bind(user.id, agencyId).run()
+    ).bind(kakaoUserId, agencyId).run()
 
     return c.json({
       success: true,
       message: '카카오 계정 연동 완료',
-      data: { user_id: user.id, user_name: user.name, user_email: user.email },
+      data: { user_id: kakaoUserId, user_name: kakaoUserInfo.name, user_email: kakaoUserInfo.email },
     })
   } catch (err) {
     console.error('[agency link-kakao] error:', err)
