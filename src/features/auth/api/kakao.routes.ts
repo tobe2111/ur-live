@@ -129,17 +129,19 @@ function readCookie(cookieHeader: string | null | undefined, name: string): stri
  * Parse the oauth state cookie: "<state>|<base64url(redirectPath)>"
  * The redirect path is sanitized before use.
  */
-function parseStateCookie(value: string | null): { state: string; redirect: string } | null {
+function parseStateCookie(value: string | null): { state: string; redirect: string; intent: 'user' | 'seller' | 'agency' } | null {
   if (!value) return null;
   const parts = value.split('|');
-  if (parts.length !== 2) return null;
-  const [state, encoded] = parts;
+  // 구버전 호환: 2개(state|redirect) 또는 3개(state|redirect|intent) 모두 허용
+  if (parts.length < 2 || parts.length > 3) return null;
+  const [state, encoded, intentRaw] = parts;
   if (!state || !encoded) return null;
   try {
     const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
     const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=');
     const redirect = decodeURIComponent(atob(padded));
-    return { state, redirect: safeRedirect(redirect) };
+    const intent = (intentRaw === 'seller' || intentRaw === 'agency') ? intentRaw : 'user';
+    return { state, redirect: safeRedirect(redirect), intent };
   } catch {
     return null;
   }
@@ -158,6 +160,12 @@ function clearStateCookieHeader(): string {
 kakaoRoutes.get('/start', async (c) => {
   const redirectRaw = c.req.query('redirect') || '/';
   const redirect = safeRedirect(redirectRaw);
+  // intent: 'seller' | 'agency' | 'user'
+  //   - seller: 셀러 등록/대시보드 진입 의도 → linked seller 없으면 /seller/register/business 로
+  //   - agency: 에이전시 등록/대시보드 진입 의도
+  //   - user (default): 일반 유저 로그인
+  const intentRaw = c.req.query('intent') || 'user';
+  const intent = (intentRaw === 'seller' || intentRaw === 'agency') ? intentRaw : 'user';
 
   const kakaoRestKey = c.env.KAKAO_REST_API_KEY;
   if (!kakaoRestKey) {
@@ -167,7 +175,8 @@ kakaoRoutes.get('/start', async (c) => {
   const state = crypto.randomUUID();
   const b64Redirect = btoa(encodeURIComponent(redirect))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  const cookieValue = `${state}|${b64Redirect}`;
+  // state|redirect|intent
+  const cookieValue = `${state}|${b64Redirect}|${intent}`;
 
   c.header(
     'Set-Cookie',
@@ -249,8 +258,10 @@ kakaoRoutes.get('/sync/callback', async (c) => {
   // internal path from the ?state= param. Never blindly use raw state.
   let redirectTarget = '/';
   let stateMatched = false;
+  let intent: 'user' | 'seller' | 'agency' = 'user';
   if (stateCookie) {
     redirectTarget = stateCookie.redirect;
+    intent = stateCookie.intent;
     stateMatched = !!receivedState && receivedState === stateCookie.state;
   } else {
     redirectTarget = safeRedirect(receivedState);
@@ -332,8 +343,9 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       }
 
       // 🛡️ linked seller/agency JWT 자동 발급 → 프론트엔드 localStorage 로 이전하도록 transfer cookie
+      let linkedRoles: Awaited<ReturnType<typeof issueLinkedRoleTokens>> = {};
       try {
-        const linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
+        linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
         // JS-readable cookie (HttpOnly 없음) — 프론트엔드 페이지 로드 시 즉시 읽어서 localStorage 로 이동 후 삭제
         // 60초 만료 — 짧은 윈도우로 XSS 노출 최소화
         if (linkedRoles.seller_token) {
@@ -358,6 +370,33 @@ kakaoRoutes.get('/sync/callback', async (c) => {
         }
       } catch (e) {
         console.error('[Kakao Sync] Linked role tokens issuance failed:', e);
+      }
+
+      // 🚦 Smart redirect — intent(seller/agency) 와 linked role 상태별 라우팅.
+      //   1) intent=seller
+      //      - linked seller 없음 → /seller/register/business?from=kakao
+      //      - status=pending → /seller/waiting
+      //      - status=active → 그대로 (/seller)
+      //   2) intent=agency — 동일 패턴
+      //   3) intent=user — 원래 redirectTarget 유지
+      if (intent === 'seller') {
+        if (!linkedRoles.seller) {
+          redirectTarget = '/seller/register/business?from=kakao';
+        } else if (linkedRoles.seller.status === 'pending') {
+          redirectTarget = '/seller/waiting';
+        } else if (linkedRoles.seller.status !== 'active') {
+          // rejected/suspended 등 → waiting 페이지에서 상태 표시
+          redirectTarget = '/seller/waiting';
+        }
+        // active 는 원래 redirectTarget (보통 /seller) 유지
+      } else if (intent === 'agency') {
+        if (!linkedRoles.agency) {
+          redirectTarget = '/agency/register/business?from=kakao';
+        } else if (linkedRoles.agency.status === 'pending') {
+          redirectTarget = '/agency/waiting';
+        } else if (linkedRoles.agency.status !== 'active') {
+          redirectTarget = '/agency/waiting';
+        }
       }
 
       const stateUrl = new URL(redirectTarget, 'https://dummy.com');

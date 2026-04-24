@@ -74,7 +74,9 @@ const SellerPage = lazy(() => import('./pages/SellerPage'))
 const SellerLoginPage = lazy(() => import('./pages/SellerLoginPage'))
 const SellerRegisterPage = lazy(() => import('./pages/SellerRegisterPage'))
 const SellerRegisterBusinessPage = lazy(() => import('./pages/SellerRegisterBusinessPage'))
+const SellerWaitingPage = lazy(() => import('./pages/SellerWaitingPage'))
 const AgencyRegisterBusinessPage = lazy(() => import('./pages/AgencyRegisterBusinessPage'))
+const AgencyWaitingPage = lazy(() => import('./pages/AgencyWaitingPage'))
 const SellerForgotPasswordPage = lazy(() => import('./pages/SellerForgotPasswordPage'))
 const SellerResetPasswordPage = lazy(() => import('./pages/SellerResetPasswordPage'))
 const SellerBusinessInfoPage = lazy(() => import('./pages/SellerBusinessInfoPage'))
@@ -453,6 +455,7 @@ function AppContent() {
             <Route path="/seller/register" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
             <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
             <Route path="/seller/register/business" element={<ErrorBoundary><SellerRegisterBusinessPage /></ErrorBoundary>} />
+            <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
             <Route path="/seller/forgot-password" element={<ErrorBoundary><SellerForgotPasswordPage /></ErrorBoundary>} />
             <Route path="/seller/reset-password" element={<ErrorBoundary><SellerResetPasswordPage /></ErrorBoundary>} />
             
@@ -760,6 +763,7 @@ function AppContent() {
             <Route path="/agency/login" element={<AgencyLoginPage />} />
             <Route path="/agency/register" element={<AgencyRegisterPage />} />
             <Route path="/agency/register/business" element={<AgencyRegisterBusinessPage />} />
+            <Route path="/agency/waiting" element={<AgencyWaitingPage />} />
             <Route path="/agency/forgot-password" element={<AgencyForgotPasswordPage />} />
             <Route path="/agency/reset-password" element={<AgencyResetPasswordPage />} />
             <Route path="/agency" element={<AgencyAuthGuard><AgencyPage /></AgencyAuthGuard>} />
