@@ -2,7 +2,14 @@
  * Operation Guide — Default seeds
  * 최초 배포 시 자동 삽입되는 기본 가이드 콘텐츠 (markdown).
  * 어드민이 /admin/operations-guide 에서 수정 가능.
+ *
+ * 🤖 자동 생성 섹션:
+ *   각 역할 가이드 끝에 'auto-reference' 섹션이 자동 추가됨.
+ *   페이지 라우트와 API 엔드포인트 목록을 코드에서 추출.
+ *   업데이트: `npm run generate:guide-refs`
  */
+
+import { AUTO_REFERENCE } from './auto-reference'
 
 interface SeedSection {
   key: string
@@ -10,6 +17,16 @@ interface SeedSection {
   title: string
   order: number
   content: string  // markdown
+}
+
+function autoRefSection(role: 'admin' | 'seller' | 'agency'): SeedSection {
+  return {
+    key: 'auto-reference',
+    icon: '🤖',
+    title: '코드 자동 참조 (페이지 + API)',
+    order: 999,
+    content: AUTO_REFERENCE[role],
+  }
 }
 
 const ADMIN_SEED: SeedSection[] = [
@@ -134,6 +151,24 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - 각 스트림 클릭 시 채팅/구매 흐름 확인 가능
 - YouTube 채널 연동 상태, RTMP 연결 상태 점검
 
+### 셀러 라이브 방송 플로우 (참고용)
+셀러는 \`/seller/live-broadcast\` (또는 진행 중이면 \`/seller/live-broadcast/:streamId\`)에서 방송을 운영합니다:
+1. 4가지 송출 도구 중 선택 (Quick / YouTube Studio / OBS / Prism), 마지막 사용 도구 자동 기억
+2. 방송 만들기 → URL이 \`:streamId\`로 변경 (새로고침 살아남음)
+3. 자동 감지 (3초 폴링)로 YouTube live 상태 변화 감지 → Step 3로 자동 전환
+4. Step 3는 실시간 통계, 채팅, 상품 전환, 경매/타임딜/공동구매 컨트롤 제공
+5. 종료 시 시청자 끊김 경고 모달 → 종료 후 방송 요약 모달 표시
+
+### 관련 API 엔드포인트
+- \`POST /api/seller/youtube/live/create\` — 방송 생성 (YouTube broadcast + RTMP stream + bind)
+- \`GET /api/seller/youtube/live/:id/status\` — YouTube broadcast 상태 조회 (3초 폴링용)
+- \`POST /api/seller/youtube/live/:id/start\` — 수동 live 전환 (자동 감지 실패 시 fallback)
+- \`POST /api/seller/youtube/live/:id/end\` — 방송 종료
+- \`GET /api/seller/streams/:id\` — 방송 정보 조회 (URL 기반 상태 복원에 사용)
+- \`GET /api/seller/streams/:id/live-stats\` — 실시간 통계 (시청자/채팅/주문/매출, 5초 폴링)
+- \`GET /api/seller/streams/:id/analytics\` — 방송 종료 후 상세 분석
+- \`POST /api/seller/streams/:id/change-product\` — 현재 노출 상품 변경
+
 ### 방송 중 개입 권한
 - 채팅 메시지 **숨김** — 욕설/스팸/광고 메시지 제거
 - 방송 **강제 종료** — 정책 위반 시 (허위 광고, 성희롱 등)
@@ -148,6 +183,11 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 ### 플래시세일/타임딜 모니터링
 - 허위 할인율(원가 부풀리기) 감지 → 상품 비활성화
 - 재고 0인 상품으로 타임딜 생성 → 시스템이 자동 차단하나 추가 점검
+
+### 셀러 페인 포인트 (지원 시 참고)
+- **YouTube 토큰 만료**: 7일마다 refresh_token 무효화 (Google OAuth 테스트 모드 한계). 셀러는 채널 카드에 "만료" 뱃지 + [재연동] 버튼으로 해결 가능. 근본 해결 = Google 심사 통과
+- **Quick Start / YouTube Studio 사용 시**: 자동으로 Studio 새 탭이 열림. 팝업 차단 시 [다시 열기] 링크 안내
+- **첫 OBS 사용 시**: RTMP URL/Key를 OBS에 한 번 입력해야 함. 다음 방송부터는 "✓ 저장됨" 표시되어 자동 사용
 
 > ⚠️ **방송 30분 미활동** 시 cron 이 자동 종료. 셀러가 재방송 원하면 새 스트림 생성 필요.`,
   },
@@ -389,22 +429,56 @@ const SELLER_SEED: SeedSection[] = [
   {
     key: 'live-broadcast', icon: '🎬', title: '라이브 방송 운영', order: 30,
     content: `### 방송 전 준비
-1. **YouTube 채널 연동** 완료 확인
+1. **YouTube 채널 연동** 완료 확인 (\`/seller/live-broadcast\`에서 채널 카드 확인)
 2. **상품 최소 3~5개** 준비 (다양성 확보)
 3. **썸네일 이미지** 매력적으로 (클릭률 좌우)
 4. **방송 예고** — 팔로워에게 시작 1시간 전 알림 발송
 
-### 방송 도구 3가지
+### 방송 도구 4가지 (자동 추천됨)
 - **빠른 시작** — 원클릭, 초보자 추천
-- **OBS Studio** — PC에서 고급 화면 구성 가능
-- **Naver Prism** — 모바일/PC 겸용, 한국 셀러에게 친숙
-- **YouTube Studio 브라우저** — 설치 없이 바로
+- **YouTube Studio** — 설치 없이 브라우저에서 바로
+- **OBS Studio** — PC에서 고급 화면 구성 가능 ✓ 한 번 설정하면 RTMP 키 자동 저장
+- **Naver Prism** — 모바일/PC 겸용, 한국 셀러에게 친숙 ✓ 첫 사용 시 QR 스캔만 하면 됨
 
-### 방송 중 핵심 기능
+> 💡 **마지막 사용 도구가 자동 선택됩니다.** 한 번 OBS로 방송하면 다음에도 OBS가 기본값.
+> 모바일 접속 시 Prism, PC 접속 시 OBS가 처음 진입 시 추천됨.
+
+### 방송 만들기 플로우
+1. \`/seller/live-broadcast\` 진입 (이미 진행 중 방송 있으면 자동 복귀)
+2. 제목 + 상품 선택 + 송출 도구 선택 (필수만 보임, 고급 설정은 접혀있음)
+3. **[방송 만들기]** 클릭 → URL이 \`/seller/live-broadcast/:streamId\`로 변경 (새로고침해도 같은 자리)
+4. 송출 도구별 동작:
+   - **YouTube Studio**: 새 탭 자동 오픈, Studio에서 [방송 시작] 누르면 우리 앱이 자동 감지 (3초 폴링)
+   - **OBS/Prism**: 첫 방송이면 RTMP URL/Key 표시, 두 번째부터는 "이미 저장됨" 표시. OBS에서 스트리밍 시작하면 자동 감지
+
+### 방송 중 핵심 기능 (\`/seller/live-broadcast/:streamId\`)
+- **실시간 통계 카운터** — 시청자 / 채팅 / 주문 / 매출 (5초 갱신)
+- **경과 시간 타이머** — 헤더에 표시
 - **상품 전환** — 현재 소개 중인 상품을 1-tap으로 변경
+  - ⌨️ **단축키 \`Space\`**: 다음 상품으로 즉시 전환
+  - ⌨️ **단축키 \`?\`**: 단축키 도움말 토글
 - **타임딜/플래시세일** — 1분/3분/5분 짧은 할인 시간으로 긴급성 유도
 - **라이브 공동구매** — 목표 인원 달성 시 추가 할인
 - **경매** — 최고가 낙찰 방식, 프리미엄 상품에 효과적
+- **시청자 링크 공유** — 우리 앱 \`/live/:id\` 링크 (후원·상품·경매 활성화)
+  - ⚠️ YouTube 링크 공유 X — 우리 앱 링크여야 커머스 기능 동작
+
+### 방송 종료 흐름
+1. 우측 상단 [방송 종료] → 확인 모달 (시청자 끊김, 재시작 불가 경고)
+2. 종료 후 자동으로 **방송 요약 모달** 표시 (방송 시간 + 시청자/채팅/주문/매출)
+3. [상세 분석 보기]로 \`/seller/live-analytics/:id\`로 이동 가능
+
+### 편의 기능
+- **방송 템플릿 저장** — 정기 방송 셀러용. 고급 설정에서 [📋 현재 설정을 템플릿으로 저장] 클릭. 최대 10개 저장됨.
+- **마지막 방송 값 자동 채움** — 설명/썸네일/공개설정은 마지막 방송 값으로 prefill
+- **최근 사용 상품 빠른 추가** — 상품 선택 영역에 [+ 최근 사용 상품 추가] 버튼
+- **상품 검색** — 상품 6개 이상이면 검색창 표시
+- **다중 채널 지원** — YouTube 채널 2개 이상 연동 시 채널 카드에서 드롭다운으로 전환
+- **채널 연결 해제** — 채널 카드의 ⋯ 메뉴에서 가능
+
+### 예약 방송
+- 시작 시간 30분 전: 카운트다운 화면 표시
+- 30분 이내: 일반 송출 대기 화면으로 전환되며 자동 감지 시작
 
 ### 효과적인 방송 팁
 - **긴급성 강조** — "지금만", "한정 수량", "곧 종료"
@@ -412,7 +486,11 @@ const SELLER_SEED: SeedSection[] = [
 - **시청자 소통** — 채팅 질문에 실시간 답변
 - **후원자 감사 인사** — 기부 받으면 이름 불러주기
 
-💡 **방송 30분 미활동 시 자동 종료**. 중간 공백 최소화.`,
+💡 **방송 30분 미활동 시 자동 종료**. 중간 공백 최소화.
+
+### 자주 발생하는 문제
+- **YouTube 연동 만료**: 채널 카드에 "만료" 뱃지가 뜨면 [재연동] 버튼으로 다시 연결 (refresh token이 7일 후 만료됨, Google OAuth 심사 통과 시 해제됨)
+- **자동 감지 안 됨**: 5초 이상 폴링 실패 시 우측 하단에 "재연결 중..." 배너 표시. 정상 감지가 안 되면 [수동 시작] 작은 링크 클릭`,
   },
   {
     key: 'orders-shipping', icon: '🚚', title: '주문 처리 & 배송', order: 40,
@@ -729,7 +807,7 @@ const AGENCY_SEED: SeedSection[] = [
 ]
 
 export const GUIDE_SEEDS: Record<'admin' | 'seller' | 'agency', SeedSection[]> = {
-  admin: ADMIN_SEED,
-  seller: SELLER_SEED,
-  agency: AGENCY_SEED,
+  admin: [...ADMIN_SEED, autoRefSection('admin')],
+  seller: [...SELLER_SEED, autoRefSection('seller')],
+  agency: [...AGENCY_SEED, autoRefSection('agency')],
 }

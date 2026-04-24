@@ -26,6 +26,20 @@ bash scripts/check-schema-refs.sh || {
   exit 1
 }
 
+echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
+bash scripts/check-guide-sync.sh || true
+
+# 자동 참조 섹션 (페이지/엔드포인트 목록) 재생성 + staged 면 추가
+auto_ref_relevant=$(echo "$staged_ts" | grep -E '^(src/App\.tsx|src/(features|worker)/(.*?\.routes)?|src/worker/index\.ts)' || true)
+if [ -n "$auto_ref_relevant" ]; then
+  echo "==> Pre-commit: 가이드 자동 참조 재생성..."
+  node scripts/generate-guide-references.mjs > /dev/null 2>&1 || true
+  if ! git diff --quiet src/features/guides/api/auto-reference.ts 2>/dev/null; then
+    git add src/features/guides/api/auto-reference.ts
+    echo "   ✓ auto-reference.ts 재생성 + staged"
+  fi
+fi
+
 echo "==> Pre-commit: TypeScript check..."
 npx tsc --noEmit --skipLibCheck || {
   echo "❌ Commit blocked. Fix TypeScript errors."
@@ -122,6 +136,7 @@ echo "✅ Git pre-commit hook installed at $HOOK_FILE"
 echo ""
 echo "검증 단계:"
 echo "  1. 스키마 참조 (금지 컬럼)"
-echo "  2. TypeScript (npx tsc)"
-echo "  3. 파일 중간 import 검출"
-echo "  4. Worker 번들 빌드 (런타임 crash catch)"
+echo "  2. 운영 가이드 동기화 (warn-only, STRICT_GUIDE_SYNC=1로 차단)"
+echo "  3. TypeScript (npx tsc)"
+echo "  4. 파일 중간 import 검출"
+echo "  5. Worker 번들 빌드 (런타임 crash catch)"

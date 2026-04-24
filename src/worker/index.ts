@@ -719,7 +719,7 @@ app.post('/api/_internal/clear-rate-limit', async (c) => {
   const reqToken = c.req.header('X-Internal-Token');
   if (!opsToken || opsToken !== reqToken) return c.json({ success: false, error: 'Forbidden' }, 403);
   const DB = env.DB as D1Database;
-  const body = await c.req.json<{ action?: string; ip?: string }>().catch(() => ({}));
+  const body = await c.req.json<{ action?: string; ip?: string }>().catch(() => ({} as { action?: string; ip?: string }));
   const action = body.action || 'admin_login';
   if (body.ip) {
     await DB.prepare('DELETE FROM rate_limit_attempts WHERE key = ? AND action = ?')

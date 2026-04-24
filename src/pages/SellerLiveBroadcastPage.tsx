@@ -235,6 +235,66 @@ function EndBroadcastModal({ stream, onConfirm, onCancel }: {
   )
 }
 
+// ── 범용 확인 모달 (다양한 confirm 대체) ─────────────────────────
+function ConfirmModal({ title, description, confirmLabel, confirmStyle = 'bg-red-600 hover:bg-red-700', onConfirm, onCancel }: {
+  title: string; description: string; confirmLabel: string
+  confirmStyle?: string; onConfirm: () => void; onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6 text-amber-600" />
+        </div>
+        <div className="text-center space-y-1">
+          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+          <p className="text-sm text-gray-600">{description}</p>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button onClick={onCancel}
+            className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold">
+            {t('common.cancel')}
+          </button>
+          <button onClick={onConfirm}
+            className={`flex-1 py-2.5 ${confirmStyle} text-white rounded-xl text-sm font-semibold`}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── 텍스트 입력 모달 (prompt 대체) ──────────────────────────────
+function PromptModal({ title, placeholder, confirmLabel, onConfirm, onCancel }: {
+  title: string; placeholder: string; confirmLabel: string
+  onConfirm: (value: string) => void; onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  const [value, setValue] = useState('')
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+        <h3 className="text-base font-bold text-gray-900">{title}</h3>
+        <input autoFocus value={value} onChange={e => setValue(e.target.value)} placeholder={placeholder}
+          onKeyDown={e => { if (e.key === 'Enter' && value.trim()) onConfirm(value.trim()) }}
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        <div className="flex gap-2">
+          <button onClick={onCancel}
+            className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold">
+            {t('common.cancel')}
+          </button>
+          <button onClick={() => value.trim() && onConfirm(value.trim())} disabled={!value.trim()}
+            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold">
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── 방송 종료 후 리캡 모달 (P1-7) ────────────────────────────────
 function RecapModal({ stream, stats, onClose }: {
   stream: LiveStream
@@ -243,9 +303,10 @@ function RecapModal({ stream, stats, onClose }: {
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 백드롭 클릭 방지 — 명시적 닫기만 허용
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl">
         <div className="text-center space-y-1">
           <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{t('seller.liveBroadcast.recapTitle')}</p>
           <h3 className="text-lg font-bold text-gray-900 truncate">{stream.title}</h3>
@@ -495,13 +556,18 @@ export default function SellerLiveBroadcastPage() {
     })()
   }, [urlStreamId, navigate])
 
-  // P0-1: 진행 중 방송 자동 redirect (URL 없을 때만)
+  // P0-1: 진행 중 방송 자동 redirect (URL 없을 때만, 1시간 이내 임박한 것만)
   useEffect(() => {
     if (urlStreamId || loading) return
-    const active = streams.find(s => s.status === 'live' || s.status === 'scheduled')
-    if (active) {
-      navigate(`/seller/live-broadcast/${active.id}`, { replace: true })
-    }
+    const active = streams.find(s => {
+      if (s.status === 'live') return true
+      if (s.status === 'scheduled' && s.scheduled_at) {
+        const minsUntil = (new Date(s.scheduled_at).getTime() - Date.now()) / 60000
+        return minsUntil >= -10 && minsUntil <= 60 // -10분 ~ +60분
+      }
+      return false
+    })
+    if (active) navigate(`/seller/live-broadcast/${active.id}`, { replace: true })
   }, [streams, urlStreamId, loading, navigate])
 
   // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링 (P2-10: 실패 카운터)
@@ -547,11 +613,15 @@ export default function SellerLiveBroadcastPage() {
     finally { setLoading(false) }
   }
 
-  // P2-11: 채널 연결 해제
-  async function disconnectChannel(channelId: number) {
-    if (!confirm(t('seller.liveBroadcast.confirmDisconnect'))) return
+  // P2-11: 채널 연결 해제 (모달 기반)
+  const [disconnectChannelId, setDisconnectChannelId] = useState<number | null>(null)
+  function requestDisconnect(channelId: number) { setDisconnectChannelId(channelId) }
+  async function confirmDisconnect() {
+    if (!disconnectChannelId) return
+    const id = disconnectChannelId
+    setDisconnectChannelId(null)
     try {
-      await api.delete(`/api/seller/youtube/oauth/${channelId}`)
+      await api.delete(`/api/seller/youtube/oauth/${id}`)
       toast.success(t('seller.liveBroadcast.disconnected'))
       await loadData()
     } catch { toast.error(t('seller.liveBroadcast.disconnectFailed')) }
@@ -585,6 +655,7 @@ export default function SellerLiveBroadcastPage() {
         product_ids: effectiveProducts,
         scheduled_start_time: scheduledStartTime,
         privacy_status: privacy,
+        channel_id: activeChannelId || undefined,
       })
       if (res.data?.success) {
         const d = res.data.data
@@ -725,7 +796,7 @@ export default function SellerLiveBroadcastPage() {
           channels={channels}
           activeChannelId={activeChannelId}
           onSelectChannel={setActiveChannelId}
-          onDisconnect={disconnectChannel}
+          onDisconnect={requestDisconnect}
         />
 
         {/* YouTube 토큰 만료 경고 배너 */}
@@ -768,6 +839,9 @@ export default function SellerLiveBroadcastPage() {
             navigate={navigate}
             channels={channels}
             recentProductIds={getRecentProducts()}
+            tokenExpired={!!channels.find(c => c.id === activeChannelId)?.token_expired}
+            onReauthenticate={connectYouTube}
+            connectingYouTube={connectingYouTube}
           />
         )}
 
@@ -830,6 +904,18 @@ export default function SellerLiveBroadcastPage() {
           />
         )}
 
+        {/* 채널 연결 해제 확인 모달 */}
+        {disconnectChannelId !== null && (
+          <ConfirmModal
+            title="채널 연결을 해제하시겠습니까?"
+            description="해제하면 이 채널로는 방송할 수 없어요. 다시 연동하면 복구 가능합니다."
+            confirmLabel={t('seller.liveBroadcast.disconnectChannel')}
+            confirmStyle="bg-red-600 hover:bg-red-700"
+            onConfirm={confirmDisconnect}
+            onCancel={() => setDisconnectChannelId(null)}
+          />
+        )}
+
       </div>
     </SellerLayout>
   )
@@ -854,13 +940,17 @@ interface StepInfoProps {
   navigate: ReturnType<typeof useNavigate>
   channels: YouTubeChannel[]
   recentProductIds: number[]
+  tokenExpired: boolean
+  onReauthenticate: () => void
+  connectingYouTube: boolean
 }
 
 function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, setThumbnailUrl, privacy, setPrivacy,
   isScheduled, setIsScheduled, scheduledDate, setScheduledDate, scheduledTime, setScheduledTime,
   sellableProducts, selectedProducts, setSelectedProducts, toggleProduct, method, setMethod,
   destination, setDestination, destinations,
-  creating, onCreate, navigate, channels, recentProductIds
+  creating, onCreate, navigate, channels, recentProductIds,
+  tokenExpired, onReauthenticate, connectingYouTube
 }: StepInfoProps) {
   const { t } = useTranslation()
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -902,15 +992,13 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
     toast.success(t('seller.liveBroadcast.templateApplied'))
   }
 
-  function saveAsTemplate() {
-    const name = prompt(t('seller.liveBroadcast.templateNamePrompt'))
-    if (!name?.trim()) return
-    const newTpl: BroadcastTemplate = {
-      name: name.trim(), title, description, privacy, productIds: selectedProducts
-    }
-    const updated = [newTpl, ...templates.filter(t => t.name !== name.trim())]
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+  function handleSaveTemplate(name: string) {
+    const newTpl: BroadcastTemplate = { name, title, description, privacy, productIds: selectedProducts }
+    const updated = [newTpl, ...templates.filter(t => t.name !== name)]
     saveTemplates(updated)
     setTemplates(updated)
+    setShowSaveTemplate(false)
     toast.success(t('seller.liveBroadcast.templateSaved'))
   }
   // 🛡️ 2026-04-23 배치 164: 1-click quick start (P1 UX 단순화)
@@ -931,6 +1019,26 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
     // 값을 직접 전달 — state 반영 타이밍에 의존하지 않음
     onCreate({ title: autoTitle, productIds })
   }
+  // 토큰 만료 시 폼 전체 차단 + 재연동 CTA
+  if (tokenExpired) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center space-y-4">
+        <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto">
+          <AlertTriangle className="w-8 h-8 text-amber-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-amber-900 mb-1">YouTube 연동이 만료됐어요</h3>
+          <p className="text-sm text-amber-700">방송을 시작하려면 채널을 다시 연동해야 합니다.<br/>약 30초 소요됩니다.</p>
+        </div>
+        <Button onClick={onReauthenticate} disabled={connectingYouTube}
+          className="bg-red-600 hover:bg-red-700 text-white px-8 h-11 text-sm font-semibold">
+          {connectingYouTube ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Youtube className="w-4 h-4 mr-2" />}
+          지금 재연동하기
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       {/* ⚡ Quick Start 카드 */}
@@ -1157,7 +1265,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
 
             {/* P2-8: 템플릿으로 저장 */}
             {title && selectedProducts.length > 0 && (
-              <button type="button" onClick={saveAsTemplate}
+              <button type="button" onClick={() => setShowSaveTemplate(true)}
                 className="w-full text-xs text-blue-600 hover:text-blue-700 underline underline-offset-2 py-1">
                 📋 {t('seller.liveBroadcast.saveAsTemplate')}
               </button>
@@ -1165,6 +1273,16 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
           </div>
         )}
       </div>
+
+      {showSaveTemplate && (
+        <PromptModal
+          title={t('seller.liveBroadcast.templateNamePrompt')}
+          placeholder="예: 매주 화요일 신상 라이브"
+          confirmLabel={t('seller.liveBroadcast.templateSaved').replace(/되었습니다|saved/i, '저장')}
+          onConfirm={handleSaveTemplate}
+          onCancel={() => setShowSaveTemplate(false)}
+        />
+      )}
 
       <Button onClick={() => onCreate()} disabled={creating || !title.trim() || selectedProducts.length === 0}
         className="w-full h-12 bg-red-600 hover:bg-red-700 text-white text-base font-semibold">

@@ -190,13 +190,20 @@ async function getSellerIdFromToken(authHeader: string | undefined, secret: stri
 async function getValidAccessToken(
   db: D1Database,
   sellerId: number,
-  youtubeService: YouTubeAPIService
+  youtubeService: YouTubeAPIService,
+  channelOAuthId?: number
 ): Promise<string | null> {
-  const auth = await db.prepare(`
-    SELECT * FROM seller_youtube_oauth 
-    WHERE seller_id = ? AND is_active = 1 
-    ORDER BY created_at DESC LIMIT 1
-  `).bind(sellerId).first<SellerYouTubeAuth>()
+  const auth = channelOAuthId
+    ? await db.prepare(`
+        SELECT * FROM seller_youtube_oauth
+        WHERE seller_id = ? AND id = ? AND is_active = 1
+        LIMIT 1
+      `).bind(sellerId, channelOAuthId).first<SellerYouTubeAuth>()
+    : await db.prepare(`
+        SELECT * FROM seller_youtube_oauth
+        WHERE seller_id = ? AND is_active = 1
+        ORDER BY created_at DESC LIMIT 1
+      `).bind(sellerId).first<SellerYouTubeAuth>()
 
   if (!auth) return null
 
@@ -442,7 +449,7 @@ app.post('/live/create', async (c) => {
     }, 401)
   }
 
-  const { title, description, thumbnail_url, product_ids, scheduled_start_time, privacy_status } = await c.req.json()
+  const { title, description, thumbnail_url, product_ids, scheduled_start_time, privacy_status, channel_id } = await c.req.json()
 
   if (!title) {
     return c.json({
@@ -467,8 +474,8 @@ app.post('/live/create', async (c) => {
   try {
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
 
-    // Get valid access token
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    // Get valid access token (channel_id로 특정 채널 지정 가능)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, channel_id)
 
     if (!accessToken) {
       return c.json({
@@ -482,12 +489,20 @@ app.post('/live/create', async (c) => {
     const scheduledTime = scheduled_start_time || new Date().toISOString()
 
     // Check if seller has a persistent stream key (OBS/Prism set once)
-    const sellerAuth = await c.env.DB.prepare(`
-      SELECT default_stream_id, default_rtmp_url, default_rtmp_key
-      FROM seller_youtube_oauth
-      WHERE seller_id = ? AND is_active = 1
-      LIMIT 1
-    `).bind(sellerId).first() as any
+    const sellerAuth = channel_id
+      ? await c.env.DB.prepare(`
+          SELECT default_stream_id, default_rtmp_url, default_rtmp_key
+          FROM seller_youtube_oauth
+          WHERE seller_id = ? AND id = ? AND is_active = 1
+          LIMIT 1
+        `).bind(sellerId, channel_id).first() as any
+      : await c.env.DB.prepare(`
+          SELECT default_stream_id, default_rtmp_url, default_rtmp_key
+          FROM seller_youtube_oauth
+          WHERE seller_id = ? AND is_active = 1
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).bind(sellerId).first() as any
 
     let liveSetup
     if (sellerAuth?.default_stream_id) {
@@ -510,17 +525,20 @@ app.post('/live/create', async (c) => {
         privacyStatus
       )
 
-      // Save as persistent stream for future use
-      await c.env.DB.prepare(`
-        UPDATE seller_youtube_oauth
-        SET default_stream_id = ?, default_rtmp_url = ?, default_rtmp_key = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE seller_id = ? AND is_active = 1
-      `).bind(
-        liveSetup.stream.id,
-        liveSetup.rtmpUrl,
-        liveSetup.rtmpKey,
-        sellerId
-      ).run()
+      // Save as persistent stream for the specific channel (or active default)
+      if (channel_id) {
+        await c.env.DB.prepare(`
+          UPDATE seller_youtube_oauth
+          SET default_stream_id = ?, default_rtmp_url = ?, default_rtmp_key = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE seller_id = ? AND id = ? AND is_active = 1
+        `).bind(liveSetup.stream.id, liveSetup.rtmpUrl, liveSetup.rtmpKey, sellerId, channel_id).run()
+      } else {
+        await c.env.DB.prepare(`
+          UPDATE seller_youtube_oauth
+          SET default_stream_id = ?, default_rtmp_url = ?, default_rtmp_key = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE seller_id = ? AND is_active = 1
+        `).bind(liveSetup.stream.id, liveSetup.rtmpUrl, liveSetup.rtmpKey, sellerId).run()
+      }
     }
 
     // Save to database

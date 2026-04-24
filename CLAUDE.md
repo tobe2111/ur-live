@@ -32,6 +32,42 @@
 > 두 곳 모두 최신 상태를 유지하려면 seed 도 함께 업데이트하고,
 > 배포 후 관리자에게 "seed 업데이트됨, UI 편집 내용과 merge 필요" 알림 필요.
 
+### ⚙️ 자동 강제 시스템 (`scripts/check-guide-sync.sh`)
+
+Pre-commit hook이 다음 파일 변경 시 `guide-seed.ts` 동시 수정 여부를 검사합니다:
+
+| 변경 파일 | 영향받는 가이드 |
+|---|---|
+| `src/pages/Seller*.tsx`, `src/features/(seller\|youtube)/api/*.ts` | 셀러 |
+| `src/pages/Admin*.tsx`, `src/worker/routes/*.ts` | 어드민 |
+| `src/pages/Agency*.tsx`, `src/features/agency/api/*.ts` | 에이전시 |
+| `src/features/auth/api/*.ts` | 모두 |
+
+**기본**: warn-only (커밋 진행하되 경고 표시)
+**차단 모드**: `STRICT_GUIDE_SYNC=1 git commit ...`
+
+### 🤖 자동 생성 참조 섹션 (`scripts/generate-guide-references.mjs`)
+
+각 역할 가이드 끝에 **"코드 자동 참조" 섹션이 자동 추가**됩니다 (key=`auto-reference`, order=999):
+
+- **자동 추출 대상**:
+  - 페이지 라우트 (`src/App.tsx` 의 `<Route path="...">`)
+  - API 엔드포인트 (`src/features/*/api/*.routes.ts`, `src/worker/routes/*.routes.ts` 의 `app.get/post/put/delete/patch`)
+  - 마운트 prefix (`app.route('/api/seller/...', sellerRoutes)`, `adminApp.route(...)`)
+
+- **분류**: prefix 기반 (`/admin/*`, `/seller/*`, `/agency/*`)
+
+- **출력**: `src/features/guides/api/auto-reference.ts` (auto-generated, 수동 편집 금지)
+
+- **자동 실행**:
+  - Pre-commit hook: 라우트/페이지 변경 시 자동 재생성 + staged 추가
+  - 수동: `npm run generate:guide-refs`
+
+코드 변경 PR 작성 시 가능하면 같은 PR에 가이드 narrative 업데이트도 포함하세요.
+auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념/플로우 설명)만 수동 업데이트.
+
+후속 PR로 미루면 커밋 메시지에 `guide-update-pending` 명시.
+
 ## 🚨 기술 부채 & 알려진 이슈 (2026-04-22)
 
 **남은 기술 부채는 `TECHNICAL_DEBT.md` 참조.** 특히 주의:
