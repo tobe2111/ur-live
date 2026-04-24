@@ -484,7 +484,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       // 🛡️ Toss 실패 시 예약한 refunded_amount 롤백
       await c.env.DB.prepare(
         "UPDATE orders SET refunded_amount = MAX(0, COALESCE(refunded_amount, 0) - ?) WHERE id = ?"
-      ).bind(refundAmount, body.order_id).run().catch(() => {});
+      ).bind(refundAmount, body.order_id).run().catch((e) => { console.error('[ORDERS] refunded_amount rollback failed:', e) });
 
       const tossErrorMessages: Record<string, string> = {
         ALREADY_CANCELED_PAYMENT: '이미 취소된 결제입니다',

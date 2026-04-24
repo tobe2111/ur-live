@@ -145,6 +145,9 @@ export async function handleExpiredVoucherRefunds(env: Env) {
 
     if (!expired.results?.length) return;
 
+    // ensureUserPointsTable은 루프 밖에서 1회만 호출 (루프당 DDL 낭비 방지)
+    await ensureUserPointsTable(DB);
+
     let refundCount = 0;
     let expireCount = 0;
 
@@ -164,7 +167,6 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       // Refund deal points if paid with deal_points — user_points 테이블 사용
       if (voucher.payment_method === 'deal_points' && voucher.user_id && voucher.price) {
         try {
-          await ensureUserPointsTable(DB);
           const existingPts = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
             .bind(voucher.user_id).first<{ balance: number }>();
           if (existingPts) {

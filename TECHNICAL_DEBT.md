@@ -231,13 +231,49 @@ Pages Dashboard 에서도 동일 추가.
 
 ---
 
+### TD-014: as any 남용 (79건)
+**문제:** `stripe.routes.ts`, `live-sse.routes.ts`, `admin-review-generator.routes.ts` 등에서 `as any` 캐스팅 다수.
+
+**영향:** 타입 안전성 상실. 런타임 에러가 컴파일 시 걸리지 않음.
+
+**해결법:** 점진적으로 정확한 타입 정의로 교체. (레거시 파일 우선)
+
+**예상 작업 시간:** 2일
+
+---
+
+### TD-015: 거대 파일 3종 추가 분할 필요
+**문제:**
+- `src/features/seller/api/seller-management.routes.ts`: **2099줄** (이미 TD-006에 일부 포함)
+- `src/features/agency/api/agency.routes.ts`: **1639줄**
+- `src/worker/routes/order.routes.ts`: **794줄**
+
+**영향:** 가독성 저하, 머지 충돌 빈발.
+
+**해결법:** 기능 단위로 파일 분할 (payments, settlements, shipping 등).
+
+**예상 작업 시간:** 3일
+
+---
+
+### TD-016: 수수료율 하드코딩 분산
+**문제:** `admin-tools.routes.ts:202`, `agency.routes.ts:1361-1362` 등에 0.05, 0.02 하드코딩 존재 (platform_settings 미사용).
+
+**현황 (2026-04-24):** admin-tools, agency CSV 쪽은 sellers.commission_rate DB값으로 수정 완료. 하지만 다른 통계 쿼리에 잔존 가능.
+
+**해결법:** 모든 수수료 계산을 `platform_settings`의 `commission_rate_default`로 통일.
+
+**예상 작업 시간:** 1일
+
+---
+
 ## 📊 요약
 
 | 심각도 | 건수 | 예상 총 작업 시간 |
 |--------|------|------------------|
 | 🔴 Critical | 3 | 2.5시간 (사용자) |
 | 🟡 High | 4 | 3주 |
-| 🟢 Medium | 4 | 1주 |
+| 🟢 Medium | 7 | 2주 |
 | ⚪ Low | 2 | 수시간 |
 
 **Critical 3건만 해결하면 운영 위험은 제거됨.**
@@ -248,3 +284,4 @@ High/Medium 은 코드 품질 & 유지보수성 이슈 — 단계적으로.
 ## 진행 기록
 
 - **2026-04-22**: 이 문서 작성. 대장애 복구 완료 후 baseline 부채 정리.
+- **2026-04-24**: 전수조사 2차. 보안(CORS, rate-limit, 입력검증) + 성능(싱글턴, batch, 병렬화) 다수 수정. TD-014~016 추가.

@@ -65,6 +65,8 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
     const sellerId = c.req.query('seller_id');
     const startDate = c.req.query('start_date');
     const endDate = c.req.query('end_date');
+    const limit = Math.min(Math.max(1, Number(c.req.query('limit')) || 200), 500);
+    const offset = Math.max(0, Number(c.req.query('offset')) || 0);
 
     const buildWhere = (base: string) => {
       const params: (string | number | null)[] = [];
@@ -73,7 +75,7 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
       if (sellerId) { q += ' AND o.seller_id = ?'; params.push(sellerId); }
       if (startDate) { q += " AND DATE(o.created_at, '+9 hours') >= ?"; params.push(startDate); }
       if (endDate) { q += " AND DATE(o.created_at, '+9 hours') <= ?"; params.push(endDate); }
-      q += ' ORDER BY o.created_at DESC LIMIT 1000';
+      q += ` ORDER BY o.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
       return { q, params };
     };
 

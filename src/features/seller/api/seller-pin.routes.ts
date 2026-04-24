@@ -23,11 +23,12 @@ import { verify as verifyJwt, sign as signJwt } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { hashPassword, verifyPassword } from '@/lib/password'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { ALLOWED_ORIGINS } from '@/shared/constants'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
 export const sellerPinRoutes = new Hono<{ Bindings: Bindings }>()
-sellerPinRoutes.use('*', cors({ origin: '*', credentials: true }))
+sellerPinRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
 
 async function getSellerId(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null

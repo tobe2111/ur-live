@@ -19,6 +19,13 @@ import type { Env } from '@/worker/types/env';
 
 export const adminCouponsRoutes = new Hono<{ Bindings: Env }>();
 
+let _couponsTableEnsured = false
+async function ensureCouponsTable(DB: D1Database) {
+  if (_couponsTableEnsured) return
+  _couponsTableEnsured = true
+  try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value INTEGER NOT NULL, min_order_amount INTEGER DEFAULT 0, max_discount INTEGER, total_count INTEGER DEFAULT 0, used_count INTEGER DEFAULT 0, seller_id INTEGER, is_active INTEGER DEFAULT 1, starts_at DATETIME, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
+}
+
 function safeAdminError(err: unknown, env: Env): string {
   const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
   if (isProd) return 'Internal server error';
@@ -29,7 +36,7 @@ function safeAdminError(err: unknown, env: Env): string {
 adminCouponsRoutes.get('/coupons', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value INTEGER NOT NULL, min_order_amount INTEGER DEFAULT 0, max_discount INTEGER, total_count INTEGER DEFAULT 0, used_count INTEGER DEFAULT 0, seller_id INTEGER, is_active INTEGER DEFAULT 1, starts_at DATETIME, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
+    await ensureCouponsTable(DB);
     const { results } = await DB.prepare('SELECT * FROM coupons ORDER BY created_at DESC').all();
     return c.json({ success: true, data: results ?? [] });
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }

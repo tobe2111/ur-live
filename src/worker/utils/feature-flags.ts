@@ -45,7 +45,10 @@ const DEFAULT_FLAGS: FeatureFlags = {
 let cached: { flags: FeatureFlags; loadedAt: number } | null = null;
 const CACHE_TTL_MS = 30_000; // 30 seconds
 
+let _flagsTableEnsured = false
 async function ensureFlagsTable(DB: D1Database) {
+  if (_flagsTableEnsured) return
+  _flagsTableEnsured = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS feature_flags_kv (
       key TEXT PRIMARY KEY,

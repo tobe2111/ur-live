@@ -1354,23 +1354,29 @@ app.put('/targets', async (c: AgencyCtx) => {
 // ── GET /api/agency/settlements/csv — 정산 CSV 다운로드 ──
 app.get('/settlements/csv', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
+  const agencyRow = await c.env.DB.prepare('SELECT commission_rate FROM agencies WHERE id = ?')
+    .bind(agencyId).first<{ commission_rate: number }>()
+  const agencyRate = (agencyRow?.commission_rate ?? 2.0) / 100
   const { results } = await c.env.DB.prepare(`
     SELECT s.name AS seller_name, s.email,
+      COALESCE(s.commission_rate, 5) AS seller_rate,
       COUNT(DISTINCT o.id) AS settled_orders,
-      COALESCE(SUM(o.total_amount), 0) AS total_amount,
-      COALESCE(SUM(o.total_amount * 0.05), 0) AS seller_commission,
-      COALESCE(SUM(o.total_amount * 0.02), 0) AS agency_commission
+      COALESCE(SUM(o.total_amount), 0) AS total_amount
     FROM agency_sellers ag
     JOIN sellers s ON ag.seller_id = s.id
     LEFT JOIN orders o ON o.seller_id = s.id AND COALESCE(o.settlement_status, '') = 'settled'
     WHERE ag.agency_id = ?
     GROUP BY s.id ORDER BY total_amount DESC
-  `).bind(agencyId).all()
+  `).bind(agencyId).all<{ seller_name: string; email: string; seller_rate: number; settled_orders: number; total_amount: number }>()
 
   const rows = results || []
   const csv = [
-    '셀러명,이메일,정산건수,총매출(원),셀러수수료5%(원),에이전시수수료2%(원)',
-    ...rows.map((r: any) => `${r.seller_name},${r.email},${r.settled_orders},${r.total_amount},${Math.round(r.seller_commission)},${Math.round(r.agency_commission)}`)
+    `셀러명,이메일,정산건수,총매출(원),셀러수수료(원),에이전시수수료(원)`,
+    ...rows.map((r) => {
+      const sellerComm = Math.round(r.total_amount * (r.seller_rate / 100))
+      const agencyComm = Math.round(r.total_amount * agencyRate)
+      return `${r.seller_name},${r.email},${r.settled_orders},${r.total_amount},${sellerComm},${agencyComm}`
+    })
   ].join('\n')
 
   return new Response('\uFEFF' + csv, {

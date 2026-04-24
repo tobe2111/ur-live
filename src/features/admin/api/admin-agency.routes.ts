@@ -118,6 +118,10 @@ app.patch('/:id', async (c) => {
   const existing = await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(id).first()
   if (!existing) return c.json({ success: false, error: 'Not found' }, 404)
 
+  if (commission_rate !== undefined && (!Number.isFinite(commission_rate) || commission_rate < 0 || commission_rate > 100)) {
+    return c.json({ success: false, error: '수수료율은 0~100 사이 숫자여야 합니다' }, 400)
+  }
+
   if (password) {
     const hash = await hashPassword(password)
     await c.env.DB.prepare(

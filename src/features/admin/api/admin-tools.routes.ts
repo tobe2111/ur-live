@@ -173,7 +173,7 @@ adminToolsRoutes.post('/notices', async (c) => {
     }
   }
   if (target === 'users' || target === 'all') {
-    const { results: users } = await c.env.DB.prepare("SELECT id FROM users LIMIT 1000").all<{ id: string }>()
+    const { results: users } = await c.env.DB.prepare("SELECT id FROM users ORDER BY id LIMIT 1000").all<{ id: string }>()
     if (users?.length) {
       const stmts = users.map(u =>
         c.env.DB.prepare("INSERT INTO user_notifications (user_id, type, title, message, created_at) VALUES (?, 'admin_notice', ?, ?, datetime('now'))")
@@ -197,9 +197,10 @@ adminToolsRoutes.post('/notices', async (c) => {
 adminToolsRoutes.get('/settlements/pending', async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT s.id AS seller_id, s.name AS seller_name, s.business_name,
+      COALESCE(s.commission_rate, 10) AS commission_rate,
       COUNT(DISTINCT o.id) AS order_count,
       COALESCE(SUM(o.total_amount), 0) AS total_amount,
-      COALESCE(SUM(o.total_amount * 0.05), 0) AS commission
+      COALESCE(SUM(o.total_amount * COALESCE(s.commission_rate, 10) / 100.0), 0) AS commission
     FROM orders o JOIN sellers s ON o.seller_id = s.id
     WHERE o.status IN ('DELIVERED', 'delivered') AND COALESCE(o.settlement_status, 'pending') = 'pending'
     GROUP BY s.id ORDER BY total_amount DESC
@@ -222,13 +223,13 @@ adminToolsRoutes.post('/settlements/process', async (c) => {
   }
 
   let affectedOrders = 0
-  for (const sid of validIds) {
-    const result = await c.env.DB.prepare(`
+  const batchResults = await c.env.DB.batch(
+    validIds.map(sid => c.env.DB.prepare(`
       UPDATE orders SET settlement_status = 'settled', updated_at = datetime('now')
       WHERE seller_id = ? AND status IN ('DELIVERED', 'delivered') AND COALESCE(settlement_status, 'pending') = 'pending'
-    `).bind(sid).run()
-    affectedOrders += result.meta?.changes || 0
-  }
+    `).bind(sid))
+  )
+  for (const r of batchResults) affectedOrders += r.meta?.changes || 0
 
   // 감사 로그 — 누가 언제 몇 명 정산 처리했는지
   await writeAuditLog(c, {

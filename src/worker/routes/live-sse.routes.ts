@@ -51,7 +51,8 @@ liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
       ? `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
          FROM chat_messages
          WHERE live_stream_id = ? AND is_deleted = 0
-         ORDER BY id ASC`
+         ORDER BY id ASC
+         LIMIT 500`
       : `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
          FROM chat_messages
          WHERE live_stream_id = ? AND is_deleted = 0
