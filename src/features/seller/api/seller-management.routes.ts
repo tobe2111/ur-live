@@ -2035,6 +2035,27 @@ sellerManagementRoutes.post('/unlink-kakao', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+    // 🛡️ 카카오 전용 생성된 셀러(/register-from-user 경로)는 임시 비번(랜덤 hex)이 저장돼 있어
+    //   unlink 시 이메일 로그인 불가 → 영구 lockout. current_password 검증으로 방어.
+    const body = await c.req.json<{ current_password?: string }>().catch(() => ({} as { current_password?: string }));
+    if (!body.current_password) {
+      return c.json({
+        success: false,
+        error: '현재 비밀번호 확인이 필요합니다. 비밀번호가 없다면 먼저 "비밀번호 찾기" 로 설정해주세요.',
+        code: 'PASSWORD_REQUIRED'
+      }, 400);
+    }
+
+    const seller = await c.env.DB.prepare(
+      'SELECT password_hash FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ password_hash: string }>();
+    if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+
+    const { verifyPassword } = await import('../../../lib/password');
+    const ok = await verifyPassword(body.current_password, seller.password_hash);
+    if (!ok) return c.json({ success: false, error: '비밀번호가 틀렸습니다' }, 401);
+
     await c.env.DB.prepare(
       "UPDATE sellers SET linked_user_id = NULL, updated_at = datetime('now') WHERE id = ?"
     ).bind(sellerId).run();

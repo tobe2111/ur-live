@@ -99,9 +99,11 @@ export function KakaoLinkButton({ role }: Props) {
 
   async function unlink() {
     if (!confirm('카카오 계정 연동을 해제할까요? 이후엔 이메일/비밀번호로만 로그인 가능합니다.')) return
+    const pw = prompt('본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)')
+    if (!pw) return
     setWorking(true)
     try {
-      const res = await api.post(`${basePath}/unlink-kakao`)
+      const res = await api.post(`${basePath}/unlink-kakao`, { current_password: pw })
       if (res.data?.success) {
         toast.success('카카오 연동이 해제되었어요')
         await refresh()
@@ -109,8 +111,12 @@ export function KakaoLinkButton({ role }: Props) {
         toast.error(res.data?.error || '해제 실패')
       }
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } } }
-      toast.error(err.response?.data?.error || '해제 실패')
+      const err = e as { response?: { data?: { error?: string; code?: string } } }
+      if (err.response?.data?.code === 'PASSWORD_REQUIRED') {
+        toast.error('비밀번호 설정이 필요합니다. "비밀번호 찾기" 로 설정 후 다시 시도해주세요.')
+      } else {
+        toast.error(err.response?.data?.error || '해제 실패')
+      }
     } finally { setWorking(false) }
   }
 

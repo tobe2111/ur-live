@@ -1577,6 +1577,25 @@ app.post('/link-kakao', async (c: AgencyCtx) => {
 app.post('/unlink-kakao', async (c: AgencyCtx) => {
   try {
     const agencyId = c.get('agency').id
+
+    // 🛡️ 카카오 전용 에이전시(/register-from-user)는 임시 비번만 있어 unlink 시 lockout.
+    const body = await c.req.json<{ current_password?: string }>().catch(() => ({} as { current_password?: string }))
+    if (!body.current_password) {
+      return c.json({
+        success: false,
+        error: '현재 비밀번호 확인이 필요합니다. 비밀번호가 없다면 먼저 "비밀번호 찾기" 로 설정해주세요.',
+        code: 'PASSWORD_REQUIRED'
+      }, 400)
+    }
+
+    const agency = await c.env.DB.prepare(
+      'SELECT password_hash FROM agencies WHERE id = ?'
+    ).bind(agencyId).first<{ password_hash: string }>()
+    if (!agency) return c.json({ success: false, error: '에이전시를 찾을 수 없습니다' }, 404)
+
+    const ok = await verifyPassword(body.current_password, agency.password_hash)
+    if (!ok) return c.json({ success: false, error: '비밀번호가 틀렸습니다' }, 401)
+
     await c.env.DB.prepare(
       "UPDATE agencies SET linked_user_id = NULL, updated_at = datetime('now') WHERE id = ?"
     ).bind(agencyId).run()
