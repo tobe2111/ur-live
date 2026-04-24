@@ -52,6 +52,7 @@ interface LiveStream {
   viewer_count: number
   current_product_id?: number
   ended_at?: string
+  scheduled_at?: string
 }
 
 type WizardStep = 'info' | 'setup' | 'live'
@@ -194,6 +195,164 @@ function RtmpBlock({ label, value, fieldKey, copiedField, onCopy }: {
   )
 }
 
+// ── 방송 종료 확인 모달 (P0-2) ──────────────────────────────────
+function EndBroadcastModal({ stream, onConfirm, onCancel }: {
+  stream: LiveStream; onConfirm: () => void; onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6 text-red-600" />
+        </div>
+        <div className="text-center space-y-1">
+          <h3 className="text-lg font-bold text-gray-900">{t('seller.liveBroadcast.endConfirmTitle')}</h3>
+          <p className="text-sm text-gray-600 truncate">{stream.title}</p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-xs">
+          <div className="flex items-start gap-2 text-gray-700">
+            <span className="text-amber-500 shrink-0">●</span>
+            <span>{t('seller.liveBroadcast.endWarn1')}</span>
+          </div>
+          <div className="flex items-start gap-2 text-gray-700">
+            <span className="text-amber-500 shrink-0">●</span>
+            <span>{t('seller.liveBroadcast.endWarn2')}</span>
+          </div>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button onClick={onCancel}
+            className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold">
+            {t('common.cancel')}
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold">
+            {t('seller.liveBroadcast.endBroadcast')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── 방송 종료 후 리캡 모달 (P1-7) ────────────────────────────────
+function RecapModal({ stream, stats, onClose }: {
+  stream: LiveStream
+  stats: { duration: string; viewers: number; chat: number; orders: number; revenue: number }
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="text-center space-y-1">
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{t('seller.liveBroadcast.recapTitle')}</p>
+          <h3 className="text-lg font-bold text-gray-900 truncate">{stream.title}</h3>
+          <p className="text-xs text-gray-500">{stats.duration}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-blue-50 rounded-xl p-3 text-center">
+            <Eye className="w-4 h-4 text-blue-600 mx-auto mb-1" />
+            <p className="text-lg font-bold text-blue-700">{stats.viewers.toLocaleString()}</p>
+            <p className="text-[10px] text-blue-600">{t('seller.liveBroadcast.statsViewers')}</p>
+          </div>
+          <div className="bg-purple-50 rounded-xl p-3 text-center">
+            <MessageSquare className="w-4 h-4 text-purple-600 mx-auto mb-1" />
+            <p className="text-lg font-bold text-purple-700">{stats.chat.toLocaleString()}</p>
+            <p className="text-[10px] text-purple-600">{t('seller.liveBroadcast.statsChat')}</p>
+          </div>
+          <div className="bg-amber-50 rounded-xl p-3 text-center">
+            <ShoppingBag className="w-4 h-4 text-amber-600 mx-auto mb-1" />
+            <p className="text-lg font-bold text-amber-700">{stats.orders}</p>
+            <p className="text-[10px] text-amber-600">{t('seller.liveBroadcast.statsOrders')}</p>
+          </div>
+          <div className="bg-green-50 rounded-xl p-3 text-center">
+            <DollarSign className="w-4 h-4 text-green-600 mx-auto mb-1" />
+            <p className="text-lg font-bold text-green-700">₩{stats.revenue.toLocaleString()}</p>
+            <p className="text-[10px] text-green-600">{t('seller.liveBroadcast.statsRevenue')}</p>
+          </div>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold">
+            {t('common.close')}
+          </button>
+          <button onClick={() => { onClose(); navigate(`/seller/live-analytics/${stream.id}`) }}
+            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold">
+            {t('seller.liveBroadcast.viewAnalytics')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── 채널 카드 (P2-9 다중 채널 + P2-11 해제) ─────────────────────
+function ChannelCard({ channels, activeChannelId, onSelectChannel, onDisconnect }: {
+  channels: YouTubeChannel[]
+  activeChannelId: number | null
+  onSelectChannel: (id: number) => void
+  onDisconnect: (id: number) => void
+}) {
+  const { t } = useTranslation()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const active = channels.find(c => c.id === activeChannelId) || channels[0]
+  if (!active) return null
+  const hasMultiple = channels.length > 1
+
+  return (
+    <div className="relative bg-white rounded-xl px-4 py-3 border border-gray-200 mb-5">
+      <div className="flex items-center gap-3">
+        {active.channel_thumbnail
+          ? <img src={active.channel_thumbnail} alt="" className="w-8 h-8 rounded-full" />
+          : <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center"><Youtube className="h-4 w-4 text-red-500" /></div>}
+        <button
+          onClick={() => hasMultiple && setPickerOpen(v => !v)}
+          className="flex-1 min-w-0 text-left">
+          <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1">
+            {active.channel_title}
+            {hasMultiple && <span className="text-xs text-gray-400">▾</span>}
+          </p>
+          <p className="text-xs text-gray-400">{String(t('seller.liveBroadcast.subscribers', { count: active.subscriber_count?.toLocaleString() || '0' } as Record<string, string>))}</p>
+        </button>
+        {active.token_expired
+          ? <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.expired')}</span>
+          : <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
+        }
+        <button onClick={() => setMenuOpen(v => !v)}
+          className="text-gray-400 hover:text-gray-700 px-1">
+          ⋯
+        </button>
+      </div>
+
+      {pickerOpen && hasMultiple && (
+        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-60 overflow-y-auto">
+          {channels.map(ch => (
+            <button key={ch.id}
+              onClick={() => { onSelectChannel(ch.id); setPickerOpen(false) }}
+              className={`w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 ${ch.id === active.id ? 'bg-blue-50' : ''}`}>
+              {ch.channel_thumbnail && <img src={ch.channel_thumbnail} alt="" className="w-6 h-6 rounded-full" />}
+              <span className="text-xs font-medium text-gray-900 truncate flex-1">{ch.channel_title}</span>
+              {ch.id === active.id && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {menuOpen && (
+        <div className="absolute top-full right-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+          <button onClick={() => { setMenuOpen(false); onDisconnect(active.id) }}
+            className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50">
+            {t('seller.liveBroadcast.disconnectChannel')}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── 송출 도구 마지막 선택 기억 ──────────────────────────────────
 const METHOD_STORAGE_KEY = 'seller_live_last_method'
 function getLastUsedMethod(): StreamMethod {
@@ -201,12 +360,52 @@ function getLastUsedMethod(): StreamMethod {
     const v = localStorage.getItem(METHOD_STORAGE_KEY)
     if (v === 'youtube' || v === 'obs' || v === 'prism' || v === 'quick') return v
   } catch { /* SSR or blocked */ }
-  // 디바이스 기반 추천: 모바일 → prism, PC → obs
   if (typeof window !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)) return 'prism'
   return 'obs'
 }
 function rememberMethod(m: StreamMethod) {
   try { localStorage.setItem(METHOD_STORAGE_KEY, m) } catch { /* ignore */ }
+}
+
+// ── 최근 사용 상품 / 마지막 방송 값 prefill ─────────────────────
+const RECENT_PRODUCTS_KEY = 'seller_live_recent_products'
+const LAST_BROADCAST_KEY = 'seller_live_last_broadcast'
+const TEMPLATES_KEY = 'seller_live_templates'
+
+interface BroadcastTemplate {
+  name: string
+  title: string
+  description: string
+  privacy: 'public' | 'unlisted' | 'private'
+  productIds: number[]
+}
+
+function getRecentProducts(): number[] {
+  try {
+    const v = localStorage.getItem(RECENT_PRODUCTS_KEY)
+    return v ? JSON.parse(v) : []
+  } catch { return [] }
+}
+function rememberRecentProducts(ids: number[]) {
+  try { localStorage.setItem(RECENT_PRODUCTS_KEY, JSON.stringify(ids.slice(0, 20))) } catch { /* ignore */ }
+}
+function getLastBroadcast(): { description?: string; thumbnailUrl?: string; privacy?: 'public' | 'unlisted' | 'private' } {
+  try {
+    const v = localStorage.getItem(LAST_BROADCAST_KEY)
+    return v ? JSON.parse(v) : {}
+  } catch { return {} }
+}
+function rememberLastBroadcast(data: { description: string; thumbnailUrl: string; privacy: 'public' | 'unlisted' | 'private' }) {
+  try { localStorage.setItem(LAST_BROADCAST_KEY, JSON.stringify(data)) } catch { /* ignore */ }
+}
+function getTemplates(): BroadcastTemplate[] {
+  try {
+    const v = localStorage.getItem(TEMPLATES_KEY)
+    return v ? JSON.parse(v) : []
+  } catch { return [] }
+}
+function saveTemplates(templates: BroadcastTemplate[]) {
+  try { localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates.slice(0, 10))) } catch { /* ignore */ }
 }
 
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────
@@ -217,6 +416,7 @@ export default function SellerLiveBroadcastPage() {
 
   // 데이터
   const [channels, setChannels] = useState<YouTubeChannel[]>([])
+  const [activeChannelId, setActiveChannelId] = useState<number | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [loading, setLoading] = useState(true)
@@ -230,20 +430,26 @@ export default function SellerLiveBroadcastPage() {
   const [destinations, setDestinations] = useState<DestinationPlatform[]>([])
   const [currentStream, setCurrentStream] = useState<LiveStream | null>(null)
 
-  // Step 1 폼
+  // Step 1 폼 (마지막 방송 값으로 prefill)
+  const lastBroadcast = useRef(getLastBroadcast()).current
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [thumbnailUrl, setThumbnailUrl] = useState('')
+  const [description, setDescription] = useState(lastBroadcast.description || '')
+  const [thumbnailUrl, setThumbnailUrl] = useState(lastBroadcast.thumbnailUrl || '')
   const [selectedProducts, setSelectedProducts] = useState<number[]>([])
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledDate, setScheduledDate] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
-  const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('public')
+  const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>(lastBroadcast.privacy || 'public')
 
   // UI
   const [creating, setCreating] = useState(false)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [endModalOpen, setEndModalOpen] = useState(false)
+  const [recapStream, setRecapStream] = useState<LiveStream | null>(null)
+  const [recapStats, setRecapStats] = useState<{ duration: string; viewers: number; chat: number; orders: number; revenue: number } | null>(null)
+  const [pollFailures, setPollFailures] = useState(0)
   const restoredRef = useRef(false)
+  const liveStartTimeRef = useRef<number>(0)
 
   useEffect(() => {
     if (!isSellerAuthenticated()) { navigate('/seller/login'); return }
@@ -279,30 +485,43 @@ export default function SellerLiveBroadcastPage() {
           status: s.status,
           viewer_count: 0,
           current_product_id: s.current_product_id,
+          scheduled_at: s.scheduled_at,
         })
         setStep(s.status === 'live' ? 'live' : 'setup')
+        if (s.status === 'live') liveStartTimeRef.current = Date.now()
       } catch {
         navigate('/seller/live-broadcast', { replace: true })
       }
     })()
   }, [urlStreamId, navigate])
 
-  // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링
+  // P0-1: 진행 중 방송 자동 redirect (URL 없을 때만)
+  useEffect(() => {
+    if (urlStreamId || loading) return
+    const active = streams.find(s => s.status === 'live' || s.status === 'scheduled')
+    if (active) {
+      navigate(`/seller/live-broadcast/${active.id}`, { replace: true })
+    }
+  }, [streams, urlStreamId, loading, navigate])
+
+  // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링 (P2-10: 실패 카운터)
   useEffect(() => {
     if (step !== 'setup' || !currentStream) return
     const poll = async () => {
       try {
         const res = await api.get(`/api/seller/youtube/live/${currentStream.id}/status`)
+        setPollFailures(0)
         if (res.data?.success && res.data.data?.synced && res.data.data?.status === 'live') {
           toast.success(t('seller.liveBroadcast.broadcastStartedAuto'))
           setCurrentStream(s => s ? { ...s, status: 'live' } : s)
           setStep('live')
+          liveStartTimeRef.current = Date.now()
         }
-      } catch { /* silent */ }
+      } catch { setPollFailures(c => c + 1) }
     }
     const interval = setInterval(poll, 3000)
     return () => clearInterval(interval)
-  }, [step, currentStream])
+  }, [step, currentStream, t])
 
   async function loadData() {
     try {
@@ -313,8 +532,11 @@ export default function SellerLiveBroadcastPage() {
         api.get('/api/seller/streams'),
         api.get('/api/platforms/destinations'),
       ])
-      if (chRes.status === 'fulfilled' && chRes.value.data?.success)
-        setChannels(chRes.value.data.data || [])
+      if (chRes.status === 'fulfilled' && chRes.value.data?.success) {
+        const chs = chRes.value.data.data || []
+        setChannels(chs)
+        if (chs.length > 0 && !activeChannelId) setActiveChannelId(chs[0].id)
+      }
       if (prRes.status === 'fulfilled' && prRes.value.data?.success)
         setProducts(prRes.value.data.data || [])
       if (stRes.status === 'fulfilled' && stRes.value.data?.success)
@@ -323,6 +545,16 @@ export default function SellerLiveBroadcastPage() {
         setDestinations(dRes.value.data.data || [])
     } catch { setLoadError(t('seller.liveBroadcast.dataLoadFailed')) }
     finally { setLoading(false) }
+  }
+
+  // P2-11: 채널 연결 해제
+  async function disconnectChannel(channelId: number) {
+    if (!confirm(t('seller.liveBroadcast.confirmDisconnect'))) return
+    try {
+      await api.delete(`/api/seller/youtube/oauth/${channelId}`)
+      toast.success(t('seller.liveBroadcast.disconnected'))
+      await loadData()
+    } catch { toast.error(t('seller.liveBroadcast.disconnectFailed')) }
   }
 
   async function connectYouTube() {
@@ -363,9 +595,12 @@ export default function SellerLiveBroadcastPage() {
           youtube_url: d.youtube_url,
           rtmp_url: d.rtmp_url, rtmp_key: d.rtmp_key,
           status: 'scheduled', viewer_count: 0,
+          scheduled_at: scheduledStartTime,
         })
         setStep('setup')
         rememberMethod(method)
+        rememberRecentProducts([...effectiveProducts, ...getRecentProducts().filter(id => !effectiveProducts.includes(id))])
+        rememberLastBroadcast({ description: description.trim(), thumbnailUrl: thumbnailUrl.trim(), privacy })
         navigate(`/seller/live-broadcast/${d.stream_id}`, { replace: true })
       } else {
         if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
@@ -394,15 +629,38 @@ export default function SellerLiveBroadcastPage() {
     } catch { toast.error(t('seller.liveBroadcast.startFailed')) }
   }
 
-  async function endStream() {
-    if (!currentStream || !confirm(t('seller.liveBroadcast.confirmEnd'))) return
+  function requestEndStream() {
+    if (!currentStream) return
+    setEndModalOpen(true)
+  }
+
+  async function confirmEndStream() {
+    if (!currentStream) return
+    setEndModalOpen(false)
+    const endingStream = currentStream
+    // 리캡 통계 미리 가져오기
+    let stats = null
     try {
-      await api.post(`/api/seller/youtube/live/${currentStream.id}/end`)
+      const res = await api.get(`/api/seller/streams/${endingStream.id}/live-stats`)
+      if (res.data?.success) stats = res.data.data
+    } catch { /* ignore */ }
+
+    try {
+      await api.post(`/api/seller/youtube/live/${endingStream.id}/end`)
       toast.success(t('seller.liveBroadcast.ended'))
+      // 리캡 표시
+      if (stats && liveStartTimeRef.current > 0) {
+        const sec = Math.floor((Date.now() - liveStartTimeRef.current) / 1000)
+        const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60
+        const duration = h > 0 ? `${h}시간 ${m}분 ${s}초` : `${m}분 ${s}초`
+        setRecapStream(endingStream)
+        setRecapStats({ duration, viewers: stats.viewer_count, chat: stats.chat_count, orders: stats.order_count, revenue: stats.revenue })
+      }
       setCurrentStream(null); setStep('info')
-      setTitle(''); setDescription(''); setSelectedProducts([])
+      setTitle(''); setSelectedProducts([])
       navigate('/seller/live-broadcast', { replace: true })
       restoredRef.current = false
+      liveStartTimeRef.current = 0
       await loadData()
     } catch { toast.error(t('seller.liveBroadcast.endFailed')) }
   }
@@ -462,20 +720,13 @@ export default function SellerLiveBroadcastPage() {
           icon={<Youtube className="h-5 w-5" />}
         />
 
-        {/* 연동 채널 */}
-        <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-gray-200 mb-5">
-          {channels[0]?.channel_thumbnail
-            ? <img src={channels[0].channel_thumbnail} alt="" className="w-8 h-8 rounded-full" />
-            : <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center"><Youtube className="h-4 w-4 text-red-500" /></div>}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{channels[0]?.channel_title}</p>
-            <p className="text-xs text-gray-400">{String(t('seller.liveBroadcast.subscribers', { count: channels[0]?.subscriber_count?.toLocaleString() || '0' } as Record<string, string>))}</p>
-          </div>
-          {channels[0]?.token_expired
-            ? <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">만료</span>
-            : <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
-          }
-        </div>
+        {/* 연동 채널 (P2-9 다중 채널 + P2-11 해제 메뉴) */}
+        <ChannelCard
+          channels={channels}
+          activeChannelId={activeChannelId}
+          onSelectChannel={setActiveChannelId}
+          onDisconnect={disconnectChannel}
+        />
 
         {/* YouTube 토큰 만료 경고 배너 */}
         {channels[0]?.token_expired && (
@@ -508,12 +759,15 @@ export default function SellerLiveBroadcastPage() {
             scheduledTime={scheduledTime} setScheduledTime={setScheduledTime}
             sellableProducts={sellableProducts}
             selectedProducts={selectedProducts}
+            setSelectedProducts={setSelectedProducts}
             toggleProduct={(id: number) => setSelectedProducts(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
             method={method} setMethod={setMethod}
             destination={destination} setDestination={setDestination}
             destinations={destinations}
             creating={creating} onCreate={createBroadcast}
             navigate={navigate}
+            channels={channels}
+            recentProductIds={getRecentProducts()}
           />
         )}
 
@@ -536,7 +790,7 @@ export default function SellerLiveBroadcastPage() {
             stream={currentStream}
             products={sellableProducts}
             onChangeProduct={(productId: number) => setCurrentStream(s => s ? { ...s, current_product_id: productId } : s)}
-            onEndStream={endStream}
+            onEndStream={requestEndStream}
           />
         )}
 
@@ -545,9 +799,34 @@ export default function SellerLiveBroadcastPage() {
           <StreamList
             streams={streams}
             onManage={(stream: LiveStream) => {
-              setCurrentStream(stream)
-              setStep(stream.status === 'live' ? 'live' : 'setup')
+              navigate(`/seller/live-broadcast/${stream.id}`)
             }}
+          />
+        )}
+
+        {/* P2-10: 네트워크 끊김 표시 */}
+        {pollFailures >= 3 && step === 'setup' && (
+          <div className="fixed bottom-4 right-4 z-40 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 shadow-lg flex items-center gap-2.5 max-w-xs">
+            <Loader2 className="w-4 h-4 text-amber-600 animate-spin shrink-0" />
+            <p className="text-xs text-amber-800">{t('seller.liveBroadcast.reconnecting')}</p>
+          </div>
+        )}
+
+        {/* P0-2: 방송 종료 확인 모달 */}
+        {endModalOpen && currentStream && (
+          <EndBroadcastModal
+            stream={currentStream}
+            onConfirm={confirmEndStream}
+            onCancel={() => setEndModalOpen(false)}
+          />
+        )}
+
+        {/* P1-7: 방송 종료 후 리캡 모달 */}
+        {recapStream && recapStats && (
+          <RecapModal
+            stream={recapStream}
+            stats={recapStats}
+            onClose={() => { setRecapStream(null); setRecapStats(null) }}
           />
         )}
 
@@ -565,32 +844,75 @@ interface StepInfoProps {
   isScheduled: boolean; setIsScheduled: (fn: (v: boolean) => boolean) => void
   scheduledDate: string; setScheduledDate: (v: string) => void
   scheduledTime: string; setScheduledTime: (v: string) => void
-  sellableProducts: Product[]; selectedProducts: number[]; toggleProduct: (id: number) => void
+  sellableProducts: Product[]; selectedProducts: number[]
+  setSelectedProducts: React.Dispatch<React.SetStateAction<number[]>>
+  toggleProduct: (id: number) => void
   method: StreamMethod; setMethod: (v: StreamMethod) => void
   destination: Destination; setDestination: (v: Destination) => void
   destinations: DestinationPlatform[]
   creating: boolean; onCreate: (overrides?: { title?: string; productIds?: number[] }) => void
   navigate: ReturnType<typeof useNavigate>
+  channels: YouTubeChannel[]
+  recentProductIds: number[]
 }
 
 function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, setThumbnailUrl, privacy, setPrivacy,
   isScheduled, setIsScheduled, scheduledDate, setScheduledDate, scheduledTime, setScheduledTime,
-  sellableProducts, selectedProducts, toggleProduct, method, setMethod,
+  sellableProducts, selectedProducts, setSelectedProducts, toggleProduct, method, setMethod,
   destination, setDestination, destinations,
-  creating, onCreate, navigate
+  creating, onCreate, navigate, channels, recentProductIds
 }: StepInfoProps) {
   const { t } = useTranslation()
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [productSearch, setProductSearch] = useState('')
+  const [templates, setTemplates] = useState<BroadcastTemplate[]>(() => getTemplates())
+  const [showTemplates, setShowTemplates] = useState(false)
+  const hasPersistentKey = channels[0]?.has_persistent_key
   const privacyOptions: { key: 'public' | 'unlisted' | 'private'; icon: typeof Globe; label: string; desc: string }[] = [
     { key: 'public', icon: Globe, label: t('seller.liveBroadcast.public'), desc: t('seller.liveBroadcast.publicDesc') },
     { key: 'unlisted', icon: EyeOff, label: t('seller.liveBroadcast.unlisted'), desc: t('seller.liveBroadcast.unlistedDesc') },
     { key: 'private', icon: Lock, label: t('seller.liveBroadcast.private'), desc: t('seller.liveBroadcast.privateDesc') },
   ]
   const methodOptions = [
-    { key: 'quick' as const, icon: Play, label: t('seller.liveBroadcast.quickStart'), desc: t('seller.liveBroadcast.quickStartDesc'), active: 'border-pink-400 bg-pink-50', iconActive: 'text-pink-600' },
-    { key: 'youtube' as const, icon: Youtube, label: 'YouTube Studio', desc: t('seller.liveBroadcast.webBrowser'), active: 'border-red-400 bg-red-50', iconActive: 'text-red-600' },
-    { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.pcBroadcast'), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600' },
-    { key: 'prism' as const, icon: Smartphone, label: t('seller.liveBroadcast.naverPrism'), desc: t('seller.liveBroadcast.mobile'), active: 'border-green-400 bg-green-50', iconActive: 'text-green-600' },
+    { key: 'quick' as const, icon: Play, label: t('seller.liveBroadcast.quickStart'), desc: t('seller.liveBroadcast.quickStartDesc'), active: 'border-pink-400 bg-pink-50', iconActive: 'text-pink-600', hasKey: false },
+    { key: 'youtube' as const, icon: Youtube, label: 'YouTube Studio', desc: t('seller.liveBroadcast.webBrowser'), active: 'border-red-400 bg-red-50', iconActive: 'text-red-600', hasKey: false },
+    { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.pcBroadcast'), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600', hasKey: !!hasPersistentKey },
+    { key: 'prism' as const, icon: Smartphone, label: t('seller.liveBroadcast.naverPrism'), desc: t('seller.liveBroadcast.mobile'), active: 'border-green-400 bg-green-50', iconActive: 'text-green-600', hasKey: !!hasPersistentKey },
   ]
+
+  // 상품 정렬: 선택된 것 → 최근 사용 → 나머지
+  const filteredProducts = (() => {
+    const q = productSearch.trim().toLowerCase()
+    const filtered = q ? sellableProducts.filter(p => p.name.toLowerCase().includes(q)) : sellableProducts
+    const selectedSet = new Set(selectedProducts)
+    const recentSet = new Set(recentProductIds)
+    return [...filtered].sort((a, b) => {
+      const aSel = selectedSet.has(a.id) ? 0 : recentSet.has(a.id) ? 1 : 2
+      const bSel = selectedSet.has(b.id) ? 0 : recentSet.has(b.id) ? 1 : 2
+      return aSel - bSel
+    })
+  })()
+
+  function applyTemplate(tpl: BroadcastTemplate) {
+    setTitle(tpl.title)
+    setDescription(tpl.description)
+    setPrivacy(tpl.privacy)
+    setSelectedProducts(tpl.productIds.filter(id => sellableProducts.some(p => p.id === id)))
+    setShowTemplates(false)
+    toast.success(t('seller.liveBroadcast.templateApplied'))
+  }
+
+  function saveAsTemplate() {
+    const name = prompt(t('seller.liveBroadcast.templateNamePrompt'))
+    if (!name?.trim()) return
+    const newTpl: BroadcastTemplate = {
+      name: name.trim(), title, description, privacy, productIds: selectedProducts
+    }
+    const updated = [newTpl, ...templates.filter(t => t.name !== name.trim())]
+    saveTemplates(updated)
+    setTemplates(updated)
+    toast.success(t('seller.liveBroadcast.templateSaved'))
+  }
   // 🛡️ 2026-04-23 배치 164: 1-click quick start (P1 UX 단순화)
   //   클릭 한 번으로 기본값(오늘 날짜 제목 + 최근 상품 3개 + quick 방식)으로 방송 생성.
   //   세부 설정이 필요한 사용자는 아래 폼을 이용.
@@ -635,12 +957,33 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-      <div>
-        <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.enterBroadcastInfo')}</h2>
-        <p className="text-xs text-gray-500 mt-0.5">{t('seller.liveBroadcast.enterBroadcastInfoDesc')}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.enterBroadcastInfo')}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{t('seller.liveBroadcast.enterBroadcastInfoDesc')}</p>
+        </div>
+        {templates.length > 0 && (
+          <div className="relative shrink-0">
+            <button onClick={() => setShowTemplates(v => !v)}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+              📋 {t('seller.liveBroadcast.templates')}
+            </button>
+            {showTemplates && (
+              <div className="absolute top-6 right-0 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-56 overflow-y-auto">
+                {templates.map(tpl => (
+                  <button key={tpl.name} onClick={() => applyTemplate(tpl)}
+                    className="w-full px-3 py-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0">
+                    <p className="text-xs font-semibold text-gray-900 truncate">{tpl.name}</p>
+                    <p className="text-[10px] text-gray-500 truncate">{tpl.title}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* 제목 */}
+      {/* 제목 (필수) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.broadcastTitle')} <span className="text-red-500">*</span></label>
         <input value={title} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
@@ -648,63 +991,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
       </div>
 
-      {/* 설명 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.description')} <span className="text-xs text-gray-400 font-normal">({t('common.optional')})</span></label>
-        <textarea value={description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-          placeholder={t('seller.liveBroadcast.descriptionPlaceholder')} rows={2} maxLength={500}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" />
-      </div>
-
-      {/* 썸네일 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.thumbnail')} <span className="text-xs text-gray-400 font-normal">({t('common.optional')})</span></label>
-        <input value={thumbnailUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setThumbnailUrl(e.target.value)}
-          placeholder={t('seller.liveBroadcast.thumbnailPlaceholder')}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-        {thumbnailUrl && (
-          <img src={thumbnailUrl} alt={t('seller.preview')} className="mt-2 w-full max-w-[200px] rounded-lg object-cover"
-            onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none' }} />
-        )}
-      </div>
-
-      {/* 공개 설정 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">{t('seller.liveBroadcast.privacySetting')}</label>
-        <div className="grid grid-cols-3 gap-2">
-          {privacyOptions.map(opt => (
-            <button key={opt.key} onClick={() => setPrivacy(opt.key)}
-              className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-xs transition-all ${privacy === opt.key ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}`}>
-              <opt.icon className={`w-4 h-4 ${privacy === opt.key ? 'text-blue-600' : 'text-gray-400'}`} />
-              <span className={`font-semibold ${privacy === opt.key ? 'text-blue-700' : 'text-gray-700'}`}>{opt.label}</span>
-              <span className="text-gray-400">{opt.desc}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 예약 */}
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-        <div>
-          <p className="text-sm font-medium text-gray-900">{t('seller.liveBroadcast.scheduleBroadcast')}</p>
-          <p className="text-xs text-gray-500">{isScheduled ? t('seller.liveBroadcast.startAtScheduled') : t('seller.liveBroadcast.startNow')}</p>
-        </div>
-        <button onClick={() => setIsScheduled((v: boolean) => !v)}
-          className={`relative w-11 h-6 rounded-full transition-colors ${isScheduled ? 'bg-blue-600' : 'bg-gray-300'}`}>
-          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${isScheduled ? 'translate-x-5' : ''}`} />
-        </button>
-      </div>
-      {isScheduled && (
-        <div className="flex gap-3">
-          <input type="date" value={scheduledDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledDate(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-          <input type="time" value={scheduledTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledTime(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-        </div>
-      )}
-
-      {/* 상품 선택 */}
+      {/* 상품 선택 (필수, 검색 + 정렬) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           {t('seller.liveBroadcast.saleProducts')} <span className="text-red-500">*</span>
@@ -716,67 +1003,50 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
             <button onClick={() => navigate('/seller/products/new')} className="text-sm text-blue-600 font-medium">{t('seller.liveBroadcast.registerProduct')}</button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto">
-            {sellableProducts.map((p: Product) => (
-              <button key={p.id} onClick={() => toggleProduct(p.id)}
-                className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all ${selectedProducts.includes(p.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />}
-                <span className="truncate flex-1">{p.name}</span>
-                {selectedProducts.includes(p.id) && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
+          <>
+            {sellableProducts.length > 6 && (
+              <input type="text" value={productSearch}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProductSearch(e.target.value)}
+                placeholder={t('seller.liveBroadcast.searchProducts')}
+                className="w-full px-3 py-2 mb-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            )}
+            {recentProductIds.length > 0 && !productSearch && (
+              <button type="button"
+                onClick={() => {
+                  const recent = recentProductIds.filter(id => sellableProducts.some(p => p.id === id)).slice(0, 5)
+                  setSelectedProducts(prev => [...new Set([...prev, ...recent])])
+                }}
+                className="text-[11px] text-blue-600 hover:text-blue-700 mb-2 underline underline-offset-2">
+                + {t('seller.liveBroadcast.addRecent')}
               </button>
-            ))}
-          </div>
+            )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+              {filteredProducts.map((p: Product) => (
+                <button key={p.id} onClick={() => toggleProduct(p.id)}
+                  className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all ${selectedProducts.includes(p.id) ? 'border-blue-500 bg-blue-50' : recentProductIds.includes(p.id) ? 'border-gray-300 hover:border-blue-300' : 'border-gray-200 hover:border-gray-300'}`}>
+                  {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />}
+                  <span className="truncate flex-1">{p.name}</span>
+                  {selectedProducts.includes(p.id) && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
-      {/* 🛡️ 2026-04-23 배치 166: 목적지 플랫폼 선택 (시청자가 어디서 볼 것인지) */}
-      {destinations.length > 0 && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.destination')}</label>
-          <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.destinationDesc')}</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {destinations.map(d => {
-              const isAvailable = d.status === 'available'
-              const isSelected = destination === d.key
-              return (
-                <button
-                  key={d.key}
-                  onClick={() => isAvailable && setDestination(d.key as Destination)}
-                  disabled={!isAvailable}
-                  className={`relative p-3 rounded-xl border-2 text-left transition-all ${
-                    !isAvailable
-                      ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
-                      : isSelected
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                  }`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>{d.label}</span>
-                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
-                  </div>
-                  {!isAvailable && (
-                    <p className="text-[10px] text-amber-600 font-medium">
-                      {t('seller.liveBroadcast.comingSoon')}{d.eta ? ` · ${d.eta}` : ''}
-                    </p>
-                  )}
-                  {d.note && !isAvailable && (
-                    <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-2">{d.note}</p>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 송출 도구 (Streaming Tool) — 어떤 도구로 RTMP 를 푸시할지 */}
+      {/* 송출 도구 (필수) — P0-3 영구키 배지 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.streamingTool')}</label>
         <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.streamingToolDesc')}</p>
         <div className="grid grid-cols-3 gap-3">
           {methodOptions.map(m => (
             <button key={m.key} onClick={() => setMethod(m.key)}
-              className={`p-4 rounded-xl border-2 transition-all text-center active:scale-95 ${method === m.key ? m.active : 'border-gray-100 hover:border-gray-200'}`}>
+              className={`relative p-4 rounded-xl border-2 transition-all text-center active:scale-95 ${method === m.key ? m.active : 'border-gray-100 hover:border-gray-200'}`}>
+              {m.hasKey && (
+                <span className="absolute top-1 right-1 text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">
+                  ✓ 저장됨
+                </span>
+              )}
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 ${method === m.key ? m.active.split(' ')[1] : 'bg-gray-100'}`}>
                 <m.icon className={`h-5 w-5 ${method === m.key ? m.iconActive : 'text-gray-400'}`} />
               </div>
@@ -787,11 +1057,182 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         </div>
       </div>
 
-      <Button onClick={onCreate} disabled={creating || !title.trim() || selectedProducts.length === 0}
+      {/* P1-4: 고급 설정 접기 */}
+      <div className="border-t border-gray-100 pt-4">
+        <button type="button" onClick={() => setAdvancedOpen(v => !v)}
+          className="w-full flex items-center justify-between text-sm font-medium text-gray-600 hover:text-gray-900">
+          <span>{t('seller.liveBroadcast.advancedSettings')}</span>
+          <span className="text-xs">{advancedOpen ? '▾' : '▸'}</span>
+        </button>
+        {advancedOpen && (
+          <div className="mt-4 space-y-4">
+            {/* 설명 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.description')} <span className="text-xs text-gray-400 font-normal">({t('common.optional')})</span></label>
+              <textarea value={description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+                placeholder={t('seller.liveBroadcast.descriptionPlaceholder')} rows={2} maxLength={500}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" />
+            </div>
+
+            {/* 썸네일 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.thumbnail')} <span className="text-xs text-gray-400 font-normal">({t('common.optional')})</span></label>
+              <input value={thumbnailUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setThumbnailUrl(e.target.value)}
+                placeholder={t('seller.liveBroadcast.thumbnailPlaceholder')}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              {thumbnailUrl && (
+                <img src={thumbnailUrl} alt={t('seller.preview')} className="mt-2 w-full max-w-[200px] rounded-lg object-cover"
+                  onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none' }} />
+              )}
+            </div>
+
+            {/* 공개 설정 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('seller.liveBroadcast.privacySetting')}</label>
+              <div className="grid grid-cols-3 gap-2">
+                {privacyOptions.map(opt => (
+                  <button key={opt.key} onClick={() => setPrivacy(opt.key)}
+                    className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-xs transition-all ${privacy === opt.key ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}`}>
+                    <opt.icon className={`w-4 h-4 ${privacy === opt.key ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <span className={`font-semibold ${privacy === opt.key ? 'text-blue-700' : 'text-gray-700'}`}>{opt.label}</span>
+                    <span className="text-gray-400">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 예약 */}
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{t('seller.liveBroadcast.scheduleBroadcast')}</p>
+                <p className="text-xs text-gray-500">{isScheduled ? t('seller.liveBroadcast.startAtScheduled') : t('seller.liveBroadcast.startNow')}</p>
+              </div>
+              <button onClick={() => setIsScheduled((v: boolean) => !v)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${isScheduled ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${isScheduled ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+            {isScheduled && (
+              <div className="flex gap-3">
+                <input type="date" value={scheduledDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+                <input type="time" value={scheduledTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledTime(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+              </div>
+            )}
+
+            {/* 목적지 */}
+            {destinations.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.destination')}</label>
+                <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.destinationDesc')}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {destinations.map(d => {
+                    const isAvailable = d.status === 'available'
+                    const isSelected = destination === d.key
+                    return (
+                      <button key={d.key}
+                        onClick={() => isAvailable && setDestination(d.key as Destination)}
+                        disabled={!isAvailable}
+                        className={`relative p-3 rounded-xl border-2 text-left transition-all ${!isAvailable ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed' : isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>{d.label}</span>
+                          {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
+                        </div>
+                        {!isAvailable && (
+                          <p className="text-[10px] text-amber-600 font-medium">
+                            {t('seller.liveBroadcast.comingSoon')}{d.eta ? ` · ${d.eta}` : ''}
+                          </p>
+                        )}
+                        {d.note && !isAvailable && (
+                          <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-2">{d.note}</p>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* P2-8: 템플릿으로 저장 */}
+            {title && selectedProducts.length > 0 && (
+              <button type="button" onClick={saveAsTemplate}
+                className="w-full text-xs text-blue-600 hover:text-blue-700 underline underline-offset-2 py-1">
+                📋 {t('seller.liveBroadcast.saveAsTemplate')}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Button onClick={() => onCreate()} disabled={creating || !title.trim() || selectedProducts.length === 0}
         className="w-full h-12 bg-red-600 hover:bg-red-700 text-white text-base font-semibold">
         {creating ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Radio className="h-5 w-5 mr-2" />}
         {creating ? t('seller.liveBroadcast.creating') : t('seller.liveBroadcast.createBroadcast')}
       </Button>
+      </div>
+    </div>
+  )
+}
+
+// ── 예약 방송 대기 화면 (P1-5) ──────────────────────────────────
+function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStream; onBack: () => void }) {
+  const { t } = useTranslation()
+  const [countdown, setCountdown] = useState('')
+
+  useEffect(() => {
+    const tick = () => {
+      if (!stream.scheduled_at) return
+      const target = new Date(stream.scheduled_at).getTime()
+      const diff = target - Date.now()
+      if (diff <= 0) { setCountdown('00:00:00'); return }
+      const days = Math.floor(diff / (24 * 3600 * 1000))
+      const hours = Math.floor((diff % (24 * 3600 * 1000)) / (3600 * 1000))
+      const minutes = Math.floor((diff % (3600 * 1000)) / 60000)
+      const seconds = Math.floor((diff % 60000) / 1000)
+      setCountdown(days > 0
+        ? `${days}일 ${hours}시간 ${minutes}분`
+        : `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [stream.scheduled_at])
+
+  const scheduledDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null
+  const scheduledStr = scheduledDate
+    ? `${scheduledDate.getFullYear()}-${String(scheduledDate.getMonth() + 1).padStart(2, '0')}-${String(scheduledDate.getDate()).padStart(2, '0')} ${String(scheduledDate.getHours()).padStart(2, '0')}:${String(scheduledDate.getMinutes()).padStart(2, '0')}`
+    : ''
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+      <div className="text-center space-y-1">
+        <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <span className="text-2xl">📅</span>
+        </div>
+        <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{t('seller.liveBroadcast.scheduledBroadcast')}</p>
+        <h2 className="text-lg font-bold text-gray-900 truncate">{stream.title}</h2>
+        <p className="text-xs text-gray-500">{scheduledStr}</p>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 text-center">
+        <p className="text-[11px] text-blue-700 font-semibold mb-1">{t('seller.liveBroadcast.timeRemaining')}</p>
+        <p className="text-2xl font-bold font-mono text-blue-900">{countdown}</p>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 flex items-start gap-2.5">
+        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-800 flex-1">{t('seller.liveBroadcast.scheduledStartHint')}</p>
+      </div>
+
+      <ShareLiveLink streamId={stream.id} />
+
+      <div className="flex items-center justify-center pt-2 border-t border-gray-100">
+        <button onClick={onBack}
+          className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
+          {t('common.cancel')}
+        </button>
       </div>
     </div>
   )
@@ -868,6 +1309,14 @@ interface StepSetupProps {
 function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, onBack }: StepSetupProps) {
   const { t } = useTranslation()
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
+
+  // P1-5: 예약 방송이고 시작 시간이 30분 이상 미래면 카운트다운 화면
+  const scheduledTime = stream.scheduled_at ? new Date(stream.scheduled_at).getTime() : 0
+  const minutesUntil = scheduledTime > 0 ? (scheduledTime - Date.now()) / 60000 : -1
+  if (minutesUntil > 30) {
+    return <ScheduledBroadcastWaiting stream={stream} onBack={onBack} />
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
       <div className="flex items-center justify-between">
@@ -989,6 +1438,7 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
   const { t } = useTranslation()
   const startedAtRef = useRef(Date.now())
   const [elapsed, setElapsed] = useState('00:00')
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   // 방송 경과 시간 타이머
   useEffect(() => {
@@ -1006,6 +1456,28 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
     return () => clearInterval(id)
   }, [])
 
+  // P2-12: 키보드 단축키 (input 포커스 중에는 무시)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === '?') { e.preventDefault(); setShowShortcuts(v => !v) }
+      else if (e.key === ' ' || e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        const idx = products.findIndex(p => p.id === stream.current_product_id)
+        const next = products[(idx + 1) % products.length]
+        if (next) {
+          api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: next.id })
+            .then(() => { onChangeProduct(next.id); toast.success(`${next.name} ▶`) })
+            .catch(() => { /* silent */ })
+        }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [products, stream.id, stream.current_product_id, onChangeProduct])
+
   return (
     <div className="space-y-4">
       {/* 상태 바 */}
@@ -1017,8 +1489,24 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
           <span className="text-xs font-mono text-gray-500 shrink-0">{elapsed}</span>
           <p className="text-sm font-semibold text-gray-900 truncate">{stream.title}</p>
         </div>
-        <Button onClick={onEndStream} size="sm" variant="destructive" className="shrink-0">{t('seller.liveBroadcast.endBroadcast')}</Button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button onClick={() => setShowShortcuts(v => !v)}
+            className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold"
+            title="키보드 단축키 (?)">
+            ?
+          </button>
+          <Button onClick={onEndStream} size="sm" variant="destructive">{t('seller.liveBroadcast.endBroadcast')}</Button>
+        </div>
       </div>
+
+      {/* P2-12: 단축키 도움말 */}
+      {showShortcuts && (
+        <div className="bg-gray-900 text-white rounded-xl p-4 text-xs space-y-1.5">
+          <p className="font-bold text-gray-100 mb-2">{t('seller.liveBroadcast.shortcutsTitle')}</p>
+          <div className="flex justify-between"><span className="text-gray-300">{t('seller.liveBroadcast.shortcutNextProduct')}</span><kbd className="bg-gray-800 px-2 py-0.5 rounded font-mono">Space</kbd></div>
+          <div className="flex justify-between"><span className="text-gray-300">{t('seller.liveBroadcast.shortcutToggleHelp')}</span><kbd className="bg-gray-800 px-2 py-0.5 rounded font-mono">?</kbd></div>
+        </div>
+      )}
 
       {/* 실시간 통계 카운터 */}
       <LiveStatsBar streamId={stream.id} />
