@@ -122,16 +122,31 @@ sellerPinRoutes.get('/pin-status', async (c) => {
 })
 
 /**
- * Helper: 현재 요청이 최근 15분 이내 PIN 인증을 받았는지 확인.
- * 민감 액션 엔드포인트에서 호출해서 !verified 면 412 PIN_REQUIRED 응답.
+ * Helper: 최근 15분 내 PIN 인증 OR 카카오 재인증(step-up) 을 받았는지 확인.
+ * 두 경로 중 하나라도 유효하면 통과.
  */
 export async function isPinVerified(cookieHeader: string | undefined, sellerId: number, jwtSecret: string): Promise<boolean> {
   if (!cookieHeader) return false
-  const match = /(?:^|;\s*)ur_pin_verified=([^;]+)/.exec(cookieHeader)
-  if (!match) return false
-  try {
-    const payload = await verifyJwt(match[1], jwtSecret, 'HS256') as JWTPayload
-    const p = payload as Record<string, unknown>
-    return p.purpose === 'pin_verified' && Number(p.seller_id) === sellerId
-  } catch { return false }
+
+  // 1) PIN 쿠키
+  const pinMatch = /(?:^|;\s*)ur_pin_verified=([^;]+)/.exec(cookieHeader)
+  if (pinMatch) {
+    try {
+      const payload = await verifyJwt(pinMatch[1], jwtSecret, 'HS256') as JWTPayload
+      const p = payload as Record<string, unknown>
+      if (p.purpose === 'pin_verified' && Number(p.seller_id) === sellerId) return true
+    } catch { /* fall through */ }
+  }
+
+  // 2) 카카오 step-up 쿠키 (카카오로 방금 재인증한 경우)
+  const kakaoMatch = /(?:^|;\s*)ur_kakao_stepup=([^;]+)/.exec(cookieHeader)
+  if (kakaoMatch) {
+    try {
+      const payload = await verifyJwt(kakaoMatch[1], jwtSecret, 'HS256') as JWTPayload
+      const p = payload as Record<string, unknown>
+      if (p.purpose === 'kakao_stepup' && p.role === 'seller' && Number(p.seller_id) === sellerId) return true
+    } catch { /* invalid */ }
+  }
+
+  return false
 }

@@ -671,6 +671,15 @@ sellerManagementRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
     const bankChangeKeys = ['bank_account', 'bank_name', 'account_holder'] as const;
     const bankChanged = bankChangeKeys.some(k => body[k] !== undefined);
 
+    // 🛡️ 계좌 변경은 민감 액션 — 최근 15분 내 PIN 인증 필수
+    if (bankChanged) {
+      const { isPinVerified } = await import('./seller-pin.routes');
+      const pinOk = await isPinVerified(c.req.header('Cookie'), sellerId, c.env.JWT_SECRET);
+      if (!pinOk) {
+        return c.json({ success: false, error: '계좌 변경은 PIN 인증이 필요합니다', code: 'PIN_REQUIRED' }, 412);
+      }
+    }
+
     for (const [bodyKey, dbCol] of Object.entries(fieldMap)) {
       if (body[bodyKey] !== undefined) {
         updates.push(`${dbCol} = ?`);

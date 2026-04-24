@@ -15,6 +15,7 @@ interface Agency {
   phone: string | null
   status: string
   seller_count: number
+  linked_user_id?: number | null
   created_at: string
 }
 
@@ -290,8 +291,13 @@ export default function AdminAgencyPage() {
                     <span className="text-indigo-600 font-bold text-sm">{a.name.charAt(0)}</span>
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-gray-900">{a.name}</p>
+                      {a.linked_user_id && (
+                        <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-bold" title="카카오 계정 연동됨">
+                          💬 카카오
+                        </span>
+                      )}
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         a.status === 'active'   ? 'bg-green-100 text-green-700' :
                         a.status === 'rejected' ? 'bg-red-100 text-red-600' :

@@ -92,6 +92,19 @@ export function SellerPinPrompt({ onVerified, onCancel }: Props) {
             {loading ? '확인 중...' : '확인'}
           </button>
         </div>
+
+        {/* 카카오 재인증 대안 (카카오 연동된 셀러만) */}
+        <div className="pt-3 border-t border-gray-100 text-center">
+          <p className="text-[11px] text-gray-400 mb-2">PIN 대신 카카오로 재인증</p>
+          <button
+            onClick={() => {
+              const rt = encodeURIComponent(window.location.pathname + '?kakao_stepup=1&role=seller')
+              window.location.href = `/auth/kakao/start?redirect=${rt}&stepup=seller`
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-xs font-semibold rounded-lg">
+            💬 카카오로 재인증
+          </button>
+        </div>
       </div>
     </div>
   )

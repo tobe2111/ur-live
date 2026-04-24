@@ -52,14 +52,28 @@ async function ensureAgencyTables(DB: D1Database) {
 // ── GET /agencies ─────────────────────────────────────────────
 app.get('/', async (c) => {
   await ensureAgencyTables(c.env.DB)
-  const rows = await c.env.DB.prepare(`
-    SELECT a.id, a.name, a.contact_name, a.email, a.phone, a.status, a.created_at,
-           COALESCE(a.commission_rate, 2.0) AS commission_rate,
-           COUNT(ag.seller_id) AS seller_count
-    FROM agencies a
-    LEFT JOIN agency_sellers ag ON ag.agency_id = a.id
-    GROUP BY a.id ORDER BY a.created_at DESC
-  `).all()
+  // linked_user_id 는 컬럼 없을 수도 있어 try-catch 로 graceful fallback
+  let rows
+  try {
+    rows = await c.env.DB.prepare(`
+      SELECT a.id, a.name, a.contact_name, a.email, a.phone, a.status, a.created_at,
+             COALESCE(a.commission_rate, 2.0) AS commission_rate,
+             a.linked_user_id,
+             COUNT(ag.seller_id) AS seller_count
+      FROM agencies a
+      LEFT JOIN agency_sellers ag ON ag.agency_id = a.id
+      GROUP BY a.id ORDER BY a.created_at DESC
+    `).all()
+  } catch {
+    rows = await c.env.DB.prepare(`
+      SELECT a.id, a.name, a.contact_name, a.email, a.phone, a.status, a.created_at,
+             COALESCE(a.commission_rate, 2.0) AS commission_rate,
+             COUNT(ag.seller_id) AS seller_count
+      FROM agencies a
+      LEFT JOIN agency_sellers ag ON ag.agency_id = a.id
+      GROUP BY a.id ORDER BY a.created_at DESC
+    `).all()
+  }
   return c.json({ success: true, data: rows.results })
 })
 
