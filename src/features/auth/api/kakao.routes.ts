@@ -19,7 +19,7 @@ import type { AuthResponse, KakaoLoginResponse } from '../types';
  * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
  * - seller: sellers.linked_user_id = user.id AND status IN ('active', 'approved')
  *   ('approved' 는 레거시 승인 상태. 어드민 승인 플로우가 approved 를 세팅.)
- * - agency: agencies.linked_user_id = user.id AND status = 'active'
+ * - agency: agencies.linked_user_id = user.id AND status IN ('active', 'approved')
  * Pending/suspended 는 토큰 발급 안 함 (승인 대기).
  */
 async function issueLinkedRoleTokens(
@@ -57,7 +57,9 @@ async function issueLinkedRoleTokens(
     ).bind(userId).first<{ id: number; status: string; name: string; email: string; contact_name: string }>()
     if (agency) {
       out.agency = { id: agency.id, status: agency.status, name: agency.name }
-      if (agency.status === 'active') {
+      // 레거시 호환: 에이전시 로그인 엔드포인트(agency.routes.ts:322) 가 'approved' 도 허용하므로
+      // 카카오 경로에서도 동일하게 토큰 발급. (셀러 38라인과 동일 패턴)
+      if (agency.status === 'active' || agency.status === 'approved') {
         const payload = {
           sub: String(agency.id),
           agency_id: agency.id,
