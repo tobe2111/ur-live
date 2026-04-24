@@ -217,7 +217,8 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
 
     const { parseSessionCookie } = await import('../../../worker/utils/session')
     const cookieHeader = c.req.header('Cookie')
-    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret)
+    // 🛡️ 카카오 user 세션 전용
+    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret, ['user'])
     if (!sessionUser) {
       return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
     }
@@ -285,7 +286,8 @@ app.get('/my-agency-status', async (c) => {
   try {
     await ensureAgencyTables(c.env.DB)
     const { parseSessionCookie } = await import('../../../worker/utils/session')
-    const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET)
+    // 🛡️ 카카오 user 세션 전용
+    const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user'])
     if (!sessionUser) return c.json({ success: true, data: { linked: false } })
     const linked = await c.env.DB.prepare(
       'SELECT id, status FROM agencies WHERE linked_user_id = ?'

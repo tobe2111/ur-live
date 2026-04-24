@@ -313,10 +313,10 @@ sellerManagementRoutes.post('/register-from-user', rateLimit({ action: 'seller_r
     const db = c.env.DB;
     const jwtSecret = c.env.JWT_SECRET;
 
-    // 세션 쿠키에서 유저 정보 추출
+    // 🛡️ 카카오 user 세션 전용 — seller/agency 세션으로 잘못 전환 방지
     const { parseSessionCookie } = await import('../../../worker/utils/session');
     const cookieHeader = c.req.header('Cookie');
-    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
+    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret, ['user']);
     if (!sessionUser) {
       return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
     }
@@ -429,9 +429,10 @@ sellerManagementRoutes.get('/my-seller-status', async (c) => {
     const db = c.env.DB;
     const jwtSecret = c.env.JWT_SECRET;
 
+    // 🛡️ 카카오 user 세션에서만 조회 (seller/agency 세션으로 잘못 조회 방지).
     const { parseSessionCookie } = await import('../../../worker/utils/session');
     const cookieHeader = c.req.header('Cookie');
-    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
+    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret, ['user']);
     if (!sessionUser) {
       return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
     }
