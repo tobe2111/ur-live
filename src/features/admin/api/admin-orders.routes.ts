@@ -16,6 +16,7 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { DEFAULT_ADMIN_PAGE_SIZE, MAX_ADMIN_PAGE_SIZE } from '@/shared/constants';
 
 export const adminOrdersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -65,7 +66,7 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
     const sellerId = c.req.query('seller_id');
     const startDate = c.req.query('start_date');
     const endDate = c.req.query('end_date');
-    const limit = Math.min(Math.max(1, Number(c.req.query('limit')) || 200), 500);
+    const limit = Math.min(Math.max(1, Number(c.req.query('limit')) || DEFAULT_ADMIN_PAGE_SIZE), MAX_ADMIN_PAGE_SIZE);
     const offset = Math.max(0, Number(c.req.query('offset')) || 0);
 
     const buildWhere = (base: string) => {

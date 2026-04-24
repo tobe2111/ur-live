@@ -13,7 +13,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
-import { TOSS_PAYMENT_URL, ALLOWED_ORIGINS } from '@/shared/constants';
+import { TOSS_PAYMENT_URL, ALLOWED_ORIGINS, MIN_DONATION_DEALS, FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_FEE } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 
@@ -285,8 +285,8 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
   }>();
   const { stream_id, amount, message } = body;
 
-  if (!stream_id || !amount || amount < 500) {
-    return c.json({ success: false, error: '후원 금액은 최소 500딜입니다' }, 400);
+  if (!stream_id || !amount || amount < MIN_DONATION_DEALS) {
+    return c.json({ success: false, error: `후원 금액은 최소 ${MIN_DONATION_DEALS}딜입니다` }, 400);
   }
 
   const { DB } = c.env;
@@ -649,7 +649,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   let authoritativeTotal = 0;
   for (const [, groupItems] of sellerGroups) {
     const groupSubtotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
-    const shippingFee = groupSubtotal >= 50000 ? 0 : 3000;
+    const shippingFee = groupSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_FEE;
     authoritativeTotal += groupSubtotal + shippingFee;
   }
 
@@ -711,7 +711,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     //         and batch all order_items per order into a single multi-row INSERT.
     for (const [sellerId, groupItems] of sellerGroups) {
       const groupSubtotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
-      const shippingFee = groupSubtotal >= 50000 ? 0 : 3000;
+      const shippingFee = groupSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_FEE;
       const sellerOrderNumber = `${order_number}_s${sellerId}`;
 
       const orderInsert = await DB.prepare(`

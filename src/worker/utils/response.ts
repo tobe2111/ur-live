@@ -292,38 +292,36 @@ export function formatErrorResponse(error: unknown): ErrorResponse {
   );
 }
 
-// ─── Hono Context 오버로드 래퍼 ─────────────────────────────────────────────
-// feature 파일들이 successResponse(c, data, msg) 패턴으로 호출하므로
-// Context를 첫 번째 인자로 받아 c.json()을 반환하는 래퍼 추가
+// ─── Hono Context 래퍼 ──────────────────────────────────────────────────────
+// 코드베이스 표준 포맷: { success: boolean, error?: string, ...data }
+// 새 엔드포인트에서 사용하면 포맷 일관성 유지 가능
 
-import { Context } from 'hono';
+import type { Context } from 'hono';
 
-export function jsonSuccess<T = unknown>(c: Context, data: T, message?: string, status: number = 200) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return c.json({ success: true, data, message, timestamp: new Date().toISOString() } as any, status as any);
+// 성공: { success: true, ...rest }
+export function jsonOk<T extends Record<string, unknown>>(
+  c: Context,
+  data: T,
+  status: 200 | 201 = 200
+) {
+  return c.json({ success: true, ...data }, status);
 }
-export function jsonError(c: Context, message: string, status: number = 400) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return c.json({ success: false, error: { message }, timestamp: new Date().toISOString() } as any, status as any);
+
+// 에러: { success: false, error: string }
+export function jsonFail(
+  c: Context,
+  error: string,
+  status: 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 = 400
+) {
+  return c.json({ success: false, error }, status);
 }
-export function jsonCreated<T = unknown>(c: Context, data: T, message?: string) {
-  return jsonSuccess(c, data, message, 201);
-}
-export function jsonNotFound(c: Context, message: string = 'Not found') {
-  return jsonError(c, message, 404);
-}
-export function jsonUnauthorized(c: Context, message: string = 'Unauthorized') {
-  return jsonError(c, message, 401);
-}
-export function jsonForbidden(c: Context, message: string = 'Forbidden') {
-  return jsonError(c, message, 403);
-}
-export function jsonBadRequest(c: Context, message: string) {
-  return jsonError(c, message, 400);
-}
-export function jsonConflict(c: Context, message: string) {
-  return jsonError(c, message, 409);
-}
-export function jsonServerError(c: Context, message: string = 'Internal server error') {
-  return jsonError(c, message, 500);
-}
+
+// 단축 헬퍼
+export const jsonCreated = <T extends Record<string, unknown>>(c: Context, data: T) =>
+  c.json({ success: true, ...data }, 201);
+export const jsonNotFound = (c: Context, msg = '찾을 수 없습니다') => jsonFail(c, msg, 404);
+export const jsonUnauthorized = (c: Context, msg = '인증이 필요합니다') => jsonFail(c, msg, 401);
+export const jsonForbidden = (c: Context, msg = '권한이 없습니다') => jsonFail(c, msg, 403);
+export const jsonBadRequest = (c: Context, msg: string) => jsonFail(c, msg, 400);
+export const jsonConflict = (c: Context, msg: string) => jsonFail(c, msg, 409);
+export const jsonServerError = (c: Context, msg = '서버 오류가 발생했습니다') => jsonFail(c, msg, 500);

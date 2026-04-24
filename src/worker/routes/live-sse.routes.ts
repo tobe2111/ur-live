@@ -18,6 +18,7 @@ import {
   MAX_NAME_LENGTH,
   sanitizeString,
 } from '../utils/validation'
+import { MAX_SSE_REPLAY_MESSAGES } from '@/shared/constants'
 
 export const liveSseRoutes = new Hono<{ Bindings: Env }>()
 export const chatRoutes = new Hono<{ Bindings: Env }>()
@@ -52,7 +53,7 @@ liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
          FROM chat_messages
          WHERE live_stream_id = ? AND is_deleted = 0
          ORDER BY id ASC
-         LIMIT 500`
+         LIMIT ${MAX_SSE_REPLAY_MESSAGES}`
       : `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
          FROM chat_messages
          WHERE live_stream_id = ? AND is_deleted = 0

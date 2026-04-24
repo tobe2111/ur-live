@@ -11,7 +11,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
-import { TOSS_PAYMENT_URL } from '@/shared/constants';
+import { TOSS_PAYMENT_URL, MIN_REAL_DONATION, MAX_DONATION_MESSAGE_LENGTH } from '@/shared/constants';
 
 const donationsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -43,8 +43,8 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
   if (!Number.isFinite(body.stream_id) || body.stream_id < 1 || body.stream_id > 1e10) {
     return c.json({ success: false, error: 'stream_id 형식이 올바르지 않습니다' }, 400);
   }
-  if (!Number.isFinite(body.amount) || body.amount < 1000 || body.amount % 100 !== 0) {
-    return c.json({ success: false, error: '후원 금액은 최소 1,000원이며 100원 단위여야 합니다' }, 400);
+  if (!Number.isFinite(body.amount) || body.amount < MIN_REAL_DONATION || body.amount % 100 !== 0) {
+    return c.json({ success: false, error: `후원 금액은 최소 ${MIN_REAL_DONATION.toLocaleString()}원이며 100원 단위여야 합니다` }, 400);
   }
   // ✅ SECURITY FIX (H1): Upper bound on donation amount (prevent overflow /
   //    abuse via oversized values).
@@ -70,12 +70,12 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
     }
   } catch { /* 테이블/컬럼 미존재 시 skip (legacy) */ }
   // ✅ C2 FIX: cap message length + XSS 위험 문자 제거
-  if (body.message && body.message.length > 500) {
-    return c.json({ success: false, error: '메시지는 500자 이내로 작성해주세요.' }, 400);
+  if (body.message && body.message.length > MAX_DONATION_MESSAGE_LENGTH) {
+    return c.json({ success: false, error: `메시지는 ${MAX_DONATION_MESSAGE_LENGTH}자 이내로 작성해주세요.` }, 400);
   }
   // 🛡️ 메시지 XSS 방어 — <, >, 스크립트 태그 제거 (저장 시점 sanitize)
   if (body.message && typeof body.message === 'string') {
-    body.message = body.message.replace(/[<>]/g, '').slice(0, 500);
+    body.message = body.message.replace(/[<>]/g, '').slice(0, MAX_DONATION_MESSAGE_LENGTH);
   }
 
   const { DB } = c.env;
