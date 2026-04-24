@@ -404,6 +404,8 @@
       "shortcutsTitle": "キーボードショートカット",
       "shortcutNextProduct": "次の商品",
       "shortcutToggleHelp": "ショートカット切替",
+      "templateAppliedPartial": "テンプレート適用 ({{removed}}個の削除商品を除外)",
+      "restoringBroadcast": "配信情報を復元中...",
       "dataLoadFailed": "データの読み込みに失敗しました。",
       "youtubeApiNotSet": "YouTube APIが設定されていません。",
       "youtubeConnectFailed": "YouTube連携に失敗しました。",

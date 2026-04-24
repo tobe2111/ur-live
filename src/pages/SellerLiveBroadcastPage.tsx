@@ -69,36 +69,6 @@ interface DestinationPlatform {
   eta?: string; note?: string
 }
 
-// ── 스텝 인디케이터 ────────────────────────────────────────────────
-function StepIndicator({ step }: { step: WizardStep }) {
-  const { t } = useTranslation()
-  const steps: { key: WizardStep; label: string }[] = [
-    { key: 'info', label: t('seller.liveBroadcast.stepInfo') },
-    { key: 'setup', label: t('seller.liveBroadcast.stepSetup') },
-    { key: 'live', label: t('seller.liveBroadcast.stepLive') },
-  ]
-  const idx = steps.findIndex(s => s.key === step)
-  return (
-    <div className="flex items-center justify-center gap-2 mb-6">
-      {steps.map((s, i) => (
-        <div key={s.key} className="flex items-center gap-2">
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-            i < idx ? 'bg-green-100 text-green-700' :
-            i === idx ? 'bg-blue-600 text-white' :
-            'bg-gray-100 text-gray-400'
-          }`}>
-            {i < idx ? <CheckCircle2 className="w-3 h-3" /> : <span>{i + 1}</span>}
-            <span>{s.label}</span>
-          </div>
-          {i < steps.length - 1 && (
-            <div className={`w-6 h-px ${i < idx ? 'bg-green-300' : 'bg-gray-200'}`} />
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ── 권장 프리셋 블록 (OBS/Prism 세팅 안내) ──────────────────────────
 // 🛡️ 2026-04-23 배치 167: /api/platforms/streaming-tools/:tool/preset 로부터 로드.
 //   사용자가 프리셋을 선택하면 해상도/비트레이트/키프레임/오디오 값을 한 번에 확인 가능.
@@ -349,12 +319,14 @@ function RecapModal({ stream, stats, onClose }: {
   )
 }
 
-// ── 채널 카드 (P2-9 다중 채널 + P2-11 해제) ─────────────────────
-function ChannelCard({ channels, activeChannelId, onSelectChannel, onDisconnect }: {
+// ── 채널 카드 (다중 채널 + 해제 + 토큰 만료 재연동) ──────────────
+function ChannelCard({ channels, activeChannelId, onSelectChannel, onDisconnect, onReauthenticate, connectingYouTube }: {
   channels: YouTubeChannel[]
   activeChannelId: number | null
   onSelectChannel: (id: number) => void
   onDisconnect: (id: number) => void
+  onReauthenticate: () => void
+  connectingYouTube: boolean
 }) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -364,7 +336,7 @@ function ChannelCard({ channels, activeChannelId, onSelectChannel, onDisconnect 
   const hasMultiple = channels.length > 1
 
   return (
-    <div className="relative bg-white rounded-xl px-4 py-3 border border-gray-200 mb-5">
+    <div className={`relative bg-white rounded-xl px-4 py-3 border mb-5 ${active.token_expired ? 'border-amber-300' : 'border-gray-200'}`}>
       <div className="flex items-center gap-3">
         {active.channel_thumbnail
           ? <img src={active.channel_thumbnail} alt="" className="w-8 h-8 rounded-full" />
@@ -378,10 +350,15 @@ function ChannelCard({ channels, activeChannelId, onSelectChannel, onDisconnect 
           </p>
           <p className="text-xs text-gray-400">{String(t('seller.liveBroadcast.subscribers', { count: active.subscriber_count?.toLocaleString() || '0' } as Record<string, string>))}</p>
         </button>
-        {active.token_expired
-          ? <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.expired')}</span>
-          : <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
-        }
+        {active.token_expired ? (
+          <button onClick={onReauthenticate} disabled={connectingYouTube}
+            className="text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 rounded-full font-medium flex items-center gap-1">
+            {connectingYouTube ? <Loader2 className="w-3 h-3 animate-spin" /> : <Youtube className="w-3 h-3" />}
+            재연동
+          </button>
+        ) : (
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
+        )}
         <button onClick={() => setMenuOpen(v => !v)}
           className="text-gray-400 hover:text-gray-700 px-1">
           ⋯
@@ -744,8 +721,9 @@ export default function SellerLiveBroadcastPage() {
 
   // ── 로딩 / 에러 ───────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3">
       <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      {urlStreamId && <p className="text-sm text-gray-500">{t('seller.liveBroadcast.restoringBroadcast')}</p>}
     </div>
   )
 
@@ -797,26 +775,9 @@ export default function SellerLiveBroadcastPage() {
           activeChannelId={activeChannelId}
           onSelectChannel={setActiveChannelId}
           onDisconnect={requestDisconnect}
+          onReauthenticate={connectYouTube}
+          connectingYouTube={connectingYouTube}
         />
-
-        {/* YouTube 토큰 만료 경고 배너 */}
-        {channels[0]?.token_expired && (
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
-            <p className="text-sm text-amber-800 flex-1">YouTube 연동이 만료됐어요. 재연동 후 방송을 시작할 수 있습니다.</p>
-            <Button
-              onClick={connectYouTube}
-              disabled={connectingYouTube}
-              size="sm"
-              className="bg-red-600 hover:bg-red-700 text-white flex-shrink-0"
-            >
-              {connectingYouTube ? <Loader2 className="h-3 w-3 animate-spin" /> : <Youtube className="h-3 w-3 mr-1" />}
-              재연동
-            </Button>
-          </div>
-        )}
-
-        <StepIndicator step={step} />
 
         {/* STEP 1: 방송 정보 */}
         {step === 'info' && (
@@ -987,9 +948,15 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
     setTitle(tpl.title)
     setDescription(tpl.description)
     setPrivacy(tpl.privacy)
-    setSelectedProducts(tpl.productIds.filter(id => sellableProducts.some(p => p.id === id)))
+    const validProducts = tpl.productIds.filter(id => sellableProducts.some(p => p.id === id))
+    setSelectedProducts(validProducts)
     setShowTemplates(false)
-    toast.success(t('seller.liveBroadcast.templateApplied'))
+    const removed = tpl.productIds.length - validProducts.length
+    if (removed > 0) {
+      toast.info(t('seller.liveBroadcast.templateAppliedPartial', { removed }) as string)
+    } else {
+      toast.success(t('seller.liveBroadcast.templateApplied'))
+    }
   }
 
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
@@ -1007,16 +974,16 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
   const canQuickStart = sellableProducts.length > 0 && !creating
   const handleQuickStart = () => {
     if (!canQuickStart) return
+    // i18n 로케일 기반 자동 포맷 (한국식 → ko, 미국식 → en, etc.)
     const now = new Date()
-    const mm = String(now.getMonth() + 1).padStart(2, '0')
-    const dd = String(now.getDate()).padStart(2, '0')
-    const hh = String(now.getHours()).padStart(2, '0')
-    const autoTitle = t('seller.liveBroadcast.quickAutoTitle', { date: `${mm}/${dd}`, hour: `${hh}` }) as string
+    const lng = (typeof navigator !== 'undefined' && navigator.language) || 'ko'
+    const dateFmt = new Intl.DateTimeFormat(lng, { month: 'short', day: 'numeric' }).format(now)
+    const timeFmt = new Intl.DateTimeFormat(lng, { hour: 'numeric', hour12: false }).format(now)
+    const autoTitle = t('seller.liveBroadcast.quickAutoTitle', { date: dateFmt, hour: timeFmt }) as string
     const productIds = sellableProducts.slice(0, 5).map(p => p.id)
     setTitle(autoTitle)
     setSelectedProducts(productIds)
     setMethod('quick')
-    // 값을 직접 전달 — state 반영 타이밍에 의존하지 않음
     onCreate({ title: autoTitle, productIds })
   }
   // 토큰 만료 시 폼 전체 차단 + 재연동 CTA
@@ -1041,35 +1008,20 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
 
   return (
     <div className="space-y-4">
-      {/* ⚡ Quick Start 카드 */}
-      <button
-        onClick={handleQuickStart}
-        disabled={!canQuickStart}
-        className="w-full bg-gradient-to-r from-pink-500 via-red-500 to-orange-500 hover:from-pink-600 hover:via-red-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl p-5 text-left transition-all active:scale-[0.99] shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-            <Zap className="w-6 h-6" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-base font-bold">{t('seller.liveBroadcast.quickStartOneClick')}</p>
-            <p className="text-xs text-white/90 mt-0.5">{t('seller.liveBroadcast.quickStartOneClickDesc')}</p>
-          </div>
-          <Play className="w-5 h-5 shrink-0" />
-        </div>
-      </button>
-
-      <div className="flex items-center gap-3 text-xs text-gray-400">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span>{t('seller.liveBroadcast.orCustomize')}</span>
-        <div className="flex-1 h-px bg-gray-200" />
-      </div>
-
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
       <div className="flex items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.enterBroadcastInfo')}</h2>
           <p className="text-xs text-gray-500 mt-0.5">{t('seller.liveBroadcast.enterBroadcastInfoDesc')}</p>
         </div>
+        {/* Quick Start: 작은 보조 버튼으로 이동 */}
+        {canQuickStart && (
+          <button onClick={handleQuickStart}
+            className="text-xs bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1 shrink-0">
+            <Zap className="w-3 h-3" />
+            {t('seller.liveBroadcast.quickStart')}
+          </button>
+        )}
         {templates.length > 0 && (
           <div className="relative shrink-0">
             <button onClick={() => setShowTemplates(v => !v)}
@@ -1698,23 +1650,18 @@ function LiveStatsBar({ streamId }: { streamId: number }) {
 
   const ordersUnit = t('seller.liveBroadcast.ordersUnit')
   const items = [
-    { icon: Eye, label: t('seller.liveBroadcast.statsViewers'), value: stats.viewer_count.toLocaleString(), color: 'text-blue-600' },
-    { icon: MessageSquare, label: t('seller.liveBroadcast.statsChat'), value: stats.chat_count.toLocaleString(), color: 'text-purple-600' },
-    { icon: ShoppingBag, label: t('seller.liveBroadcast.statsOrders'), value: `${stats.order_count}${ordersUnit}`, color: 'text-amber-600' },
-    { icon: DollarSign, label: t('seller.liveBroadcast.statsRevenue'), value: `₩${stats.revenue.toLocaleString()}`, color: 'text-green-600' },
+    { icon: Eye, value: stats.viewer_count.toLocaleString() },
+    { icon: MessageSquare, value: stats.chat_count.toLocaleString() },
+    { icon: ShoppingBag, value: `${stats.order_count}${ordersUnit}` },
+    { icon: DollarSign, value: `₩${stats.revenue.toLocaleString()}` },
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-      {items.map(({ icon: Icon, label, value, color }) => (
-        <div key={label} className="bg-white rounded-xl border border-gray-200 px-3 py-2.5 flex items-center gap-2.5">
-          <div className={`w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center ${color}`}>
-            <Icon className="w-4 h-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] text-gray-500 leading-tight">{label}</p>
-            <p className="text-sm font-bold text-gray-900 truncate">{value}</p>
-          </div>
+    <div className="bg-white rounded-xl border border-gray-200 px-4 py-2.5 flex items-center justify-between gap-2 text-sm">
+      {items.map(({ icon: Icon, value }, i) => (
+        <div key={i} className="flex items-center gap-1.5 min-w-0">
+          <Icon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <span className="font-bold text-gray-900 truncate">{value}</span>
         </div>
       ))}
     </div>

@@ -405,6 +405,8 @@
       "shortcutsTitle": "Keyboard shortcuts",
       "shortcutNextProduct": "Next product",
       "shortcutToggleHelp": "Toggle shortcuts",
+      "templateAppliedPartial": "Template applied ({{removed}} deleted products excluded)",
+      "restoringBroadcast": "Restoring broadcast...",
       "dataLoadFailed": "Failed to load data.",
       "youtubeApiNotSet": "YouTube API is not configured.",
       "youtubeConnectFailed": "Failed to connect YouTube.",

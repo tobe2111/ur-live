@@ -151,24 +151,6 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - 각 스트림 클릭 시 채팅/구매 흐름 확인 가능
 - YouTube 채널 연동 상태, RTMP 연결 상태 점검
 
-### 셀러 라이브 방송 플로우 (참고용)
-셀러는 \`/seller/live-broadcast\` (또는 진행 중이면 \`/seller/live-broadcast/:streamId\`)에서 방송을 운영합니다:
-1. 4가지 송출 도구 중 선택 (Quick / YouTube Studio / OBS / Prism), 마지막 사용 도구 자동 기억
-2. 방송 만들기 → URL이 \`:streamId\`로 변경 (새로고침 살아남음)
-3. 자동 감지 (3초 폴링)로 YouTube live 상태 변화 감지 → Step 3로 자동 전환
-4. Step 3는 실시간 통계, 채팅, 상품 전환, 경매/타임딜/공동구매 컨트롤 제공
-5. 종료 시 시청자 끊김 경고 모달 → 종료 후 방송 요약 모달 표시
-
-### 관련 API 엔드포인트
-- \`POST /api/seller/youtube/live/create\` — 방송 생성 (YouTube broadcast + RTMP stream + bind)
-- \`GET /api/seller/youtube/live/:id/status\` — YouTube broadcast 상태 조회 (3초 폴링용)
-- \`POST /api/seller/youtube/live/:id/start\` — 수동 live 전환 (자동 감지 실패 시 fallback)
-- \`POST /api/seller/youtube/live/:id/end\` — 방송 종료
-- \`GET /api/seller/streams/:id\` — 방송 정보 조회 (URL 기반 상태 복원에 사용)
-- \`GET /api/seller/streams/:id/live-stats\` — 실시간 통계 (시청자/채팅/주문/매출, 5초 폴링)
-- \`GET /api/seller/streams/:id/analytics\` — 방송 종료 후 상세 분석
-- \`POST /api/seller/streams/:id/change-product\` — 현재 노출 상품 변경
-
 ### 방송 중 개입 권한
 - 채팅 메시지 **숨김** — 욕설/스팸/광고 메시지 제거
 - 방송 **강제 종료** — 정책 위반 시 (허위 광고, 성희롱 등)
