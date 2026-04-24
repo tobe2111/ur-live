@@ -216,15 +216,14 @@ export default function AgencyLoginPage() {
               )}
 
               <a
-                href={`/auth/kakao/start?redirect=${encodeURIComponent('/agency')}`}
+                href={`/auth/kakao/start?redirect=${encodeURIComponent('/agency')}&intent=agency`}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-sm font-semibold rounded-xl transition-colors no-underline"
               >
                 <span className="text-base">💬</span>
-                카카오로 에이전시 로그인
+                카카오로 에이전시 시작하기
               </a>
               <p className="text-[10px] text-gray-400 text-center mt-2">
-                카카오 계정에 에이전시 권한이 연동되어 있어야 합니다.<br />
-                아직 연동 안 했다면 <Link to="/agency/register/business" className="text-blue-500">여기서 신청</Link>
+                카카오 로그인 후 안내에 따라 에이전시 권한을 신청할 수 있어요
               </p>
             </div>
           </div>

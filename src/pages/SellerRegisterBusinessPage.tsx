@@ -11,14 +11,17 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { ChevronLeft, Loader2, Store, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, Loader2, Store, CheckCircle2, MessageCircle } from 'lucide-react'
 
 export default function SellerRegisterBusinessPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const fromKakao = searchParams.get('from') === 'kakao'
+  const userName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null
   const [loading, setLoading] = useState(false)
   const [statusChecked, setStatusChecked] = useState(false)
   const [existingStatus, setExistingStatus] = useState<'none' | 'pending' | 'active' | 'suspended'>('none')
@@ -130,6 +133,16 @@ export default function SellerRegisterBusinessPage() {
       </div>
 
       <div className="p-4 space-y-4">
+        {fromKakao && (
+          <div className="bg-[#FEE500]/50 border border-[#FEE500] rounded-xl p-3 flex items-start gap-2">
+            <MessageCircle className="w-4 h-4 text-[#3C1E1E] shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-xs font-bold text-[#3C1E1E]">카카오 로그인 완료 {userName && <>· {userName}</>}</p>
+              <p className="text-[11px] text-[#3C1E1E]/70 mt-0.5">아래 사업자 정보만 입력하면 셀러 신청이 끝나요</p>
+            </div>
+          </div>
+        )}
+
         <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-2xl p-5 text-center">
           <div className="w-14 h-14 mx-auto mb-3 bg-white rounded-full flex items-center justify-center">
             <Store className="w-7 h-7 text-red-500" />

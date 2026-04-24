@@ -41,18 +41,17 @@ export function KakaoLinkButton({ role }: Props) {
   useEffect(() => { refresh() }, [refresh])
 
   async function startLink() {
-    // 1. 팝업 열기 (카카오 auth start)
-    const redirectUri = `${window.location.origin}/auth/kakao/link/callback`
-    // 서버의 /auth/kakao/start 는 유저 로그인용이라 이 경로엔 안 맞음.
-    // 카카오 authorize URL 직접 구성 (client_id 는 서버 환경변수 KAKAO_REST_API_KEY).
-    // 간단하게 /auth/kakao/start 에 redirect 파라미터로 콜백 지정.
-    // /auth/kakao/start 가 redirect 쿼리를 지원하면 그대로 사용,
-    // 아니면 직접 kauth.kakao.com 으로 redirect.
+    // 플로우:
+    //  1) 팝업에서 /auth/kakao/start 호출 → 카카오 OAuth → 서버 sync/callback
+    //     (code 소비 + users upsert + 세션 쿠키 세팅)
+    //  2) 서버가 /auth/kakao/link/callback?login=success&userId=... 로 리다이렉트
+    //  3) 팝업의 KakaoLinkCallbackPage 가 opener 에게 postMessage 전송
+    //  4) 부모가 POST /link-kakao (body 비움) → 서버는 세션 쿠키의 userId 로 연동
     const w = 500, h = 700
     const left = Math.floor((window.screen.availWidth - w) / 2)
     const top = Math.floor((window.screen.availHeight - h) / 2)
 
-    const popupUrl = `/auth/kakao/start?redirect=${encodeURIComponent('/auth/kakao/link/callback')}&link=1`
+    const popupUrl = `/auth/kakao/start?redirect=${encodeURIComponent('/auth/kakao/link/callback')}`
     const popup = window.open(
       popupUrl,
       'ur-kakao-link',
@@ -64,24 +63,23 @@ export function KakaoLinkButton({ role }: Props) {
       return
     }
 
-    // 2. 팝업에서 postMessage 대기
     const origin = window.location.origin
     const handler = async (ev: MessageEvent) => {
       if (ev.origin !== origin) return
-      const { type, code, error } = (ev.data || {}) as { type?: string; code?: string; error?: string }
+      const { type, success, error } = (ev.data || {}) as { type?: string; success?: boolean; error?: string }
       if (type !== 'kakao_link_result') return
       window.removeEventListener('message', handler)
       try { popup.close() } catch { /* ignore */ }
 
-      if (error || !code) {
-        toast.error('카카오 인증 취소 또는 실패')
+      if (error || !success) {
+        toast.error(error ? `카카오 인증 실패: ${error}` : '카카오 인증 취소됨')
         return
       }
 
-      // 3. 서버에 link 요청
+      // 서버에 link 요청 (session 모드 — body 비움)
       setWorking(true)
       try {
-        const res = await api.post(`${basePath}/link-kakao`, { code, redirect_uri: redirectUri })
+        const res = await api.post(`${basePath}/link-kakao`, {})
         if (res.data?.success) {
           toast.success('카카오 계정이 연동되었어요!')
           await refresh()
@@ -101,9 +99,11 @@ export function KakaoLinkButton({ role }: Props) {
 
   async function unlink() {
     if (!confirm('카카오 계정 연동을 해제할까요? 이후엔 이메일/비밀번호로만 로그인 가능합니다.')) return
+    const pw = prompt('본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)')
+    if (!pw) return
     setWorking(true)
     try {
-      const res = await api.post(`${basePath}/unlink-kakao`)
+      const res = await api.post(`${basePath}/unlink-kakao`, { current_password: pw })
       if (res.data?.success) {
         toast.success('카카오 연동이 해제되었어요')
         await refresh()
@@ -111,8 +111,12 @@ export function KakaoLinkButton({ role }: Props) {
         toast.error(res.data?.error || '해제 실패')
       }
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } } }
-      toast.error(err.response?.data?.error || '해제 실패')
+      const err = e as { response?: { data?: { error?: string; code?: string } } }
+      if (err.response?.data?.code === 'PASSWORD_REQUIRED') {
+        toast.error('비밀번호 설정이 필요합니다. "비밀번호 찾기" 로 설정 후 다시 시도해주세요.')
+      } else {
+        toast.error(err.response?.data?.error || '해제 실패')
+      }
     } finally { setWorking(false) }
   }
 

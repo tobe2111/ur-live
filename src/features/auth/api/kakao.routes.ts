@@ -17,8 +17,9 @@ import type { AuthResponse, KakaoLoginResponse } from '../types';
 
 /**
  * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
- * - seller: sellers.linked_user_id = user.id AND status = 'active'
- * - agency: agencies.linked_user_id = user.id AND status IN ('active')
+ * - seller: sellers.linked_user_id = user.id AND status IN ('active', 'approved')
+ *   ('approved' 는 레거시 승인 상태. 어드민 승인 플로우가 approved 를 세팅.)
+ * - agency: agencies.linked_user_id = user.id AND status = 'active'
  * Pending/suspended 는 토큰 발급 안 함 (승인 대기).
  */
 async function issueLinkedRoleTokens(
@@ -33,7 +34,8 @@ async function issueLinkedRoleTokens(
     ).bind(userId).first<{ id: number; status: string; business_name: string; email: string; name: string; seller_type: string }>()
     if (seller) {
       out.seller = { id: seller.id, status: seller.status, business_name: seller.business_name }
-      if (seller.status === 'active') {
+      // 레거시 호환: 'approved' 도 active 와 동등하게 취급 (구 승인 데이터)
+      if (seller.status === 'active' || seller.status === 'approved') {
         const payload = {
           sub: String(seller.id),
           seller_id: seller.id,
@@ -129,17 +131,19 @@ function readCookie(cookieHeader: string | null | undefined, name: string): stri
  * Parse the oauth state cookie: "<state>|<base64url(redirectPath)>"
  * The redirect path is sanitized before use.
  */
-function parseStateCookie(value: string | null): { state: string; redirect: string } | null {
+function parseStateCookie(value: string | null): { state: string; redirect: string; intent: 'user' | 'seller' | 'agency' } | null {
   if (!value) return null;
   const parts = value.split('|');
-  if (parts.length !== 2) return null;
-  const [state, encoded] = parts;
+  // 구버전 호환: 2개(state|redirect) 또는 3개(state|redirect|intent) 모두 허용
+  if (parts.length < 2 || parts.length > 3) return null;
+  const [state, encoded, intentRaw] = parts;
   if (!state || !encoded) return null;
   try {
     const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
     const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=');
     const redirect = decodeURIComponent(atob(padded));
-    return { state, redirect: safeRedirect(redirect) };
+    const intent = (intentRaw === 'seller' || intentRaw === 'agency') ? intentRaw : 'user';
+    return { state, redirect: safeRedirect(redirect), intent };
   } catch {
     return null;
   }
@@ -158,6 +162,12 @@ function clearStateCookieHeader(): string {
 kakaoRoutes.get('/start', async (c) => {
   const redirectRaw = c.req.query('redirect') || '/';
   const redirect = safeRedirect(redirectRaw);
+  // intent: 'seller' | 'agency' | 'user'
+  //   - seller: 셀러 등록/대시보드 진입 의도 → linked seller 없으면 /seller/register/business 로
+  //   - agency: 에이전시 등록/대시보드 진입 의도
+  //   - user (default): 일반 유저 로그인
+  const intentRaw = c.req.query('intent') || 'user';
+  const intent = (intentRaw === 'seller' || intentRaw === 'agency') ? intentRaw : 'user';
 
   const kakaoRestKey = c.env.KAKAO_REST_API_KEY;
   if (!kakaoRestKey) {
@@ -167,7 +177,8 @@ kakaoRoutes.get('/start', async (c) => {
   const state = crypto.randomUUID();
   const b64Redirect = btoa(encodeURIComponent(redirect))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  const cookieValue = `${state}|${b64Redirect}`;
+  // state|redirect|intent
+  const cookieValue = `${state}|${b64Redirect}|${intent}`;
 
   c.header(
     'Set-Cookie',
@@ -249,8 +260,10 @@ kakaoRoutes.get('/sync/callback', async (c) => {
   // internal path from the ?state= param. Never blindly use raw state.
   let redirectTarget = '/';
   let stateMatched = false;
+  let intent: 'user' | 'seller' | 'agency' = 'user';
   if (stateCookie) {
     redirectTarget = stateCookie.redirect;
+    intent = stateCookie.intent;
     stateMatched = !!receivedState && receivedState === stateCookie.state;
   } else {
     redirectTarget = safeRedirect(receivedState);
@@ -261,20 +274,20 @@ kakaoRoutes.get('/sync/callback', async (c) => {
     const error = c.req.query('error');
 
     if (error) {
-      console.error('[Kakao Sync] OAuth error:', error);
+      if (import.meta.env.DEV) console.error('[Kakao Sync] OAuth error:', error);
       c.header('Set-Cookie', clearStateCookieHeader());
       return c.redirect(`${redirectTarget}?error=kakao_oauth_${error}`);
     }
 
     if (!code) {
-      console.error('[Kakao Sync] No authorization code');
+      if (import.meta.env.DEV) console.error('[Kakao Sync] No authorization code');
       c.header('Set-Cookie', clearStateCookieHeader());
       return c.redirect(`${redirectTarget}?error=no_code`);
     }
 
     // If a state cookie exists but doesn't match, reject (CSRF guard)
     if (stateCookie && !stateMatched) {
-      console.error('[Kakao Sync] OAuth state mismatch');
+      if (import.meta.env.DEV) console.error('[Kakao Sync] OAuth state mismatch');
       c.header('Set-Cookie', clearStateCookieHeader());
       return c.redirect(`${redirectTarget}?error=oauth_state_mismatch`);
     }
@@ -328,12 +341,13 @@ kakaoRoutes.get('/sync/callback', async (c) => {
         );
         c.header('Set-Cookie', sessionCookie, { append: true });
       } catch (e) {
-        console.error('[Kakao Sync] Session cookie creation failed:', e);
+        if (import.meta.env.DEV) console.error('[Kakao Sync] Session cookie creation failed:', e);
       }
 
       // 🛡️ linked seller/agency JWT 자동 발급 → 프론트엔드 localStorage 로 이전하도록 transfer cookie
+      let linkedRoles: Awaited<ReturnType<typeof issueLinkedRoleTokens>> = {};
       try {
-        const linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
+        linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
         // JS-readable cookie (HttpOnly 없음) — 프론트엔드 페이지 로드 시 즉시 읽어서 localStorage 로 이동 후 삭제
         // 60초 만료 — 짧은 윈도우로 XSS 노출 최소화
         if (linkedRoles.seller_token) {
@@ -357,7 +371,34 @@ kakaoRoutes.get('/sync/callback', async (c) => {
           }
         }
       } catch (e) {
-        console.error('[Kakao Sync] Linked role tokens issuance failed:', e);
+        if (import.meta.env.DEV) console.error('[Kakao Sync] Linked role tokens issuance failed:', e);
+      }
+
+      // 🚦 Smart redirect — intent(seller/agency) 와 linked role 상태별 라우팅.
+      //   1) intent=seller
+      //      - linked seller 없음 → /seller/register/business?from=kakao
+      //      - status=pending → /seller/waiting
+      //      - status=active → 그대로 (/seller)
+      //   2) intent=agency — 동일 패턴
+      //   3) intent=user — 원래 redirectTarget 유지
+      if (intent === 'seller') {
+        if (!linkedRoles.seller) {
+          redirectTarget = '/seller/register/business?from=kakao';
+        } else if (linkedRoles.seller.status === 'pending') {
+          redirectTarget = '/seller/waiting';
+        } else if (linkedRoles.seller.status !== 'active') {
+          // rejected/suspended 등 → waiting 페이지에서 상태 표시
+          redirectTarget = '/seller/waiting';
+        }
+        // active 는 원래 redirectTarget (보통 /seller) 유지
+      } else if (intent === 'agency') {
+        if (!linkedRoles.agency) {
+          redirectTarget = '/agency/register/business?from=kakao';
+        } else if (linkedRoles.agency.status === 'pending') {
+          redirectTarget = '/agency/waiting';
+        } else if (linkedRoles.agency.status !== 'active') {
+          redirectTarget = '/agency/waiting';
+        }
       }
 
       const stateUrl = new URL(redirectTarget, 'https://dummy.com');
@@ -379,7 +420,7 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       return c.redirect(redirectUrl, 302);
 
     } catch (serviceError) {
-      console.error('[Kakao Sync] Service error:', serviceError);
+      if (import.meta.env.DEV) console.error('[Kakao Sync] Service error:', serviceError);
       const errorMsg = (serviceError as Error).message || 'Unknown error';
       c.header('Set-Cookie', clearStateCookieHeader());
 
@@ -393,7 +434,7 @@ kakaoRoutes.get('/sync/callback', async (c) => {
     }
 
   } catch (error) {
-    console.error('[Kakao Sync] Unexpected error:', error);
+    if (import.meta.env.DEV) console.error('[Kakao Sync] Unexpected error:', error);
     const errorMsg = encodeURIComponent((error as Error).message || 'unknown');
     c.header('Set-Cookie', clearStateCookieHeader());
     return c.redirect(`${redirectTarget}?error=kakao_sync_failed&detail=${errorMsg}`);
@@ -415,7 +456,7 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     }
     
     if (!c.env.KAKAO_REST_API_KEY) {
-      console.error('[Kakao Callback] KAKAO_REST_API_KEY not configured');
+      if (import.meta.env.DEV) console.error('[Kakao Callback] KAKAO_REST_API_KEY not configured');
       return c.json({ success: false, error: 'Server configuration error' }, 500);
     }
     
@@ -463,7 +504,7 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
         c.env.JWT_SECRET,
       );
     } catch (e) {
-      console.error('[Kakao Callback] Session cookie creation failed:', e);
+      if (import.meta.env.DEV) console.error('[Kakao Callback] Session cookie creation failed:', e);
     }
 
     // 🛡️ linked seller / agency 자동 JWT 발급
@@ -496,7 +537,7 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     return c.json(responseBody);
 
   } catch (error) {
-    console.error('[Kakao Callback] Error:', error);
+    if (import.meta.env.DEV) console.error('[Kakao Callback] Error:', error);
     const errorMsg = (error as Error).message || 'Unknown error';
     return c.json({ success: false, error: errorMsg }, 500);
   }
@@ -548,7 +589,7 @@ kakaoRoutes.post('/firebase', cors(), async (c) => {
     });
     
   } catch (error) {
-    console.error('[Kakao Firebase] Error:', error);
+    if (import.meta.env.DEV) console.error('[Kakao Firebase] Error:', error);
     const errorMsg = (error as Error).message || 'Unknown error';
     return c.json({ success: false, error: errorMsg }, 500);
   }
@@ -622,7 +663,7 @@ kakaoRoutes.post('/stepup-callback', cors(), async (c) => {
     c.header('Set-Cookie', `ur_kakao_stepup=${stepupToken}; Path=/; Max-Age=900; SameSite=Lax; Secure; HttpOnly`)
     return c.json({ success: true, message: '카카오 재인증 완료. 15분간 민감 액션 사용 가능.' })
   } catch (error) {
-    console.error('[Kakao stepup] error:', error)
+    if (import.meta.env.DEV) console.error('[Kakao stepup] error:', error)
     return c.json({ success: false, error: (error as Error).message }, 500)
   }
 })

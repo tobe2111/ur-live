@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { DollarSign, CheckCircle, Clock, Loader2, ArrowRight, Banknote } from 'lucide-react'
 
 export default function AgencySettlementsPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [data, setData] = useState<any[]>([])
   const [summary, setSummary] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [requesting, setRequesting] = useState(false)
+  const [pinPrompt, setPinPrompt] = useState(false)
 
   function load() {
     api.get('/api/agency/settlements')
@@ -38,6 +42,16 @@ export default function AgencySettlementsPage() {
         toast.error(res.data.error || '정산 신청 실패')
       }
     } catch (e: any) {
+      const code = e?.response?.data?.code
+      if (code === 'PIN_REQUIRED') {
+        setPinPrompt(true)
+        return
+      }
+      if (code === 'PIN_NOT_SET') {
+        toast.error('보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.')
+        navigate('/agency/profile')
+        return
+      }
       toast.error(e?.response?.data?.error || '정산 신청에 실패했습니다')
     } finally { setRequesting(false) }
   }
@@ -123,6 +137,13 @@ export default function AgencySettlementsPage() {
           </div>
         )}
       </div>
+      {pinPrompt && (
+        <SellerPinPrompt
+          role="agency"
+          onVerified={() => { setPinPrompt(false); requestPayout() }}
+          onCancel={() => setPinPrompt(false)}
+        />
+      )}
     </AgencyLayout>
   )
 }
