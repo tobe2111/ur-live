@@ -26,6 +26,14 @@ interface UserDetail {
   order_count: number
   total_spent: number
   review_count: number
+  linked_seller?: {
+    id: number; business_name: string; seller_type: string; status: string
+    commission_rate?: number; created_at: string
+  } | null
+  linked_agency?: {
+    id: number; name: string; contact_name: string; status: string
+    commission_rate?: number; created_at: string
+  } | null
 }
 
 export default function AdminUsersPage() {
@@ -199,19 +207,58 @@ export default function AdminUsersPage() {
                                 불러오는 중...
                               </div>
                             ) : detail ? (
-                              <div className="flex gap-8 text-sm">
-                                <div>
-                                  <span className="text-gray-500">주문 수:</span>{' '}
-                                  <span className="font-semibold text-gray-900">{detail.order_count.toLocaleString()}건</span>
+                              <div className="space-y-3 text-sm">
+                                <div className="flex gap-8">
+                                  <div>
+                                    <span className="text-gray-500">주문 수:</span>{' '}
+                                    <span className="font-semibold text-gray-900">{detail.order_count.toLocaleString()}건</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">총 결제액:</span>{' '}
+                                    <span className="font-semibold text-gray-900">{detail.total_spent.toLocaleString()}원</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">리뷰 수:</span>{' '}
+                                    <span className="font-semibold text-gray-900">{detail.review_count.toLocaleString()}건</span>
+                                  </div>
                                 </div>
-                                <div>
-                                  <span className="text-gray-500">총 결제액:</span>{' '}
-                                  <span className="font-semibold text-gray-900">{detail.total_spent.toLocaleString()}원</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">리뷰 수:</span>{' '}
-                                  <span className="font-semibold text-gray-900">{detail.review_count.toLocaleString()}건</span>
-                                </div>
+
+                                {/* 연결된 셀러 / 에이전시 */}
+                                {(detail.linked_seller || detail.linked_agency) && (
+                                  <div className="pt-2 border-t border-gray-200 space-y-2">
+                                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">연결된 계정</p>
+                                    {detail.linked_seller && (
+                                      <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-center justify-between">
+                                        <div>
+                                          <p className="text-[11px] text-red-700 font-bold">🛍 셀러</p>
+                                          <p className="text-sm text-gray-900 font-semibold">{detail.linked_seller.business_name}</p>
+                                          <p className="text-[10px] text-gray-500">
+                                            {detail.linked_seller.seller_type} · {detail.linked_seller.status}
+                                          </p>
+                                        </div>
+                                        <button onClick={() => navigate(`/admin/sellers?id=${detail.linked_seller!.id}`)}
+                                          className="text-[11px] text-red-600 font-semibold px-2 py-1 hover:bg-red-100 rounded">
+                                          관리 →
+                                        </button>
+                                      </div>
+                                    )}
+                                    {detail.linked_agency && (
+                                      <div className="bg-purple-50 border border-purple-100 rounded-lg p-2.5 flex items-center justify-between">
+                                        <div>
+                                          <p className="text-[11px] text-purple-700 font-bold">💼 에이전시</p>
+                                          <p className="text-sm text-gray-900 font-semibold">{detail.linked_agency.name}</p>
+                                          <p className="text-[10px] text-gray-500">
+                                            담당: {detail.linked_agency.contact_name} · {detail.linked_agency.status}
+                                          </p>
+                                        </div>
+                                        <button onClick={() => navigate(`/admin/agencies?id=${detail.linked_agency!.id}`)}
+                                          className="text-[11px] text-purple-600 font-semibold px-2 py-1 hover:bg-purple-100 rounded">
+                                          관리 →
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <p className="text-sm text-gray-500">상세 정보를 불러올 수 없습니다</p>

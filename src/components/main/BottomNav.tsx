@@ -1,35 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils, Loader2 } from 'lucide-react'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
+import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils } from 'lucide-react'
 
-// 카카오 유저가 같은 계정을 셀러로 확장 — register-from-user 래퍼.
-// 완료 시 localStorage 에 seller_token 세팅, 이후 한 세션으로 양쪽 권한 동시 보유.
+// 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
-  const [upgrading, setUpgrading] = useState(false)
-
-  async function upgrade() {
-    setUpgrading(true)
-    try {
-      const res = await api.post('/api/seller/register-from-user')
-      if (res.data?.success) {
-        const token = res.data.data?.token || res.data.data?.seller_token
-        if (token) {
-          localStorage.setItem('seller_token', token)
-          localStorage.setItem('user_type', 'seller')
-        }
-        toast.success('셀러 권한이 활성화됐어요!')
-        onDone()
-      } else {
-        toast.error(res.data?.error || '셀러 전환 실패')
-      }
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } } }
-      toast.error(err.response?.data?.error || '셀러 전환 실패')
-    } finally { setUpgrading(false) }
-  }
-
+  const navigate = useNavigate()
   return (
     <div className="space-y-4">
       <div className="text-center py-2">
@@ -37,18 +12,24 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           <Radio className="w-7 h-7 text-red-500" />
         </div>
         <p className="text-sm text-gray-300 leading-relaxed">
-          지금 계정에 셀러 권한을 추가합니다<br />
+          지금 카카오 계정에 셀러 권한을 추가합니다<br />
           <span className="text-gray-500 text-xs">별도 가입·로그인 없이 한 번에</span>
         </p>
       </div>
 
       <button
-        onClick={upgrade}
-        disabled={upgrading}
-        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 disabled:opacity-50 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+        onClick={() => { onDone(); navigate('/seller/register/business') }}
+        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
       >
-        {upgrading ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5" />}
-        {upgrading ? '활성화 중...' : '셀러로 시작하기'}
+        <UserPlus className="w-5 h-5" />
+        셀러로 시작하기
+      </button>
+
+      <button
+        onClick={() => { onDone(); navigate('/agency/register/business') }}
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-[13px] rounded-xl"
+      >
+        에이전시로 등록하기 →
       </button>
     </div>
   )
@@ -234,7 +215,7 @@ export default function BottomNav() {
                   {/* Logged in but not seller — 기존 계정 확장 (register-from-user) */}
                   {isLoggedIn && !isSeller && (
                     <SellerUpgradePanel
-                      onDone={() => { setSheetOpen(false); navigate('/seller/live-broadcast') }}
+                      onDone={() => { setSheetOpen(false) }}
                     />
                   )}
 

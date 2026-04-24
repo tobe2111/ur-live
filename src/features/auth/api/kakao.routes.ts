@@ -8,11 +8,71 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { sign as jwtSign } from 'hono/jwt';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
 import { createSessionCookie } from '../../../worker/utils/session';
 import { encryptAtRest } from '../../../worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
+
+/**
+ * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
+ * - seller: sellers.linked_user_id = user.id AND status = 'active'
+ * - agency: agencies.linked_user_id = user.id AND status IN ('active')
+ * Pending/suspended 는 토큰 발급 안 함 (승인 대기).
+ */
+async function issueLinkedRoleTokens(
+  DB: D1Database,
+  jwtSecret: string,
+  userId: number
+): Promise<{ seller_token?: string; agency_token?: string; seller?: { id: number; status: string; business_name?: string }; agency?: { id: number; status: string; name?: string } }> {
+  const out: { seller_token?: string; agency_token?: string; seller?: any; agency?: any } = {}
+  try {
+    const seller = await DB.prepare(
+      'SELECT id, status, business_name, email, name, seller_type FROM sellers WHERE linked_user_id = ?'
+    ).bind(userId).first<{ id: number; status: string; business_name: string; email: string; name: string; seller_type: string }>()
+    if (seller) {
+      out.seller = { id: seller.id, status: seller.status, business_name: seller.business_name }
+      if (seller.status === 'active') {
+        const payload = {
+          sub: String(seller.id),
+          seller_id: seller.id,
+          email: seller.email,
+          name: seller.name,
+          type: 'seller',
+          seller_type: seller.seller_type || 'influencer',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+        }
+        out.seller_token = await jwtSign(payload, jwtSecret)
+      }
+    }
+  } catch { /* sellers 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }
+
+  try {
+    const agency = await DB.prepare(
+      'SELECT id, status, name, email, contact_name FROM agencies WHERE linked_user_id = ?'
+    ).bind(userId).first<{ id: number; status: string; name: string; email: string; contact_name: string }>()
+    if (agency) {
+      out.agency = { id: agency.id, status: agency.status, name: agency.name }
+      if (agency.status === 'active') {
+        const payload = {
+          sub: String(agency.id),
+          agency_id: agency.id,
+          email: agency.email,
+          name: agency.name,
+          contact_name: agency.contact_name,
+          type: 'agency',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+        }
+        out.agency_token = await jwtSign(payload, jwtSecret)
+      }
+    }
+  } catch { /* agencies 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }
+
+  return out
+}
 
 type Bindings = {
   DB: D1Database;
@@ -377,6 +437,9 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
       console.error('[Kakao Callback] Session cookie creation failed:', e);
     }
 
+    // 🛡️ linked seller / agency 자동 JWT 발급
+    const linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
+
     const responseBody = {
       success: true,
       data: {
@@ -388,7 +451,12 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
           email: user.email,
           profile_image: user.profile_image,
           firebaseUID
-        }
+        },
+        // 카카오 계정에 연결된 셀러/에이전시 권한이 있으면 같이 전달
+        ...(linkedRoles.seller_token ? { seller_token: linkedRoles.seller_token } : {}),
+        ...(linkedRoles.agency_token ? { agency_token: linkedRoles.agency_token } : {}),
+        ...(linkedRoles.seller ? { seller: linkedRoles.seller } : {}),
+        ...(linkedRoles.agency ? { agency: linkedRoles.agency } : {}),
       },
       message: 'Login successful'
     };

@@ -146,12 +146,33 @@ adminUsersRoutes.get('/users/:id', cors(), async (c) => {
       `SELECT COUNT(*) as count FROM reviews WHERE user_id = ?`, [userId]
     );
 
+    // 🛡️ 이 카카오 유저에 연결된 셀러 / 에이전시 계정 조회 (있으면 어드민에게 통합 표시)
+    let linkedSeller: Record<string, unknown> | null = null
+    try {
+      const row = await executeQuery<Record<string, unknown>>(DB,
+        `SELECT id, business_name, seller_type, status, commission_rate, created_at
+         FROM sellers WHERE linked_user_id = ? LIMIT 1`, [userId]
+      )
+      linkedSeller = row[0] || null
+    } catch { /* sellers.linked_user_id 미적용 DB — skip */ }
+
+    let linkedAgency: Record<string, unknown> | null = null
+    try {
+      const row = await executeQuery<Record<string, unknown>>(DB,
+        `SELECT id, name, contact_name, status, commission_rate, created_at
+         FROM agencies WHERE linked_user_id = ? LIMIT 1`, [userId]
+      )
+      linkedAgency = row[0] || null
+    } catch { /* agencies.linked_user_id 미적용 DB — skip */ }
+
     const user = users[0];
-    const detail: UserDetailRow = {
+    const detail: UserDetailRow & { linked_seller?: unknown; linked_agency?: unknown } = {
       ...user,
       order_count: orderStats[0]?.order_count || 0,
       total_spent: orderStats[0]?.total_spent || 0,
-      review_count: reviewStats[0]?.count || 0
+      review_count: reviewStats[0]?.count || 0,
+      linked_seller: linkedSeller,
+      linked_agency: linkedAgency,
     };
 
     return c.json({ success: true, data: detail });

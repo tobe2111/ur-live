@@ -72,6 +72,8 @@ const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
 const SellerPage = lazy(() => import('./pages/SellerPage'))
 const SellerLoginPage = lazy(() => import('./pages/SellerLoginPage'))
 const SellerRegisterPage = lazy(() => import('./pages/SellerRegisterPage'))
+const SellerRegisterBusinessPage = lazy(() => import('./pages/SellerRegisterBusinessPage'))
+const AgencyRegisterBusinessPage = lazy(() => import('./pages/AgencyRegisterBusinessPage'))
 const SellerForgotPasswordPage = lazy(() => import('./pages/SellerForgotPasswordPage'))
 const SellerResetPasswordPage = lazy(() => import('./pages/SellerResetPasswordPage'))
 const SellerBusinessInfoPage = lazy(() => import('./pages/SellerBusinessInfoPage'))
@@ -410,6 +412,7 @@ function AppContent() {
             } />
             <Route path="/seller/register" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
             <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
+            <Route path="/seller/register/business" element={<ErrorBoundary><SellerRegisterBusinessPage /></ErrorBoundary>} />
             <Route path="/seller/forgot-password" element={<ErrorBoundary><SellerForgotPasswordPage /></ErrorBoundary>} />
             <Route path="/seller/reset-password" element={<ErrorBoundary><SellerResetPasswordPage /></ErrorBoundary>} />
             
@@ -715,6 +718,7 @@ function AppContent() {
             {/* Agency 대시보드 — login/register는 공개, 나머지는 인증 필요 */}
             <Route path="/agency/login" element={<AgencyLoginPage />} />
             <Route path="/agency/register" element={<AgencyRegisterPage />} />
+            <Route path="/agency/register/business" element={<AgencyRegisterBusinessPage />} />
             <Route path="/agency/forgot-password" element={<AgencyForgotPasswordPage />} />
             <Route path="/agency/reset-password" element={<AgencyResetPasswordPage />} />
             <Route path="/agency" element={<AgencyAuthGuard><AgencyPage /></AgencyAuthGuard>} />

@@ -229,6 +229,30 @@ export default function SellerLoginPage() {
               </button>
             </form>
 
+            {/* 카카오 로그인 — 카카오 연동된 셀러는 한 번 로그인으로 셀러 권한 자동 복원 */}
+            <div className="mt-4">
+              <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-3">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span>또는</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const rt = encodeURIComponent('/seller')
+                  window.location.href = `/auth/kakao/start?redirect=${rt}`
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-sm font-semibold rounded-2xl transition-colors"
+              >
+                <span className="text-base">💬</span>
+                카카오로 셀러 로그인
+              </button>
+              <p className="text-[10px] text-gray-400 text-center mt-2">
+                카카오 계정에 셀러 권한이 연동되어 있어야 합니다.<br />
+                아직 연동 안 했다면 <Link to="/seller/register/business" className="text-blue-500">여기서 신청</Link>
+              </p>
+            </div>
+
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-gray-500">
                 {t('auth.noAccount')}{' '}

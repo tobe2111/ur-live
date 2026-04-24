@@ -39,7 +39,7 @@ export default function KakaoCallbackPage() {
 
         if (!res.data.success) throw new Error(res.data.error || '로그인 실패')
 
-        const { customToken, user } = res.data.data
+        const { customToken, user, seller_token, agency_token, seller, agency } = res.data.data
 
         // ── localStorage 설정 (공통) ──
         localStorage.setItem('user_type', 'user')
@@ -48,6 +48,19 @@ export default function KakaoCallbackPage() {
         localStorage.setItem('session_login', 'true')
         if (user.email) localStorage.setItem('user_email', user.email)
         if (user.profile_image) localStorage.setItem('user_profile_image', user.profile_image)
+
+        // ── 카카오 계정에 연결된 셀러/에이전시 권한 자동 복원 ──
+        // (백엔드가 linked_user_id 기반으로 JWT 를 이미 발급해서 보내줌)
+        if (seller_token) {
+          localStorage.setItem('seller_token', seller_token)
+          if (seller?.id) localStorage.setItem('seller_id', String(seller.id))
+          if (seller?.business_name) localStorage.setItem('seller_name', seller.business_name)
+        }
+        if (agency_token) {
+          localStorage.setItem('agency_token', agency_token)
+          if (agency?.id) localStorage.setItem('agency_id', String(agency.id))
+          if (agency?.name) localStorage.setItem('agency_name', agency.name)
+        }
 
         // ── 글로벌 전용: Firebase customToken 로그인 ──
         if (!isKorea() && customToken) {

@@ -46,13 +46,17 @@ async function ensureAgencyTables(DB: D1Database) {
       phone TEXT,
       commission_rate REAL DEFAULT 2.0,
       status TEXT DEFAULT 'active',
+      linked_user_id INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run().catch(() => {})
 
-  // commission_rate 컬럼 보장
+  // 기존 DB 에 빠진 컬럼 ensure
   await DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(() => {})
+  // 🛡️ 카카오 유저 → 에이전시 확장 연결용 (users.id FK, 수동 체크)
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN linked_user_id INTEGER").run().catch(() => {})
+  await DB.prepare("CREATE INDEX IF NOT EXISTS idx_agencies_linked_user ON agencies(linked_user_id)").run().catch(() => {})
 
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agency_sellers (
@@ -200,6 +204,96 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
   `).bind(name, contact_name, email, hash, phone || null).run()
 
   return c.json({ success: true, message: '가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.' }, 201)
+})
+
+// ── POST /register-from-user (카카오 유저 → 에이전시 확장) ────
+// 🛡️ 카카오 로그인된 유저가 같은 계정에 에이전시 role 추가.
+// 별도 이메일/비밀번호 없이 세션 쿠키 + 비즈니스 정보만 입력.
+app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_from_user', max: 3, windowSec: 3600 }), async (c) => {
+  try {
+    await ensureAgencyTables(c.env.DB)
+    const db = c.env.DB
+    const jwtSecret = c.env.JWT_SECRET
+
+    const { parseSessionCookie } = await import('../../../worker/utils/session')
+    const cookieHeader = c.req.header('Cookie')
+    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret)
+    if (!sessionUser) {
+      return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    }
+    const userId = sessionUser.userId
+
+    // 이미 연결된 에이전시가 있으면 중복 차단
+    const existing = await db.prepare(
+      'SELECT id, status FROM agencies WHERE linked_user_id = ?'
+    ).bind(userId).first<{ id: number; status: string }>()
+    if (existing) {
+      return c.json({
+        success: false,
+        error: existing.status === 'pending' ? '이미 에이전시 가입 신청 중입니다. 관리자 승인을 기다려주세요.' : '이미 에이전시 계정이 존재합니다.',
+        agency_id: existing.id,
+        status: existing.status,
+      }, 409)
+    }
+
+    const { name, contact_name, phone } = await c.req.json<{
+      name: string; contact_name: string; phone?: string
+    }>()
+
+    if (!name || !contact_name) {
+      return c.json({ success: false, error: '에이전시명과 담당자명은 필수입니다.' }, 400)
+    }
+    if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
+      return c.json({ success: false, error: '에이전시명은 1~100자여야 합니다.' }, 400)
+    }
+    if (typeof contact_name !== 'string' || contact_name.length < 1 || contact_name.length > 50) {
+      return c.json({ success: false, error: '담당자명은 1~50자여야 합니다.' }, 400)
+    }
+
+    // 유저 이메일 확인 (agencies.email UNIQUE 제약 처리)
+    const user = await db.prepare('SELECT name, email FROM users WHERE id = ?').bind(userId).first<{ name: string; email: string }>()
+    let email = user?.email || sessionUser.email || ''
+    if (email) {
+      const emailDup = await db.prepare('SELECT id FROM agencies WHERE email = ?').bind(email).first()
+      if (emailDup) email = `agency_${userId}@ur-team.com`
+    } else {
+      email = `agency_${userId}@ur-team.com`
+    }
+
+    // 임시 비밀번호 (카카오 로그인만 쓸 거지만 password_hash NOT NULL 충족용)
+    const tempBytes = crypto.getRandomValues(new Uint8Array(16))
+    const tempPassword = Array.from(tempBytes).map(b => b.toString(16).padStart(2, '0')).join('')
+    const passwordHash = await hashPassword(tempPassword)
+
+    await db.prepare(`
+      INSERT INTO agencies (name, contact_name, email, password_hash, phone, status, linked_user_id)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?)
+    `).bind(name, contact_name, email, passwordHash, phone || null, userId).run()
+
+    return c.json({
+      success: true,
+      message: '에이전시 가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.',
+    }, 201)
+  } catch (error) {
+    console.error('Agency register-from-user error:', error)
+    return c.json({ success: false, error: '에이전시 가입 신청 중 오류가 발생했습니다' }, 500)
+  }
+})
+
+// ── GET /my-agency-status — 카카오 유저의 에이전시 전환 상태 ──
+app.get('/my-agency-status', async (c) => {
+  try {
+    await ensureAgencyTables(c.env.DB)
+    const { parseSessionCookie } = await import('../../../worker/utils/session')
+    const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET)
+    if (!sessionUser) return c.json({ success: true, data: { linked: false } })
+    const linked = await c.env.DB.prepare(
+      'SELECT id, status FROM agencies WHERE linked_user_id = ?'
+    ).bind(sessionUser.userId).first<{ id: number; status: string }>()
+    return c.json({ success: true, data: linked ? { linked: true, agency: linked } : { linked: false } })
+  } catch {
+    return c.json({ success: true, data: { linked: false } })
+  }
 })
 
 // ── POST /login ───────────────────────────────────────────────
