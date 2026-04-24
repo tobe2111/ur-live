@@ -65,7 +65,8 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
         SELECT id, email, name, phone, business_name, business_number,
                status, created_at,
                COALESCE(commission_rate, 10) AS commission_rate,
-               COALESCE(can_manipulate_stats, 0) AS can_manipulate_stats
+               COALESCE(can_manipulate_stats, 0) AS can_manipulate_stats,
+               linked_user_id
         FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
       `, [limit, offset]);
     } catch {

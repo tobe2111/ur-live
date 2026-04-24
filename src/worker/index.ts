@@ -60,6 +60,7 @@ import { paymentRoutes as featurePaymentRoutes } from '../features/payments/api/
 import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
 import { pushRoutes } from '../features/push/api/push.routes';
 import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
+import { sellerPinRoutes } from '../features/seller/api/seller-pin.routes';
 import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes';
 import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
 import { sellerStreamsRoutes } from '../features/seller/api/seller-streams.routes';
@@ -1671,6 +1672,7 @@ app.route('/api/sellers', sellersRouter);
 
 // Feature seller management (see /api/seller routing note above — non-overlapping sub-routes)
 app.route('/api/seller', sellerManagementRoutes);
+app.route('/api/seller', sellerPinRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller/analytics', sellerAnalyticsRoutes);
 app.route('/api/seller/streams', sellerStreamsRoutes);

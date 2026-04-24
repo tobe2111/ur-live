@@ -31,6 +31,7 @@ interface Seller {
   status: string
   commission_rate?: number
   can_manipulate_stats?: number
+  linked_user_id?: number | null
   created_at: string
   // seller_business_info joined fields
   biz_number?: string
@@ -698,7 +699,14 @@ export default function AdminPage() {
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">등록된 판매자가 없습니다</td></tr>
               ) : sellers.map(seller => (
                 <tr key={seller.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs text-gray-500">{seller.id}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {seller.id}
+                    {seller.linked_user_id && (
+                      <span className="ml-1 inline-flex items-center px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-bold" title="카카오 계정 연동됨">
+                        💬
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-gray-900">{seller.email}</td>
                   <td className="px-4 py-3 text-xs text-gray-900">{seller.business_name || seller.company_name || '-'}</td>
                   <td className="px-4 py-3">

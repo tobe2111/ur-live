@@ -1273,6 +1273,18 @@ sellerManagementRoutes.post('/settlements/request', async (c) => {
     const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
+
+    // 🛡️ 민감 액션 — 최근 15분 내 PIN 인증 필수
+    const { isPinVerified } = await import('./seller-pin.routes');
+    const pinOk = await isPinVerified(c.req.header('Cookie'), sellerId, c.env.JWT_SECRET);
+    if (!pinOk) {
+      return c.json({
+        success: false,
+        error: 'PIN 인증이 필요합니다',
+        code: 'PIN_REQUIRED',
+      }, 412);
+    }
+
     const { amount, bank_name, account_number, account_holder } = await c.req.json();
     if (!amount || amount <= 0) return c.json({ success: false, error: '정산 금액이 올바르지 않습니다' }, 400);
     const result = await db.prepare(`

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { KakaoLinkButton } from '@/components/auth/KakaoLinkButton'
+import { SellerPinSetup } from '@/components/auth/SellerPinPrompt'
 import {
   Save,
   User,
@@ -566,6 +567,20 @@ export default function SellerProfileEditPage() {
               </div>
             </div>
             <KakaoLinkButton role="seller" />
+          </div>
+
+          {/* 보안 PIN — 민감 액션(정산/계좌) 추가 인증 */}
+          <div className="apple-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-[#34c759]/10 rounded-full flex items-center justify-center">
+                <span className="text-lg">🔐</span>
+              </div>
+              <div>
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">보안 PIN</h2>
+                <p className="text-[13px] text-[#6e6e73]">정산 요청, 계좌 변경 등 민감 액션 추가 인증</p>
+              </div>
+            </div>
+            <SellerPinSetup linkedToKakao={false} />
           </div>
 
           {/* KakaoTalk Chat Link Section */}
