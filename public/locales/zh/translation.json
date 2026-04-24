@@ -407,6 +407,8 @@
       "shortcutToggleHelp": "切换快捷键提示",
       "templateAppliedPartial": "模板已应用({{removed}}个已删除产品被排除)",
       "restoringBroadcast": "正在恢复直播信息...",
+      "sameAsLast": "与上次相同",
+      "upcomingBroadcasts": "预约直播",
       "dataLoadFailed": "데이터를 불러오지 못했습니다.",
       "youtubeApiNotSet": "YouTube API가 설정되지 않았습니다.",
       "youtubeConnectFailed": "YouTube 연동에 실패했습니다.",

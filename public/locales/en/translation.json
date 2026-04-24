@@ -407,6 +407,8 @@
       "shortcutToggleHelp": "Toggle shortcuts",
       "templateAppliedPartial": "Template applied ({{removed}} deleted products excluded)",
       "restoringBroadcast": "Restoring broadcast...",
+      "sameAsLast": "Same as last broadcast",
+      "upcomingBroadcasts": "Upcoming broadcasts",
       "dataLoadFailed": "Failed to load data.",
       "youtubeApiNotSet": "YouTube API is not configured.",
       "youtubeConnectFailed": "Failed to connect YouTube.",

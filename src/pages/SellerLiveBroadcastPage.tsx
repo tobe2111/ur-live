@@ -329,7 +329,6 @@ function ChannelCard({ channels, activeChannelId, onSelectChannel, onDisconnect,
   connectingYouTube: boolean
 }) {
   const { t } = useTranslation()
-  const [menuOpen, setMenuOpen] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const active = channels.find(c => c.id === activeChannelId) || channels[0]
   if (!active) return null
@@ -359,9 +358,13 @@ function ChannelCard({ channels, activeChannelId, onSelectChannel, onDisconnect,
         ) : (
           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
         )}
-        <button onClick={() => setMenuOpen(v => !v)}
-          className="text-gray-400 hover:text-gray-700 px-1">
-          ⋯
+        <button onClick={() => onDisconnect(active.id)}
+          className="text-gray-300 hover:text-red-500 transition-colors p-1"
+          title={t('seller.liveBroadcast.disconnectChannel')}
+          aria-label={t('seller.liveBroadcast.disconnectChannel')}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
         </button>
       </div>
 
@@ -379,14 +382,6 @@ function ChannelCard({ channels, activeChannelId, onSelectChannel, onDisconnect,
         </div>
       )}
 
-      {menuOpen && (
-        <div className="absolute top-full right-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
-          <button onClick={() => { setMenuOpen(false); onDisconnect(active.id) }}
-            className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50">
-            {t('seller.liveBroadcast.disconnectChannel')}
-          </button>
-        </div>
-      )}
     </div>
   )
 }
@@ -915,6 +910,13 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
 }: StepInfoProps) {
   const { t } = useTranslation()
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  // 고급 설정이 마지막 방송과 동일한지 (description/thumbnail/privacy)
+  const lastBc = getLastBroadcast()
+  const advancedUnchanged =
+    description === (lastBc.description || '') &&
+    thumbnailUrl === (lastBc.thumbnailUrl || '') &&
+    privacy === (lastBc.privacy || 'public') &&
+    !isScheduled
   const [productSearch, setProductSearch] = useState('')
   const [templates, setTemplates] = useState<BroadcastTemplate[]>(() => getTemplates())
   const [showTemplates, setShowTemplates] = useState(false)
@@ -1117,11 +1119,16 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
         </div>
       </div>
 
-      {/* P1-4: 고급 설정 접기 */}
+      {/* 고급 설정 접기 + 마지막 방송과 동일 힌트 */}
       <div className="border-t border-gray-100 pt-4">
         <button type="button" onClick={() => setAdvancedOpen(v => !v)}
           className="w-full flex items-center justify-between text-sm font-medium text-gray-600 hover:text-gray-900">
-          <span>{t('seller.liveBroadcast.advancedSettings')}</span>
+          <span className="flex items-center gap-2">
+            {t('seller.liveBroadcast.advancedSettings')}
+            {!advancedOpen && advancedUnchanged && (
+              <span className="text-[10px] text-gray-400 font-normal">{t('seller.liveBroadcast.sameAsLast')}</span>
+            )}
+          </span>
           <span className="text-xs">{advancedOpen ? '▾' : '▸'}</span>
         </button>
         {advancedOpen && (
@@ -1183,7 +1190,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
             )}
 
             {/* 목적지 */}
-            {destinations.length > 0 && (
+            {destinations.filter(d => d.status === 'available').length > 1 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.destination')}</label>
                 <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.destinationDesc')}</p>
@@ -1389,16 +1396,10 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.connectionSetup')}</h2>
-          <p className="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{stream.title}</p>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full font-medium">
-          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-          {t('seller.liveBroadcast.waitingConnection')}
-
-        </div>
+      <div className="flex items-center gap-2">
+        <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />
+        <p className="text-sm font-semibold text-gray-900 truncate flex-1">{stream.title}</p>
+        <span className="text-[11px] text-amber-600 font-medium shrink-0">{t('seller.liveBroadcast.waitingConnection')}</span>
       </div>
 
       {(method === 'quick' || method === 'youtube') && (
@@ -1418,37 +1419,23 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
                 <p className="text-xs text-green-700">{t('seller.liveBroadcast.obsJustStart')}</p>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <VideoIcon className="w-4 h-4 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{t('seller.liveBroadcast.obsRtmpSetup')}</p>
-                    <p className="text-xs text-gray-500">{t('seller.liveBroadcast.obsRtmpSetupDesc')}</p>
-                  </div>
-                </div>
-                {[t('seller.liveBroadcast.obsStep1'), t('seller.liveBroadcast.obsStep2'), t('seller.liveBroadcast.obsStep3'), t('seller.liveBroadcast.obsStep4')].map((s, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                    <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                    {s}
-                  </div>
-                ))}
-              </div>
-              {stream.rtmp_url && (
-                <div className="space-y-2">
+          ) : stream.rtmp_url && (
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
+              <p className="text-xs font-semibold text-purple-700">{t('seller.liveBroadcast.obsRtmpSetupDesc')}</p>
+              <button onClick={() => onCopy(`URL: ${stream.rtmp_url}\nKey: ${stream.rtmp_key}`, 'all')}
+                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                {copiedField === 'all' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiedField === 'all' ? t('seller.liveBroadcast.copyDone') : 'RTMP URL + Key 복사'}
+              </button>
+              <details className="text-xs">
+                <summary className="cursor-pointer text-purple-700 hover:text-purple-900 select-none">개별 복사 + 권장 설정 보기</summary>
+                <div className="mt-2 space-y-2">
                   <RtmpBlock label="RTMP URL" value={stream.rtmp_url} fieldKey="rtmp_url" copiedField={copiedField} onCopy={onCopy} />
                   {stream.rtmp_key && <RtmpBlock label={t('seller.liveBroadcast.streamKey')} value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
                   <RecommendedPresetBlock tool="obs" />
-                  <button onClick={() => onCopy(`URL: ${stream.rtmp_url}\nKey: ${stream.rtmp_key}`, 'all')}
-                    className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors">
-                    {copiedField === 'all' ? t('seller.liveBroadcast.copyDone') : t('seller.liveBroadcast.copyAll')}
-                  </button>
                 </div>
-              )}
-            </>
+              </details>
+            </div>
           )}
         </div>
       )}
@@ -1708,18 +1695,23 @@ function ShareLiveLink({ streamId }: { streamId: number }) {
 
 function StreamList({ streams, onManage }: StreamListProps) {
   const { t } = useTranslation()
-  const active = streams.filter((s: LiveStream) => s.status !== 'ended')
+  // 자동 redirect가 1시간 이내 예약/라이브 처리 → 여기서는 1시간 이후 예약만 표시
+  const upcoming = streams.filter((s: LiveStream) => {
+    if (s.status !== 'scheduled') return false
+    if (!s.scheduled_at) return true
+    return new Date(s.scheduled_at).getTime() - Date.now() > 60 * 60 * 1000
+  })
   const ended = streams.filter((s: LiveStream) => s.status === 'ended')
-  if (streams.length === 0) return null
+  if (upcoming.length === 0 && ended.length === 0) return null
   return (
     <div className="mt-6 space-y-4">
-      {active.length > 0 && (
+      {upcoming.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-bold text-gray-700">{t('seller.liveBroadcast.activeBroadcasts')}</h3>
-          {active.map((s: LiveStream) => (
+          <h3 className="text-sm font-bold text-gray-700">{t('seller.liveBroadcast.upcomingBroadcasts')}</h3>
+          {upcoming.map((s: LiveStream) => (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${s.status === 'live' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
-                {s.status === 'live' ? '● LIVE' : t('common.scheduled')}
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-orange-100 text-orange-600">
+                📅 {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : t('common.scheduled')}
               </span>
               <p className="text-sm font-medium text-gray-900 truncate flex-1">{s.title}</p>
               <button onClick={() => onManage(s)} className="text-xs text-blue-600 font-medium shrink-0">{t('common.manage')} →</button>
@@ -1758,7 +1750,44 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
   const [dealForm, setDealForm] = useState({ product_id: 0, discount_percent: 30, max_claims: 10, duration_seconds: 30 })
   const [groupBuyForm, setGroupBuyForm] = useState({ product_id: 0, target_participants: 20, bonus_discount_percent: 50, duration_minutes: 10 })
   const [submitting, setSubmitting] = useState(false)
+  const [activeAuction, setActiveAuction] = useState<{ ends_at?: string } | null>(null)
+  const [activeTimeDeal, setActiveTimeDeal] = useState<{ ends_at?: string; is_group_buy?: boolean } | null>(null)
+  const [tick, setTick] = useState(0)
   const token = localStorage.getItem('seller_token')
+
+  // 활성 경매/타임딜 5초 폴링
+  useEffect(() => {
+    let active = true
+    const fetchActive = async () => {
+      try {
+        const [au, td] = await Promise.allSettled([
+          api.get(`/api/auction/stream/${streamId}`),
+          api.get(`/api/timedeal/stream/${streamId}`),
+        ])
+        if (!active) return
+        setActiveAuction(au.status === 'fulfilled' && au.value.data?.success ? (au.value.data.data || null) : null)
+        setActiveTimeDeal(td.status === 'fulfilled' && td.value.data?.success ? (td.value.data.data || null) : null)
+      } catch { /* silent */ }
+    }
+    fetchActive()
+    const id = setInterval(fetchActive, 5000)
+    return () => { active = false; clearInterval(id) }
+  }, [streamId])
+
+  // 1초 카운트다운 갱신
+  useEffect(() => {
+    if (!activeAuction?.ends_at && !activeTimeDeal?.ends_at) return
+    const id = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [activeAuction?.ends_at, activeTimeDeal?.ends_at])
+
+  function fmtRemaining(endsAt?: string): string {
+    if (!endsAt) return ''
+    const sec = Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000))
+    void tick
+    const m = Math.floor(sec / 60), s = sec % 60
+    return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`
+  }
 
   async function createAuction() {
     if (!auctionForm.title || !auctionForm.start_price) { toast.error(t('seller.liveBroadcast.enterTitleAndPrice')); return }
@@ -1804,17 +1833,37 @@ function AuctionTimeDealControls({ streamId, products }: { streamId: number; pro
 
   return (
     <div className="space-y-2">
+      {/* 활성 진행 상태 */}
+      {(activeAuction || activeTimeDeal) && (
+        <div className="flex flex-wrap gap-2">
+          {activeAuction && (
+            <span className="flex items-center gap-1.5 text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-semibold">
+              <Gavel className="w-3 h-3" />
+              {t('seller.liveBroadcast.auction')} · {fmtRemaining(activeAuction.ends_at)}
+            </span>
+          )}
+          {activeTimeDeal && (
+            <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold ${activeTimeDeal.is_group_buy ? 'bg-pink-100 text-pink-800' : 'bg-red-100 text-red-800'}`}>
+              {activeTimeDeal.is_group_buy ? <Users className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+              {activeTimeDeal.is_group_buy ? t('seller.liveBroadcast.liveGroupBuy') : t('seller.liveBroadcast.timeDeal')} · {fmtRemaining(activeTimeDeal.ends_at)}
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex gap-2">
         <button onClick={() => { setShowAuction(!showAuction); setShowTimeDeal(false); setShowGroupBuy(false) }}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showAuction ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+          disabled={!!activeAuction}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-50 ${showAuction ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
           <Gavel className="w-3.5 h-3.5" /> {t('seller.liveBroadcast.auction')}
         </button>
         <button onClick={() => { setShowTimeDeal(!showTimeDeal); setShowAuction(false); setShowGroupBuy(false) }}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showTimeDeal ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+          disabled={!!activeTimeDeal}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-50 ${showTimeDeal ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 border border-red-200'}`}>
           <Zap className="w-3.5 h-3.5" /> {t('seller.liveBroadcast.timeDeal')}
         </button>
         <button onClick={() => { setShowGroupBuy(!showGroupBuy); setShowAuction(false); setShowTimeDeal(false) }}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${showGroupBuy ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-600 border border-pink-200'}`}>
+          disabled={!!activeTimeDeal}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-50 ${showGroupBuy ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-600 border border-pink-200'}`}>
           <Users className="w-3.5 h-3.5" /> {t('seller.liveBroadcast.liveGroupBuy')}
         </button>
       </div>
