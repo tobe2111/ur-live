@@ -13,6 +13,9 @@ import {
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import type { DashboardStats, DailyStats, TopProduct, Order, LiveStream } from '@/components/seller/dashboard/seller-dashboard-types'
+import OnboardingChecklist from '@/components/seller/dashboard/OnboardingChecklist'
+import DeferUntilVisible from '@/components/seller/dashboard/DeferUntilVisible'
 
 // recharts lazy load (377KB → 대시보드 진입 시 차트 영역만 지연 로드)
 const LazyChart = lazy(() => import('recharts').then(m => ({
@@ -35,116 +38,10 @@ const LazyChart = lazy(() => import('recharts').then(m => ({
   }
 })))
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface DashboardStats {
-  totalRevenue: number
-  totalOrders: number
-  activeStreams: number
-  totalViewers: number
-  pendingOrders: number
-  cancelledOrders: number
-  completedOrders: number
-  avgOrderValue: number
-  totalProducts?: number
-  totalStreams?: number
-  lowStockCount?: number
-  pendingSettlement?: number
-}
-
-interface DailyStats {
-  date: string
-  orders: number
-  sales: number
-}
-
-interface TopProduct {
-  product_id: number
-  product_name: string
-  order_count: number
-  total_revenue: number
-}
-
-interface Order {
-  id: number
-  order_number: string
-  user_name: string
-  user_email: string
-  total_amount: number
-  status: string
-  shipping_name: string
-  shipping_phone: string
-  payment_method: string
-  created_at: string
-}
-
-interface LiveStream {
-  id: number
-  title: string
-  status: 'scheduled' | 'live' | 'ended'
-  viewer_count: number
-  created_at: string
-  youtube_video_id: string
-}
-
 // Inline skeleton placeholder
 const Skel = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
 )
-
-// 🛡️ 2026-04-23 배치 170: 셀러 온보딩 체크리스트
-function OnboardingChecklist({ stats, hasBank }: { stats: DashboardStats; hasBank: boolean }) {
-  const { t } = useTranslation()
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem('seller_onboarding_done') === '1')
-  if (dismissed) return null
-
-  const steps = [
-    { key: 'product', done: (stats.totalProducts ?? 0) > 0, label: t('seller.onboarding.addProduct', '첫 상품 등록'), path: '/seller/products/new', icon: Package },
-    { key: 'bank', done: hasBank, label: t('seller.onboarding.bankAccount', '정산 계좌 등록'), path: '/seller/profile', icon: CreditCard },
-    { key: 'live', done: (stats.totalStreams ?? 0) > 0, label: t('seller.onboarding.firstLive', '첫 라이브 방송'), path: '/seller/live-broadcast', icon: Radio },
-    { key: 'order', done: (stats.totalOrders ?? 0) > 0, label: t('seller.onboarding.firstOrder', '첫 주문 받기'), path: '#', icon: ShoppingBag },
-  ]
-  const doneCount = steps.filter(s => s.done).length
-  const allDone = doneCount === steps.length
-  if (allDone) {
-    localStorage.setItem('seller_onboarding_done', '1')
-    return null
-  }
-  const progress = Math.round((doneCount / steps.length) * 100)
-
-  return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-gray-900">{t('seller.onboarding.title', '🚀 시작 가이드')}</h3>
-          <p className="text-xs text-gray-500 mt-0.5">{t('seller.onboarding.subtitle', '아래 단계를 완료하면 판매를 시작할 수 있어요')}</p>
-        </div>
-        <button onClick={() => { setDismissed(true); localStorage.setItem('seller_onboarding_done', '1') }}
-          className="text-xs text-gray-400 hover:text-gray-600">
-          {t('common.dismiss', '닫기')}
-        </button>
-      </div>
-      <div className="w-full bg-blue-100 rounded-full h-2">
-        <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
-      </div>
-      <p className="text-[11px] text-blue-700 font-medium">{doneCount}/{steps.length} {t('seller.onboarding.completed', '완료')}</p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {steps.map(s => (
-          <Link key={s.key} to={s.done ? '#' : s.path}
-            className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs transition-all ${
-              s.done
-                ? 'bg-green-50 border-green-200 text-green-700'
-                : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
-            }`}>
-            {s.done
-              ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-              : <s.icon className="w-4 h-4 text-gray-400 shrink-0" />}
-            <span className={s.done ? 'line-through' : 'font-medium'}>{s.label}</span>
-          </Link>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const STATUS_CONFIG_BASE: Record<string, { labelKey: string; color: string; bg: string; icon: React.ReactNode }> = {
@@ -1107,25 +1004,3 @@ export default function SellerPage() {
   )
 }
 
-/**
- * 자식을 뷰포트에 들어왔을 때만 마운트 (IntersectionObserver).
- */
-function DeferUntilVisible({ children, fallback, rootMargin = '200px' }: { children: React.ReactNode; fallback: React.ReactNode; rootMargin?: string }) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    if (visible) return
-    if (typeof IntersectionObserver === 'undefined') { setVisible(true); return }
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) {
-        setVisible(true)
-        observer.disconnect()
-      }
-    }, { rootMargin })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [visible, rootMargin])
-  return <div ref={ref} style={{ width: '100%', height: '100%' }}>{visible ? children : fallback}</div>
-}
