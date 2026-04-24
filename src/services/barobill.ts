@@ -55,7 +55,7 @@ async function callBarobillAPI(endpoint: string, data: any) {
       throw new Error(`바로빌 API 오류: ${response.status} ${response.statusText}`);
     }
     
-    const result = await response.json() as any;
+    const result = await response.json() as Record<string, unknown>;
     return result;
   } catch (error) {
     console.error('바로빌 API 호출 실패:', error);

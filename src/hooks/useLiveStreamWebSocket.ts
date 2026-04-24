@@ -109,18 +109,21 @@ export function useLiveStreamWebSocket(
       const replayParam = replay ? '?replay=true' : ''
       const res = await fetch(`/api/live/${streamId}/chat/messages${replayParam}`)
       if (!res.ok) return
-      const json = await res.json() as any
+      const json = await res.json() as { success?: boolean; data?: unknown[] }
       if (json.success && Array.isArray(json.data)) {
-        const formatted: ChatMessage[] = json.data.map((msg: any) => ({
-          id: String(msg.id),
-          userId: msg.user_id,
-          userName: msg.user_name,
-          userType: msg.is_seller ? 'streamer' : (msg.is_admin ? 'system' : 'viewer'),
-          message: msg.message,
-          timestamp: new Date(msg.created_at).getTime(),
-          isSeller: Boolean(msg.is_seller),
-          isAdmin: Boolean(msg.is_admin),
-        }))
+        const formatted: ChatMessage[] = json.data.map((msg) => {
+          const m = msg as Record<string, unknown>
+          return {
+            id: String(m.id),
+            userId: Number(m.user_id),
+            userName: m.user_name as string,
+            userType: m.is_seller ? 'streamer' : (m.is_admin ? 'system' : 'viewer'),
+            message: m.message as string,
+            timestamp: new Date(m.created_at as string).getTime(),
+            isSeller: Boolean(m.is_seller),
+            isAdmin: Boolean(m.is_admin),
+          }
+        })
         setMessages(formatted)
       }
     } catch (e) {

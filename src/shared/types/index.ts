@@ -277,6 +277,7 @@ export interface CreateOrderRequest {
   discount_amount?: number;
   coupon_id?: number | null;  // 적용된 쿠폰 (있으면 use 처리)
   deal_used?: number;          // 사용한 딜 포인트
+  live_stream_id?: number;     // 라이브 방송 연계 주문
 }
 
 export interface CheckoutSession {

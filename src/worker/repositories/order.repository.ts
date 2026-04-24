@@ -47,7 +47,7 @@ export class OrderRepository {
     // 🛡️ 2026-04-22: 할인 로직 구현. 이전엔 discount_amount=0 hardcode → 쿠폰/포인트 미반영.
     // request.discount_amount (쿠폰+포인트 합산) + 서버 검증 후 저장.
     // 서버 재계산: total_amount = subtotal + shipping - discount (음수 방지)
-    const requestedDiscount = Number((request as any).discount_amount ?? 0);
+    const requestedDiscount = Number(request.discount_amount ?? 0);
     // 검증: 0 <= discount <= subtotal+shipping (음수 결제 방지)
     const safeDiscount = Math.max(0, Math.min(requestedDiscount, subtotal + shippingFee));
     const totalAmount = Math.max(0, subtotal + shippingFee - safeDiscount);
@@ -58,7 +58,7 @@ export class OrderRepository {
     //   - nullable 스키마 (0128 migration): null 전달 OK
     // 안전 전략: seller_id가 있으면 포함, 없으면 INSERT 컬럼 자체를 제외
     const hasSellerId = !!request.seller_id;
-    const hasStreamId = !!(request as any).live_stream_id;
+    const hasStreamId = !!request.live_stream_id;
     const columns = [
       'order_number', 'user_id',
       ...(hasSellerId ? ['seller_id'] : []),
@@ -72,7 +72,7 @@ export class OrderRepository {
       request.order_number,
       userId,
       ...(hasSellerId ? [request.seller_id] : []),
-      ...(hasStreamId ? [(request as any).live_stream_id] : []),
+      ...(hasStreamId ? [request.live_stream_id] : []),
       subtotal,
       shippingFee,
       safeDiscount,  // 🛡️ 실제 할인 금액 저장 (이전: 0 hardcode)

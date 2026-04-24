@@ -395,7 +395,7 @@ export async function syncProductsToLocal(
           .run();
 
         const productId =
-          (insertResult.meta as any)?.last_row_id ?? insertResult.meta?.changes;
+          (insertResult.meta as { last_row_id?: number })?.last_row_id ?? insertResult.meta?.changes;
 
         if (productId) {
           await db

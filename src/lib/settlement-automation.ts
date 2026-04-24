@@ -13,6 +13,42 @@ interface Env {
   DB: D1Database
 }
 
+interface OrderRow {
+  id: number
+  order_number: string
+  created_at: string
+  total_amount: number
+  shipping_fee: number
+  status: string
+  product_names: string | null
+  total_quantity: number | null
+}
+
+interface SellerIdRow {
+  id: number
+}
+
+interface SettlementDetailRow {
+  seller_id: number
+  seller_name: string
+  total_sales: number
+  total_orders: number
+  platform_fee: number
+  shipping_fee: number
+  refund_amount: number
+  settlement_amount: number
+}
+
+interface SettlementRow {
+  id: number
+  period_start: string
+  period_end: string
+  generated_at: string
+  total_sales: number
+  total_platform_fee: number
+  total_settlement: number
+}
+
 interface SettlementPeriod {
   startDate: string // YYYY-MM-DD
   endDate: string // YYYY-MM-DD
@@ -144,7 +180,7 @@ async function calculateSellerSettlement(
         AND o.status IN ('delivered', 'confirmed')
       GROUP BY o.id
       ORDER BY o.created_at DESC
-    `).bind(sellerId, period.startDate, period.endDate).all()
+    `).bind(sellerId, period.startDate, period.endDate).all<OrderRow>()
 
     if (!orders.results || orders.results.length === 0) {
       return {
@@ -166,7 +202,7 @@ async function calculateSellerSettlement(
     let totalShippingFee = 0
     let totalPlatformFee = 0
 
-    for (const order of orders.results as any[]) {
+    for (const order of orders.results) {
       // CRIT-3: use order.total_amount (includes shipping) as the fee base.
       // Shipping is included in totalSales and flows back to the seller after fee.
       const orderAmount = order.total_amount
@@ -254,7 +290,7 @@ export async function generateSettlementReport(
     JOIN orders o ON s.id = o.seller_id
     WHERE DATE(o.created_at) BETWEEN ? AND ?
       AND o.status IN ('delivered', 'confirmed', 'refunded')
-  `).bind(period.startDate, period.endDate).all()
+  `).bind(period.startDate, period.endDate).all<SellerIdRow>()
 
   // 셀러별 정산 계산
   const sellerSettlements: SellerSettlement[] = []
@@ -262,7 +298,7 @@ export async function generateSettlementReport(
   let totalPlatformFee = 0
   let totalSettlement = 0
 
-  for (const seller of (sellers.results as any[])) {
+  for (const seller of sellers.results) {
     const settlement = await calculateSellerSettlement(DB, seller.id, period)
     
     if (settlement) {
@@ -338,7 +374,7 @@ export async function getSettlementReport(
 ): Promise<SettlementReport | null> {
   const settlement = await DB.prepare(`
     SELECT * FROM settlements WHERE id = ?
-  `).bind(settlementId).first<any>()
+  `).bind(settlementId).first<SettlementRow>()
 
   if (!settlement) {
     return null
@@ -351,9 +387,9 @@ export async function getSettlementReport(
     FROM settlement_details sd
     JOIN sellers s ON sd.seller_id = s.id
     WHERE sd.settlement_id = ?
-  `).bind(settlementId).all()
+  `).bind(settlementId).all<SettlementDetailRow>()
 
-  const sellers: SellerSettlement[] = (details.results as any[]).map(d => ({
+  const sellers: SellerSettlement[] = details.results.map(d => ({
     seller_id: d.seller_id,
     seller_name: d.seller_name,
     total_sales: d.total_sales,

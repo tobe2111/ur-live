@@ -109,7 +109,7 @@ export async function sendEmail(
       return { success: false, error: (lastError as Error)?.message || 'Network error' }
     }
 
-    const data = await response.json() as any
+    const data = await response.json() as { message?: string }
 
     if (!response.ok) {
       console.error('[Email] Failed to send:', data)

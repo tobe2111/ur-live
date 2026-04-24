@@ -34,7 +34,7 @@ export function useVersionCheck() {
       
       // Fetch version with cache-busting
       const response = await fetch(`/version.json?t=${Date.now()}`);
-      const data = await response.json() as any;
+      const data = await response.json() as { version?: string };
       const newVersion = data.version;
 
       // Get stored version
@@ -53,7 +53,7 @@ export function useVersionCheck() {
         }
       } else if (!currentVersion) {
         // First visit - store version
-        localStorage.setItem(STORAGE_KEY, newVersion);
+        if (newVersion) localStorage.setItem(STORAGE_KEY, newVersion);
       }
     } catch (error) {
       console.error('[VersionCheck] Failed to check version:', error);
@@ -94,7 +94,7 @@ export function useVersionCheck() {
       // Throttle: 1초에 한 번만 업데이트
       if (activityTimeout) return;
       activityTimeout = setTimeout(() => {
-        activityTimeout = null as any;
+        activityTimeout = undefined as unknown as NodeJS.Timeout;
       }, 1000);
       
       setLastActivity(Date.now());

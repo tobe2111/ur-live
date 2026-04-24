@@ -3,249 +3,19 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { LayoutDashboard } from 'lucide-react'
+import { LayoutDashboard, Download, Bell, AlertTriangle, TrendingUp, UserCheck, Radio } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import {
-  Users, ShoppingBag, DollarSign, Play,
-  TrendingUp, ArrowUpRight, CheckCircle, XCircle, Clock, Download, Bell,
-  Link2, Copy, UserPlus, Eye, AlertTriangle, ChevronRight, UserCheck, Radio
-} from 'lucide-react'
-
-interface Stats {
-  sellers: number
-  orders_30d: number
-  revenue_30d: number
-  net_revenue_30d: number
-  active_streams: number
-}
-
-interface Seller {
-  id: number
-  name: string
-  business_name: string
-  email: string
-  status: string
-  commission_rate: number
-  total_orders: number
-  total_revenue: number
-  active_streams: number
-}
-
-interface Order {
-  id: number
-  order_number: string
-  total_amount: number
-  payment_status: string
-  status: string
-  created_at: string
-  shipping_name: string
-  seller_business_name: string
-}
-
-function NotificationList() {
-  const { t } = useTranslation()
-  const [notifs, setNotifs] = useState<any[]>([])
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
-  useEffect(() => {
-    api.get('/api/agency/notifications', { headers })
-      .then(r => { if (r.data.success) setNotifs((r.data.data || []).slice(0, 5)) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-  }, [])
-  if (notifs.length === 0) return <p className="text-xs text-gray-400">{t('agency.noNewNotifications')}</p>
-  return (
-    <div className="space-y-1.5">
-      {notifs.map((n, i) => (
-        <div key={i} className="flex items-start gap-2 text-xs">
-          <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 shrink-0" />
-          <div>
-            <p className="text-gray-700 font-medium">{n.title}</p>
-            <p className="text-gray-400">{new Date(n.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const { t } = useTranslation()
-  const map: Record<string, { label: string; cls: string }> = {
-    approved: { label: t('agency.statusApproved'), cls: 'bg-green-100 text-green-700' },
-    pending:  { label: t('agency.statusPending'), cls: 'bg-amber-100 text-amber-700' },
-    rejected: { label: t('agency.statusRejected'), cls: 'bg-red-100 text-red-700' },
-    suspended:{ label: t('agency.statusSuspended'), cls: 'bg-gray-100 text-gray-600' },
-  }
-  const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-600' }
-  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
-}
-
-function PayBadge({ status }: { status: string }) {
-  const { t } = useTranslation()
-  if (status === 'approved') return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" />{t('common.paid')}</span>
-  if (status === 'failed' || status === 'cancelled') return <span className="flex items-center gap-1 text-xs text-red-500"><XCircle className="w-3 h-3" />{t('common.cancelled')}</span>
-  return <span className="flex items-center gap-1 text-xs text-amber-600"><Clock className="w-3 h-3" />{t('common.pending')}</span>
-}
-
-function InviteLinkSection() {
-  const { t } = useTranslation()
-  const agencyId = localStorage.getItem('agency_id')
-  const inviteUrl = `https://live.ur-team.com/seller/register?agency=${agencyId}`
-  const [recruitedCount, setRecruitedCount] = useState(0)
-  const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    const token = localStorage.getItem('agency_token')
-    if (!token) return
-    api.get('/api/agency/sellers', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        const sellers = r.data.data || []
-        setRecruitedCount(sellers.length)
-      })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-  }, [])
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteUrl)
-      setCopied(true)
-      toast.success(t('agency.inviteLinkCopied'))
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      toast.error(t('common.copyFailed'))
-    }
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-[#E8EAEE] p-4 sm:p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-          <UserPlus className="w-4 h-4 text-purple-600" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-gray-900">{t('agency.influencerInvite')}</h3>
-          <p className="text-xs text-gray-500">{t('agency.shareLink')}</p>
-        </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <Link2 className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-xs font-semibold text-gray-700">{t('agency.recruitedSellers', { count: recruitedCount })}</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 truncate font-mono">
-          {inviteUrl}
-        </div>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 transition-colors shrink-0"
-        >
-          <Copy className="w-3.5 h-3.5" />
-          {copied ? t('common.copied') : t('common.copy')}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-interface DailyStat {
-  date: string
-  revenue: number
-  orders: number
-}
-
-function RevenueTrendChart() {
-  const { t } = useTranslation()
-  const [daily, setDaily] = useState<DailyStat[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const token = localStorage.getItem('agency_token')
-    if (!token) return
-    api.get('/api/agency/stats/daily?days=7', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        if (r.data.success) setDaily(r.data.data || [])
-      })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [])
-
-  // 최근 7일 날짜 버킷 생성 (데이터 없는 날도 0으로 표시)
-  const buckets = useMemo(() => {
-    const dayNames = [t('common.sun'), t('common.mon'), t('common.tue'), t('common.wed'), t('common.thu'), t('common.fri'), t('common.sat')]
-    const byDate: Record<string, DailyStat> = {}
-    for (const d of daily) byDate[d.date] = d
-    const out: { key: string; label: string; revenue: number; orders: number }[] = []
-    for (let i = 6; i >= 0; i--) {
-      const dt = new Date()
-      dt.setDate(dt.getDate() - i)
-      const key = dt.toISOString().slice(0, 10)
-      const match = byDate[key]
-      out.push({
-        key,
-        label: dayNames[dt.getDay()],
-        revenue: match?.revenue || 0,
-        orders: match?.orders || 0,
-      })
-    }
-    return out
-  }, [daily])
-
-  const maxVal = Math.max(1, ...buckets.map(b => b.revenue))
-
-  if (loading && daily.length === 0) {
-    return (
-      <div className="flex items-end gap-2 h-[140px] px-2 pt-4">
-        {[0, 1, 2, 3, 4, 5, 6].map(i => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <div className="w-full animate-pulse bg-gray-200 rounded" style={{ height: '40%' }} />
-            <span className="text-[10px] text-gray-300">·</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex items-end gap-2 h-[140px] px-2 pt-4">
-      {buckets.map((b, i) => {
-        const heightPct = b.revenue > 0 ? (b.revenue / (maxVal * 1.1)) * 100 : 0
-        // 라이브/공구/제휴 세분화 데이터는 아직 없으므로 단일 바 (그라디언트) 표시
-        return (
-          <div key={b.key} className="flex-1 flex flex-col items-center gap-1" title={`${b.key}: ${b.revenue.toLocaleString()}${t('common.won')} / ${b.orders}${t('agency.unitCase')}`}>
-            <div className="w-full relative" style={{ height: `${Math.max(heightPct, 2)}%` }}>
-              <div
-                className="absolute bottom-0 w-full rounded-t-md"
-                style={{
-                  height: '100%',
-                  background: b.revenue > 0
-                    ? 'linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)'
-                    : '#E5E7EB',
-                }}
-              />
-            </div>
-            <span className="text-[10px] text-gray-400 font-medium">{b.label}</span>
-            {i === buckets.length - 1 && (
-              <span className="text-[9px] text-purple-600 font-bold">{t('agency.today')}</span>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// Inline skeleton placeholder
-const Skel = ({ className }: { className?: string }) => (
-  <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
-)
-
-interface Stream {
-  id: number
-  title: string
-  seller_business_name?: string
-  seller_name?: string
-  status: string
-}
+import type { Stats, Seller, Order, DailyStat, Stream, AgencyInsight } from '@/components/agency/dashboard/agency-dashboard-types'
+import { NotificationList } from '@/components/agency/dashboard/NotificationList'
+import { InviteLinkSection } from '@/components/agency/dashboard/InviteLinkSection'
+import { RevenueTrendChart } from '@/components/agency/dashboard/RevenueTrendChart'
+import { AgencyKpiRow } from '@/components/agency/dashboard/AgencyKpiRow'
+import { AgencyInsightsCallouts } from '@/components/agency/dashboard/AgencyInsightsCallouts'
+import { AgencySellerRanking } from '@/components/agency/dashboard/AgencySellerRanking'
+import { AgencyRecentOrders } from '@/components/agency/dashboard/AgencyRecentOrders'
+import { AgencyLiveSchedule } from '@/components/agency/dashboard/AgencyLiveSchedule'
+import { AgencyMonthlyGoal } from '@/components/agency/dashboard/AgencyMonthlyGoal'
 
 export default function AgencyPage() {
   const { t } = useTranslation()
@@ -387,15 +157,6 @@ export default function AgencyPage() {
 
   // ── Actionable insights ────────────────────────────────────────────────────
   // 에이전시 대시보드 데이터로 자동 파생되는 배너
-  type AgencyInsightSeverity = 'high' | 'medium' | 'info'
-  type AgencyInsightIcon = typeof AlertTriangle | typeof TrendingUp | typeof UserCheck | typeof Radio
-  interface AgencyInsight {
-    severity: AgencyInsightSeverity
-    icon: AgencyInsightIcon
-    title: string
-    description?: string
-    action?: { label: string; path: string }
-  }
   const insights: AgencyInsight[] = useMemo(() => {
     const list: AgencyInsight[] = []
 
@@ -460,8 +221,6 @@ export default function AgencyPage() {
     return list
   }, [sellers, stats, daily])
 
-  const showStatsSkeleton = loading && !stats
-
   async function downloadCSV(days: number) {
     try {
       const res = await api.get(`/api/agency/report/csv?period=${days}`, {
@@ -477,6 +236,9 @@ export default function AgencyPage() {
     }
   }
 
+  // suppress unused variable warning — totalGMV used for future display
+  void totalGMV
+
   return (
     <AgencyLayout title={t('seller.dashboard')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -486,119 +248,33 @@ export default function AgencyPage() {
           subtitle={t('agency.dashboardSubtitle') || '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브'}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
+
       {/* 0. 월간 매출 목표 진행률 */}
-      <div className="bg-white rounded-2xl p-4 border border-[#E8EAEE]">
-        <div className="flex items-center justify-between mb-2 gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-[12px] font-bold text-gray-700">{t('seller.monthlyGoalTitle')}</p>
-              <button
-                onClick={() => setEditingGoal(!editingGoal)}
-                className="text-[10px] text-purple-600 hover:underline"
-              >
-                {editingGoal ? t('common.close') : t('seller.changeGoal')}
-              </button>
-            </div>
-            {editingGoal ? (
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="number"
-                  min={0}
-                  step={1000000}
-                  defaultValue={monthlyGoal}
-                  onBlur={(e) => {
-                    const v = Math.max(0, Number(e.target.value) || 0)
-                    setMonthlyGoal(v)
-                    localStorage.setItem('agency_monthly_goal', String(v))
-                    setEditingGoal(false)
-                  }}
-                  className="text-[14px] font-bold text-gray-900 px-2 py-1 border border-gray-300 rounded w-44"
-                />
-                <span className="text-[12px] text-gray-500">{t('common.won')}</span>
-              </div>
-            ) : (
-              <p className="text-[16px] sm:text-[20px] font-extrabold text-gray-900 truncate">
-                {currentRev.toLocaleString()}{t('common.won')} / {monthlyGoal.toLocaleString()}{t('common.won')}
-              </p>
-            )}
-          </div>
-          <p className="text-[13px] font-extrabold shrink-0" style={{ color: '#FF0033' }}>
-            {Math.round(goalProgress)}%
-          </p>
-        </div>
-        <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${Math.min(goalProgress, 100)}%`,
-              background: 'linear-gradient(90deg, #FF0033, #EC4899)'
-            }}
-          />
-        </div>
-        <p className="text-[10px] text-gray-500 mt-1.5">
-          {t('seller.daysLeft', { days: daysLeft })} · {t('seller.goalRemaining', { amount: Math.max(0, monthlyGoal - currentRev).toLocaleString() })}
-        </p>
-      </div>
+      <AgencyMonthlyGoal
+        currentRev={currentRev}
+        monthlyGoal={monthlyGoal}
+        goalProgress={goalProgress}
+        daysLeft={daysLeft}
+        editingGoal={editingGoal}
+        onToggleEdit={() => setEditingGoal(!editingGoal)}
+        onGoalChange={(v) => {
+          setMonthlyGoal(v)
+          localStorage.setItem('agency_monthly_goal', String(v))
+          setEditingGoal(false)
+        }}
+      />
 
       {/* 1. KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {[
-          { label: t('agency.kpiSellers'), value: String(stats?.sellers ?? 0), sub: t('common.person'), icon: Users, color: 'bg-blue-600', delta: 0, showDelta: false },
-          { label: t('agency.kpiOrders'), value: String(stats?.orders_30d ?? 0), sub: t('agency.kpiOrdersSub'), icon: ShoppingBag, color: 'bg-blue-500', delta: ordersDelta, showDelta },
-          { label: t('agency.kpiRevenue'), value: `${((stats?.revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiRevenueSub'), icon: DollarSign, color: 'bg-emerald-500', delta: revenueDelta, showDelta },
-          { label: t('agency.kpiSellerRevenue'), value: `${((stats?.net_revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiSellerRevenueSub'), icon: TrendingUp, color: 'bg-violet-500', delta: revenueDelta, showDelta },
-          { label: t('agency.kpiLive'), value: String(stats?.active_streams ?? 0), sub: t('agency.kpiLiveSub'), icon: Play, color: 'bg-rose-500', delta: 0, showDelta: false },
-        ].map((kpi) => (
-          <div key={kpi.label} className="rounded-2xl p-4 bg-white border border-[#E8EAEE]">
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] mb-1">{kpi.label}</p>
-                {showStatsSkeleton ? (
-                  <>
-                    <Skel className="h-6 w-2/3 mb-1" />
-                    <Skel className="h-3 w-1/2" />
-                  </>
-                ) : (
-                  <>
-                    <p className="text-[22px] font-extrabold text-[#111]">{kpi.value}</p>
-                    {kpi.showDelta && (
-                      <span className={`text-[10px] font-bold block ${kpi.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {kpi.delta >= 0 ? '↑' : '↓'} {Math.abs(kpi.delta)}% {t('seller.vsPreviousPeriod')}
-                      </span>
-                    )}
-                    {kpi.sub && <p className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</p>}
-                  </>
-                )}
-              </div>
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.color} shrink-0`}>
-                <kpi.icon className="w-4 h-4 text-white" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <AgencyKpiRow
+        stats={stats}
+        loading={loading}
+        ordersDelta={ordersDelta}
+        revenueDelta={revenueDelta}
+        showDelta={showDelta}
+      />
 
       {/* 1.5 Actionable insights callouts */}
-      {insights.length > 0 && (
-        <div className="space-y-2">
-          {insights.map((insight, i) => (
-            <div key={i} className={`rounded-xl p-3 flex items-start gap-3 ${insight.severity === 'high' ? 'bg-red-50 border border-red-200' : insight.severity === 'medium' ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'}`}>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${insight.severity === 'high' ? 'bg-red-100' : insight.severity === 'medium' ? 'bg-amber-100' : 'bg-blue-100'}`}>
-                <insight.icon className={`w-4 h-4 ${insight.severity === 'high' ? 'text-red-600' : insight.severity === 'medium' ? 'text-amber-600' : 'text-blue-600'}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-extrabold text-gray-900">{insight.title}</p>
-                {insight.description && <p className="text-[11px] text-gray-600 mt-0.5">{insight.description}</p>}
-              </div>
-              {insight.action && (
-                <button onClick={() => navigate(insight.action!.path)} className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 shrink-0">
-                  {insight.action.label}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <AgencyInsightsCallouts insights={insights} />
 
       {/* 2. Commission Banner */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 text-white">
@@ -700,153 +376,13 @@ export default function AgencyPage() {
 
       {/* 6. Seller Ranking + Recent Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Seller Ranking */}
-        <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">{t('agency.affiliatedSellers')}</h2>
-            <button
-              onClick={() => navigate('/agency/sellers')}
-              className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
-            >
-              {t('seller.viewAll')} <ArrowUpRight className="w-3 h-3" />
-            </button>
-          </div>
-          {loading && sortedSellers.length === 0 ? (
-            <div className="divide-y divide-gray-50">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between px-5 py-3">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <Skel className="w-5 h-4" />
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <Skel className="h-4 w-1/2" />
-                      <Skel className="h-3 w-1/3" />
-                    </div>
-                  </div>
-                  <Skel className="h-5 w-12" />
-                </div>
-              ))}
-            </div>
-          ) : sortedSellers.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-400">
-              {t('agency.noSellers')}<br />
-              <span className="text-xs">{t('agency.requestAssignment')}</span>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {sortedSellers.slice(0, 8).map((s, idx) => (
-                <div key={s.id} className="flex items-center justify-between px-5 py-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-[12px] font-bold text-gray-400 w-5 text-center">
-                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{s.business_name || s.name}</p>
-                      <p className="text-xs text-gray-400">{s.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 ml-3 flex-shrink-0">
-                    <div className="text-right hidden sm:block">
-                      <p className="text-xs font-semibold text-gray-900">{(s.total_revenue / 10000).toFixed(0)}{t('agency.manwon')}</p>
-                      <p className="text-xs text-gray-400">{s.total_orders}{t('agency.unitCase')}</p>
-                    </div>
-                    {s.active_streams > 0 && (
-                      <span className="flex items-center gap-1 text-xs bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">
-                        <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
-                        LIVE
-                      </span>
-                    )}
-                    <StatusBadge status={s.status} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Recent Orders */}
-        <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">{t('agency.recentOrders')}</h2>
-            <button
-              onClick={() => navigate('/agency/orders')}
-              className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
-            >
-              {t('seller.viewAll')} <ArrowUpRight className="w-3 h-3" />
-            </button>
-          </div>
-          {loading && orders.length === 0 ? (
-            <div className="divide-y divide-gray-50">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between px-5 py-3">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <Skel className="h-3 w-1/3" />
-                    <Skel className="h-4 w-1/4" />
-                    <Skel className="h-3 w-1/2" />
-                  </div>
-                  <Skel className="h-4 w-16 ml-3" />
-                </div>
-              ))}
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-400">{t('agency.noOrders')}</div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {orders.map(o => (
-                <div key={o.id} className="flex items-center justify-between px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-mono text-gray-500">{o.order_number}</p>
-                    <p className="text-sm font-medium text-gray-900">{(o.total_amount).toLocaleString()}{t('common.won')}</p>
-                    <p className="text-xs text-gray-400">{o.seller_business_name}</p>
-                  </div>
-                  <div className="ml-3 flex-shrink-0">
-                    <PayBadge status={o.payment_status} />
-                    <p className="text-xs text-gray-400 mt-1 text-right">
-                      {new Date(o.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <AgencySellerRanking sortedSellers={sortedSellers} loading={loading} />
+        <AgencyRecentOrders orders={orders} loading={loading} />
       </div>
 
       {/* 7. Live Schedule */}
-      {liveScheduleItems.length > 0 && (
-        <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">{t('agency.liveInProgress')}</h2>
-            <button
-              onClick={() => navigate('/agency/streams')}
-              className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
-            >
-              {t('agency.liveStatus')} <ArrowUpRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {liveScheduleItems.map((item, i) => (
-              <div key={i} className="flex items-center justify-between px-5 py-3.5 bg-pink-50/60">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
-                    LIVE
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-bold text-gray-900 truncate">{item.sellerName}</p>
-                    <p className="text-[11px] text-gray-500 truncate">{item.title}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/agency/streams')}
-                  className="text-[11px] font-bold text-purple-600 hover:text-purple-700 flex items-center gap-0.5 ml-3 flex-shrink-0"
-                >
-                  {t('common.preview')} <ChevronRight className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <AgencyLiveSchedule items={liveScheduleItems} />
+
       </div>
     </AgencyLayout>
   )

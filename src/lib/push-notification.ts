@@ -13,6 +13,16 @@
 
 import { encryptAtRest, decryptAtRest } from '../worker/utils/data-crypto'
 
+interface PushSubscriptionRow {
+  endpoint: string
+  p256dh: string
+  auth: string
+}
+
+interface FollowerRow {
+  user_id: number
+}
+
 interface PushSubscription {
   endpoint: string
   keys: {
@@ -98,10 +108,10 @@ export async function getPushSubscriptions(
     SELECT endpoint, p256dh, auth
     FROM push_subscriptions
     WHERE user_id = ? AND user_type = ? AND is_active = TRUE
-  `).bind(userId, userType).all()
+  `).bind(userId, userType).all<PushSubscriptionRow>()
 
   const subs: PushSubscription[] = []
-  for (const row of result.results as any[]) {
+  for (const row of result.results) {
     try {
       subs.push({
         endpoint: row.endpoint,
@@ -375,9 +385,9 @@ export async function sendLiveStartNotification(
   const followers = await DB.prepare(`
     SELECT user_id FROM user_follows
     WHERE seller_id = (SELECT id FROM sellers WHERE business_name = ?)
-  `).bind(sellerName).all()
+  `).bind(sellerName).all<FollowerRow>()
 
-  for (const follower of (followers.results as any[])) {
+  for (const follower of followers.results) {
     await notifyUser(DB, follower.user_id, 'user', {
       title: `${sellerName}님이 라이브 방송을 시작했습니다!`,
       body: streamTitle,

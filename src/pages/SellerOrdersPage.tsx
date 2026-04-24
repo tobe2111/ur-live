@@ -28,46 +28,8 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-
-interface OrderItem {
-  id: number
-  product_id: number
-  product_name: string
-  image_url: string | null
-  quantity: number
-  price: number
-}
-
-interface Order {
-  id: string
-  order_number: string
-  user_name: string
-  total_amount: number
-  status: string
-  payment_status: string
-  shipping_name: string
-  shipping_phone: string
-  shipping_address: string
-  courier: string | null
-  tracking_number: string | null
-  created_at: string
-  updated_at: string
-  items?: OrderItem[]
-}
-
-function parseShippingAddress(address: string, detail?: string): { postal_code: string; address1: string; address2: string } {
-  if (!address) return { postal_code: '', address1: '', address2: detail || '' }
-  try {
-    const parsed = JSON.parse(address)
-    return {
-      postal_code: parsed.postal_code || parsed.zipcode || '',
-      address1: parsed.address1 || parsed.address || '',
-      address2: parsed.address2 || parsed.detail || detail || '',
-    }
-  } catch {
-    return { postal_code: '', address1: address, address2: detail || '' }
-  }
-}
+import type { OrderItem, Order } from '@/components/seller/orders/seller-orders-types'
+import { parseShippingAddress } from '@/components/seller/orders/seller-orders-helpers'
 
 export default function SellerOrdersPage() {
   const { t } = useTranslation()

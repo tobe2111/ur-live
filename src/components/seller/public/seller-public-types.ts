@@ -1,0 +1,33 @@
+export interface Seller {
+  id: number; name: string; username?: string; slug?: string; business_name?: string; profile_image?: string; bio?: string
+  sns_instagram?: string; sns_youtube?: string; sns_facebook?: string; sns_twitter?: string
+  kakao_chat_link?: string; website_url?: string; created_at: string
+  business_number?: string; email?: string; phone?: string
+  ceo_name?: string; mail_order_number?: string; business_address?: string
+}
+
+export interface LiveStream {
+  id: number; title: string; youtube_video_id?: string; status: string; viewer_count?: number
+  scheduled_at?: string; created_at: string
+}
+
+export interface Product {
+  id: number; name: string; price: number; original_price?: number; discount_rate?: number
+  image_url?: string; sold_count?: number; category?: string
+  restaurant_name?: string; restaurant_address?: string
+  group_buy_target?: number; group_buy_current?: number; group_buy_deadline?: string
+}
+
+export interface Short {
+  id: number; title: string; youtube_video_id?: string; view_count: number; thumbnail_url?: string
+  product_id?: number; product_name?: string; product_price?: number
+}
+
+export type Tab = 'home' | 'vouchers' | 'shorts' | 'live' | 'info'
+
+export interface ThemeClasses {
+  bg: string; card: string; cardAlt: string
+  text: string; textSub: string; textMuted: string
+  border: string; borderAlt: string
+  cover: string; avatarBorder: string; input: string; btnOutline: string
+}

@@ -29,17 +29,17 @@ export function useProductStock(productId: number | null): {
       try {
         const res = await fetch(`/api/products/${productId}`)
         if (!res.ok || cancelled) return
-        const json = await res.json() as any
-        const p = json.data ?? json
+        const json = await res.json() as Record<string, unknown>
+        const p = (json.data ?? json) as Record<string, unknown>
         if (p && p.id) {
           setProductData({
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            original_price: p.original_price ?? p.originalPrice,
-            discount_rate: p.discount_rate ?? p.discountRate ?? 0,
-            stock: p.stock ?? 0,
-            image_url: p.image_url ?? p.imageUrl,
+            id: p.id as number,
+            name: p.name as string,
+            price: p.price as number,
+            original_price: (p.original_price ?? p.originalPrice) as number | undefined,
+            discount_rate: (p.discount_rate ?? p.discountRate ?? 0) as number,
+            stock: (p.stock ?? 0) as number,
+            image_url: (p.image_url ?? p.imageUrl) as string | undefined,
             updated_at: Date.now(),
           })
         }

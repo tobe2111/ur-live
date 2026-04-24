@@ -43,13 +43,12 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
       throw new Error(`Backend error: ${response.status}`)
     }
 
-    const data = await response.json() as any
-    
-    if (!data.firebaseToken && !data.customToken) {
+    const data = await response.json() as { firebaseToken?: string; customToken?: string }
+
+    const customToken = data.firebaseToken ?? data.customToken
+    if (!customToken) {
       throw new Error('No Firebase token received from backend')
     }
-
-    const customToken = data.firebaseToken || data.customToken
 
     // 2. Lazy load Firebase Auth
     logger.info('[LoginFlow] 🔥 Lazy loading Firebase Auth...')

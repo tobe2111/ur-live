@@ -157,7 +157,7 @@ smokeTestRoutes.get('/api/_internal/smoke-test', requireAdmin(), async (c) => {
 smokeTestRoutes.get('/api/_internal/smoke-test-auth', async (c) => {
   const { sign } = await import('hono/jwt');
   const origin = new URL(c.req.url).origin;
-  const jwtSecret = (c.env as any).JWT_SECRET;
+  const jwtSecret = c.env.JWT_SECRET;
 
   if (!jwtSecret) {
     return c.json({ success: false, error: 'JWT_SECRET not configured' }, 500);

@@ -10,6 +10,26 @@
 
 import type { Env } from '../worker/types/env'
 
+interface ChatMessageRow {
+  id: number
+  user_id: number
+  user_name: string
+  user_avatar: string | null
+  message: string
+  is_seller: boolean
+  is_admin: boolean
+  created_at: string
+}
+
+interface OrderRow {
+  id: number
+  order_number: string
+  total_amount: number
+  status: string
+  created_at: string
+  buyer_name: string
+}
+
 interface SSEMessage {
   // 🛡️ 2026-04-22: chat_delete, product_change, donation, stream_status 추가 (DO 와 동기)
   type: 'chat' | 'chat_delete' | 'order' | 'stock' | 'status' | 'viewer_count' | 'product_change' | 'donation' | 'stream_status'
@@ -200,10 +220,10 @@ export async function handleChatSSE(
           WHERE live_stream_id = ?
           ORDER BY id DESC
           LIMIT 50
-        `).bind(streamId).all()
+        `).bind(streamId).all<ChatMessageRow>()
 
         if (messages.results.length > 0) {
-          lastMessageId = (messages.results[0] as any).id
+          lastMessageId = messages.results[0].id
 
           const message: SSEMessage = {
             type: 'chat',
@@ -233,10 +253,10 @@ export async function handleChatSSE(
             FROM chat_messages
             WHERE live_stream_id = ? AND id > ?
             ORDER BY id ASC
-          `).bind(streamId, lastMessageId).all()
+          `).bind(streamId, lastMessageId).all<ChatMessageRow>()
 
           if (newMessages.results.length > 0) {
-            lastMessageId = (newMessages.results[newMessages.results.length - 1] as any).id
+            lastMessageId = newMessages.results[newMessages.results.length - 1].id
 
             const message: SSEMessage = {
               type: 'chat',
@@ -320,10 +340,10 @@ export async function handleOrderNotificationSSE(
             JOIN users u ON o.user_id = u.id
             WHERE o.seller_id = ? AND o.id > ?
             ORDER BY o.id ASC
-          `).bind(sellerId, lastOrderId).all()
+          `).bind(sellerId, lastOrderId).all<OrderRow>()
 
           if (newOrders.results.length > 0) {
-            lastOrderId = (newOrders.results[newOrders.results.length - 1] as any).id
+            lastOrderId = newOrders.results[newOrders.results.length - 1].id
 
             const message: SSEMessage = {
               type: 'order',
