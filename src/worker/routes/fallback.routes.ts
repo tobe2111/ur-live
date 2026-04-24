@@ -21,7 +21,7 @@ fallbackRoutes.get('*', async (c) => {
 
   if (!BOT_UA_REGEX.test(ua)) {
     const assetUrl = new URL('/', c.req.url);
-    const res = await (c.env as any).ASSETS?.fetch?.(assetUrl.toString())
+    const res = await c.env.ASSETS?.fetch?.(assetUrl.toString())
       || await fetch(assetUrl.toString());
     return new Response(res.body, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } });
   }

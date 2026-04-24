@@ -161,11 +161,11 @@ timedealRoutes.post('/create', requireAuth(), async (c) => {
       };
       const doId = c.env.LIVE_STREAM.idFromName(String(stream_id));
       const stub = c.env.LIVE_STREAM.get(doId);
-      await stub.fetch(new Request('https://internal/broadcast', {
+      await stub.fetch('https://internal/broadcast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Internal-Auth': '1', 'X-Auth-User-Type': 'seller' },
         body: JSON.stringify(flashSaleMessage),
-      }) as any);
+      });
     }
   } catch (e) {
     if (import.meta.env.DEV) console.error('[TimeDeal] DO broadcast failed:', e);

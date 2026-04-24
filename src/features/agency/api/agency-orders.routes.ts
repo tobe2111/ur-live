@@ -8,13 +8,14 @@
  *   GET  /api/agency/settlements/csv         - 정산 CSV 다운로드
  */
 
+import type { MiddlewareHandler } from 'hono'
 import { createDashboardNotification } from '../../notifications/api/dashboard-notifications.routes'
 import { isAgencyPinVerified } from './agency-pin.routes'
 import { createAgencyApp, ensureAgencyTables, requireAgency } from './agency-shared'
 import type { AgencyCtx } from './agency-shared'
 
 const app = createAgencyApp()
-app.use('*', requireAgency as any)
+app.use('*', requireAgency as unknown as MiddlewareHandler)
 
 // ── GET /orders ───────────────────────────────────────────────
 app.get('/orders', async (c) => {

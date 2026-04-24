@@ -13,12 +13,13 @@
  *   GET  /api/agency/ranking                      - 셀러 성과 랭킹
  */
 
+import type { MiddlewareHandler } from 'hono'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { hashPassword, validatePasswordComplexity } from '@/lib/password'
 import { createAgencyApp, ensureAgencyTables, requireAgency } from './agency-shared'
 
 const app = createAgencyApp()
-app.use('*', requireAgency as any)
+app.use('*', requireAgency as unknown as MiddlewareHandler)
 
 // ── GET /sellers ──────────────────────────────────────────────
 app.get('/sellers', async (c) => {
@@ -71,7 +72,7 @@ app.get('/sellers/compare', async (c) => {
     JOIN agency_sellers ag ON ag.seller_id = p.seller_id
     WHERE ag.agency_id = ?
     GROUP BY p.seller_id
-  `).bind(agencyId).all<{ seller_id: number; total_vouchers: number; used_vouchers: number }>().catch(() => ({ results: [] as any[] }))
+  `).bind(agencyId).all<{ seller_id: number; total_vouchers: number; used_vouchers: number }>().catch(() => ({ results: [] }))
 
   // Fetch group buy participation per seller
   const { results: groupBuyStats } = await c.env.DB.prepare(`
@@ -82,7 +83,7 @@ app.get('/sellers/compare', async (c) => {
     JOIN agency_sellers ag ON ag.seller_id = p.seller_id
     WHERE ag.agency_id = ? AND p.category = 'meal_voucher' AND p.group_buy_status IS NOT NULL
     GROUP BY p.seller_id
-  `).bind(agencyId).all<{ seller_id: number; total_group_buys: number; achieved_group_buys: number }>().catch(() => ({ results: [] as any[] }))
+  `).bind(agencyId).all<{ seller_id: number; total_group_buys: number; achieved_group_buys: number }>().catch(() => ({ results: [] }))
 
   const voucherMap: Record<number, { total_vouchers: number; used_vouchers: number }> = {}
   for (const v of (voucherStats || [])) voucherMap[v.seller_id] = v

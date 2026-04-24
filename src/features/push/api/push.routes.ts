@@ -73,7 +73,7 @@ pushRoutes.post('/api/push/subscribe', requireAuth(), async (c) => {
     const userId = parseInt(String(authUser.id), 10);
     const userType = authUser.type as 'user' | 'seller' | 'admin';
     const subscription = await c.req.json();
-    await savePushSubscription(c.env.DB, userId, userType, subscription, (c.env as any).DATA_ENCRYPTION_KEY);
+    await savePushSubscription(c.env.DB, userId, userType, subscription, c.env.DATA_ENCRYPTION_KEY);
 
     return c.json({ success: true });
   } catch (error: any) {

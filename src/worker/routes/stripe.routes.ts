@@ -98,7 +98,7 @@ stripeRouter.post('/create-intent', async (c) => {
  * 환경 변수: STRIPE_WEBHOOK_SECRET (Stripe Dashboard 에서 발급).
  */
 stripeRouter.post('/webhook', async (c) => {
-  const webhookSecret = (c.env as any).STRIPE_WEBHOOK_SECRET as string | undefined;
+  const webhookSecret = c.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
     console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured');
     return c.json({ received: true }, 200); // Stripe 재시도 방지용 200

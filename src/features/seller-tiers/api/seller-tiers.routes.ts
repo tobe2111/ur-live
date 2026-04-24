@@ -159,9 +159,9 @@ sellerTiersRoutes.post('/recalculate', requireAuth(), async (c) => {
 
   let updated = 0;
   for (const seller of (sellers ?? [])) {
-    const s = seller as any;
+    const s = seller as { monthly_sales?: number; [key: string]: unknown };
     // 매출에 맞는 등급 찾기
-    const matchedTier = (tiers ?? []).find((t: any) => s.monthly_sales >= t.min_monthly_sales) as any;
+    const matchedTier = (tiers ?? []).find((t: { min_monthly_sales?: number }) => (s.monthly_sales ?? 0) >= (t.min_monthly_sales ?? 0));
     if (matchedTier && matchedTier.commission_rate !== s.commission_rate) {
       await DB.prepare('UPDATE sellers SET commission_rate = ? WHERE id = ?')
         .bind(matchedTier.commission_rate, s.id).run();

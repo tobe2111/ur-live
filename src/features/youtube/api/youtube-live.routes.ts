@@ -88,14 +88,14 @@ app.post('/live/create', async (c) => {
           FROM seller_youtube_oauth
           WHERE seller_id = ? AND id = ? AND is_active = 1
           LIMIT 1
-        `).bind(sellerId, channel_id).first() as any
+        `).bind(sellerId, channel_id).first<{ default_stream_id?: string | null; default_rtmp_url?: string | null; default_rtmp_key?: string | null }>()
       : await c.env.DB.prepare(`
           SELECT default_stream_id, default_rtmp_url, default_rtmp_key
           FROM seller_youtube_oauth
           WHERE seller_id = ? AND is_active = 1
           ORDER BY created_at DESC
           LIMIT 1
-        `).bind(sellerId).first() as any
+        `).bind(sellerId).first<{ default_stream_id?: string | null; default_rtmp_url?: string | null; default_rtmp_key?: string | null }>()
 
     let liveSetup
     if (sellerAuth?.default_stream_id) {

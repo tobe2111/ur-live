@@ -9,7 +9,8 @@
  * - POST /disconnect     → Remove stored tokens
  */
 
-import { Hono } from 'hono';
+import { Hono } from 'hono'
+import type { MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { requireAdmin } from '@/worker/middleware/auth';
@@ -39,7 +40,7 @@ cafe24Routes.use(
 
 // ── GET /auth-url ──────────────────────────────────────────────────
 // Returns the Cafe24 OAuth authorization URL for the admin to click
-cafe24Routes.get('/auth-url', requireAdmin() as any, async (c) => {
+cafe24Routes.get('/auth-url', requireAdmin() as MiddlewareHandler, async (c) => {
   const { CAFE24_CLIENT_ID, CAFE24_MALL_ID, FRONTEND_URL } = c.env;
 
   if (!CAFE24_CLIENT_ID || !CAFE24_MALL_ID) {
@@ -123,7 +124,7 @@ cafe24Routes.get('/callback', async (c) => {
 
 // ── POST /sync ─────────────────────────────────────────────────────
 // Trigger a full product sync from Cafe24 → local DB
-cafe24Routes.post('/sync', requireAdmin() as any, async (c) => {
+cafe24Routes.post('/sync', requireAdmin() as MiddlewareHandler, async (c) => {
   const { DB, CAFE24_CLIENT_ID, CAFE24_CLIENT_SECRET, CAFE24_MALL_ID } = c.env;
 
   if (!CAFE24_CLIENT_ID || !CAFE24_CLIENT_SECRET || !CAFE24_MALL_ID) {
@@ -148,7 +149,7 @@ cafe24Routes.post('/sync', requireAdmin() as any, async (c) => {
 
 // ── GET /status ────────────────────────────────────────────────────
 // Check if Cafe24 is connected and token is valid
-cafe24Routes.get('/status', requireAdmin() as any, async (c) => {
+cafe24Routes.get('/status', requireAdmin() as MiddlewareHandler, async (c) => {
   const { DB, CAFE24_MALL_ID } = c.env;
 
   if (!CAFE24_MALL_ID) {
@@ -186,7 +187,7 @@ cafe24Routes.get('/status', requireAdmin() as any, async (c) => {
 
 // ── POST /disconnect ───────────────────────────────────────────────
 // Remove Cafe24 connection
-cafe24Routes.post('/disconnect', requireAdmin() as any, async (c) => {
+cafe24Routes.post('/disconnect', requireAdmin() as MiddlewareHandler, async (c) => {
   const { DB, CAFE24_MALL_ID } = c.env;
 
   if (!CAFE24_MALL_ID) {

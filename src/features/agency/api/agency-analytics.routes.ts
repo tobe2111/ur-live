@@ -11,11 +11,12 @@
  *   PUT  /api/agency/targets           - 셀러 매출 목표 설정
  */
 
+import type { MiddlewareHandler } from 'hono'
 import { createAgencyApp, ensureAgencyTables, requireAgency } from './agency-shared'
 import type { AgencyCtx } from './agency-shared'
 
 const app = createAgencyApp()
-app.use('*', requireAgency as any)
+app.use('*', requireAgency as unknown as MiddlewareHandler)
 
 // ── GET /stats ────────────────────────────────────────────────
 app.get('/stats', async (c) => {

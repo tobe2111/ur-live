@@ -74,7 +74,7 @@ async function verifySvixSignature(
 }
 
 resendWebhookRoutes.post('/', async (c) => {
-  const secret = (c.env as any).RESEND_WEBHOOK_SECRET as string | undefined
+  const secret = c.env.RESEND_WEBHOOK_SECRET
   const svixId = c.req.header('svix-id') || ''
   const svixTs = c.req.header('svix-timestamp') || ''
   const svixSig = c.req.header('svix-signature') || ''

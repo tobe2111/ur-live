@@ -11,6 +11,7 @@
  *   GET  /api/agency/kakao-link-status  - 카카오 연동 상태 조회
  */
 
+import type { MiddlewareHandler } from 'hono'
 import { verifyPassword } from '@/lib/password'
 import { parseSessionCookie } from '@/worker/utils/session'
 import { KakaoAuthService } from '../../auth/services/KakaoAuthService'
@@ -19,7 +20,7 @@ import { createAgencyApp, requireAgency } from './agency-shared'
 import type { AgencyCtx } from './agency-shared'
 
 const app = createAgencyApp()
-app.use('*', requireAgency as any)
+app.use('*', requireAgency as unknown as MiddlewareHandler)
 
 // ── POST /notices — 셀러 공지사항 발송 ──
 app.post('/notices', async (c: AgencyCtx) => {

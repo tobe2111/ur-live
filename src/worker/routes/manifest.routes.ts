@@ -6,7 +6,7 @@ export const manifestRoutes = new Hono<{ Bindings: Env }>();
 // v32 FIX: PWA manifest MIME type 명시 (Workers asset serving은 _headers 미지원)
 manifestRoutes.get('/manifest.webmanifest', async (c) => {
   try {
-    const assets = (c.env as any).ASSETS;
+    const assets = c.env.ASSETS;
     if (assets) {
       const res = await assets.fetch(new Request(new URL('/manifest.webmanifest', c.req.url).toString()));
       if (res && res.ok) {

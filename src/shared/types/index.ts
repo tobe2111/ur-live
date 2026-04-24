@@ -173,6 +173,7 @@ export interface Order {
   shipping_memo?: string;
   tracking_number?: string;
   tracking_company?: string;
+  courier?: string;
   payment_status?: 'pending' | 'approved' | 'failed' | 'cancelled' | 'refunded';
   cancelled_at?: string;
   cancel_reason?: string;

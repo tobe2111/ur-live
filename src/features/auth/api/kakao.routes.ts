@@ -78,6 +78,7 @@ type Bindings = {
   FIREBASE_DATABASE_URL: string;
   JWT_SECRET: string;
   FRONTEND_URL?: string;
+  DATA_ENCRYPTION_KEY?: string;
 };
 
 export const kakaoRoutes = new Hono<{ Bindings: Bindings }>();
@@ -302,7 +303,7 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       // ⚡ 성능: Firebase customToken 생성(느린 crypto) 과 DB 업데이트를 병렬 실행.
       //    또한 firebase_uid + kakao tokens 를 한 번의 UPDATE 로 묶어 D1 RTT 1회 절약.
       await ensureKakaoColumns(DB);
-      const kek = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
+      const kek = c.env.DATA_ENCRYPTION_KEY;
 
       const [customToken, encAccess, encRefresh] = await Promise.all([
         firebaseService.createCustomToken(firebaseUID, {
@@ -481,7 +482,7 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
 
     // ⚡ 병렬 실행: Firebase customToken 생성(느린 crypto) + at-rest 암호화를 동시에.
     await ensureKakaoColumns(DB);
-    const kek2 = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
+    const kek2 = c.env.DATA_ENCRYPTION_KEY;
     const [customToken, encAccess2, encRefresh2] = await Promise.all([
       firebaseService.createCustomToken(firebaseUID, {
         role: 'user', userId: user.id, userName: user.name,

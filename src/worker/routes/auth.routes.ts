@@ -340,7 +340,7 @@ authRouter.get('/session/health', async (c) => {
       ).bind(sessionUser.userId).first<{ kakao_access_token: string | null; kakao_refresh_token: string | null }>();
 
       // 🛡️ 2026-04-22: at-rest 복호화 (legacy 평문 호환)
-      const kek = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
+      const kek = c.env.DATA_ENCRYPTION_KEY;
       const plainAccess = row?.kakao_access_token ? await decryptAtRest(row.kakao_access_token, kek).catch(() => row.kakao_access_token) : null;
 
       if (plainAccess) {

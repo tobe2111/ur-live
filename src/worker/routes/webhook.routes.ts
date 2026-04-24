@@ -54,7 +54,7 @@ async function sendOrderNotification(
   });
 
   // Discord notification (configured via DISCORD_WEBHOOK_URL env var)
-  const discordUrl = (env as any).DISCORD_WEBHOOK_URL;
+  const discordUrl = env.DISCORD_WEBHOOK_URL;
   if (discordUrl) {
     const colorMap = { cancelled: 0xFFA500, failed: 0xFF0000 };
     const titleMap = { cancelled: 'Order Cancelled', failed: 'Payment Failed' };
@@ -172,7 +172,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
         // ✅ FIX (Cron C4): Return 200 (not 401) so Toss does not enter a retry storm
         // for a misconfiguration that Toss retries cannot fix. Alert via Discord so
         // ops can set the secret. The webhook event is NOT processed.
-        const discordUrl = (c.env as any).DISCORD_WEBHOOK_URL;
+        const discordUrl = c.env.DISCORD_WEBHOOK_URL;
         if (discordUrl) {
           await fetch(discordUrl, {
             method: 'POST',

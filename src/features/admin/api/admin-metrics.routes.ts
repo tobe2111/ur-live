@@ -48,7 +48,7 @@ adminMetricsRoutes.get('/', async (c) => {
   } catch { metrics.active_users_5min = null }
 
   metrics.timestamp = new Date().toISOString()
-  metrics.cold_start = !(c.env as any).__warm  // Crude proxy — may not work
+  metrics.cold_start = !c.env.__warm  // Crude proxy — may not work
 
   return c.json({ success: true, data: metrics })
 })

@@ -6,7 +6,7 @@ export const versionRoutes = new Hono<{ Bindings: Env }>();
 let _cachedBuildVersion: { version: string; fetchedAt: number } | null = null;
 
 versionRoutes.get('/api/version', async (c) => {
-  const env = c.env as any;
+  const env = c.env;
   const secrets = {
     JWT_SECRET: !!env.JWT_SECRET,
     REFRESH_TOKEN_SECRET: !!env.REFRESH_TOKEN_SECRET,

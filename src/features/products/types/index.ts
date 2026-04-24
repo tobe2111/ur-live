@@ -44,6 +44,8 @@ export interface ProductCreateInput {
   stock?: number; // legacy alias
   category?: string;
   images?: string[];
+  image_url?: string;
+  thumbnail_url?: string;
 }
 
 export interface ProductUpdateInput {

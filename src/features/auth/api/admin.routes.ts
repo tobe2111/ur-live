@@ -6,7 +6,7 @@
  * - POST /api/admin/refresh - Access Token 갱신
  */
 
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
 import { verifyPassword, hashPassword } from '@/lib/password';
@@ -325,9 +325,9 @@ adminRoutes.post('/refresh', cors(), async (c) => {
 import { requireAdmin } from '@/worker/middleware/auth';
 
 // Setup: TOTP secret 생성 → QR 코드용 URI 반환
-adminRoutes.post('/2fa/setup', cors(), requireAdmin() as any, async (c) => {
+adminRoutes.post('/2fa/setup', cors(), requireAdmin() as MiddlewareHandler, async (c) => {
   const { DB } = c.env;
-  const user = (c as any).get('user') as { id: string | number; email: string } | undefined;
+  const user = c.get('user' as never) as { id: string | number; email: string } | undefined;
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
   try {
@@ -370,9 +370,9 @@ adminRoutes.post('/2fa/setup', cors(), requireAdmin() as any, async (c) => {
 });
 
 // Verify: 최초 활성화 시 OTP 확인
-adminRoutes.post('/2fa/verify', cors(), requireAdmin() as any, async (c) => {
+adminRoutes.post('/2fa/verify', cors(), requireAdmin() as MiddlewareHandler, async (c) => {
   const { DB } = c.env;
-  const user = (c as any).get('user') as { id: string | number; email: string } | undefined;
+  const user = c.get('user' as never) as { id: string | number; email: string } | undefined;
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
   const { code } = await c.req.json<{ code: string }>();
@@ -404,9 +404,9 @@ adminRoutes.post('/2fa/verify', cors(), requireAdmin() as any, async (c) => {
 });
 
 // Validate: 로그인 후 2FA 검증 (클라이언트가 로그인 성공 후 호출)
-adminRoutes.post('/2fa/validate', cors(), requireAdmin() as any, async (c) => {
+adminRoutes.post('/2fa/validate', cors(), requireAdmin() as MiddlewareHandler, async (c) => {
   const { DB } = c.env;
-  const user = (c as any).get('user') as { id: string | number; email: string } | undefined;
+  const user = c.get('user' as never) as { id: string | number; email: string } | undefined;
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
   const { code } = await c.req.json<{ code: string }>();

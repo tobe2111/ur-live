@@ -67,6 +67,22 @@ export interface Env {
   RESEND_FROM?: string;
   RESEND_WEBHOOK_SECRET?: string;
 
+  // ---- Email (Mailgun/SendGrid legacy) ----
+  EMAIL_API_KEY?: string;
+  EMAIL_DOMAIN?: string;
+
+  // ---- AI (Anthropic) ----
+  ANTHROPIC_API_KEY?: string;
+
+  // ---- Delivery Tracker ----
+  DELIVERY_TRACKER_API_KEY?: string;
+
+  // ---- Stripe Webhook ----
+  STRIPE_WEBHOOK_SECRET?: string;
+
+  // ---- Worker Warm Flag ----
+  __warm?: boolean;
+
   // ---- Monitoring ----
   DISCORD_WEBHOOK_URL?: string;
   SENTRY_DSN?: string;
@@ -99,7 +115,7 @@ export interface Env {
   // ---- Cloudflare Specific ----
   // Note: env.ASSETS is automatically available when [assets] is configured
   // No explicit binding needed in wrangler.toml
-  ASSETS?: { fetch: (req: Request) => Promise<Response> };
+  ASSETS?: { fetch: (req: Request | URL | string) => Promise<Response> };
 
   // ---- Build Info (injected at deploy time) ----
   BUILD_SHA?: string;

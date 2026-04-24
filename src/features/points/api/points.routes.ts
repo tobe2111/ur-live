@@ -306,7 +306,7 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
         () => executeDonate(DB, userId, stream_id, amount, message),
         { ttlSeconds: 6 * 60 * 60 },
       );
-      return c.json(result.body, result.status as any);
+      return c.json(result.body, result.status as 200 | 400 | 403 | 404 | 409 | 422 | 429 | 500 | 503);
     } catch (e) {
       if (e instanceof IdempotencyConflictError) {
         return c.json({ success: false, error: e.message }, 409);
@@ -316,7 +316,7 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
   }
 
   const result = await executeDonate(DB, userId, stream_id, amount, message);
-  return c.json(result.body, result.status as any);
+  return c.json(result.body, result.status as 200 | 400 | 403 | 404 | 409 | 422 | 429 | 500 | 503);
 });
 
 /**

@@ -356,9 +356,15 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
     if (product.group_buy_current >= product.group_buy_target) return c.json({ success: false, error: '목표 달성된 공동구매는 환불 불가' }, 400)
 
     // 미사용 바우처 환불 처리
+    interface VoucherRefundRow {
+      id: number;
+      user_id: string | null;
+      total_amount: number;
+      payment_method: string | null;
+    }
     const { results: vouchers } = await DB.prepare(
       "SELECT v.*, o.user_id, o.total_amount, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
-    ).bind(productId).all()
+    ).bind(productId).all<VoucherRefundRow>()
 
     let refundCount = 0
     for (const v of (vouchers || [])) {
@@ -367,7 +373,7 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
       //    when two admins/sellers race on the same refund API call).
       const casRes = await DB.prepare(
         "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
-      ).bind((v as any).id).run()
+      ).bind(v.id).run()
 
       if ((casRes.meta?.changes ?? 0) === 0) continue
 
@@ -375,13 +381,13 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
       // ✅ BUG #45 FIX: `o.total_amount` covers the whole order (N vouchers).
       // Refunding that per-voucher would multiply the refund by N.  Refund
       // exactly one voucher's worth of points — `product.price`.
-      if ((v as any).payment_method === 'deal_points' && (v as any).user_id) {
+      if (v.payment_method === 'deal_points' && v.user_id) {
         const amount = product.price
         await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
-          .bind(amount, (v as any).user_id).run()
+          .bind(amount, v.user_id).run()
         await DB.prepare(
           "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-        ).bind((v as any).user_id, amount, amount, (v as any).user_id, `공동구매 미달성 환불: ${product.name}`).run()
+        ).bind(v.user_id, amount, amount, v.user_id, `공동구매 미달성 환불: ${product.name}`).run()
       }
       refundCount++
     }

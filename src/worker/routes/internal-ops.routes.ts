@@ -17,11 +17,10 @@ async function ensureMigrationTrackingTable(DB: D1Database) {
 }
 
 internalOpsRoutes.post('/api/_internal/clear-rate-limit', async (c) => {
-  const env = c.env as any;
-  const opsToken: string | undefined = env.INTERNAL_API_TOKEN;
+  const opsToken: string | undefined = c.env.INTERNAL_API_TOKEN;
   const reqToken = c.req.header('X-Internal-Token');
   if (!opsToken || opsToken !== reqToken) return c.json({ success: false, error: 'Forbidden' }, 403);
-  const DB = env.DB as D1Database;
+  const { DB } = c.env;
   const body = await c.req.json<{ action?: string; ip?: string }>().catch(() => ({} as { action?: string; ip?: string }));
   const action = body.action || 'admin_login';
   if (body.ip) {
@@ -34,24 +33,22 @@ internalOpsRoutes.post('/api/_internal/clear-rate-limit', async (c) => {
 });
 
 internalOpsRoutes.post('/api/_internal/reset-admin-password', async (c) => {
-  const env = c.env as any;
-  const opsToken: string | undefined = env.INTERNAL_API_TOKEN;
+  const opsToken: string | undefined = c.env.INTERNAL_API_TOKEN;
   const reqToken = c.req.header('X-Internal-Token');
   if (!opsToken || opsToken !== reqToken) return c.json({ success: false, error: 'Forbidden' }, 403);
-  const DB = env.DB as D1Database;
+  const { DB } = c.env;
   const body = await c.req.json<{ email: string; newPassword: string }>().catch(() => ({ email: '', newPassword: '' }));
   if (!body.email || !body.newPassword) return c.json({ success: false, error: 'email and newPassword required' }, 400);
   const hash = await hashPassword(body.newPassword);
   const result = await DB.prepare('UPDATE admins SET password_hash = ? WHERE email = ?')
     .bind(hash, body.email).run();
-  if ((result.meta as any).changes === 0) return c.json({ success: false, error: 'Admin not found' }, 404);
+  if (result.meta?.changes === 0) return c.json({ success: false, error: 'Admin not found' }, 404);
   return c.json({ success: true, message: 'Password reset successful. Login with the new password.' });
 });
 
 // 🛡️ admin 전용. 이전: 공개 → 누구나 DB 스키마 수정 가능 (CRITICAL)
 internalOpsRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
-  const env = c.env as any;
-  const DB = env.DB as D1Database;
+  const { DB } = c.env;
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
   await ensureMigrationTrackingTable(DB);
 

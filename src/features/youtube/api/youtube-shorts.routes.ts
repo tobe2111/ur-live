@@ -60,8 +60,10 @@ app.get('/shorts/sync', async (c) => {
 
     if (!searchRes.ok) throw new Error('YouTube API 오류')
 
-    const data = await searchRes.json() as any
-    const items = data.items || []
+    interface YTSearchResult { id?: { videoId?: string }; snippet?: { title?: string; thumbnails?: { high?: { url?: string }; default?: { url?: string } } } }
+    interface YTSearchResponse { items?: YTSearchResult[] }
+    const data = await searchRes.json() as YTSearchResponse
+    const items: YTSearchResult[] = data.items || []
     let synced = 0
 
     // shorts 테이블에 ensureTable

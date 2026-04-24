@@ -18,8 +18,8 @@ interface EmailParams {
 async function sendEmail(env: Env, params: EmailParams): Promise<boolean> {
   // Mailgun, SendGrid, AWS SES 등 외부 이메일 서비스 연동
   // 현재는 로그만 남기고 나중에 실제 서비스 연결
-  const apiKey = (env as any).EMAIL_API_KEY
-  const domain = (env as any).EMAIL_DOMAIN
+  const apiKey = env.EMAIL_API_KEY
+  const domain = env.EMAIL_DOMAIN
 
   if (!apiKey || !domain) {
     console.log('[Email] No API key configured, skipping:', params.subject, params.to)

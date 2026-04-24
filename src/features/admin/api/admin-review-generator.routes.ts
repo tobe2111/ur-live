@@ -65,7 +65,7 @@ adminReviewGeneratorRoutes.post('/reviews/generate', cors(), async (c) => {
 
     // ── AI 모드 ──
     if (mode === 'ai') {
-      const apiKey = (c.env as any).ANTHROPIC_API_KEY;
+      const apiKey = c.env.ANTHROPIC_API_KEY;
       if (!apiKey) return c.json({ success: false, error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다. Cloudflare 환경변수에 추가해주세요.' }, 400);
 
       const aiCount = Math.min(count, 500);
@@ -125,8 +125,8 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
           for (const r of parsed) {
             if (
               typeof r !== 'object' || r === null ||
-              typeof (r as any).rating !== 'number' ||
-              typeof (r as any).content !== 'string'
+              typeof (r as Record<string, unknown>).rating !== 'number' ||
+              typeof (r as Record<string, unknown>).content !== 'string'
             ) {
               throw new Error('Invalid review schema');
             }

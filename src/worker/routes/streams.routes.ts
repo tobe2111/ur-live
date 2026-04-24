@@ -467,8 +467,8 @@ streamsRouter.put('/:id/viewer-count', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
   try {
     const { verify } = await import('hono/jwt');
-    const payload = await verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256') as any;
-    if (!['seller', 'admin'].includes(payload.type)) {
+    const payload = await verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256') as Record<string, unknown>;
+    if (!['seller', 'admin'].includes(String(payload.type ?? ''))) {
       return c.json({ success: false, error: 'Seller or admin only' }, 403);
     }
   } catch {

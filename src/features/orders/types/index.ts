@@ -16,6 +16,9 @@ export interface Order {
   shipping_phone?: string;
   created_at: string;
   updated_at: string;
+  courier?: string;
+  tracking_number?: string;
+  tracking_company?: string;
 }
 
 export interface OrderItem {

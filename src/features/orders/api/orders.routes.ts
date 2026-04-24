@@ -117,7 +117,7 @@ ordersRoutes.get('/:id/tracking', cors(), requireAuth(), async (c) => {
   if (isNaN(id)) return c.json({ success: false, error: 'Invalid order ID' }, 400);
 
   const repository = new OrderRepository(DB);
-  const order = await repository.findById(id) as any;
+  const order = await repository.findById(id);
   if (!order) return c.json({ success: false, error: 'Order not found' }, 404);
 
   if (authUser.type === 'user') {
@@ -152,8 +152,9 @@ ordersRoutes.get('/:id/tracking', cors(), requireAuth(), async (c) => {
     }
 
     const track = json.data?.track;
-    const events = ((track?.events?.edges ?? []) as any[])
-      .map((e: any) => ({
+    interface TrackEdge { node: { time: string; status?: { code?: string; name?: string }; description?: string; location?: { name?: string } } }
+    const events = ((track?.events?.edges ?? []) as TrackEdge[])
+      .map((e) => ({
         time: e.node.time,
         statusCode: e.node.status?.code ?? '',
         statusName: e.node.status?.name ?? '',
@@ -195,7 +196,7 @@ ordersRoutes.post('/:id/confirm', cors(), requireAuth(), async (c) => {
   if (isNaN(id)) return c.json({ success: false, error: 'Invalid order ID' }, 400);
 
   const repository = new OrderRepository(DB);
-  const order = await repository.findById(id) as any;
+  const order = await repository.findById(id);
   if (!order) return c.json({ success: false, error: 'Order not found' }, 404);
 
   if (authUser.type === 'user') {

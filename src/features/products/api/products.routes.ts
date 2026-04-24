@@ -253,14 +253,14 @@ productsRoutes.post('/', tightCors(), rateLimit({ action: 'product_create', max:
     data.stock_quantity = stock;
 
     // 🛡️ 2026-04-22: image_url 검증 (javascript:, data:, file://, 내부 IP SSRF 방어)
-    if ((data as any).image_url) {
-      const imgCheck = validateImageUrl((data as any).image_url);
+    if (data.image_url) {
+      const imgCheck = validateImageUrl(data.image_url);
       if (!imgCheck.valid) {
         return c.json({ success: false, error: `image_url: ${imgCheck.error}` }, 400);
       }
     }
-    if ((data as any).thumbnail_url) {
-      const thCheck = validateImageUrl((data as any).thumbnail_url);
+    if (data.thumbnail_url) {
+      const thCheck = validateImageUrl(data.thumbnail_url);
       if (!thCheck.valid) {
         return c.json({ success: false, error: `thumbnail_url: ${thCheck.error}` }, 400);
       }

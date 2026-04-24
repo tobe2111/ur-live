@@ -576,7 +576,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
     if (category === 'meal_voucher') {
       const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin'] as const;
       for (const field of mealFields) {
-        const val = (body as any)[field];
+        const val = (body as Record<string, unknown>)[field];
         if (val !== undefined && val !== null && val !== '') {
           try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
         }
@@ -594,8 +594,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
     // 팔로워에게 새 상품 알림 (인앱 + 카카오)
     if (newProduct) {
       const { notifyFollowers, sendKakaoToFollowers } = await import('../../../lib/notifications');
-      const productName = (newProduct as any).name;
-      const productId = (newProduct as any).id;
+      const productName = String((newProduct as Record<string, unknown>).name ?? '');
+      const productId = String((newProduct as Record<string, unknown>).id ?? '');
       notifyFollowers(db, Number(sellerId), 'new_product', `🛍️ 새 상품 등록!`, productName, `/products/${productId}`).catch(() => {});
       sendKakaoToFollowers(db, Number(sellerId), `🛍️ 새 상품이 등록되었어요!`, productName, `/products/${productId}`, '상품 보기').catch(() => {});
     }

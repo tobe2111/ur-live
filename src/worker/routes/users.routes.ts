@@ -73,7 +73,7 @@ usersRouter.post('/init', requireAuth(), async (c) => {
       return c.json({ success: false, error: 'Unauthorized' }, 401);
     }
 
-    const { displayName } = await c.req.json<{ displayName?: string }>().catch(() => ({} as any));
+    const { displayName } = await c.req.json<{ displayName?: string }>().catch(() => ({} as { displayName?: string }));
 
     // 서명 검증된 토큰에서 UID/이메일 사용
     const firebaseUid = String(authUser.id);

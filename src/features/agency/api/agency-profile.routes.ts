@@ -7,11 +7,12 @@
  *   PUT  /api/agency/notifications/read-all
  */
 
+import type { MiddlewareHandler } from 'hono'
 import { createAgencyApp, ensureAgencyTables, requireAgency } from './agency-shared'
 import type { AgencyCtx } from './agency-shared'
 
 const app = createAgencyApp()
-app.use('*', requireAgency as any)
+app.use('*', requireAgency as unknown as MiddlewareHandler)
 
 // ── GET /profile ──────────────────────────────────────────────
 app.get('/profile', async (c) => {
