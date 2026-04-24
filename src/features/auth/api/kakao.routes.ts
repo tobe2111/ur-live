@@ -302,30 +302,41 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       const accessToken = tokenData.access_token;
       const kakaoRefreshToken = tokenData.refresh_token || null;
       const kakaoUser = await kakaoService.getUserInfo(accessToken);
-      const serviceTerms = await kakaoService.getServiceTerms(accessToken);
       const user = await kakaoService.upsertUser(kakaoUser);
-      
+
       const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
-      const customToken = await firebaseService.createCustomToken(firebaseUID, {
-        role: 'user',
-        userId: user.id,
-        userName: user.name,
-        email: user.email,
-        kakaoId: kakaoUser.kakaoId,
-        ...(user.profile_image ? { profileImage: user.profile_image } : {}),
-      });
 
-      await kakaoService.updateFirebaseUID(user.id, firebaseUID);
-
-      // 카카오 access_token + refresh_token 저장 (메시지/캘린더 API용)
-      // ✅ FIX (H5): One-time schema check (not per-request)
-      // 🛡️ 2026-04-22: at-rest 암호화 (Cafe24 와 동일 패턴) — DB 탈취 시 Kakao 세션 즉시 악용 방어
+      // ⚡ 성능: Firebase customToken 생성(느린 crypto) 과 DB 업데이트를 병렬 실행.
+      //    또한 firebase_uid + kakao tokens 를 한 번의 UPDATE 로 묶어 D1 RTT 1회 절약.
       await ensureKakaoColumns(DB);
       const kek = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
-      const encAccess = await encryptAtRest(accessToken, kek);
-      const encRefresh = kakaoRefreshToken ? await encryptAtRest(kakaoRefreshToken, kek) : null;
-      await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
-        .bind(encAccess, encRefresh, user.id).run();
+
+      const [customToken, encAccess, encRefresh] = await Promise.all([
+        firebaseService.createCustomToken(firebaseUID, {
+          role: 'user',
+          userId: user.id,
+          userName: user.name,
+          email: user.email,
+          kakaoId: kakaoUser.kakaoId,
+          ...(user.profile_image ? { profileImage: user.profile_image } : {}),
+        }),
+        encryptAtRest(accessToken, kek),
+        kakaoRefreshToken ? encryptAtRest(kakaoRefreshToken, kek) : Promise.resolve(null),
+      ]);
+
+      // 🛡️ 2026-04-22: at-rest 암호화 — DB 탈취 시 Kakao 세션 즉시 악용 방어
+      // firebase_uid + kakao tokens 통합 업데이트 (firebase_uid 컬럼 없으면 조용히 skip)
+      try {
+        await DB.prepare(
+          "UPDATE users SET firebase_uid = ?, kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?"
+        ).bind(firebaseUID, encAccess, encRefresh, user.id).run();
+      } catch (e) {
+        // firebase_uid 컬럼 없는 구버전 환경 fallback
+        if (import.meta.env.DEV) console.warn('[Kakao Sync] Combined update failed, falling back:', e);
+        await DB.prepare(
+          "UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?"
+        ).bind(encAccess, encRefresh, user.id).run();
+      }
 
       // 🛡️ 순서 중요: clear-state 먼저, session 은 append 로 추가.
       // 원래 c.header('Set-Cookie', ...) 를 두 번 호출해서 두 번째가 첫 번째를 덮어써
