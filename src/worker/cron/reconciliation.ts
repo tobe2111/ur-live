@@ -87,38 +87,47 @@ export async function runReconciliation(env: Env): Promise<void> {
     let autoReconciled = 0;
     let stillStuck = 0;
 
-    for (const order of (stuck.results || [])) {
-      if (!env.TOSS_SECRET_KEY) {
-        stillStuck++;
-        continue;
-      }
-      try {
-        const tossRes = await fetch(
-          `https://api.tosspayments.com/v1/payments/${order.toss_payment_key}`,
-          {
-            headers: { Authorization: `Basic ${btoa(env.TOSS_SECRET_KEY + ':')}` },
-            signal: AbortSignal.timeout(5000),
-          }
-        );
-        if (tossRes.ok) {
-          const tossData = await tossRes.json() as { status?: string };
-          if (tossData.status === 'DONE') {
-            // Toss confirmed but our DB missed it — fix it.
-            await DB.prepare(
-              "UPDATE orders SET status = 'PAID', updated_at = datetime('now') WHERE id = ? AND status = 'PENDING'"
-            ).bind(order.id).run();
-            autoReconciled++;
-            details.push({ check: 'reconciled_paid', found: 1, action: `updated_to_paid:${order.order_number}` });
-          } else {
-            // Toss says not done → leave for manual review.
-            stillStuck++;
-          }
+    const orders = stuck.results || [];
+    if (orders.length > 0 && env.TOSS_SECRET_KEY) {
+      // Fetch all stuck orders in parallel (up to 50) instead of sequential awaits
+      const fetchResults = await Promise.allSettled(
+        orders.map((order) =>
+          fetch(
+            `https://api.tosspayments.com/v1/payments/${order.toss_payment_key}`,
+            {
+              headers: { Authorization: `Basic ${btoa(env.TOSS_SECRET_KEY + ':')}` },
+              signal: AbortSignal.timeout(5000),
+            }
+          )
+            .then((r) => (r.ok ? (r.json() as Promise<{ status?: string }>) : null))
+            .catch(() => null)
+        )
+      );
+
+      const paidOrderIds: Array<string | number> = [];
+      for (let i = 0; i < orders.length; i++) {
+        const res = fetchResults[i];
+        const data = res.status === 'fulfilled' ? res.value : null;
+        if (data?.status === 'DONE') {
+          paidOrderIds.push(orders[i].id);
+          details.push({ check: 'reconciled_paid', found: 1, action: `updated_to_paid:${orders[i].order_number}` });
         } else {
           stillStuck++;
         }
-      } catch {
-        stillStuck++;
       }
+
+      if (paidOrderIds.length > 0) {
+        await DB.batch(
+          paidOrderIds.map((id) =>
+            DB.prepare(
+              "UPDATE orders SET status = 'PAID', updated_at = datetime('now') WHERE id = ? AND status = 'PENDING'"
+            ).bind(id)
+          )
+        );
+        autoReconciled = paidOrderIds.length;
+      }
+    } else if (orders.length > 0) {
+      stillStuck = orders.length;
     }
 
     results.auto_reconciled_paid = autoReconciled;

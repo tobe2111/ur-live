@@ -199,7 +199,7 @@ export async function processRefund(
       )
       .bind(orderId, requested, reason || '')
       .run()
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env?.DEV) console.warn('[refund] order_refund_history insert failed:', e) })
 
     // 5. 전액 환불일 때만 상태 전환
     const fullyRefunded = alreadyRefunded + requested >= orderAmount
@@ -219,7 +219,7 @@ export async function processRefund(
     }
 
     // 6. 레거시 환불 내역 기록 (기존 테이블 유지)
-    await recordRefundHistory(db, orderId, requested, reason).catch(() => {})
+    await recordRefundHistory(db, orderId, requested, reason).catch((e) => { if (import.meta.env?.DEV) console.warn('[refund] recordRefundHistory failed:', e) })
 
     return { success: true, refundId: orderId }
   } catch (error) {

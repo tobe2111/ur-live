@@ -1790,6 +1790,8 @@ adminApp.route('/blog', adminBlogRoutes);
 // Restaurant settlement (admin)
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
+import { adminRestaurantRecommendRoutes } from '../features/restaurants/api/restaurant-recommendations.routes';
+adminApp.route('/', adminRestaurantRecommendRoutes);
 // Naver Ad Scraper 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + 기술 불안정
 // 남은 `/api/scraper/d1/*` 엔드포인트도 단계적 제거. scraped_advertisers 테이블은 데이터 보존 목적으로 남김.
 
@@ -1830,6 +1832,10 @@ app.route('/api/points', pointsRoutes);
 // ── 쇼츠 ──
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 app.route('/api/shorts', shortsRoutes);
+
+// ── 맛집 추천 ──
+import { restaurantRecommendRoutes } from '../features/restaurants/api/restaurant-recommendations.routes';
+app.route('/api/restaurants', restaurantRecommendRoutes);
 
 // ── 공동구매 & 바우처 ──
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
