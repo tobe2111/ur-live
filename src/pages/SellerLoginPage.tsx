@@ -243,20 +243,47 @@ export default function SellerLoginPage() {
 
               {/* 카카오 로그인했는데 셀러 권한 미연동인 경우 안내 */}
               {kakaoLinkedButNoSeller && (
-                <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800">
-                  <p className="font-bold mb-1">⚠ 현재 카카오 계정엔 셀러 권한이 없어요</p>
-                  <p className="mb-2">아래 방법 중 하나로 해결하세요:</p>
-                  <ul className="space-y-1 list-disc pl-4">
-                    <li>
-                      기존 이메일/비번 셀러라면 먼저 로그인 → 프로필에서 "카카오 연동"
-                    </li>
-                    <li>
-                      셀러가 처음이라면{' '}
-                      <Link to="/seller/register/business" className="text-blue-600 font-semibold underline">
-                        셀러 신청하기
-                      </Link>
-                    </li>
-                  </ul>
+                <div className="mb-4 bg-gradient-to-br from-amber-50 via-orange-50 to-amber-50 border border-amber-200/80 rounded-2xl p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
+                        <path d="M12 2v6m0 4h.01"/>
+                        <circle cx="12" cy="12" r="10"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 pt-0.5">
+                      <h3 className="text-sm font-bold text-gray-900 leading-tight">셀러 권한이 필요해요</h3>
+                      <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                        이 카카오 계정에 연동된 셀러 계정이 없어요
+                      </p>
+                    </div>
+                  </div>
+
+                  <Link
+                    to="/seller/register/business"
+                    className="flex items-center justify-between bg-white hover:bg-red-50 border border-gray-200 hover:border-red-300 rounded-xl px-4 py-3 transition-all group"
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 group-hover:text-red-600 transition-colors">셀러 신청하기</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">처음이라면 · 약 3분 소요</p>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 group-hover:text-red-500 transition-colors">
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                  </Link>
+
+                  <div className="mt-2 px-1 py-2 flex items-center gap-2 text-[11px] text-gray-500">
+                    <div className="flex-1 h-px bg-amber-200/60" />
+                    <span>또는</span>
+                    <div className="flex-1 h-px bg-amber-200/60" />
+                  </div>
+
+                  <div className="bg-white/60 rounded-xl px-4 py-3 border border-gray-100">
+                    <p className="text-[12px] font-semibold text-gray-700 mb-1">이미 셀러 계정이 있어요</p>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">
+                      아래 폼에서 이메일/비밀번호로 로그인 후 프로필에서 카카오 계정을 연동하세요
+                    </p>
+                  </div>
                 </div>
               )}
 
