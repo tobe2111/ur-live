@@ -341,6 +341,58 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live
 > 🚨 **절대 금지**: main 에 직접 push, pre-commit 훅 \`--no-verify\`, 프로덕션 D1 에서 \`DROP TABLE\` 수동 실행.`,
   },
   {
+    key: 'links', icon: '🔗', title: '유용한 링크 모음', order: 145,
+    content: `### 운영 핵심 페이지
+
+| 페이지 | URL | 주요 기능 |
+|---|---|---|
+| 대시보드 | \`/admin\` | 매출·주문·가입자 요약, 실시간 현황 |
+| 셀러 승인 | \`/admin/seller-approval\` | 신규 셀러 심사, 승인·거부 |
+| 주문 관리 | \`/admin/orders\` | 전체 주문 조회, 상태 변경, 수동 생성 |
+| 정산 처리 | \`/admin/settlement\` | 개별 정산 신청 검토·승인·지급 |
+| 일괄 정산 | \`/admin/settlements-bulk\` | 주 1회 CSV 기반 일괄 이체 |
+| 에이전시 관리 | \`/admin/agencies\` | 에이전시 심사, 수수료율, 소속 셀러 |
+| 사용자 목록 | \`/admin/users\` | 구매자 계정 조회, 딜포인트 확인 |
+| 계정 관리 | \`/admin/accounts\` | 셀러/에이전시 계정 일괄 관리 |
+
+### 콘텐츠 & 마케팅
+
+| 페이지 | URL | 주요 기능 |
+|---|---|---|
+| 상품 관리 | \`/admin/products\` | 전체 상품 조회, 비활성화, 허위 광고 제거 |
+| 배너 관리 | \`/admin/banners\` | 홈/카테고리 배너 CRUD, 클릭률 확인 |
+| 쿠폰 관리 | \`/admin/coupons\` | 쿠폰 생성·배포, 사용 현황 |
+| 블로그 | \`/admin/blog\` | 셀러 가이드·마케팅 콘텐츠 발행 |
+| 공동구매·딜 | \`/admin/deals\` | 타임딜·번들·공동구매 승인 |
+| 리뷰 | \`/admin/reviews\` | 전체 리뷰 조회, 태그 관리 |
+| 리뷰 모더레이션 | \`/admin/review-moderation\` | 신고된 리뷰 처리 |
+| 공지사항 | \`/admin/notices\` | 셀러·에이전시 공지 발행 |
+| 알림톡 발송 | \`/admin/alimtalk\` | 브랜드메시지 템플릿, 크레딧 관리 |
+| 샘플 신청 | \`/admin/sample-requests\` | 에이전시→셀러 샘플 요청 승인 |
+
+### 라이브 & 방송
+
+| 페이지 | URL | 주요 기능 |
+|---|---|---|
+| 라이브 모니터 | \`/admin/live-monitor\` | 실시간 방송 현황, 채팅 개입 |
+| 다시보기 관리 | \`/admin/replay\` | 종료된 방송 숨김·삭제 |
+
+### 분석 & 시스템
+
+| 페이지 | URL | 주요 기능 |
+|---|---|---|
+| 매출 분석 | \`/admin/revenue\` | GMV, 카테고리, TOP 셀러 |
+| 감사 로그 | \`/admin/audit-log\` | 관리자 행동 이력, 이상 탐지 |
+| 플랫폼 설정 | \`/admin/platform-settings\` | 수수료율 기본값, 맛집 보상 등 글로벌 설정 |
+| KV 모니터링 | \`/admin/kv-monitoring\` | 캐시 히트율, 레이트 리밋 카운터 |
+| 시스템 헬스 | \`/admin/health\` | 서비스 상태, DB 지연, 에러율 |
+| Cafe24 연동 | \`/admin/cafe24\` | Cafe24 쇼핑몰 연결 설정 |
+| 운영 가이드 | \`/admin/operations-guide\` | 이 가이드 편집 (현재 페이지) |
+
+### 빠른 액세스 북마크 (권장)
+대시보드 → 셀러 승인 → 주문 관리 → 정산 → 라이브 모니터 순서로 매일 아침 순회하면 누락 없이 운영 가능합니다.`,
+  },
+  {
     key: 'faq', icon: '❓', title: '자주 묻는 문제 (FAQ)', order: 150,
     content: `**Q. 셀러가 "로그인이 안 돼요" 라고 하면?**
 1) localStorage 초기화 안내 2) 비밀번호 재설정 링크 발송 3) 계정 상태 확인 (status=suspended 여부)
