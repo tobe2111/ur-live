@@ -384,7 +384,9 @@ kakaoRoutes.get('/sync/callback', async (c) => {
           }
         }
       } catch (e) {
-        if (import.meta.env.DEV) console.error('[Kakao Sync] Linked role tokens issuance failed:', e);
+        // Cloudflare Workers observability 에서 잡히도록 프로덕션에서도 로깅.
+        // 실패해도 smart redirect 로 /seller/waiting 등으로 보내지므로 치명적이지 않음.
+        console.warn('[Kakao Sync] Linked role tokens issuance failed:', e);
       }
 
       // 🚦 Smart redirect — intent(seller/agency) 와 linked role 상태별 라우팅.
@@ -613,72 +615,10 @@ kakaoRoutes.post('/firebase', cors(), async (c) => {
 // smell (misleading callers into thinking role was verified) and has been
 // removed. Real role resolution lives in `/api/users/role` (usersRouter).
 
-/**
- * POST /api/auth/kakao/stepup-callback
- * 카카오 재인증 step-up — 민감 액션 전 카카오 로그인을 다시 요구.
- *
- * Flow:
- *  1. 프론트: 민감 액션 프롬프트에서 "카카오 재인증" 선택
- *  2. /auth/kakao/start?redirect=/auth/kakao/stepup&role=seller 로 이동
- *  3. 카카오 OAuth 완료 → code 받음
- *  4. 프론트: 이 엔드포인트로 code + role + role_id 전달
- *  5. 백엔드: 카카오 사용자 검증 + linked role 인지 확인 + 15분 쿠키 발급
- *
- * 쿠키:
- *   ur_kakao_stepup = JWT {
- *     purpose: 'kakao_stepup',
- *     role: 'seller' | 'agency',
- *     seller_id / agency_id: number,
- *     exp: +15min
- *   }
- */
-kakaoRoutes.post('/stepup-callback', cors(), async (c) => {
-  const { DB } = c.env
-  const { code, redirect_uri, role } = await c.req.json<{ code: string; redirect_uri: string; role: 'seller' | 'agency' }>()
-  if (!code || !role) return c.json({ success: false, error: 'code + role 필수' }, 400)
-
-  const kakaoKey = c.env.KAKAO_REST_API_KEY
-  if (!kakaoKey) return c.json({ success: false, error: '카카오 API 설정 누락' }, 500)
-
-  try {
-    const kakaoService = new KakaoAuthService(DB, kakaoKey)
-    const tokenData = await kakaoService.exchangeCodeFull(code, redirect_uri)
-    const kakaoUser = await kakaoService.getUserInfo(tokenData.access_token)
-    const user = await kakaoService.upsertUser(kakaoUser)
-
-    // linked role 검증
-    let roleId: number | null = null
-    if (role === 'seller') {
-      const row = await DB.prepare('SELECT id FROM sellers WHERE linked_user_id = ?')
-        .bind(user.id).first<{ id: number }>()
-      roleId = row?.id || null
-    } else if (role === 'agency') {
-      const row = await DB.prepare('SELECT id FROM agencies WHERE linked_user_id = ?')
-        .bind(user.id).first<{ id: number }>()
-      roleId = row?.id || null
-    }
-    if (!roleId) {
-      return c.json({ success: false, error: `이 카카오 계정에 ${role} 권한이 연동되지 않았습니다.` }, 403)
-    }
-
-    // 15분 step-up 토큰 발급
-    const { sign } = await import('hono/jwt')
-    const payload: Record<string, unknown> = {
-      sub: String(user.id),
-      purpose: 'kakao_stepup',
-      role,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 900,
-    }
-    payload[`${role}_id`] = roleId
-    const stepupToken = await sign(payload, c.env.JWT_SECRET)
-
-    c.header('Set-Cookie', `ur_kakao_stepup=${stepupToken}; Path=/; Max-Age=900; SameSite=Lax; Secure; HttpOnly`)
-    return c.json({ success: true, message: '카카오 재인증 완료. 15분간 민감 액션 사용 가능.' })
-  } catch (error) {
-    if (import.meta.env.DEV) console.error('[Kakao stepup] error:', error)
-    return c.json({ success: false, error: (error as Error).message }, 500)
-  }
-})
+// NOTE: 과거에 있던 POST /api/auth/kakao/stepup-callback 엔드포인트는 제거됨 (2026-04-24).
+//  - 실제 step-up 인증은 /api/seller/request-kakao-stepup, /api/agency/request-kakao-stepup 에서
+//    이미 세션 쿠키 기반으로 안전하게 처리 (seller-pin.routes.ts, agency-pin.routes.ts).
+//  - 이 엔드포인트는 프론트에서 호출되지 않는 dead code 였고, cors() 허용 + state 미검증으로
+//    공격 표면만 늘려서 제거함.
 
 export default kakaoRoutes;

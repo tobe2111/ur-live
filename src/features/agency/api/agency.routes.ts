@@ -1557,16 +1557,24 @@ app.post('/link-kakao', async (c: AgencyCtx) => {
       kakaoUserInfo = { name: sessionUser.name, email: sessionUser.email }
     }
 
-    const otherLink = await DB.prepare(
-      'SELECT id FROM agencies WHERE linked_user_id = ? AND id != ?'
-    ).bind(kakaoUserId, agencyId).first<{ id: number }>()
-    if (otherLink) {
-      return c.json({ success: false, error: '이 카카오 계정은 이미 다른 에이전시에 연동되어 있습니다.' }, 409)
-    }
+    // 🛡️ Atomic UPDATE: SELECT→UPDATE 사이 race 방지 (셀러와 동일 패턴).
+    const upd = await DB.prepare(
+      `UPDATE agencies
+       SET linked_user_id = ?, updated_at = datetime('now')
+       WHERE id = ?
+         AND linked_user_id IS NULL
+         AND NOT EXISTS (SELECT 1 FROM agencies a2 WHERE a2.linked_user_id = ? AND a2.id != ?)`
+    ).bind(kakaoUserId, agencyId, kakaoUserId, agencyId).run()
 
-    await DB.prepare(
-      "UPDATE agencies SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?"
-    ).bind(kakaoUserId, agencyId).run()
+    if (!upd.meta?.changes || upd.meta.changes === 0) {
+      const conflict = await DB.prepare(
+        'SELECT id FROM agencies WHERE linked_user_id = ? AND id != ?'
+      ).bind(kakaoUserId, agencyId).first<{ id: number }>()
+      if (conflict) {
+        return c.json({ success: false, error: '이 카카오 계정은 이미 다른 에이전시에 연동되어 있습니다.' }, 409)
+      }
+      return c.json({ success: false, error: '이미 카카오 계정이 연동되어 있습니다.' }, 409)
+    }
 
     return c.json({
       success: true,
