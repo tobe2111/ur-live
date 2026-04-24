@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { FileText, Plus, Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
@@ -15,6 +16,7 @@ export default function AgencyContractsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ seller_id: '', start_date: '', end_date: '', terms: '' })
+  const [pinPrompt, setPinPrompt] = useState<null | 'create' | { id: number; status: string }>(null)
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token || ''}` }
 
@@ -41,7 +43,16 @@ export default function AgencyContractsPage() {
     try {
       await api.post('/api/agency/contracts', { ...form, seller_id: Number(form.seller_id) }, { headers })
       toast.success('계약 등록 완료'); setShowForm(false); setForm({ seller_id: '', start_date: '', end_date: '', terms: '' }); load()
-    } catch { toast.error('등록 실패') }
+    } catch (e: any) {
+      const code = e?.response?.data?.code
+      if (code === 'PIN_REQUIRED') { setPinPrompt('create'); return }
+      if (code === 'PIN_NOT_SET') {
+        toast.error('보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.')
+        navigate('/agency/profile')
+        return
+      }
+      toast.error(e?.response?.data?.error || '등록 실패')
+    }
   }
 
   const terminate = async (id: number) => {
@@ -49,8 +60,15 @@ export default function AgencyContractsPage() {
     try {
       await api.put(`/api/agency/contracts/${id}`, { status: 'terminated' }, { headers })
       load()
-    } catch {
-      toast.error('계약 종료에 실패했습니다.')
+    } catch (e: any) {
+      const code = e?.response?.data?.code
+      if (code === 'PIN_REQUIRED') { setPinPrompt({ id, status: 'terminated' }); return }
+      if (code === 'PIN_NOT_SET') {
+        toast.error('보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.')
+        navigate('/agency/profile')
+        return
+      }
+      toast.error(e?.response?.data?.error || '계약 종료에 실패했습니다.')
     }
   }
 
@@ -136,6 +154,18 @@ export default function AgencyContractsPage() {
           </div>
         )}
       </div>
+      {pinPrompt && (
+        <SellerPinPrompt
+          role="agency"
+          onVerified={async () => {
+            const p = pinPrompt
+            setPinPrompt(null)
+            if (p === 'create') { await handleCreate(); return }
+            if (typeof p === 'object' && p.id) { await terminate(p.id) }
+          }}
+          onCancel={() => setPinPrompt(null)}
+        />
+      )}
     </AgencyLayout>
   )
 }

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
@@ -101,6 +102,7 @@ export default function SellerSettlementsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
   const [dailyRevenue, setDailyRevenue] = useState<{ date: string; revenue: number }[]>([])
+  const [pinPrompt, setPinPrompt] = useState(false)
 
   useEffect(() => {
     const sessionToken = localStorage.getItem('seller_token')
@@ -206,7 +208,17 @@ export default function SellerSettlementsPage() {
         loadSettlements()
       }
     } catch (error: unknown) {
-      const error_ = error as { response?: { data?: { error?: string }; status?: number } }
+      const error_ = error as { response?: { data?: { error?: string; code?: string }; status?: number } }
+      const code = error_.response?.data?.code
+      if (code === 'PIN_REQUIRED') {
+        setPinPrompt(true)
+        return
+      }
+      if (code === 'PIN_NOT_SET') {
+        toast.error('보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.')
+        navigate('/seller/profile/edit')
+        return
+      }
       toast.error(error_.response?.data?.error || t('seller.settlementRequestFailed2'))
     }
   }
@@ -545,6 +557,13 @@ export default function SellerSettlementsPage() {
         </>
         )}
       </div>
+      {pinPrompt && (
+        <SellerPinPrompt
+          role="seller"
+          onVerified={() => { setPinPrompt(false); requestSettlement() }}
+          onCancel={() => setPinPrompt(false)}
+        />
+      )}
     </SellerLayout>
   )
 }
