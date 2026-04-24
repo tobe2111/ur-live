@@ -929,16 +929,11 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
           </span>
           <p className="text-sm font-semibold text-gray-900 truncate max-w-[200px]">{stream.title}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {stream.youtube_video_id && (
-            <a href={`https://www.youtube.com/watch?v=${stream.youtube_video_id}`} target="_blank" rel="noopener noreferrer"
-              className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
-              <ExternalLink className="w-3.5 h-3.5" /> YouTube
-            </a>
-          )}
-          <Button onClick={onEndStream} size="sm" variant="destructive">{t('seller.liveBroadcast.endBroadcast')}</Button>
-        </div>
+        <Button onClick={onEndStream} size="sm" variant="destructive">{t('seller.liveBroadcast.endBroadcast')}</Button>
       </div>
+
+      {/* 시청자 링크 공유 */}
+      <ShareLiveLink streamId={stream.id} />
 
       {/* 영상 + 채팅 */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -996,6 +991,43 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
 // ── 기존/최근 방송 목록 ──────────────────────────────────────────
 interface StreamListProps {
   streams: LiveStream[]; onManage: (stream: LiveStream) => void
+}
+
+// ── 시청자 링크 공유 ─────────────────────────────────────────────
+function ShareLiveLink({ streamId }: { streamId: number }) {
+  const [copied, setCopied] = useState(false)
+  const url = `https://live.ur-team.com/live/${streamId}`
+
+  function copy() {
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-4 py-3">
+      <p className="text-xs font-semibold text-blue-800 mb-2">
+        시청자에게 이 링크를 공유하세요
+        <span className="ml-1 font-normal text-blue-600">— 후원·상품·경매 기능이 모두 활성화돼요</span>
+      </p>
+      <div className="flex gap-2">
+        <code className="flex-1 text-xs font-mono bg-white border border-blue-100 rounded-lg px-3 py-2 text-blue-900 truncate">
+          {url}
+        </code>
+        <button
+          onClick={copy}
+          className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+            copied
+              ? 'bg-green-500 text-white'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
+        >
+          {copied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? '복사됨' : '복사'}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function StreamList({ streams, onManage }: StreamListProps) {
