@@ -186,17 +186,13 @@ export default function AgencyLoginPage() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  const rt = encodeURIComponent('/agency')
-                  window.location.href = `/auth/kakao/start?redirect=${rt}`
-                }}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-sm font-semibold rounded-xl transition-colors"
+              <a
+                href={`/auth/kakao/start?redirect=${encodeURIComponent('/agency')}`}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-sm font-semibold rounded-xl transition-colors no-underline"
               >
                 <span className="text-base">💬</span>
                 카카오로 에이전시 로그인
-              </button>
+              </a>
               <p className="text-[10px] text-gray-400 text-center mt-2">
                 카카오 계정에 에이전시 권한이 연동되어 있어야 합니다.<br />
                 아직 연동 안 했다면 <Link to="/agency/register/business" className="text-blue-500">여기서 신청</Link>
