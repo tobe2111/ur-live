@@ -1920,3 +1920,94 @@ sellerManagementRoutes.post('/alimtalk/charge', requireSeller(), async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
+
+/**
+ * POST /api/seller/link-kakao
+ * 🛡️ 이메일/비번으로 로그인한 셀러가 자신의 계정을 카카오에 연동.
+ * 완료 후엔 카카오 로그인만으로도 같은 셀러 계정 접근 가능.
+ */
+sellerManagementRoutes.post('/link-kakao', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+    const { code, redirect_uri } = await c.req.json<{ code: string; redirect_uri: string }>();
+    if (!code) return c.json({ success: false, error: 'Authorization code 누락' }, 400);
+
+    const DB = c.env.DB;
+    const kakaoKey = (c.env as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY;
+    if (!kakaoKey) return c.json({ success: false, error: '카카오 API 설정 누락' }, 500);
+
+    const seller = await DB.prepare(
+      'SELECT id, linked_user_id FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ id: number; linked_user_id: number | null }>();
+    if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+    if (seller.linked_user_id) {
+      return c.json({ success: false, error: '이미 카카오 계정이 연동되어 있습니다.' }, 409);
+    }
+
+    const { KakaoAuthService } = await import('../../auth/services/KakaoAuthService');
+    const kakao = new KakaoAuthService(DB, kakaoKey);
+    const tokenData = await kakao.exchangeCodeFull(code, redirect_uri);
+    const kakaoUser = await kakao.getUserInfo(tokenData.access_token);
+    const user = await kakao.upsertUser(kakaoUser);
+
+    const otherLink = await DB.prepare(
+      'SELECT id FROM sellers WHERE linked_user_id = ? AND id != ?'
+    ).bind(user.id, sellerId).first<{ id: number }>();
+    if (otherLink) {
+      return c.json({ success: false, error: '이 카카오 계정은 이미 다른 셀러 계정에 연동되어 있습니다.' }, 409);
+    }
+
+    await DB.prepare(
+      "UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(user.id, sellerId).run();
+
+    return c.json({
+      success: true,
+      message: '카카오 계정 연동 완료',
+      data: { user_id: user.id, user_name: user.name, user_email: user.email },
+    });
+  } catch (err) {
+    console.error('[seller link-kakao] error:', err);
+    return c.json({ success: false, error: (err as Error).message || '카카오 연동 실패' }, 500);
+  }
+});
+
+/**
+ * POST /api/seller/unlink-kakao — 연동 해제
+ */
+sellerManagementRoutes.post('/unlink-kakao', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+    await c.env.DB.prepare(
+      "UPDATE sellers SET linked_user_id = NULL, updated_at = datetime('now') WHERE id = ?"
+    ).bind(sellerId).run();
+    return c.json({ success: true, message: '카카오 연동이 해제되었습니다.' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+/**
+ * GET /api/seller/kakao-link-status
+ */
+sellerManagementRoutes.get('/kakao-link-status', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+    const row = await c.env.DB.prepare(`
+      SELECT s.linked_user_id, u.name as user_name, u.email as user_email, u.profile_image
+      FROM sellers s LEFT JOIN users u ON u.id = s.linked_user_id WHERE s.id = ?
+    `).bind(sellerId).first<{ linked_user_id: number | null; user_name?: string; user_email?: string; profile_image?: string }>();
+    return c.json({
+      success: true,
+      data: row?.linked_user_id
+        ? { linked: true, user: { id: row.linked_user_id, name: row.user_name, email: row.user_email, profile_image: row.profile_image } }
+        : { linked: false }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});

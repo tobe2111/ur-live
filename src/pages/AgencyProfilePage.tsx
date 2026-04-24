@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Save, Loader2, Settings } from 'lucide-react'
+import { KakaoLinkButton } from '@/components/auth/KakaoLinkButton'
 
 export default function AgencyProfilePage() {
   const { t } = useTranslation()
@@ -128,6 +129,18 @@ export default function AgencyProfilePage() {
             className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold disabled:opacity-50">
             <Save className="w-4 h-4" /> {saving ? '저장 중...' : '저장'}
           </button>
+        </div>
+
+        {/* 카카오 계정 연동 */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">💬</span>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">카카오 계정 연동</h3>
+              <p className="text-[11px] text-gray-500">카카오 로그인으로도 에이전시 계정 접근 가능</p>
+            </div>
+          </div>
+          <KakaoLinkButton role="agency" />
         </div>
       </div>
     </AgencyLayout>

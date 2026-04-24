@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
+import { KakaoLinkButton } from '@/components/auth/KakaoLinkButton'
 import {
   Save,
   User,
@@ -551,6 +552,20 @@ export default function SellerProfileEditPage() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* 카카오 계정 연동 — 이메일/비번 셀러가 카카오 로그인 활성화 */}
+          <div className="apple-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-[#fee500]/10 rounded-full flex items-center justify-center">
+                <span className="text-lg">💬</span>
+              </div>
+              <div>
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">카카오 계정 연동</h2>
+                <p className="text-[13px] text-[#6e6e73]">카카오 로그인으로도 셀러 계정 접근 가능</p>
+              </div>
+            </div>
+            <KakaoLinkButton role="seller" />
           </div>
 
           {/* KakaoTalk Chat Link Section */}
