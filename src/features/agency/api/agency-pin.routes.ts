@@ -98,6 +98,39 @@ agencyPinRoutes.post('/verify-pin', rateLimit({ action: 'agency_verify_pin', max
   return c.json({ success: true, message: 'PIN 확인 완료. 15분간 사용 가능.' })
 })
 
+// ── POST /request-kakao-stepup — 카카오 세션 기반 재인증 ──
+agencyPinRoutes.post('/request-kakao-stepup', rateLimit({ action: 'agency_kakao_stepup', max: 10, windowSec: 300 }), async (c) => {
+  const agencyId = await getAgencyId(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!agencyId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const { parseSessionCookie } = await import('../../../worker/utils/session')
+  const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET)
+  if (!sessionUser) {
+    return c.json({ success: false, error: '카카오 로그인이 필요합니다.' }, 401)
+  }
+
+  const agency = await c.env.DB.prepare(
+    'SELECT linked_user_id FROM agencies WHERE id = ?'
+  ).bind(agencyId).first<{ linked_user_id: number | null }>()
+  if (!agency?.linked_user_id) {
+    return c.json({ success: false, error: '이 에이전시는 카카오 연동이 되어있지 않습니다.', code: 'NOT_LINKED' }, 412)
+  }
+  if (Number(agency.linked_user_id) !== Number(sessionUser.userId)) {
+    return c.json({ success: false, error: '연결된 카카오 계정과 현재 세션이 일치하지 않습니다.' }, 403)
+  }
+
+  const token = await signJwt({
+    sub: String(agencyId),
+    agency_id: agencyId,
+    purpose: 'agency_pin_verified', // 에이전시 전용 stepup 은 pin_verified 와 동일 쿠키 경로로
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 900,
+  }, c.env.JWT_SECRET)
+
+  c.header('Set-Cookie', `ur_agency_pin_verified=${token}; Path=/; Max-Age=900; SameSite=Lax; Secure; HttpOnly`)
+  return c.json({ success: true, message: '카카오 재인증 완료. 15분간 민감 액션 사용 가능.' })
+})
+
 agencyPinRoutes.get('/pin-status', async (c) => {
   const agencyId = await getAgencyId(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!agencyId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)

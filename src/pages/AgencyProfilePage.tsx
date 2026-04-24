@@ -7,6 +7,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Save, Loader2, Settings } from 'lucide-react'
 import { KakaoLinkButton } from '@/components/auth/KakaoLinkButton'
+import { SellerPinSetup } from '@/components/auth/SellerPinPrompt'
 
 export default function AgencyProfilePage() {
   const { t } = useTranslation()
@@ -141,6 +142,18 @@ export default function AgencyProfilePage() {
             </div>
           </div>
           <KakaoLinkButton role="agency" />
+        </div>
+
+        {/* 보안 PIN */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">🔐</span>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">보안 PIN</h3>
+              <p className="text-[11px] text-gray-500">정산 요청, 계약 수정 등 민감 액션 추가 인증</p>
+            </div>
+          </div>
+          <SellerPinSetup linkedToKakao={false} role="agency" />
         </div>
       </div>
     </AgencyLayout>

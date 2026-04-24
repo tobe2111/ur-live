@@ -609,6 +609,51 @@ const SELLER_SEED: SeedSection[] = [
 💡 **셀러 대시보드 분석**에서 어떤 상품/시간대가 잘 팔리는지 확인하고 전략 수립.`,
   },
   {
+    key: 'security-pin', icon: '🔐', title: '보안 PIN (민감 액션 인증)', order: 65,
+    content: `### 왜 필요한가?
+
+셀러 계정 탈취 시나리오를 막기 위한 **2차 인증**. 비밀번호만 뚫려도 민감 액션은
+PIN 추가 확인 없이는 불가.
+
+### 보호되는 액션
+- **정산 요청** (\`/settlements/request\`)
+- **계좌 정보 변경** (은행명 / 계좌번호 / 예금주 변경 시)
+- (예정) 상품 대량 삭제, 셀러 탈퇴
+
+### 설정 방법
+\`/seller/profile\` 진입 → **🔐 보안 PIN** 섹션:
+1. **PIN 설정하기** 클릭
+2. 현재 비밀번호 확인 (카카오 전용 셀러는 생략)
+3. 4~6자리 숫자 PIN 입력 + 재입력
+4. 저장
+
+### 사용 흐름
+1. 민감 액션 수행 (예: 정산 요청)
+2. 백엔드가 \`412 PIN_REQUIRED\` 응답
+3. 프론트엔드가 PIN 입력 모달 자동 표시
+4. PIN 입력 → 15분 유효 쿠키 발급
+5. 원래 액션 재시도 → 통과
+6. **이후 15분 동안 다른 민감 액션도 PIN 재입력 없이 진행**
+
+### PIN 대신 카카오 재인증 (연동된 계정만)
+카카오 연동된 셀러라면 PIN 입력 모달 하단의
+**"💬 카카오로 재인증"** 버튼으로 대체 가능:
+- 카카오 세션이 유효한지 검증 → 15분 쿠키 발급
+- PIN 잊었을 때 백업 경로
+
+### 주의사항
+- PIN 은 **4~6자리 숫자** — 생년월일/전화번호 뒷자리 지양
+- 5회 이상 틀리면 rate limit (5분 대기)
+- PIN 이 털려도 **15분 동안만 민감 액션 가능** (짧은 윈도우)
+- 재설정: \`/seller/profile\` 에서 **[재설정]** 클릭
+
+### 관련 API
+- \`GET /api/seller/pin-status\` — 설정 여부
+- \`POST /api/seller/set-pin\` — 설정 (body: pin, current_password?)
+- \`POST /api/seller/verify-pin\` — 검증 + 쿠키 발급
+- \`POST /api/seller/request-kakao-stepup\` — 카카오 재인증 쿠키 발급 (연동 필수)`,
+  },
+  {
     key: 'policies', icon: '⚖️', title: '판매 정책 & 주의사항', order: 70,
     content: `### 금지 상품
 - **의약품/의료기기** — 허가 없이 판매 시 법적 처벌
@@ -840,6 +885,44 @@ const AGENCY_SEED: SeedSection[] = [
 - 에이전시도 부가가치세 신고 의무
 - 정산 내역서에 세금계산서 발행 가능 (요청 시)
 - 사업자 등록 없으면 원천징수 (3.3%)`,
+  },
+  {
+    key: 'security-pin', icon: '🔐', title: '보안 PIN (민감 액션 인증)', order: 55,
+    content: `### 왜 필요한가?
+
+에이전시 계정은 소속 셀러들의 계약을 관리하기 때문에 **한 번 탈취되면 큰 피해**.
+정산 / 계약 / 소속 셀러 배정 변경 시 추가 인증으로 안전 확보.
+
+### 보호되는 액션
+- **정산 요청** (\`/settlements/request\`)
+- **계약 생성** (\`POST /contracts\`)
+- **계약 수정** (\`PUT /contracts/:id\`)
+- (예정) 소속 셀러 배정 해제, 수수료율 일괄 변경 등
+
+### 설정 방법
+\`/agency/profile\` 진입 → **🔐 보안 PIN** 섹션에서 설정.
+
+### 사용 흐름
+1. 민감 액션 수행
+2. 백엔드 \`412 PIN_REQUIRED\` 응답
+3. 프론트엔드 PIN 입력 모달 자동 표시
+4. PIN 입력 → 15분 유효 쿠키 발급
+5. 원래 액션 재시도 통과
+6. 15분 이내 다른 민감 액션도 재입력 불필요
+
+### PIN 대신 카카오 재인증
+카카오 연동된 에이전시는 **"💬 카카오로 재인증"** 대체 사용 가능.
+
+### 관련 API
+- \`GET /api/agency/pin-status\`
+- \`POST /api/agency/set-pin\` (body: pin, current_password?)
+- \`POST /api/agency/verify-pin\`
+- \`POST /api/agency/request-kakao-stepup\`
+
+### 주의사항
+- 4~6자리 숫자 PIN
+- 5회 연속 실패 시 rate limit
+- PIN 잊으면 프로필에서 재설정 (현재 비밀번호 or 카카오 재인증 필요)`,
   },
   {
     key: 'faq', icon: '❓', title: '자주 묻는 질문', order: 60,

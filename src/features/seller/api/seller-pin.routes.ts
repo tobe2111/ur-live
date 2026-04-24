@@ -112,6 +112,43 @@ sellerPinRoutes.post('/verify-pin', rateLimit({ action: 'seller_verify_pin', max
   return c.json({ success: true, message: 'PIN 확인 완료. 15분간 민감 액션 사용 가능합니다.' })
 })
 
+// ── POST /request-kakao-stepup — 카카오 세션 검증 기반 step-up ──
+// 셀러 JWT + 카카오 세션 쿠키 둘 다 유효 + linked_user_id 일치 → 15분 쿠키 발급
+sellerPinRoutes.post('/request-kakao-stepup', rateLimit({ action: 'seller_kakao_stepup', max: 10, windowSec: 300 }), async (c) => {
+  const sellerId = await getSellerId(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  // 카카오 세션 검증
+  const { parseSessionCookie } = await import('../../../worker/utils/session')
+  const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET)
+  if (!sessionUser) {
+    return c.json({ success: false, error: '카카오 로그인이 필요합니다. 로그아웃 후 카카오로 다시 로그인해주세요.' }, 401)
+  }
+
+  // 셀러가 해당 카카오 유저와 연결되어 있는지 확인
+  const seller = await c.env.DB.prepare(
+    'SELECT linked_user_id FROM sellers WHERE id = ?'
+  ).bind(sellerId).first<{ linked_user_id: number | null }>()
+  if (!seller?.linked_user_id) {
+    return c.json({ success: false, error: '이 셀러 계정은 카카오 연동이 되어있지 않습니다.', code: 'NOT_LINKED' }, 412)
+  }
+  if (Number(seller.linked_user_id) !== Number(sessionUser.userId)) {
+    return c.json({ success: false, error: '연결된 카카오 계정과 현재 세션이 일치하지 않습니다.' }, 403)
+  }
+
+  const token = await signJwt({
+    sub: String(sellerId),
+    seller_id: sellerId,
+    role: 'seller',
+    purpose: 'kakao_stepup',
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 900,
+  }, c.env.JWT_SECRET)
+
+  c.header('Set-Cookie', `ur_kakao_stepup=${token}; Path=/; Max-Age=900; SameSite=Lax; Secure; HttpOnly`)
+  return c.json({ success: true, message: '카카오 재인증 완료. 15분간 민감 액션 사용 가능.' })
+})
+
 // ── GET /pin-status — PIN 설정 여부 확인 ──
 sellerPinRoutes.get('/pin-status', async (c) => {
   const sellerId = await getSellerId(c.req.header('Authorization'), c.env.JWT_SECRET)

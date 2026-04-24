@@ -22,11 +22,13 @@ import { Loader2, X, ShieldCheck } from 'lucide-react'
 interface Props {
   onVerified: () => void
   onCancel: () => void
+  role?: 'seller' | 'agency'
 }
 
-export function SellerPinPrompt({ onVerified, onCancel }: Props) {
+export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props) {
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
+  const basePath = role === 'seller' ? '/api/seller' : '/api/agency'
 
   async function submit() {
     if (!/^\d{4,6}$/.test(pin)) {
@@ -35,7 +37,7 @@ export function SellerPinPrompt({ onVerified, onCancel }: Props) {
     }
     setLoading(true)
     try {
-      const res = await api.post('/api/seller/verify-pin', { pin })
+      const res = await api.post(`${basePath}/verify-pin`, { pin })
       if (res.data?.success) {
         toast.success('PIN 확인 완료. 15분간 민감 액션 사용 가능')
         onVerified()
@@ -93,13 +95,23 @@ export function SellerPinPrompt({ onVerified, onCancel }: Props) {
           </button>
         </div>
 
-        {/* 카카오 재인증 대안 (카카오 연동된 셀러만) */}
+        {/* 카카오 재인증 대안 (카카오 연동된 경우) */}
         <div className="pt-3 border-t border-gray-100 text-center">
           <p className="text-[11px] text-gray-400 mb-2">PIN 대신 카카오로 재인증</p>
           <button
-            onClick={() => {
-              const rt = encodeURIComponent(window.location.pathname + '?kakao_stepup=1&role=seller')
-              window.location.href = `/auth/kakao/start?redirect=${rt}&stepup=seller`
+            onClick={async () => {
+              try {
+                const res = await api.post(`${basePath}/request-kakao-stepup`)
+                if (res.data?.success) {
+                  toast.success('카카오 재인증 완료')
+                  onVerified()
+                } else {
+                  toast.error(res.data?.error || '카카오 재인증 실패 — 카카오 연동이 필요합니다')
+                }
+              } catch (e: unknown) {
+                const err = e as { response?: { data?: { error?: string } } }
+                toast.error(err.response?.data?.error || '카카오 재인증 실패')
+              }
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-xs font-semibold rounded-lg">
             💬 카카오로 재인증
@@ -111,9 +123,10 @@ export function SellerPinPrompt({ onVerified, onCancel }: Props) {
 }
 
 /**
- * SellerPinSetup — 셀러 프로필에서 PIN 최초 설정
+ * SellerPinSetup — 셀러/에이전시 프로필에서 PIN 최초 설정
  */
-export function SellerPinSetup({ linkedToKakao }: { linkedToKakao: boolean }) {
+export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKakao: boolean; role?: 'seller' | 'agency' }) {
+  const basePath = role === 'seller' ? '/api/seller' : '/api/agency'
   const [pinSet, setPinSet] = useState<boolean | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ current_password: '', pin: '', pin_confirm: '' })
@@ -121,10 +134,10 @@ export function SellerPinSetup({ linkedToKakao }: { linkedToKakao: boolean }) {
 
   // PIN 설정 상태 조회
   useEffect(() => {
-    api.get('/api/seller/pin-status').then(res => {
+    api.get(`${basePath}/pin-status`).then(res => {
       if (res.data?.success) setPinSet(res.data.data.pin_set)
     }).catch(() => {})
-  }, [])
+  }, [basePath])
 
   async function save() {
     if (form.pin !== form.pin_confirm) {
@@ -139,7 +152,7 @@ export function SellerPinSetup({ linkedToKakao }: { linkedToKakao: boolean }) {
     try {
       const body: Record<string, string> = { pin: form.pin }
       if (!linkedToKakao) body.current_password = form.current_password
-      const res = await api.post('/api/seller/set-pin', body)
+      const res = await api.post(`${basePath}/set-pin`, body)
       if (res.data?.success) {
         toast.success('PIN이 설정되었습니다')
         setPinSet(true)

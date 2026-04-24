@@ -776,6 +776,13 @@ app.post('/settlements/request', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
 
+  // 🛡️ 민감 액션 — 최근 15분 내 에이전시 PIN 인증 필수
+  const { isAgencyPinVerified } = await import('./agency-pin.routes')
+  const pinOk = await isAgencyPinVerified(c.req.header('Cookie'), agencyId, c.env.JWT_SECRET)
+  if (!pinOk) {
+    return c.json({ success: false, error: 'PIN 인증이 필요합니다', code: 'PIN_REQUIRED' }, 412)
+  }
+
   try {
     const agency = await c.env.DB.prepare('SELECT id, name, commission_rate, bank_name, bank_account, account_holder FROM agencies WHERE id = ?')
       .bind(agencyId).first<Record<string, any>>()
@@ -1453,6 +1460,12 @@ app.get('/contracts', async (c: AgencyCtx) => {
 
 app.post('/contracts', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
+
+  // 🛡️ 계약 생성 민감 액션 — PIN 인증 필수
+  const { isAgencyPinVerified } = await import('./agency-pin.routes')
+  const pinOk = await isAgencyPinVerified(c.req.header('Cookie'), agencyId, c.env.JWT_SECRET)
+  if (!pinOk) return c.json({ success: false, error: 'PIN 인증이 필요합니다', code: 'PIN_REQUIRED' }, 412)
+
   const { seller_id, start_date, end_date, terms } = await c.req.json<any>()
   if (!seller_id || !start_date || !end_date) return c.json({ success: false, error: '필수 항목을 입력해주세요' }, 400)
 
@@ -1475,6 +1488,12 @@ app.post('/contracts', async (c: AgencyCtx) => {
 
 app.put('/contracts/:id', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
+
+  // 🛡️ 계약 수정 민감 액션 — PIN 인증 필수
+  const { isAgencyPinVerified } = await import('./agency-pin.routes')
+  const pinOk = await isAgencyPinVerified(c.req.header('Cookie'), agencyId, c.env.JWT_SECRET)
+  if (!pinOk) return c.json({ success: false, error: 'PIN 인증이 필요합니다', code: 'PIN_REQUIRED' }, 412)
+
   const id = c.req.param('id')
   const body = await c.req.json<any>()
   const sets: string[] = []; const vals: any[] = []
