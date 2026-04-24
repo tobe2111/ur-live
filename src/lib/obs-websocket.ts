@@ -23,6 +23,8 @@ export interface OBSStatus {
   outputTimecode?: string     // 방송 경과 시간
   outputBytes?: number        // 총 송출 바이트
   outputCongestion?: number   // 네트워크 혼잡도 (0~1)
+  outputSkippedFrames?: number // 드롭된 프레임
+  outputTotalFrames?: number   // 총 프레임
   currentScene?: string
   sceneList?: string[]
 }
@@ -50,6 +52,7 @@ export class OBSWebSocketClient {
   private authenticated = false
   private connectionResolver: ((ok: boolean) => void) | null = null
   private status: OBSStatus = { outputActive: false }
+  private statsTimer: ReturnType<typeof setInterval> | null = null
 
   onStatusChange(h: EventHandler): () => void {
     this.statusHandlers.push(h)
@@ -88,8 +91,12 @@ export class OBSWebSocketClient {
           this.authenticated = true
           this.connectionResolver?.(true)
           this.connectionResolver = null
-          // 초기 상태 로드
+          // 초기 상태 로드 + 2초 폴링으로 bitrate/dropped frames 업데이트
           await this.refreshStatus()
+          if (this.statsTimer) clearInterval(this.statsTimer)
+          this.statsTimer = setInterval(() => {
+            if (this.authenticated) this.refreshStatus().catch(() => { /* silent */ })
+          }, 2000)
         } else if (msg.op === OP.Event) {
           const type = msg.d.eventType
           const data = msg.d.eventData
@@ -120,6 +127,7 @@ export class OBSWebSocketClient {
     try { this.ws?.close() } catch { /* ignore */ }
     this.ws = null
     this.authenticated = false
+    if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null }
   }
 
   get isConnected(): boolean { return this.authenticated }
@@ -147,7 +155,7 @@ export class OBSWebSocketClient {
 
   async refreshStatus() {
     const [streamStatus, sceneList, currentScene] = await Promise.all([
-      this.request<{ outputActive: boolean; outputTimecode?: string; outputBytes?: number; outputCongestion?: number }>('GetStreamStatus'),
+      this.request<{ outputActive: boolean; outputTimecode?: string; outputBytes?: number; outputCongestion?: number; outputSkippedFrames?: number; outputTotalFrames?: number }>('GetStreamStatus'),
       this.request<{ scenes: { sceneName: string }[] }>('GetSceneList'),
       this.request<{ currentProgramSceneName: string }>('GetCurrentProgramScene'),
     ])
@@ -156,6 +164,8 @@ export class OBSWebSocketClient {
       this.status.outputTimecode = streamStatus.outputTimecode
       this.status.outputBytes = streamStatus.outputBytes
       this.status.outputCongestion = streamStatus.outputCongestion
+      this.status.outputSkippedFrames = streamStatus.outputSkippedFrames
+      this.status.outputTotalFrames = streamStatus.outputTotalFrames
     }
     if (sceneList) this.status.sceneList = sceneList.scenes.map(s => s.sceneName)
     if (currentScene) this.status.currentScene = currentScene.currentProgramSceneName

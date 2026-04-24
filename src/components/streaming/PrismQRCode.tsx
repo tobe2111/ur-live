@@ -8,6 +8,42 @@ import { QRCodeSVG as QRCode } from 'qrcode.react'
 import { Copy, CheckCircle, Smartphone, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+/**
+ * Prism Live Studio deep-link 시도.
+ * Prism의 공식 URL scheme 은 공개되지 않음. 일부 사용자 레포트 기반 추정 스키마:
+ *   - prismlive://
+ *   - prism://
+ * 모바일에서 링크 클릭 → 앱 설치되어 있으면 열림, 아니면 무반응 (우리 페이지 유지).
+ * Timeout 후에도 페이지 유지되면 QR 폴백 안내.
+ */
+function tryPrismDeepLink(rtmpUrl: string, rtmpKey: string): Promise<boolean> {
+  return new Promise(resolve => {
+    const candidates = [
+      `prismlive://rtmp?url=${encodeURIComponent(rtmpUrl)}&key=${encodeURIComponent(rtmpKey)}`,
+      `prism://live/rtmp?url=${encodeURIComponent(rtmpUrl)}&key=${encodeURIComponent(rtmpKey)}`,
+    ]
+    const start = Date.now()
+    let resolved = false
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        resolved = true
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+        resolve(true)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    // 첫 번째 스키마 시도
+    window.location.href = candidates[0]
+    // 2초 후에도 페이지 포커스 유지 = 앱 안 열림
+    setTimeout(() => {
+      if (!resolved && Date.now() - start > 1800) {
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+        resolve(false)
+      }
+    }, 2000)
+  })
+}
+
 interface PrismQRCodeProps {
   rtmpUrl: string
   rtmpKey: string
@@ -16,6 +52,14 @@ interface PrismQRCodeProps {
 
 export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCodeProps) {
   const [copied, setCopied] = useState<'url' | 'key' | null>(null)
+  const [deeplinkStatus, setDeeplinkStatus] = useState<'idle' | 'trying' | 'failed'>('idle')
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)
+
+  async function openPrismDirectly() {
+    setDeeplinkStatus('trying')
+    const ok = await tryPrismDeepLink(rtmpUrl, rtmpKey)
+    setDeeplinkStatus(ok ? 'idle' : 'failed')
+  }
 
   // Generate mobile-friendly auto-fill URL
   const appBaseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://live.ur-team.com'
@@ -54,6 +98,24 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
           <p>→ Prism 앱에서 "Custom RTMP" 선택</p>
           <p>→ 복사 버튼 2번만 누르면 완료!</p>
         </div>
+
+        {/* 모바일에서 보고 있으면 Prism 앱 바로 열기 시도 */}
+        {isMobile && (
+          <div className="mt-4">
+            <Button
+              onClick={openPrismDirectly}
+              disabled={deeplinkStatus === 'trying'}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              {deeplinkStatus === 'trying' ? '앱 열기 시도 중...' : '🚀 Prism 앱 바로 열기'}
+            </Button>
+            {deeplinkStatus === 'failed' && (
+              <p className="text-[11px] text-amber-700 mt-2">
+                앱을 열 수 없어요. Prism 설치 확인 또는 아래 수동 복사로 진행하세요.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Manual Copy Section (Backup) */}

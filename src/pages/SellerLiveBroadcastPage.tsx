@@ -17,7 +17,9 @@ import {
 import { isSellerAuthenticated } from '@/lib/seller-auth'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
 import LiveChatPanel from '@/components/seller/LiveChatPanel'
+import { InlineCameraPreview } from '@/components/streaming/InlineCameraPreview'
 import { OBSWebSocketClient, type OBSConnectConfig, type OBSStatus, saveOBSConfig, loadOBSConfig, clearOBSConfig } from '@/lib/obs-websocket'
+import { downloadOBSProfile } from '@/lib/obs-profile'
 
 // ── Types ──────────────────────────────────────────────────────────
 interface YouTubeChannel {
@@ -1258,25 +1260,57 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
 function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStream; onBack: () => void }) {
   const { t } = useTranslation()
   const [countdown, setCountdown] = useState('')
+  const [obsAutoStartEnabled, setObsAutoStartEnabled] = useState(false)
+  const obsClientRef = useRef<OBSWebSocketClient | null>(null)
+  const autoStartedRef = useRef(false)
+
+  // OBS 연결 설정이 저장되어 있으면 자동 시작 옵션 활성화
+  useEffect(() => {
+    const cfg = loadOBSConfig()
+    if (!cfg) return
+    const client = new OBSWebSocketClient()
+    client.connect(cfg).then(ok => {
+      if (ok) {
+        obsClientRef.current = client
+        setObsAutoStartEnabled(true)
+      }
+    })
+    return () => client.disconnect()
+  }, [])
 
   useEffect(() => {
     const tick = () => {
       if (!stream.scheduled_at) return
       const target = new Date(stream.scheduled_at).getTime()
       const diff = target - Date.now()
-      if (diff <= 0) { setCountdown('00:00:00'); return }
-      const days = Math.floor(diff / (24 * 3600 * 1000))
-      const hours = Math.floor((diff % (24 * 3600 * 1000)) / (3600 * 1000))
-      const minutes = Math.floor((diff % (3600 * 1000)) / 60000)
-      const seconds = Math.floor((diff % 60000) / 1000)
-      setCountdown(days > 0
-        ? `${days}일 ${hours}시간 ${minutes}분`
-        : `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
+      if (diff <= 0) { setCountdown('00:00:00') } else {
+        const days = Math.floor(diff / (24 * 3600 * 1000))
+        const hours = Math.floor((diff % (24 * 3600 * 1000)) / (3600 * 1000))
+        const minutes = Math.floor((diff % (3600 * 1000)) / 60000)
+        const seconds = Math.floor((diff % 60000) / 1000)
+        setCountdown(days > 0
+          ? `${days}일 ${hours}시간 ${minutes}분`
+          : `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
+      }
+      // 예약 시간 도달 + OBS 연결됨 + 아직 자동 시작 안 했으면 → 자동 시작
+      if (diff <= 0 && obsClientRef.current && obsAutoStartEnabled && !autoStartedRef.current
+          && stream.rtmp_url && stream.rtmp_key) {
+        autoStartedRef.current = true
+        ;(async () => {
+          try {
+            await obsClientRef.current!.setRtmpTarget(stream.rtmp_url!, stream.rtmp_key!)
+            await obsClientRef.current!.startStreaming()
+            toast.success('⏰ 예약 시간 도달. OBS 자동 시작!')
+          } catch {
+            toast.error('OBS 자동 시작 실패. 수동으로 시작해주세요.')
+          }
+        })()
+      }
     }
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [stream.scheduled_at])
+  }, [stream.scheduled_at, stream.rtmp_url, stream.rtmp_key, obsAutoStartEnabled])
 
   const scheduledDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null
   const scheduledStr = scheduledDate
@@ -1304,6 +1338,16 @@ function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStream; onB
         <p className="text-xs text-amber-800 flex-1">{t('seller.liveBroadcast.scheduledStartHint')}</p>
       </div>
 
+      {obsAutoStartEnabled && (
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+          <div className="flex-1 text-xs text-green-800">
+            <p className="font-semibold">✨ OBS 자동 시작 활성화됨</p>
+            <p className="text-[11px] mt-0.5">예약 시간이 되면 OBS가 자동으로 스트리밍 시작됩니다. 컴퓨터만 켜둬주세요.</p>
+          </div>
+        </div>
+      )}
+
       <ShareLiveLink streamId={stream.id} />
 
       <div className="flex items-center justify-center pt-2 border-t border-gray-100">
@@ -1314,6 +1358,15 @@ function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStream; onB
       </div>
     </div>
   )
+}
+
+// OBS timecode "HH:MM:SS.mmm" → seconds
+function parseTimecode(tc: string): number {
+  const parts = tc.split(':')
+  if (parts.length !== 3) return 0
+  const [h, m, sWithMs] = parts
+  const s = parseFloat(sWithMs)
+  return Number(h) * 3600 + Number(m) * 60 + (isNaN(s) ? 0 : s)
 }
 
 // ── OBS 원격 제어 (obs-websocket v5) ────────────────────────────
@@ -1412,6 +1465,15 @@ function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy }: {
                 <RtmpBlock label="RTMP URL" value={stream.rtmp_url} fieldKey="rtmp_url" copiedField={copiedField} onCopy={onCopy} />
                 {stream.rtmp_key && <RtmpBlock label={t('seller.liveBroadcast.streamKey')} value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
                 <RecommendedPresetBlock tool="obs" />
+                <button
+                  onClick={() => downloadOBSProfile({
+                    profileName: 'UR Live',
+                    rtmpUrl: stream.rtmp_url!,
+                    rtmpKey: stream.rtmp_key || '',
+                  })}
+                  className="w-full py-2 bg-white border border-purple-300 hover:bg-purple-50 text-purple-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5">
+                  📥 OBS 프로파일 파일 다운로드 (최초 1회)
+                </button>
               </div>
             </details>
           </div>
@@ -1515,9 +1577,39 @@ function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy }: {
         </div>
       )}
 
-      {obsStatus.outputCongestion !== undefined && obsStatus.outputActive && (
-        <div className="text-[10px] text-blue-700">
-          {t('seller.liveBroadcast.obsNetworkHealth')}: {obsStatus.outputCongestion < 0.3 ? '🟢 좋음' : obsStatus.outputCongestion < 0.7 ? '🟡 보통' : '🔴 혼잡'}
+      {obsStatus.outputActive && (
+        <div className="grid grid-cols-3 gap-2 text-[10px]">
+          {obsStatus.outputCongestion !== undefined && (
+            <div className="bg-white/60 rounded-md px-2 py-1.5 text-center">
+              <p className="text-blue-600">{t('seller.liveBroadcast.obsNetworkHealth')}</p>
+              <p className="font-bold text-gray-900">
+                {obsStatus.outputCongestion < 0.3 ? '🟢 좋음' : obsStatus.outputCongestion < 0.7 ? '🟡 보통' : '🔴 혼잡'}
+              </p>
+            </div>
+          )}
+          {obsStatus.outputBytes !== undefined && obsStatus.outputTimecode && (() => {
+            const sec = parseTimecode(obsStatus.outputTimecode)
+            const kbps = sec > 0 ? Math.round((obsStatus.outputBytes * 8) / sec / 1000) : 0
+            return (
+              <div className="bg-white/60 rounded-md px-2 py-1.5 text-center">
+                <p className="text-blue-600">비트레이트</p>
+                <p className="font-bold text-gray-900">{kbps.toLocaleString()} kbps</p>
+              </div>
+            )
+          })()}
+          {obsStatus.outputTotalFrames !== undefined && obsStatus.outputSkippedFrames !== undefined && (() => {
+            const total = obsStatus.outputTotalFrames || 0
+            const drop = obsStatus.outputSkippedFrames || 0
+            const pct = total > 0 ? (drop / total) * 100 : 0
+            return (
+              <div className="bg-white/60 rounded-md px-2 py-1.5 text-center">
+                <p className="text-blue-600">드롭 프레임</p>
+                <p className={`font-bold ${pct < 1 ? 'text-gray-900' : pct < 5 ? 'text-amber-600' : 'text-red-600'}`}>
+                  {drop} ({pct.toFixed(1)}%)
+                </p>
+              </div>
+            )
+          })()}
         </div>
       )}
     </div>
@@ -1655,6 +1747,9 @@ function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, on
       )}
 
       <div className="pt-3 border-t border-gray-100 space-y-3">
+        {/* 인라인 카메라 미리보기 — 어느 방법이든 방송 전 확인용 */}
+        <InlineCameraPreview />
+
         {(method === 'obs' || method === 'prism') && (
           <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
             <span className="flex gap-1 shrink-0">
@@ -1694,6 +1789,66 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
   const startedAtRef = useRef(Date.now())
   const [elapsed, setElapsed] = useState('00:00')
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [pipActive, setPipActive] = useState(false)
+  const pipWindowRef = useRef<Window | null>(null)
+  const pipUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Document Picture-in-Picture API (Chrome 116+)
+  // DOM 이동 대신 가벼운 "라이브 상태 위젯" 을 PiP 창에 렌더 — 항상 화면 위에.
+  async function togglePiP() {
+    // @ts-expect-error: documentPictureInPicture is not in standard DOM types yet
+    const dpip = window.documentPictureInPicture
+    if (!dpip) {
+      toast.error('PiP 모드는 Chrome 116+ / Edge 에서만 지원됩니다')
+      return
+    }
+    if (pipActive) {
+      try { pipWindowRef.current?.close() } catch { /* ignore */ }
+      return
+    }
+    try {
+      const pipWin = await dpip.requestWindow({ width: 280, height: 120 })
+      pipWindowRef.current = pipWin
+      pipWin.document.title = 'UR Live — 방송 중'
+      pipWin.document.body.style.margin = '0'
+      pipWin.document.body.style.fontFamily = 'system-ui, sans-serif'
+      pipWin.document.body.style.background = '#0a0a0a'
+      pipWin.document.body.style.color = 'white'
+      pipWin.document.body.innerHTML = `
+        <div style="padding:12px;display:flex;flex-direction:column;gap:8px;height:100vh;box-sizing:border-box">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;animation:pulse 1s infinite"></span>
+            <span style="font-size:11px;font-weight:700;color:#ef4444;letter-spacing:0.5px">LIVE</span>
+            <span id="pip-elapsed" style="font-size:11px;font-family:monospace;color:#a1a1aa;margin-left:4px"></span>
+          </div>
+          <p id="pip-title" style="font-size:13px;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></p>
+          <div id="pip-stats" style="font-size:10px;color:#a1a1aa;display:flex;gap:8px;margin-top:auto"></div>
+        </div>
+        <style>@keyframes pulse { 50% { opacity:0.4 } }</style>
+      `
+      setPipActive(true)
+      const updatePiP = () => {
+        if (!pipWin.document) return
+        const titleEl = pipWin.document.getElementById('pip-title')
+        const elapsedEl = pipWin.document.getElementById('pip-elapsed')
+        if (titleEl) titleEl.textContent = stream.title
+        if (elapsedEl) elapsedEl.textContent = elapsed
+      }
+      updatePiP()
+      pipUpdateIntervalRef.current = setInterval(updatePiP, 1000)
+      pipWin.addEventListener('pagehide', () => {
+        if (pipUpdateIntervalRef.current) clearInterval(pipUpdateIntervalRef.current)
+        pipWindowRef.current = null
+        setPipActive(false)
+      })
+    } catch { /* user cancelled or blocked */ }
+  }
+
+  // cleanup on unmount
+  useEffect(() => () => {
+    if (pipUpdateIntervalRef.current) clearInterval(pipUpdateIntervalRef.current)
+    try { pipWindowRef.current?.close() } catch { /* ignore */ }
+  }, [])
 
   // 방송 경과 시간 타이머
   useEffect(() => {
@@ -1745,6 +1900,11 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
           <p className="text-sm font-semibold text-gray-900 truncate">{stream.title}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <button onClick={togglePiP}
+            className={`w-7 h-7 rounded-full text-xs font-bold ${pipActive ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+            title="Picture-in-Picture (PiP)">
+            ⧉
+          </button>
           <button onClick={() => setShowShortcuts(v => !v)}
             className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold"
             title="키보드 단축키 (?)">

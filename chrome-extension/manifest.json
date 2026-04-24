@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "UR Live — OBS Bridge",
+  "version": "0.1.0",
+  "description": "HTTPS 프로덕션에서 ws://localhost 연결을 중개하고 YouTube Studio에 UR Live 컨트롤을 주입합니다.",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://live.ur-team.com/*",
+    "https://ur-live.pages.dev/*",
+    "https://studio.youtube.com/*",
+    "http://localhost:*/*",
+    "ws://localhost:*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://live.ur-team.com/*",
+        "https://ur-live.pages.dev/*",
+        "http://localhost:5173/*"
+      ],
+      "js": ["content-main.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://studio.youtube.com/*"],
+      "js": ["content-studio.js"],
+      "css": ["content-studio.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "UR Live Extension",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  }
+}
