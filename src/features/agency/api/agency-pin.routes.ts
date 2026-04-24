@@ -3,13 +3,9 @@
  *
  * 엔드포인트:
  *   POST /set-pin
- *   POST /verify-pin → ur_agency_pin_verified cookie (15min)
+ *   POST /verify-pin   → ur_agency_pin_verified cookie (15min)
+ *   POST /request-kakao-stepup → ur_agency_pin_verified cookie (15min, 카카오 재인증 경로)
  *   GET  /pin-status
- *
- * 보호 대상 (다음 스프린트에):
- *   - 소속 셀러 대량 편집
- *   - 계약 수정
- *   - 정산 내역 조회 고도화 등
  */
 
 import { Hono } from 'hono'
@@ -35,8 +31,11 @@ async function getAgencyId(authorization: string | undefined, jwtSecret: string)
   } catch { return null }
 }
 
+let _agencyPinColumnEnsured = false
 async function ensurePinColumn(DB: D1Database) {
+  if (_agencyPinColumnEnsured) return
   try { await DB.prepare('ALTER TABLE agencies ADD COLUMN pin_hash TEXT').run() } catch { /* exists */ }
+  _agencyPinColumnEnsured = true
 }
 
 agencyPinRoutes.post('/set-pin', rateLimit({ action: 'agency_set_pin', max: 5, windowSec: 300 }), async (c) => {

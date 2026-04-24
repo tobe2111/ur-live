@@ -28,52 +28,43 @@ async function issueLinkedRoleTokens(
   userId: number
 ): Promise<{ seller_token?: string; agency_token?: string; seller?: { id: number; status: string; business_name?: string }; agency?: { id: number; status: string; name?: string } }> {
   const out: { seller_token?: string; agency_token?: string; seller?: any; agency?: any } = {}
-  try {
-    const seller = await DB.prepare(
-      'SELECT id, status, business_name, email, name, seller_type FROM sellers WHERE linked_user_id = ?'
-    ).bind(userId).first<{ id: number; status: string; business_name: string; email: string; name: string; seller_type: string }>()
-    if (seller) {
-      out.seller = { id: seller.id, status: seller.status, business_name: seller.business_name }
-      // 레거시 호환: 'approved' 도 active 와 동등하게 취급 (구 승인 데이터)
-      if (seller.status === 'active' || seller.status === 'approved') {
-        const payload = {
-          sub: String(seller.id),
-          seller_id: seller.id,
-          email: seller.email,
-          name: seller.name,
-          type: 'seller',
-          seller_type: seller.seller_type || 'influencer',
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
-        }
-        out.seller_token = await jwtSign(payload, jwtSecret)
-      }
-    }
-  } catch { /* sellers 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }
+  const now = Math.floor(Date.now() / 1000)
+  const exp = now + 7 * 24 * 60 * 60
 
-  try {
-    const agency = await DB.prepare(
+  // ⚡ 병렬 조회: seller + agency SELECT 를 동시에 실행해 1개 D1 RTT 절약
+  const [sellerRow, agencyRow] = await Promise.allSettled([
+    DB.prepare(
+      'SELECT id, status, business_name, email, name, seller_type FROM sellers WHERE linked_user_id = ?'
+    ).bind(userId).first<{ id: number; status: string; business_name: string; email: string; name: string; seller_type: string }>(),
+    DB.prepare(
       'SELECT id, status, name, email, contact_name FROM agencies WHERE linked_user_id = ?'
-    ).bind(userId).first<{ id: number; status: string; name: string; email: string; contact_name: string }>()
-    if (agency) {
-      out.agency = { id: agency.id, status: agency.status, name: agency.name }
-      // 레거시 호환: 에이전시 로그인 엔드포인트(agency.routes.ts:322) 가 'approved' 도 허용하므로
-      // 카카오 경로에서도 동일하게 토큰 발급. (셀러 38라인과 동일 패턴)
-      if (agency.status === 'active' || agency.status === 'approved') {
-        const payload = {
-          sub: String(agency.id),
-          agency_id: agency.id,
-          email: agency.email,
-          name: agency.name,
-          contact_name: agency.contact_name,
-          type: 'agency',
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
-        }
-        out.agency_token = await jwtSign(payload, jwtSecret)
-      }
+    ).bind(userId).first<{ id: number; status: string; name: string; email: string; contact_name: string }>(),
+  ])
+
+  if (sellerRow.status === 'fulfilled' && sellerRow.value) {
+    const seller = sellerRow.value
+    out.seller = { id: seller.id, status: seller.status, business_name: seller.business_name }
+    // 레거시 호환: 'approved' 도 active 와 동등하게 취급 (구 승인 데이터)
+    if (seller.status === 'active' || seller.status === 'approved') {
+      out.seller_token = await jwtSign({
+        sub: String(seller.id), seller_id: seller.id, email: seller.email,
+        name: seller.name, type: 'seller',
+        seller_type: seller.seller_type || 'influencer', iat: now, exp,
+      }, jwtSecret)
     }
-  } catch { /* agencies 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }
+  }
+
+  if (agencyRow.status === 'fulfilled' && agencyRow.value) {
+    const agency = agencyRow.value
+    out.agency = { id: agency.id, status: agency.status, name: agency.name }
+    // 레거시 호환: 에이전시 로그인 엔드포인트(agency.routes.ts) 가 'approved' 도 허용
+    if (agency.status === 'active' || agency.status === 'approved') {
+      out.agency_token = await jwtSign({
+        sub: String(agency.id), agency_id: agency.id, email: agency.email,
+        name: agency.name, contact_name: agency.contact_name, type: 'agency', iat: now, exp,
+      }, jwtSecret)
+    }
+  }
 
   return out
 }
@@ -486,27 +477,25 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     const kakaoUser = await kakaoService.getUserInfo(accessToken);
     const user = await kakaoService.upsertUser(kakaoUser);
 
-    // 토큰 저장 (consent callback에서도 갱신)
-    // ✅ FIX (H5): One-time schema check (not per-request)
-    // 🛡️ at-rest 암호화
+    const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
+
+    // ⚡ 병렬 실행: Firebase customToken 생성(느린 crypto) + at-rest 암호화를 동시에.
     await ensureKakaoColumns(DB);
     const kek2 = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
-    const encAccess2 = await encryptAtRest(accessToken, kek2);
-    const encRefresh2 = kakaoRefreshToken2 ? await encryptAtRest(kakaoRefreshToken2, kek2) : null;
-    await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
-      .bind(encAccess2, encRefresh2, user.id).run();
+    const [customToken, encAccess2, encRefresh2] = await Promise.all([
+      firebaseService.createCustomToken(firebaseUID, {
+        role: 'user', userId: user.id, userName: user.name,
+        email: user.email, kakaoId: kakaoUser.kakaoId,
+        ...(user.profile_image ? { profileImage: user.profile_image } : {}),
+      }),
+      encryptAtRest(accessToken, kek2),
+      kakaoRefreshToken2 ? encryptAtRest(kakaoRefreshToken2, kek2) : Promise.resolve(null),
+    ]);
 
-    const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
-    const customToken = await firebaseService.createCustomToken(firebaseUID, {
-      role: 'user',
-      userId: user.id,
-      userName: user.name,
-      email: user.email,
-      kakaoId: kakaoUser.kakaoId,
-      ...(user.profile_image ? { profileImage: user.profile_image } : {}),
-    });
-
-    await kakaoService.updateFirebaseUID(user.id, firebaseUID);
+    // firebase_uid + kakao tokens 통합 UPDATE (updateFirebaseUID 별도 RTT 제거)
+    await DB.prepare(
+      "UPDATE users SET firebase_uid = ?, kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?"
+    ).bind(firebaseUID, encAccess2, encRefresh2, user.id).run();
 
     // Set httpOnly session cookie for user auth (new flow)
     let sessionCookieHeader: string | undefined;

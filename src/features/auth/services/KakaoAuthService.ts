@@ -180,73 +180,55 @@ export class KakaoAuthService {
   
   /**
    * DB에 사용자 저장 또는 업데이트 (Upsert)
+   *
+   * ⚡ 최적화: 기존 유저(대부분) → UPDATE RETURNING 1 RTT.
+   *            신규 유저 → INSERT RETURNING 1 RTT (+ race fallback SELECT).
+   *            기존 SELECT→UPDATE→SELECT 3-RTT 패턴 대비 66% 절감.
    */
   async upsertUser(kakaoUser: KakaoUser): Promise<User> {
     try {
-      // 기존 사용자 확인
-      const existingUser = await this.db.prepare(`
-        SELECT id, kakao_id, name, email, profile_image, created_at
-        FROM users 
-        WHERE kakao_id = ?
-      `).bind(kakaoUser.kakaoId).first<User>();
-      
-      let userId: number;
-      
-      if (existingUser) {
-        // 기존 사용자 업데이트
-        userId = existingUser.id;
-        await this.db.prepare(`
-          UPDATE users 
-          SET name = ?, 
-              email = ?, 
-              profile_image = ?,
-              updated_at = datetime('now'),
-              last_login_at = datetime('now')
-          WHERE id = ?
-        `).bind(
-          kakaoUser.name, 
-          kakaoUser.email || null, 
-          kakaoUser.profileImage || null, 
-          userId
-        ).run();
-        
-      } else {
-        // 새 사용자 생성 (toss_user_id NOT NULL 이므로 kakao_id 기반 유니크 값 사용)
-        const result = await this.db.prepare(`
-          INSERT INTO users (
-            toss_user_id,
-            kakao_id,
-            name,
-            email,
-            profile_image,
-            created_at,
-            last_login_at,
-            updated_at
-          ) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
-        `).bind(
+      // 낙관적 UPDATE: 기존 유저면 바로 갱신 + 결과 반환 (1 RTT)
+      const updated = await this.db.prepare(
+        `UPDATE users
+         SET name = ?, email = ?, profile_image = ?,
+             updated_at = datetime('now'), last_login_at = datetime('now')
+         WHERE kakao_id = ?
+         RETURNING id, kakao_id, name, email, profile_image, firebase_uid, created_at`
+      ).bind(
+        kakaoUser.name,
+        kakaoUser.email || null,
+        kakaoUser.profileImage || null,
+        kakaoUser.kakaoId,
+      ).first<User>();
+
+      if (updated) return updated;
+
+      // 신규 유저 INSERT (toss_user_id NOT NULL 제약 충족용 합성값)
+      try {
+        const inserted = await this.db.prepare(
+          `INSERT INTO users (toss_user_id, kakao_id, name, email, profile_image,
+                              created_at, last_login_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+           RETURNING id, kakao_id, name, email, profile_image, firebase_uid, created_at`
+        ).bind(
           `kakao_${kakaoUser.kakaoId}`,
           kakaoUser.kakaoId,
           kakaoUser.name,
           kakaoUser.email || null,
-          kakaoUser.profileImage || null
-        ).run();
-        
-        userId = result.meta.last_row_id as number;
+          kakaoUser.profileImage || null,
+        ).first<User>();
+
+        if (!inserted) throw new Error('INSERT returned no row');
+        return inserted;
+      } catch (insertErr) {
+        // 동시 요청 race condition: 다른 요청이 먼저 INSERT → SELECT로 fallback
+        const raced = await this.db.prepare(
+          `SELECT id, kakao_id, name, email, profile_image, firebase_uid, created_at
+           FROM users WHERE kakao_id = ?`
+        ).bind(kakaoUser.kakaoId).first<User>();
+        if (raced) return raced;
+        throw insertErr;
       }
-      
-      // 사용자 정보 다시 조회하여 반환
-      const user = await this.db.prepare(`
-        SELECT id, kakao_id, name, email, profile_image, firebase_uid, created_at
-        FROM users
-        WHERE id = ?
-      `).bind(userId).first<User>();
-      
-      if (!user) {
-        throw new Error('Failed to retrieve user after upsert');
-      }
-      
-      return user;
-      
     } catch (error) {
       console.error('[KakaoAuthService] DB error:', error);
       throw new Error(`Database error: ${(error as Error).message}`);

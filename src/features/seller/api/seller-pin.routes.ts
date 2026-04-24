@@ -40,8 +40,11 @@ async function getSellerId(authorization: string | undefined, jwtSecret: string)
   } catch { return null }
 }
 
+let _sellerPinColumnEnsured = false
 async function ensurePinColumn(DB: D1Database) {
+  if (_sellerPinColumnEnsured) return
   try { await DB.prepare('ALTER TABLE sellers ADD COLUMN pin_hash TEXT').run() } catch { /* exists */ }
+  _sellerPinColumnEnsured = true
 }
 
 // ── POST /set-pin — PIN 설정 (기존 비밀번호 확인) ──
