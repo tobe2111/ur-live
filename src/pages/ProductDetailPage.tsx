@@ -593,13 +593,39 @@ export default function ProductDetailPage() {
                 <div className="flex"><span className="w-16 shrink-0 text-gray-400">주소</span><span>{product.restaurant_address}</span></div>
               )}
               {product.restaurant_phone && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400">전화</span><span>{product.restaurant_phone}</span></div>
+                <div className="flex items-center">
+                  <span className="w-16 shrink-0 text-gray-400">전화</span>
+                  <a href={`tel:${product.restaurant_phone}`} className="text-blue-600 font-medium underline">
+                    {product.restaurant_phone}
+                  </a>
+                </div>
               )}
               {product.voucher_terms && (
                 <div className="flex"><span className="w-16 shrink-0 text-gray-400">이용조건</span><span>{product.voucher_terms}</span></div>
               )}
               {product.voucher_expiry && (
                 <div className="flex"><span className="w-16 shrink-0 text-gray-400">유효기간</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
+              )}
+
+              {/* 지도 + 외부 연결 버튼 */}
+              {product.restaurant_address && (
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <button type="button"
+                    onClick={() => navigate(`/restaurant-map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
+                    className="py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    🗺 지도
+                  </button>
+                  <a href={`https://map.naver.com/v5/search/${encodeURIComponent(product.restaurant_name || product.restaurant_address)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="py-2 bg-green-50 hover:bg-green-100 text-green-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    네이버
+                  </a>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((product.restaurant_name || '') + ' ' + (product.restaurant_address || ''))}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    Google
+                  </a>
+                </div>
               )}
             </div>
           </AccordionSection>
