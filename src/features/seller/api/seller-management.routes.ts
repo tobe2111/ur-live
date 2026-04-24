@@ -308,7 +308,7 @@ sellerManagementRoutes.post('/register', rateLimit({ action: 'seller_register', 
  * - 세션 쿠키로 인증된 유저만 가능
  * - linked_user_id로 users 테이블과 연결
  */
-sellerManagementRoutes.post('/register-from-user', async (c) => {
+sellerManagementRoutes.post('/register-from-user', rateLimit({ action: 'seller_register_from_user', max: 5, windowSec: 3600 }), async (c) => {
   try {
     const db = c.env.DB;
     const jwtSecret = c.env.JWT_SECRET;

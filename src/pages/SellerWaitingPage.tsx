@@ -30,7 +30,8 @@ export default function SellerWaitingPage() {
           const s = res.data.data.seller?.status as Status
           setStatus(s || 'pending')
           setBusinessName(res.data.data.seller?.business_name || '')
-          if (s === 'active') {
+          // 'approved' 는 레거시 승인 상태 — active 와 동일하게 취급
+          if (s === 'active' || (s as string) === 'approved') {
             navigate('/seller', { replace: true })
             return
           }

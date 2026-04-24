@@ -8,6 +8,17 @@
  * 4. 탈퇴 기록 저장 (30일간 재가입 제한)
  */
 
+/**
+ * Optional cleanup step that logs in DEV but never throws in PROD.
+ * Used for best-effort deletion of rows in tables that may not exist in
+ * all environments (see section 2-1 below).
+ */
+function swallow(tag: string) {
+  return (e: unknown) => {
+    if (import.meta.env.DEV) console.warn(`[deleteAccount] ${tag}:`, e);
+  };
+}
+
 export interface DeleteAccountRequest {
   userId: string;
   reason?: string;
@@ -75,45 +86,45 @@ export async function deleteUserAccount(
       .prepare("UPDATE reviews SET user_id = 'deleted', user_name = '탈퇴회원' WHERE user_id = ?")
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
 
     // Remove follows/subscriptions
     await db
       .prepare('DELETE FROM seller_follows WHERE user_id = ?')
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
     await db
       .prepare('DELETE FROM broadcast_subscriptions WHERE user_id = ?')
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
     await db
       .prepare('DELETE FROM push_subscriptions WHERE user_id = ?')
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
 
     // Zero out points balance (preserve transaction history for audit)
     await db
       .prepare('UPDATE user_points SET balance = 0 WHERE user_id = ?')
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
 
     // Clean coupons
     await db
       .prepare('DELETE FROM user_coupons WHERE user_id = ?')
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
 
     // Anonymize donations (keep for accounting but remove PII)
     await db
       .prepare("UPDATE donations SET donor_name = '탈퇴회원' WHERE user_id = ?")
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
 
     // Mark referral commissions as inactive (stop future earnings)
     await db
@@ -122,19 +133,19 @@ export async function deleteUserAccount(
       )
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
 
     // Clean view history
     await db
       .prepare('DELETE FROM live_stream_views WHERE user_id = ?')
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
     await db
       .prepare('DELETE FROM product_views WHERE user_id = ?')
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
 
     // Cancel pending youtube growth requests
     await db
@@ -143,7 +154,7 @@ export async function deleteUserAccount(
       )
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
 
     // 🛡️ 2026-04-22: GDPR 추가 PII 정리 — 누락 테이블 보강
     // 채팅 메시지 익명화 (기록은 유지, user_name만 변경)
@@ -151,18 +162,18 @@ export async function deleteUserAccount(
       .prepare("UPDATE chat_messages SET user_name = '탈퇴회원', user_avatar = NULL WHERE user_id = ?")
       .bind(userIdStr)
       .run()
-      .catch(() => {});
+      .catch(swallow("cleanup"));
     // 알림 삭제
-    await db.prepare('DELETE FROM notifications WHERE user_id = ?').bind(userIdStr).run().catch(() => {});
-    await db.prepare('DELETE FROM user_notifications WHERE user_id = ?').bind(userIdStr).run().catch(() => {});
+    await db.prepare('DELETE FROM notifications WHERE user_id = ?').bind(userIdStr).run().catch(swallow("cleanup"));
+    await db.prepare('DELETE FROM user_notifications WHERE user_id = ?').bind(userIdStr).run().catch(swallow("cleanup"));
     // 네이티브 푸시 토큰 삭제
-    await db.prepare('DELETE FROM native_push_tokens WHERE user_id = ?').bind(Number(userId) || 0).run().catch(() => {});
+    await db.prepare('DELETE FROM native_push_tokens WHERE user_id = ?').bind(Number(userId) || 0).run().catch(swallow("cleanup"));
     // 검색 기록 삭제 (테이블 존재 시)
-    await db.prepare('DELETE FROM search_history WHERE user_id = ?').bind(userIdStr).run().catch(() => {});
+    await db.prepare('DELETE FROM search_history WHERE user_id = ?').bind(userIdStr).run().catch(swallow("cleanup"));
     // 계정 잠금 기록 삭제
-    await db.prepare("DELETE FROM account_lockouts WHERE user_type = 'user' AND user_id = ?").bind(userIdStr).run().catch(() => {});
+    await db.prepare("DELETE FROM account_lockouts WHERE user_type = 'user' AND user_id = ?").bind(userIdStr).run().catch(swallow("cleanup"));
     // refresh token 삭제
-    await db.prepare("DELETE FROM auth_refresh_tokens WHERE user_type = 'user' AND user_id = ?").bind(userIdStr).run().catch(() => {});
+    await db.prepare("DELETE FROM auth_refresh_tokens WHERE user_type = 'user' AND user_id = ?").bind(userIdStr).run().catch(swallow("cleanup"));
 
     // 3. 사용자 정보 익명화
     // NOTE: production users 테이블에는 status, avatar_url, kakao_access_token 컬럼이 없음.
