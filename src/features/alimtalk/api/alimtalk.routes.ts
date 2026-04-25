@@ -234,7 +234,7 @@ alimtalkRoutes.get('/logs', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
   const { DB } = c.env;
-  const limit = Math.min(parseInt(c.req.query('limit') || '30', 10), 100);
+  const limit = Math.min((parseInt(c.req.query('limit') || '30', 10) || 30), 100);
 
   try {
     const logs = await DB.prepare(`

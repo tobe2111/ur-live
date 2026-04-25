@@ -52,8 +52,8 @@ async function ensureAgencyTables(DB: D1Database) {
 // ── GET /agencies ─────────────────────────────────────────────
 app.get('/', async (c) => {
   await ensureAgencyTables(c.env.DB)
-  const page = Math.max(1, parseInt(c.req.query('page') || '1'))
-  const limit = Math.min(100, parseInt(c.req.query('limit') || '50'))
+  const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1))
+  const limit = Math.min(100, (parseInt(c.req.query('limit') || '50') || 50))
   const offset = (page - 1) * limit
   // linked_user_id 는 컬럼 없을 수도 있어 try-catch 로 graceful fallback
   let rows
@@ -188,8 +188,8 @@ app.post('/:id/reset-password', async (c) => {
 app.get('/:id/sellers', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const agencyId = Number(c.req.param('id'))
-  const page = Math.max(1, parseInt(c.req.query('page') || '1'))
-  const limit = Math.min(100, parseInt(c.req.query('limit') || '50'))
+  const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1))
+  const limit = Math.min(100, (parseInt(c.req.query('limit') || '50') || 50))
   const offset = (page - 1) * limit
   const countRow = await c.env.DB.prepare(
     'SELECT COUNT(*) AS cnt FROM agency_sellers WHERE agency_id = ?'
@@ -243,8 +243,8 @@ app.delete('/:id/sellers/:sellerId', async (c) => {
 // ── GET unassigned sellers ─────────────────────────────────────
 app.get('/unassigned-sellers', async (c) => {
   await ensureAgencyTables(c.env.DB)
-  const page = Math.max(1, parseInt(c.req.query('page') || '1'))
-  const limit = Math.min(200, parseInt(c.req.query('limit') || '50'))
+  const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1))
+  const limit = Math.min(200, (parseInt(c.req.query('limit') || '50') || 50))
   const offset = (page - 1) * limit
   const countRow = await c.env.DB.prepare(`
     SELECT COUNT(*) AS cnt FROM sellers

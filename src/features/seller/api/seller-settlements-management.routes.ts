@@ -81,8 +81,8 @@ sellerSettlementsManagementRoutes.get('/settlements', async (c) => {
     const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
-    const limit = parseInt(c.req.query('limit') || '20');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = (parseInt(c.req.query('limit') || '20') || 20);
+    const offset = (parseInt(c.req.query('offset') || '0') || 0);
     const rows = await db.prepare(
       'SELECT id, seller_id, amount, bank_name, account_number, account_holder, status, created_at FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
     ).bind(sellerId, limit, offset).all().catch(() => ({ results: [] }));

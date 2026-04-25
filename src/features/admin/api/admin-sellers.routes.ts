@@ -55,8 +55,8 @@ interface IdRow {
 adminSellersRoutes.get('/sellers', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const page = Math.max(parseInt(c.req.query('page') || '1'), 1);
-    const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '50'), 1), 200);
+    const page = Math.max((parseInt(c.req.query('page') || '1') || 1), 1);
+    const limit = Math.min(Math.max((parseInt(c.req.query('limit') || '50') || 50), 1), 200);
     const offset = (page - 1) * limit;
 
     let sellers;

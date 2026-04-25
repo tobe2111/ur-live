@@ -97,7 +97,7 @@ notificationsRoutes.get('/', async (c) => {
     const user = c.get('user') as AuthUser;
     const userId = user?.id?.toString() || '';
     const userType = user?.type || 'user';
-    const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200);
+    const limit = Math.min((parseInt(c.req.query('limit') || '50') || 50), 200);
     const unreadOnly = c.req.query('unread_only') === 'true';
     const data = await fetchUnifiedNotifications(DB, userId, userType, { limit, unreadOnly });
     return c.json({ success: true, data });

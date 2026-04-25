@@ -86,8 +86,8 @@ sellerDonationsRoutes.get('/donations', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
   const { DB } = c.env;
-  const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 200);
-  const offset = parseInt(c.req.query('offset') || '0', 10);
+  const limit = Math.min((parseInt(c.req.query('limit') || '50', 10) || 50), 200);
+  const offset = (parseInt(c.req.query('offset') || '0', 10) || 0);
 
   try {
     const [rows, countRow] = await Promise.all([

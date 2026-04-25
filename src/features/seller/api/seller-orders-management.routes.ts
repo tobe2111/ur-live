@@ -70,8 +70,8 @@ sellerOrdersManagementRoutes.get('/orders', async (c) => {
 
     const db = c.env.DB;
     const status = c.req.query('status');
-    const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200);
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = Math.min((parseInt(c.req.query('limit') || '50') || 50), 200);
+    const offset = (parseInt(c.req.query('offset') || '0') || 0);
     const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
 
     let query = `

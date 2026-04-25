@@ -225,8 +225,8 @@ adminProductsRoutes.get('/sample-requests', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const status = c.req.query('status') || '';
-    const page = parseInt(c.req.query('page') || '1', 10);
-    const limit = Math.min(parseInt(c.req.query('limit') || '20', 10), 100);
+    const page = (parseInt(c.req.query('page') || '1', 10) || 1);
+    const limit = Math.min((parseInt(c.req.query('limit') || '20', 10) || 20), 100);
     const offset = (page - 1) * limit;
 
     let where = '1=1';

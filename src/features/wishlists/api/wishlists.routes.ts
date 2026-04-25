@@ -68,8 +68,8 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
     const authUser = getCurrentUser(c);
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
     const userId = String(authUser.id);
-    const limit = parseInt(c.req.query('limit') || '50');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = (parseInt(c.req.query('limit') || '50') || 50);
+    const offset = (parseInt(c.req.query('offset') || '0') || 0);
     const { results } = await DB.prepare(`
       SELECT w.id, w.user_id, w.product_id, w.created_at,
              p.name as product_name, p.price, p.original_price,
@@ -249,8 +249,8 @@ wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
-    const limit = parseInt(c.req.query('limit') || '20');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = (parseInt(c.req.query('limit') || '20') || 20);
+    const offset = (parseInt(c.req.query('offset') || '0') || 0);
 
     const { results } = await DB.prepare(`
       SELECT

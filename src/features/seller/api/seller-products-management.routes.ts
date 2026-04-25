@@ -39,8 +39,8 @@ sellerProductsManagementRoutes.get('/products', async (c) => {
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const db = c.env.DB;
-    const limit = Math.min(parseInt(c.req.query('limit') || '100'), 500);
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = Math.min((parseInt(c.req.query('limit') || '100') || 100), 500);
+    const offset = (parseInt(c.req.query('offset') || '0') || 0);
     const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
     const search = c.req.query('search') || '';
 

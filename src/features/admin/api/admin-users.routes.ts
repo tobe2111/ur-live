@@ -42,8 +42,8 @@ interface UserDetailRow extends UserRow {
 adminUsersRoutes.get('/users', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')));
+    const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1));
+    const limit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '50') || 50)));
     const offset = (page - 1) * limit;
     const search = c.req.query('search');
 

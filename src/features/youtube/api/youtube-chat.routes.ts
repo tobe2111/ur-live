@@ -290,7 +290,7 @@ app.get('/chat/:streamId/cached', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('streamId'))
-  const limit = parseInt(c.req.query('limit') || '50')
+  const limit = (parseInt(c.req.query('limit') || '50') || 50)
 
   try {
     const messages = await c.env.DB.prepare(`

@@ -65,8 +65,8 @@ streamsBrowseRouter.get('/', async (c) => {
     const db = c.env.DB;
     const status = c.req.query('status');
     const sellerId = c.req.query('seller_id');
-    const limit = Math.min(parseInt(c.req.query('limit') || '20', 10), 100);
-    const offset = parseInt(c.req.query('offset') || '0', 10);
+    const limit = Math.min((parseInt(c.req.query('limit') || '20', 10) || 20), 100);
+    const offset = (parseInt(c.req.query('offset') || '0', 10) || 0);
 
     // Short-TTL cache — streams are hot but must feel near-real-time.
     // Don't cache seller-scoped queries (too much cardinality, cooler path).

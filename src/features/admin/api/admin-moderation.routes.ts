@@ -66,8 +66,8 @@ interface StreamHistoryRow {
 adminModerationRoutes.get('/reviews/list', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20')));
+    const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1));
+    const limit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '20') || 20)));
     const offset = (page - 1) * limit;
     const status = c.req.query('status') || 'all';
     const productId = c.req.query('product_id');
@@ -275,7 +275,7 @@ adminModerationRoutes.patch('/live-monitor/:id/end', cors(), async (c) => {
 adminModerationRoutes.get('/live-monitor/history', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const days = Math.min(90, Math.max(1, parseInt(c.req.query('days') || '7')));
+    const days = Math.min(90, Math.max(1, (parseInt(c.req.query('days') || '7') || 7)));
 
     const streams = await executeQuery<StreamHistoryRow>(DB,
       `SELECT ls.id, ls.seller_id,

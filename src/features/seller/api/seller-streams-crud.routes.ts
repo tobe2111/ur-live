@@ -55,8 +55,8 @@ sellerStreamsCrudRoutes.get('/', async (c) => {
 
     // Query parameters for filtering
     const status = c.req.query('status'); // 'scheduled', 'live', 'ended'
-    const limit = Math.min(Math.max(1, parseInt(c.req.query('limit') || '10')), 100);
-    const offset = Math.max(0, parseInt(c.req.query('offset') || '0'));
+    const limit = Math.min(Math.max(1, (parseInt(c.req.query('limit') || '10') || 10)), 100);
+    const offset = Math.max(0, (parseInt(c.req.query('offset') || '0') || 0));
 
     let query = `
       SELECT
