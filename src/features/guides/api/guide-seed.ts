@@ -308,6 +308,20 @@ Cloudflare Dashboard → Pages → Deployments → 이전 버전 "Rollback"
 - **세션 타임아웃**: 관리자 30분 무활동 시 자동 로그아웃
 - **API 키 rotation**: 분기별 JWT_SECRET, DB 크레덴셜 교체
 
+### Rate Limit (속도 제한) 현황
+주요 민감 엔드포인트에 KV 기반 레이트 리밋이 적용되어 있습니다:
+- **계정 삭제** (\`DELETE /api/account/delete\`): 동일 유저 시간당 3회 제한 — 반복 탈퇴/재가입 어뷰징 방지
+- **비밀번호 재설정** (\`POST /api/seller/forgot-password\`, \`POST /api/agency/forgot-password\`): 동일 이메일 시간당 5회 제한 — 이메일 폭탄 방지
+
+> KV 모니터링 (\`/admin/kv-monitoring\`) 에서 레이트 리밋 카운터를 실시간 조회 가능.
+
+### SESSION_KV 캐싱 현황
+공개 읽기 엔드포인트에 KV 캐싱이 적용되어 DB 부하를 줄이고 응답 속도를 개선합니다:
+- **공개 상품 목록** (\`GET /api/products\`): 60초 TTL — 홈페이지 상품 리스트 쿼리
+- **셀러 공개 프로필** (\`GET /api/sellers/:id/public\`): 300초 TTL (120초 stale-while-revalidate) — 셀러 프로필 페이지
+- **홈페이지 섹션** (\`GET /api/sections\`): 120초 TTL — 홈 섹션 + 상품 N+1 쿼리 캐싱
+- **활성 배너** (\`GET /api/banners\`): 120초 TTL — 홈 배너 슬라이드
+
 > ⚠️ **개인정보 유출 의심 시**: 즉시 관리자 계정 잠금 → 감사 로그 확인 → 유출 범위 파악 → 72시간 내 KISA 신고 의무.`,
   },
   {
