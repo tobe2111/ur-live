@@ -757,7 +757,12 @@ PIN 추가 확인 없이는 불가.
 - \`GET /api/seller/pin-status\` — 설정 여부
 - \`POST /api/seller/set-pin\` — 설정 (body: pin, current_password?)
 - \`POST /api/seller/verify-pin\` — 검증 + 쿠키 발급
-- \`POST /api/seller/request-kakao-stepup\` — 카카오 재인증 쿠키 발급 (연동 필수)`,
+- \`POST /api/seller/request-kakao-stepup\` — 카카오 재인증 쿠키 발급 (연동 필수)
+
+### 계정 삭제 안내
+- **계정 삭제** (\`DELETE /api/account/delete\`) 는 시간당 3회로 제한됩니다.
+- 연속 탈퇴/재가입 시도 시 429 오류 발생 — 1시간 후 재시도.
+- 비밀번호 재설정 (\`/seller/forgot-password\`) 은 동일 이메일 기준 시간당 5회 제한.`,
   },
   {
     key: 'policies', icon: '⚖️', title: '판매 정책 & 주의사항', order: 70,

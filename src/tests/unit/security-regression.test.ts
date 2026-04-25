@@ -102,7 +102,7 @@ describe('Ownership enforcement on sensitive GETs', () => {
 
 describe('Payment amount validation present', () => {
   it('POST /api/payments/confirm compares DB total to client amount', () => {
-    const p = path.join(SRC_DIR, 'worker/routes/payment.routes.ts');
+    const p = path.join(SRC_DIR, 'features/payments/api/payment.routes.ts');
     const content = fs.readFileSync(p, 'utf8');
     // Must reduce/sum orders.total_amount somewhere and compare to the body amount.
     expect(content).toMatch(/\.reduce\(/);
@@ -111,13 +111,13 @@ describe('Payment amount validation present', () => {
   });
 
   it('zod schema rejects non-positive integer amounts', () => {
-    const p = path.join(SRC_DIR, 'worker/routes/payment.routes.ts');
+    const p = path.join(SRC_DIR, 'features/payments/api/payment.routes.ts');
     const content = fs.readFileSync(p, 'utf8');
     expect(content).toMatch(/amount:\s*z\.number\(\)\.int\(\)\.positive\(\)/);
   });
 
   it('orderId has tight regex (no path traversal / SQLi characters)', () => {
-    const p = path.join(SRC_DIR, 'worker/routes/payment.routes.ts');
+    const p = path.join(SRC_DIR, 'features/payments/api/payment.routes.ts');
     const content = fs.readFileSync(p, 'utf8');
     expect(content).toMatch(/orderId:\s*z\.string\(\)[^}]*regex/);
   });

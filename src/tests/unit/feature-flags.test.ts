@@ -24,6 +24,7 @@ function createMockD1() {
     }
     if (name === 'INSERT_UPSERT') {
       const [value] = args;
+      tables['feature_flags_kv'] = tables['feature_flags_kv'] || [];
       const table = tables['feature_flags_kv'];
       const existing = table.find((r) => r.key === 'feature_flags');
       if (existing) existing.value = value;

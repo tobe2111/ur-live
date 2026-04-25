@@ -56,6 +56,14 @@ async function ensureTables(DB: D1Database) {
 // GET /api/sections — 메인페이지용 (활성 섹션 + 상품)
 sectionsRoutes.get('/', async (c) => {
   const { DB } = c.env;
+
+  const kv: KVNamespace | undefined = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV;
+  const cacheKey = 'cache:sections:list';
+  if (kv) {
+    const cached = await kv.get(cacheKey, 'text');
+    if (cached) return c.json(JSON.parse(cached));
+  }
+
   await ensureTables(DB);
 
   const { results: sections } = await DB.prepare(
@@ -80,7 +88,11 @@ sectionsRoutes.get('/', async (c) => {
     });
   }
 
-  return c.json({ success: true, data: result });
+  const responseData = { success: true, data: result };
+  if (kv) {
+    c.executionCtx.waitUntil(kv.put(cacheKey, JSON.stringify(responseData), { expirationTtl: 120 }));
+  }
+  return c.json(responseData);
 });
 
 // GET /api/sections/admin — 어드민용 전체 목록

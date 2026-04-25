@@ -15,6 +15,7 @@ import { Hono } from 'hono';
 
 type Bindings = {
   DB: D1Database;
+  SESSION_KV?: KVNamespace;
 };
 
 export const bannerRoutes = new Hono<{ Bindings: Bindings }>();
@@ -24,6 +25,13 @@ bannerRoutes.get('/', async (c) => {
   const { DB } = c.env;
 
   try {
+    const kv = c.env.SESSION_KV;
+    const cacheKey = 'cache:banners:active';
+    if (kv) {
+      const cached = await kv.get(cacheKey, 'text');
+      if (cached) return c.json(JSON.parse(cached));
+    }
+
     const now = new Date().toISOString();
 
     const banners = await DB.prepare(`
@@ -34,7 +42,11 @@ bannerRoutes.get('/', async (c) => {
       ORDER BY display_order ASC, created_at DESC
     `).bind(now, now).all();
 
-    return c.json({ success: true, data: banners.results });
+    const responseData = { success: true, data: banners.results };
+    if (kv) {
+      c.executionCtx.waitUntil(kv.put(cacheKey, JSON.stringify(responseData), { expirationTtl: 120 }));
+    }
+    return c.json(responseData);
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
