@@ -61,6 +61,10 @@ const ADMIN_SEED: SeedSection[] = [
 2. **KV 모니터링** → 캐시 히트율, 레이트 리밋 카운터 점검
 3. **주문 이상치** → 동일 유저 다중 주문, 비정상 고액 주문 검토
 
+### 헬스 모니터링 (수시)
+- [ ] \`GET /api/_internal/health-dashboard\` (admin 전용) — DB 응답 시간, 시크릿 설정 여부, 슬로우 쿼리 확인
+- [ ] 어드민 대시보드 → "실패 웹훅 통계" 확인 (\`GET /api/admin/webhooks/failed-stats\`)
+
 > ⚠️ **주말/공휴일 주의**: 정산 처리는 영업일 기준. 주말 신청은 월요일 처리. 라이브 방송은 주말에 더 활발 → 모니터링 강화.`,
   },
   {
@@ -210,6 +214,17 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - **시청→구매 전환율** — 라이브 커머스의 핵심 지표
 - **채팅/시청자 비율** — 몰입도
 
+### 헬스 대시보드 (신규)
+- **URL**: \`GET /api/_internal/health-dashboard\` (admin 전용)
+- DB 응답 시간 등급: excellent(<50ms) / good(<200ms) / slow(<500ms) / critical
+- 주요 테이블 행 수: users, sellers, products, orders, live_streams
+- 최근 24h 주문 수 / 결제 완료 수 / 전환율
+- 슬로우 쿼리 TOP 5
+- 환경변수 설정 여부 체크 (JWT_SECRET 등 필수 시크릿)
+
+### 실패 웹훅 통계
+- \`GET /api/admin/webhooks/failed-stats\` — 최근 실패 이벤트, Sentry 연동
+
 ### 경보 임계치 (Alert)
 - 일 매출 전주 대비 **-30% 이상** 하락 → 원인 조사 (결제 장애? 인기 셀러 이탈?)
 - 에러율 **1% 초과** → Sentry 로그 확인, 긴급 배포 검토
@@ -266,6 +281,12 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 ### 배포 롤백
 Cloudflare Dashboard → Pages → Deployments → 이전 버전 "Rollback"
 
+## 2026-04-22 대장애 사례 (교훈)
+- **증상**: 셀러/어드민/에이전시 로그인 500 + 유저 로그인 후 API 401 (이틀간)
+- **원인**: Cloudflare Pages에 secret 세팅했으나, 별개 Workers 프로젝트가 Custom Domain을 점유 → secret 없는 Workers에서 처리 → \`JWT_SECRET is not configured\` 500
+- **교훈**: 로그인 500 반복 시 **코드 수정 전 먼저** Cloudflare Dashboard에서 Custom Domain이 Pages/Workers 어디에 연결됐는지 확인
+- **재발 방지**: \`GET /api/_internal/health-dashboard\`에서 시크릿 설정 여부 실시간 확인 가능
+
 > 🚨 **금지 사항**: 운영 중 \`wrangler deploy\` 사용 금지 (이 프로젝트는 Pages, Workers 아님). \`wrangler pages deploy\` 만 사용.`,
   },
   {
@@ -315,10 +336,11 @@ Cloudflare Dashboard → Pages → Deployments → 이전 버전 "Rollback"
   },
   {
     key: 'deploy', icon: '🚀', title: '배포 절차', order: 140,
-    content: `### 배포 구조
-- **Cloudflare Pages** 프로젝트 \`ur-live\`
-- 커스텀 도메인: \`live.ur-team.com\`
+    content: `### 현행 배포 구조 (2026-04-22 정정)
+- 배포 대상: **Cloudflare Pages** 프로젝트 \`ur-live\` (NOT Workers)
+- 커스텀 도메인: \`live.ur-team.com\` → Pages 프로젝트에 연결
 - 자동 배포: feature 브랜치 → main 머지 시 GitHub Actions 가 Pages 에 배포
+- 환경변수: Cloudflare Dashboard → Workers & Pages → ur-live (Pages) → Settings → Variables and Secrets
 
 ### 배포 명령
 \`\`\`bash
@@ -333,12 +355,18 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live
 3. \`npx vite build\` + \`node scripts/build-worker.js\` — 빌드 성공
 4. GitHub Actions 녹색 확인 후 main 머지
 
+### 배포 후 확인
+1. \`GET /api/health\` — status: ok 확인
+2. \`GET /api/_internal/health-dashboard\` — DB/시크릿 정상 확인
+3. \`POST /api/admin/login\` — 관리자 로그인 테스트
+
 ### DB 스키마 변경
 - migration 파일 작성 (\`migrations/0XXX_add_feature.sql\`)
 - \`repair-schema\` 엔드포인트에 ALTER/CREATE 추가 (임시 조치)
 - 배포 후 관리자가 curl 로 \`/api/_internal/repair-schema\` 호출
 
-> 🚨 **절대 금지**: main 에 직접 push, pre-commit 훅 \`--no-verify\`, 프로덕션 D1 에서 \`DROP TABLE\` 수동 실행.`,
+> 🚨 **절대 금지**: main 에 직접 push, pre-commit 훅 \`--no-verify\`, 프로덕션 D1 에서 \`DROP TABLE\` 수동 실행.
+> ❌ \`wrangler deploy\` (Workers 용) 명령 사용 금지 — 이 프로젝트는 Pages 구조에만 맞음.`,
   },
   {
     key: 'links', icon: '🔗', title: '유용한 링크 모음', order: 145,
@@ -388,6 +416,15 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live
 | 시스템 헬스 | \`/admin/health\` | 서비스 상태, DB 지연, 에러율 |
 | Cafe24 연동 | \`/admin/cafe24\` | Cafe24 쇼핑몰 연결 설정 |
 | 운영 가이드 | \`/admin/operations-guide\` | 이 가이드 편집 (현재 페이지) |
+
+### 내부 운영 API
+
+| 엔드포인트 | 설명 |
+|---|---|
+| \`GET /api/_internal/health-dashboard\` | 종합 헬스 체크 — DB 응답시간, 시크릿 설정, 슬로우쿼리 (admin 전용) |
+| \`GET /api/admin/webhooks/failed-stats\` | 웹훅 실패 통계, Sentry 연동 |
+| \`GET /api/admin/smoke-test\` | 스모크 테스트 |
+| \`GET /api/_internal/repair-schema\` | DB 스키마 응급 복구 (비상시만) |
 
 ### 빠른 액세스 북마크 (권장)
 대시보드 → 셀러 승인 → 주문 관리 → 정산 → 라이브 모니터 순서로 매일 아침 순회하면 누락 없이 운영 가능합니다.`,
