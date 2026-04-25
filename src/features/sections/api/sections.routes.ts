@@ -16,6 +16,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import type { Context } from 'hono';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
@@ -23,6 +24,21 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
 
 sectionsRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+
+// 캐시 무효화 - SESSION_KV 의 sections 캐시 키 삭제
+function invalidateSectionsKvCache(c: Context<{ Bindings: Env }>): void {
+  const kv: KVNamespace | undefined = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV;
+  if (!kv) return;
+  c.executionCtx.waitUntil((async () => {
+    try {
+      // sections 캐시 키는 단일('cache:sections:list') 이지만 prefix 로 안전하게 처리
+      const keys = await kv.list({ prefix: 'cache:sections:' });
+      await Promise.all(keys.keys.map(k => kv.delete(k.name)));
+    } catch {
+      // 무효화 실패 시 120s TTL 로 자동 만료
+    }
+  })());
+}
 
 async function ensureTables(DB: D1Database) {
   try {
@@ -61,7 +77,9 @@ sectionsRoutes.get('/', async (c) => {
   const cacheKey = 'cache:sections:list';
   if (kv) {
     const cached = await kv.get(cacheKey, 'text');
-    if (cached) return c.json(JSON.parse(cached));
+    if (cached) return c.json(JSON.parse(cached), 200, {
+      'Cache-Control': 'public, max-age=120, s-maxage=120'
+    });
   }
 
   await ensureTables(DB);
@@ -92,7 +110,9 @@ sectionsRoutes.get('/', async (c) => {
   if (kv) {
     c.executionCtx.waitUntil(kv.put(cacheKey, JSON.stringify(responseData), { expirationTtl: 120 }));
   }
-  return c.json(responseData);
+  return c.json(responseData, 200, {
+    'Cache-Control': 'public, max-age=120, s-maxage=120'
+  });
 });
 
 // GET /api/sections/admin — 어드민용 전체 목록
@@ -141,6 +161,7 @@ sectionsRoutes.post('/', requireAuth(), async (c) => {
     'INSERT INTO homepage_sections (title, subtitle, layout, sort_order) VALUES (?, ?, ?, ?)'
   ).bind(title, subtitle ?? null, layout ?? 'grid3', (maxOrder?.max_order ?? 0) + 1).run();
 
+  invalidateSectionsKvCache(c);
   return c.json({ success: true, message: '섹션이 생성되었습니다' }, 201);
 });
 
@@ -166,6 +187,7 @@ sectionsRoutes.put('/:id', requireAuth(), async (c) => {
   params.push(sectionId!);
   await DB.prepare(`UPDATE homepage_sections SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
 
+  invalidateSectionsKvCache(c);
   return c.json({ success: true, message: '섹션이 수정되었습니다' });
 });
 
@@ -180,6 +202,7 @@ sectionsRoutes.delete('/:id', requireAuth(), async (c) => {
   await DB.prepare('DELETE FROM section_products WHERE section_id = ?').bind(sectionId).run();
   await DB.prepare('DELETE FROM homepage_sections WHERE id = ?').bind(sectionId).run();
 
+  invalidateSectionsKvCache(c);
   return c.json({ success: true, message: '섹션이 삭제되었습니다' });
 });
 
@@ -203,6 +226,7 @@ sectionsRoutes.post('/:id/products', requireAuth(), async (c) => {
     ).bind(sectionId, product_ids[i], i).run();
   }
 
+  invalidateSectionsKvCache(c);
   return c.json({ success: true, message: `${product_ids.length}개 상품이 설정되었습니다` });
 });
 
@@ -215,6 +239,7 @@ sectionsRoutes.delete('/:id/products/:productId', requireAuth(), async (c) => {
   await DB.prepare('DELETE FROM section_products WHERE section_id = ? AND product_id = ?')
     .bind(c.req.param('id'), c.req.param('productId')).run();
 
+  invalidateSectionsKvCache(c);
   return c.json({ success: true, message: '상품이 제거되었습니다' });
 });
 
@@ -231,6 +256,7 @@ sectionsRoutes.post('/reorder', requireAuth(), async (c) => {
       .bind(i, section_ids[i]).run();
   }
 
+  invalidateSectionsKvCache(c);
   return c.json({ success: true, message: '순서가 변경되었습니다' });
 });
 

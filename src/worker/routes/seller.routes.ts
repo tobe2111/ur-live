@@ -33,7 +33,9 @@ sellersRouter.get('/', async (c) => {
     if (kv) {
       try {
         const cached = await kv.get(cacheKey, 'text');
-        if (cached) return c.json(JSON.parse(cached));
+        if (cached) return c.json(JSON.parse(cached), 200, {
+          'Cache-Control': 'public, max-age=60, s-maxage=60'
+        });
       } catch (err) {
         logError('sellers.list.cache_read', { error: (err as Error)?.message });
       }
@@ -77,7 +79,9 @@ sellersRouter.get('/', async (c) => {
       }
     }
 
-    return c.json(responseData);
+    return c.json(responseData, 200, {
+      'Cache-Control': 'public, max-age=60, s-maxage=60'
+    });
   } catch (err) {
     logError('sellers.list.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch sellers' }, 500);
@@ -140,7 +144,9 @@ sellersRouter.get('/:id/public', async (c) => {
       return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     }
 
-    return c.json({ success: true, data: seller });
+    return c.json({ success: true, data: seller }, 200, {
+      'Cache-Control': 'public, max-age=120, s-maxage=120'
+    });
   } catch (err) {
     logError('sellers.publicProfile.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch seller' }, 500);

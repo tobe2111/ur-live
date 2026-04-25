@@ -29,7 +29,9 @@ bannerRoutes.get('/', async (c) => {
     const cacheKey = 'cache:banners:active';
     if (kv) {
       const cached = await kv.get(cacheKey, 'text');
-      if (cached) return c.json(JSON.parse(cached));
+      if (cached) return c.json(JSON.parse(cached), 200, {
+        'Cache-Control': 'public, max-age=120, s-maxage=120'
+      });
     }
 
     const now = new Date().toISOString();
@@ -46,7 +48,9 @@ bannerRoutes.get('/', async (c) => {
     if (kv) {
       c.executionCtx.waitUntil(kv.put(cacheKey, JSON.stringify(responseData), { expirationTtl: 120 }));
     }
-    return c.json(responseData);
+    return c.json(responseData, 200, {
+      'Cache-Control': 'public, max-age=120, s-maxage=120'
+    });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }

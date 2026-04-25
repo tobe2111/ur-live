@@ -181,6 +181,20 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       FROM sellers WHERE id = ?
     `).bind(sellerId).first();
 
+    // 캐시 무효화 - SESSION_KV 의 seller public 캐시 키들 삭제
+    const kv = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV;
+    if (kv) {
+      // KV 는 prefix 기반 list/delete 가능 (limit 1000 keys)
+      c.executionCtx.waitUntil((async () => {
+        try {
+          const keys = await kv.list({ prefix: 'cache:seller:public:' });
+          await Promise.all(keys.keys.map(k => kv.delete(k.name)));
+        } catch {
+          // 무효화 실패 시 60s TTL 로 자동 만료
+        }
+      })());
+    }
+
     return c.json({ success: true, data: updatedSeller });
 
   } catch (error: unknown) {

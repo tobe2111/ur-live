@@ -13,6 +13,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import type { Context } from 'hono';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { requireAdmin } from '@/worker/middleware/auth';
 import { validateImageUrl } from '@/worker/utils/validation';
@@ -20,6 +21,21 @@ import { invalidateBannerCache } from '../../../lib/cache-invalidation';
 import type { Env } from '@/worker/types/env';
 
 export const adminBannersRoutes = new Hono<{ Bindings: Env }>();
+
+// 캐시 무효화 - SESSION_KV 의 banners 캐시 키 삭제 (Edge Cache 와 별개)
+function invalidateBannerKvCache(c: Context<{ Bindings: Env }>): void {
+  const kv = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV;
+  if (!kv) return;
+  c.executionCtx.waitUntil((async () => {
+    try {
+      // banners 캐시 키는 단일('cache:banners:active') 이지만 prefix 로 안전하게 처리
+      const keys = await kv.list({ prefix: 'cache:banners:' });
+      await Promise.all(keys.keys.map(k => kv.delete(k.name)));
+    } catch {
+      // 무효화 실패 시 120s TTL 로 자동 만료
+    }
+  })());
+}
 
 // 모든 배너 관리 엔드포인트는 admin 권한 필수
 adminBannersRoutes.use('*', requireAdmin());
@@ -63,6 +79,7 @@ adminBannersRoutes.post('/', cors(), async (c) => {
        display_order || 0, start_date || null, end_date || null]
     );
     c.executionCtx.waitUntil(invalidateBannerCache());
+    invalidateBannerKvCache(c);
     return c.json({ success: true, data: { id: result.meta.last_row_id, title } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -96,6 +113,7 @@ adminBannersRoutes.put('/:id', cors(), async (c) => {
        display_order || 0, start_date || null, end_date || null, bannerId]
     );
     c.executionCtx.waitUntil(invalidateBannerCache());
+    invalidateBannerKvCache(c);
     return c.json({ success: true, data: { id: bannerId } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -111,6 +129,7 @@ adminBannersRoutes.delete('/:id', cors(), async (c) => {
     if (rows.length === 0) return c.json({ success: false, error: '배너를 찾을 수 없습니다' }, 404);
     await executeRun(DB, 'DELETE FROM banners WHERE id = ?', [bannerId]);
     c.executionCtx.waitUntil(invalidateBannerCache());
+    invalidateBannerKvCache(c);
     return c.json({ success: true, data: { id: bannerId } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);

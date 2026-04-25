@@ -15,6 +15,7 @@ import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import type { Env } from '@/worker/types/env';
 import { logError } from '@/worker/utils/logger';
+import type { Context } from 'hono';
 
 export const sellerProductsManagementRoutes = new Hono<{ Bindings: Env }>();
 
@@ -29,6 +30,22 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
   } catch {
     return null;
   }
+}
+
+// ─── KV cache invalidation helper ──────────────────────────────────────────
+// 캐시 무효화 - SESSION_KV 의 products 캐시 키들 삭제
+function invalidateProductsKvCache(c: Context<{ Bindings: Env }>): void {
+  const kv = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV;
+  if (!kv) return;
+  // KV 는 prefix 기반 list/delete 가능 (limit 1000 keys)
+  c.executionCtx.waitUntil((async () => {
+    try {
+      const keys = await kv.list({ prefix: 'cache:products:' });
+      await Promise.all(keys.keys.map(k => kv.delete(k.name)));
+    } catch {
+      // 무효화 실패 시 60s TTL 로 자동 만료
+    }
+  })());
 }
 
 // ─── GET /products ─────────────────────────────────────────────────────────
@@ -205,6 +222,7 @@ sellerProductsManagementRoutes.post('/products', async (c) => {
       sendKakaoToFollowers(db, Number(sellerId), `🛍️ 새 상품이 등록되었어요!`, productName, `/products/${newProductId}`, '상품 보기').catch(() => {});
     }
 
+    invalidateProductsKvCache(c);
     return c.json({ success: true, data: newProduct }, 201);
   } catch (error: unknown) {
     logError('seller.products.create.error', { error: (error as Error)?.message });
@@ -281,6 +299,7 @@ sellerProductsManagementRoutes.put('/products/:id', async (c) => {
        FROM products WHERE id = ?`
     ).bind(productId).first<Record<string, unknown>>();
 
+    invalidateProductsKvCache(c);
     return c.json({ success: true, data: updated });
   } catch (error: unknown) {
     logError('seller.products.update.error', { error: (error as Error)?.message });
@@ -305,6 +324,7 @@ sellerProductsManagementRoutes.delete('/products/:id', async (c) => {
 
     if (!result.meta.changes) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
 
+    invalidateProductsKvCache(c);
     return c.json({ success: true, message: '상품이 삭제되었습니다.' });
   } catch (error: unknown) {
     logError('seller.products.delete.error', { error: (error as Error)?.message });

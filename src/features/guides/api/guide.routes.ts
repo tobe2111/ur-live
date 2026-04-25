@@ -80,7 +80,9 @@ guideRoutes.get('/:type', cors(), async (c) => {
        FROM operation_guides WHERE guide_type = ? ORDER BY section_order ASC`,
       [type]
     )
-    return c.json({ success: true, data: rows })
+    return c.json({ success: true, data: rows }, 200, {
+      'Vary': 'Accept-Language'
+    })
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500)
   }
