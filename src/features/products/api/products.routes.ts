@@ -20,6 +20,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { logError } from '@/worker/utils/logger';
 import { ALLOWED_ORIGINS } from '../../../shared/constants';
 import { invalidateProductCache } from '../../../lib/cache-invalidation';
 import { validateImageUrl } from '../../../worker/utils/validation';
@@ -135,7 +136,7 @@ productsRoutes.get('/', cors(), async (c) => {
     });
     
   } catch (error) {
-    console.error('[Products API] Get list error:', error);
+    logError('products.list.error', { error: (error as Error)?.message });
     return c.json({
       success: false,
       error: (error as Error).message
@@ -162,7 +163,7 @@ productsRoutes.get('/:id/options', cors(), async (c) => {
 
     return c.json({ success: true, data: result.results || [] });
   } catch (err: any) {
-    console.error('[Products API] Get options error:', err);
+    logError('products.options.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch product options' }, 500);
   }
 });
@@ -193,8 +194,8 @@ productsRoutes.get('/:id', cors(), async (c) => {
     });
     
   } catch (error) {
-    console.error('[Products API] Get detail error:', error);
-    
+    logError('products.detail.error', { error: (error as Error)?.message });
+
     if ((error as Error).message === 'Product not found') {
       return c.json({
         success: false,
@@ -281,7 +282,7 @@ productsRoutes.post('/', tightCors(), rateLimit({ action: 'product_create', max:
     }, 201);
     
   } catch (error) {
-    console.error('[Products API] Create error:', error);
+    logError('products.create.error', { error: (error as Error)?.message });
     return c.json({
       success: false,
       error: (error as Error).message
@@ -339,8 +340,8 @@ productsRoutes.put('/:id', tightCors(), requireAuth(), async (c) => {
     });
 
   } catch (error) {
-    console.error('[Products API] Update error:', error);
-    
+    logError('products.update.error', { error: (error as Error)?.message });
+
     if ((error as Error).message === 'Product not found') {
       return c.json({
         success: false,
@@ -404,8 +405,8 @@ productsRoutes.delete('/:id', tightCors(), requireAuth(), async (c) => {
     });
     
   } catch (error) {
-    console.error('[Products API] Delete error:', error);
-    
+    logError('products.delete.error', { error: (error as Error)?.message });
+
     if ((error as Error).message === 'Product not found') {
       return c.json({
         success: false,
