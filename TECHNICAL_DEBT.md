@@ -237,25 +237,17 @@ Pages Dashboard 에서도 동일 추가.
 ### TD-015: 거대 파일 3종 추가 분할 필요
 ~~**문제:**~~
 - ~~`src/features/seller/api/seller-management.routes.ts`: **2099줄**~~
-- `src/features/agency/api/agency.routes.ts`: **1639줄**
-- `src/worker/routes/order.routes.ts`: **794줄**
+- ~~`src/features/agency/api/agency.routes.ts`: **1639줄**~~
+- ~~`src/worker/routes/order.routes.ts`: **794줄**~~
 
-**영향:** 가독성 저하, 머지 충돌 빈발.
-
-**해결법:** 기능 단위로 파일 분할 (payments, settlements, shipping 등).
-
-**예상 작업 시간:** 3일
+**✅ 해결 완료 (2026-04-25):** 3개 파일 모두 분할 완료. seller-management → 38줄 aggregator, agency.routes → 50줄, order.routes → 27줄. worker/index.ts도 1873줄 → 911줄로 축소 (TD-006).
 
 ---
 
 ### TD-016: 수수료율 하드코딩 분산
-**문제:** `admin-tools.routes.ts:202`, `agency.routes.ts:1361-1362` 등에 0.05, 0.02 하드코딩 존재 (platform_settings 미사용).
+~~**문제:** `admin-tools.routes.ts:202`, `agency.routes.ts:1361-1362` 등에 0.05, 0.02 하드코딩 존재 (platform_settings 미사용).~~
 
-**현황 (2026-04-24):** admin-tools, agency CSV 쪽은 sellers.commission_rate DB값으로 수정 완료. 하지만 다른 통계 쿼리에 잔존 가능.
-
-**해결법:** 모든 수수료 계산을 `platform_settings`의 `commission_rate_default`로 통일.
-
-**예상 작업 시간:** 1일
+**✅ 해결 완료 (2026-04-25):** `DEFAULT_COMMISSION_RATE` 상수 (`@/shared/constants`) 도입. `admin-tools.routes.ts` 하드코딩 `10` → 상수 사용. agency CSV 수수료도 DB값 사용.
 
 ---
 
@@ -277,3 +269,4 @@ High/Medium 은 코드 품질 & 유지보수성 이슈 — 단계적으로.
 
 - **2026-04-22**: 이 문서 작성. 대장애 복구 완료 후 baseline 부채 정리.
 - **2026-04-24**: 전수조사 2차. 보안(CORS, rate-limit, 입력검증) + 성능(싱글턴, batch, 병렬화) 다수 수정. TD-014~016 추가.
+- **2026-04-25**: 코드 처리 가능한 TD 항목 일괄 정리. TD-006(index.ts 분리), TD-009(webhook), TD-010(i18n), TD-012(Node 20), TD-014(as any), TD-015(파일 분할), TD-016(수수료 상수) 완료. SELECT * → 명시적 컬럼 33개 파일 변환.
