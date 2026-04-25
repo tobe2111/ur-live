@@ -251,12 +251,34 @@ Pages Dashboard 에서도 동일 추가.
 
 ---
 
+### TD-017: SESSION_KV 미프로비저닝 (성능 캐시 비활성)
+**문제:**
+- `wrangler.toml`의 `[[kv_namespaces]]` SESSION_KV 섹션이 주석 처리됨
+- 코드에 KV 캐시 로직이 구현되어 있으나(`if (kv)` 방어 코드) KV가 없으면 모든 요청이 D1 DB를 직접 조회
+- 영향받는 캐시: 상품 목록 (60s), 배너/섹션 (120s), 셀러 공개 프로필 (120s), sellers 목록 (60s)
+
+**해결법:**
+```bash
+# 1. KV 네임스페이스 생성 (Pages 프로젝트용)
+wrangler kv:namespace create SESSION_KV
+# 출력에서 id 복사 → wrangler.toml 의 SESSION_KV id 에 붙여넣기 후 주석 해제
+
+# 2. wrangler.toml 수정:
+# [[kv_namespaces]]
+# binding = "SESSION_KV"
+# id = "<복사한_ID>"
+```
+
+**심각도:** 🟡 High (기능 동작은 정상이나 성능 저하)
+
+---
+
 ## 📊 요약
 
 | 심각도 | 건수 | 예상 총 작업 시간 |
 |--------|------|------------------|
 | 🔴 Critical | 3 | 2.5시간 (사용자) |
-| 🟡 High | 4 | 3주 |
+| 🟡 High | 5 | 3주 |
 | 🟢 Medium | 7 | 2주 |
 | ⚪ Low | 2 | 수시간 |
 
