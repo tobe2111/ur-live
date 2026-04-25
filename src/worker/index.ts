@@ -28,6 +28,7 @@ import { globalErrorHandler as errorHandler } from './middleware/error-handler';
 import { errorRateMonitor } from './middleware/error-rate-monitor';
 import { edgeCache } from './middleware/edge-cache';
 import { requestId } from './middleware/request-id';
+import { securityHeaders } from './middleware/security-headers';
 
 // ---- Feature module routes ----
 import { accountRoutes } from '../features/account/api/account.routes';
@@ -194,6 +195,7 @@ adminApp.use('*', adminAuditMiddleware());
 // ============================================================
 
 app.use('*', requestId());
+app.use('*', securityHeaders());
 app.use('*', timing());
 app.use('*', logger());
 // Reject any request body larger than 1MB before it hits route handlers.
