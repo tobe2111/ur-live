@@ -1,4 +1,5 @@
 import { TOSS_PAYMENT_URL } from '../../shared/constants';
+import { logError } from './logger';
 
 // Cloudflare Worker용 환불 처리 유틸리티
 //
@@ -223,7 +224,7 @@ export async function processRefund(
 
     return { success: true, refundId: orderId }
   } catch (error) {
-    console.error('❌ 환불 처리 실패:', error)
+    logError('refund.process.failed', { error: (error as Error)?.message })
     return {
       success: false,
       error: error instanceof Error ? error.message : '환불 처리 중 오류가 발생했습니다',

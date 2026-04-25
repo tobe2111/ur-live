@@ -16,6 +16,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { logWarn, logError } from '@/worker/utils/logger'
 
 export const resendWebhookRoutes = new Hono<{ Bindings: Env }>()
 
@@ -91,7 +92,7 @@ resendWebhookRoutes.post('/', async (c) => {
     }
   } else {
     // secret 미세팅: 경고 로그만 (긴급 롤백/개발 환경 호환)
-    console.warn('[ResendWebhook] RESEND_WEBHOOK_SECRET not configured — signature verification skipped')
+    logWarn('resendWebhook.signatureSkipped')
   }
 
   let body: ResendWebhookBody
@@ -121,7 +122,7 @@ resendWebhookRoutes.post('/', async (c) => {
         ).bind(email, body.type).run()
       } catch (err) {
         // Best-effort — return 200 even on DB failure so Resend doesn't retry forever
-        console.error('[ResendWebhook] DB error:', err)
+        logError('resendWebhook.dbError', { error: (err as Error)?.message })
       }
     }
   }

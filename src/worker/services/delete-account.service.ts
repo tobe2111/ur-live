@@ -8,6 +8,8 @@
  * 4. 탈퇴 기록 저장 (30일간 재가입 제한)
  */
 
+import { logWarn } from '../utils/logger';
+
 /**
  * Optional cleanup step that logs in DEV but never throws in PROD.
  * Used for best-effort deletion of rows in tables that may not exist in
@@ -201,8 +203,7 @@ export async function deleteUserAccount(
           .bind(`deleted_${Date.now()}@deleted.invalid`, userId)
           .run();
       } catch {
-        // eslint-disable-next-line no-console
-        if (typeof console !== 'undefined') console.warn('[delete-account] users anonymize failed', e);
+        logWarn('deleteAccount.users.anonymizeFailed', { error: (e as Error)?.message });
       }
     }
 

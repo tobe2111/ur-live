@@ -8,6 +8,8 @@
  * - 슬로우 쿼리
  */
 
+import { logWarn } from './logger'
+
 export interface PerformanceMetric {
   timestamp: number;
   endpoint: string;
@@ -49,10 +51,10 @@ class PerformanceMonitor {
 
     // 슬로우 쿼리 로깅
     if (metric.responseTime > this.slowQueryThreshold) {
-      console.warn('[Performance] 🐌 Slow query detected:', {
+      logWarn('performance.slow_query_detected', {
         endpoint: metric.endpoint,
-        responseTime: `${metric.responseTime}ms`,
-        dbQueryTime: metric.dbQueryTime ? `${metric.dbQueryTime}ms` : 'N/A',
+        responseTime: metric.responseTime,
+        dbQueryTime: metric.dbQueryTime,
         dbQueryCount: metric.dbQueryCount || 0,
       });
     }

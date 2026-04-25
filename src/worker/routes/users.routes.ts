@@ -106,13 +106,13 @@ usersRouter.post('/init', requireAuth(), async (c) => {
         .bind(firebaseUid, email, displayName || null)
         .run()
         .catch((e: any) => {
-          console.warn('[/api/users/init] DB upsert failed (non-critical):', e?.message);
+          logWarn('users.init.db_upsert_failed', { error: e?.message });
         });
     }
 
     return c.json({ success: true, message: 'User initialized' });
   } catch (err: any) {
-    console.error('[/api/users/init] Error:', err);
+    logError('users.init.error', { error: (err as Error)?.message });
     return c.json({ success: true, message: 'Init skipped' }); // fire-and-forget이므로 200 반환
   }
 });

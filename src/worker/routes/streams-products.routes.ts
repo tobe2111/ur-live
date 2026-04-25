@@ -136,7 +136,7 @@ streamsProductsRouter.post('/:id/current-product', async (c) => {
 
     return c.json({ success: true, message: 'Current product updated' });
   } catch (err: unknown) {
-    console.error('[Streams] Set current product error:', err);
+    logError('streams.products.setCurrentProduct.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to update current product' }, 500);
   }
 });

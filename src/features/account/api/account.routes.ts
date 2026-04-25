@@ -15,6 +15,7 @@ import {
   checkReregistrationRestriction,
   type DeleteAccountRequest
 } from '@/worker/services/delete-account.service';
+import { logError } from '@/worker/utils/logger';
 
 type Bindings = {
   DB: D1Database;
@@ -69,7 +70,7 @@ accountRoutes.delete('/delete', requireAuth(), async (c) => {
 
     return c.json(result, 200);
   } catch (error) {
-    console.error('[Account Delete] Error:', (error as Error).message);
+    logError('account.delete.error', { error: (error as Error)?.message });
 
     return c.json({
       success: false,
@@ -106,7 +107,7 @@ accountRoutes.get('/check-restriction', async (c) => {
 
     return c.json(result, 200);
   } catch (error) {
-    console.error('[Account Restriction] Error:', error);
+    logError('account.checkRestriction.error', { error: (error as Error)?.message });
     
     return c.json({
       success: false,

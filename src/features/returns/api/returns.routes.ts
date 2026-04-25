@@ -22,6 +22,7 @@ import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { tossCancelPayment } from '@/worker/utils/toss-payments';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { logError } from '@/worker/utils/logger';
 
 const returnsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -508,7 +509,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
         .bind(returnRecord.order_id).run().catch(() => {});
     }
   } catch (err) {
-    console.error('재고 복구 실패 (계속 진행):', err);
+    logError('returns.refund.stockRestoreFailed', { error: (err as Error)?.message });
   }
 
   // 5. 반품 상태 업데이트

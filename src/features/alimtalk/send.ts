@@ -55,7 +55,7 @@ export async function sendSellerAlimtalk(opts: SendAlimtalkOptions): Promise<{ s
   ).bind(sellerId).run();
 
   if (!deductResult.meta.changes) {
-    console.warn(`[Alimtalk] seller ${sellerId} 크레딧 부족 — 차감 실패`);
+    logWarn('alimtalk.send.insufficient_credits', { sellerId });
     return { success: false, error: '브랜드메시지 크레딧이 부족합니다' };
   }
 

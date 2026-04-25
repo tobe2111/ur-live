@@ -1,4 +1,5 @@
 import { TOSS_PAYMENT_URL } from '../../shared/constants';
+import { logError } from './logger';
 
 // Cloudflare Worker용 결제 처리 유틸리티
 //
@@ -131,7 +132,7 @@ export async function rollbackOrder(
 
     // Order rollback completed
   } catch (error) {
-    console.error(`주문 롤백 실패: ${orderId}`, error)
+    logError('checkout.order.rollback_failed', { orderId, error: (error as Error)?.message })
   }
 }
 
@@ -276,7 +277,7 @@ export async function processCheckout(
     return { success: true, orderId: String(newOrderId) }
   } catch (error) {
     // 에러 발생 시 롤백
-    console.error('❌ 주문 처리 실패:', error)
+    logError('checkout.process.failed', { error: (error as Error)?.message })
     await rollbackOrder(db, orderId)
 
     return {

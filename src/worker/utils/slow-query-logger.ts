@@ -10,6 +10,8 @@
  * THRESHOLD 초과 시 slow_queries 테이블에 기록.
  */
 
+import { logError } from './logger';
+
 const SLOW_THRESHOLD_MS = 200;
 
 export async function loggedQuery<T = unknown>(
@@ -46,7 +48,7 @@ export async function loggedQuery<T = unknown>(
     return result.results || [];
   } catch (err) {
     const duration = Date.now() - start;
-    console.error(`[slow-query-logger] ${label} failed after ${duration}ms:`, err);
+    logError('slow-query-logger.query.failed', { label, duration, error: (err as Error)?.message });
     throw err;
   }
 }

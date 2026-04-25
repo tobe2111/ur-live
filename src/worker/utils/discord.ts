@@ -1,4 +1,5 @@
 // Cloudflare Worker용 Discord 알림 유틸리티
+import { logError } from './logger'
 
 export interface DiscordAlert {
   title: string
@@ -42,12 +43,12 @@ export async function sendDiscordAlert(
     })
 
     if (!response.ok) {
-      console.error('❌ Discord 알림 전송 실패:', response.statusText)
+      logError('discord.alert.send_failed', { error: response.statusText })
     } else {
       // Discord notification sent successfully
     }
   } catch (error) {
-    console.error('❌ Discord 알림 전송 오류:', error)
+    logError('discord.alert.send_error', { error: (error as Error)?.message })
   }
 }
 

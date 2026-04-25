@@ -10,6 +10,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { verify } from 'hono/jwt';
+import { logError } from '../utils/logger';
 
 export const streamsViewersRouter = new Hono<{ Bindings: Env }>();
 
@@ -67,7 +68,7 @@ streamsViewersRouter.get('/:id/viewer-count', async (c) => {
       },
     });
   } catch (err: unknown) {
-    console.error('[Streams] Viewer count error:', err);
+    logError('streams.viewers.count.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch viewer count' }, 500);
   }
 });
@@ -226,7 +227,7 @@ streamsViewersRouter.post('/:id/viewer/join', async (c) => {
 
     return c.json({ success: true, data: { new_session: isNewSession } });
   } catch (err: unknown) {
-    console.error('[Streams] Viewer join error:', err);
+    logError('streams.viewers.join.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to join stream' }, 500);
   }
 });

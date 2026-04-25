@@ -14,6 +14,8 @@
  * - Performance monitoring
  */
 
+import { logError } from './logger';
+
 interface SentryEvent {
   message?: string;
   exception?: {
@@ -96,7 +98,7 @@ class SentryClient {
       await this.sendEvent(event);
       // Error sent to Sentry
     } catch (sentryError) {
-      console.error('[Sentry] ❌ Failed to send error:', sentryError);
+      logError('sentry.capture_exception.failed', { error: (sentryError as Error)?.message });
     }
   }
 
@@ -133,7 +135,7 @@ class SentryClient {
       await this.sendEvent(event);
       // Message sent to Sentry
     } catch (sentryError) {
-      console.error('[Sentry] ❌ Failed to send message:', sentryError);
+      logError('sentry.capture_message.failed', { error: (sentryError as Error)?.message });
     }
   }
 
