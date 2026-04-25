@@ -13,6 +13,8 @@
  * - Detailed logging for debugging
  */
 
+import { logError } from '../utils/logger';
+
 interface RetryOptions {
   maxRetries?: number;
   initialDelayMs?: number;
@@ -117,7 +119,7 @@ export async function retryWithBackoff<T>(
       };
     } catch (error: any) {
       lastError = error;
-      console.error(`[Retry] ❌ Attempt ${attempt + 1} failed:`, error.message || error);
+      logError('retry.attempt.failed', { error: error.message || String(error), attempt: attempt + 1 });
 
       // Check if error is retryable
       if (!isRetryableError(error, opts)) {
@@ -133,7 +135,7 @@ export async function retryWithBackoff<T>(
   }
 
   const totalDurationMs = Date.now() - startTime;
-  console.error(`[Retry] ❌ All attempts failed after ${totalDurationMs}ms`);
+  logError('retry.allAttemptsFailed', { totalDurationMs });
 
   return {
     success: false,
@@ -230,7 +232,7 @@ export async function withCircuitBreaker<T>(
 
   // Circuit is open, reject immediately
   if (state.state === 'open') {
-    console.error(`[CircuitBreaker:${name}] ⛔ Circuit is OPEN, rejecting request`);
+    logError('retry.circuitBreaker.open', { name });
     throw new Error(`Circuit breaker for ${name} is OPEN`);
   }
 
@@ -246,11 +248,11 @@ export async function withCircuitBreaker<T>(
     state.failures++;
     state.lastFailureTime = Date.now();
 
-    console.error(`[CircuitBreaker:${name}] ❌ Failure ${state.failures}/${threshold}`);
+    logError('retry.circuitBreaker.failure', { name, failures: state.failures, threshold });
 
     // Open circuit if threshold exceeded
     if (state.failures >= threshold) {
-      console.error(`[CircuitBreaker:${name}] ⛔ Opening circuit after ${state.failures} failures`);
+      logError('retry.circuitBreaker.tripped', { name, failures: state.failures });
       state.state = 'open';
     }
 

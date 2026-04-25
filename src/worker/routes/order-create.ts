@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
 import type { Env } from '../types/env';
+import { logInfo, logWarn, logError } from '../utils/logger';
 import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
@@ -63,14 +64,14 @@ orderCreateRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowS
           );
           if (row) seller = { ...row, base_shipping_fee: row.shipping_fee ?? 3000 };
         } catch {
-          console.warn('[ORDERS] Seller query failed for seller_id:', request.seller_id, '— using default shipping fee');
+          logWarn('orders.create.sellerQueryFailed', { error: 'seller query failed — using default shipping fee' });
         }
       }
     }
 
     // seller_id 없거나 ACTIVE 아닌 경우 기본값 사용 (주문 차단 대신 경고 로그)
     if (!seller) {
-      console.warn('[ORDERS] Seller not found or inactive:', request.seller_id, '— using default shipping fee');
+      logWarn('orders.create.sellerNotFound', { error: 'seller not found or inactive — using default shipping fee' });
     }
 
     // Block orders targeting a suspended/unapproved seller.
@@ -199,7 +200,7 @@ orderCreateRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowS
       order = await orderRepo.createOrder(userId, request, orderItems, subtotal, shippingFee);
     } catch (createErr) {
       // 주문 생성 실패 시 이미 차감한 재고를 복구 (보상 트랜잭션)
-      console.error('[ORDERS] createOrder failed, restoring stock:', createErr);
+      logError('orders.create.createOrderFailed', { error: (createErr as Error)?.message });
       const restoreStmts = orderItems.map(item => ({
         sql: `UPDATE products
               SET stock      = stock + ?,
@@ -208,7 +209,7 @@ orderCreateRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowS
         params: [item.quantity, item.product_id],
       }));
       await orderRepo['qb'].batch(restoreStmts).catch(e =>
-        console.error('[ORDERS] stock restore failed:', e)
+        logError('orders.create.stockRestoreFailed', { error: (e as Error)?.message })
       );
       throw createErr; // 상위 catch로 전달
     }
@@ -247,7 +248,7 @@ orderCreateRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowS
         sendOrderConfirmation(
           { DB: c.env.DB, ALIGO_API_KEY: c.env.ALIGO_API_KEY!, ALIGO_USER_ID: c.env.ALIGO_USER_ID!, ALIMTALK_SENDER_KEY: c.env.ALIMTALK_SENDER_KEY },
           typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10)
-        ).catch((err: Error) => console.error('[Alimtalk] Order confirmation failed:', err.message));
+        ).catch((err: Error) => logError('orders.create.alimtalkFailed', { error: err?.message }));
       }).catch(() => { /* alimtalk not critical */ });
     }
 
@@ -280,7 +281,7 @@ orderCreateRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowS
 
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.error('[ORDERS] Create error:', errMsg, err);
+    logError('orders.create.error', { error: errMsg });
     return c.json({ success: false, error: '주문 생성에 실패했습니다' }, 500);
   }
 });

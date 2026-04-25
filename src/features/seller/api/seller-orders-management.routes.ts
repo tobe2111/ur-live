@@ -16,6 +16,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types';
 import { sendSellerAlimtalk } from '../../alimtalk/send';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import type { Env } from '@/worker/types/env';
+import { logInfo, logWarn, logError } from '@/worker/utils/logger';
 
 export const sellerOrdersManagementRoutes = new Hono<{ Bindings: Env }>();
 
@@ -135,7 +136,7 @@ sellerOrdersManagementRoutes.get('/orders', async (c) => {
       },
     });
   } catch (error: unknown) {
-    console.error('Get seller orders error:', error);
+    logError('seller.orders.getError', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to get orders' }, 500);
   }
 });
@@ -246,13 +247,13 @@ async function handleStatusUpdate(c: Context<{ Bindings: Env }>) {
           subject,
           message,
           orderId: order.order_number,
-        }).catch(e => console.warn('[Alimtalk] 주문취소 발송 실패:', e));
+        }).catch(e => logWarn('seller.orders.alimtalkCancelFailed', { error: (e as Error)?.message }));
       }
     }
 
     return c.json({ success: true, message: '주문 상태가 업데이트되었습니다.' });
   } catch (error: unknown) {
-    console.error('Update order status error:', error);
+    logError('seller.orders.statusUpdateError', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to update status' }, 500);
   }
 }
@@ -337,13 +338,13 @@ sellerOrdersManagementRoutes.put('/orders/:id/tracking', async (c) => {
           subject,
           message,
           orderId: order.order_number,
-        }).catch(e => console.warn('[Alimtalk] 배송시작 발송 실패:', e));
+        }).catch(e => logWarn('seller.orders.alimtalkShippingFailed', { error: (e as Error)?.message }));
       }
     }
 
     return c.json({ success: true, message: '송장번호가 등록되었습니다.' });
   } catch (error: unknown) {
-    console.error('Update tracking error:', error);
+    logError('seller.orders.trackingUpdateError', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to update tracking' }, 500);
   }
 });
@@ -411,7 +412,7 @@ sellerOrdersManagementRoutes.patch('/orders/bulk-status', async (c) => {
       message: `${result.meta.changes || 0}건의 주문 상태가 변경되었습니다.`,
     });
   } catch (error: unknown) {
-    console.error('Bulk status update error:', error);
+    logError('seller.orders.bulkStatusError', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to bulk update' }, 500);
   }
 });

@@ -12,6 +12,7 @@ import { QueryBuilder } from '../repositories/query-builder';
 import type { AuthVariables } from '../middleware/auth.middleware';
 import type { Seller } from '../../shared/types';
 import { cacheGet } from '../utils/cache';
+import { logError } from '../utils/logger';
 
 const sellersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -52,7 +53,7 @@ sellersRouter.get('/', async (c) => {
       },
     });
   } catch (err) {
-    console.error('[SELLERS] List error:', err);
+    logError('sellers.list.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch sellers' }, 500);
   }
 });
@@ -80,7 +81,7 @@ sellersRouter.get('/:id', async (c) => {
 
     return c.json({ success: true, data: seller });
   } catch (err) {
-    console.error('[SELLERS] Detail error:', err);
+    logError('sellers.detail.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch seller' }, 500);
   }
 });
@@ -115,7 +116,7 @@ sellersRouter.get('/:id/public', async (c) => {
 
     return c.json({ success: true, data: seller });
   } catch (err) {
-    console.error('[SELLERS] Public profile error:', err);
+    logError('sellers.publicProfile.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch seller' }, 500);
   }
 });
@@ -153,7 +154,7 @@ sellersRouter.get('/:sellerId/products-public', async (c) => {
       pagination: { page: pageNum, limit: limitNum, total: countRow?.total ?? 0 },
     });
   } catch (err) {
-    console.error('[SELLERS] Products error:', err);
+    logError('sellers.products.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch seller products' }, 500);
   }
 });
@@ -189,7 +190,7 @@ sellersRouter.get('/:sellerId/streams', async (c) => {
 
     return c.json({ success: true, data: rows.results || [] });
   } catch (err) {
-    console.error('[SELLERS] Streams error:', err);
+    logError('sellers.streams.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch seller streams' }, 500);
   }
 });

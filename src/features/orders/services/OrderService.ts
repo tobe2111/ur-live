@@ -6,12 +6,13 @@
  */
 
 import { OrderRepository } from '../repositories/OrderRepository';
-import type { 
-  Order, 
-  CreateOrderRequest, 
+import type {
+  Order,
+  CreateOrderRequest,
   UpdateOrderStatusRequest,
-  OrderFilters 
+  OrderFilters
 } from '../types';
+import { logError } from '@/worker/utils/logger';
 
 export class OrderService {
   private repository: OrderRepository;
@@ -27,7 +28,7 @@ export class OrderService {
     try {
       return await this.repository.findAll(filters || {});
     } catch (error) {
-      console.error('[OrderService] getOrders failed:', error);
+      logError('orders.service.getOrders.error', { error: (error as Error)?.message });
       throw new Error('주문 목록 조회 실패');
     }
   }
@@ -45,7 +46,7 @@ export class OrderService {
       
       return order;
     } catch (error) {
-      console.error('[OrderService] getOrderById failed:', error);
+      logError('orders.service.getOrderById.error', { error: (error as Error)?.message });
       throw error;
     }
   }
@@ -57,7 +58,7 @@ export class OrderService {
     try {
       return await this.repository.findAll({ userId });
     } catch (error) {
-      console.error('[OrderService] getUserOrders failed:', error);
+      logError('orders.service.getUserOrders.error', { error: (error as Error)?.message });
       throw new Error('사용자 주문 목록 조회 실패');
     }
   }
@@ -84,7 +85,7 @@ export class OrderService {
       
       return order;
     } catch (error) {
-      console.error('[OrderService] createOrder failed:', error);
+      logError('orders.service.createOrder.error', { error: (error as Error)?.message });
       throw error;
     }
   }
@@ -117,7 +118,7 @@ export class OrderService {
       
       return updatedOrder;
     } catch (error) {
-      console.error('[OrderService] updateOrderStatus failed:', error);
+      logError('orders.service.updateOrderStatus.error', { error: (error as Error)?.message });
       throw error;
     }
   }
@@ -143,7 +144,7 @@ export class OrderService {
         status: 'cancelled'
       });
     } catch (error) {
-      console.error('[OrderService] cancelOrder failed:', error);
+      logError('orders.service.cancelOrder.error', { error: (error as Error)?.message });
       throw error;
     }
   }

@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
+import { logError } from '../utils/logger';
 
 const stripeRouter = new Hono<{ Bindings: Env }>();
 
@@ -63,7 +64,7 @@ stripeRouter.post('/create-intent', async (c) => {
     if (!stripeResponse.ok) {
       const stripeError = await stripeResponse.json() as { error?: { message?: string } };
       const message = stripeError?.error?.message ?? 'Failed to create payment intent';
-      console.error('[Stripe] PaymentIntent creation failed:', stripeError);
+      logError('stripe.createIntent.apiFailed', { error: message });
       return c.json({ success: false, error: message }, 400);
     }
 
@@ -79,7 +80,7 @@ stripeRouter.post('/create-intent', async (c) => {
       paymentIntentId: paymentIntent.id,
     });
   } catch (err: any) {
-    console.error('[Stripe] create-intent error:', err);
+    logError('stripe.createIntent.error', { error: (err as Error)?.message });
     return c.json(
       { success: false, error: err?.message ?? 'Internal server error' },
       500
@@ -100,7 +101,7 @@ stripeRouter.post('/create-intent', async (c) => {
 stripeRouter.post('/webhook', async (c) => {
   const webhookSecret = c.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured');
+    logError('stripe.webhook.missingSecret', {});
     return c.json({ received: true }, 200); // Stripe 재시도 방지용 200
   }
 
@@ -150,7 +151,7 @@ stripeRouter.post('/webhook', async (c) => {
       return c.json({ success: false, error: 'Invalid signature' }, 401);
     }
   } catch (err) {
-    console.error('[Stripe Webhook] Signature verification failed:', err);
+    logError('stripe.webhook.signatureError', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Signature verification failed' }, 401);
   }
 
@@ -208,7 +209,7 @@ stripeRouter.post('/webhook', async (c) => {
       'INSERT INTO stripe_webhook_events (event_id, event_type) VALUES (?, ?)'
     ).bind(event.id, event.type).run().catch(() => {});
   } catch (err) {
-    console.error('[Stripe Webhook] Processing error:', err);
+    logError('stripe.webhook.processingError', { error: (err as Error)?.message });
   }
 
   return c.json({ received: true }, 200);

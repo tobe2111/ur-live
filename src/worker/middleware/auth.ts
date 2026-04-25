@@ -12,6 +12,7 @@ import { Context, Next } from 'hono';
 import * as jwt from '@tsndr/cloudflare-worker-jwt';
 import { unauthorizedResponse, forbiddenResponse } from '../utils/response';
 import { parseSessionCookie } from '../utils/session';
+import { logError, logWarn } from '../utils/logger';
 
 /**
  * JWT payload type (both seller/admin JWT and Firebase token)
@@ -89,7 +90,7 @@ async function verifyJWT(
     const decoded = jwt.decode(token);
     return decoded.payload as unknown as JwtPayload;
   } catch (error) {
-    console.error('[Auth] JWT verification failed:', error);
+    logWarn('auth.jwt_verify_failed', { error: (error as Error)?.message });
     return null;
   }
 }
@@ -166,20 +167,18 @@ async function verifyFirebaseToken(
 ): Promise<JwtPayload | null> {
   try {
     if (!projectId) {
-      console.error('[Firebase] FIREBASE_PROJECT_ID is not set');
+      logError('auth.firebase_project_id_missing');
       return null;
     }
 
     // JWT 구조 파싱
     const parts = token.split('.');
     if (parts.length !== 3) {
-      console.error('[Firebase] Invalid JWT structure');
       return null;
     }
 
     const [headerB64, payloadB64, signatureB64] = parts;
     if (!headerB64 || !payloadB64 || !signatureB64) {
-      console.error('[Firebase] Missing JWT parts');
       return null;
     }
 
@@ -187,13 +186,12 @@ async function verifyFirebaseToken(
     const header = JSON.parse(atob(headerB64.replace(/-/g, '+').replace(/_/g, '/')));
 
     if (header.alg !== 'RS256') {
-      console.error('[Firebase] Firebase token must use RS256, got:', header.alg);
+      logWarn('auth.firebase_alg_mismatch', { alg: header.alg });
       return null;
     }
 
     const kid: string = header.kid;
     if (!kid) {
-      console.error('[Firebase] Missing kid in header');
       return null;
     }
 
@@ -201,7 +199,7 @@ async function verifyFirebaseToken(
     const jwkKeys = await getFirebaseJwkKeys();
     const jwk = jwkKeys.find((k) => (k as { kid?: string }).kid === kid);
     if (!jwk) {
-      console.error('[Firebase] JWK not found for kid');
+      logWarn('auth.firebase_jwk_not_found', { kid });
       return null;
     }
 
@@ -224,7 +222,7 @@ async function verifyFirebaseToken(
     );
 
     if (!isValid) {
-      console.error('[Firebase] Signature verification failed');
+      logWarn('auth.firebase_sig_failed');
       return null;
     }
 
@@ -234,13 +232,12 @@ async function verifyFirebaseToken(
 
     // exp 검증
     if (!payload.exp || payload.exp < now) {
-      console.error('[Firebase] Token expired');
       return null;
     }
 
     // iat 검증 (미래 발급 방지, 10분 허용)
     if (!payload.iat || payload.iat > now + 600) {
-      console.error('[Firebase] Token iat is in the future');
+      logWarn('auth.firebase_iat_future');
       return null;
     }
 
@@ -249,7 +246,7 @@ async function verifyFirebaseToken(
     const isAdminSDK = payload.iss && payload.iss.includes('firebase-adminsdk');
 
     if (!isAdminSDK && payload.iss !== expectedIss) {
-      console.error('[Firebase] Token iss mismatch');
+      logWarn('auth.firebase_iss_mismatch');
       return null;
     }
 
@@ -258,19 +255,18 @@ async function verifyFirebaseToken(
     const isAdminSDKAud = payload.aud && payload.aud.includes('identitytoolkit.googleapis.com');
 
     if (!isAdminSDKAud && payload.aud !== expectedAud) {
-      console.error('[Firebase] Token aud mismatch');
+      logWarn('auth.firebase_aud_mismatch');
       return null;
     }
 
     // sub 검증 (UID)
     if (!payload.sub) {
-      console.error('[Firebase] Token missing sub (user ID)');
       return null;
     }
 
     return payload;
   } catch (error) {
-    console.error('[Firebase] Exception during verification:', error);
+    logError('auth.firebase_verify_exception', { error: (error as Error)?.message });
     return null;
   }
 }
@@ -287,7 +283,7 @@ export function requireAuth() {
   return async (c: Context, next: Next) => {
     const jwtSecret = c.env.JWT_SECRET;
     if (!jwtSecret) {
-      console.error('[Auth] JWT_SECRET is not configured');
+      logError('auth.jwt_secret_missing');
       return c.json(unauthorizedResponse('Authentication service misconfigured'), 503);
     }
 
@@ -441,7 +437,7 @@ export function optionalAuth() {
     if (!jwtSecret) {
       // optional auth — continue unauthenticated, but LOUDLY log misconfiguration
       // so it cannot silently fail-open in production.
-      console.error('[Auth] JWT_SECRET not configured (optionalAuth fail-open)');
+      logError('auth.jwt_secret_missing_optional');
       return next();
     }
 

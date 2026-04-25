@@ -20,6 +20,7 @@ import {
   sanitizeString,
 } from '../utils/validation'
 import { MAX_SSE_REPLAY_MESSAGES } from '@/shared/constants'
+import { logInfo, logWarn, logError } from '../utils/logger'
 
 export const liveSseRoutes = new Hono<{ Bindings: Env }>()
 export const chatRoutes = new Hono<{ Bindings: Env }>()
@@ -68,7 +69,7 @@ liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
       data: isReplay ? messages.results : messages.results.reverse(),
     })
   } catch (err) {
-    console.error('[Chat] Failed to fetch messages:', err)
+    logError('chat.messages.fetchError', { error: (err as Error)?.message })
     return c.json({ success: true, data: [] })
   }
 })
@@ -154,7 +155,7 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
       headers,
     }) as unknown as Response
   } catch (err) {
-    console.error('[WS] Durable Object proxy failed:', err)
+    logError('live.ws.proxyError', { error: (err as Error)?.message })
     return c.json({ error: 'WebSocket connection failed', fallback: 'sse' }, 503)
   }
 })
@@ -217,7 +218,7 @@ liveSseRoutes.post('/:liveId/view', optionalAuth(), async (c) => {
     }
     return c.json({ success: true })
   } catch (err) {
-    console.error('[View] Tracking failed:', err)
+    logError('live.view.trackingError', { error: (err as Error)?.message })
     return c.json({ success: true }) // Non-fatal
   }
 })
@@ -307,7 +308,7 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
 
     insertedId = result.meta.last_row_id
   } catch (err) {
-    console.error('[Chat] D1 insert failed:', err)
+    logError('chat.messages.insertError', { error: (err as Error)?.message })
     return c.json({ error: 'Failed to save message', detail: (err as Error).message }, 500)
   }
 
@@ -335,7 +336,7 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
       })
     } catch (err) {
       // Non-fatal: message already saved to D1
-      console.error('[Chat] DO broadcast failed:', err)
+      logError('chat.messages.broadcastError', { error: (err as Error)?.message })
     }
   }
 
@@ -397,13 +398,13 @@ chatRoutes.delete('/:liveId/messages/:messageId', requireSellerOrAdmin() as Midd
           }),
         })
       } catch (err) {
-        console.error('[Chat] Delete broadcast failed:', err)
+        logError('chat.delete.broadcastError', { error: (err as Error)?.message })
       }
     }
 
     return c.json({ success: true })
   } catch (err) {
-    console.error('[Chat] Delete failed:', err)
+    logError('chat.delete.error', { error: (err as Error)?.message })
     return c.json({ success: false, error: 'Delete failed' }, 500)
   }
 })

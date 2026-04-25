@@ -8,6 +8,8 @@
  * Purpose: Backend refactoring - DRY database operations
  */
 
+import { logError } from './logger';
+
 /**
  * Query result type
  */
@@ -47,7 +49,7 @@ export class DatabaseHelper {
       const result = await stmt.bind(...params).all<T>();
       return result.results || [];
     } catch (error) {
-      console.error('[DB] Query failed:', { sql, params, error });
+      logError('db.query.error', { error: (error as Error)?.message });
       throw new Error(`Database query failed: ${(error as Error).message}`);
     }
   }
@@ -64,7 +66,7 @@ export class DatabaseHelper {
       const result = await stmt.bind(...params).first<T>();
       return result;
     } catch (error) {
-      console.error('[DB] QueryFirst failed:', { sql, params, error });
+      logError('db.queryFirst.error', { error: (error as Error)?.message });
       throw new Error(`Database query failed: ${(error as Error).message}`);
     }
   }
@@ -97,7 +99,7 @@ export class DatabaseHelper {
       const result = await stmt.bind(...params).run();
       return result;
     } catch (error) {
-      console.error('[DB] Execute failed:', { sql, params, error });
+      logError('db.execute.error', { error: (error as Error)?.message });
       throw new Error(`Database execution failed: ${(error as Error).message}`);
     }
   }
@@ -117,7 +119,7 @@ export class DatabaseHelper {
       const results = await this.db.batch(statements);
       return results;
     } catch (error) {
-      console.error('[DB] Batch failed:', { queries, error });
+      logError('db.batch.error', { error: (error as Error)?.message });
       throw new Error(`Database batch failed: ${(error as Error).message}`);
     }
   }
@@ -324,7 +326,7 @@ export class DatabaseHelper {
     try {
       return await operations(this);
     } catch (error) {
-      console.error('[DB] Transaction failed:', error);
+      logError('db.transaction.error', { error: (error as Error)?.message });
       throw error;
     }
   }

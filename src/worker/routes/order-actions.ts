@@ -11,6 +11,7 @@ import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 import { getUserDbId, type AuthVariables } from './order-helpers';
+import { logError, logWarn } from '../utils/logger';
 
 export const orderActionsRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -104,7 +105,7 @@ orderActionsRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, w
       // 🛡️ Toss 실패 시 예약한 refunded_amount 롤백
       await c.env.DB.prepare(
         "UPDATE orders SET refunded_amount = MAX(0, COALESCE(refunded_amount, 0) - ?) WHERE id = ?"
-      ).bind(refundAmount, body.order_id).run().catch((e) => { console.error('[ORDERS] refunded_amount rollback failed:', e) });
+      ).bind(refundAmount, body.order_id).run().catch((e) => { logError('orders.refund.rollback_failed', { error: (e as Error)?.message, orderId: body.order_id }) });
 
       const tossErrorMessages: Record<string, string> = {
         ALREADY_CANCELED_PAYMENT: '이미 취소된 결제입니다',
@@ -148,7 +149,7 @@ orderActionsRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, w
         }
       }
     } catch (e) {
-      console.warn('[ORDERS] Commission reversal (refund) skipped:', e);
+      logWarn('orders.refund.commission_reversal_failed', { error: (e as Error)?.message });
     }
 
     // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 환불 금액만큼 포인트 환급
@@ -163,7 +164,7 @@ orderActionsRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, w
         ).bind(String(order.user_id), refundAmount, refundAmount, `[환불] 주문 환불 (order:${order.order_number || body.order_id})`).run().catch(() => {});
       }
     } catch (e) {
-      console.error('[ORDERS] Points refund error:', e);
+      logError('orders.refund.points_failed', { error: (e as Error)?.message });
     }
 
     // 유저에게 인앱 알림 (환불/주문 취소)
@@ -256,7 +257,7 @@ orderActionsRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 
 
       const tossSecretKey = c.env.TOSS_SECRET_KEY;
       if (!tossSecretKey) {
-        console.error('[ORDERS] TOSS_SECRET_KEY not configured');
+        logError('orders.cancel.toss_key_missing');
         return c.json({ success: false, error: 'Payment service unavailable' }, 503);
       }
 
@@ -269,7 +270,7 @@ orderActionsRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 
 
       if (!tossResult.success) {
         // Toss에서 취소 거부 → DB 상태는 변경하지 않고 오류 반환
-        console.error('[ORDERS] Toss cancel failed:', tossResult.code, tossResult.message);
+        logError('orders.cancel.toss_failed', { code: tossResult.code, message: tossResult.message });
 
         // Toss 에러 코드에 따른 한국어 메시지 매핑
         const tossErrorMessages: Record<string, string> = {
@@ -316,12 +317,12 @@ orderActionsRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 
             await c.env.DB.prepare(
               'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
             ).bind(co.amount, co.user_id).run().catch((err) => {
-              console.error('[ORDERS] user_points debit failed (cancel paid):', err);
+              logError('orders.cancel.points_debit_failed', { error: (err as Error)?.message });
             });
           }
         }
       } catch (e) {
-        console.error('[ORDERS] Commission reversal (cancel paid) error:', e);
+        logError('orders.cancel.commission_reversal_failed', { error: (e as Error)?.message });
       }
 
       // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 포인트 환급 (payment_method='deal_points')
@@ -339,7 +340,7 @@ orderActionsRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 
           }
         }
       } catch (e) {
-        console.error('[ORDERS] Points refund (cancel paid) error:', e);
+        logError('orders.cancel.points_failed', { error: (e as Error)?.message });
       }
 
       // 주문 취소 알림
@@ -407,7 +408,7 @@ orderActionsRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 
     });
 
   } catch (err) {
-    console.error('[ORDERS] Cancel error:', err);
+    logError('orders.cancel.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to cancel order' }, 500);
   }
 });

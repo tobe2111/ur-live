@@ -14,6 +14,7 @@ import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
 import { maskEmail } from '@/lib/mask';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
+import { logError, logWarn } from '@/worker/utils/logger';
 
 /**
  * refresh_tokens 보조 테이블 (admin/seller용) 생성.
@@ -57,7 +58,7 @@ adminRoutes.post('/login', cors(), async (c) => {
   
   try {
     if (!JWT_SECRET) {
-      console.error('[Admin Login] JWT_SECRET not configured');
+      logError('admin.login.jwt_secret_missing');
       return c.json({ success: false, error: 'Server configuration error' }, 500);
     }
 
@@ -144,7 +145,7 @@ adminRoutes.post('/login', cors(), async (c) => {
       ).run();
     } catch (e) {
       // 저장 실패는 로그인을 막지 않음 (가용성 우선) — 다음 refresh 시 재시도
-      console.error('[Admin Login] refresh token persist failed:', e);
+      logError('admin.login.refresh_persist_failed', { error: (e as Error)?.message });
     }
 
     // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 (Bearer 병행)
@@ -177,7 +178,7 @@ adminRoutes.post('/login', cors(), async (c) => {
     return res;
 
   } catch (error) {
-    console.error('[Admin Login] Error:', error);
+    logError('admin.login.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: '로그인 중 오류가 발생했습니다.' }, 500);
   }
 });
@@ -191,7 +192,7 @@ adminRoutes.post('/refresh', cors(), async (c) => {
   
   try {
     if (!JWT_SECRET) {
-      console.error('[Admin Refresh] JWT_SECRET not configured');
+      logError('admin.refresh.jwt_secret_missing');
       return c.json({ success: false, error: 'Server configuration error' }, 500);
     }
 
@@ -206,12 +207,12 @@ adminRoutes.post('/refresh', cors(), async (c) => {
     try {
       payload = await verify(refreshToken, JWT_SECRET, 'HS256');
     } catch (error) {
-      console.warn('[Admin Refresh] Invalid refresh token:', error);
+      logWarn('admin.refresh.invalid_token', { error: (error as Error)?.message });
       return c.json({ success: false, error: 'Refresh Token이 유효하지 않거나 만료되었습니다.' }, 401);
     }
 
     if (payload.type !== 'admin') {
-      console.warn('[Admin Refresh] Invalid token type:', payload.type);
+      logWarn('admin.refresh.wrong_type', { type: payload.type });
       return c.json({ success: false, error: 'Admin Refresh Token이 아닙니다.' }, 401);
     }
 
@@ -223,7 +224,7 @@ adminRoutes.post('/refresh', cors(), async (c) => {
     );
 
     if (admins.length === 0) {
-      console.warn('[Admin Refresh] Admin not found:', adminId);
+      logWarn('admin.refresh.not_found');
       return c.json({ success: false, error: '계정을 찾을 수 없습니다.' }, 401);
     }
 
@@ -248,14 +249,14 @@ adminRoutes.post('/refresh', cors(), async (c) => {
           }
         }
         if (matchedId === null) {
-          console.warn('[Admin Refresh] refresh token not recognized (revoked or reused)');
+          logWarn('admin.refresh.token_revoked');
           return c.json({ success: false, error: 'Refresh Token이 유효하지 않습니다.' }, 401);
         }
         // rotate: 사용한 토큰 행 삭제
         await DB.prepare('DELETE FROM auth_refresh_tokens WHERE id = ?').bind(matchedId).run().catch(() => {});
       }
     } catch (e) {
-      console.error('[Admin Refresh] token store verify failed:', e);
+      logError('admin.refresh.token_store_failed', { error: (e as Error)?.message });
       // 가용성: 저장소 오류로 인한 차단은 하지 않음
     }
 
@@ -290,9 +291,9 @@ adminRoutes.post('/refresh', cors(), async (c) => {
         new Date((now + 30 * 24 * 3600) * 1000).toISOString()
       ).run();
     } catch (e) {
-      console.error('[Admin Refresh] new refresh persist failed:', e);
+      logError('admin.refresh.new_persist_failed', { error: (e as Error)?.message });
     }
-    
+
     return c.json({
       success: true,
       data: {
@@ -310,7 +311,7 @@ adminRoutes.post('/refresh', cors(), async (c) => {
     });
     
   } catch (error) {
-    console.error('[Admin Refresh] Error:', error);
+    logError('admin.refresh.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: '토큰 갱신 중 오류가 발생했습니다.' }, 500);
   }
 });
@@ -364,7 +365,7 @@ adminRoutes.post('/2fa/setup', cors(), requireAdmin() as MiddlewareHandler, asyn
 
     return c.json({ success: true, data: { secret, uri } });
   } catch (err) {
-    console.error('[Admin 2FA] Setup error:', err);
+    logError('admin.2fa.setup_error', { error: (err as Error)?.message });
     return c.json({ success: false, error: '2FA 설정 실패' }, 500);
   }
 });
@@ -398,7 +399,7 @@ adminRoutes.post('/2fa/verify', cors(), requireAdmin() as MiddlewareHandler, asy
 
     return c.json({ success: true, message: '2FA 가 활성���되었습니다' });
   } catch (err) {
-    console.error('[Admin 2FA] Verify error:', err);
+    logError('admin.2fa.verify_error', { error: (err as Error)?.message });
     return c.json({ success: false, error: '2FA 검증 실패' }, 500);
   }
 });
@@ -427,7 +428,7 @@ adminRoutes.post('/2fa/validate', cors(), requireAdmin() as MiddlewareHandler, a
 
     return c.json({ success: true, twofa_validated: true, message: '2FA 인증 완료' });
   } catch (err) {
-    console.error('[Admin 2FA] Validate error:', err);
+    logError('admin.2fa.validate_error', { error: (err as Error)?.message });
     return c.json({ success: false, error: '2FA 검증 실패' }, 500);
   }
 });

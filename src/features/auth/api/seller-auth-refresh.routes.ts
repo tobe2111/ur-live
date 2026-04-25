@@ -9,6 +9,7 @@ import { verifyPassword, hashPassword } from '@/lib/password';
 import type { AuthResponse } from '../types';
 import type { Bindings } from './seller-auth-helpers';
 import { ensureAuthRefreshTokensTable } from './seller-auth-helpers';
+import { logError, logWarn } from '@/worker/utils/logger';
 
 export const sellerAuthRefreshRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -29,7 +30,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
   try {
     // JWT_SECRET 확인
     if (!JWT_SECRET) {
-      console.error('[Seller Refresh] JWT_SECRET not configured');
+      logError('seller.refresh.jwt_secret_missing');
       return c.json<AuthResponse>({
         success: false,
         error: 'Server configuration error',
@@ -53,7 +54,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
     try {
       payload = await verify(refreshToken, JWT_SECRET, 'HS256');
     } catch (error) {
-      console.warn('[Seller Refresh] Invalid refresh token:', error);
+      logWarn('seller.refresh.invalid_token', { error: (error as Error)?.message });
       return c.json<AuthResponse>({
         success: false,
         error: 'Refresh Token이 유효하지 않거나 만료되었습니다.',
@@ -63,7 +64,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
 
     // 2. Refresh Token 타입 확인
     if (payload.type !== 'seller') {
-      console.warn('[Seller Refresh] Invalid token type:', payload.type);
+      logWarn('seller.refresh.wrong_type', { type: payload.type });
       return c.json<AuthResponse>({
         success: false,
         error: 'Seller Refresh Token이 아닙니다.',
@@ -83,7 +84,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
     `).bind(sellerId).first<Record<string, any>>();
 
     if (!seller) {
-      console.warn('[Seller Refresh] Seller not found:', sellerId);
+      logWarn('seller.refresh.not_found');
       return c.json<AuthResponse>({
         success: false,
         error: '계정을 찾을 수 없습니다.',
@@ -93,7 +94,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
 
     // 4. 계정 상태 확인
     if (seller.status === 'suspended') {
-      console.warn('[Seller Refresh] Account suspended:', sellerId);
+      logWarn('seller.refresh.account_suspended');
       return c.json<AuthResponse>({
         success: false,
         error: '정지된 계정입니다.',
@@ -102,7 +103,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
     }
 
     if (seller.status !== 'approved' && seller.status !== 'active') {
-      console.warn('[Seller Refresh] Account not approved:', sellerId, seller.status);
+      logWarn('seller.refresh.account_inactive', { status: seller.status });
       return c.json<AuthResponse>({
         success: false,
         error: '활성화되지 않은 계정입니다.',
@@ -130,7 +131,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
           }
         }
         if (matchedId === null) {
-          console.warn('[Seller Refresh] refresh token not recognized (revoked or reused)');
+          logWarn('seller.refresh.token_revoked');
           return c.json<AuthResponse>({
             success: false,
             error: 'Refresh Token이 유효하지 않습니다.',
@@ -142,7 +143,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
           'DELETE FROM auth_refresh_tokens WHERE id = ?'
         ).bind(matchedId).run();
         if (!deleteResult.meta?.changes) {
-          console.warn('[Seller Refresh] old token delete failed (changes=0) — aborting rotation');
+          logWarn('seller.refresh.rotation_delete_failed');
           return c.json<AuthResponse>({
             success: false,
             error: '토큰 갱신에 실패했습니다. 다시 로그인해주세요.',
@@ -151,7 +152,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
         }
       }
     } catch (e) {
-      console.error('[Seller Refresh] token store verify failed:', e);
+      logError('seller.refresh.token_store_failed', { error: (e as Error)?.message });
       return c.json<AuthResponse>({
         success: false,
         error: '토큰 검증에 실패했습니다.',
@@ -196,7 +197,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
         new Date((nowSec2 + 30 * 24 * 3600) * 1000).toISOString()
       ).run();
     } catch (e) {
-      console.error('[Seller Refresh] new refresh persist failed:', e);
+      logError('seller.refresh.new_persist_failed', { error: (e as Error)?.message });
     }
 
     // 7. 응답 반환
@@ -219,7 +220,7 @@ sellerAuthRefreshRoutes.post('/refresh', cors(), async (c) => {
     });
 
   } catch (error) {
-    console.error('[Seller Refresh] Error:', error);
+    logError('seller.refresh.error', { error: (error as Error)?.message });
 
     return c.json<AuthResponse>({
       success: false,
