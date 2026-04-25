@@ -4,6 +4,7 @@
  */
 
 import type { Env } from '../types/env';
+import { logInfo, logError } from '../utils/logger';
 
 export async function handleScheduled(env: Env) {
   const DB = env.DB;
@@ -18,7 +19,7 @@ export async function handleScheduled(env: Env) {
         AND updated_at < datetime('now', '-30 minutes')
     `).run();
     results.stale_streams_ended = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] stale_streams error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'stale_streams', error: (e as Error)?.message }) }
 
   // ── 2. 미결제 주문: 24시간 후 자동 취소 + 재고 복구 ──
   // ✅ CONCURRENCY FIX (Cron C2): UPDATE RETURNING은 원자적으로 PENDING → CANCELLED
@@ -53,11 +54,11 @@ export async function handleScheduled(env: Env) {
             `UPDATE order_items SET status = 'CANCELLED' WHERE order_id IN (${ph})`
           ).bind(...orderIds)
         );
-        try { await DB.batch(stmts); } catch (e) { console.error('[Cron] stock restore batch', e); }
+        try { await DB.batch(stmts); } catch (e) { logError('cron.cleanup', { task: 'stock_restore_batch', error: (e as Error)?.message }); }
       }
       results.pending_orders_cancelled = cancelledOrders.length;
     }
-  } catch (e) { console.error('[Cron] pending_orders error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'pending_orders', error: (e as Error)?.message }) }
 
   // ── 3. 공동구매: 마감 지난 상품 자동 만료 ──
   try {
@@ -70,7 +71,7 @@ export async function handleScheduled(env: Env) {
         AND group_buy_deadline < datetime('now')
     `).run();
     results.group_buys_expired = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] group_buys error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'group_buys', error: (e as Error)?.message }) }
 
   // ── 4. 바우처: 만료일 지난 바우처 자동 만료 ──
   try {
@@ -82,7 +83,7 @@ export async function handleScheduled(env: Env) {
         AND expires_at < datetime('now')
     `).run();
     results.vouchers_expired = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] vouchers error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'vouchers', error: (e as Error)?.message }) }
 
   // ── 5. 경매: 시간 초과 자동 종료 ──
   try {
@@ -93,7 +94,7 @@ export async function handleScheduled(env: Env) {
         AND ends_at < datetime('now')
     `).run();
     results.auctions_ended = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] auctions error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'auctions', error: (e as Error)?.message }) }
 
   // ── 6. 타임딜: 만료 자동 종료 ──
   try {
@@ -110,7 +111,7 @@ export async function handleScheduled(env: Env) {
         AND claimed_count >= max_claims
     `).run();
     results.timedeals_ended = (ended.changes ?? 0) + (soldout.changes ?? 0);
-  } catch (e) { console.error('[Cron] timedeals error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'timedeals', error: (e as Error)?.message }) }
 
   // ── 7. 친구 초대 공동구매: 48시간 만료 ──
   try {
@@ -121,7 +122,7 @@ export async function handleScheduled(env: Env) {
         AND expires_at < datetime('now')
     `).run();
     results.referrals_expired = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] referrals error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'referrals', error: (e as Error)?.message }) }
 
   // ── 8. 알림 정리: 90일 이상 된 알림 삭제 ──
   try {
@@ -133,7 +134,7 @@ export async function handleScheduled(env: Env) {
       DELETE FROM dashboard_notifications
       WHERE created_at < datetime('now', '-90 days')
     `).run();
-  } catch (e) { console.error('[Cron] notifications_cleanup error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'notifications_cleanup', error: (e as Error)?.message }) }
 
   // ── 9. 만료된 리프레시 토큰 정리 ──
   try {

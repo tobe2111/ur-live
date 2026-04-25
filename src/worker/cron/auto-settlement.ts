@@ -11,6 +11,7 @@
 import type { Env } from '../types/env';
 import { sendDiscordAlert } from '../utils/discord-alert';
 import { ensureUserPointsTable } from '../utils/ensure-tables';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
@@ -47,7 +48,7 @@ export async function handleAutoSettlement(env: Env) {
     const sellerGroups: Record<number, any[]> = {};
     for (const v of usedVouchers.results) {
       if (v.seller_id == null) {
-        if (env.ENVIRONMENT !== 'production') console.warn('[Settlement] Voucher without seller_id:', v.id);
+        if (env.ENVIRONMENT !== 'production') logWarn('cron.settlement', { message: 'Voucher without seller_id', voucherId: v.id });
         continue; // Don't process orphan vouchers
       }
       const sid = v.seller_id as number;
@@ -95,17 +96,17 @@ export async function handleAutoSettlement(env: Env) {
       } catch (sellerErr) {
         failedSellers++;
         failedSellerIds.push(sellerId);
-        console.error(`[Cron] Settlement failed for seller ${sellerId}:`, sellerErr);
+        logError('cron.settlement', { message: `Settlement failed for seller ${sellerId}`, error: (sellerErr as Error)?.message });
         // 다음 셀러 계속 진행
       }
     }
     if (failedSellers > 0) {
-      console.warn(`[Cron] Settlement: ${processedSellers} OK, ${failedSellers} failed (sellers: ${failedSellerIds.join(',')})`);
+      logWarn('cron.settlement', { message: 'Settlement partial failure', processedSellers, failedSellers, failedSellerIds: failedSellerIds.join(',') });
     }
 
-    console.log(`[Cron] Auto-settlement: ${Object.keys(sellerGroups).length} sellers processed`);
+    logInfo('cron.settlement', { message: 'Auto-settlement complete', sellersProcessed: Object.keys(sellerGroups).length });
   } catch (err) {
-    console.error('[Cron] Auto-settlement failed:', err);
+    logError('cron.settlement', { message: 'Auto-settlement failed', error: (err as Error)?.message });
     if (env.DISCORD_WEBHOOK_URL) {
       await sendDiscordAlert(
         env.DISCORD_WEBHOOK_URL,
@@ -177,14 +178,14 @@ export async function handleExpiredVoucherRefunds(env: Env) {
               .bind(voucher.user_id, voucher.price, voucher.price).run();
           }
         } catch (e) {
-          if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement user_points]', e);
+          if (env.ENVIRONMENT !== 'production') logWarn('cron.settlement', { message: 'user_points update failed', error: (e as Error)?.message });
         }
         // Best-effort legacy column sync
         try {
           await DB.prepare("UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?")
             .bind(voucher.price, voucher.user_id).run();
         } catch (e) {
-          if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement deal_balance]', e);
+          if (env.ENVIRONMENT !== 'production') logWarn('cron.settlement', { message: 'deal_balance legacy sync failed', error: (e as Error)?.message });
         }
         refundCount++;
 
@@ -198,14 +199,14 @@ export async function handleExpiredVoucherRefunds(env: Env) {
             `바우처가 만료되어 ${Number(voucher.price).toLocaleString()}딜 포인트가 환불되었습니다 (${voucher.product_name})`
           ).run();
         } catch (e) {
-          if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement notifications insert]', e);
+          if (env.ENVIRONMENT !== 'production') logWarn('cron.settlement', { message: 'notifications insert failed', error: (e as Error)?.message });
         }
       }
     }
 
-    console.log(`[Cron] Expired voucher refunds: ${expireCount} expired, ${refundCount} refunded`);
+    logInfo('cron.settlement', { message: 'Expired voucher refunds complete', expireCount, refundCount });
   } catch (err) {
-    console.error('[Cron] Expired voucher refund failed:', err);
+    logError('cron.settlement', { message: 'Expired voucher refund failed', error: (err as Error)?.message });
     if (env.DISCORD_WEBHOOK_URL) {
       await sendDiscordAlert(
         env.DISCORD_WEBHOOK_URL,

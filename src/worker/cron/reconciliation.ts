@@ -12,6 +12,7 @@
  */
 
 import type { Env } from '../types/env';
+import { logInfo, logError } from '../utils/logger';
 
 export async function runReconciliation(env: Env): Promise<void> {
   const DB = env.DB;
@@ -49,7 +50,7 @@ export async function runReconciliation(env: Env): Promise<void> {
       );
       if (stockStmts.length > 0) {
         try { await DB.batch(stockStmts); } catch (e) {
-          console.error('[Reconciliation] Stock restore batch failed:', e);
+          logError('cron.reconciliation', { message: 'Stock restore batch failed', error: (e as Error)?.message });
         }
       }
 
@@ -240,8 +241,8 @@ export async function runReconciliation(env: Env): Promise<void> {
   } catch { /* table may not exist */ }
 
   // Log summary (visible in Cloudflare Worker logs)
-  console.log('[Reconciliation] Completed:', JSON.stringify(results));
+  logInfo('cron.reconciliation', { message: 'Completed', ...results });
   if (details.length > 0) {
-    console.log('[Reconciliation] Details:', JSON.stringify(details));
+    logInfo('cron.reconciliation', { message: 'Details', details });
   }
 }
