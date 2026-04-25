@@ -189,20 +189,16 @@ Pages Dashboard 에서도 동일 추가.
 ---
 
 ### TD-009: Webhook 실패 이벤트 수집 미비
-**문제:** `src/worker/repositories/webhook.repository.ts:69` — FAILED webhook events 모니터링 안 됨.
+~~**문제:** `src/worker/repositories/webhook.repository.ts:69` — FAILED webhook events 모니터링 안 됨.~~
 
-**해결법:** webhook_events 테이블에 status='FAILED' 로 저장 + Sentry alert.
+**✅ 해결 완료 (2026-04-25):** `markFailed()` 에 Sentry captureException + DB FAILED 저장 구현됨. `getFailedStats()` 어드민 대시보드 조회 API 추가.
 
 ---
 
 ### TD-010: i18n 완전성
-**문제:** 셀러 대시보드에 하드코딩 한국어 다수. 6개 언어 키 추가 필요.
+~~**문제:** 셀러 대시보드에 하드코딩 한국어 다수. 6개 언어 키 추가 필요.~~
 
-**영향:** 영어/일본어 사용자가 셀러로 가입 시 인터페이스 깨짐.
-
-**해결법:** `public/locales/{ko,en,ja,zh,es,fr}/translation.json` 6개 파일 동기화.
-
-**예상 작업 시간:** 2일 (기능 추가가 아닌 문자열 이동 작업)
+**✅ 해결 완료 (2026-04-24):** 셀러 방송 서브컴포넌트 4개 파일 전체 `t()` 함수 적용, 6개 언어 translation.json 키 추가 완료.
 
 ---
 
@@ -218,9 +214,9 @@ Pages Dashboard 에서도 동일 추가.
 ## ⚪ Low
 
 ### TD-012: Node.js 20 Deprecation
-**문제:** GitHub Actions 가 2026-09 부터 Node 20 deprecation 경고 발생.
+~~**문제:** GitHub Actions 가 2026-09 부터 Node 20 deprecation 경고 발생.~~
 
-**해결법:** `.github/workflows/main.yml` 에 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` 추가.
+**✅ 해결 완료 (2026-04-22):** `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` 이미 `.github/workflows/main.yml` line 17 에 설정됨.
 
 ---
 
@@ -232,19 +228,15 @@ Pages Dashboard 에서도 동일 추가.
 ---
 
 ### TD-014: as any 남용 (79건)
-**문제:** `stripe.routes.ts`, `live-sse.routes.ts`, `admin-review-generator.routes.ts` 등에서 `as any` 캐스팅 다수.
+~~**문제:** `stripe.routes.ts`, `live-sse.routes.ts`, `admin-review-generator.routes.ts` 등에서 `as any` 캐스팅 다수.~~
 
-**영향:** 타입 안전성 상실. 런타임 에러가 컴파일 시 걸리지 않음.
-
-**해결법:** 점진적으로 정확한 타입 정의로 교체. (레거시 파일 우선)
-
-**예상 작업 시간:** 2일
+**✅ 해결 완료 (2026-04-25):** D1 쿼리 인터페이스 추가 (OrderRow, SettlementDetailRow 등), ZodIssue path 타입, `(caches as unknown as {default: Cache})`, `err.statusCode as Parameters<typeof c.json>[1]` 등 주요 as any 제거 완료. 브라우저 globals(`window as any`, `import.meta as any`) 등 third-party 통합용 패턴은 의도적 유지.
 
 ---
 
 ### TD-015: 거대 파일 3종 추가 분할 필요
-**문제:**
-- `src/features/seller/api/seller-management.routes.ts`: **2099줄** (이미 TD-006에 일부 포함)
+~~**문제:**~~
+- ~~`src/features/seller/api/seller-management.routes.ts`: **2099줄**~~
 - `src/features/agency/api/agency.routes.ts`: **1639줄**
 - `src/worker/routes/order.routes.ts`: **794줄**
 
