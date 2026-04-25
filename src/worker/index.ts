@@ -584,6 +584,9 @@ app.route('/api/affiliate', affiliateRoutes);
 // TD-004 통합: 모든 주문 라우트는 features/orders/api/orders.routes.ts 하나에서 관리
 app.route('/api/orders', featureOrdersRoutes);
 
+// 결제 승인/롤백: 동일 IP에서 분당 10회 제한 (중복 결제, 부정 거래 방어)
+app.use('/api/payments/confirm', rateLimit({ action: 'payment_confirm', max: 10, windowSec: 60 }));
+app.use('/api/payments/rollback', rateLimit({ action: 'payment_rollback', max: 10, windowSec: 60 }));
 // TD-004 통합: 모든 결제 라우트는 features/payments/api/payment.routes.ts 하나에서 관리
 app.route('/api/payments', featurePaymentRoutes);
 
@@ -686,6 +689,8 @@ app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 6
 app.route('/api/seller/alimtalk', alimtalkRoutes);
 
 // ── 후원(도네이션) ──
+// 후원 확정: 동일 IP에서 분당 20회 제한
+app.use('/api/donations/confirm', rateLimit({ action: 'donation_confirm', max: 20, windowSec: 60 }));
 app.route('/api/donations', donationsRoutes);
 app.route('/api/seller', sellerDonationsRoutes); // (see /api/seller routing note — non-overlapping /donations/* sub-routes)
 
