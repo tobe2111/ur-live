@@ -93,6 +93,56 @@ import { internalOpsRoutes } from './routes/internal-ops.routes';
 import { smokeTestRoutes } from './routes/smoke-test.routes';
 import { debugRoutes } from './routes/debug.routes';
 import { fallbackRoutes } from './routes/fallback.routes';
+import { cspReportRoutes } from './routes/csp-report.routes';
+import { bootstrapRoutes } from './routes/bootstrap.routes';
+import { healthDashboardRoutes } from './routes/health-dashboard.routes';
+import { kakaoProxyRoutes } from './routes/kakao-proxy.routes';
+import { naverProxyRoutes } from './routes/naver-proxy.routes';
+import { sideBannersPublicRoutes } from './routes/side-banners-public.routes';
+import { imageProxyRoutes } from './routes/image-proxy.routes';
+
+// ---- Mid-file imports moved to top (ES module standard) ----
+import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
+import { pointsRoutes } from '../features/points/api/points.routes';
+import { shortsRoutes } from '../features/shorts/api/shorts.routes';
+import { restaurantRecommendRoutes } from '../features/restaurants/api/restaurant-recommendations.routes';
+import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
+import { couponRoutes } from '../features/coupons/api/coupons.routes';
+import { socialRoutes } from '../features/social/api/social.routes';
+import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
+import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
+import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
+import { sectionsRoutes } from '../features/sections/api/sections.routes';
+import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
+import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
+import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
+import { returnsRoutes } from '../features/returns/api/returns.routes';
+import { auctionRoutes } from '../features/auction/api/auction.routes';
+import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
+import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
+import { referralRoutes } from '../features/referral/api/referral.routes';
+import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
+import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
+import { reportsRoutes } from '../features/reports/api/reports.routes';
+import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
+import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
+import { interestRoutes } from '../features/loyalty/api/interest.routes';
+import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
+import { blogRoutes } from '../features/blog/api/blog.routes';
+import { agencyRoutes } from '../features/agency/api/agency.routes';
+import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
+import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
+import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
+import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
+import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
+import { adminRestaurantRecommendRoutes } from '../features/restaurants/api/restaurant-recommendations.routes';
+import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
+import { guideRoutes } from '../features/guides/api/guide.routes';
+import { handleScheduled } from './cron/scheduled-cleanup';
+import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
+import { runReconciliation } from './cron/reconciliation';
+import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
+import { sendDiscordAlert } from './utils/discord-alert';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -300,46 +350,7 @@ app.use('*', async (c, next) => {
 // Browsers POST violation reports here when CSP blocks a resource.
 // Keep handler minimal and always return 204 to avoid influencing browser behavior.
 // ============================================================
-app.post('/api/csp-report', async (c) => {
-  try {
-    const report = await c.req.json().catch(() => null);
-    if (import.meta.env.DEV && report) console.warn('[CSP violation]', report);
-    // 🛡️ 2026-04-22: CSP 위반 DB 저장 — 어드민이 이상 패턴 분석 가능.
-    // 테이블은 auto-create (마이그레이션 미적용 환경 호환).
-    if (report && c.env.DB) {
-      try {
-        await c.env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS csp_violations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            blocked_uri TEXT,
-            violated_directive TEXT,
-            document_uri TEXT,
-            source_file TEXT,
-            line_number INTEGER,
-            user_agent TEXT,
-            ip TEXT,
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-          )
-        `).run();
-        const body = (report as Record<string, unknown>)['csp-report'] ?? report;
-        await c.env.DB.prepare(`
-          INSERT INTO csp_violations
-            (blocked_uri, violated_directive, document_uri, source_file, line_number, user_agent, ip)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          String(body?.['blocked-uri'] || body?.blockedURL || '').slice(0, 500),
-          String(body?.['violated-directive'] || body?.effectiveDirective || '').slice(0, 200),
-          String(body?.['document-uri'] || body?.documentURL || '').slice(0, 500),
-          String(body?.['source-file'] || body?.sourceFile || '').slice(0, 500),
-          Number(body?.['line-number'] || body?.lineNumber || 0) || null,
-          (c.req.header('User-Agent') || '').slice(0, 300),
-          c.req.header('CF-Connecting-IP') || '',
-        ).run();
-      } catch { /* DB 실패도 CSP 에 영향 주지 않음 */ }
-    }
-  } catch { /* swallow — never surface parse errors to the browser */ }
-  return c.body(null, 204);
-});
+app.route('/', cspReportRoutes);
 
 // ============================================================
 // Health Check
@@ -393,171 +404,15 @@ app.route('/api/health/detailed', healthRoutes);
 
 // ============================================================
 // 🔒 BOOTSTRAP: 대시보드 비밀번호 재설정
-//   2026-04-22 배치 134: fixed 모드 제거 (배치 125 의 임시 동작).
-//   로그인 복구 완료 후 보안 복원 — 이제 BOOTSTRAP_TOKEN secret 세팅 필수.
-//   미세팅 시 404 로 엔드포인트 자체 숨김.
-//
-// 사용법:
-//   curl -X POST https://live.ur-team.com/api/_bootstrap/reset-dashboard-password \
-//     -H "X-Bootstrap-Token: <BOOTSTRAP_TOKEN>" \
-//     -H "Content-Type: application/json" \
-//     -d '{"email":"...","password":"...","role":"all|admin|seller|agency"}'
+//   → bootstrap.routes.ts 참조
 // ============================================================
-app.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
-  const expected = c.env.BOOTSTRAP_TOKEN;
-  const provided = c.req.header('X-Bootstrap-Token');
-
-  // BOOTSTRAP_TOKEN 미세팅 or 헤더 불일치 → 404 (엔드포인트 존재 감추기)
-  if (!expected || !provided || expected !== provided) {
-    return c.json({ error: 'Not Found' }, 404);
-  }
-
-  let body: { email?: string; password?: string; role?: string } = {};
-  try { body = await c.req.json(); } catch { body = {}; }
-  const { email, password, role = 'all' } = body;
-
-  if (!email || !password) {
-    return c.json({ success: false, error: 'email, password 필수' }, 400);
-  }
-  if (password.length < 6) {
-    return c.json({ success: false, error: '비밀번호 6자 이상' }, 400);
-  }
-
-  // 서버 자체의 hashPassword() 사용 → verifyPassword 와 100% 호환
-  const { hashPassword } = await import('../lib/password');
-  const hash = await hashPassword(password);
-
-  const DB = c.env.DB;
-  const results: Record<string, { updated: number; status?: string }> = {};
-
-  const targets = role === 'all' ? ['admins', 'sellers', 'agencies'] : [`${role}s`];
-
-  for (const table of targets) {
-    try {
-      const activeValue = table === 'sellers' ? 'approved' : 'active';
-      const sql = table === 'sellers'
-        ? `UPDATE ${table} SET password_hash = ?, status = ?, is_active = 1 WHERE email = ?`
-        : `UPDATE ${table} SET password_hash = ?, status = ? WHERE email = ?`;
-      const res = await DB.prepare(sql).bind(hash, activeValue, email).run();
-      results[table] = { updated: res.meta.changes ?? 0, status: activeValue };
-    } catch (e: any) {
-      results[table] = { updated: 0, status: `ERROR: ${e.message}` };
-    }
-  }
-
-  try { await DB.prepare("DELETE FROM account_lockouts").run(); } catch {}
-
-  return c.json({ success: true, results, hashLength: hash.length });
-});
+app.route('/', bootstrapRoutes);
 
 // 클라이언트 빌드 버전 확인 — index.html의 스크립트 해시를 서버가 알려줌
 // 프론트가 자신의 번들 해시와 비교해서 불일치 시 자동 리로드
 // ============================================================
-// 🩺 상세 헬스 대시보드 (2026-04-22 추가)
-// GET /api/_internal/health-dashboard
-// DB latency, 테이블 행 수, 최근 에러 수, 배포 시점 등 운영자용 종합 지표
-// ============================================================
-// 🛡️ 2026-04-22: admin 전용 (또는 INTERNAL_OPS_TOKEN 헤더 매치).
-// 이전: 누구나 호출 가능 → DB 스키마 조작, 내부 구조 노출 위험.
-app.get('/api/_internal/health-dashboard', requireAdmin(), async (c) => {
-  const env = c.env;
-  const DB = env.DB;
-  const start = Date.now();
-
-  // DB latency 측정
-  let dbLatency = 0;
-  let dbOk = false;
-  try {
-    const t0 = Date.now();
-    await DB.prepare('SELECT 1').first();
-    dbLatency = Date.now() - t0;
-    dbOk = true;
-  } catch {}
-
-  // 주요 테이블 행 수
-  const tableCounts: Record<string, number | null> = {};
-  const tablesToCheck = ['users', 'sellers', 'products', 'orders', 'live_streams'];
-  for (const t of tablesToCheck) {
-    try {
-      const row = await DB.prepare(`SELECT COUNT(*) as c FROM ${t}`).first<{ c: number }>();
-      tableCounts[t] = row?.c ?? null;
-    } catch {
-      tableCounts[t] = null;
-    }
-  }
-
-  // 최근 24시간 주문/결제 건수
-  let recentOrders = 0;
-  let recentPaidOrders = 0;
-  try {
-    const o = await DB.prepare(
-      "SELECT COUNT(*) as c FROM orders WHERE created_at >= datetime('now', '-24 hours')"
-    ).first<{ c: number }>();
-    recentOrders = o?.c ?? 0;
-    const p = await DB.prepare(
-      "SELECT COUNT(*) as c FROM orders WHERE created_at >= datetime('now', '-24 hours') AND payment_status = 'approved'"
-    ).first<{ c: number }>();
-    recentPaidOrders = p?.c ?? 0;
-  } catch {}
-
-  // 환경 변수 sanity
-  const envCheck = {
-    JWT_SECRET: !!env.JWT_SECRET,
-    REFRESH_TOKEN_SECRET: !!env.REFRESH_TOKEN_SECRET,
-    KAKAO_REST_API_KEY: !!env.KAKAO_REST_API_KEY,
-    FIREBASE_PRIVATE_KEY: !!env.FIREBASE_PRIVATE_KEY,
-    TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
-    RESEND_WEBHOOK_SECRET: !!env.RESEND_WEBHOOK_SECRET,
-    INTERNAL_CRON_TOKEN: !!env.INTERNAL_CRON_TOKEN,
-  };
-  const secretsTotal = Object.keys(envCheck).length;
-  const secretsSet = Object.values(envCheck).filter(Boolean).length;
-
-  // Slow query 통계 (24h)
-  let slowQueries: Array<{ label: string; count: number; avg_ms: number; max_ms: number }> = [];
-  try {
-    const { getSlowQueryStats } = await import('./utils/slow-query-logger');
-    slowQueries = await getSlowQueryStats(DB, 24);
-  } catch {}
-
-  // 최근 5xx spike 기록
-  let recent5xxSpikes = 0;
-  try {
-    const row = await DB.prepare(
-      "SELECT COUNT(*) as c FROM rate_limit_attempts WHERE action='5xx_spike' AND window_start >= ?"
-    ).bind(Math.floor(Date.now() / 1000) - 86400).first<{ c: number }>();
-    recent5xxSpikes = row?.c ?? 0;
-  } catch {}
-
-  return c.json({
-    timestamp: new Date().toISOString(),
-    totalDurationMs: Date.now() - start,
-    db: {
-      status: dbOk ? 'healthy' : 'unhealthy',
-      latencyMs: dbLatency,
-      latencyGrade: dbLatency < 50 ? 'excellent' : dbLatency < 200 ? 'good' : dbLatency < 500 ? 'slow' : 'critical',
-    },
-    tables: tableCounts,
-    traffic: {
-      last24hOrders: recentOrders,
-      last24hPaidOrders: recentPaidOrders,
-      conversionPct: recentOrders > 0 ? Math.round((recentPaidOrders / recentOrders) * 100) : 0,
-    },
-    secrets: {
-      total: secretsTotal,
-      configured: secretsSet,
-      missing: Object.entries(envCheck).filter(([, v]) => !v).map(([k]) => k),
-      health: secretsSet === secretsTotal ? 'complete' : 'incomplete',
-    },
-    performance: {
-      slowQueriesLast24h: slowQueries.length,
-      topSlow: slowQueries.slice(0, 5),
-    },
-    errors: {
-      spikesLast24h: recent5xxSpikes,
-    },
-  });
-});
+// 🩺 상세 헬스 대시보드 → health-dashboard.routes.ts 참조
+app.route('/', healthDashboardRoutes);
 
 app.route('/', sitemapRoutes);
 app.route('/', versionRoutes);
@@ -722,7 +577,6 @@ app.route('/api/seller/streams', sellerStreamsRoutes);
 app.route('/api/email', emailRoutes);
 
 // Affiliate marketing
-import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
 app.route('/api/affiliate', affiliateRoutes);
 
 // ============================================================
@@ -787,10 +641,8 @@ app.route('/api/banners', bannerRoutes);
 // ============================================================
 adminApp.route('/agencies', adminAgencyRoutes);
 // Admin tools (chart, sellers, banners, notices, settlements, reports, settings)
-import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 adminApp.route('/tools', adminToolsRoutes);
 // Admin real-time health metrics (active streams, orders/min, stuck orders, webhooks)
-import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
 adminApp.route('/metrics', adminMetricsRoutes);
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
@@ -826,12 +678,9 @@ adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
-import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
-adminApp.route('/blog', adminBlogRoutes);
+adminApp.route('/blog', blogRoutes);
 // Restaurant settlement (admin)
-import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
-import { adminRestaurantRecommendRoutes } from '../features/restaurants/api/restaurant-recommendations.routes';
 adminApp.route('/', adminRestaurantRecommendRoutes);
 // Naver Ad Scraper 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + 기술 불안정
 // 남은 `/api/scraper/d1/*` 엔드포인트도 단계적 제거. scraped_advertisers 테이블은 데이터 보존 목적으로 남김.
@@ -867,249 +716,107 @@ app.route('/api/seller', sellerDonationsRoutes); // (see /api/seller routing not
 app.route('/api/seller/restaurant-settlements', sellerSettlementRoutes);
 
 // ── 딜 포인트 ──
-import { pointsRoutes } from '../features/points/api/points.routes';
 app.route('/api/points', pointsRoutes);
 
 // ── 쇼츠 ──
-import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 app.route('/api/shorts', shortsRoutes);
 
 // ── 맛집 추천 ──
-import { restaurantRecommendRoutes } from '../features/restaurants/api/restaurant-recommendations.routes';
 app.route('/api/restaurants', restaurantRecommendRoutes);
 
 // ── 공동구매 & 바우처 ──
-import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
 
 // ── 쿠폰 ──
-import { couponRoutes } from '../features/coupons/api/coupons.routes';
 app.route('/api/coupons', couponRoutes);
 
 // ── 소셜 (팔로우 + 알림) ──
-import { socialRoutes } from '../features/social/api/social.routes';
 app.route('/api/social', socialRoutes);
 
 // ── 상품 리뷰 ──
-import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
 app.route('/api/reviews', reviewsRoutes);
 
 // ── 셀러 등급 ──
-import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
 app.route('/api/seller-tiers', sellerTiersRoutes);
 
 // ── 바코드 + 재고 관리 ──
-import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 app.route('/api/inventory', inventoryRoutes);
 
 // ── 홈페이지 섹션 관리 ──
-import { sectionsRoutes } from '../features/sections/api/sections.routes';
 app.route('/api/sections', sectionsRoutes);
 
 // ── YouTube 구독자 늘리기 ──
-import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 app.route('/api/youtube-growth', youtubeGrowthRoutes);
 // SECURITY (HIGH-5): admin 엔드포인트는 adminApp 내부로 별도 마운트 (IP whitelist + audit log)
 adminApp.route('/youtube-growth', youtubeGrowthAdminRoutes);
 
 // ── 대시보드 알림 ──
-import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
 app.route('/api/dashboard-notifications', dashboardNotificationsRoutes);
 
 // ── 상품 대량등록 ──
-import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
 app.route('/api/bulk-upload', bulkUploadRoutes);
 
 // ── 반품/환불 ──
-import { returnsRoutes } from '../features/returns/api/returns.routes';
 app.route('/api/returns', returnsRoutes);
 
 // ── 라이브 경매 ──
-import { auctionRoutes } from '../features/auction/api/auction.routes';
 app.route('/api/auction', auctionRoutes);
 
 // ── 타임딜 룰렛 ──
-import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 app.route('/api/timedeal', timedealRoutes);
 
 // ── 유저 공동구매 (커뮤니티) ──
 app.use('/api/community-group-buy/create', rateLimit({ action: 'group_buy_create', max: 10, windowSec: 300 }));
 app.use('/api/community-group-buy/join/*', rateLimit({ action: 'group_buy_join', max: 20, windowSec: 300 }));
-import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
 app.route('/api/community-group-buy', communityGroupBuyRoutes);
 
 // ── 친구 초대 공동구매 ──
-import { referralRoutes } from '../features/referral/api/referral.routes';
 app.route('/api/referral', referralRoutes);
 
 // ── 초대 보상 ──
-import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
 app.route('/api/invite', inviteRewardRoutes);
 
 // ── 다단계 추천 커미션 ──
-import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
 app.route('/api/referral-tree', referralTreeRoutes);
 
 // ── CS 신고 (유저 신고 접수) ──
-import { reportsRoutes } from '../features/reports/api/reports.routes';
 app.route('/api/reports', reportsRoutes);
 
 // ── 방송 알림 구독 ──
-import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 app.route('/api/broadcast-notify', broadcastNotifyRoutes);
 
 // ── VIP 등급 (유저 로열티) ──
-import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
 app.route('/api/loyalty', loyaltyRoutes);
 
 // ── 관심/알림 (맛집·상품·공동구매 관심 등록) ──
-import { interestRoutes } from '../features/loyalty/api/interest.routes';
 app.route('/api/interest', interestRoutes);
 
 // ── 카카오 소셜 (메시지 + 캘린더) + 글로벌 (.ics) ──
-import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
 app.route('/api/kakao-social', kakaoSocialRoutes);
 
-// ── 카카오 장소 검색 프록시 (브라우저 CORS 우회) ──
-app.get('/api/kakao/place/search', async (c) => {
-  const query = c.req.query('query')
-  const category = c.req.query('category_group_code') || 'FD6,CE7'
-  const size = c.req.query('size') || '15'
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY
-  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500)
-  try {
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=${size}${category && !category.includes(',') ? `&category_group_code=${category}` : ''}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
+// ── 카카오 장소 검색 프록시 (브라우저 CORS 우회) → kakao-proxy.routes.ts
+app.route('/', kakaoProxyRoutes);
 
-app.get('/api/kakao/place/address', async (c) => {
-  const query = c.req.query('query')
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY
-  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500)
-  try {
-    const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
-
-// ── 네이버 검색 API 프록시 (식당 이미지/정보) ──
-// 지역 검색: 식당명 + 주소 + 전화번호 + 카테고리
-app.get('/api/naver/place/search', rateLimit({ action: 'naver_place', max: 30, windowSec: 60 }), async (c) => {
-  const query = c.req.query('query')
-  const display = c.req.query('display') || '5'
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const clientId = (c.env as Env).NAVER_CLIENT_ID
-  const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500)
-  try {
-    const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=${display}&sort=comment`
-    const res = await fetch(url, {
-      headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
-    })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
-
-// 이미지 검색: 식당명으로 이미지 가져오기
-app.get('/api/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windowSec: 60 }), async (c) => {
-  const query = c.req.query('query')
-  const display = c.req.query('display') || '3'
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const clientId = (c.env as Env).NAVER_CLIENT_ID
-  const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500)
-  try {
-    const url = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query + ' 맛집')}&display=${display}&sort=sim&filter=large`
-    const res = await fetch(url, {
-      headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
-    })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
-
-// 통합 식당 정보 (지역 검색 + 이미지 한번에)
-app.get('/api/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30, windowSec: 60 }), async (c) => {
-  const query = c.req.query('query')
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const clientId = (c.env as Env).NAVER_CLIENT_ID
-  const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500)
-
-  const headers = { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
-
-  try {
-    // 🛡️ 2026-04-22: Naver 느리면 5초 후 중단 (Worker CPU/메모리 보호)
-    const [localRes, imageRes] = await Promise.all([
-      fetch(`https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=1&sort=comment`, { headers, signal: AbortSignal.timeout(5000) }),
-      fetch(`https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query + ' 맛집 음식')}&display=3&sort=sim&filter=large`, { headers, signal: AbortSignal.timeout(5000) }),
-    ])
-
-    const localData: any = await localRes.json()
-    const imageData: any = await imageRes.json()
-
-    const place = localData.items?.[0] || null
-    const images = (imageData.items || []).map((img: any) => img.link)
-
-    return c.json({
-      success: true,
-      data: {
-        place: place ? {
-          title: place.title?.replace(/<[^>]*>/g, ''),
-          address: place.roadAddress || place.address,
-          phone: place.telephone,
-          category: place.category,
-          link: place.link,
-          mapx: place.mapx,
-          mapy: place.mapy,
-        } : null,
-        images,
-      },
-    })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
+// ── 네이버 검색 API 프록시 (식당 이미지/정보) → naver-proxy.routes.ts
+app.route('/', naverProxyRoutes);
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 // SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
 // /api/blog는 공개 GET /public, /public/:slug만 허용 (나머지는 라우터 내부에서 admin 체크)
-import { blogRoutes } from '../features/blog/api/blog.routes';
 app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용 (내부에서 /public만 공개)
 
 // ── 에이전시 ──
-import { agencyRoutes } from '../features/agency/api/agency.routes';
-import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
-import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 app.route('/api/agency', agencyPinRoutes);
 app.route('/api/agency', agencyRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
-import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 app.route('/api/bundles', bundlePublicRoutes);
 app.route('/api/bundles', bundleCartRoutes);
 app.route('/api/seller/bundles', bundleSellerRoutes);
 
 // 🛡️ 2026-04-23 배치 174: 운영 가이드 (어드민 편집, 셀러/에이전시 읽기)
-import { guideRoutes } from '../features/guides/api/guide.routes';
 app.route('/api/guides', guideRoutes);
 
 // YouTube / Live streaming
@@ -1126,31 +833,8 @@ app.route('/api', multiPlatformRoutes);
 app.route('/api/live', liveSseRoutes);
 app.route('/api/chat', chatRoutes);
 
-// ── 사이드 배너 (공개 API, 인증 불필요) ──
-app.get('/api/side-banners', async (c) => {
-  const env = c.env as Env;
-  try {
-    // Auto-create table if not exists
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS side_banners (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        image_url TEXT NOT NULL,
-        link_url TEXT,
-        is_active INTEGER DEFAULT 1,
-        sort_order INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT (datetime('now'))
-      )
-    `).run();
-    const { results } = await env.DB.prepare(
-      `SELECT id, title, image_url, link_url, sort_order
-       FROM side_banners WHERE is_active = 1 ORDER BY sort_order ASC, created_at DESC`
-    ).all();
-    return c.json({ success: true, data: results ?? [] });
-  } catch {
-    return c.json({ success: true, data: [] });
-  }
-});
+// ── 사이드 배너 (공개 API, 인증 불필요) → side-banners-public.routes.ts
+app.route('/', sideBannersPublicRoutes);
 
 // (Cafe24 is registered under adminApp above)
 
@@ -1168,47 +852,9 @@ app.get('/api/side-banners', async (c) => {
 
 // ============================================================
 // Image Optimization Proxy (Cloudflare Image Resizing)
+// → image-proxy.routes.ts
 // ============================================================
-
-app.get('/api/image/resize', async (c) => {
-  const url = c.req.query('url');
-  // 🛡️ 2026-04-22: radix=10 명시 (legacy octal 해석 방지) + 범위 clamp
-  const width = Math.min(2048, Math.max(16, parseInt(c.req.query('w') || '400', 10) || 400));
-  const quality = Math.min(100, Math.max(10, parseInt(c.req.query('q') || '80', 10) || 80));
-
-  if (!url) return c.json({ error: 'url required' }, 400);
-
-  // SSRF 방어: 허용된 도메인만 프록시
-  const ALLOWED_HOSTS = ['firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com', 'live.ur-team.com', 'ur-live.pages.dev']
-  try {
-    const parsed = new URL(url)
-    if (!ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) {
-      return c.json({ error: 'domain not allowed' }, 403)
-    }
-  } catch {
-    return c.json({ error: 'invalid url' }, 400)
-  }
-
-  try {
-    const response = await fetch(url, {
-      cf: {
-        image: {
-          width,
-          quality,
-          format: 'webp',
-        }
-      } as Record<string, unknown>
-    });
-
-    const headers = new Headers(response.headers);
-    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-    headers.set('Content-Type', response.headers.get('Content-Type') || 'image/webp');
-
-    return new Response(response.body, { headers });
-  } catch {
-    return c.redirect(url);
-  }
-});
+app.route('/', imageProxyRoutes);
 
 // ============================================================
 // 404 for API routes not matched above
@@ -1223,11 +869,6 @@ app.onError(errorHandler);
 // ============================================================
 // Export Worker + Scheduled Handler (Cron Triggers)
 // ============================================================
-
-import { handleScheduled } from './cron/scheduled-cleanup';
-import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
-import { runReconciliation } from './cron/reconciliation';
-import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
 
 export default {
   fetch: app.fetch,
@@ -1244,7 +885,6 @@ export default {
         const webhook = env.DISCORD_WEBHOOK_URL;
         if (webhook) {
           try {
-            const { sendDiscordAlert } = await import('./utils/discord-alert');
             await sendDiscordAlert(webhook, `🔴 Cron Failed: ${name}`, msg.slice(0, 1500), 'error');
           } catch { /* discord 자체 실패는 무시 */ }
         }
