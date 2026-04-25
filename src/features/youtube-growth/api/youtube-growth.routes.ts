@@ -155,6 +155,7 @@ youtubeGrowthRoutes.post('/confirm', requireAuth(), async (c) => {
       'Idempotency-Key': paymentKey,
     },
     body: JSON.stringify({ paymentKey, orderId, amount }),
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!tossRes.ok) {

@@ -239,6 +239,7 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
       'Idempotency-Key': body.paymentKey,
     },
     body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: pending.amount }),
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!tossRes.ok) {

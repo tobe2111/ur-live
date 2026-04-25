@@ -150,7 +150,8 @@ app.get('/chat/:streamId', async (c) => {
       `part=snippet,authorDetails&` +
       `maxResults=100`,
       {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(10_000),
       }
     )
 
@@ -248,7 +249,8 @@ app.post('/chat/:streamId', async (c) => {
               messageText: message
             }
           }
-        })
+        }),
+        signal: AbortSignal.timeout(10_000),
       }
     )
 

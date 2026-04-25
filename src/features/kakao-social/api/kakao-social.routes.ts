@@ -319,6 +319,7 @@ kakaoSocialRoutes.post('/test/friends', requireAdmin(), async (c) => {
   try {
     const res = await fetch('https://kapi.kakao.com/v1/api/talk/friends', {
       headers: { 'Authorization': `Bearer ${access_token}` },
+      signal: AbortSignal.timeout(10_000),
     });
     const data: any = await res.json();
 
@@ -345,6 +346,7 @@ kakaoSocialRoutes.post('/test/friend-message', requireAdmin(), async (c) => {
       // friend_uuid가 없으면 친구 목록 조회
       const friendsRes = await fetch('https://kapi.kakao.com/v1/api/talk/friends', {
         headers: { 'Authorization': `Bearer ${access_token}` },
+        signal: AbortSignal.timeout(10_000),
       });
       const friendsData: any = await friendsRes.json();
 
@@ -371,6 +373,7 @@ kakaoSocialRoutes.post('/test/friend-message', requireAdmin(), async (c) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `receiver_uuids=${encodeURIComponent(JSON.stringify([uuid]))}&template_object=${encodeURIComponent(templateObject)}`,
+      signal: AbortSignal.timeout(10_000),
     });
     const msgData: any = await msgRes.json();
 

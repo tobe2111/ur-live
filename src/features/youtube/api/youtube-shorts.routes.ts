@@ -55,7 +55,7 @@ app.get('/shorts/sync', async (c) => {
       `https://www.googleapis.com/youtube/v3/search?` +
       `part=snippet&channelId=${authRow.channel_id}&type=video&` +
       `videoDuration=short&maxResults=20&order=date`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(10_000) }
     )
 
     if (!searchRes.ok) throw new Error('YouTube API 오류')

@@ -38,6 +38,7 @@ async function sendEmail(env: Env, params: EmailParams): Promise<boolean> {
         subject: params.subject,
         html: params.html,
       }),
+      signal: AbortSignal.timeout(10_000),
     })
     return res.ok
   } catch (err) {

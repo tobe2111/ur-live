@@ -400,7 +400,7 @@ app.get('/live/:id/youtube-stats', async (c) => {
     // videos.list 로 liveStreamingDetails + statistics 조회
     const res = await fetch(
       `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,statistics&id=${stream.youtube_video_id}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(10_000) }
     )
     if (!res.ok) return c.json({ success: false, error: `YouTube API ${res.status}` }, 500)
     const data = await res.json() as { items?: Array<{ liveStreamingDetails?: { concurrentViewers?: string; actualStartTime?: string }; statistics?: { viewCount?: string; likeCount?: string } }> }

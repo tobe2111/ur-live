@@ -338,7 +338,7 @@ sellerStreamsCrudRoutes.put('/:id', async (c) => {
         const notifyUrl = new URL(c.req.url);
         notifyUrl.pathname = `/api/broadcast-notify/send/${streamId}`;
         c.executionCtx?.waitUntil?.(
-          fetch(notifyUrl.toString(), { method: 'POST' }).catch(() => {})
+          fetch(notifyUrl.toString(), { method: 'POST', signal: AbortSignal.timeout(5_000) }).catch(() => {})
         );
 
         // 2. 카카오톡 메시지 발송 (구독자 중 카카오 토큰 보유자, 무료)

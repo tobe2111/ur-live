@@ -165,6 +165,7 @@ pointsChargeRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_co
       'Idempotency-Key': paymentKey,
     },
     body: JSON.stringify({ paymentKey, orderId, amount }),
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!tossRes.ok) {

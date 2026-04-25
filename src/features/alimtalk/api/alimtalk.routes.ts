@@ -198,6 +198,7 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
       'Idempotency-Key': `alimtalk_${body.orderId}_${body.paymentKey}`,
     },
     body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: body.amount }),
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!tossRes.ok) {
