@@ -12,6 +12,7 @@ export type Bindings = {
   JWT_SECRET: string;
   ALIGO_API_KEY?: string;
   ALIGO_USER_ID?: string;
+  SESSION_KV?: KVNamespace;
 };
 
 // ── DB row types ──────────────────────────────────────────────────────────────

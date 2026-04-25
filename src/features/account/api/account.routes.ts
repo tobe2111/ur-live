@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import {
   deleteUserAccount,
@@ -52,7 +53,7 @@ accountRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true })
  *   deletedAt: string;
  * }
  */
-accountRoutes.delete('/delete', requireAuth(), async (c) => {
+accountRoutes.delete('/delete', rateLimit({ action: 'account_delete', max: 3, windowSec: 3600 }), requireAuth(), async (c) => {
   try {
     const authenticatedUser = getCurrentUser(c);
     if (!authenticatedUser) {

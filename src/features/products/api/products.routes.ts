@@ -97,7 +97,7 @@ productsRoutes.get('/search/suggestions', cors(), async (c) => {
  */
 productsRoutes.get('/', cors(), async (c) => {
   const { DB } = c.env;
-  
+
   try {
     // Query params 파싱
     // featured=true 이면 어드민이 등록한 ur특가 상품(product_type='featured')만 반환
@@ -120,21 +120,36 @@ productsRoutes.get('/', cors(), async (c) => {
       productType: featuredOnly ? 'featured' : undefined,
       sort,
     };
-    
+
     const pagination = {
       page: c.req.query('page') ? Number(c.req.query('page')) : 1,
       limit: Math.min(c.req.query('limit') ? Number(c.req.query('limit')) : 20, 100),
     };
-    
+
+    // SESSION_KV 캐시 체크 (공개 목록 — 인증 불필요, 60초 TTL)
+    const kv: KVNamespace | undefined = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV;
+    const cacheKey = `cache:products:list:${pagination.page}:${pagination.limit}:${filter.category || ''}:${safeSearch || ''}:${filter.sellerId || ''}:${featuredOnly ? 'featured' : ''}:${sort || ''}`;
+    if (kv) {
+      const cached = await kv.get(cacheKey, 'text');
+      if (cached) return c.json(JSON.parse(cached));
+    }
+
     const service = new ProductService(DB);
     const result = await service.getProducts(filter, pagination);
-    
-    return c.json({
+
+    const responseData = {
       success: true,
       data: result.data,
       pagination: result.pagination
-    });
-    
+    };
+
+    // 결과를 KV에 캐시 (60초)
+    if (kv) {
+      c.executionCtx.waitUntil(kv.put(cacheKey, JSON.stringify(responseData), { expirationTtl: 60 }));
+    }
+
+    return c.json(responseData);
+
   } catch (error) {
     logError('products.list.error', { error: (error as Error)?.message });
     return c.json({

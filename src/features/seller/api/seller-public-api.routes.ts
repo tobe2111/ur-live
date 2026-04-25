@@ -22,6 +22,14 @@ sellerPublicApiRoutes.get('/public/:sellerId', async (c) => {
   const { DB } = c.env;
   const param = c.req.param('sellerId');
 
+  // SESSION_KV 캐시 체크 (공개 프로필 — 120초 TTL)
+  const kv: KVNamespace | undefined = c.env.SESSION_KV;
+  const cacheKey = `cache:seller:public:${param}`;
+  if (kv) {
+    const cached = await kv.get(cacheKey, 'text');
+    if (cached) return c.json(JSON.parse(cached));
+  }
+
   try {
     // 숫자면 ID, 아니면 slug 또는 username으로 조회
     const isNumeric = /^\d+$/.test(param);
@@ -40,7 +48,15 @@ sellerPublicApiRoutes.get('/public/:sellerId', async (c) => {
         ).bind(param, param).first();
 
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
-    return c.json({ success: true, data: seller });
+
+    const responseData = { success: true, data: seller };
+
+    // 결과를 KV에 캐시 (120초)
+    if (kv) {
+      c.executionCtx.waitUntil(kv.put(cacheKey, JSON.stringify(responseData), { expirationTtl: 120 }));
+    }
+
+    return c.json(responseData);
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
