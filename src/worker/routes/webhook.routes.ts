@@ -47,7 +47,9 @@ async function sendOrderNotification(
   const contactPhone = firstOrder?.shipping_phone ?? 'N/A';
   const userId = firstOrder?.user_id ?? 'N/A';
 
-  if (import.meta.env.DEV) console.log(`[WEBHOOK] ORDER_NOTIFICATION event=${event}`, {
+  if (import.meta.env.DEV) logInfo('webhook.event', {
+    event: 'ORDER_NOTIFICATION',
+    webhookEvent: event,
     orderNumber,
     userId,
     contactPhone: contactPhone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2'), // mask middle digits

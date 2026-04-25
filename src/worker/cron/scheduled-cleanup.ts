@@ -142,7 +142,7 @@ export async function handleScheduled(env: Env) {
       DELETE FROM refresh_tokens
       WHERE expires_at < datetime('now')
     `).run();
-  } catch (e) { console.error('[Cron] token_cleanup error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'token_cleanup', error: (e as Error)?.message }) }
 
   // ── 9b. 만료된 idempotency 키 정리 (테이블이 존재할 때만) ──
   // idempotentWrite() 유틸리티가 저장하는 결과 캐시를 주기적으로 청소한다.
@@ -168,7 +168,7 @@ export async function handleScheduled(env: Env) {
         AND (settlement_status IS NULL OR settlement_status = 'pending')
     `).run();
     results.auto_confirmed = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] auto_confirm error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'auto_confirm', error: (e as Error)?.message }) }
 
   // ── 11. 예정 방송 30분 전 알림 발송 ──
   // 🛡️ 2026-04-22: LIMIT 100 추가 — 1000+ scheduled streams 시 OOM 방어
@@ -223,7 +223,7 @@ export async function handleScheduled(env: Env) {
       }
       results.pre_notifications_sent = upcomingStreams.length;
     }
-  } catch (e) { console.error('[Cron] pre_notifications error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'pre_notifications', error: (e as Error)?.message }) }
 
   // ── 12. 셀러 재고 품절 임박 알림 (5개 이하) ──
   // 24시간 시간 윈도우 기반 dedup: 제품명이 title에 포함되는지로 확인.
@@ -264,7 +264,7 @@ export async function handleScheduled(env: Env) {
       }
       results.low_stock_alerts = alertsSent;
     }
-  } catch (e) { console.error('[Cron] low_stock error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'low_stock', error: (e as Error)?.message }) }
 
   // ── 13. 쿠폰 만료 임박 알림 (D-1, 소비자) ──
   try {
@@ -300,7 +300,7 @@ export async function handleScheduled(env: Env) {
         }
       }
     }
-  } catch (e) { console.error('[Cron] coupon_expiry error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'coupon_expiry', error: (e as Error)?.message }) }
 
   // ── 14. 공동구매 달성 알림 (셀러 + 참여자) ──
   try {
@@ -323,13 +323,13 @@ export async function handleScheduled(env: Env) {
             .bind(String(g.seller_id), '🎉 공동구매 목표 달성!', g.name).run();
           notified++;
         } catch (notifyErr) {
-          console.error(`[Cron] group_buy_achieved notify failed for seller ${g.seller_id}:`, notifyErr);
+          logError('cron.cleanup', { task: 'group_buy_achieved_notify', sellerId: g.seller_id, error: (notifyErr as Error)?.message });
         }
       }
       results.group_buy_achieved = achievedGroups.length;
       results.group_buy_notified = notified;
     }
-  } catch (e) { console.error('[Cron] group_buy_achieved error:', e) }
+  } catch (e) { logError('cron.cleanup', { task: 'group_buy_achieved', error: (e as Error)?.message }) }
 
   // ── 15. csp_violations 정리: 30일 경과 (DoS 방어 + DB 부피 관리) ──
   // 🛡️ 2026-04-22: CSP 보고가 너무 많이 쌓이면 DB 비용 + 분석 노이즈
@@ -372,6 +372,6 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch { /* table may not exist */ }
 
-  console.log('[Cron] Scheduled cleanup:', JSON.stringify(results));
+  logInfo('cron.cleanup', { message: 'Scheduled cleanup complete', ...results });
   return results;
 }

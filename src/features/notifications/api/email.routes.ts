@@ -6,6 +6,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { logWarn, logError } from '../../../worker/utils/logger'
 
 export const emailRoutes = new Hono<{ Bindings: Env }>()
 
@@ -22,7 +23,7 @@ async function sendEmail(env: Env, params: EmailParams): Promise<boolean> {
   const domain = env.EMAIL_DOMAIN
 
   if (!apiKey || !domain) {
-    console.log('[Email] No API key configured, skipping:', params.subject, params.to)
+    logWarn('email.no_api_key', { subject: params.subject })
     return false
   }
 
@@ -40,7 +41,7 @@ async function sendEmail(env: Env, params: EmailParams): Promise<boolean> {
     })
     return res.ok
   } catch (err) {
-    console.error('[Email] Send failed:', err)
+    logError('email.send_failed', { error: (err as Error)?.message })
     return false
   }
 }
