@@ -52,9 +52,15 @@ async function ensureAgencyTables(DB: D1Database) {
 // ── GET /agencies ─────────────────────────────────────────────
 app.get('/', async (c) => {
   await ensureAgencyTables(c.env.DB)
+  const page = Math.max(1, parseInt(c.req.query('page') || '1'))
+  const limit = Math.min(100, parseInt(c.req.query('limit') || '50'))
+  const offset = (page - 1) * limit
   // linked_user_id 는 컬럼 없을 수도 있어 try-catch 로 graceful fallback
   let rows
+  let total = 0
   try {
+    const countRow = await c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM agencies').first<{ cnt: number }>()
+    total = countRow?.cnt ?? 0
     rows = await c.env.DB.prepare(`
       SELECT a.id, a.name, a.contact_name, a.email, a.phone, a.status, a.created_at,
              COALESCE(a.commission_rate, 2.0) AS commission_rate,
@@ -63,8 +69,11 @@ app.get('/', async (c) => {
       FROM agencies a
       LEFT JOIN agency_sellers ag ON ag.agency_id = a.id
       GROUP BY a.id ORDER BY a.created_at DESC
-    `).all()
+      LIMIT ? OFFSET ?
+    `).bind(limit, offset).all()
   } catch {
+    const countRow2 = await c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM agencies').first<{ cnt: number }>().catch(() => null)
+    total = countRow2?.cnt ?? 0
     rows = await c.env.DB.prepare(`
       SELECT a.id, a.name, a.contact_name, a.email, a.phone, a.status, a.created_at,
              COALESCE(a.commission_rate, 2.0) AS commission_rate,
@@ -72,9 +81,14 @@ app.get('/', async (c) => {
       FROM agencies a
       LEFT JOIN agency_sellers ag ON ag.agency_id = a.id
       GROUP BY a.id ORDER BY a.created_at DESC
-    `).all()
+      LIMIT ? OFFSET ?
+    `).bind(limit, offset).all()
   }
-  return c.json({ success: true, data: rows.results })
+  return c.json({
+    success: true,
+    data: rows.results,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  })
 })
 
 // ── POST /agencies ────────────────────────────────────────────
@@ -174,14 +188,26 @@ app.post('/:id/reset-password', async (c) => {
 app.get('/:id/sellers', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const agencyId = Number(c.req.param('id'))
+  const page = Math.max(1, parseInt(c.req.query('page') || '1'))
+  const limit = Math.min(100, parseInt(c.req.query('limit') || '50'))
+  const offset = (page - 1) * limit
+  const countRow = await c.env.DB.prepare(
+    'SELECT COUNT(*) AS cnt FROM agency_sellers WHERE agency_id = ?'
+  ).bind(agencyId).first<{ cnt: number }>().catch(() => null)
+  const total = countRow?.cnt ?? 0
   const rows = await c.env.DB.prepare(`
     SELECT s.id, s.name, s.email, s.business_name, s.phone, s.status, s.commission_rate, s.created_at
     FROM sellers s
     INNER JOIN agency_sellers ag ON ag.seller_id = s.id
     WHERE ag.agency_id = ?
     ORDER BY s.created_at DESC
-  `).bind(agencyId).all()
-  return c.json({ success: true, data: rows.results })
+    LIMIT ? OFFSET ?
+  `).bind(agencyId, limit, offset).all()
+  return c.json({
+    success: true,
+    data: rows.results,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  })
 })
 
 // ── POST /agencies/:id/sellers ────────────────────────────────
@@ -217,13 +243,27 @@ app.delete('/:id/sellers/:sellerId', async (c) => {
 // ── GET unassigned sellers ─────────────────────────────────────
 app.get('/unassigned-sellers', async (c) => {
   await ensureAgencyTables(c.env.DB)
+  const page = Math.max(1, parseInt(c.req.query('page') || '1'))
+  const limit = Math.min(200, parseInt(c.req.query('limit') || '50'))
+  const offset = (page - 1) * limit
+  const countRow = await c.env.DB.prepare(`
+    SELECT COUNT(*) AS cnt FROM sellers
+    WHERE id NOT IN (SELECT seller_id FROM agency_sellers)
+    AND status = 'approved'
+  `).first<{ cnt: number }>().catch(() => null)
+  const total = countRow?.cnt ?? 0
   const rows = await c.env.DB.prepare(`
     SELECT id, name, email, business_name FROM sellers
     WHERE id NOT IN (SELECT seller_id FROM agency_sellers)
     AND status = 'approved'
     ORDER BY name
-  `).all()
-  return c.json({ success: true, data: rows.results })
+    LIMIT ? OFFSET ?
+  `).bind(limit, offset).all()
+  return c.json({
+    success: true,
+    data: rows.results,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  })
 })
 
 export { app as adminAgencyRoutes }

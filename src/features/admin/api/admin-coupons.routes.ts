@@ -37,10 +37,19 @@ adminCouponsRoutes.get('/coupons', cors(), async (c) => {
   try {
     const DB = c.env.DB;
     await ensureCouponsTable(DB);
+    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
+    const limit = Math.min(100, parseInt(c.req.query('limit') || '50'));
+    const offset = (page - 1) * limit;
+    const countRow = await DB.prepare('SELECT COUNT(*) AS cnt FROM coupons').first<{ cnt: number }>().catch(() => null);
+    const total = countRow?.cnt ?? 0;
     const { results } = await DB.prepare(
-      'SELECT id, code, name, type, value, min_order_amount, max_discount, total_count, used_count, seller_id, is_active, starts_at, expires_at, created_at FROM coupons ORDER BY created_at DESC'
-    ).all();
-    return c.json({ success: true, data: results ?? [] });
+      'SELECT id, code, name, type, value, min_order_amount, max_discount, total_count, used_count, seller_id, is_active, starts_at, expires_at, created_at FROM coupons ORDER BY created_at DESC LIMIT ? OFFSET ?'
+    ).bind(limit, offset).all();
+    return c.json({
+      success: true,
+      data: results ?? [],
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
 

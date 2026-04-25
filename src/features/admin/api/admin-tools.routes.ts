@@ -89,7 +89,7 @@ adminToolsRoutes.get('/banners', async (c) => {
       display_order INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1,
       start_date DATETIME, end_date DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`).run() } catch {}
-  const { results } = await c.env.DB.prepare('SELECT id, title, image_url, link_url, description, is_active, display_order, start_date, end_date, created_at FROM banners ORDER BY display_order ASC, created_at DESC').all()
+  const { results } = await c.env.DB.prepare('SELECT id, title, image_url, link_url, description, is_active, display_order, start_date, end_date, created_at FROM banners ORDER BY display_order ASC, created_at DESC LIMIT 200').all()
   return c.json({ success: true, data: results || [] })
 })
 
@@ -275,7 +275,7 @@ adminToolsRoutes.get('/settings', async (c) => {
     CREATE TABLE IF NOT EXISTS platform_settings (
       key TEXT PRIMARY KEY, value TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`).run() } catch {}
-  const { results } = await c.env.DB.prepare('SELECT key, value, description, updated_at FROM platform_settings').all()
+  const { results } = await c.env.DB.prepare('SELECT key, value, description, updated_at FROM platform_settings ORDER BY key LIMIT 500').all()
   const settings: Record<string, string> = {}
   ;(results || []).forEach((r: any) => { settings[r.key] = r.value })
   return c.json({ success: true, data: settings })

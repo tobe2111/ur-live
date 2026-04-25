@@ -16,6 +16,7 @@ import type { TossWebhookPayload } from '../../shared/types';
 import { arrayBufferToHex } from '../../shared/utils';
 import { sendAlert } from '../utils/alerts';
 import { rateLimit } from '../middleware/rate-limit';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 // ============================================================
 // Order Notification Helper
@@ -76,7 +77,7 @@ async function sendOrderNotification(
       body: JSON.stringify({ embeds: [embed] }),
     });
 
-    if (import.meta.env.DEV) console.log(`[WEBHOOK] Discord notification sent for ${event} order ${orderNumber}`);
+    if (import.meta.env.DEV) logInfo('webhook.event', { event: 'discord_notification_sent', webhookEvent: event, orderNumber });
   }
 }
 
@@ -92,7 +93,7 @@ async function verifyTossSignature(
   secret: string
 ): Promise<boolean> {
   if (!signatureHeader) {
-    console.warn('[WEBHOOK] Missing Toss-Signature header');
+    logWarn('webhook.warn', { message: 'Missing Toss-Signature header' });
     return false;
   }
 
@@ -100,7 +101,7 @@ async function verifyTossSignature(
     // Toss sends: "v1=<hmac_hex>"
     const parts = signatureHeader.split('=');
     if (parts.length < 2 || parts[0] !== 'v1') {
-      console.warn('[WEBHOOK] Invalid signature format:', signatureHeader);
+      logWarn('webhook.warn', { message: 'Invalid signature format' });
       return false;
     }
     const receivedHex = parts.slice(1).join('='); // handle = in base64
@@ -129,7 +130,7 @@ async function verifyTossSignature(
     }
     return mismatch === 0;
   } catch (err) {
-    console.error('[WEBHOOK] Signature verification error:', err);
+    logError('webhook.error', { message: 'Signature verification error', error: (err as Error)?.message });
     return false;
   }
 }
@@ -168,7 +169,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     const webhookSecret = c.env.TOSS_WEBHOOK_SECRET;
     if (isProduction || (webhookSecret && webhookSecret.length > 0)) {
       if (!webhookSecret) {
-        console.error('[WEBHOOK] ❌ TOSS_WEBHOOK_SECRET not configured in production');
+        logError('webhook.error', { message: 'TOSS_WEBHOOK_SECRET not configured in production' });
         // ✅ FIX (Cron C4): Return 200 (not 401) so Toss does not enter a retry storm
         // for a misconfiguration that Toss retries cannot fix. Alert via Discord so
         // ops can set the secret. The webhook event is NOT processed.
@@ -188,9 +189,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
       const signatureHeader = c.req.header('Toss-Signature');
       const isValid = await verifyTossSignature(rawBody, signatureHeader, webhookSecret);
       if (!isValid) {
-        console.error('[WEBHOOK] ❌ INVALID_SIGNATURE', {
-          ip: c.req.header('CF-Connecting-IP'),
-        });
+        logError('webhook.error', { message: 'INVALID_SIGNATURE', ip: c.req.header('CF-Connecting-IP') });
         // Return 401 so Toss retries legitimate deliveries whose signatures failed transiently
         return c.json({ received: false, status: 'rejected', error: 'invalid_signature' }, 401);
       }
@@ -198,15 +197,12 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
       // 3. Timestamp verification (replay attack defense) — BEFORE any logic
       const timestampHeader = c.req.header('Toss-Timestamp');
       if (!verifyTimestamp(timestampHeader)) {
-        console.error('[WEBHOOK] ❌ INVALID_TIMESTAMP — possible replay attack', {
-          timestamp: timestampHeader,
-          ip: c.req.header('CF-Connecting-IP'),
-        });
+        logError('webhook.error', { message: 'INVALID_TIMESTAMP — possible replay attack', timestamp: timestampHeader, ip: c.req.header('CF-Connecting-IP') });
         // Return 401 — do not silently accept possibly-replayed requests
         return c.json({ received: false, status: 'rejected', error: 'invalid_timestamp' }, 401);
       }
     } else {
-      console.warn('[WEBHOOK] ⚠️ Signature/timestamp verification skipped (non-production, no secret configured)');
+      logWarn('webhook.warn', { message: 'Signature/timestamp verification skipped (non-production, no secret configured)' });
     }
 
     // 3. Parse payload
@@ -214,7 +210,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     try {
       payload = JSON.parse(rawBody) as TossWebhookPayload;
     } catch {
-      console.error('[WEBHOOK] Failed to parse payload');
+      logError('webhook.error', { message: 'Failed to parse payload' });
       return c.json({ received: true, status: 'parse_error' }, 200);
     }
 
@@ -223,7 +219,8 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     const paymentKey = data.paymentKey;
 
     if (import.meta.env.DEV) {
-      console.log('[WEBHOOK] RECEIVED', {
+      logInfo('webhook.event', {
+        event: 'RECEIVED',
         eventType,
         tossOrderId,
         paymentKey: paymentKey ? paymentKey.slice(0, 8) + '...' : null,
@@ -235,7 +232,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     // 4. Idempotency check - prevent duplicate processing
     const alreadyProcessed = await webhookRepo.isAlreadyProcessed(eventType, tossOrderId);
     if (alreadyProcessed) {
-      if (import.meta.env.DEV) console.log('[WEBHOOK] DUPLICATE_SKIPPED', { eventType, tossOrderId });
+      if (import.meta.env.DEV) logInfo('webhook.event', { event: 'DUPLICATE_SKIPPED', eventType, tossOrderId });
       return c.json({ received: true, status: 'duplicate_skipped' }, 200);
     }
 
@@ -277,7 +274,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
 
       case 'refund_completed':
         // Main refund is already handled via the /cancel route. Just audit.
-        if (import.meta.env.DEV) console.log('[Webhook] refund_completed:', tossOrderId);
+        if (import.meta.env.DEV) logInfo('webhook.event', { event: 'refund_completed', tossOrderId });
         await webhookRepo.markSkipped(webhookEventId, 'refund_completed_already_handled');
         return c.json({ received: true, status: 'audited' }, 200);
 
@@ -294,7 +291,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
 
       default:
         // Unknown event — alert for investigation.
-        if (import.meta.env.DEV) console.log('[WEBHOOK] UNHANDLED_EVENT_TYPE', { eventType });
+        if (import.meta.env.DEV) logWarn('webhook.warn', { event: 'UNHANDLED_EVENT_TYPE', eventType });
         await sendAlert(c.env, {
           severity: 'warn',
           title: `알 수 없는 Toss 이벤트: ${eventType}`,
@@ -309,11 +306,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     await webhookRepo.markProcessed(webhookEventId);
 
     const elapsed = Date.now() - startTime;
-    if (import.meta.env.DEV) console.log('[WEBHOOK] PROCESSED_SUCCESS', {
-      eventType,
-      tossOrderId,
-      elapsed_ms: elapsed,
-    });
+    if (import.meta.env.DEV) logInfo('webhook.event', { event: 'PROCESSED_SUCCESS', eventType, tossOrderId, elapsed_ms: elapsed });
 
     return c.json({ received: true, status: 'processed' }, 200);
 
@@ -321,18 +314,14 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     // CRITICAL: Always return 200 even on errors
     // Log the error but don't let Toss retry (which could cause duplicate charges)
     const error = err instanceof Error ? err.message : String(err);
-    console.error('[WEBHOOK] PROCESSING_ERROR', {
-      error,
-      webhookEventId,
-      elapsed_ms: Date.now() - startTime,
-    });
+    logError('webhook.error', { event: 'PROCESSING_ERROR', error, webhookEventId, elapsed_ms: Date.now() - startTime });
 
     if (webhookEventId) {
       try {
         const webhookRepo2 = new WebhookEventRepository(c.env.DB);
         await webhookRepo2.markFailed(webhookEventId, error);
       } catch (innerErr) {
-        console.error('[WEBHOOK] Failed to mark event as failed:', innerErr);
+        logError('webhook.error', { message: 'Failed to mark event as failed', error: (innerErr as Error)?.message });
       }
     }
 
@@ -354,17 +343,13 @@ async function handlePaymentConfirmed(
   orderNumber: string,
   paymentKey: string
 ): Promise<void> {
-  console.log('[WEBHOOK] PAYMENT_CONFIRMED', {
-    orderNumber,
-    amount: data.totalAmount,
-    method: data.method,
-  });
+  logInfo('webhook.event', { event: 'PAYMENT_CONFIRMED', orderNumber, amount: data.totalAmount, method: data.method });
 
   // Check idempotency: already PAID/DONE?
   const alreadyDone = await orderRepo.isAlreadyProcessed(orderNumber, 'DONE');
   const alreadyPaid = await orderRepo.isAlreadyProcessed(orderNumber, 'PAID');
   if (alreadyDone || alreadyPaid) {
-    console.log('[WEBHOOK] ORDER_ALREADY_CONFIRMED', { orderNumber });
+    logInfo('webhook.event', { event: 'ORDER_ALREADY_CONFIRMED', orderNumber });
     return;
   }
 
@@ -378,10 +363,7 @@ async function handlePaymentConfirmed(
     paid_at: data.approvedAt ?? new Date().toISOString(),
   });
 
-  console.log('[WEBHOOK] PAYMENT_CONFIRMED_COMPLETE', {
-    orderNumber,
-    ordersUpdated: result.confirmed,
-  });
+  logInfo('webhook.event', { event: 'PAYMENT_CONFIRMED_COMPLETE', orderNumber, ordersUpdated: result.confirmed });
 }
 
 /**
@@ -395,10 +377,7 @@ async function handlePaymentCancelled(
   env: Env,
   DB: D1Database
 ): Promise<void> {
-  console.log('[WEBHOOK] PAYMENT_CANCELLED', {
-    orderNumber,
-    cancelReason: data.failureMessage,
-  });
+  logInfo('webhook.event', { event: 'PAYMENT_CANCELLED', orderNumber, cancelReason: data.failureMessage });
 
   const orders = await orderRepo.findByOrderNumber(orderNumber);
 
@@ -412,10 +391,7 @@ async function handlePaymentCancelled(
     paidTerminalStatuses.includes((o.status || '').toUpperCase())
   );
   if (hasPaidOrder) {
-    console.warn('[WEBHOOK] CANCEL_REJECTED_PAID_ORDER', {
-      orderNumber,
-      statuses: orders.map(o => o.status),
-    });
+    logWarn('webhook.warn', { event: 'CANCEL_REJECTED_PAID_ORDER', orderNumber, statuses: orders.map(o => o.status) });
     return; // skip — do not update status or restore stock
   }
 
@@ -437,15 +413,13 @@ async function handlePaymentCancelled(
 
     if ((casResult.meta?.changes ?? 0) === 0) {
       // Already cancelled/refunded/failed by another path — skip stock restore
-      console.log('[WEBHOOK] STOCK_RESTORE_SKIPPED_ALREADY_TRANSITIONED', {
-        orderId: order.id,
-      });
+      logInfo('webhook.event', { event: 'STOCK_RESTORE_SKIPPED_ALREADY_TRANSITIONED', orderId: order.id });
       continue;
     }
 
     // Only restore stock when we actually transitioned the status
     await orderRepo.restoreStock(order.id);
-    console.log('[WEBHOOK] STOCK_RESTORED', { orderId: order.id, sellerId: order.seller_id });
+    logInfo('webhook.event', { event: 'STOCK_RESTORED', orderId: order.id, sellerId: order.seller_id });
   }
 
   // ✅ SECURITY FIX (Payment C7): Reverse any referral commissions granted for
@@ -468,13 +442,13 @@ async function handlePaymentCancelled(
             'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
           ).bind(co.amount, co.user_id).run().catch((err) => {
             // 🛡️ 에러는 조용히 삼키지 말고 로깅 (감사 로그 누락 방어)
-            console.error('[WEBHOOK] user_points debit failed:', { user_id: co.user_id, amount: co.amount, err });
+            logError('webhook.error', { message: 'user_points debit failed', userId: co.user_id, amount: co.amount, error: (err as Error)?.message });
           });
         }
       }
     }
   } catch (e) {
-    console.error('[WEBHOOK] Commission reversal error:', e);
+    logError('webhook.error', { message: 'Commission reversal error', error: (e as Error)?.message });
   }
 
   // v26 FIX: 결제 취소 시 coupon_uses 복원 (쿠폰 재사용 가능하게)
@@ -483,19 +457,16 @@ async function handlePaymentCancelled(
     const { restoreCouponsForOrders } = await import('../../features/coupons/api/coupons.routes');
     const restored = await restoreCouponsForOrders(DB, orders.map(o => o.id));
     if (restored > 0) {
-      console.log('[WEBHOOK] COUPON_RESTORED', { orderNumber, restored });
+      logInfo('webhook.event', { event: 'COUPON_RESTORED', orderNumber, restored });
     }
   } catch (e) {
-    console.warn('[WEBHOOK] Coupon restore skipped:', e);
+    logWarn('webhook.warn', { message: 'Coupon restore skipped', error: (e as Error)?.message });
   }
 
   // Send order cancellation notification
   await sendOrderNotification(orderRepo, orderNumber, 'cancelled', env)
-    .catch(err => console.error('[WEBHOOK] Notification failed:', err));
-  console.log('[WEBHOOK] PAYMENT_CANCELLED_COMPLETE', {
-    orderNumber,
-    ordersUpdated: orders.length,
-  });
+    .catch(err => logError('webhook.error', { message: 'Notification failed', error: (err as Error)?.message }));
+  logInfo('webhook.event', { event: 'PAYMENT_CANCELLED_COMPLETE', orderNumber, ordersUpdated: orders.length });
 }
 
 /**
@@ -508,11 +479,7 @@ async function handlePaymentFailed(
   orderNumber: string,
   env: Env
 ): Promise<void> {
-  console.log('[WEBHOOK] PAYMENT_FAILED', {
-    orderNumber,
-    failureCode: data.failureCode,
-    failureMessage: data.failureMessage,
-  });
+  logInfo('webhook.event', { event: 'PAYMENT_FAILED', orderNumber, failureCode: data.failureCode, failureMessage: data.failureMessage });
 
   // ✅ SCHEMA FIX: Removed webhook_processed_at / webhook_event_id (not in schema)
   await orderRepo.updateStatus(orderNumber, 'FAILED', {
@@ -523,12 +490,12 @@ async function handlePaymentFailed(
   const failedOrders = await orderRepo.findByOrderNumber(orderNumber);
   for (const order of failedOrders) {
     await orderRepo.restoreStock(order.id);
-    console.log('[WEBHOOK] STOCK_RESTORED_ON_FAILURE', { orderId: order.id });
+    logInfo('webhook.event', { event: 'STOCK_RESTORED_ON_FAILURE', orderId: order.id });
   }
 
   await sendOrderNotification(orderRepo, orderNumber, 'failed', env)
-    .catch(err => console.error('[WEBHOOK] Notification failed:', err));
-  console.log('[WEBHOOK] PAYMENT_FAILED_COMPLETE', { orderNumber });
+    .catch(err => logError('webhook.error', { message: 'Notification failed', error: (err as Error)?.message }));
+  logInfo('webhook.event', { event: 'PAYMENT_FAILED_COMPLETE', orderNumber });
 }
 
 /**
@@ -539,7 +506,7 @@ async function handleVirtualAccountIssued(
   data: TossWebhookPayload['data'],
   orderNumber: string
 ): Promise<void> {
-  console.log('[WEBHOOK] VIRTUAL_ACCOUNT_ISSUED', { orderNumber });
+  logInfo('webhook.event', { event: 'VIRTUAL_ACCOUNT_ISSUED', orderNumber });
 
   // ✅ SCHEMA FIX: Removed webhook_processed_at / webhook_event_id (not in schema)
   await orderRepo.updateStatus(orderNumber, 'AWAITING_PAYMENT', {
@@ -556,7 +523,7 @@ async function handleVirtualAccountDeposited(
   orderNumber: string,
   paymentKey: string
 ): Promise<void> {
-  console.log('[WEBHOOK] VIRTUAL_ACCOUNT_DEPOSITED', { orderNumber });
+  logInfo('webhook.event', { event: 'VIRTUAL_ACCOUNT_DEPOSITED', orderNumber });
 
   // Same as payment.confirmed
   await handlePaymentConfirmed(orderRepo, data, orderNumber, paymentKey);
