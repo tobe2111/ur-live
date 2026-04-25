@@ -7,6 +7,7 @@
 // ============================================================
 
 import { Hono } from 'hono';
+import type { KVNamespace } from '@cloudflare/workers-types';
 import type { Env } from '../types/env';
 import { QueryBuilder } from '../repositories/query-builder';
 import type { AuthVariables } from '../middleware/auth.middleware';

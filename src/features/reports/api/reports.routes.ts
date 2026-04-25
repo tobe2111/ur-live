@@ -37,7 +37,7 @@ async function ensureTable(DB: D1Database) {
 
 reportsRoutes.post(
   '/',
-  rateLimit({ action: 'user_report', max: 5, windowSec: 300 }),
+  rateLimit({ action: 'report_submit', max: 5, windowSec: 600 }),
   requireAuth(),
   async (c) => {
     const user = getCurrentUser(c)

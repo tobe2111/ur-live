@@ -228,6 +228,7 @@ export async function handleScheduled(env: Env) {
   // ── 12. 셀러 재고 품절 임박 알림 (5개 이하) ──
   // 24시간 시간 윈도우 기반 dedup: 제품명이 title에 포함되는지로 확인.
   // (dashboard_notifications에 metadata 컬럼 없음 — title LIKE 매칭으로 충분)
+  // ✅ PERF: 단일 IN-query 로 모든 후보의 24h 알림 존재여부 한 번에 확인 → batch INSERT.
   try {
     const { results: lowStock } = await DB.prepare(`
       SELECT p.id, p.name, p.seller_id, COALESCE(p.stock, p.stock_quantity, 0) AS stock
@@ -239,28 +240,46 @@ export async function handleScheduled(env: Env) {
 
     let alertsSent = 0;
     if (lowStock?.length) {
-      // ✅ FIX (H4): Batch inserts + cap loop to stay within subrequest budget.
-      const inserts: any[] = [];
-      for (const p of lowStock.slice(0, 20)) {
-        // 24시간 윈도우 dedup: 같은 셀러 + 같은 제품명에 대해 최근 알림 존재 확인
-        const existing = await DB.prepare(`
-          SELECT 1 FROM dashboard_notifications
-          WHERE recipient_type = 'seller'
-            AND recipient_id = ?
-            AND type = 'low_stock'
-            AND title LIKE ?
-            AND created_at > datetime('now', '-24 hours')
-          LIMIT 1
-        `).bind(String(p.seller_id), `%${p.name}%`).first();
-        if (existing) continue;
+      // ✅ FIX (H4): Cap loop to stay within subrequest budget.
+      const candidates = lowStock.slice(0, 20);
+      const sellerIds = Array.from(new Set(candidates.map(p => String(p.seller_id))));
 
+      // Single bulk fetch of recent low-stock notifications across involved sellers.
+      let recent: { recipient_id: string; title: string }[] = [];
+      if (sellerIds.length > 0) {
+        const ph = sellerIds.map(() => '?').join(',');
+        try {
+          const { results } = await DB.prepare(`
+            SELECT recipient_id, title FROM dashboard_notifications
+            WHERE recipient_type = 'seller'
+              AND type = 'low_stock'
+              AND recipient_id IN (${ph})
+              AND created_at > datetime('now', '-24 hours')
+          `).bind(...sellerIds).all<{ recipient_id: string; title: string }>();
+          recent = results || [];
+        } catch (e) {
+          logError('cron.cleanup', { task: 'low_stock_dedup_fetch', error: (e as Error)?.message });
+        }
+      }
+
+      const inserts = [];
+      for (const p of candidates) {
+        const sellerKey = String(p.seller_id);
+        const dup = recent.some(r => r.recipient_id === sellerKey && r.title.includes(p.name));
+        if (dup) continue;
         inserts.push(DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
           VALUES ('seller', ?, 'low_stock', ?, ?, '/seller/products')`)
-          .bind(String(p.seller_id), `⚠️ 재고 부족: ${p.name}`, `재고 ${p.stock}개 남음`));
+          .bind(sellerKey, `⚠️ 재고 부족: ${p.name}`, `재고 ${p.stock}개 남음`));
         alertsSent++;
       }
       if (inserts.length > 0) {
-        await DB.batch(inserts);
+        try {
+          for (let i = 0; i < inserts.length; i += 100) {
+            await DB.batch(inserts.slice(i, i + 100));
+          }
+        } catch (e) {
+          logError('cron.cleanup', { task: 'low_stock_insert_batch', error: (e as Error)?.message });
+        }
       }
       results.low_stock_alerts = alertsSent;
     }
@@ -282,21 +301,37 @@ export async function handleScheduled(env: Env) {
     if (expiringCoupons?.length) {
       // 쿠폰을 사용하지 않은 유저들에게 알림
       // ✅ FIX (H4): Cap coupon loop to stay within subrequest budget.
+      // ✅ PERF: 모든 쿠폰의 INSERT 를 단일 batch 큐에 누적 → 100개 단위로 한 번에 flush.
+      const allInserts = [];
       for (const coupon of expiringCoupons.slice(0, 10)) {
-        const { results: users } = await DB.prepare(`
-          SELECT DISTINCT u.id FROM users u
-          WHERE u.id NOT IN (SELECT user_id FROM coupon_uses WHERE coupon_id = ?)
-          LIMIT 100
-        `).bind(coupon.id).all<{ id: string }>();
+        try {
+          const { results: users } = await DB.prepare(`
+            SELECT DISTINCT u.id FROM users u
+            WHERE u.id NOT IN (SELECT user_id FROM coupon_uses WHERE coupon_id = ?)
+            LIMIT 100
+          `).bind(coupon.id).all<{ id: string }>();
 
-        if (users?.length) {
-          const stmts = users.map(u =>
-            DB.prepare('INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)')
-              .bind(u.id, 'coupon_expiring', `🎫 쿠폰 만료 임박!`, `${coupon.name} 쿠폰이 내일 만료됩니다`, '/browse')
-          );
-          for (let i = 0; i < stmts.length; i += 50) {
-            await DB.batch(stmts.slice(i, i + 50));
+          if (users?.length) {
+            for (const u of users) {
+              allInserts.push(
+                DB.prepare('INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)')
+                  .bind(u.id, 'coupon_expiring', `🎫 쿠폰 만료 임박!`, `${coupon.name} 쿠폰이 내일 만료됩니다`, '/browse')
+              );
+            }
           }
+        } catch (e) {
+          logError('cron.cleanup', { task: 'coupon_expiry_users', couponId: coupon.id, error: (e as Error)?.message });
+        }
+      }
+
+      if (allInserts.length > 0) {
+        try {
+          for (let i = 0; i < allInserts.length; i += 100) {
+            await DB.batch(allInserts.slice(i, i + 100));
+          }
+          results.coupon_expiry_alerts = allInserts.length;
+        } catch (e) {
+          logError('cron.cleanup', { task: 'coupon_expiry_insert_batch', error: (e as Error)?.message });
         }
       }
     }

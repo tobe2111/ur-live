@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 
@@ -13,7 +14,7 @@ async function ensureTables(DB: D1Database) {
 }
 
 // 팔로우 토글
-socialRoutes.post('/follow/:sellerId', requireAuth(), async (c) => {
+socialRoutes.post('/follow/:sellerId', rateLimit({ action: 'social_action', max: 30, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env

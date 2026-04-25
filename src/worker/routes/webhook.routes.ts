@@ -400,26 +400,35 @@ async function handlePaymentCancelled(
   // ✅ CONCURRENCY FIX (Cron C2): atomically CAS each order to CANCELLED to prevent
   // double stock-restore (webhook + scheduled-cleanup may race). Only restore
   // stock for orders that actually transitioned in THIS call.
+  // ✅ PERF: Batch all CAS UPDATEs in a single D1 batch (was N round-trips).
   const cancelledAt = data.cancelledAt ?? new Date().toISOString();
   const cancelReason = data.failureMessage ?? 'Payment cancelled';
-  for (const order of orders) {
-    // 🛡️ 2026-04-22: payment_status='cancelled' 동기화 (status 와 함께)
-    const casResult = await DB.prepare(
+
+  const casStmts = orders.map(order =>
+    DB.prepare(
       `UPDATE orders
        SET status = 'CANCELLED',
            payment_status = 'cancelled',
            cancelled_at = ?, cancel_reason = ?, updated_at = datetime('now')
        WHERE id = ?
          AND status NOT IN ('CANCELLED', 'REFUNDED', 'FAILED')`
-    ).bind(cancelledAt, cancelReason, order.id).run();
+    ).bind(cancelledAt, cancelReason, order.id)
+  );
 
-    if ((casResult.meta?.changes ?? 0) === 0) {
+  const casResults: { meta?: { changes?: number } }[] = [];
+  for (let i = 0; i < casStmts.length; i += 100) {
+    const chunk = await DB.batch(casStmts.slice(i, i + 100));
+    casResults.push(...chunk);
+  }
+
+  // Only restore stock for orders that actually transitioned in THIS call.
+  for (let i = 0; i < orders.length; i++) {
+    const order = orders[i];
+    if ((casResults[i]?.meta?.changes ?? 0) === 0) {
       // Already cancelled/refunded/failed by another path — skip stock restore
       logInfo('webhook.event', { event: 'STOCK_RESTORE_SKIPPED_ALREADY_TRANSITIONED', orderId: order.id });
       continue;
     }
-
-    // Only restore stock when we actually transitioned the status
     await orderRepo.restoreStock(order.id);
     logInfo('webhook.event', { event: 'STOCK_RESTORED', orderId: order.id, sellerId: order.seller_id });
   }
@@ -428,24 +437,55 @@ async function handlePaymentCancelled(
   // these orders so a cancel/refund cannot leave the inviter with free deals.
   // 🛡️ 2026-04-22: CAS 로 이중 회수 방어 — granted 인 commission 만 개별 전환 → 포인트 차감.
   // 이전: UPDATE 후 SELECT status='withdrawn' 하면 과거 회수분까지 포함 → 중복 차감 가능.
+  // ✅ PERF: 단일 IN-query 로 모든 commission 조회 → batch CAS → batch user_points 차감.
   try {
-    for (const order of orders) {
-      const orderId = order.id;
+    const orderIds = orders.map(o => o.id);
+    if (orderIds.length > 0) {
+      const placeholders = orderIds.map(() => '?').join(',');
       const toRevoke = await DB.prepare(
-        "SELECT id, user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
-      ).bind(orderId).all<{ id: number; user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ id: number; user_id: string; amount: number }> }));
+        `SELECT id, user_id, amount FROM referral_commissions
+         WHERE order_id IN (${placeholders}) AND status = 'granted'`
+      ).bind(...orderIds).all<{ id: number; user_id: string; amount: number }>()
+        .catch(() => ({ results: [] as Array<{ id: number; user_id: string; amount: number }> }));
 
-      for (const co of (toRevoke.results || [])) {
-        const cas = await DB.prepare(
-          "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE id = ? AND status = 'granted'"
-        ).bind(co.id).run().catch(() => null);
-        if (cas && (cas.meta?.changes ?? 0) > 0) {
-          await DB.prepare(
-            'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
-          ).bind(co.amount, co.user_id).run().catch((err) => {
-            // 🛡️ 에러는 조용히 삼키지 말고 로깅 (감사 로그 누락 방어)
-            logError('webhook.error', { message: 'user_points debit failed', userId: co.user_id, amount: co.amount, error: (err as Error)?.message });
+      const candidates = toRevoke.results || [];
+      if (candidates.length > 0) {
+        // CAS each commission in a single batched call.
+        const casStmts = candidates.map(co =>
+          DB.prepare(
+            "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE id = ? AND status = 'granted'"
+          ).bind(co.id)
+        );
+
+        const casResults: { meta?: { changes?: number } }[] = [];
+        for (let i = 0; i < casStmts.length; i += 100) {
+          const chunk = await DB.batch(casStmts.slice(i, i + 100)).catch((err) => {
+            logError('webhook.error', { message: 'commission CAS batch failed', error: (err as Error)?.message });
+            return [] as { meta?: { changes?: number } }[];
           });
+          casResults.push(...chunk);
+        }
+
+        // Aggregate per-user debits for commissions that actually transitioned.
+        // Aggregating prevents row-locking the same user multiple times in one batch.
+        const debits = new Map<string, number>();
+        for (let i = 0; i < candidates.length; i++) {
+          if ((casResults[i]?.meta?.changes ?? 0) > 0) {
+            const co = candidates[i];
+            debits.set(co.user_id, (debits.get(co.user_id) ?? 0) + co.amount);
+          }
+        }
+
+        if (debits.size > 0) {
+          const debitStmts = Array.from(debits.entries()).map(([userId, amount]) =>
+            DB.prepare('UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?')
+              .bind(amount, userId)
+          );
+          for (let i = 0; i < debitStmts.length; i += 100) {
+            await DB.batch(debitStmts.slice(i, i + 100)).catch((err) => {
+              logError('webhook.error', { message: 'user_points debit batch failed', error: (err as Error)?.message });
+            });
+          }
         }
       }
     }

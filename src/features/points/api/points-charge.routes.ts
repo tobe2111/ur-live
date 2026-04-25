@@ -162,7 +162,11 @@ pointsChargeRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_co
     headers: {
       Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
       'Content-Type': 'application/json',
-      'Idempotency-Key': paymentKey,
+      // Scoped per (orderId, paymentKey) so retries against Toss are safely
+      // de-duplicated even if the same paymentKey were ever reused across
+      // different orders. Duplicate detection at the DB layer is enforced
+      // above via the `payment_key`-CAS update.
+      'Idempotency-Key': `points_charge_${orderId}_${paymentKey}`,
     },
     body: JSON.stringify({ paymentKey, orderId, amount }),
     signal: AbortSignal.timeout(10_000),
