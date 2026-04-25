@@ -17,8 +17,6 @@ import type { Env } from './types/env';
 import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
-import { ordersRouter } from './routes/order.routes';
-import { paymentsRouter } from './routes/payment.routes';
 import { stripeRouter } from './routes/stripe.routes';
 import { sellersRouter } from './routes/seller.routes';
 import { emailRoutes } from '../features/notifications/api/email.routes';
@@ -583,31 +581,10 @@ app.route('/api/affiliate', affiliateRoutes);
 // Order & Payment Routes
 // ============================================================
 
-// -------------------------------------------------------
-// Order routing: 두 라우터 — 이제 경로 non-overlapping (배치 112).
-//
-// ordersRouter  → worker/repositories/order.repository.ts (PRIMARY)
-//   POST /, GET /, GET /:id, POST /refund, POST /:id/cancel
-//
-// featureOrdersRoutes → features/orders (delivery tracking & cron)
-//   GET /:id/tracking, POST /:id/confirm,
-//   POST /internal/auto-confirm, POST /internal/sync-deliveries
-//
-// 🛡️ 2026-04-22 배치 112: featureOrdersRoutes 의 중복 경로 (GET /, GET /:id, POST /)
-//    삭제 완료 → 이제 완전 non-overlapping.
-// -------------------------------------------------------
-app.route('/api/orders', ordersRouter);
+// TD-004 통합: 모든 주문 라우트는 features/orders/api/orders.routes.ts 하나에서 관리
 app.route('/api/orders', featureOrdersRoutes);
 
-// -------------------------------------------------------
-// Payment routing: TWO routers on /api/payments (non-overlapping sub-routes).
-//
-// paymentsRouter       → POST /confirm, POST /checkout-session (worker-native, PRIMARY)
-// featurePaymentRoutes → POST /rollback (feature module, SECONDARY)
-//
-// ⚠️ Both mounted on /api/payments — paymentsRouter registered first for priority.
-// -------------------------------------------------------
-app.route('/api/payments', paymentsRouter);
+// TD-004 통합: 모든 결제 라우트는 features/payments/api/payment.routes.ts 하나에서 관리
 app.route('/api/payments', featurePaymentRoutes);
 
 // ✅ Stripe routes (Global region): POST /api/payment/stripe/create-intent

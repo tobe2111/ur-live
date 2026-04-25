@@ -1,15 +1,20 @@
 /**
- * Orders API Routes (feature module — complementary routes)
+ * Orders API Routes (unified feature module — TD-004)
  *
- * 🛡️ 2026-04-22 Dual routing 정리 (배치 112):
- *   GET /, GET /:id, POST / 는 worker/routes/order.routes.ts 의 ordersRouter 가
- *   먼저 마운트되어 우선권을 가짐 → 이 파일의 동일 경로는 dead code 였음 → 삭제.
- *   이 파일은 delivery tracking / 구매확정 / cron 전용으로 축소.
+ * 🛡️ 2026-04-25 TD-004 이중 라우팅 통합:
+ *   worker/routes/order.routes.ts (aggregator) + sub-routers
+ *   (order-create, order-query, order-actions) 를 이 파일로 흡수.
+ *   worker/index.ts 에서 ordersRouter import 제거, 이 파일 하나만 마운트.
  *
- * Endpoints (unique, non-overlapping with ordersRouter):
- * - GET  /api/orders/:id/tracking          - 실시간 배송 추적
- * - POST /api/orders/:id/confirm           - 구매확정
- * - POST /api/orders/internal/auto-confirm - cron: 자동 구매확정
+ * All Endpoints:
+ * - POST /api/orders                        - 주문 생성
+ * - GET  /api/orders                        - 주문 목록
+ * - GET  /api/orders/:id                    - 주문 상세
+ * - POST /api/orders/refund                 - 환불 요청
+ * - POST /api/orders/:id/cancel             - 주문 취소
+ * - GET  /api/orders/:id/tracking           - 실시간 배송 추적
+ * - POST /api/orders/:id/confirm            - 구매확정
+ * - POST /api/orders/internal/auto-confirm  - cron: 자동 구매확정
  * - POST /api/orders/internal/sync-deliveries - cron: 배송 상태 동기화
  */
 
@@ -17,6 +22,9 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { OrderRepository } from '../repositories/OrderRepository';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { orderCreateRouter } from '../../../worker/routes/order-create';
+import { orderQueryRouter } from '../../../worker/routes/order-query';
+import { orderActionsRouter } from '../../../worker/routes/order-actions';
 
 type Bindings = {
   DB: D1Database;
@@ -34,6 +42,22 @@ type Bindings = {
 };
 
 export const ordersRoutes = new Hono<{ Bindings: Bindings }>();
+
+// Auth middleware: require auth for all paths except /internal/* cron endpoints.
+// Sub-routers (create, query, actions) rely on c.get('user') being populated.
+// Internal cron endpoints authenticate via X-Internal-Token header instead.
+ordersRoutes.use('*', async (c, next) => {
+  const path = new URL(c.req.url).pathname;
+  if (path.includes('/internal/')) {
+    return next();
+  }
+  return requireAuth()(c, next);
+});
+
+// Mount sub-routers: create, query, actions
+ordersRoutes.route('/', orderCreateRouter);
+ordersRoutes.route('/', orderQueryRouter);
+ordersRoutes.route('/', orderActionsRouter);
 
 // ─── 택배사 이름 → DeliveryTracker carrier ID 매핑 ───────────────────────────
 const CARRIER_ID_MAP: Record<string, string> = {
