@@ -12,6 +12,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { validateImageUrl } from '@/worker/utils/validation'
+import { DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 
 export const adminToolsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -197,10 +198,10 @@ adminToolsRoutes.post('/notices', async (c) => {
 adminToolsRoutes.get('/settlements/pending', async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT s.id AS seller_id, s.name AS seller_name, s.business_name,
-      COALESCE(s.commission_rate, 10) AS commission_rate,
+      COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) AS commission_rate,
       COUNT(DISTINCT o.id) AS order_count,
       COALESCE(SUM(o.total_amount), 0) AS total_amount,
-      COALESCE(SUM(o.total_amount * COALESCE(s.commission_rate, 10) / 100.0), 0) AS commission
+      COALESCE(SUM(o.total_amount * COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100.0), 0) AS commission
     FROM orders o JOIN sellers s ON o.seller_id = s.id
     WHERE o.status IN ('DELIVERED', 'delivered') AND COALESCE(o.settlement_status, 'pending') = 'pending'
     GROUP BY s.id ORDER BY total_amount DESC
