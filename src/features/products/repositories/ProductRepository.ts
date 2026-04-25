@@ -4,6 +4,7 @@
  */
 
 import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
+import { logError, logWarn } from '@/worker/utils/logger';
 
 export class ProductRepository {
   constructor(private db: D1Database) {}
@@ -308,7 +309,7 @@ export class ProductRepository {
       return result.results || [];
     } catch (error) {
       // FTS 테이블이 없으면 기존 LIKE 검색으로 폴백
-      console.warn('[ProductRepository] FTS search failed, falling back to LIKE search:', error);
+      logWarn('product.repository.searchByText.ftsFallback', { error: (error as Error)?.message });
       return this.findAll({ ...filter, search: query }, offset, limit);
     }
   }
@@ -323,7 +324,7 @@ export class ProductRepository {
         VALUES (?, ?, ?, datetime('now'))
       `).bind(userId, searchQuery, resultsCount).run();
     } catch (error) {
-      console.error('[ProductRepository] Failed to log search:', error);
+      logError('product.repository.logSearch.error', { error: (error as Error)?.message });
     }
   }
   
@@ -345,7 +346,7 @@ export class ProductRepository {
       
       return result.results || [];
     } catch (error) {
-      console.error('[ProductRepository] Failed to get popular searches:', error);
+      logError('product.repository.getPopularSearches.error', { error: (error as Error)?.message });
       return [];
     }
   }

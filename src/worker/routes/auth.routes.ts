@@ -21,6 +21,7 @@ import { parseSessionCookie, clearSessionCookie } from '../utils/session';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { decryptAtRest } from '../utils/data-crypto';
+import { logError, logInfo } from '../utils/logger';
 
 const authRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -102,7 +103,7 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
       },
     }, 201);
   } catch (err) {
-    console.error('[AUTH] Register error:', err);
+    logError('auth.register.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Registration failed' }, 500);
   }
 });
@@ -160,10 +161,10 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
            WHERE id = ?`,
           [newHash, user.id]
         );
-        console.info('[AUTH] Migrated password hash to PBKDF2:', { userId: user.id });
+        logInfo('auth.login.password_migrated', { userId: user.id });
       } catch (migrateErr) {
         // 마이그레이션 실패는 로그인 자체를 막지 않음 (다음 로그인에 재시도)
-        console.error('[AUTH] Password migration failed (non-fatal):', migrateErr);
+        logError('auth.login.password_migration_failed', { error: (migrateErr as Error)?.message });
       }
     }
 
@@ -194,7 +195,7 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
       },
     });
   } catch (err) {
-    console.error('[AUTH] Login error:', err);
+    logError('auth.login.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Login failed' }, 500);
   }
 });

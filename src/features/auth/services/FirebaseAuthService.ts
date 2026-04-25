@@ -8,6 +8,7 @@
 
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
 import type { FirebaseCustomClaims } from '../types';
+import { logError } from '@/worker/utils/logger';
 
 export class FirebaseAuthService {
   private firebase: ReturnType<typeof initFirebaseAdmin>;
@@ -31,7 +32,7 @@ export class FirebaseAuthService {
       const customToken = await this.firebase.createCustomToken(uid, claims as unknown as Record<string, unknown>);
       return customToken;
     } catch (error) {
-      console.error('[FirebaseAuthService] Failed to create custom token:', error);
+      logError('firebase.auth.customTokenFailed', { error: (error as Error)?.message });
       throw new Error(`Firebase custom token creation failed: ${(error as Error).message}`);
     }
   }

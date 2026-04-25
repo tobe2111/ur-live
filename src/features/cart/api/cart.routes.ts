@@ -27,6 +27,7 @@ import {
   internalServerErrorResponse,
 } from '@/worker/utils/response';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { logError } from '@/worker/utils/logger';
 
 // v31 FIX: cart mutation rate limit (per-IP, 분당 30회)
 const cartRateLimit = rateLimit({ action: 'cart_mutation', max: 30, windowSec: 60 });
@@ -169,7 +170,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
 
     return c.json(successResponse({ items, summary }));
   } catch (error: any) {
-    console.error('[Cart] GET /api/cart error:', error);
+    logError('cart.get.error', { error: (error as Error)?.message });
     return c.json(internalServerErrorResponse('Failed to get cart'), 500);
   }
 });
@@ -306,7 +307,7 @@ cartRoutes.post('/', cartRateLimit, requireAuth(), async (c) => {
       201
     );
   } catch (error: any) {
-    console.error('[Cart] POST /api/cart error:', error);
+    logError('cart.post.error', { error: (error as Error)?.message });
     return c.json(
       {
         success: false,
@@ -365,7 +366,7 @@ cartRoutes.put('/:id', cartRateLimit, requireAuth(), async (c) => {
 
     return c.json(successResponse({ id: cartItemId, quantity }, 'Cart item updated'));
   } catch (error: any) {
-    console.error('[Cart] PUT /api/cart/:id error:', error);
+    logError('cart.put.error', { error: (error as Error)?.message });
     return c.json(internalServerErrorResponse('Failed to update cart item'), 500);
   }
 });
@@ -401,7 +402,7 @@ cartRoutes.delete('/:id', cartRateLimit, requireAuth(), async (c) => {
 
     return c.json(successResponse(null, 'Cart item deleted'));
   } catch (error: any) {
-    console.error('[Cart] DELETE /api/cart/:id error:', error);
+    logError('cart.delete.error', { error: (error as Error)?.message });
     return c.json(internalServerErrorResponse('Failed to delete cart item'), 500);
   }
 });
@@ -426,7 +427,7 @@ cartRoutes.post('/clear', cartRateLimit, requireAuth(), async (c) => {
 
     return c.json(successResponse(null, 'Cart cleared'));
   } catch (error: any) {
-    console.error('[Cart] POST /api/cart/clear error:', error);
+    logError('cart.clear.error', { error: (error as Error)?.message });
     return c.json(internalServerErrorResponse('Failed to clear cart'), 500);
   }
 });

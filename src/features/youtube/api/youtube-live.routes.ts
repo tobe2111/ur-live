@@ -12,6 +12,7 @@ import {
   getSellerIdFromToken,
   getValidAccessToken,
 } from './youtube-shared'
+import { logError, logWarn } from '@/worker/utils/logger'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -196,7 +197,7 @@ app.post('/live/create', async (c) => {
       }
     })
   } catch (error: unknown) {
-    console.error('[YouTube Live Create] Error:', error)
+    logError('youtube.live.create_failed', { error: (error as Error)?.message })
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create live stream'
@@ -272,7 +273,7 @@ app.post('/live/:id/start', async (c) => {
       await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
     } catch (transitionError: unknown) {
       // If transition fails (e.g., no RTMP data yet), still update DB
-      console.warn('[YouTube Live Start] Transition warning:', transitionError)
+      logWarn('youtube.live.transition_warning', { error: (transitionError as Error)?.message })
     }
 
     // Update database
@@ -284,7 +285,7 @@ app.post('/live/:id/start', async (c) => {
 
     return c.json({ success: true, message: 'Stream is now live' })
   } catch (error: unknown) {
-    console.error('[YouTube Live Start] Error:', error)
+    logError('youtube.live.start_failed', { error: (error as Error)?.message })
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to start stream'
@@ -365,7 +366,7 @@ app.get('/live/:id/status', async (c) => {
       data: { status: stream.status, youtube_status: ytStatus, synced: false }
     })
   } catch (error: unknown) {
-    console.error('[YouTube Live Status] Error:', error)
+    logError('youtube.live.status_failed', { error: (error as Error)?.message })
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to check status'
@@ -483,7 +484,7 @@ app.post('/live/:id/end', async (c) => {
       message: 'Stream ended successfully'
     })
   } catch (error: unknown) {
-    console.error('[YouTube Live End] Error:', error)
+    logError('youtube.live.end_failed', { error: (error as Error)?.message })
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to end stream'

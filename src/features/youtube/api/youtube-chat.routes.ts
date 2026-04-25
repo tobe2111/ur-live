@@ -7,6 +7,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import jwt from '@tsndr/cloudflare-worker-jwt'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+import { logError } from '@/worker/utils/logger'
 
 type Bindings = {
   DB: D1Database
@@ -189,7 +190,7 @@ app.get('/chat/:streamId', async (c) => {
       }
     })
   } catch (error: unknown) {
-    console.error('[YouTube Chat] Error:', error)
+    logError('youtube.chat.fetch_failed', { error: (error as Error)?.message })
     const message = error instanceof Error ? error.message : 'Failed to fetch chat messages'
     return c.json({
       success: false,
@@ -269,7 +270,7 @@ app.post('/chat/:streamId', async (c) => {
       }
     })
   } catch (error: unknown) {
-    console.error('[YouTube Chat Send] Error:', error)
+    logError('youtube.chat.send_failed', { error: (error as Error)?.message })
     const message2 = error instanceof Error ? error.message : 'Failed to send message'
     return c.json({
       success: false,
@@ -307,7 +308,7 @@ app.get('/chat/:streamId/cached', async (c) => {
       }
     })
   } catch (error: unknown) {
-    console.error('[Cached Chat] Error:', error)
+    logError('youtube.chat.cached_fetch_failed', { error: (error as Error)?.message })
     return c.json({
       success: false,
       error: 'Failed to fetch cached messages'

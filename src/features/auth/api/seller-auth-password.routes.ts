@@ -15,6 +15,7 @@ import {
   generateResetToken,
   getPasswordResetEmailHTML,
 } from './seller-auth-helpers';
+import { logError, logWarn } from '@/worker/utils/logger';
 
 export const sellerAuthPasswordRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -71,7 +72,7 @@ sellerAuthPasswordRoutes.post('/forgot-password', cors(), rateLimit({ action: 's
           },
           RESEND_API_KEY,
           RESEND_FROM
-        ).catch((e) => console.error('[Seller ForgotPassword] Email send failed:', e));
+        ).catch((e) => logError('seller.forgotPassword.emailSendFailed', { error: (e as Error)?.message }));
       } else {
         if (import.meta.env.DEV) console.warn('[Seller ForgotPassword] RESEND_API_KEY not configured; skipping email. resetUrl=', resetUrl);
       }
@@ -85,7 +86,7 @@ sellerAuthPasswordRoutes.post('/forgot-password', cors(), rateLimit({ action: 's
       message: '입력하신 이메일로 비밀번호 재설정 링크를 발송했습니다. 이메일을 확인해주세요.'
     });
   } catch (error) {
-    console.error('[Seller ForgotPassword] Error:', error);
+    logError('seller.forgotPassword.error', { error: (error as Error)?.message });
     // 에러도 동일 메시지로 반환하여 이메일 노출 방지
     return c.json({
       success: true,
@@ -173,7 +174,7 @@ sellerAuthPasswordRoutes.post('/reset-password', cors(), rateLimit({ action: 'se
       message: '비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.'
     });
   } catch (error) {
-    console.error('[Seller ResetPassword] Error:', error);
+    logError('seller.resetPassword.error', { error: (error as Error)?.message });
     return c.json<AuthResponse>({
       success: false,
       error: '비밀번호 재설정 중 오류가 발생했습니다.',

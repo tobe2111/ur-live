@@ -11,6 +11,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { requireAuth, getCurrentUser, optionalAuth } from '../middleware/auth';
+import { logError, logWarn } from '../utils/logger';
 
 export const usersRouter = new Hono<{ Bindings: Env }>();
 
@@ -57,7 +58,7 @@ usersRouter.get('/role', optionalAuth(), async (c) => {
 
     return c.json({ success: true, role: 'user', data: { role: 'user' } });
   } catch (err: any) {
-    console.error('[/api/users/role] Error:', err);
+    logError('users.role.error', { error: (err as Error)?.message });
     // 오류 시 안전하게 user 역할 반환 (로그인 차단하지 않음)
     return c.json({ success: true, role: 'user', data: { role: 'user' } });
   }
@@ -91,7 +92,7 @@ usersRouter.post('/init', requireAuth(), async (c) => {
         .bind(displayName || null, initNumericId)
         .run()
         .catch((e: any) => {
-          console.warn('[/api/users/init] DB update failed (non-critical):', e?.message);
+          logWarn('users.init.db_update_failed', { error: e?.message });
         });
     } else {
       await db

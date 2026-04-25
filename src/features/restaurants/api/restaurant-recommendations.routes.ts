@@ -23,6 +23,7 @@ import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/a
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+import { logError } from '@/worker/utils/logger'
 
 // ── 유저용 라우터 ──────────────────────────────────────────────────────────────
 export const restaurantRecommendRoutes = new Hono<{ Bindings: Env }>()
@@ -212,7 +213,7 @@ adminRestaurantRecommendRoutes.post('/restaurant-recommendations/:id/approve', a
           updated_at = CURRENT_TIMESTAMP
       `).bind(rec.user_id, rewardPoints).run()
     } catch (e) {
-      console.error('[restaurant-recommend] user_points UPSERT failed:', e)
+      logError('restaurant_recommend.approve.upsert_failed', { error: (e as Error)?.message })
     }
   }
 

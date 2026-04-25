@@ -37,6 +37,7 @@ import {
   internalServerErrorResponse
 } from '@/worker/utils/response';
 import { createDbHelper } from '@/worker/utils/database';
+import { logError, logWarn } from '@/worker/utils/logger';
 
 type Bindings = {
   DB: D1Database;
@@ -134,7 +135,7 @@ shippingAddressRoutes.get('/', requireAuth(), async (c) => {
     return c.json(successResponse(addresses));
 
   } catch (error: any) {
-    console.error('[Shipping] Get addresses error:', error);
+    logError('shipping.getAddresses.error', { error: (error as Error)?.message });
     return c.json(internalServerErrorResponse('Failed to get shipping addresses'), 500);
   }
 });
@@ -203,7 +204,7 @@ shippingAddressRoutes.post('/', requireAuth(), async (c) => {
     } catch (insertErr) {
       // 마이그레이션 0204 미적용 환경 — 확장 필드 없이 재시도
       if (insertErr instanceof Error && /no such column|has no column/i.test(insertErr.message)) {
-        console.warn('[Shipping] migration 0204 not applied, inserting without extended fields');
+        logWarn('shipping.addAddress.migrationFallback');
         result = await dbHelper.insert('shipping_addresses', basePayload);
       } else {
         throw insertErr;
@@ -215,7 +216,7 @@ shippingAddressRoutes.post('/', requireAuth(), async (c) => {
     return c.json(createdResponse(newAddress, 'Shipping address added'), 201);
 
   } catch (error: any) {
-    console.error('[Shipping] Add address error:', error);
+    logError('shipping.addAddress.error', { error: (error as Error)?.message });
     
     if (error instanceof ValidationError) {
       return c.json(validationErrorResponse(error.message, error.field), 422);
@@ -313,7 +314,7 @@ shippingAddressRoutes.put('/:id', requireAuth(), async (c) => {
     return c.json(successResponse(updatedAddress, 'Shipping address updated'));
 
   } catch (error: any) {
-    console.error('[Shipping] Update address error:', error);
+    logError('shipping.updateAddress.error', { error: (error as Error)?.message });
     
     if (error instanceof ValidationError) {
       return c.json(validationErrorResponse(error.message, error.field), 422);
@@ -360,7 +361,7 @@ shippingAddressRoutes.delete('/:id', requireAuth(), async (c) => {
     return c.json(successResponse(null, 'Shipping address deleted'));
 
   } catch (error: any) {
-    console.error('[Shipping] Delete address error:', error);
+    logError('shipping.deleteAddress.error', { error: (error as Error)?.message });
     return c.json(internalServerErrorResponse('Failed to delete shipping address'), 500);
   }
 });

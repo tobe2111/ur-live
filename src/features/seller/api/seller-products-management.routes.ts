@@ -14,6 +14,7 @@ import { Hono } from 'hono';
 import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import type { Env } from '@/worker/types/env';
+import { logError } from '@/worker/utils/logger';
 
 export const sellerProductsManagementRoutes = new Hono<{ Bindings: Env }>();
 
@@ -99,7 +100,7 @@ sellerProductsManagementRoutes.get('/products', async (c) => {
       },
     });
   } catch (error: unknown) {
-    console.error('Get seller products error:', error);
+    logError('seller.products.list.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to get products' }, 500);
   }
 });
@@ -206,7 +207,7 @@ sellerProductsManagementRoutes.post('/products', async (c) => {
 
     return c.json({ success: true, data: newProduct }, 201);
   } catch (error: unknown) {
-    console.error('Create seller product error:', error);
+    logError('seller.products.create.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to create product' }, 500);
   }
 });
@@ -282,7 +283,7 @@ sellerProductsManagementRoutes.put('/products/:id', async (c) => {
 
     return c.json({ success: true, data: updated });
   } catch (error: unknown) {
-    console.error('Update seller product error:', error);
+    logError('seller.products.update.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to update product' }, 500);
   }
 });
@@ -306,7 +307,7 @@ sellerProductsManagementRoutes.delete('/products/:id', async (c) => {
 
     return c.json({ success: true, message: '상품이 삭제되었습니다.' });
   } catch (error: unknown) {
-    console.error('Delete seller product error:', error);
+    logError('seller.products.delete.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to delete product' }, 500);
   }
 });
@@ -348,7 +349,7 @@ sellerProductsManagementRoutes.post('/products/:id/link-to-stream', async (c) =>
       message: streamId ? `스트림 ${streamId}에 상품이 연결되었습니다.` : '스트림 연결이 해제되었습니다.',
     });
   } catch (error: unknown) {
-    console.error('Link product to stream error:', error);
+    logError('seller.products.linkToStream.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to link product' }, 500);
   }
 });

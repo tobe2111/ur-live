@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { HTTPException } from 'hono/http-exception';
+import { logError, logWarn } from '../utils/logger';
 
 /**
  * ✅ Global Error Handler
@@ -144,7 +145,7 @@ async function sendToSentry(
 
     // Error sent to Sentry
   } catch (err) {
-    console.error('[Error Handler] Failed to send to Sentry:', err);
+    logError('error-handler.sentry.send_failed', { error: (err as Error)?.message });
   }
 }
 
@@ -188,7 +189,7 @@ async function sendToDiscord(
 
     // Error sent to Discord
   } catch (err) {
-    console.error('[Error Handler] Failed to send to Discord:', err);
+    logError('error-handler.discord.send_failed', { error: (err as Error)?.message });
   }
 }
 
@@ -199,9 +200,8 @@ export async function globalErrorHandler(
   error: Error | HTTPException,
   c: Context
 ): Promise<Response> {
-  console.error('[Global Error Handler] Error caught:', {
-    message: error.message,
-    stack: error.stack,
+  logError('error-handler.global.caught', {
+    error: error.message,
     url: c.req.url,
   });
 
@@ -232,7 +232,7 @@ export async function globalErrorHandler(
     sendToSentry(c, error as Error, errorResponse),
     sendToDiscord(c, error as Error, errorResponse),
   ]).catch((err) => {
-    console.error('[Error Handler] Failed to send notifications:', err);
+    logError('error-handler.notifications.send_failed', { error: (err as Error)?.message });
   });
 
   // 사용자에게 에러 응답 반환
@@ -298,7 +298,7 @@ export function notFoundHandler(c: Context): Response {
     requestId: c.req.header('x-request-id'),
   };
 
-  console.warn('[Not Found Handler]', errorResponse.path);
+  logWarn('error-handler.not_found.request', { endpoint: errorResponse.path });
 
   return c.json(errorResponse, 404);
 }

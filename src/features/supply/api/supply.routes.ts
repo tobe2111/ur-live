@@ -12,6 +12,7 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { logError } from '@/worker/utils/logger';
 
 const supplyRoutes = new Hono<{ Bindings: Env }>();
 
@@ -131,7 +132,7 @@ supplyRoutes.get('/products', async (c) => {
       },
     });
   } catch (err) {
-    console.error('[Supply] GET /products error:', err);
+    logError('supply.products.get_failed', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -194,7 +195,7 @@ supplyRoutes.post('/sample-requests', async (c) => {
       message: '샘플 신청이 완료되었습니다. 관리자 승인 후 상품 등록이 가능합니다.',
     }, 201);
   } catch (err) {
-    console.error('[Supply] POST /sample-requests error:', err);
+    logError('supply.sample_requests.post_failed', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -260,7 +261,7 @@ supplyRoutes.get('/sample-requests', async (c) => {
 
     return c.json({ success: true, data: rows.results ?? [] });
   } catch (err) {
-    console.error('[Supply] GET /sample-requests error:', err);
+    logError('supply.sample_requests.get_failed', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -358,7 +359,7 @@ supplyRoutes.post('/register', async (c) => {
       message: '상품이 등록되었습니다. 라이브에서 판매를 시작하세요!',
     }, 201);
   } catch (err) {
-    console.error('[Supply] POST /register error:', err);
+    logError('supply.register.post_failed', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });

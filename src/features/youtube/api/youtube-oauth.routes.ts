@@ -12,6 +12,7 @@ import {
   ensureYouTubeTables,
   getSellerIdFromToken,
 } from './youtube-shared'
+import { logError } from '@/worker/utils/logger'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -174,7 +175,7 @@ app.post('/oauth/callback', async (c) => {
       }
     })
   } catch (error: unknown) {
-    console.error('[YouTube OAuth] Error:', error)
+    logError('youtube.oauth.callback_failed', { error: (error as Error)?.message })
     const msg = error instanceof Error ? error.message : String(error)
     return c.json({
       success: false,
@@ -223,7 +224,7 @@ app.get('/channels', async (c) => {
       }))
     })
   } catch (error: unknown) {
-    console.error('[YouTube Channels] Error:', error)
+    logError('youtube.oauth.channels_failed', { error: (error as Error)?.message })
     return c.json({
       success: false,
       error: 'Failed to fetch channels'
@@ -259,7 +260,7 @@ app.delete('/oauth/:id', async (c) => {
       message: 'YouTube account disconnected'
     })
   } catch (error: unknown) {
-    console.error('[YouTube Disconnect] Error:', error)
+    logError('youtube.oauth.disconnect_failed', { error: (error as Error)?.message })
     return c.json({
       success: false,
       error: 'Failed to disconnect YouTube account'

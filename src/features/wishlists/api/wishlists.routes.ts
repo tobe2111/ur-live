@@ -21,6 +21,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { AuthUser } from '@/worker/middleware/auth';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { logError } from '@/worker/utils/logger';
 
 // v31 FIX: wishlist mutation rate limit (per-IP, 분당 20회)
 const wishlistRateLimit = rateLimit({ action: 'wishlist_mutation', max: 20, windowSec: 60 });
@@ -174,7 +175,7 @@ wishlistRoutes.post('/', wishlistRateLimit, requireAuth(), async (c) => {
       data: { id: result.meta.last_row_id, userId, productId, productName: product.name },
     });
   } catch (err) {
-    console.error('[Wishlist] Add error:', err);
+    logError('wishlist.add.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -202,7 +203,7 @@ wishlistRoutes.delete('/:id', wishlistRateLimit, requireAuth(), async (c) => {
 
     return c.json({ success: true, message: '찜 목록에서 삭제되었습니다.' });
   } catch (err) {
-    console.error('[Wishlist] Delete error:', err);
+    logError('wishlist.delete.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -228,7 +229,7 @@ wishlistRoutes.delete('/product/:productId', wishlistRateLimit, requireAuth(), a
 
     return c.json({ success: true, message: '찜 목록에서 삭제되었습니다.' });
   } catch (err) {
-    console.error('[Wishlist] Delete by product error:', err);
+    logError('wishlist.deleteByProduct.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -274,7 +275,7 @@ wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
       data: { items: results, total: countResult?.count || 0, limit, offset },
     });
   } catch (err) {
-    console.error('[Wishlist] Get error:', err);
+    logError('wishlist.get.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -305,7 +306,7 @@ wishlistRoutes.get('/check/:userId/:productId', requireAuth(), async (c) => {
       data: { isWishlisted: !!wishlist, wishlistId: wishlist?.id || null },
     });
   } catch (err) {
-    console.error('[Wishlist] Check error:', err);
+    logError('wishlist.check.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });

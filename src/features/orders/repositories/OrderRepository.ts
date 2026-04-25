@@ -8,6 +8,7 @@
  */
 
 import type { Order, OrderItem, OrderFilter, OrderCreateInput } from '../types';
+import { logWarn } from '@/worker/utils/logger';
 
 export class OrderRepository {
   constructor(private db: D1Database) {}
@@ -110,7 +111,7 @@ export class OrderRepository {
     // ✅ BUG #26 FIX: Idempotency check — return existing order if order_number already exists
     const existing = await this.findByOrderNumber(orderNumber);
     if (existing) {
-      console.warn('[OrderRepository] Duplicate order_number detected, returning existing order:', orderNumber);
+      logWarn('order.repository.create.duplicateOrderNumber', { error: orderNumber });
       return existing;
     }
 

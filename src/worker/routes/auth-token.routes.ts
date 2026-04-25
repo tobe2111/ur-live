@@ -12,6 +12,7 @@ import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { logError } from '../utils/logger';
 
 const authTokenRoutes = new Hono<{ Bindings: Env }>();
 
@@ -138,7 +139,7 @@ authTokenRoutes.post('/id-token', rateLimit({ action: 'auth_id_token', max: 20, 
     }, 200);
 
   } catch (err) {
-    console.error('[AuthToken] Error generating token:', err);
+    logError('auth-token.id_token.error', { error: (err as Error)?.message });
     const message = err instanceof Error ? err.message : 'Failed to generate token';
     
     return c.json({
@@ -211,7 +212,7 @@ authTokenRoutes.get('/token-info', async (c) => {
     }, 200);
 
   } catch (err) {
-    console.error('[AuthToken] Error verifying token:', err);
+    logError('auth-token.token_info.error', { error: (err as Error)?.message });
     return c.json({
       success: false,
       error: 'Failed to verify token',

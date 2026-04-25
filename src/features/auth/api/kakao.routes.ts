@@ -14,6 +14,7 @@ import { FirebaseAuthService } from '../services/FirebaseAuthService';
 import { createSessionCookie } from '../../../worker/utils/session';
 import { encryptAtRest } from '../../../worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
+import { logWarn } from '@/worker/utils/logger';
 
 /**
  * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
@@ -378,7 +379,7 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       } catch (e) {
         // Cloudflare Workers observability 에서 잡히도록 프로덕션에서도 로깅.
         // 실패해도 smart redirect 로 /seller/waiting 등으로 보내지므로 치명적이지 않음.
-        console.warn('[Kakao Sync] Linked role tokens issuance failed:', e);
+        logWarn('kakao.sync.linkedRoleTokensFailed', { error: (e as Error)?.message });
       }
 
       // 🚦 Smart redirect — intent(seller/agency) 와 linked role 상태별 라우팅.

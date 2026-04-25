@@ -6,6 +6,7 @@
 import { verify as honoVerify } from 'hono/jwt'
 import { YouTubeAPIService } from '../services/youtube-api.service'
 import type { SellerYouTubeAuth } from '../types'
+import { logError } from '@/worker/utils/logger'
 
 export type Bindings = {
   DB: D1Database
@@ -136,7 +137,7 @@ export async function getSellerIdFromToken(authHeader: string | undefined, secre
       try {
         payload = await honoVerify(token, secret, 'HS256') as JwtPayload
       } catch {
-        console.error('[YouTube Auth] JWT verification failed:', verifyError)
+        logError('youtube.auth.jwt_verification_failed', { error: (verifyError as Error)?.message })
         return null
       }
     }
@@ -146,19 +147,19 @@ export async function getSellerIdFromToken(authHeader: string | undefined, secre
     // Support both seller_id and sub fields
     const sellerId = payload.seller_id || payload.sub
     if (!sellerId) {
-      console.error('[YouTube Auth] No seller_id in token payload:', Object.keys(payload))
+      logError('youtube.auth.no_seller_id', { error: 'No seller_id in token payload' })
       return null
     }
 
     // Verify this is a seller token
     if (payload.type !== 'seller' && payload.userType !== 'seller') {
-      console.error('[YouTube Auth] Token type is not seller:', payload.type || payload.userType)
+      logError('youtube.auth.invalid_token_type', { error: 'Token type is not seller' })
       return null
     }
 
     return Number(sellerId)
   } catch (error) {
-    console.error('[YouTube Auth] JWT verification error:', error)
+    logError('youtube.auth.jwt_error', { error: (error as Error)?.message })
     return null
   }
 }
@@ -204,7 +205,7 @@ export async function getValidAccessToken(
 
     return tokens.access_token
   } catch (error) {
-    console.error('[YouTube] Token refresh failed:', error)
+    logError('youtube.token.refresh_failed', { error: (error as Error)?.message })
     return null
   }
 }

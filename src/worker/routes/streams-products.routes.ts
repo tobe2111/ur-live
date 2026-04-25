@@ -8,6 +8,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { cacheInvalidate } from '../utils/cache';
+import { logError } from '../utils/logger';
 
 interface ProductRow {
   id: number;
@@ -81,7 +82,7 @@ streamsProductsRouter.get('/:id/products', async (c) => {
       data: products
     });
   } catch (err: unknown) {
-    console.error('[Streams] Products error:', err);
+    logError('streams.products.list.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch stream products' }, 500);
   }
 });
@@ -112,7 +113,7 @@ streamsProductsRouter.get('/:id/current-product', async (c) => {
 
     return c.json({ success: true, data: product });
   } catch (err: unknown) {
-    console.error('[Streams] Current product error:', err);
+    logError('streams.products.currentProduct.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch current product' }, 500);
   }
 });

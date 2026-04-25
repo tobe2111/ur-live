@@ -19,6 +19,7 @@
  */
 
 import type { Env } from '../types/env';
+import { logError, logWarn, logInfo } from '../utils/logger';
 
 interface BackupEnv extends Env {
   BACKUP_BUCKET?: R2Bucket;
@@ -85,7 +86,7 @@ async function dumpDatabase(DB: D1Database): Promise<string> {
       }
       lines.push('');
     } catch (err) {
-      console.error(`[Backup] Table ${table} dump failed:`, err);
+      logError('d1-backup.table.dump_failed', { table, error: (err as Error)?.message });
       lines.push(`-- ERROR dumping table ${table}: ${(err as Error).message}`);
     }
   }
@@ -104,12 +105,12 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
     return { success: false, error: 'DB binding missing' };
   }
   if (!env.BACKUP_BUCKET) {
-    console.warn('[D1 Backup] BACKUP_BUCKET R2 binding not configured — skipping backup');
+    logWarn('d1-backup.bucket.not_configured');
     return { success: false, error: 'BACKUP_BUCKET not configured' };
   }
 
   try {
-    console.log('[D1 Backup] Starting dump...');
+    logInfo('d1-backup.dump.started');
     const dump = await dumpDatabase(DB);
     const size = new TextEncoder().encode(dump).length;
 
@@ -120,7 +121,7 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
       httpMetadata: { contentType: 'application/sql' },
     });
 
-    console.log(`[D1 Backup] ✅ Saved ${key} (${(size / 1024).toFixed(1)} KB)`);
+    logInfo('d1-backup.dump.completed', { key, sizeKb: (size / 1024).toFixed(1) });
 
     // Discord 알림 (있으면)
     const webhook = env.DISCORD_WEBHOOK_URL;
@@ -139,7 +140,7 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
     return { success: true, key, size };
   } catch (err) {
     const msg = (err as Error)?.message || String(err);
-    console.error('[D1 Backup] Failed:', msg);
+    logError('d1-backup.dump.failed', { error: msg });
 
     // Discord 실패 알림
     const webhook = env.DISCORD_WEBHOOK_URL;

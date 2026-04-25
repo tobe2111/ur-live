@@ -15,6 +15,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { verifyPassword } from '../../../lib/password';
 import { KakaoAuthService } from '../../auth/services/KakaoAuthService';
 import { parseSessionCookie } from '../../../worker/utils/session';
+import { logError } from '@/worker/utils/logger';
 
 type Bindings = {
   DB: D1Database;
@@ -125,7 +126,7 @@ sellerKakaoLinkRoutes.post('/link-kakao', async (c) => {
       data: { user_id: kakaoUserId, user_name: kakaoUserInfo.name, user_email: kakaoUserInfo.email },
     });
   } catch (err) {
-    console.error('[seller link-kakao] error:', err);
+    logError('seller.kakaoLink.linkError', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message || '카카오 연동 실패' }, 500);
   }
 });

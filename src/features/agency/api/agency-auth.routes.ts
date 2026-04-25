@@ -24,6 +24,7 @@ import {
   signAgencyToken,
   verifyAgencyToken,
 } from './agency-shared'
+import { logError, logWarn, logInfo } from '@/worker/utils/logger'
 
 const app = createAgencyApp()
 
@@ -134,7 +135,7 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
       message: '에이전시 가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.',
     }, 201)
   } catch (error) {
-    console.error('Agency register-from-user error:', error)
+    logError('agency.register.fromUserError', { error: (error as Error)?.message })
     return c.json({ success: false, error: '에이전시 가입 신청 중 오류가 발생했습니다' }, 500)
   }
 })
@@ -248,12 +249,12 @@ app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password
           },
           RESEND_API_KEY,
           RESEND_FROM
-        ).catch((e) => console.error('[Agency ForgotPassword] Email send failed:', e))
+        ).catch((e) => logError('agency.forgotPassword.emailSendFailed', { error: (e as Error)?.message }))
       } else {
-        console.warn('[Agency ForgotPassword] RESEND_API_KEY not configured; skipping email. resetUrl=', resetUrl)
+        logWarn('agency.forgotPassword.resendNotConfigured', { resetUrl })
       }
     } else {
-      console.info('[Agency ForgotPassword] Unknown email (silent):', email)
+      logInfo('agency.forgotPassword.unknownEmail')
     }
 
     return c.json({
@@ -261,7 +262,7 @@ app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password
       message: '입력하신 이메일로 비밀번호 재설정 링크를 발송했습니다. 이메일을 확인해주세요.'
     })
   } catch (error) {
-    console.error('[Agency ForgotPassword] Error:', error)
+    logError('agency.forgotPassword.error', { error: (error as Error)?.message })
     return c.json({
       success: true,
       message: '입력하신 이메일로 비밀번호 재설정 링크를 발송했습니다. 이메일을 확인해주세요.'
@@ -332,7 +333,7 @@ app.post('/reset-password', cors(), rateLimit({ action: 'agency_reset_password',
       message: '비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.'
     })
   } catch (error) {
-    console.error('[Agency ResetPassword] Error:', error)
+    logError('agency.resetPassword.error', { error: (error as Error)?.message })
     return c.json({ success: false, error: '비밀번호 재설정 중 오류가 발생했습니다.' }, 500)
   }
 })

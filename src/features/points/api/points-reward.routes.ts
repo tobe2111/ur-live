@@ -13,6 +13,7 @@ import type { Env } from '../../../worker/types/env';
 import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_FEE } from '../../../shared/constants';
 import { createDashboardNotification } from '../../notifications/api/dashboard-notifications.routes';
 import { ensureTables, AD_REWARD_POINTS, AD_DAILY_LIMIT, AD_REWARD_DESC_PREFIX } from './points-helpers';
+import { logError } from '../../../worker/utils/logger';
 
 export const pointsRewardRoutes = new Hono<{ Bindings: Env }>();
 
@@ -75,7 +76,7 @@ pointsRewardRoutes.post('/ad-reward', rateLimit({ action: 'points_ad_reward', ma
       },
     });
   } catch (err) {
-    console.error('[ad-reward] Error:', err);
+    logError('points.adReward.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: '리워드 지급 중 오류가 발생했습니다', detail: String(err) }, 500);
   }
 });
@@ -328,14 +329,14 @@ pointsRewardRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windo
       message: `${authoritativeTotal.toLocaleString()}딜로 결제가 완료되었습니다!`,
     });
   } catch (err) {
-    console.error('[points/pay] Error:', err);
+    logError('points.pay.error', { error: (err as Error)?.message });
     // ✅ Refund deals on any failure
     try {
       await DB.prepare(
         'UPDATE user_points SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?'
       ).bind(authoritativeTotal, userId).run();
     } catch (refundErr) {
-      console.error('[points/pay] Refund failed:', refundErr);
+      logError('points.pay.refundFailed', { error: (refundErr as Error)?.message });
     }
     // ✅ Roll back any stock reservations
     for (const r of stockReserved) {
@@ -343,7 +344,7 @@ pointsRewardRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windo
         await DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
           .bind(r.quantity, r.product_id).run();
       } catch (stockErr) {
-        console.error('[points/pay] Stock rollback failed:', stockErr);
+        logError('points.pay.stockRollbackFailed', { error: (stockErr as Error)?.message });
       }
     }
     return c.json({ success: false, error: '딜 결제 중 오류가 발생했습니다', detail: String(err) }, 500);

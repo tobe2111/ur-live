@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { cacheGet, buildCacheKey } from '../utils/cache';
+import { logError } from '../utils/logger';
 
 interface StreamListRow {
   id: number;
@@ -191,7 +192,7 @@ streamsBrowseRouter.get('/', async (c) => {
 
     return c.json({ success: true, ...payload });
   } catch (err: unknown) {
-    console.error('[Streams] List error:', err);
+    logError('streams.browse.list.error', { error: (err as Error)?.message });
     // ✅ Security: only expose raw error details in DEV — never leak stack
     //    traces / SQL fragments to clients in production.
     const isDev = (() => {
@@ -260,7 +261,7 @@ streamsBrowseRouter.get('/:id', async (c) => {
 
     return c.json({ success: true, data: stream });
   } catch (err: unknown) {
-    console.error('[Streams] Detail error:', err);
+    logError('streams.browse.detail.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch stream' }, 500);
   }
 });

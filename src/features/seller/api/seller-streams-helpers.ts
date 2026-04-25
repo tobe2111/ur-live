@@ -4,6 +4,7 @@
 
 import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
+import { logError } from '@/worker/utils/logger';
 
 /**
  * JWT 토큰에서 셀러 ID 추출
@@ -21,7 +22,7 @@ export async function getSellerIdFromToken(
     const payload = await verify(token, jwtSecret, 'HS256') as JWTPayload & { seller_id?: number };
     return payload.seller_id || null;
   } catch (error) {
-    console.error('Token verification error:', error);
+    logError('seller.streams.token.verifyError', { error: (error as Error)?.message });
     return null;
   }
 }

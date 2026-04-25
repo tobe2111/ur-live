@@ -12,6 +12,7 @@ import { Hono } from 'hono';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { cacheInvalidate } from '@/worker/utils/cache';
 import { getSellerIdFromToken } from './seller-streams-helpers';
+import { logError } from '@/worker/utils/logger';
 
 type Bindings = {
   DB: D1Database;
@@ -100,7 +101,7 @@ sellerStreamsCrudRoutes.get('/', async (c) => {
     });
 
   } catch (error: unknown) {
-    console.error('Get seller streams error:', error);
+    logError('seller.streams.list.error', { error: (error as Error)?.message });
     return c.json({
       success: false,
       error: (error as Error).message || 'Failed to get streams'
@@ -149,7 +150,7 @@ sellerStreamsCrudRoutes.get('/:id', async (c) => {
     });
 
   } catch (error: unknown) {
-    console.error('Get stream error:', error);
+    logError('seller.streams.detail.error', { error: (error as Error)?.message });
     return c.json({
       success: false,
       error: (error as Error).message || 'Failed to get stream'
@@ -246,7 +247,7 @@ sellerStreamsCrudRoutes.post('/', async (c) => {
     }, 201);
 
   } catch (error: unknown) {
-    console.error('Create stream error:', error);
+    logError('seller.streams.create.error', { error: (error as Error)?.message });
     return c.json({
       success: false,
       error: (error as Error).message || 'Failed to create stream'
@@ -377,7 +378,7 @@ sellerStreamsCrudRoutes.put('/:id', async (c) => {
     });
 
   } catch (error: unknown) {
-    console.error('Update stream error:', error);
+    logError('seller.streams.update.error', { error: (error as Error)?.message });
     return c.json({
       success: false,
       error: (error as Error).message || 'Failed to update stream'
@@ -426,7 +427,7 @@ sellerStreamsCrudRoutes.delete('/:id', async (c) => {
     });
 
   } catch (error: unknown) {
-    console.error('Delete stream error:', error);
+    logError('seller.streams.delete.error', { error: (error as Error)?.message });
     return c.json({
       success: false,
       error: (error as Error).message || 'Failed to delete stream'

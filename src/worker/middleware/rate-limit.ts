@@ -6,6 +6,7 @@
  */
 
 import { Context, Next } from 'hono';
+import { logError } from '../utils/logger';
 
 export interface RateLimitOptions {
   action: string;
@@ -95,7 +96,7 @@ export function rateLimit(opts: RateLimitOptions) {
       c.header('X-RateLimit-Limit', String(opts.max));
       c.header('X-RateLimit-Remaining', String(Math.max(0, opts.max - count)));
     } catch (err) {
-      console.error('[rate-limit] DB error', { action: opts.action, err });
+      logError('rate-limit.db.error', { action: opts.action, error: (err as Error)?.message });
       // Auth-sensitive: fail CLOSED to prevent brute-force when the store is down.
       // Non-sensitive: fail open to avoid breaking unrelated traffic.
       if (authSensitive) {

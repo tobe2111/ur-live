@@ -7,6 +7,7 @@
  */
 
 import { Context, Next } from 'hono';
+import { logWarn, logError } from '../utils/logger';
 
 // ── IP Whitelist ──────────────────────────────────────────────────────────────
 
@@ -30,7 +31,7 @@ export function adminIpWhitelist() {
   return async (c: Context, next: Next) => {
     const rawList = (c.env as Record<string, unknown>).ADMIN_IP_WHITELIST as string | undefined;
     if (!rawList) {
-      console.warn('[Admin] ADMIN_IP_WHITELIST not configured — all IPs allowed. Set this env var in production.');
+      logWarn('admin-security.ip_whitelist.not_configured');
       return next();
     }
 
@@ -41,12 +42,12 @@ export function adminIpWhitelist() {
     // X-Forwarded-For 는 클라이언트가 위조 가능 (스푸핑 공격).
     const ip = c.req.header('CF-Connecting-IP');
     if (!ip) {
-      console.warn('[Admin] No CF-Connecting-IP header — denying (spoofing prevention)');
+      logWarn('admin-security.ip_whitelist.no_cf_ip');
       return c.json({ success: false, error: 'IP verification failed' }, 403);
     }
 
     if (!isIpAllowed(ip, whitelist)) {
-      console.warn('[Admin] IP blocked:', ip);
+      logWarn('admin-security.ip_whitelist.blocked', { ip });
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
@@ -95,7 +96,7 @@ export async function writeAuditLog(
     ).run();
   } catch (err) {
     // Audit log failure must not block the operation
-    console.error('[AuditLog] Failed to write:', err);
+    logError('admin-security.audit_log.write_failed', { error: (err as Error)?.message });
   }
 }
 

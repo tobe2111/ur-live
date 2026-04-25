@@ -24,6 +24,7 @@ import {
   fetchAllProducts,
   syncProductsToLocal,
 } from '../services/cafe24-api.service';
+import { logError } from '@/worker/utils/logger';
 
 const cafe24Routes = new Hono<{ Bindings: Env }>();
 
@@ -116,7 +117,7 @@ cafe24Routes.get('/callback', async (c) => {
     const adminUrl = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24?connected=true`;
     return c.redirect(adminUrl);
   } catch (err) {
-    console.error('[Cafe24] OAuth callback error:', err);
+    logError('cafe24.oauth.callback_failed', { error: (err as Error)?.message });
     const adminUrl = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24?error=token_exchange_failed`;
     return c.redirect(adminUrl);
   }
@@ -142,7 +143,7 @@ cafe24Routes.post('/sync', requireAdmin() as MiddlewareHandler, async (c) => {
       data: result,
     });
   } catch (err) {
-    console.error('[Cafe24] Sync error:', err);
+    logError('cafe24.sync.failed', { error: (err as Error)?.message });
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -233,7 +234,7 @@ cafe24Routes.post('/webhook', async (c) => {
       return c.json({ success: false, error: 'Invalid signature' }, 401);
     }
   } catch (err) {
-    console.error('[Cafe24 Webhook] Signature verification failed:', err);
+    logError('cafe24.webhook.signature_failed', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Signature verification failed' }, 401);
   }
 
@@ -261,7 +262,7 @@ cafe24Routes.post('/webhook', async (c) => {
 
     return c.json({ success: true });
   } catch (err) {
-    console.error('[Cafe24 Webhook] Error:', err);
+    logError('cafe24.webhook.processing_failed', { error: (err as Error)?.message });
     return c.json({ success: true }); // Always return 200 to Cafe24
   }
 });

@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { getSellerIdFromToken } from './seller-streams-helpers';
+import { logError } from '@/worker/utils/logger';
 
 type Bindings = {
   DB: D1Database;
@@ -76,7 +77,7 @@ sellerStreamsAnalyticsRoutes.get('/analytics/summary', async (c) => {
       },
     });
   } catch (error: unknown) {
-    console.error('Analytics summary error:', error);
+    logError('seller.streams.analytics.summary.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message }, 500);
   }
 });
@@ -194,7 +195,7 @@ sellerStreamsAnalyticsRoutes.get('/:id/analytics', async (c) => {
       },
     });
   } catch (error: unknown) {
-    console.error('Stream analytics error:', error);
+    logError('seller.streams.analytics.detail.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message }, 500);
   }
 });

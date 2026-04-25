@@ -9,6 +9,7 @@ import {
   type Bindings,
   getSellerIdFromToken,
 } from './seller-management-helpers';
+import { logError } from '@/worker/utils/logger';
 
 export const sellerStatsRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -118,7 +119,7 @@ sellerStatsRoutes.get('/stats', async (c) => {
     });
 
   } catch (error: unknown) {
-    console.error('Get seller stats error:', error);
+    logError('seller.stats.getError', { error: (error as Error)?.message });
     return c.json({
       success: false,
       error: (error as Error).message || 'Failed to get seller stats'

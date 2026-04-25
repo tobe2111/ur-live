@@ -22,6 +22,7 @@ import {
   type ImgbbResponse,
   getSellerIdFromToken,
 } from './seller-management-helpers';
+import { logError } from '@/worker/utils/logger';
 
 export const sellerProfileRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -69,7 +70,7 @@ sellerProfileRoutes.get('/profile', async (c) => {
     });
 
   } catch (error: unknown) {
-    console.error('Get seller profile error:', error);
+    logError('seller.profile.getError', { error: (error as Error)?.message });
     return c.json({
       success: false,
       error: (error as Error).message || 'Failed to get seller profile'
@@ -160,7 +161,7 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
     return c.json({ success: true, data: updatedSeller });
 
   } catch (error: unknown) {
-    console.error('Update seller profile error:', error);
+    logError('seller.profile.updateError', { error: (error as Error)?.message });
     return c.json({ success: false, error: (error as Error).message || 'Failed to update seller profile' }, 500);
   }
 });
@@ -319,7 +320,7 @@ sellerProfileRoutes.post('/upload-image', cors(), async (c) => {
     // 클라이언트가 받으면 악의적으로 이미지 삭제 가능. 서버 내부에만 저장.
     return c.json({ success: true, url: json.data!.url });
   } catch (err: unknown) {
-    console.error('[Seller] Upload image error:', (err as Error).message);
+    logError('seller.profile.uploadImageError', { error: (err as Error)?.message });
     return c.json({ success: false, error: '이미지 업로드에 실패했습니다.' }, 500);
   }
 });

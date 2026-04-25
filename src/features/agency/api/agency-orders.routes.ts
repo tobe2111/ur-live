@@ -13,6 +13,7 @@ import { createDashboardNotification } from '../../notifications/api/dashboard-n
 import { isAgencyPinVerified } from './agency-pin.routes'
 import { createAgencyApp, ensureAgencyTables, requireAgency } from './agency-shared'
 import type { AgencyCtx } from './agency-shared'
+import { logError } from '@/worker/utils/logger'
 
 const app = createAgencyApp()
 app.use('*', requireAgency as unknown as MiddlewareHandler)
@@ -204,7 +205,7 @@ app.post('/settlements/request', async (c) => {
       },
     })
   } catch (e) {
-    console.error('[Agency] Settlement request error:', e)
+    logError('agency.orders.settlement_request_failed', { error: (e as Error)?.message })
     return c.json({ success: false, error: '정산 신청에 실패했습니다' }, 500)
   }
 })

@@ -8,6 +8,7 @@
 
 import { sendAlimtalk } from './aligo';
 import type { D1Database } from '@cloudflare/workers-types';
+import { logWarn } from '@/worker/utils/logger';
 
 interface SendAlimtalkOptions {
   DB: D1Database;
@@ -38,7 +39,7 @@ export async function sendSellerAlimtalk(opts: SendAlimtalkOptions): Promise<{ s
 
   // 템플릿 코드 미설정 (검수 중) → 발송 스킵, 로그만 기록 (크레딧 차감 없음)
   if (!templateCode || templateCode === 'TBD') {
-    console.warn('[Alimtalk] 템플릿 코드 미설정 — 발송 스킵');
+    logWarn('alimtalk.send.template_not_set', {});
     await DB.prepare(`
       INSERT INTO alimtalk_logs (seller_id, receiver, template_code, message, order_id, success, error_msg, created_at)
       VALUES (?, ?, 'TBD', ?, ?, 0, '템플릿 검수 대기 중', datetime('now'))

@@ -15,6 +15,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { cacheGet } from '@/worker/utils/cache'
+import { logError } from '@/worker/utils/logger'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -281,7 +282,7 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
       message: `공동구매 참여 완료! 바우처 ${qty}장이 발급되었습니다.`,
     })
   } catch (err) {
-    console.error('[group-buy] Error:', err)
+    logError('group_buy.join_failed', { error: (err as Error)?.message })
     return c.json({ success: false, error: '공동구매 참여 중 오류가 발생했습니다' }, 500)
   }
 })
@@ -397,7 +398,7 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
 
     return c.json({ success: true, data: { refunded: refundCount }, message: `${refundCount}건 환불 처리 완료` })
   } catch (err) {
-    console.error('[group-buy refund]', err)
+    logError('group_buy.refund_failed', { error: (err as Error)?.message })
     return c.json({ success: false, error: '환불 처리 중 오류' }, 500)
   }
 })

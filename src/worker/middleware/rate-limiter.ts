@@ -1,4 +1,5 @@
 import type { Context, Next } from 'hono';
+import { logWarn, logError } from '../utils/logger';
 
 /**
  * ✅ Rate Limiter Middleware
@@ -101,7 +102,7 @@ export function rateLimiter(config: RateLimitConfig) {
           429,
         );
       }
-      console.warn('[Rate Limiter] KV not available, skipping rate limit');
+      logWarn('rate-limiter.kv.unavailable');
       return next();
     }
 
@@ -167,7 +168,7 @@ export function rateLimiter(config: RateLimitConfig) {
 
       return next();
     } catch (error) {
-      console.error('[Rate Limiter] Error:', error);
+      logError('rate-limiter.kv.error', { error: (error as Error)?.message });
       // Fail CLOSED on auth-sensitive routes (brute-force protection priority).
       // Fail OPEN elsewhere so a transient KV outage doesn't take the site down.
       if (isAuthSensitiveAction(config.keyPrefix)) {

@@ -141,6 +141,7 @@ import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-s
 import { runReconciliation } from './cron/reconciliation';
 import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
 import { sendDiscordAlert } from './utils/discord-alert';
+import { logError } from './utils/logger';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -863,7 +864,7 @@ export default {
         await task();
       } catch (err) {
         const msg = (err as Error)?.message || String(err);
-        console.error(`[cron:${name}] FAILED:`, msg);
+        logError('cron.task.failed', { action: name, error: msg });
         const webhook = env.DISCORD_WEBHOOK_URL;
         if (webhook) {
           try {

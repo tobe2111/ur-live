@@ -13,12 +13,13 @@
 
 import { sendDiscordAlert } from '../utils/discord-alert';
 import type { Env } from '../types/env';
+import { logError, logWarn } from '../utils/logger';
 
 export async function runDailySelfDiagnostic(env: Env) {
   const DB = env.DB;
   const webhookUrl = env.DISCORD_WEBHOOK_URL;
   if (!DB) {
-    console.error('[daily-diagnostic] No DB binding');
+    logError('daily-diagnostic.db.missing');
     return;
   }
 
@@ -87,7 +88,7 @@ export async function runDailySelfDiagnostic(env: Env) {
   // 알림 발송
   if (!webhookUrl) {
     // 🛡️ 2026-04-22: webhook 미설정 알림 — 진단 자체 작동 안 함을 운영자가 인지하도록
-    console.warn('[Daily Diagnostic] DISCORD_WEBHOOK_URL not configured — diagnostic results not sent');
+    logWarn('daily-diagnostic.discord.not_configured');
     return;
   }
 

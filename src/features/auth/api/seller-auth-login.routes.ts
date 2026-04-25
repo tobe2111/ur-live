@@ -13,6 +13,7 @@ import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/accou
 import { createSessionCookie } from '../../../worker/utils/session';
 import type { Bindings } from './seller-auth-helpers';
 import { ensureAuthRefreshTokensTable } from './seller-auth-helpers';
+import { logError } from '@/worker/utils/logger';
 
 export const sellerAuthLoginRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -26,7 +27,7 @@ sellerAuthLoginRoutes.post('/login', cors(), rateLimit({ action: 'seller_login',
   try {
     // JWT_SECRET 확인
     if (!JWT_SECRET) {
-      console.error('[Seller Login] JWT_SECRET not configured');
+      logError('seller.login.missingJwtSecret');
       return c.json<AuthResponse>({
         success: false,
         error: 'Server configuration error',
@@ -157,7 +158,7 @@ sellerAuthLoginRoutes.post('/login', cors(), rateLimit({ action: 'seller_login',
         new Date((nowSec + 30 * 24 * 3600) * 1000).toISOString()
       ).run();
     } catch (e) {
-      console.error('[Seller Login] refresh token persist failed:', e);
+      logError('seller.login.refreshTokenPersistFailed', { error: (e as Error)?.message });
     }
 
     // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 발급 (기존 Bearer 병행)
@@ -198,7 +199,7 @@ sellerAuthLoginRoutes.post('/login', cors(), rateLimit({ action: 'seller_login',
     return res;
 
   } catch (error) {
-    console.error('[Seller Login] Error:', error);
+    logError('seller.login.error', { error: (error as Error)?.message });
 
     const errorMsg = (error as Error).message || 'Unknown error';
     const statusCode = errorMsg.includes('Database') ? 500 : 500;

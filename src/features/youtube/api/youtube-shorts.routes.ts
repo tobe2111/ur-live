@@ -11,6 +11,7 @@ import {
   getSellerIdFromToken,
   getValidAccessToken,
 } from './youtube-shared'
+import { logError } from '@/worker/utils/logger'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -107,7 +108,7 @@ app.get('/shorts/sync', async (c) => {
 
     return c.json({ success: true, data: { total: items.length, synced }, message: `${synced}개 쇼츠 동기화 완료` })
   } catch (err) {
-    console.error('[YouTube Shorts Sync]', err)
+    logError('youtube.shorts.sync_failed', { error: (err as Error)?.message })
     return c.json({ success: false, error: '쇼츠 동기화 실패' }, 500)
   }
 })

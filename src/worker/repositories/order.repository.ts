@@ -16,6 +16,7 @@ import { QueryBuilder } from './query-builder';
 import type { Order, OrderItem, OrderStatus, CreateOrderRequest } from '../../shared/types';
 import { safeJsonParse } from '../../shared/utils';
 import { statusesThatCanReach } from '../utils/state-machine';
+import { logWarn } from '../utils/logger';
 
 export class OrderRepository {
   protected qb: QueryBuilder;
@@ -417,7 +418,7 @@ export class OrderRepository {
     }));
     await this.qb.batch(soldCountStmts).catch(() => {
       // sold_count 컬럼이 없는 구 스키마에서는 무시 (stock 차감은 이미 완료)
-      console.warn('[OrderRepository] sold_count update skipped (column may not exist)');
+      logWarn('order.repository.reserveStock.soldCountSkipped');
     });
 
     return { success: true };

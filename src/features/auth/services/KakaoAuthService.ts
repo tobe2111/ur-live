@@ -9,13 +9,14 @@ import type { D1Database } from '@cloudflare/workers-types';
  * - 서비스 약관 조회
  */
 
-import type { 
-  KakaoTokenResponse, 
+import type {
+  KakaoTokenResponse,
   KakaoUserInfoResponse,
   KakaoServiceTermsResponse,
   KakaoUser,
-  User 
+  User
 } from '../types';
+import { logError, logWarn } from '@/worker/utils/logger';
 
 export class KakaoAuthService {
   private readonly KAKAO_AUTH_URL = 'https://kauth.kakao.com';
@@ -50,7 +51,7 @@ export class KakaoAuthService {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[KakaoAuthService] Token exchange failed:', errorText);
+      logError('kakao.auth.tokenExchangeFailed', { error: errorText });
       throw new Error(`Kakao token exchange failed: ${errorText}`);
     }
     
@@ -127,7 +128,7 @@ export class KakaoAuthService {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[KakaoAuthService] User info fetch failed:', errorText);
+      logError('kakao.auth.userInfoFailed', { error: errorText });
       throw new Error(`Failed to get Kakao user info: ${errorText}`);
     }
     
@@ -164,7 +165,7 @@ export class KakaoAuthService {
       });
       
       if (!response.ok) {
-        console.warn('[KakaoAuthService] Service terms fetch failed (non-critical)');
+        logWarn('kakao.auth.serviceTermsFailed');
         return [];
       }
       
@@ -173,7 +174,7 @@ export class KakaoAuthService {
       return tags;
       
     } catch (error) {
-      console.warn('[KakaoAuthService] Service terms error (non-critical):', error);
+      logWarn('kakao.auth.serviceTermsError', { error: (error as Error)?.message });
       return [];
     }
   }
@@ -230,7 +231,7 @@ export class KakaoAuthService {
         throw insertErr;
       }
     } catch (error) {
-      console.error('[KakaoAuthService] DB error:', error);
+      logError('kakao.auth.dbError', { error: (error as Error)?.message });
       throw new Error(`Database error: ${(error as Error).message}`);
     }
   }
@@ -246,7 +247,7 @@ export class KakaoAuthService {
       
     } catch (error) {
       // firebase_uid 컬럼이 없을 수 있으므로 경고만 출력
-      console.warn('[KakaoAuthService] firebase_uid column not found, skipping update:', error);
+      logWarn('kakao.auth.firebaseUidUpdateSkipped', { error: (error as Error)?.message });
     }
   }
 }

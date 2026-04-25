@@ -10,6 +10,7 @@ import { cors } from 'hono/cors';
 import { compress } from 'hono/compress';
 import { serveStatic } from 'hono/cloudflare-workers';
 import { ALLOWED_ORIGINS } from '../shared/constants';
+import { logError } from './utils/logger';
 
 type Bindings = {
   ASSETS: Fetcher;
@@ -73,7 +74,7 @@ app.get('*', async (c) => {
     
     return c.html(indexHtml);
   } catch (error) {
-    console.error('[SPA Fallback] Failed to serve index.html:', error);
+    logError('global.spa_fallback.serve_failed', { error: (error as Error)?.message });
     return c.html('<h1>UR-Live Global</h1><p>Welcome to UR-Live International Service</p>');
   }
 });

@@ -18,6 +18,7 @@ import { KakaoAuthService } from '../../auth/services/KakaoAuthService'
 import { isAgencyPinVerified } from './agency-pin.routes'
 import { createAgencyApp, requireAgency } from './agency-shared'
 import type { AgencyCtx } from './agency-shared'
+import { logError } from '@/worker/utils/logger'
 
 const app = createAgencyApp()
 app.use('*', requireAgency as unknown as MiddlewareHandler)
@@ -198,7 +199,7 @@ app.post('/link-kakao', async (c: AgencyCtx) => {
       data: { user_id: kakaoUserId, user_name: kakaoUserInfo.name, user_email: kakaoUserInfo.email },
     })
   } catch (err) {
-    console.error('[agency link-kakao] error:', err)
+    logError('agency.ops.link_kakao_failed', { error: (err as Error)?.message })
     return c.json({ success: false, error: (err as Error).message || '카카오 연동 실패' }, 500)
   }
 })

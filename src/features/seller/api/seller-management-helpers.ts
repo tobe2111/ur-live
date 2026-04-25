@@ -5,6 +5,7 @@
 
 import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
+import { logError } from '@/worker/utils/logger';
 
 export type Bindings = {
   DB: D1Database;
@@ -125,7 +126,7 @@ export async function getSellerIdFromToken(authorization: string | undefined, jw
     const payload = await verify(token, jwtSecret, 'HS256') as JWTPayload & { seller_id?: number };
     return payload.seller_id || null;
   } catch (error) {
-    console.error('Token verification error:', error);
+    logError('seller.management.tokenVerificationError', { error: (error as Error)?.message });
     return null;
   }
 }

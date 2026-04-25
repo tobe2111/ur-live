@@ -25,6 +25,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { orderCreateRouter } from '../../../worker/routes/order-create';
 import { orderQueryRouter } from '../../../worker/routes/order-query';
 import { orderActionsRouter } from '../../../worker/routes/order-actions';
+import { logError } from '@/worker/utils/logger';
 
 type Bindings = {
   DB: D1Database;
@@ -199,7 +200,7 @@ ordersRoutes.get('/:id/tracking', cors(), requireAuth(), async (c) => {
       },
     });
   } catch (err) {
-    console.error('[Tracking] fetch error:', err);
+    logError('orders.tracking.fetchError', { error: (err as Error)?.message });
     return c.json({
       success: true,
       data: { events: [], orderStatus: order.status, courier, trackingNumber: tracking_number, apiError: '배송 조회 서비스 연결 실패' },
@@ -267,7 +268,7 @@ ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
   //   legacy literal fallback 제거. secret 미세팅이면 500 반환 (bruteforce 차단).
   const expectedToken = c.env.INTERNAL_CRON_TOKEN;
   if (!expectedToken) {
-    console.error('[CronAuth] INTERNAL_CRON_TOKEN secret not configured');
+    logError('orders.cron.autoConfirm.missingToken');
     return c.json({ success: false, error: 'Server misconfiguration' }, 500);
   }
   if (c.req.header('X-Internal-Token') !== expectedToken) {
@@ -299,7 +300,7 @@ ordersRoutes.post('/internal/sync-deliveries', cors(), async (c) => {
   //   legacy literal fallback 제거. secret 미세팅이면 500 반환 (bruteforce 차단).
   const expectedToken = c.env.INTERNAL_CRON_TOKEN;
   if (!expectedToken) {
-    console.error('[CronAuth] INTERNAL_CRON_TOKEN secret not configured');
+    logError('orders.cron.syncDeliveries.missingToken');
     return c.json({ success: false, error: 'Server misconfiguration' }, 500);
   }
   if (c.req.header('X-Internal-Token') !== expectedToken) {

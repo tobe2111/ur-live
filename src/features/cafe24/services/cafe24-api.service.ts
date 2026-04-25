@@ -17,6 +17,7 @@ import type {
   SyncResult,
 } from '../types';
 import { encryptAtRest, decryptAtRest } from '../../../worker/utils/data-crypto';
+import { logError, logWarn } from '@/worker/utils/logger';
 
 // ── helpers ────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ export async function exchangeCodeForTokens(
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('[Cafe24] Token exchange failed:', res.status, err);
+    logError('cafe24.oauth.exchange_failed', { error: `${res.status}: ${err}` });
     throw new Error(`Cafe24 token exchange failed: ${res.status}`);
   }
 
@@ -91,7 +92,7 @@ export async function refreshAccessToken(
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('[Cafe24] Token refresh failed:', res.status, err);
+    logError('cafe24.token.refresh_failed', { error: `${res.status}: ${err}` });
     throw new Error(`Cafe24 token refresh failed: ${res.status}`);
   }
 
@@ -278,7 +279,7 @@ export async function fetchProducts(
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('[Cafe24] Fetch products failed:', res.status, err);
+    logError('cafe24.products.fetch_failed', { error: `${res.status}: ${err}` });
     throw new Error(`Cafe24 product fetch failed: ${res.status}`);
   }
 
@@ -308,7 +309,7 @@ export async function fetchAllProducts(
     pages++;
   }
   if (pages === MAX_PAGES) {
-    console.warn('[Cafe24] fetchAllProducts hit MAX_PAGES, stopping');
+    logWarn('cafe24.products.max_pages_hit', {});
   }
 
   return allProducts;

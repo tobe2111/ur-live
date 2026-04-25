@@ -10,6 +10,7 @@ import { cors } from 'hono/cors';
 import { GoogleAuthService } from '../services/GoogleAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
 import { verifyFirebaseIdToken } from '@/lib/firebase-token-verify';
+import { logError } from '@/worker/utils/logger';
 
 type Bindings = {
   DB: D1Database;
@@ -91,7 +92,7 @@ googleRoutes.post('/register', cors(), async (c) => {
     });
     
   } catch (error) {
-    console.error('[Google Auth] Error:', error);
+    logError('google.auth.error', { error: (error as Error)?.message });
     const errorMsg = (error as Error).message || 'Unknown error';
     return c.json({ success: false, error: errorMsg }, 500);
   }

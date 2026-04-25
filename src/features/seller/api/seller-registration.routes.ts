@@ -21,6 +21,7 @@ import {
   ensureSellerColumns,
   getSellerIdFromToken,
 } from './seller-management-helpers';
+import { logError } from '@/worker/utils/logger';
 
 export const sellerRegistrationRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -146,7 +147,7 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     }, 201);
 
   } catch (error) {
-    console.error('Seller registration error:', error);
+    logError('seller.registration.error', { error: (error as Error)?.message });
     const message = error instanceof Error ? error.message : 'Seller registration failed';
     return c.json({
       success: false,
@@ -265,7 +266,7 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       message: '셀러 전환 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.',
     }, 201);
   } catch (error) {
-    console.error('Seller register-from-user error:', error);
+    logError('seller.registration.fromUserError', { error: (error as Error)?.message });
     return c.json({ success: false, error: '셀러 전환 신청 중 오류가 발생했습니다' }, 500);
   }
 });
@@ -394,7 +395,7 @@ sellerRegistrationRoutes.post('/switch-to-seller', async (c) => {
       },
     });
   } catch (error) {
-    console.error('switch-to-seller error:', error);
+    logError('seller.registration.switchToSellerError', { error: (error as Error)?.message });
     return c.json({ success: false, error: '셀러 전환 실패' }, 500);
   }
 });
@@ -447,7 +448,7 @@ sellerRegistrationRoutes.post('/switch-to-user', async (c) => {
       },
     });
   } catch (error) {
-    console.error('switch-to-user error:', error);
+    logError('seller.registration.switchToUserError', { error: (error as Error)?.message });
     return c.json({ success: false, error: '유저 전환 실패' }, 500);
   }
 });

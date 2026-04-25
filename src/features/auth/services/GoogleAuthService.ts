@@ -9,6 +9,7 @@ import type { D1Database } from '@cloudflare/workers-types';
  */
 
 import type { User, FirebaseCustomClaims } from '../types';
+import { logError, logWarn } from '@/worker/utils/logger';
 
 export interface GoogleUser {
   googleId: string;
@@ -142,7 +143,7 @@ export class GoogleAuthService {
       if (msg === 'EMAIL_ALREADY_LINKED_TO_OTHER_PROVIDER') {
         throw error;
       }
-      console.error('[GoogleAuthService] DB error:', error);
+      logError('google.auth.dbError', { error: (error as Error)?.message });
       throw new Error(`Database error: ${msg}`);
     }
   }
@@ -157,7 +158,7 @@ export class GoogleAuthService {
       `).bind(firebaseUID, userId).run();
       
     } catch (error) {
-      console.warn('[GoogleAuthService] firebase_uid column not found, skipping update:', error);
+      logWarn('google.auth.firebaseUidUpdateSkipped', { error: (error as Error)?.message });
     }
   }
 }

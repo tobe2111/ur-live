@@ -185,7 +185,7 @@ orderActionsRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, w
       },
     });
   } catch (err) {
-    console.error('[ORDERS] Refund error:', err);
+    logError('orders.refund.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: '환불 요청 처리에 실패했습니다' }, 500);
   }
 });

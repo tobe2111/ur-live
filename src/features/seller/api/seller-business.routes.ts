@@ -10,6 +10,7 @@ import {
   type Bindings,
   getSellerIdFromToken,
 } from './seller-management-helpers';
+import { logError } from '@/worker/utils/logger';
 
 export const sellerBusinessRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -56,7 +57,7 @@ sellerBusinessRoutes.get('/business-info', async (c) => {
     return c.json({ success: true, data: businessInfo });
 
   } catch (error: unknown) {
-    console.error('Get business info error:', error);
+    logError('seller.business.getError', { error: (error as Error)?.message });
     return c.json({ success: false, error: 'Failed to get business info' }, 500);
   }
 });
@@ -234,7 +235,7 @@ sellerBusinessRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) =>
 
   } catch (error: unknown) {
     const errMsg = (error as Error).message || 'Unknown error';
-    console.error('Update business info error:', errMsg, error);
+    logError('seller.business.updateError', { error: errMsg });
     // 구체적인 에러 메시지 반환 (디버깅용)
     if (errMsg.includes('UNIQUE constraint')) {
       return c.json({ success: false, error: '이미 등록된 사업자번호입니다.' }, 409);

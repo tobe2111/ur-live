@@ -11,6 +11,7 @@ import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 import { getUserDbId, type AuthVariables } from './order-helpers';
+import { logError } from '../utils/logger';
 
 export const orderQueryRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -39,7 +40,7 @@ orderQueryRouter.get('/', async (c) => {
       },
     });
   } catch (err) {
-    console.error('[ORDERS] List error:', err);
+    logError('orders.query.list.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch orders' }, 500);
   }
 });
@@ -65,7 +66,7 @@ orderQueryRouter.get('/:id', async (c) => {
 
     return c.json({ success: true, data: order });
   } catch (err) {
-    console.error('[ORDERS] Detail error:', err);
+    logError('orders.query.detail.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch order' }, 500);
   }
 });

@@ -14,6 +14,7 @@ import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { encryptAtRest } from '../../../worker/utils/data-crypto';
+import { logError } from '@/worker/utils/logger';
 
 type Bindings = {
   DB: D1Database;
@@ -77,7 +78,7 @@ pushRoutes.post('/api/push/subscribe', requireAuth(), async (c) => {
 
     return c.json({ success: true });
   } catch (error: any) {
-    console.error('[Push Subscribe] Error:', error.message);
+    logError('push.subscribe.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: '구독 등록에 실패했습니다.' }, 500);
   }
 });
@@ -127,7 +128,7 @@ pushRoutes.post('/api/push/register', requireAuth(), async (c) => {
 
     return c.json({ success: true });
   } catch (error: any) {
-    if (typeof console !== 'undefined') console.error('[Push Register] Error:', error?.message);
+    logError('push.register.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: '토큰 등록에 실패했습니다.' }, 500);
   }
 });
@@ -152,7 +153,7 @@ pushRoutes.post('/api/push/unsubscribe', requireAuth(), async (c) => {
 
     return c.json({ success: true });
   } catch (error: any) {
-    console.error('[Push Unsubscribe] Error:', error.message);
+    logError('push.unsubscribe.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: '구독 해제에 실패했습니다.' }, 500);
   }
 });
@@ -163,7 +164,7 @@ pushRoutes.get('/api/push/vapid-public-key', cors(), async (c) => {
     const publicKey = c.env.VAPID_PUBLIC_KEY || '';
     return c.json({ success: true, publicKey });
   } catch (error: any) {
-    console.error('[Push VAPID Key] Error:', error);
+    logError('push.vapidKey.error', { error: (error as Error)?.message });
     return c.json({ success: false, error: error.message }, 500);
   }
 });

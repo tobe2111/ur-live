@@ -12,6 +12,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL, MIN_REAL_DONATION, MAX_DONATION_MESSAGE_LENGTH } from '@/shared/constants';
+import { logError } from '@/worker/utils/logger';
 
 const donationsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -101,7 +102,7 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
          WHERE ls.id = ?`
       ).bind(body.stream_id).first<StreamRow>();
     } catch (err2) {
-      console.error('[donations/init] DB error:', (err2 as Error).message);
+      logError('donations.init.dbError', { error: (err2 as Error)?.message });
       return c.json({ success: false, error: 'live_streams 테이블이 없습니다. 마이그레이션을 실행해주세요.' }, 500);
     }
   }
@@ -203,7 +204,7 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
 
   // 클라이언트가 보낸 amount를 DB 저장값으로 검증 (금액 조작 방지)
   if (pending.amount !== body.amount) {
-    console.error('[donations/confirm] Amount mismatch', { db: pending.amount, client: body.amount, orderId: body.orderId });
+    logError('donations.confirm.amountMismatch', { db: pending.amount, client: body.amount, orderId: body.orderId });
     return c.json({ success: false, error: '결제 금액이 일치하지 않습니다' }, 400);
   }
 
@@ -247,7 +248,7 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
     if (err.code !== 'ALREADY_PROCESSED_PAYMENT') {
       await DB.prepare('UPDATE donations SET payment_status = ? WHERE order_id = ?')
         .bind('failed', body.orderId).run();
-      console.error('[donations/confirm] Toss error:', { code: err.code, message: err.message, orderId: body.orderId });
+      logError('donations.confirm.tossError', { code: err.code, error: err.message, orderId: body.orderId });
       return c.json({ success: false, error: err.message ?? '결제 승인 실패', code: err.code }, 400);
     }
   }
