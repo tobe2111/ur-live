@@ -18,6 +18,8 @@ import { logError } from '../utils/logger';
 const sellersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
 // GET /api/sellers
+// ✅ PERF: 60s SESSION_KV cache for unauthenticated public list reads.
+// Public endpoint — auth-aware logic doesn't apply, so a shared cache is safe.
 sellersRouter.get('/', async (c) => {
   try {
     const qb = new QueryBuilder(c.env.DB);
@@ -25,6 +27,17 @@ sellersRouter.get('/', async (c) => {
     const pageNum = parseInt(page, 10);
     const limitNum = Math.min(parseInt(limit, 10), 100);
     const offset = (pageNum - 1) * limitNum;
+
+    const kv: KVNamespace | undefined = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV;
+    const cacheKey = `cache:sellers:list:${pageNum}:${limitNum}`;
+    if (kv) {
+      try {
+        const cached = await kv.get(cacheKey, 'text');
+        if (cached) return c.json(JSON.parse(cached));
+      } catch (err) {
+        logError('sellers.list.cache_read', { error: (err as Error)?.message });
+      }
+    }
 
     // ✅ 실제 sellers 테이블 스키마에 맞게 수정
     const where = "WHERE status = 'approved' AND is_active = 1";
@@ -34,8 +47,8 @@ sellersRouter.get('/', async (c) => {
     );
 
     const rows = await qb.queryMany<Record<string, unknown>>(
-      `SELECT id, username, name, email, phone, 
-              business_name, business_number, 
+      `SELECT id, username, name, email, phone,
+              business_name, business_number,
               status, is_active, created_at, updated_at
        FROM sellers ${where}
        ORDER BY name
@@ -43,7 +56,7 @@ sellersRouter.get('/', async (c) => {
       [limitNum, offset]
     );
 
-    return c.json({
+    const responseData = {
       success: true,
       data: {
         items: rows,
@@ -52,7 +65,19 @@ sellersRouter.get('/', async (c) => {
         limit: limitNum,
         has_next: pageNum * limitNum < (countRow?.count ?? 0),
       },
-    });
+    };
+
+    if (kv) {
+      try {
+        c.executionCtx.waitUntil(
+          kv.put(cacheKey, JSON.stringify(responseData), { expirationTtl: 60 })
+        );
+      } catch (err) {
+        logError('sellers.list.cache_write', { error: (err as Error)?.message });
+      }
+    }
+
+    return c.json(responseData);
   } catch (err) {
     logError('sellers.list.error', { error: (err as Error)?.message });
     return c.json({ success: false, error: 'Failed to fetch sellers' }, 500);
