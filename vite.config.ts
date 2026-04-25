@@ -64,6 +64,20 @@ export default defineConfig({
           if (id.includes('@sentry')) return 'sentry'
           // Embla carousel
           if (id.includes('embla-carousel')) return 'embla'
+          // i18n (국제화) — 100kB+ 절감
+          if (id.includes('i18next') || id.includes('react-i18next')) return 'i18n'
+          // Form / validation
+          if (id.includes('react-hook-form') || id.includes('node_modules/zod/')) return 'forms'
+          // State management
+          if (id.includes('zustand')) return 'state'
+          // QR / Barcode
+          if (id.includes('qrcode') || id.includes('jsbarcode')) return 'barcode'
+          // Radix UI primitives
+          if (id.includes('@radix-ui/')) return 'radix'
+          // Image utilities
+          if (id.includes('browser-image-compression')) return 'image-utils'
+          // HTTP client
+          if (id.includes('node_modules/axios/')) return 'axios'
         },
       },
     },

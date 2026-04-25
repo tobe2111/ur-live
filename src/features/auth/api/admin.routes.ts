@@ -15,6 +15,7 @@ import { executeQuery } from '@/worker/utils/database';
 import { maskEmail } from '@/lib/mask';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
 import { logError, logWarn } from '@/worker/utils/logger';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 /**
  * refresh_tokens 보조 테이블 (admin/seller용) 생성.
@@ -53,7 +54,7 @@ export const adminRoutes = new Hono<{ Bindings: Bindings }>();
  * POST /api/admin/login
  * 관리자 로그인
  */
-adminRoutes.post('/login', cors(), async (c) => {
+adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 10, windowSec: 300 }), async (c) => {
   const { DB, JWT_SECRET } = c.env;
   
   try {

@@ -416,21 +416,21 @@ function AppContent() {
           <main id="main-content">
           <Routes>
             {/* Public 페이지들 */}
-            <Route path="/introduce" element={<IntroducePage />} />
-            <Route path="/" element={<MainHomePage />} />
-            <Route path="/shorts" element={<ShortsPage />} />
-            <Route path="/v/:code" element={<VoucherVerifyPage />} />
-            <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
-            <Route path="/browse" element={<BrowsePage />} />
-            <Route path="/group-buy" element={<GroupBuyListPage />} />
-            <Route path="/live" element={<LiveListPage />} />
+            <Route path="/introduce" element={<ErrorBoundary><IntroducePage /></ErrorBoundary>} />
+            <Route path="/" element={<ErrorBoundary><MainHomePage /></ErrorBoundary>} />
+            <Route path="/shorts" element={<ErrorBoundary><ShortsPage /></ErrorBoundary>} />
+            <Route path="/v/:code" element={<ErrorBoundary><VoucherVerifyPage /></ErrorBoundary>} />
+            <Route path="/store/stats/:productId" element={<ErrorBoundary><StoreStatsPage /></ErrorBoundary>} />
+            <Route path="/browse" element={<ErrorBoundary><BrowsePage /></ErrorBoundary>} />
+            <Route path="/group-buy" element={<ErrorBoundary><GroupBuyListPage /></ErrorBoundary>} />
+            <Route path="/live" element={<ErrorBoundary><LiveListPage /></ErrorBoundary>} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}
             <Route path="/product/:id" element={<ProductRedirect />} />
-            <Route path="/s/:sellerId" element={<SellerPublicPage />} />
-            <Route path="/profile/:sellerId" element={<SellerPublicPage />} />
-            <Route path="/search" element={<SearchPage />} />
+            <Route path="/s/:sellerId" element={<ErrorBoundary><SellerPublicPage /></ErrorBoundary>} />
+            <Route path="/profile/:sellerId" element={<ErrorBoundary><SellerPublicPage /></ErrorBoundary>} />
+            <Route path="/search" element={<ErrorBoundary><SearchPage /></ErrorBoundary>} />
             
             {/* Public Auth 페이지들 */}
             <Route path="/login" element={
@@ -793,84 +793,84 @@ function AppContent() {
             } />
             <Route path="/mypage" element={
               <ProtectedRoute requireUser>
-                <UserProfilePage />
+                <ErrorBoundary><UserProfilePage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/user/profile" element={
               <ProtectedRoute requireUser>
-                <UserProfilePage />
+                <ErrorBoundary><UserProfilePage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/mypage/addresses" element={
               <ProtectedRoute requireUser>
-                <AddressManagementPage />
+                <ErrorBoundary><AddressManagementPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/mypage/wishlist" element={
               <ProtectedRoute requireUser>
-                <WishlistPage />
+                <ErrorBoundary><WishlistPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/mypage/group-buys" element={
               <ProtectedRoute requireUser>
-                <MyGroupBuysPage />
+                <ErrorBoundary><MyGroupBuysPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/community-group-buy/new" element={
               <ProtectedRoute requireUser>
-                <UserGroupBuyCreatePage />
+                <ErrorBoundary><UserGroupBuyCreatePage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/wishlist" element={
               <ProtectedRoute requireUser>
-                <WishlistPage />
+                <ErrorBoundary><WishlistPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/interest-list" element={
               <ProtectedRoute requireUser>
-                <InterestListPage />
+                <ErrorBoundary><InterestListPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/my-vouchers" element={
               <ProtectedRoute requireUser>
-                <MyVouchersPage />
+                <ErrorBoundary><MyVouchersPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/my-orders" element={
               <ProtectedRoute requireUser>
-                <MyOrdersPage />
+                <ErrorBoundary><MyOrdersPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/orders" element={
               <ProtectedRoute requireUser>
-                <MyOrdersPage />
+                <ErrorBoundary><MyOrdersPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/my-coupons" element={
               <ProtectedRoute requireUser>
-                <MyCouponsPage />
+                <ErrorBoundary><MyCouponsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/my-reviews" element={
               <ProtectedRoute requireUser>
-                <MyReviewsPage />
+                <ErrorBoundary><MyReviewsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
-            <Route path="/referral" element={<ReferralIndexPage />} />
+            <Route path="/referral" element={<ErrorBoundary><ReferralIndexPage /></ErrorBoundary>} />
             <Route path="/account/settings" element={
               <ProtectedRoute requireUser>
-                <AccountSettingsPage />
+                <ErrorBoundary><AccountSettingsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/account/delete-warning" element={
               <ProtectedRoute requireUser>
-                <AccountDeleteWarningPage />
+                <ErrorBoundary><AccountDeleteWarningPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
-            <Route path="/account/deleted" element={<AccountDeletedPage />} />
+            <Route path="/account/deleted" element={<ErrorBoundary><AccountDeletedPage /></ErrorBoundary>} />
             <Route path="/notifications" element={
               <ProtectedRoute requireUser>
-                <NotificationsPage />
+                <ErrorBoundary><NotificationsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             
