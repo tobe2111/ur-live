@@ -26,6 +26,12 @@ import { logError } from '@/worker/utils/logger';
 
 export const sellerProfileRoutes = new Hono<{ Bindings: Bindings }>();
 
+// ── input length limits ───────────────────────────────────────────────────────
+const MAX_BIO_LEN = 1000;
+const MAX_NAME_LEN = 100;
+const MAX_DESCRIPTION_LEN = 2000;
+const MAX_URL_LEN = 500;
+
 // ── constants for upload-image ────────────────────────────────────────────────
 const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const ALLOWED_IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
@@ -92,6 +98,23 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
     const body = await c.req.json<SellerProfileUpdate & Record<string, unknown>>();
     const updates: string[] = [];
     const values: (string | number | null)[] = [];
+
+    // ── Input length validation ───────────────────────────────────────────────
+    if (typeof body.bio === 'string' && body.bio.length > MAX_BIO_LEN) {
+      return c.json({ success: false, error: `소개(bio)는 ${MAX_BIO_LEN}자 이내로 입력해주세요.` }, 400);
+    }
+    if (typeof body.name === 'string' && body.name.length > MAX_NAME_LEN) {
+      return c.json({ success: false, error: `이름은 ${MAX_NAME_LEN}자 이내로 입력해주세요.` }, 400);
+    }
+    if (typeof body.description === 'string' && body.description.length > MAX_DESCRIPTION_LEN) {
+      return c.json({ success: false, error: `설명(description)은 ${MAX_DESCRIPTION_LEN}자 이내로 입력해주세요.` }, 400);
+    }
+    const urlFields = ['website_url', 'kakao_chat_link', 'sns_instagram', 'sns_youtube', 'sns_facebook', 'sns_twitter'] as const;
+    for (const field of urlFields) {
+      if (typeof body[field] === 'string' && (body[field] as string).length > MAX_URL_LEN) {
+        return c.json({ success: false, error: `${field}은(는) ${MAX_URL_LEN}자 이내로 입력해주세요.` }, 400);
+      }
+    }
 
     const fieldMap: Record<string, string> = {
       name: 'name', business_name: 'business_name', phone: 'phone',
