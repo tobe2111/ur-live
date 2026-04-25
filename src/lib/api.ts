@@ -416,9 +416,14 @@ export const ERROR_MESSAGES: Record<string, string> = {
 
 export function getErrorMessage(error: any): string {
   if (axios.isAxiosError(error)) {
-    const code = error.response?.data?.error?.code;
-    if (code && ERROR_MESSAGES[code]) return ERROR_MESSAGES[code];
-    if (error.response?.data?.error?.message) return error.response.data.error.message;
+    // 새 포맷: { success: false, error: string }
+    const errorField = error.response?.data?.error;
+    if (typeof errorField === 'string' && errorField) return errorField;
+    // 구 포맷 호환 (code/message 객체) — 점진적 제거 가능
+    if (typeof errorField === 'object' && errorField !== null) {
+      if (errorField.code && ERROR_MESSAGES[errorField.code]) return ERROR_MESSAGES[errorField.code];
+      if (errorField.message) return errorField.message;
+    }
     if (error.code === 'ECONNABORTED') return ERROR_MESSAGES.TIMEOUT;
     if (!error.response) return ERROR_MESSAGES.NETWORK_ERROR;
   }

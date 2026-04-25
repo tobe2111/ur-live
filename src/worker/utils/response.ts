@@ -20,16 +20,11 @@ export interface SuccessResponse<T = unknown> {
 
 /**
  * Standard error response format
+ * error는 문자열로 통일 ({ success: false, error: string })
  */
 export interface ErrorResponse {
   success: false;
-  error: {
-    message: string;
-    code?: string;
-    field?: string;
-    details?: Record<string, unknown>;
-  };
-  timestamp: string;
+  error: string;
 }
 
 /**
@@ -69,19 +64,13 @@ export function successResponse<T>(
  */
 export function errorResponse(
   message: string,
-  code?: string,
-  field?: string,
-  details?: Record<string, unknown>
+  _code?: string,
+  _field?: string,
+  _details?: Record<string, unknown>
 ): ErrorResponse {
   return {
     success: false,
-    error: {
-      message,
-      code,
-      field,
-      details,
-    },
-    timestamp: new Date().toISOString(),
+    error: message,
   };
 }
 
