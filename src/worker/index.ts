@@ -89,6 +89,7 @@ import { blogRoutes } from '../features/blog/api/blog.routes';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
+import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 import { guideRoutes } from '../features/guides/api/guide.routes';
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
@@ -1784,6 +1785,8 @@ app.route('/api/banners', bannerRoutes);
 // adminApp has: CORS + IP whitelist + requireAdmin() + audit log
 // ============================================================
 adminApp.route('/agencies', adminAgencyRoutes);
+// 🛡️ 2026-04-26: 에이전시 셀러 심사 큐 (Agency P0 #1)
+adminApp.route('/agency-creator-approvals', adminAgencyApprovalsRoutes);
 // Admin tools (chart, sellers, banners, notices, settlements, reports, settings)
 adminApp.route('/tools', adminToolsRoutes);
 // Admin real-time health metrics (active streams, orders/min, stuck orders, webhooks)

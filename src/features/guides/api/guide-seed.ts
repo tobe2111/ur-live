@@ -97,6 +97,18 @@ const ADMIN_SEED: SeedSection[] = [
 - 에이전시 수익 = 총매출 × 2%
 - 셀러 수익 = 총매출 × 88%
 
+### 🛡️ 셀러 심사 워크플로우 (2026-04-26 추가)
+- 에이전시가 \`POST /api/agency/invite-seller\` 로 셀러 초대 시 **status='pending'** 으로 생성됨
+- \`agency_creator_approvals\` 테이블에 심사 대기 row 생성
+- 어드민이 \`/admin/agency-creator-approvals\` 에서 검증 후 승인/반려
+- 승인 → sellers.status='approved', is_active=1 → 로그인/판매 가능
+- 반려 → sellers.status='rejected', is_active=0 → 비활성, 사유 기록
+
+**API:**
+- \`GET /api/admin/agency-creator-approvals?status=pending\` — 심사 대기 목록
+- \`POST /api/admin/agency-creator-approvals/:id/approve\`
+- \`POST /api/admin/agency-creator-approvals/:id/reject\` — body: { reason }
+
 ### 계약 변경
 \`/admin/agencies\` → 에이전시 상세 → 수수료율 수정. 변경 이력은 감사 로그에 기록.`,
   },

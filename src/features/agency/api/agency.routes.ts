@@ -1205,11 +1205,23 @@ app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, 
   const { hashPassword: hashPw } = await import('../../../lib/password')
   const hash = await hashPw(password)
 
-  // 셀러 계정 생성 (승인 상태)
-  const result = await c.env.DB.prepare(`
-    INSERT INTO sellers (username, name, email, password_hash, business_name, phone, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'approved', datetime('now'), datetime('now'))
-  `).bind(email.split('@')[0], name, email, hash, business_name || null, phone || null).run()
+  // 🛡️ 2026-04-26 (P0 #1): 에이전시 초대 셀러는 'pending' 으로 생성 → 어드민 심사 후 'approved'.
+  // affiliated_agency_id 로 어드민 심사 페이지에서 출처 식별.
+  // 하위 호환: affiliated_agency_id 컬럼 없으면 (구 schema) 그냥 생성 진행.
+  let result;
+  try {
+    result = await c.env.DB.prepare(`
+      INSERT INTO sellers (username, name, email, password_hash, business_name, phone, status, affiliated_agency_id, documents_submitted_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, datetime('now'), datetime('now'), datetime('now'))
+    `).bind(email.split('@')[0], name, email, hash, business_name || null, phone || null, agencyId).run()
+  } catch (err) {
+    // affiliated_agency_id / documents_submitted_at 컬럼 미존재 시 (마이그레이션 0207 미적용)
+    if (import.meta.env.DEV) console.warn('[agency:invite-seller] new columns missing, falling back:', err);
+    result = await c.env.DB.prepare(`
+      INSERT INTO sellers (username, name, email, password_hash, business_name, phone, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+    `).bind(email.split('@')[0], name, email, hash, business_name || null, phone || null).run()
+  }
 
   const sellerId = result.meta.last_row_id
 
@@ -1217,7 +1229,22 @@ app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, 
   await c.env.DB.prepare('INSERT OR IGNORE INTO agency_sellers (agency_id, seller_id) VALUES (?, ?)')
     .bind(agencyId, sellerId).run()
 
-  return c.json({ success: true, data: { seller_id: sellerId }, message: `${name} 셀러가 생성되어 에이전시에 소속되었습니다.` }, 201)
+  // 심사 큐에 등록 (어드민 페이지에서 승인/반려)
+  try {
+    await c.env.DB.prepare(`
+      INSERT INTO agency_creator_approvals (seller_id, agency_id, status, created_at)
+      VALUES (?, ?, 'pending', datetime('now'))
+    `).bind(sellerId, agencyId).run()
+  } catch (err) {
+    // 테이블 미존재 시 (마이그레이션 0207 미적용) — 셀러는 생성됐고 status=pending 으로 어드민이 접근 가능
+    if (import.meta.env.DEV) console.warn('[agency:invite-seller] approval queue not yet migrated:', err);
+  }
+
+  return c.json({
+    success: true,
+    data: { seller_id: sellerId, status: 'pending' },
+    message: `${name} 셀러가 생성되었습니다. 어드민 승인 후 활성화됩니다.`
+  }, 201)
 })
 
 // ── GET /api/agency/report/csv — 매출 리포트 CSV 다운로드 ──
