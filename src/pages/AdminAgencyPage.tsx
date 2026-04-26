@@ -17,6 +17,12 @@ interface Agency {
   seller_count: number
   linked_user_id?: number | null
   created_at: string
+  // Q1 등급제 (migration 0212)
+  tier?: 'new' | 'junior' | 'senior'
+  tier_locked?: number
+  tier_evaluated_at?: string | null
+  commission_rate?: number
+  auto_settle?: number
 }
 
 interface Seller {
@@ -305,6 +311,24 @@ export default function AdminAgencyPage() {
                       }`}>
                         {a.status === 'active' ? '승인' : a.status === 'rejected' ? '거절' : '비활성'}
                       </span>
+                      {/* 🛡️ 2026-04-26 Q1: 등급 표시 + tier_locked 표시 */}
+                      {a.tier && (
+                        <span
+                          title={a.tier_locked ? '어드민 수동 고정 (자동 평가 무시)' : `자동 평가: ${a.tier_evaluated_at || '없음'}`}
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
+                            a.tier === 'senior' ? 'bg-purple-100 text-purple-700' :
+                            a.tier === 'junior' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {a.tier_locked ? '🔒' : ''}{a.tier.toUpperCase()}
+                        </span>
+                      )}
+                      {a.auto_settle === 1 && (
+                        <span className="text-[10px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-medium" title="자동 정산 활성화">
+                          🤖 자동정산
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{a.contact_name} · {a.email}</p>
                   </div>
@@ -313,6 +337,41 @@ export default function AdminAgencyPage() {
                   <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
                     셀러 {a.seller_count}명
                   </span>
+                  {/* 🛡️ 2026-04-26 Q1: 등급 수동 변경 토글 */}
+                  <select
+                    value={a.tier || 'new'}
+                    onChange={async (e) => {
+                      const newTier = e.target.value as 'new' | 'junior' | 'senior'
+                      if (a.tier === newTier) return
+                      try {
+                        await api.patch(`/api/admin/agencies/${a.id}`, { tier: newTier, tier_locked: true }, h)
+                        toast.success(`${a.name} → ${newTier.toUpperCase()} (수동 고정)`)
+                        load()
+                      } catch (err: any) {
+                        toast.error(err?.response?.data?.error || '등급 변경 실패')
+                      }
+                    }}
+                    title="등급 수동 변경 (자동 평가 비활성화됨)"
+                    className="text-xs bg-white border border-gray-200 rounded-lg px-2 py-1 cursor-pointer hover:border-gray-300"
+                  >
+                    <option value="new">NEW</option>
+                    <option value="junior">JUNIOR</option>
+                    <option value="senior">SENIOR</option>
+                  </select>
+                  {a.tier_locked === 1 && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm('자동 평가를 다시 활성화하시겠습니까? 다음 cron 실행 시 등급이 자동 재산정됩니다.')) return
+                        await api.patch(`/api/admin/agencies/${a.id}`, { tier_locked: false }, h)
+                        toast.info('자동 평가 활성화')
+                        load()
+                      }}
+                      title="자동 평가 다시 켜기"
+                      className="text-[10px] text-blue-600 hover:text-blue-800 underline"
+                    >
+                      자동평가 ↻
+                    </button>
+                  )}
                   {/* 승인/거절 토글 */}
                   <button
                     onClick={() => handleToggleStatus(a)}
