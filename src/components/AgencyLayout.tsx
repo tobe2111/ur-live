@@ -4,7 +4,8 @@ import api from '@/lib/api'
 import {
   LayoutDashboard, Users, ShoppingBag, BarChart2, LogOut, Menu, X,
   Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
-  TrendingUp, Radio, UserPlus, BookOpen, type LucideIcon
+  TrendingUp, Radio, UserPlus, BookOpen, Megaphone, Award, MessageSquare, Ticket,
+  type LucideIcon
 } from 'lucide-react'
 
 interface NavItem {
@@ -46,6 +47,16 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/agency/ranking', label: '셀러 랭킹', icon: BarChart2 },
       { path: '/agency/compare', label: '셀러 비교', icon: GitCompare },
       { path: '/agency/targets', label: '매출 목표', icon: Target },
+    ],
+  },
+  // 🛡️ 2026-04-26: TikTok Backstage 학습 기반 신규 운영 도구
+  {
+    label: '캠페인 & 영업',
+    items: [
+      { path: '/agency/campaigns',  label: '캠페인',       icon: Megaphone },
+      { path: '/agency/incentives', label: '인센티브 규칙', icon: Award },
+      { path: '/agency/messages',   label: '메시지 템플릿', icon: MessageSquare },
+      { path: '/agency/coupons',    label: '쿠폰 배포',     icon: Ticket },
     ],
   },
   {
