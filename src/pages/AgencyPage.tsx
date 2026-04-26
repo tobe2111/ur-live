@@ -247,10 +247,32 @@ interface Stream {
   status: string
 }
 
+// 🛡️ 2026-04-26 L2: TikTok 스타일 핵심 KPI 6 + 의무 작업
+interface KpiData {
+  diamond_total: number
+  live_rate: number
+  effective_live_rate: number
+  active_creators: number
+  effective_active_creators: number
+  new_creators_today: number
+  total_sellers: number
+  period_days: number
+}
+interface MonthlyTask {
+  id: number
+  task_type: 'creator_growth' | 'sales_quota' | 'activation'
+  target_value: number
+  actual_value: number
+  status: 'in_progress' | 'completed' | 'failed'
+  month: string
+}
+
 export default function AgencyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
+  const [kpiData, setKpiData] = useState<KpiData | null>(null)
+  const [monthlyTasks, setMonthlyTasks] = useState<MonthlyTask[]>([])
   const [sellers, setSellers] = useState<Seller[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [daily, setDaily] = useState<DailyStat[]>([])
@@ -285,6 +307,14 @@ export default function AgencyPage() {
         }
       }
     } catch { /* 파싱 실패 무시 */ }
+
+    // 🛡️ 2026-04-26 L2: KPI 6 + 의무 작업 추가 fetch (실패해도 기존 화면 유지)
+    api.get('/api/agency/stats/kpi', { headers })
+      .then(r => { if (r.data?.success) setKpiData(r.data.data) })
+      .catch(() => {})
+    api.get('/api/agency/monthly-tasks', { headers })
+      .then(r => { if (r.data?.success) setMonthlyTasks(r.data.data || []) })
+      .catch(() => {})
 
     // Promise.allSettled: 하나 실패해도 나머지 데이터 표시
     Promise.allSettled([
@@ -577,6 +607,85 @@ export default function AgencyPage() {
           </div>
         ))}
       </div>
+
+      {/* 🛡️ 2026-04-26 L2: TikTok 스타일 핵심 지표 6가지 (Q5) */}
+      {kpiData && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              📊 핵심 지표 6 ({kpiData.period_days}일 기준)
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+            {[
+              { label: '다이아몬드', value: `${(kpiData.diamond_total / 10_000).toFixed(0)}만`, sub: '매출+후원', color: 'bg-purple-500' },
+              { label: '라이브 평가', value: `${kpiData.live_rate}%`, sub: '진행 셀러 비율', color: 'bg-blue-500' },
+              { label: '유효 라이브', value: `${kpiData.effective_live_rate}%`, sub: '1시간↑ 셀러', color: 'bg-indigo-500' },
+              { label: '활성 크리에이터', value: String(kpiData.active_creators), sub: '진행 셀러 수', color: 'bg-emerald-500' },
+              { label: '유효 활성', value: String(kpiData.effective_active_creators), sub: '1시간↑ 진행', color: 'bg-teal-500' },
+              { label: '오늘 영입', value: String(kpiData.new_creators_today), sub: '신규 셀러', color: 'bg-orange-500' },
+            ].map((kpi) => (
+              <div key={kpi.label} className="rounded-xl p-3 bg-white border border-gray-200">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">{kpi.label}</p>
+                <p className="text-lg font-extrabold text-gray-900">{kpi.value}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 🛡️ 2026-04-26 L2: 이번 달 의무 작업 진행률 (Q6) */}
+      {monthlyTasks.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              🎯 이번 달 의무 작업
+            </span>
+            <span className="text-[10px] text-gray-400">{monthlyTasks[0]?.month}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {monthlyTasks.map(task => {
+              const pct = Math.min(100, Math.round((task.actual_value / Math.max(1, task.target_value)) * 100))
+              const isCompleted = task.status === 'completed'
+              const isFailed = task.status === 'failed'
+              const taskLabel: Record<MonthlyTask['task_type'], string> = {
+                creator_growth: '신규 영입',
+                sales_quota: '월 매출',
+                activation: '활성화 (1시간↑ 라이브)',
+              }
+              const formatValue = (n: number) =>
+                task.task_type === 'sales_quota' ? `${(n / 10_000).toFixed(0)}만원` : `${n}${task.task_type === 'creator_growth' ? '명' : '명'}`
+
+              return (
+                <div key={task.id} className={`rounded-xl p-4 border ${
+                  isCompleted ? 'bg-green-50 border-green-200' :
+                  isFailed ? 'bg-red-50 border-red-200' :
+                  'bg-white border-gray-200'
+                }`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-bold text-gray-700">{taskLabel[task.task_type]}</p>
+                    {isCompleted && <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded font-bold">완료 ✓</span>}
+                    {isFailed && <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold">미달</span>}
+                  </div>
+                  <p className="text-lg font-extrabold text-gray-900 mb-2">
+                    {formatValue(task.actual_value)} <span className="text-xs text-gray-400 font-normal">/ {formatValue(task.target_value)}</span>
+                  </p>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${
+                        isCompleted ? 'bg-green-500' : isFailed ? 'bg-red-500' : pct >= 70 ? 'bg-blue-500' : 'bg-amber-500'
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">{pct}%</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 1.5 Actionable insights callouts */}
       {insights.length > 0 && (
