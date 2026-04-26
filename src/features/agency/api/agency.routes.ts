@@ -628,6 +628,99 @@ app.get('/stats/daily', async (c: AgencyCtx) => {
   }
 })
 
+// ── GET /stats/realtime — 실시간 매출/주문 (Agency P0 #2) ─────
+//
+// 대시보드 폴링용. Today (KST midnight ~ now) + 최근 1시간 + 라이브 카운트.
+// KV 캐시 30초 TTL (RATE_LIMIT_KV 가 있으면). 없으면 매번 D1 직접 조회.
+//
+// 클라이언트 권장 폴링: 30초 간격 (캐시 TTL 와 동기).
+//
+// 참조: docs/AGENCY_BACKSTAGE_GAP_ANALYSIS.md (P0 #2)
+app.get('/stats/realtime', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+  const cacheKey = `agency:${agencyId}:realtime`
+
+  // 1. KV 캐시 시도
+  const KV = (c.env as any).RATE_LIMIT_KV as KVNamespace | undefined
+  if (KV) {
+    try {
+      const cached = await KV.get(cacheKey, 'json')
+      if (cached) return c.json({ success: true, data: cached, _cached: true })
+    } catch { /* KV miss → fall through */ }
+  }
+
+  // 2. KST midnight (UTC-9 → KST 자정 = UTC 15:00 전날)
+  // 간단화: SQLite 의 datetime 'now', 'localtime' 은 환경 의존이므로 직접 계산.
+  const now = new Date()
+  const kstOffsetMs = 9 * 60 * 60 * 1000
+  const kstNow = new Date(now.getTime() + kstOffsetMs)
+  const kstMidnight = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate()))
+  const todayStart = new Date(kstMidnight.getTime() - kstOffsetMs).toISOString()
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
+
+  const [today, lastHour, activeStreams, todayViewers] = await Promise.all([
+    c.env.DB.prepare(`
+      SELECT
+        COUNT(*) AS order_count,
+        COALESCE(SUM(o.total_amount), 0) AS revenue,
+        COUNT(DISTINCT o.user_id) AS unique_buyers
+      FROM orders o
+      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+      WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?
+    `).bind(agencyId, todayStart).first<{ order_count: number; revenue: number; unique_buyers: number }>(),
+    c.env.DB.prepare(`
+      SELECT
+        COUNT(*) AS order_count,
+        COALESCE(SUM(o.total_amount), 0) AS revenue
+      FROM orders o
+      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+      WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?
+    `).bind(agencyId, oneHourAgo).first<{ order_count: number; revenue: number }>(),
+    c.env.DB.prepare(`
+      SELECT
+        COUNT(*) AS live_count,
+        COALESCE(SUM(ls.current_viewers), 0) AS total_viewers
+      FROM live_streams ls
+      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
+      WHERE ag.agency_id = ? AND ls.status = 'live'
+    `).bind(agencyId).first<{ live_count: number; total_viewers: number }>(),
+    c.env.DB.prepare(`
+      SELECT COALESCE(SUM(ls.peak_viewers), 0) AS peak_today
+      FROM live_streams ls
+      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
+      WHERE ag.agency_id = ? AND ls.created_at >= ?
+    `).bind(agencyId, todayStart).first<{ peak_today: number }>().catch(() => ({ peak_today: 0 })),
+  ])
+
+  const data = {
+    timestamp: now.toISOString(),
+    today: {
+      orders: today?.order_count ?? 0,
+      revenue: today?.revenue ?? 0,
+      unique_buyers: today?.unique_buyers ?? 0,
+    },
+    last_hour: {
+      orders: lastHour?.order_count ?? 0,
+      revenue: lastHour?.revenue ?? 0,
+    },
+    streams: {
+      live_count: activeStreams?.live_count ?? 0,
+      current_viewers: activeStreams?.total_viewers ?? 0,
+      peak_today: todayViewers?.peak_today ?? 0,
+    },
+  }
+
+  // 3. KV 캐시 저장 (best-effort, TTL 30초)
+  if (KV) {
+    c.executionCtx?.waitUntil?.(
+      KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 }).catch(() => {})
+    )
+  }
+
+  return c.json({ success: true, data, _cached: false })
+})
+
 // ── GET /stats/batch — 셀러별 일괄 통계 (N+1 방지) ─────────────
 app.get('/stats/batch', async (c) => {
   await ensureAgencyTables(c.env.DB)
