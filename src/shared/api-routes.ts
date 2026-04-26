@@ -155,8 +155,7 @@ export const ORDERS = {
 export const PAYMENTS = {
   /** POST /api/payments/confirm */
   confirm: '/api/payments/confirm',
-  /** POST /api/payments/rollback */
-  rollback: '/api/payments/rollback',
+  // 결제 취소는 POST /api/orders/:id/cancel 사용 (2026-04-26 dead code 제거).
 } as const;
 
 // ── Seller ───────────────────────────────────────────────────────────────────

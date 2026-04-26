@@ -56,7 +56,6 @@ import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
 import { resendWebhookRoutes } from '../features/notifications/api/resend-webhook.routes';
 import { ordersRoutes as featureOrdersRoutes } from '../features/orders/api/orders.routes';
-import { paymentRoutes as featurePaymentRoutes } from '../features/payments/api/payment.routes';
 import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
 import { pushRoutes } from '../features/push/api/push.routes';
 import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
@@ -84,6 +83,47 @@ import { hashPassword } from '../lib/password';
 import { botProtection } from './middleware/bot-detection';
 import { bodyLimit } from './middleware/body-limit';
 import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
+
+// 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
+import { blogRoutes } from '../features/blog/api/blog.routes';
+import { agencyRoutes } from '../features/agency/api/agency.routes';
+import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
+import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
+import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
+import { guideRoutes } from '../features/guides/api/guide.routes';
+import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
+import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
+import { reportsRoutes } from '../features/reports/api/reports.routes';
+import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
+import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
+import { interestRoutes } from '../features/loyalty/api/interest.routes';
+import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
+import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
+import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
+import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
+import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
+import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
+import { pointsRoutes } from '../features/points/api/points.routes';
+import { shortsRoutes } from '../features/shorts/api/shorts.routes';
+import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
+import { couponRoutes } from '../features/coupons/api/coupons.routes';
+import { socialRoutes } from '../features/social/api/social.routes';
+import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
+import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
+import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
+import { sectionsRoutes } from '../features/sections/api/sections.routes';
+import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
+import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
+import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
+import { returnsRoutes } from '../features/returns/api/returns.routes';
+import { auctionRoutes } from '../features/auction/api/auction.routes';
+import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
+import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
+import { referralRoutes } from '../features/referral/api/referral.routes';
+import { handleScheduled } from './cron/scheduled-cleanup';
+import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
+import { runReconciliation } from './cron/reconciliation';
+import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1681,7 +1721,6 @@ app.route('/api/seller/streams', sellerStreamsRoutes);
 app.route('/api/email', emailRoutes);
 
 // Affiliate marketing
-import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
 app.route('/api/affiliate', affiliateRoutes);
 
 // ============================================================
@@ -1705,15 +1744,15 @@ app.route('/api/orders', ordersRouter);
 app.route('/api/orders', featureOrdersRoutes);
 
 // -------------------------------------------------------
-// Payment routing: TWO routers on /api/payments (non-overlapping sub-routes).
+// Payment routing: /api/payments (single router)
 //
-// paymentsRouter       → POST /confirm, POST /checkout-session (worker-native, PRIMARY)
-// featurePaymentRoutes → POST /rollback (feature module, SECONDARY)
+// paymentsRouter → POST /confirm, POST /checkout-session, POST /webhook
 //
-// ⚠️ Both mounted on /api/payments — paymentsRouter registered first for priority.
+// 과거에 featurePaymentRoutes (/rollback) 가 추가 마운트되어 있었으나,
+// 호출처가 0건으로 dead code 확인되어 2026-04-26 제거.
+// 결제 취소는 POST /api/orders/:id/cancel 사용.
 // -------------------------------------------------------
 app.route('/api/payments', paymentsRouter);
-app.route('/api/payments', featurePaymentRoutes);
 
 // ✅ Stripe routes (Global region): POST /api/payment/stripe/create-intent
 app.route('/api/payment/stripe', stripeRouter);
@@ -1746,10 +1785,8 @@ app.route('/api/banners', bannerRoutes);
 // ============================================================
 adminApp.route('/agencies', adminAgencyRoutes);
 // Admin tools (chart, sellers, banners, notices, settlements, reports, settings)
-import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 adminApp.route('/tools', adminToolsRoutes);
 // Admin real-time health metrics (active streams, orders/min, stuck orders, webhooks)
-import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
 adminApp.route('/metrics', adminMetricsRoutes);
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
@@ -1785,10 +1822,8 @@ adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
-import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
 adminApp.route('/blog', adminBlogRoutes);
 // Restaurant settlement (admin)
-import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // Naver Ad Scraper 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + 기술 불안정
 // 남은 `/api/scraper/d1/*` 엔드포인트도 단계적 제거. scraped_advertisers 테이블은 데이터 보존 목적으로 남김.
@@ -1824,104 +1859,80 @@ app.route('/api/seller', sellerDonationsRoutes); // (see /api/seller routing not
 app.route('/api/seller/restaurant-settlements', sellerSettlementRoutes);
 
 // ── 딜 포인트 ──
-import { pointsRoutes } from '../features/points/api/points.routes';
 app.route('/api/points', pointsRoutes);
 
 // ── 쇼츠 ──
-import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 app.route('/api/shorts', shortsRoutes);
 
 // ── 공동구매 & 바우처 ──
-import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
 
 // ── 쿠폰 ──
-import { couponRoutes } from '../features/coupons/api/coupons.routes';
 app.route('/api/coupons', couponRoutes);
 
 // ── 소셜 (팔로우 + 알림) ──
-import { socialRoutes } from '../features/social/api/social.routes';
 app.route('/api/social', socialRoutes);
 
 // ── 상품 리뷰 ──
-import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
 app.route('/api/reviews', reviewsRoutes);
 
 // ── 셀러 등급 ──
-import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
 app.route('/api/seller-tiers', sellerTiersRoutes);
 
 // ── 바코드 + 재고 관리 ──
-import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 app.route('/api/inventory', inventoryRoutes);
 
 // ── 홈페이지 섹션 관리 ──
-import { sectionsRoutes } from '../features/sections/api/sections.routes';
 app.route('/api/sections', sectionsRoutes);
 
 // ── YouTube 구독자 늘리기 ──
-import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 app.route('/api/youtube-growth', youtubeGrowthRoutes);
 // SECURITY (HIGH-5): admin 엔드포인트는 adminApp 내부로 별도 마운트 (IP whitelist + audit log)
 adminApp.route('/youtube-growth', youtubeGrowthAdminRoutes);
 
 // ── 대시보드 알림 ──
-import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
 app.route('/api/dashboard-notifications', dashboardNotificationsRoutes);
 
 // ── 상품 대량등록 ──
-import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
 app.route('/api/bulk-upload', bulkUploadRoutes);
 
 // ── 반품/환불 ──
-import { returnsRoutes } from '../features/returns/api/returns.routes';
 app.route('/api/returns', returnsRoutes);
 
 // ── 라이브 경매 ──
-import { auctionRoutes } from '../features/auction/api/auction.routes';
 app.route('/api/auction', auctionRoutes);
 
 // ── 타임딜 룰렛 ──
-import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 app.route('/api/timedeal', timedealRoutes);
 
 // ── 유저 공동구매 (커뮤니티) ──
 app.use('/api/community-group-buy/create', rateLimit({ action: 'group_buy_create', max: 10, windowSec: 300 }));
 app.use('/api/community-group-buy/join/*', rateLimit({ action: 'group_buy_join', max: 20, windowSec: 300 }));
-import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
 app.route('/api/community-group-buy', communityGroupBuyRoutes);
 
 // ── 친구 초대 공동구매 ──
-import { referralRoutes } from '../features/referral/api/referral.routes';
 app.route('/api/referral', referralRoutes);
 
 // ── 초대 보상 ──
-import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
 app.route('/api/invite', inviteRewardRoutes);
 
 // ── 다단계 추천 커미션 ──
-import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
 app.route('/api/referral-tree', referralTreeRoutes);
 
 // ── CS 신고 (유저 신고 접수) ──
-import { reportsRoutes } from '../features/reports/api/reports.routes';
 app.route('/api/reports', reportsRoutes);
 
 // ── 방송 알림 구독 ──
-import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 app.route('/api/broadcast-notify', broadcastNotifyRoutes);
 
 // ── VIP 등급 (유저 로열티) ──
-import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
 app.route('/api/loyalty', loyaltyRoutes);
 
 // ── 관심/알림 (맛집·상품·공동구매 관심 등록) ──
-import { interestRoutes } from '../features/loyalty/api/interest.routes';
 app.route('/api/interest', interestRoutes);
 
 // ── 카카오 소셜 (메시지 + 캘린더) + 글로벌 (.ics) ──
-import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
 app.route('/api/kakao-social', kakaoSocialRoutes);
 
 // ── 카카오 장소 검색 프록시 (브라우저 CORS 우회) ──
@@ -2044,25 +2055,19 @@ app.get('/api/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 // SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
 // /api/blog는 공개 GET /public, /public/:slug만 허용 (나머지는 라우터 내부에서 admin 체크)
-import { blogRoutes } from '../features/blog/api/blog.routes';
 app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용 (내부에서 /public만 공개)
 
 // ── 에이전시 ──
-import { agencyRoutes } from '../features/agency/api/agency.routes';
-import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
-import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 app.route('/api/agency', agencyPinRoutes);
 app.route('/api/agency', agencyRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
-import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 app.route('/api/bundles', bundlePublicRoutes);
 app.route('/api/bundles', bundleCartRoutes);
 app.route('/api/seller/bundles', bundleSellerRoutes);
 
 // 🛡️ 2026-04-23 배치 174: 운영 가이드 (어드민 편집, 셀러/에이전시 읽기)
-import { guideRoutes } from '../features/guides/api/guide.routes';
 app.route('/api/guides', guideRoutes);
 
 // YouTube / Live streaming
@@ -2305,11 +2310,6 @@ app.onError(errorHandler);
 // ============================================================
 // Export Worker + Scheduled Handler (Cron Triggers)
 // ============================================================
-
-import { handleScheduled } from './cron/scheduled-cleanup';
-import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
-import { runReconciliation } from './cron/reconciliation';
-import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
 
 export default {
   fetch: app.fetch,
