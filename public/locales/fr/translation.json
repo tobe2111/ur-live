@@ -1465,7 +1465,9 @@
       "mealVoucher": "Bons repas",
       "reviews": "Avis",
       "coupons": "Coupons",
-      "liveBroadcast": "Diffusion en direct"
+      "liveBroadcast": "Diffusion en direct",
+      "guide": "Guide",
+      "bundles": "Lots"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -1533,7 +1535,20 @@
     "hidePassword": "Masquer le mot de passe",
     "showPassword": "Afficher le mot de passe",
     "viewPublicProfile": "Voir le profil public",
-    "agencyInviteJoin": "Inscription via invitation d'agence"
+    "agencyInviteJoin": "Inscription via invitation d'agence",
+    "guide": {
+      "subtitle": "Comment gérer un live commerce réussi sur UrDeal",
+      "title": "Guide opérationnel vendeur"
+    },
+    "bundleCreate": "Créer un Lot",
+    "bundleEdit": "Modifier le Lot",
+    "bundleName": "Nom du Lot",
+    "bundleProducts": "Sélectionner les Produits",
+    "bundlesSubtitle": "Regroupez plusieurs produits pour une vente en lot",
+    "discountAmount": "Montant de la Remise",
+    "discountPercent": "Pourcentage de Remise",
+    "discountType": "Type de Remise",
+    "noBundles": "Aucun lot enregistré"
   },
   "admin": {
     "login": {

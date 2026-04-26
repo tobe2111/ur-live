@@ -1548,7 +1548,9 @@
       "mealVoucher": "餐券·团购",
       "reviews": "评价管理",
       "coupons": "优惠券管理",
-      "liveBroadcast": "直播"
+      "liveBroadcast": "直播",
+      "guide": "运营指南",
+      "bundles": "套装商品"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -1616,7 +1618,20 @@
     "hidePassword": "隐藏密码",
     "showPassword": "显示密码",
     "viewPublicProfile": "查看公开资料",
-    "agencyInviteJoin": "通过代理邀请加入"
+    "agencyInviteJoin": "通过代理邀请加入",
+    "guide": {
+      "subtitle": "在UrDeal上成功运营直播电商的方法",
+      "title": "卖家运营指南"
+    },
+    "bundleCreate": "创建套装",
+    "bundleEdit": "编辑套装",
+    "bundleName": "套装名称",
+    "bundleProducts": "选择商品",
+    "bundlesSubtitle": "多个商品打包成套装折扣销售",
+    "discountAmount": "折扣金额",
+    "discountPercent": "折扣百分比",
+    "discountType": "折扣方式",
+    "noBundles": "没有注册的套装"
   },
   "admin": {
     "login": {

@@ -1465,7 +1465,9 @@
       "mealVoucher": "Vales de comida",
       "reviews": "Reseñas",
       "coupons": "Cupones",
-      "liveBroadcast": "Transmisión en vivo"
+      "liveBroadcast": "Transmisión en vivo",
+      "guide": "Guía",
+      "bundles": "Paquetes"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -1533,7 +1535,20 @@
     "hidePassword": "Ocultar contraseña",
     "showPassword": "Mostrar contraseña",
     "viewPublicProfile": "Ver perfil público",
-    "agencyInviteJoin": "Unirse por invitación de agencia"
+    "agencyInviteJoin": "Unirse por invitación de agencia",
+    "guide": {
+      "subtitle": "Cómo administrar comercio en vivo exitoso en UrDeal",
+      "title": "Guía de Operaciones para Vendedores"
+    },
+    "bundleCreate": "Crear Paquete",
+    "bundleEdit": "Editar Paquete",
+    "bundleName": "Nombre del Paquete",
+    "bundleProducts": "Seleccionar Productos",
+    "bundlesSubtitle": "Agrupa varios productos para vender con descuento",
+    "discountAmount": "Monto de Descuento",
+    "discountPercent": "Porcentaje de Descuento",
+    "discountType": "Tipo de Descuento",
+    "noBundles": "No hay paquetes registrados"
   },
   "admin": {
     "login": {

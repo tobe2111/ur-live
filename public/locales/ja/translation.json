@@ -1560,7 +1560,9 @@
       "mealVoucher": "食事券・共同購入",
       "reviews": "レビュー管理",
       "coupons": "クーポン管理",
-      "liveBroadcast": "ライブ配信"
+      "liveBroadcast": "ライブ配信",
+      "guide": "運営ガイド",
+      "bundles": "バンドル商品"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -1613,7 +1615,20 @@
     "hidePassword": "パスワードを隠す",
     "showPassword": "パスワードを表示",
     "viewPublicProfile": "公開プロフィールを見る",
-    "agencyInviteJoin": "エージェンシー招待による参加"
+    "agencyInviteJoin": "エージェンシー招待による参加",
+    "guide": {
+      "subtitle": "ユーディールで成功するライブコマース運営方法",
+      "title": "セラー運営ガイド"
+    },
+    "bundleCreate": "バンドル作成",
+    "bundleEdit": "バンドル編集",
+    "bundleName": "バンドル名",
+    "bundleProducts": "商品選択",
+    "bundlesSubtitle": "複数商品をまとめてセット割引販売",
+    "discountAmount": "割引額",
+    "discountPercent": "割引率",
+    "discountType": "割引方式",
+    "noBundles": "登録されたバンドルがありません"
   },
   "admin": {
     "login": {

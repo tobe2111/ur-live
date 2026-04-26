@@ -1555,16 +1555,17 @@
       "mealVoucher": "Meal Vouchers",
       "reviews": "Reviews",
       "coupons": "Coupons",
-      "liveBroadcast": "Live Broadcast"
+      "liveBroadcast": "Live Broadcast",
+      "guide": "Guide"
     },
-    "bundlesSubtitle": "Bundle multiple products for set discounts",
+    "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
     "bundleEdit": "Edit Bundle",
     "bundleName": "Bundle Name",
     "bundleProducts": "Select Products",
-    "noBundles": "No bundles yet",
+    "noBundles": "No bundles registered",
     "discountType": "Discount Type",
-    "discountPercent": "Discount %",
+    "discountPercent": "Discount Percent",
     "discountAmount": "Discount Amount",
     "shortsSync": {
       "syncComplete": "Sync complete",
@@ -1623,7 +1624,11 @@
     "hidePassword": "Hide password",
     "showPassword": "Show password",
     "viewPublicProfile": "View public profile",
-    "agencyInviteJoin": "Joining via agency invitation"
+    "agencyInviteJoin": "Joining via agency invitation",
+    "guide": {
+      "subtitle": "How to run successful live commerce on UrDeal",
+      "title": "Seller Operations Guide"
+    }
   },
   "admin": {
     "login": {
