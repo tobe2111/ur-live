@@ -90,6 +90,7 @@ import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
 import { agencyCampaignsRoutes, recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { agencyIncentivesRoutes, calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
+import { agencyMessagesRoutes } from '../features/agency/api/agency-messages.routes';
 import { handleAgencyTierEval } from './cron/agency-tier-eval';
 import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
@@ -1960,6 +1961,8 @@ app.route('/api/agency', agencyRoutes);
 app.route('/api/agency/campaigns', agencyCampaignsRoutes);
 // 🛡️ 2026-04-26: Agency P0 #5 인센티브 규칙 엔진
 app.route('/api/agency/incentives', agencyIncentivesRoutes);
+// 🛡️ 2026-04-26 Q2: 메시지 템플릿 + 일괄 발송
+app.route('/api/agency/messages', agencyMessagesRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
