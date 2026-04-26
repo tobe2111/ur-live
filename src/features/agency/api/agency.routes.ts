@@ -1515,6 +1515,33 @@ app.get('/notices', async (c: AgencyCtx) => {
   return c.json({ success: true, data: results || [] })
 })
 
+// ── GET /monthly-tasks — 의무 작업 진행 상황 (Q6) ──
+//
+// 응답: 이번 달 3종 의무 작업의 target/actual/status.
+// row 가 없으면 cron 이 다음 실행 시 자동 생성. 빈 배열 반환.
+//
+// 참조: docs/AGENCY_STRATEGY_QUICKWIN.md (Q6)
+app.get('/monthly-tasks', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const now = new Date()
+  const month = c.req.query('month') ||
+    `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return c.json({ success: false, error: 'month 형식: YYYY-MM' }, 400)
+  }
+
+  try {
+    const { results } = await c.env.DB.prepare(
+      `SELECT * FROM agency_monthly_tasks WHERE agency_id = ? AND month = ? ORDER BY task_type`
+    ).bind(agencyId, month).all<Record<string, unknown>>()
+    return c.json({ success: true, data: results || [], month })
+  } catch {
+    // migration 0215 미적용
+    return c.json({ success: true, data: [], month, _note: 'migration 0215 not applied yet' })
+  }
+})
+
 // ── GET/PUT /api/agency/targets — 셀러 매출 목표 ──
 app.get('/targets', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id

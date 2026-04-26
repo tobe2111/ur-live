@@ -93,6 +93,7 @@ import { agencyIncentivesRoutes, calculateAllAgencyIncentives } from '../feature
 import { agencyMessagesRoutes } from '../features/agency/api/agency-messages.routes';
 import { handleAgencyTierEval } from './cron/agency-tier-eval';
 import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
+import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -2250,6 +2251,8 @@ export default {
       ctx.waitUntil(safeCron('agency-campaigns-aggregate', () => recomputeAllActiveCampaigns(env.DB)));
       // 🛡️ 2026-04-26 Q3: 30일 경과 pending 셀러 신청 자동 평가 (어드민 추천만, 자동 처리 X)
       ctx.waitUntil(safeCron('agency-creator-eval', () => handleAgencyCreatorEval(env)));
+      // 🛡️ 2026-04-26 Q6: 의무 작업 (매출/영입/활성화) actual_value 갱신
+      ctx.waitUntil(safeCron('agency-monthly-tasks', () => handleAgencyMonthlyTasks(env)));
     }
 
     // Daily 19:00 UTC (KST 04:00): reconciliation
