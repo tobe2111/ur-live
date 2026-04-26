@@ -91,6 +91,7 @@ import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
 import { agencyCampaignsRoutes, recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { agencyIncentivesRoutes, calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { handleAgencyTierEval } from './cron/agency-tier-eval';
+import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -2237,13 +2238,15 @@ export default {
       ctx.waitUntil(safeCron('scheduled-cleanup', () => handleScheduled(env)));
     }
 
-    // Daily 18:00 UTC (KST 03:00): heavy tasks (settlement + expired-voucher refund + self diagnostic + campaign aggregation)
+    // Daily 18:00 UTC (KST 03:00): heavy tasks (settlement + expired-voucher refund + self diagnostic + campaign + creator eval)
     if (cron === '0 18 * * *') {
       ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
       ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
       ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
       // 🛡️ 2026-04-26: Agency P0 #4 — 캠페인 상태 전환 + participants 누적 매출 재집계
       ctx.waitUntil(safeCron('agency-campaigns-aggregate', () => recomputeAllActiveCampaigns(env.DB)));
+      // 🛡️ 2026-04-26 Q3: 30일 경과 pending 셀러 신청 자동 평가 (어드민 추천만, 자동 처리 X)
+      ctx.waitUntil(safeCron('agency-creator-eval', () => handleAgencyCreatorEval(env)));
     }
 
     // Daily 19:00 UTC (KST 04:00): reconciliation
