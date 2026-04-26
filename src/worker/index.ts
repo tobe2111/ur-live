@@ -91,6 +91,7 @@ import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
 import { agencyCampaignsRoutes, recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { agencyIncentivesRoutes, calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { agencyMessagesRoutes } from '../features/agency/api/agency-messages.routes';
+import { agencyCouponsRoutes } from '../features/agency/api/agency-coupons.routes';
 import { handleAgencyTierEval } from './cron/agency-tier-eval';
 import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
 import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
@@ -1964,6 +1965,8 @@ app.route('/api/agency/campaigns', agencyCampaignsRoutes);
 app.route('/api/agency/incentives', agencyIncentivesRoutes);
 // 🛡️ 2026-04-26 Q2: 메시지 템플릿 + 일괄 발송
 app.route('/api/agency/messages', agencyMessagesRoutes);
+// 🛡️ 2026-04-26 Q7: 쿠폰 캐스케이드 (에이전시 → 셀러 → 시청자)
+app.route('/api/agency/coupons', agencyCouponsRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
