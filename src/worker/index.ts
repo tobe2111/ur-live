@@ -95,6 +95,7 @@ import { agencyCouponsRoutes } from '../features/agency/api/agency-coupons.route
 import { handleAgencyTierEval } from './cron/agency-tier-eval';
 import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
 import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
+import { handleD1Backup } from './cron/d1-backup';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -2261,6 +2262,11 @@ export default {
     // Daily 19:00 UTC (KST 04:00): reconciliation
     if (cron === '0 19 * * *') {
       ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
+    }
+
+    // Sunday 20:00 UTC (KST Monday 05:00): D1 백업 → R2 (BACKUP_BUCKET 바인딩 있을 때만 실제 동작)
+    if (cron === '0 20 * * 0') {
+      ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
     }
 
     // Weekly Monday 00:00 UTC (= KST 09:00): 에이전시 자동 정산 (P0 #3) + 전월 인센티브 (P0 #5) + 등급 평가 (Q1)
