@@ -168,6 +168,7 @@ const AgencyNoticesPage = lazy(() => import('./pages/AgencyNoticesPage'))
 const AgencyComparePage = lazy(() => import('./pages/AgencyComparePage'))
 const AgencyContractsPage = lazy(() => import('./pages/AgencyContractsPage'))
 const AgencyTargetsPage = lazy(() => import('./pages/AgencyTargetsPage'))
+const AgencyCampaignsPage = lazy(() => import('./pages/AgencyCampaignsPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 const AgencyGroupBuyPage = lazy(() => import('./pages/AgencyGroupBuyPage'))
 
@@ -785,6 +786,7 @@ function AppContent() {
             <Route path="/agency/compare" element={<AgencyAuthGuard><AgencyComparePage /></AgencyAuthGuard>} />
             <Route path="/agency/contracts" element={<AgencyAuthGuard><AgencyContractsPage /></AgencyAuthGuard>} />
             <Route path="/agency/targets" element={<AgencyAuthGuard><AgencyTargetsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/campaigns" element={<AgencyAuthGuard><AgencyCampaignsPage /></AgencyAuthGuard>} />
             <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
             <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
             
