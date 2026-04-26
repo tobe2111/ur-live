@@ -90,6 +90,7 @@ import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
 import { agencyCampaignsRoutes, recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { agencyIncentivesRoutes, calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
+import { handleAgencyTierEval } from './cron/agency-tier-eval';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -2250,7 +2251,7 @@ export default {
       ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
     }
 
-    // Weekly Monday 00:00 UTC (= KST 09:00): 에이전시 자동 정산 (P0 #3) + 전월 인센티브 계산 (P0 #5)
+    // Weekly Monday 00:00 UTC (= KST 09:00): 에이전시 자동 정산 (P0 #3) + 전월 인센티브 (P0 #5) + 등급 평가 (Q1)
     if (cron === '0 0 * * 1') {
       ctx.waitUntil(safeCron('agency-auto-settle', () => handleAgencyAutoSettle(env)));
       // 매주 월요일에 전월 인센티브 재계산 (월 1회만 실제 변경, 멱등 — INSERT ON CONFLICT)
@@ -2258,6 +2259,12 @@ export default {
       const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const monthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
       ctx.waitUntil(safeCron('agency-incentives-recalc', () => calculateAllAgencyIncentives(env.DB, monthStr)));
+      // 🛡️ 2026-04-26 Q1: 에이전시 등급 평가 (월 1회만 의미 있음 — 매주 실행해도 매월 1일~7일 사이만 실제 변경)
+      // 매월 첫 월요일에만 의미 있게 변경됨. 정확한 월 1일 cron 은 추후 추가 가능.
+      const dayOfMonth = now.getUTCDate();
+      if (dayOfMonth <= 7) {
+        ctx.waitUntil(safeCron('agency-tier-eval', () => handleAgencyTierEval(env)));
+      }
     }
   },
 };
