@@ -23,12 +23,30 @@
 
 ---
 
-### 2. .dev.vars Secret Rotation
-**현재 상태**: TECHNICAL_DEBT.md TD-002 — git history 노출됨  
+### 2. .dev.vars + ENV_VARS *.txt Secret Rotation
+**현재 상태**: TECHNICAL_DEBT.md TD-002 — git history 노출됨
+
+⚠️ **2026-04-26 추가 발견**: `.dev.vars` 외에 다음 11개 파일이 **시크릿 평문** 포함하고 git에 추적됨:
+```
+ALL_ENV_VARS_COMPLETE.txt
+CLOUDFLARE_ENV_COPY_PASTE.txt          ← Firebase API Key (AIzaSy...)
+COMPLETE_31_ENV_VARS.txt
+CORRECT_FIREBASE_VALUES.txt
+ENV_VARS_QUICK_COPY.txt
+FINAL_31_ENV_VARS_COMPLETE.txt
+FIREBASE_SETUP_CHECKLIST.txt
+FLOW_DIAGRAM.txt
+MISSING_VITE_VARS_ONLY.txt
+UR_LIVE_ENV_VARS_SETUP.txt
+VITE_ENV_VARS_QUICK_COPY.txt
+```
+→ 워킹 트리에서는 `archive/secrets-redacted/` 로 격리 (코드 변경으로 처리). git history 정리는 BFG 별도 실행 필요.
+
 **노출된 값**:
 - `JWT_SECRET`
 - `REFRESH_TOKEN_SECRET`  
 - `FIREBASE_PRIVATE_KEY` (가장 위험 — 즉시)
+- `FIREBASE_API_KEY` (VITE_*)
 - `KAKAO_REST_API_KEY`
 - `TOSS_SECRET_KEY` (운영 시 즉시)
 
@@ -39,6 +57,18 @@
 4. **JWT_SECRET**: `openssl rand -hex 32` 로 새 값 생성
 5. Cloudflare Pages → ur-live → Settings → Variables → Secrets 업데이트
 6. 배포 트리거 (`git commit --allow-empty -m "rotate secrets" && git push`)
+7. (선택) git history 정리 — BFG Repo-Cleaner:
+   ```bash
+   bfg --delete-files .dev.vars
+   bfg --delete-files '*ENV_VARS*.txt'
+   bfg --delete-files 'CLOUDFLARE_ENV_COPY_PASTE.txt'
+   bfg --delete-files 'CORRECT_FIREBASE_VALUES.txt'
+   bfg --delete-files 'FIREBASE_SETUP_CHECKLIST.txt'
+   bfg --delete-files 'FLOW_DIAGRAM.txt'
+   git reflog expire --expire=now --all && git gc --prune=now
+   git push --force --all
+   ```
+   ⚠️ force push 전 팀 합의 필수. 모든 협업자 git pull --rebase 필요.
 
 **소요**: 2시간 (각 서비스 + 검증)  
 **위험**: 중간 (rotation 중 잠시 인증 실패 가능 — 사용자 안내 필요)
