@@ -606,6 +606,110 @@ app.get('/stats', async (c) => {
   })
 })
 
+// ── GET /stats/kpi — TikTok Backstage 1.4 핵심 지표 6가지 (Q5) ──
+//
+// 에이전시 운영의 핵심 KPI. 매일 봐야 하는 지표를 한 번에 반환.
+// "유효" 라이브 = 1시간 이상 진행 (TikTok 기준).
+//
+// 반환:
+//  - diamond_total: 30일 누적 받은 딜 + 후원 (다이아몬드 등가)
+//  - live_rate: 라이브 진행 셀러 / 총 소속 셀러
+//  - effective_live_rate: 1시간 이상 라이브 진행 셀러 / 총 소속 셀러
+//  - active_creators: 라이브 진행 셀러 수 (탈퇴 제외)
+//  - effective_active_creators: 1시간 이상 진행 셀러 수
+//  - new_creators_today: 오늘 시작된 매니지먼트 관계 셀러 수
+//
+// 참조: docs/AGENCY_BACKSTAGE_LEARNING.md (1.2 핵심 데이터 지표 6가지)
+app.get('/stats/kpi', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+
+  const period = parseInt(c.req.query('days') || '30')
+  const since = new Date(Date.now() - period * 86400_000).toISOString()
+  const todayStart = new Date(Date.UTC(
+    new Date().getUTCFullYear(),
+    new Date().getUTCMonth(),
+    new Date().getUTCDate()
+  )).toISOString()
+
+  const [totalSellersRow, diamondRow, liveStatsRow, newTodayRow] = await Promise.all([
+    // 1) 총 소속 활성 셀러 수
+    c.env.DB.prepare(`
+      SELECT COUNT(DISTINCT ag.seller_id) AS total
+      FROM agency_sellers ag
+      INNER JOIN sellers s ON s.id = ag.seller_id
+      WHERE ag.agency_id = ? AND COALESCE(s.is_active, 1) = 1
+    `).bind(agencyId).first<{ total: number }>(),
+
+    // 2) 다이아몬드 (= 매출 + 후원) 30일 누적
+    c.env.DB.prepare(`
+      SELECT
+        COALESCE((SELECT SUM(o.total_amount)
+          FROM orders o
+          INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+          WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?), 0) AS revenue,
+        COALESCE((SELECT SUM(d.amount)
+          FROM donations d
+          INNER JOIN agency_sellers ag ON ag.seller_id = d.seller_id
+          WHERE ag.agency_id = ? AND d.payment_status = 'approved' AND d.created_at >= ?), 0) AS donations
+    `).bind(agencyId, since, agencyId, since).first<{ revenue: number; donations: number }>(),
+
+    // 3) 라이브 진행 통계 (period 기준)
+    //    - active: started_at 이 있는 라이브 1회 이상 셀러
+    //    - effective: 종료 시각 - 시작 시각 >= 60분
+    c.env.DB.prepare(`
+      SELECT
+        COUNT(DISTINCT ls.seller_id) AS active_count,
+        COUNT(DISTINCT CASE
+          WHEN ls.ended_at IS NOT NULL
+            AND (julianday(ls.ended_at) - julianday(ls.started_at)) * 1440 >= 60
+          THEN ls.seller_id
+        END) AS effective_count
+      FROM live_streams ls
+      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
+      WHERE ag.agency_id = ?
+        AND ls.created_at >= ?
+        AND ls.status IN ('live','ended')
+    `).bind(agencyId, since).first<{ active_count: number; effective_count: number }>(),
+
+    // 4) 오늘 매니지먼트 관계 시작 (agency_sellers 의 created_at)
+    //    실제 컬럼이 없을 수 있어 try/catch 로 감쌈 (구 스키마 호환)
+    c.env.DB.prepare(`
+      SELECT COUNT(*) AS cnt
+      FROM agency_sellers ag
+      WHERE ag.agency_id = ?
+        AND ag.created_at >= ?
+    `).bind(agencyId, todayStart).first<{ cnt: number }>().catch(() => ({ cnt: 0 })),
+  ])
+
+  const totalSellers = totalSellersRow?.total ?? 0
+  const activeCount = liveStatsRow?.active_count ?? 0
+  const effectiveCount = liveStatsRow?.effective_count ?? 0
+  const diamondTotal = (diamondRow?.revenue ?? 0) + (diamondRow?.donations ?? 0)
+
+  return c.json({
+    success: true,
+    data: {
+      // 30일 누적 매출 + 후원 (= 다이아몬드 등가)
+      diamond_total: diamondTotal,
+      // 라이브 진행 셀러 비율 (총 소속 셀러 대비)
+      live_rate: totalSellers > 0 ? Math.round((activeCount / totalSellers) * 1000) / 10 : 0,
+      // 1시간 이상 라이브 진행 셀러 비율
+      effective_live_rate: totalSellers > 0 ? Math.round((effectiveCount / totalSellers) * 1000) / 10 : 0,
+      // 활성 라이브 크리에이터 수 (탈퇴/비활성 제외)
+      active_creators: activeCount,
+      // 유효 활성 크리에이터 수 (1시간 이상)
+      effective_active_creators: effectiveCount,
+      // 오늘 영입한 셀러 수
+      new_creators_today: newTodayRow?.cnt ?? 0,
+      // 메타
+      total_sellers: totalSellers,
+      period_days: period,
+      timestamp: new Date().toISOString(),
+    },
+  })
+})
+
 // ── GET /stats/daily — 일별 매출 추이 (RevenueTrendChart 용) ───
 app.get('/stats/daily', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
