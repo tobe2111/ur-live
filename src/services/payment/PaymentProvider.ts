@@ -86,7 +86,9 @@ export class TossPaymentsProvider implements PaymentProvider {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          // Toss 권장: 동일 요청 재시도 시 중복 승인 방지
+          'Idempotency-Key': `confirm-${request.orderId}-${request.paymentKey}`,
         },
         body: JSON.stringify({
           paymentKey: request.paymentKey,
@@ -166,7 +168,9 @@ export class TossPaymentsProvider implements PaymentProvider {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          // Toss 권장: 동일 환불 요청 재시도 시 중복 환불 방지
+          'Idempotency-Key': `cancel-${paymentKey}-${Date.now()}`,
         },
         body: JSON.stringify({ cancelReason: reason })
       });

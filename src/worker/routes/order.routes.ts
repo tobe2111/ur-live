@@ -13,6 +13,7 @@ import type { Env } from '../types/env';
 import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
+import { swallow } from '../utils/swallow';
 import { requireAuth, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
@@ -279,18 +280,18 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       '새 주문',
       `주문번호: ${order.order_number}`,
       '/admin/orders'
-    ).catch(() => {});
+    ).catch(swallow('order:notify-admin-new'));
 
     // 셀러에게도 알림 (seller_id가 있는 경우)
     if (order.seller_id) {
-      createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'new_order', '새 주문', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
+      createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'new_order', '새 주문', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-new'));
     }
 
     // 재고 부족 체크
     for (const item of orderItems) {
       const product = products.find(p => p.id === item.product_id);
       if (product && ((product.stock ?? product.stock_quantity ?? 0) - item.quantity) <= 5) {
-        createDashboardNotification(c.env.DB, 'seller', String(product.seller_id || ''), 'low_stock', '재고 부족', `${product.name}: ${(product.stock ?? product.stock_quantity ?? 0) - item.quantity}개 남음`, '/seller/inventory').catch(() => {});
+        createDashboardNotification(c.env.DB, 'seller', String(product.seller_id || ''), 'low_stock', '재고 부족', `${product.name}: ${(product.stock ?? product.stock_quantity ?? 0) - item.quantity}개 남음`, '/seller/inventory').catch(swallow('order:notify-low-stock'));
       }
     }
 
@@ -319,7 +320,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
             buyer_id: String(userId),
             order_amount: order.total_amount,
           }),
-        }).catch(() => {})
+        }).catch(swallow('order:affiliate-track'))
       )
 
       // 추천 트리 등록 (안전망: 카카오 콜백에서 등록 안 된 경우 대비)
@@ -482,9 +483,10 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
 
     if (!tossResult.success) {
       // 🛡️ Toss 실패 시 예약한 refunded_amount 롤백
+      // CRITICAL: 이 롤백이 실패하면 환불 금액 이중 반영 위험 → 반드시 로그 남김.
       await c.env.DB.prepare(
         "UPDATE orders SET refunded_amount = MAX(0, COALESCE(refunded_amount, 0) - ?) WHERE id = ?"
-      ).bind(refundAmount, body.order_id).run().catch(() => {});
+      ).bind(refundAmount, body.order_id).run().catch(swallow('order:refund-rollback-CRITICAL'));
 
       const tossErrorMessages: Record<string, string> = {
         ALREADY_CANCELED_PAYMENT: '이미 취소된 결제입니다',
@@ -524,7 +526,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
         if (cas && (cas.meta?.changes ?? 0) > 0) {
           await c.env.DB.prepare(
             'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
-          ).bind(co.amount, co.user_id).run().catch(() => {});
+          ).bind(co.amount, co.user_id).run().catch(swallow('order:commission-revoke-points'));
         }
       }
     } catch (e) {
@@ -540,7 +542,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
         ).bind(refundAmount, String(order.user_id)).run();
         await c.env.DB.prepare(
           "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-        ).bind(String(order.user_id), refundAmount, refundAmount, `[환불] 주문 환불 (order:${(order as any).order_number || body.order_id})`).run().catch(() => {});
+        ).bind(String(order.user_id), refundAmount, refundAmount, `[환불] 주문 환불 (order:${(order as any).order_number || body.order_id})`).run().catch(swallow('order:point-tx-refund-audit'));
       }
     } catch (e) {
       console.error('[ORDERS] Points refund error:', e);
@@ -714,7 +716,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
             ).bind(refundPoints, String(order.user_id)).run();
             await c.env.DB.prepare(
               "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-            ).bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 취소 (order:${order.order_number})`).run().catch(() => {});
+            ).bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 취소 (order:${order.order_number})`).run().catch(swallow('order:point-tx-cancel-audit'));
           }
         }
       } catch (e) {
@@ -722,9 +724,9 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
       }
 
       // 주문 취소 알림
-      createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(() => {});
+      createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-cancel-paid'));
       if (order.seller_id) {
-        createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
+        createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-cancel-paid'));
       }
 
       // 유저에게 인앱 알림 (주문 취소)
@@ -762,9 +764,9 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     });
 
     // 주문 취소 알림
-    createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(() => {});
+    createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-cancel-pending'));
     if (order.seller_id) {
-      createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
+      createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-cancel-pending'));
     }
 
     // 유저에게 인앱 알림 (주문 취소)
