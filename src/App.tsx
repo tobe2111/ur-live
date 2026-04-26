@@ -134,6 +134,7 @@ const AdminOperationsGuidePage = lazy(() => import('./pages/admin/AdminOperation
 const AdminBlogPage = lazy(() => import('./pages/AdminBlogPage'))
 const AdminAgencyPage = lazy(() => import('./pages/AdminAgencyPage'))
 const AdminSellerApprovalPage = lazy(() => import('./pages/AdminSellerApprovalPage'))
+const AdminAgencyCreatorApprovalPage = lazy(() => import('./pages/AdminAgencyCreatorApprovalPage'))
 const AdminSettlementsBulkPage = lazy(() => import('./pages/AdminSettlementsBulkPage'))
 const AdminNoticesPage = lazy(() => import('./pages/AdminNoticesPage'))
 const AdminPlatformSettingsPage = lazy(() => import('./pages/AdminPlatformSettingsPage'))
@@ -694,6 +695,9 @@ function AppContent() {
             } />
             <Route path="/admin/seller-approval" element={
               <ProtectedRoute requireAdmin><AdminSellerApprovalPage /></ProtectedRoute>
+            } />
+            <Route path="/admin/agency-creator-approval" element={
+              <ProtectedRoute requireAdmin><AdminAgencyCreatorApprovalPage /></ProtectedRoute>
             } />
             <Route path="/admin/settlements-bulk" element={
               <ProtectedRoute requireAdmin><AdminSettlementsBulkPage /></ProtectedRoute>

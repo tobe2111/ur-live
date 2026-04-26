@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
+import { swallow } from '../utils/swallow';
 
 const stripeRouter = new Hono<{ Bindings: Env }>();
 
@@ -206,7 +207,7 @@ stripeRouter.post('/webhook', async (c) => {
     // 처리 기록
     await DB.prepare(
       'INSERT INTO stripe_webhook_events (event_id, event_type) VALUES (?, ?)'
-    ).bind(event.id, event.type).run().catch(() => {});
+    ).bind(event.id, event.type).run().catch(swallow('stripe:webhook-event-log'));
   } catch (err) {
     console.error('[Stripe Webhook] Processing error:', err);
   }

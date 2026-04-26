@@ -77,8 +77,9 @@ SCRAPER_URL = "https://live.ur-team.com"
 # - 오래된 알림/토큰 정리
 # - 바우처 자동 정산 (사용 후 7일 경과)
 # UTC 18:00 = KST 03:00 daily trigger for settlement
+# UTC Monday 00:00 = KST Monday 09:00 — 에이전시 자동 정산 (P0 #3)
 [triggers]
-crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *"]
+crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "0 0 * * 1"]
 
 # ============================================================
 # Production Secrets — NEVER add actual secrets here!

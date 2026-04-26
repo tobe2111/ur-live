@@ -139,7 +139,8 @@
     "dataLoadFailed": "Failed to load data. Please refresh the page.",
     "settingChangeFailed": "Failed to change setting",
     "disconnectFailed": "Failed to disconnect.",
-    "copyFailed": "Failed to copy."
+    "copyFailed": "Failed to copy.",
+    "home": "Home"
   },
   "auth": {
     "email": "Email",
@@ -1865,5 +1866,22 @@
       "seoTitle": "Voucher Verification",
       "seoDescription": "Verify a voucher by QR code"
     }
+  },
+  "sellerWaiting": {
+    "title": "Seller Approval Pending",
+    "description": "Seller approval pending information",
+    "statusPending": "Approval Pending",
+    "statusSuspended": "Account suspended",
+    "statusRejected": "Application rejected",
+    "statusUnknown": "Status unknown",
+    "pendingDesc": "Admin approval typically takes 1-2 days. Once approved you can sign in with Kakao right away.",
+    "contactSupport": "Please contact customer support",
+    "rejectedDesc": "To re-apply please contact customer support",
+    "afterApproval": "After approval you can",
+    "benefit1": "Broadcast live streams",
+    "benefit2": "Register and sell products",
+    "benefit3": "View revenue and settlements",
+    "contactCS": "Contact Support",
+    "reloadHint": "Reload the page to refresh status"
   }
 }

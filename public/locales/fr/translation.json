@@ -139,7 +139,8 @@
     "dataLoadFailed": "Échec de chargement. Actualisez la page.",
     "settingChangeFailed": "Échec de modification des paramètres",
     "disconnectFailed": "Échec de déconnexion.",
-    "copyFailed": "Échec de copie."
+    "copyFailed": "Échec de copie.",
+    "home": "Accueil"
   },
   "seller": {
     "dashboard": "Tableau de bord",
@@ -1868,5 +1869,22 @@
       "seoTitle": "Vérification du coupon",
       "seoDescription": "Vérifier le coupon par code QR"
     }
+  },
+  "sellerWaiting": {
+    "title": "Approbation Vendeur en Attente",
+    "description": "Information sur l'approbation en attente",
+    "statusPending": "Approbation en Attente",
+    "statusSuspended": "Compte suspendu",
+    "statusRejected": "Demande refusée",
+    "statusUnknown": "Statut inconnu",
+    "pendingDesc": "L'approbation prend généralement 1-2 jours. Une fois approuvé, vous pouvez vous connecter avec Kakao.",
+    "contactSupport": "Veuillez contacter le service client",
+    "rejectedDesc": "Pour postuler à nouveau, contactez le service client",
+    "afterApproval": "Après l'approbation vous pourrez",
+    "benefit1": "Diffuser des lives",
+    "benefit2": "Enregistrer et vendre des produits",
+    "benefit3": "Voir revenus et règlements",
+    "contactCS": "Contacter le Support",
+    "reloadHint": "Rechargez la page pour actualiser le statut"
   }
 }

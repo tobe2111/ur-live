@@ -139,7 +139,8 @@
     "dataLoadFailed": "数据加载失败，请刷新页面。",
     "settingChangeFailed": "设置更改失败",
     "disconnectFailed": "断开连接失败。",
-    "copyFailed": "复制失败。"
+    "copyFailed": "复制失败。",
+    "home": "首页"
   },
   "auth": {
     "email": "邮箱",
@@ -1868,5 +1869,22 @@
       "seoTitle": "餐券确认",
       "seoDescription": "通过二维码确认餐券"
     }
+  },
+  "sellerWaiting": {
+    "title": "卖家审核等待",
+    "description": "卖家审核等待信息",
+    "statusPending": "审核等待中",
+    "statusSuspended": "账户已暂停",
+    "statusRejected": "申请被拒绝",
+    "statusUnknown": "无法确认状态",
+    "pendingDesc": "管理员审核通常需要1-2天。审核通过后可以使用Kakao账号直接登录。",
+    "contactSupport": "请联系客服",
+    "rejectedDesc": "如需重新申请请联系客服",
+    "afterApproval": "审核通过后可以",
+    "benefit1": "直播放送",
+    "benefit2": "商品注册和销售",
+    "benefit3": "查看营业额和结算",
+    "contactCS": "联系客服",
+    "reloadHint": "重新加载页面以刷新状态"
   }
 }

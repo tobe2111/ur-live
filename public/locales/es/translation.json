@@ -139,7 +139,8 @@
     "dataLoadFailed": "Error al cargar datos. Actualice la página.",
     "settingChangeFailed": "Error al cambiar configuración",
     "disconnectFailed": "Error al desconectar.",
-    "copyFailed": "Error al copiar."
+    "copyFailed": "Error al copiar.",
+    "home": "Inicio"
   },
   "seller": {
     "dashboard": "Panel",
@@ -1868,5 +1869,22 @@
       "seoTitle": "Verificación de cupón",
       "seoDescription": "Verificar cupón mediante código QR"
     }
+  },
+  "sellerWaiting": {
+    "title": "Aprobación de Vendedor Pendiente",
+    "description": "Información sobre aprobación pendiente",
+    "statusPending": "Aprobación Pendiente",
+    "statusSuspended": "Cuenta suspendida",
+    "statusRejected": "Solicitud rechazada",
+    "statusUnknown": "Estado desconocido",
+    "pendingDesc": "La aprobación normalmente tarda 1-2 días. Una vez aprobado podrás iniciar sesión con Kakao.",
+    "contactSupport": "Por favor contacte al servicio al cliente",
+    "rejectedDesc": "Para volver a aplicar contacte al servicio al cliente",
+    "afterApproval": "Después de la aprobación podrá",
+    "benefit1": "Transmitir en vivo",
+    "benefit2": "Registrar y vender productos",
+    "benefit3": "Ver ingresos y liquidaciones",
+    "contactCS": "Contactar Soporte",
+    "reloadHint": "Recargue la página para actualizar el estado"
   }
 }

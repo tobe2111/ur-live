@@ -90,6 +90,7 @@ import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
+import { proxyRoutes } from './routes/proxy.routes';
 import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 import { guideRoutes } from '../features/guides/api/guide.routes';
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
@@ -125,6 +126,7 @@ import { handleScheduled } from './cron/scheduled-cleanup';
 import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
 import { runReconciliation } from './cron/reconciliation';
 import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
+import { handleAgencyAutoSettle } from './cron/agency-auto-settle';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1938,122 +1940,9 @@ app.route('/api/interest', interestRoutes);
 // ── 카카오 소셜 (메시지 + 캘린더) + 글로벌 (.ics) ──
 app.route('/api/kakao-social', kakaoSocialRoutes);
 
-// ── 카카오 장소 검색 프록시 (브라우저 CORS 우회) ──
-app.get('/api/kakao/place/search', async (c) => {
-  const query = c.req.query('query')
-  const category = c.req.query('category_group_code') || 'FD6,CE7'
-  const size = c.req.query('size') || '15'
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY
-  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500)
-  try {
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=${size}${category && !category.includes(',') ? `&category_group_code=${category}` : ''}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
-
-app.get('/api/kakao/place/address', async (c) => {
-  const query = c.req.query('query')
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY
-  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500)
-  try {
-    const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
-
-// ── 네이버 검색 API 프록시 (식당 이미지/정보) ──
-// 지역 검색: 식당명 + 주소 + 전화번호 + 카테고리
-app.get('/api/naver/place/search', rateLimit({ action: 'naver_place', max: 30, windowSec: 60 }), async (c) => {
-  const query = c.req.query('query')
-  const display = c.req.query('display') || '5'
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const clientId = (c.env as Env).NAVER_CLIENT_ID
-  const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500)
-  try {
-    const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=${display}&sort=comment`
-    const res = await fetch(url, {
-      headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
-    })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
-
-// 이미지 검색: 식당명으로 이미지 가져오기
-app.get('/api/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windowSec: 60 }), async (c) => {
-  const query = c.req.query('query')
-  const display = c.req.query('display') || '3'
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const clientId = (c.env as Env).NAVER_CLIENT_ID
-  const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500)
-  try {
-    const url = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query + ' 맛집')}&display=${display}&sort=sim&filter=large`
-    const res = await fetch(url, {
-      headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
-    })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
-
-// 통합 식당 정보 (지역 검색 + 이미지 한번에)
-app.get('/api/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30, windowSec: 60 }), async (c) => {
-  const query = c.req.query('query')
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const clientId = (c.env as Env).NAVER_CLIENT_ID
-  const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500)
-
-  const headers = { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
-
-  try {
-    // 🛡️ 2026-04-22: Naver 느리면 5초 후 중단 (Worker CPU/메모리 보호)
-    const [localRes, imageRes] = await Promise.all([
-      fetch(`https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=1&sort=comment`, { headers, signal: AbortSignal.timeout(5000) }),
-      fetch(`https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query + ' 맛집 음식')}&display=3&sort=sim&filter=large`, { headers, signal: AbortSignal.timeout(5000) }),
-    ])
-
-    const localData: any = await localRes.json()
-    const imageData: any = await imageRes.json()
-
-    const place = localData.items?.[0] || null
-    const images = (imageData.items || []).map((img: any) => img.link)
-
-    return c.json({
-      success: true,
-      data: {
-        place: place ? {
-          title: place.title?.replace(/<[^>]*>/g, ''),
-          address: place.roadAddress || place.address,
-          phone: place.telephone,
-          category: place.category,
-          link: place.link,
-          mapx: place.mapx,
-          mapy: place.mapy,
-        } : null,
-        images,
-      },
-    })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
+// ── 외부 서비스 프록시 (kakao/naver place + image) ──
+// 2026-04-26 worker/index.ts 비대화 해소를 위해 src/worker/routes/proxy.routes.ts 로 추출
+app.route('/api', proxyRoutes);
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 // SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
@@ -2351,6 +2240,11 @@ export default {
     // Daily 19:00 UTC (KST 04:00): reconciliation
     if (cron === '0 19 * * *') {
       ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
+    }
+
+    // Weekly Monday 00:00 UTC (= KST 09:00): 에이전시 자동 정산 (P0 #3)
+    if (cron === '0 0 * * 1') {
+      ctx.waitUntil(safeCron('agency-auto-settle', () => handleAgencyAutoSettle(env)));
     }
   },
 };

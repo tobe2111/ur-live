@@ -139,7 +139,8 @@
     "dataLoadFailed": "データの読み込みに失敗しました。ページを更新してください。",
     "settingChangeFailed": "設定の変更に失敗しました",
     "disconnectFailed": "連携解除に失敗しました。",
-    "copyFailed": "コピーに失敗しました。"
+    "copyFailed": "コピーに失敗しました。",
+    "home": "ホーム"
   },
   "auth": {
     "email": "メールアドレス",
@@ -1865,5 +1866,22 @@
       "seoTitle": "クーポン確認",
       "seoDescription": "QRコードでクーポンを確認します"
     }
+  },
+  "sellerWaiting": {
+    "title": "セラー承認待機",
+    "description": "セラー承認待機の案内",
+    "statusPending": "承認待機中",
+    "statusSuspended": "アカウントが停止されました",
+    "statusRejected": "申請が却下されました",
+    "statusUnknown": "状態を確認できません",
+    "pendingDesc": "管理者の承認まで通常1〜2日かかります。承認完了後はカカオログインですぐにご利用いただけます。",
+    "contactSupport": "カスタマーサポートにお問い合わせください",
+    "rejectedDesc": "再申請をご希望の場合はサポートまでお問い合わせください",
+    "afterApproval": "承認後にできること",
+    "benefit1": "ライブ放送送出",
+    "benefit2": "商品登録・販売",
+    "benefit3": "精算・売上確認",
+    "contactCS": "カスタマーサポートに問い合わせ",
+    "reloadHint": "状態を更新するにはページを再読み込みしてください"
   }
 }

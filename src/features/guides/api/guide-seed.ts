@@ -896,7 +896,26 @@ const AGENCY_SEED: SeedSection[] = [
 ### 세금 처리
 - 에이전시도 부가가치세 신고 의무
 - 정산 내역서에 세금계산서 발행 가능 (요청 시)
-- 사업자 등록 없으면 원천징수 (3.3%)`,
+- 사업자 등록 없으면 원천징수 (3.3%)
+
+### 🤖 자동 정산 (2026-04-26 추가)
+\`agencies.auto_settle = 1\` 설정 시 매주 월요일 09:00 KST 자동 정산 신청.
+
+**자동 처리 내용:**
+- 정산 가능 주문 (DELIVERED/DONE + confirmed) 자동 집계
+- 수수료 = 매출 × commission_rate%
+- 세금 = 수수료 × 3.3% (소득세 + 지방세)
+- 실수령액 = 수수료 - 세금
+- 어드민 정산 처리(은행이체) 후 'completed' 로 전환
+
+**활성화 방법:**
+- 어드민 \`/admin/agencies\` → 에이전시 상세 → "자동 정산 사용" 토글
+- 또는 SQL: \`UPDATE agencies SET auto_settle = 1 WHERE id = ?\`
+
+**수동 정산 vs 자동 정산:**
+- 자동: 매주 1회 일괄 처리, PIN 인증 불필요 (cron)
+- 수동: \`POST /api/agency/settlements/request\` (PIN 인증 필요)
+- 두 방식 동시 사용 가능 — 자동 정산 후에도 수동으로 추가 정산 가능 (다른 주문 대상)`,
   },
   {
     key: 'security-pin', icon: '🔐', title: '보안 PIN (민감 액션 인증)', order: 55,
