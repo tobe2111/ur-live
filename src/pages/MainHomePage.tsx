@@ -229,6 +229,7 @@ export default function MainHomePage() {
       if (endedRes.status === 'fulfilled' && endedRes.value.data.success) setEndedStreams(endedRes.value.data.data || [])
       if (mealRes.status === 'fulfilled' && mealRes.value.data.success) setMealProducts(mealRes.value.data.data || [])
       if (prodRes.status === 'fulfilled' && prodRes.value.data.success) setProducts(prodRes.value.data.data || [])
+      if (newRes.status === 'fulfilled' && newRes.value.data.success) setNewProducts(newRes.value.data.data || [])
     }).finally(() => setLoading(false))
   }, [])
 
@@ -558,6 +559,35 @@ export default function MainHomePage() {
             ))}
           </div>
         </div>
+
+        {/* 신상품 */}
+        {newProducts.length > 0 && (
+          <div className="px-4 pb-5">
+            <div className="flex items-end justify-between mb-3">
+              <div>
+                <p className="text-[10px] font-extrabold text-emerald-400 tracking-[0.14em]">✨ NEW ARRIVAL</p>
+                <p className="text-[14px] font-extrabold text-white mt-0.5">신상품</p>
+              </div>
+              <button onClick={() => navigate('/browse?sort=latest')} className="text-[11px] text-gray-400">전체 →</button>
+            </div>
+            <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+              {newProducts.map(p => {
+                const d = disc(p.price, p.original_price)
+                return (
+                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-[130px] text-left active:scale-[0.98] transition-transform">
+                    <div className="relative rounded-xl overflow-hidden aspect-square bg-[#1A1A1A]">
+                      {p.image_url && <img src={p.image_url} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />}
+                      <span className="absolute top-1.5 left-1.5 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">NEW</span>
+                      {d > 0 && <span className="absolute top-1.5 right-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
+                    </div>
+                    <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
+                    <p className="text-[12px] font-extrabold text-white mt-1">{p.price.toLocaleString()}원</p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 실시간 랭킹 */}
         {products.length > 0 && (
