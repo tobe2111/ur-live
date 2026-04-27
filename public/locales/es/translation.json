@@ -170,8 +170,7 @@
       "groupBuyDeadline": "공동구매 마감일",
       "storeVerifyPin": "식당 인증 비밀번호",
       "storeVerifyPinPlaceholder": "식당 사장에게 전달할 비밀번호",
-      "storeVerifyPinDesc": "식당 사장이 바우처 사용 시 입력할 비밀번호입니다. 식당 사장에게 전달해주세요.",
-      "title": "Productos"
+      "storeVerifyPinDesc": "식당 사장이 바우처 사용 시 입력할 비밀번호입니다. 식당 사장에게 전달해주세요."
     },
     "orders": "Pedidos",
     "revenue": "Ingresos",
@@ -469,8 +468,7 @@
       "durationMin": "시간(분)",
       "groupBuyStarted": "🎁 라이브 공구가 시작되었습니다!",
       "groupBuyCreateFailed": "라이브 공구 생성 실패",
-      "startGroupBuy": "라이브 공구 시작",
-      "title": "Transmisión en vivo YouTube"
+      "startGroupBuy": "라이브 공구 시작"
     },
     "startBroadcast": "Iniciar transmisión",
     "endBroadcast": "Finalizar transmisión",
@@ -1065,8 +1063,7 @@
       "contact": "문의",
       "contactDesc": "인플루언서에게 직접 문의",
       "following": "✓ 팔로잉",
-      "follow": "+ 팔로우",
-      "title": "Pagina publica"
+      "follow": "+ 팔로우"
     },
     "storeIntro": "Introduccion de la tienda",
     "shippingInfo": "Info de envio",

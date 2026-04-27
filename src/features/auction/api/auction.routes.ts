@@ -354,6 +354,43 @@ auctionRoutes.post('/:id/cancel', requireAuth(), async (c) => {
 // 5. 후보 모두 실패 시 winner_user_id = NULL, status = 'ended', 모두 release
 //
 // 마이그레이션 0211 미적용 시: 부분 동작 (winner_history INSERT 만 silent skip).
+
+// 🛡️ 2026-04-27 (TD-007 마무리): POST /api/auction/:id/winner-paid
+// 낙찰자 결제 완료 시 hold 를 'consumed' 로 마킹.
+// 권한: 셀러(본인 경매) 또는 어드민
+// TODO(P1): 결제 webhook 에서 자동 호출 — 토스 PAYMENT_STATUS_CHANGED → orders.kind='auction'
+//   인 경우 이 endpoint 자동 트리거. 별도 PR 로 분리.
+auctionRoutes.post('/:id/winner-paid', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+  const { DB } = c.env;
+  const auctionId = Number(c.req.param('id'));
+  if (!Number.isFinite(auctionId) || auctionId <= 0) return c.json({ success: false, error: 'invalid id' }, 400);
+
+  const auction = await DB.prepare(
+    'SELECT seller_id, winner_user_id, status FROM live_auctions WHERE id = ?'
+  ).bind(auctionId).first<{ seller_id: number; winner_user_id: string | null; status: string }>();
+  if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
+  if (auction.status !== 'ended') return c.json({ success: false, error: '종료된 경매만 처리 가능' }, 409);
+  if (!auction.winner_user_id) return c.json({ success: false, error: '낙찰자 없음' }, 409);
+
+  if (user.type !== 'admin' && (user.type !== 'seller' || Number(auction.seller_id) !== Number(user.id))) {
+    return c.json({ success: false, error: 'forbidden — not your auction' }, 403);
+  }
+
+  // winner 의 active hold 를 consumed 로 마킹 (멱등 — 이미 consumed 면 변화 없음)
+  const result = await DB.prepare(
+    "UPDATE auction_holds SET status = 'consumed', released_at = datetime('now') WHERE auction_id = ? AND user_id = ? AND status = 'active'"
+  ).bind(auctionId, auction.winner_user_id).run();
+
+  return c.json({
+    success: true,
+    consumed_holds: (result.meta as any)?.changes ?? 0,
+    message: '낙찰자 결제 hold consumed 처리 완료',
+  });
+});
+
 auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);

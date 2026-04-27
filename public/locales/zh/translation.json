@@ -253,8 +253,7 @@
       "groupBuyDeadline": "공동구매 마감일",
       "storeVerifyPin": "식당 인증 비밀번호",
       "storeVerifyPinPlaceholder": "식당 사장에게 전달할 비밀번호",
-      "storeVerifyPinDesc": "식당 사장이 바우처 사용 시 입력할 비밀번호입니다. 식당 사장에게 전달해주세요.",
-      "title": "商品管理"
+      "storeVerifyPinDesc": "식당 사장이 바우처 사용 시 입력할 비밀번호입니다. 식당 사장에게 전달해주세요."
     },
     "orders": "订单管理",
     "revenue": "收入结算",
@@ -552,8 +551,7 @@
       "durationMin": "시간(분)",
       "groupBuyStarted": "🎁 라이브 공구가 시작되었습니다!",
       "groupBuyCreateFailed": "라이브 공구 생성 실패",
-      "startGroupBuy": "라이브 공구 시작",
-      "title": "YouTube直播"
+      "startGroupBuy": "라이브 공구 시작"
     },
     "startBroadcast": "开始直播",
     "endBroadcast": "结束直播",
@@ -1148,8 +1146,7 @@
       "contact": "문의",
       "contactDesc": "인플루언서에게 직접 문의",
       "following": "✓ 팔로잉",
-      "follow": "+ 팔로우",
-      "title": "公开页面"
+      "follow": "+ 팔로우"
     },
     "storeIntro": "店铺介绍",
     "shippingInfo": "配送信息",

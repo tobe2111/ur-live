@@ -88,18 +88,12 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
-import { agencyCampaignsRoutes, recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
-import { agencyIncentivesRoutes, calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
+import { agencyCampaignsRoutes } from '../features/agency/api/agency-campaigns.routes';
+import { agencyIncentivesRoutes } from '../features/agency/api/agency-incentives.routes';
 import { agencyMessagesRoutes } from '../features/agency/api/agency-messages.routes';
 import { agencyCouponsRoutes } from '../features/agency/api/agency-coupons.routes';
 import { agencyMembersRoutes } from '../features/agency/api/agency-members.routes';
 import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.routes';
-import { handleAgencyTierEval } from './cron/agency-tier-eval';
-import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
-import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
-import { handleD1Backup } from './cron/d1-backup';
-import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
-import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -137,12 +131,6 @@ import { auctionRoutes } from '../features/auction/api/auction.routes';
 import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
 import { referralRoutes } from '../features/referral/api/referral.routes';
-import { handleScheduled } from './cron/scheduled-cleanup';
-import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
-import { runReconciliation } from './cron/reconciliation';
-import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
-import { handleAgencyAutoSettle } from './cron/agency-auto-settle';
-import { getFeatureFlags } from './utils/feature-flags';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -2172,96 +2160,11 @@ app.onError(errorHandler);
 // Export Worker + Scheduled Handler (Cron Triggers)
 // ============================================================
 
+// 🛡️ 2026-04-27 (TD-006 부분): scheduled handler 를 src/worker/scheduled.ts 로 분리.
+// worker/index.ts 가 90줄 줄어듦. cron 로직 변경 시 scheduled.ts 만 수정.
+import { handleCronScheduled } from './scheduled';
+
 export default {
   fetch: app.fetch,
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    const cron = event.cron;
-
-    // 🛡️ Cron 에러 래퍼 — 실패 시 Discord 알림 (이전엔 silent failure)
-    const safeCron = async (name: string, task: () => Promise<unknown>) => {
-      try {
-        await task();
-      } catch (err) {
-        const msg = (err as Error)?.message || String(err);
-        console.error(`[cron:${name}] FAILED:`, msg);
-        const webhook = env.DISCORD_WEBHOOK_URL;
-        if (webhook) {
-          try {
-            const { sendDiscordAlert } = await import('./utils/discord-alert');
-            await sendDiscordAlert(webhook, `🔴 Cron Failed: ${name}`, msg.slice(0, 1500), 'error');
-          } catch { /* discord 자체 실패는 무시 */ }
-        }
-      }
-    };
-
-    // Every 5 minutes: short cleanup tasks
-    if (cron === '*/5 * * * *') {
-      ctx.waitUntil(safeCron('scheduled-cleanup', () => handleScheduled(env)));
-    }
-
-    // Daily 18:00 UTC (KST 03:00): heavy tasks (settlement + expired-voucher refund + self diagnostic + campaign + creator eval)
-    if (cron === '0 18 * * *') {
-      ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
-      ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
-      ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
-      // 🛡️ 2026-04-26 (X2): 신규 cron 들은 feature flag 로 보호 — 문제 시 즉시 OFF.
-      ctx.waitUntil(safeCron('agency-cron-batch', async () => {
-        const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
-        // 캠페인 (P0 #4)
-        if (flags.enable_agency_campaigns_aggregate) {
-          await recomputeAllActiveCampaigns(env.DB).catch(e => console.error('[cron] campaigns:', e));
-        }
-        // 셀러 신청 평가 (Q3)
-        if (flags.enable_agency_creator_eval) {
-          await handleAgencyCreatorEval(env).catch(e => console.error('[cron] creator-eval:', e));
-        }
-        // 의무 작업 (Q6)
-        if (flags.enable_agency_monthly_tasks) {
-          await handleAgencyMonthlyTasks(env).catch(e => console.error('[cron] monthly-tasks:', e));
-        }
-        // TikTok 비디오 sync (T2)
-        if (flags.enable_tiktok_videos_sync) {
-          await handleTikTokVideosSync(env).catch(e => console.error('[cron] tiktok:', e));
-        }
-      }));
-    }
-
-    // Daily 19:00 UTC (KST 04:00): reconciliation
-    if (cron === '0 19 * * *') {
-      ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
-    }
-
-    // Sunday 20:00 UTC (KST Monday 05:00): D1 백업 → R2 (BACKUP_BUCKET 바인딩 있을 때만 실제 동작)
-    if (cron === '0 20 * * 0') {
-      ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
-    }
-
-    // 🛡️ 2026-04-26 M6: 송장은 아래 weekly batch 에 통합됨 (매월 1주차 월요일).
-
-    // Weekly Monday 00:00 UTC (= KST 09:00): 에이전시 자동 정산 (P0 #3) + 전월 인센티브 (P0 #5) + 등급 평가 (Q1)
-    if (cron === '0 0 * * 1') {
-      ctx.waitUntil(safeCron('agency-weekly-batch', async () => {
-        const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
-        const now = new Date();
-        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const monthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
-        const dayOfMonth = now.getUTCDate();
-
-        // 자동 정산 (P0 #3) — 매주
-        if (flags.enable_agency_auto_settle) {
-          await handleAgencyAutoSettle(env).catch(e => console.error('[cron] auto-settle:', e));
-        }
-        // 전월 인센티브 (P0 #5) — 매주 멱등
-        await calculateAllAgencyIncentives(env.DB, monthStr).catch(e => console.error('[cron] incentives:', e));
-        // 등급 평가 (Q1) — 매월 1주차
-        if (flags.enable_agency_tier_eval && dayOfMonth <= 7) {
-          await handleAgencyTierEval(env).catch(e => console.error('[cron] tier-eval:', e));
-        }
-        // 송장 (M6) — 매월 1주차
-        if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {
-          await handleAgencyMonthlyInvoices(env as any).catch(e => console.error('[cron] invoices:', e));
-        }
-      }));
-    }
-  },
+  scheduled: handleCronScheduled,
 };
