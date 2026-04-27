@@ -238,7 +238,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
         >
           <Globe size={13} strokeWidth={2} />
-          {t('seller.viewPublicProfile') || '공개 프로필 보기'}
+          {t('seller.viewPublicProfile', { defaultValue: '공개 프로필 보기' })}
         </Link>
         {localStorage.getItem('user_id') && (
           <button

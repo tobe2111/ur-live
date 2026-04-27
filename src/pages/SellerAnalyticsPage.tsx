@@ -44,7 +44,7 @@ export default function SellerAnalyticsPage() {
         {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.analyticsTitle')}
-          subtitle={t('seller.analyticsSubtitle') || '매출, 고객, 상품 퍼포먼스 분석'}
+          subtitle={t('seller.analyticsSubtitle', { defaultValue: '매출, 고객, 상품 퍼포먼스 분석' })}
           icon={<BarChart2 className="h-5 w-5" />}
         />
 

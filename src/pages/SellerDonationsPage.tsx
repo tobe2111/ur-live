@@ -133,7 +133,7 @@ export default function SellerDonationsPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.donations')}
-          subtitle={t('seller.donationsSubtitle') || '후원 수신 및 정산 내역'}
+          subtitle={t('seller.donationsSubtitle', { defaultValue: '후원 수신 및 정산 내역' })}
           icon={<Heart className="h-5 w-5" />}
         />
         {/* 요약 카드 */}

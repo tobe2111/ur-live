@@ -256,7 +256,7 @@ export default function SellerInventoryPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.inventory')}
-          subtitle={t('seller.inventorySubtitle') || '재고 관리 · 바코드 스캔 · 입출고 이력'}
+          subtitle={t('seller.inventorySubtitle', { defaultValue: '재고 관리 · 바코드 스캔 · 입출고 이력' })}
           icon={<ArchiveRestore className="h-5 w-5" />}
         />
       {/* 바코드 스캔 */}

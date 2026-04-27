@@ -57,7 +57,7 @@ export function useSessionValidation() {
 
         // 4. 401 Unauthorized: JWT 토큰 만료 또는 무효
         if (error.response?.status === 401) {
-          console.warn('[SessionValidation] 🚪 JWT 토큰 만료/무효 - 로그아웃 처리')
+          if (import.meta.env.DEV) console.warn('[SessionValidation] 🚪 JWT 토큰 만료/무효 - 로그아웃 처리')
 
           // 현재 페이지 URL 저장 (로그인 후 돌아오기 위해)
           const returnUrl = location.pathname + location.search
@@ -78,7 +78,7 @@ export function useSessionValidation() {
           navigate(`${loginPath}?returnUrl=${encodeURIComponent(returnUrl)}`)
         } else if (error.response?.status === 429) {
           // 5. 429 Too Many Requests: 너무 많은 요청, 조용히 스킵
-          console.warn('[SessionValidation] ⚠️ 429 Too Many Requests - 다음 검증까지 대기')
+          if (import.meta.env.DEV) console.warn('[SessionValidation] ⚠️ 429 Too Many Requests - 다음 검증까지 대기')
         }
       } finally {
         isValidating = false

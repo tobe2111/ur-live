@@ -58,7 +58,7 @@ function CheckoutForm({
     e.preventDefault()
 
     if (!stripe || !elements) {
-      onPaymentError(t('payment.widgetNotReady') || '결제 위젯이 준비되지 않았습니다')
+      onPaymentError(t('payment.widgetNotReady', { defaultValue: '결제 위젯이 준비되지 않았습니다' }))
       return
     }
 
@@ -79,7 +79,7 @@ function CheckoutForm({
 
       if (error) {
         if (import.meta.env.DEV) console.error('[Stripe] ❌ 결제 실패:', error)
-        onPaymentError(error.message || t('payment.requestError') || '결제 요청 실패')
+        onPaymentError(error.message || t('payment.requestError', { defaultValue: '결제 요청 실패' }))
         setIsProcessing(false)
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         const orderId = `order_${Date.now()}_${userId}`
@@ -88,7 +88,7 @@ function CheckoutForm({
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('[Stripe] ❌ 결제 요청 실패:', err)
       setIsProcessing(false)
-      onPaymentError(err?.message || t('payment.requestError') || '결제 요청 실패')
+      onPaymentError(err?.message || t('payment.requestError', { defaultValue: '결제 요청 실패' }))
     }
   }
 
@@ -112,7 +112,7 @@ function CheckoutForm({
         `}
       >
         {isProcessing
-          ? t('payment.processing') || 'Processing...'
+          ? t('payment.processing', { defaultValue: 'Processing...' })
           : t('payment.pay') || `Pay $${((totalAmount + shippingFee) / 100).toFixed(2)}`
         }
       </button>
@@ -167,7 +167,7 @@ export function StripeCheckout(props: StripeCheckoutProps) {
     return (
       <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
-        <p>{t('payment.loading') || 'Loading payment...'}</p>
+        <p>{t('payment.loading', { defaultValue: 'Loading payment...' })}</p>
       </div>
     )
   }

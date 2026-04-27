@@ -176,7 +176,7 @@ export default function SellerYoutubeGrowthPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.youtubeGrowth')}
-          subtitle={t('seller.youtubeGrowthSubtitle') || '유튜브 구독자 증가 서비스'}
+          subtitle={t('seller.youtubeGrowthSubtitle', { defaultValue: '유튜브 구독자 증가 서비스' })}
           icon={<Youtube className="h-5 w-5" />}
         />
         {/* 안내 */}

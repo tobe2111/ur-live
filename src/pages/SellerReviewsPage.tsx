@@ -36,7 +36,7 @@ export default function SellerReviewsPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.reviews.title')}
-          subtitle={t('seller.reviews.subtitle') || '상품 리뷰 관리 및 답변'}
+          subtitle={t('seller.reviews.subtitle', { defaultValue: '상품 리뷰 관리 및 답변' })}
           icon={<Star className="h-5 w-5" />}
         />
         {loading ? <DashboardLoading /> : reviews.length === 0 ? (

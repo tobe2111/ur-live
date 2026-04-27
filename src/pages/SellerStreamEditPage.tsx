@@ -182,7 +182,7 @@ export default function SellerStreamEditPage() {
         {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
         <DashboardPageHeader
           title={t('seller.streamManagement')}
-          subtitle={t('seller.streamEditSubtitle') || '라이브 스트림 상세 관리'}
+          subtitle={t('seller.streamEditSubtitle', { defaultValue: '라이브 스트림 상세 관리' })}
           icon={<Play className="h-5 w-5" />}
           actions={
             <button

@@ -134,7 +134,7 @@ export default function SellerShortsPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.shortsManage')}
-          subtitle={t('seller.shortsSubtitle') || '쇼츠 동영상 업로드 및 관리'}
+          subtitle={t('seller.shortsSubtitle', { defaultValue: '쇼츠 동영상 업로드 및 관리' })}
           icon={<Video className="h-5 w-5" />}
         />
         {/* 버튼 그룹 */}

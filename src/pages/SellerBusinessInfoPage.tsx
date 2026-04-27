@@ -119,11 +119,11 @@ export default function SellerBusinessInfoPage() {
         localStorage.setItem('seller_bank_name', bankInfo.bank_name.trim())
         localStorage.setItem('seller_account_number', bankInfo.bank_account.trim())
         localStorage.setItem('seller_account_holder', bankInfo.account_holder.trim())
-        toast.success(t('seller.bankInfoSaved') || '계좌 정보가 저장되었습니다')
+        toast.success(t('seller.bankInfoSaved', { defaultValue: '계좌 정보가 저장되었습니다' }))
       }
     } catch (error) {
       if (import.meta.env.DEV) console.error('[BusinessInfo] save bank info failed:', error)
-      toast.error(t('seller.bankInfoSaveFailed') || '계좌 정보 저장에 실패했습니다')
+      toast.error(t('seller.bankInfoSaveFailed', { defaultValue: '계좌 정보 저장에 실패했습니다' }))
     } finally {
       setBankSubmitting(false)
     }
@@ -283,7 +283,7 @@ export default function SellerBusinessInfoPage() {
     return (
       <SellerLayout title={t('seller.businessInfoManagement')}>
         <div className="mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
-          <DashboardLoading text={t('common.loading') || '불러오는 중...'} />
+          <DashboardLoading text={t('common.loading', { defaultValue: '불러오는 중...' })} />
         </div>
       </SellerLayout>
     )
@@ -599,13 +599,13 @@ export default function SellerBusinessInfoPage() {
 
         {/* 🛡️ 2026-04-22 배치 128: 계좌 정보 섹션 (정산용) */}
         <DashboardCard
-          title={t('seller.bankInfo') || '정산 계좌 정보'}
-          subtitle={t('seller.bankInfoDesc') || '정산금 입금 받을 계좌입니다. 본인 명의 계좌만 사용 가능합니다.'}
+          title={t('seller.bankInfo', { defaultValue: '정산 계좌 정보' })}
+          subtitle={t('seller.bankInfoDesc', { defaultValue: '정산금 입금 받을 계좌입니다. 본인 명의 계좌만 사용 가능합니다.' })}
         >
           <form onSubmit={handleBankSubmit} className="space-y-4" id="bank-info-section">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-gray-700">
-                {t('seller.bankName') || '은행명'} <span className="text-red-500">*</span>
+                {t('seller.bankName', { defaultValue: '은행명' })} <span className="text-red-500">*</span>
               </label>
               <select
                 value={bankInfo.bank_name}
@@ -621,7 +621,7 @@ export default function SellerBusinessInfoPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-gray-700">
-                  {t('seller.accountNumber') || '계좌번호'} <span className="text-red-500">*</span>
+                  {t('seller.accountNumber', { defaultValue: '계좌번호' })} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -633,7 +633,7 @@ export default function SellerBusinessInfoPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-gray-700">
-                  {t('seller.accountHolder') || '예금주'} <span className="text-red-500">*</span>
+                  {t('seller.accountHolder', { defaultValue: '예금주' })} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -659,7 +659,7 @@ export default function SellerBusinessInfoPage() {
                   {t('seller.savingInfo')}
                 </span>
               ) : (
-                t('seller.saveBankInfo') || '계좌 정보 저장'
+                t('seller.saveBankInfo', { defaultValue: '계좌 정보 저장' })
               )}
             </Button>
           </form>

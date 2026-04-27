@@ -8,6 +8,29 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 📅 2026-04-27 (오후) 정리 세션 — 변경사항
+
+### ✅ 해결됨
+- **TD-004 dead /api/payments/rollback**: 2026-04-26 에 이미 제거됨 확인. `src/shared/api-routes.ts` 의 `payments.rollback` 상수도 정리 완료.
+- **TD-009 webhook 실패 모니터링**: 배치 119 (2026-04-22) 에서 Sentry alert + escalation tag (retry≥3 → fatal) + `getFailedStats(hours)` admin 통계 API 완성. 추가 작업 없음.
+- **TD-010 fallback 패턴**: `t('X') || '한글'` 35건 → `t('X', { defaultValue: '한글' })` 일괄 변환 (21개 파일). i18next missing key 시 fallback 정상 동작.
+- **TD-011 npm audit**: `npm audit fix` 로 xmldom DoS CVE (high 1건) 해결. mod 16 → 14, high 1 → 0.
+- **TD-012 Node.js 20 deprecation**: `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` 적용 완료.
+- **TD-013 /api/seller 도표화**: CLAUDE.md 에 sellerPinRoutes 추가 (5번째 라우터).
+- **console.log unguarded (browser)**: `useSessionValidation`, `useCart`, `auth-token.ts` 5건 DEV gate 추가. (worker code 는 의도적 제외 — Cloudflare Workers 표준 logging)
+
+### ⚠️ 사용자 액션 필요 (코드로 자동 해결 불가)
+- **TD-001 D1 Migration CI**: Cloudflare Dashboard → API Tokens → 기존 token 에 `Account > D1 > Edit` 권한 추가 필요. 30분 작업이지만 사용자만 가능.
+- **TD-003 유령 CF 프로젝트**: Dashboard 직접 확인/삭제 필요.
+- **TD-008 INTERNAL_CRON_TOKEN**: `wrangler secret put INTERNAL_CRON_TOKEN` 또는 Pages Variables 에 등록 필요.
+
+### 📋 잔여 코드 부채 (다음 세션 또는 별도 PR)
+- **TD-005 스키마 이중화**: `stock_quantity`/`base_shipping_fee` drop migration. **TD-001 선행 필요** (CI migration 안 도는 한 drop 적용 안 됨).
+- **TD-006 거대 파일 분할**: `worker/index.ts:2787줄`, `SellerLiveBroadcastPage.tsx:2516줄`. 회귀 리스크 큼 — 별도 PR 권장.
+- **TD-007 Auction 결제 reservation**: 1주 spec 작업.
+- **빈 catch swallow 299건**: 대부분 legacy. `swallow()` 유틸로 점진적 마이그레이션 (이미 7개 페이지 적용 됨).
+- **as any 249건**: type safety. legacy 라우터 중심 점진 정리.
+
 ## 📅 2026-04-27 마라톤 세션 — 변경사항 요약
 
 ### ✅ 해결됨

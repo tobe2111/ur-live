@@ -214,7 +214,7 @@ export default function SellerStreamNewPage() {
         {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
         <DashboardPageHeader
           title={t('seller.createStream')}
-          subtitle={t('seller.createStreamSubtitle') || '라이브 스트림 등록'}
+          subtitle={t('seller.createStreamSubtitle', { defaultValue: '라이브 스트림 등록' })}
           icon={<Play className="h-5 w-5" />}
           actions={
             <button

@@ -68,7 +68,7 @@ async function getTokenFromBackend(forceRefresh = false): Promise<string | null>
     const { user } = useAuthKR.getState();
     
     if (!user) {
-      console.warn('[AuthToken] No user logged in');
+      if (import.meta.env.DEV) console.warn('[AuthToken] No user logged in');
       return null;
     }
 
@@ -88,7 +88,7 @@ async function getTokenFromBackend(forceRefresh = false): Promise<string | null>
       console.error('[AuthToken] Backend token request failed:', errorData);
       
       // Fallback to client-side token on error
-      console.warn('[AuthToken] Falling back to client-side token');
+      if (import.meta.env.DEV) console.warn('[AuthToken] Falling back to client-side token');
       return await useAuthKR.getState().getIdToken(forceRefresh);
     }
 

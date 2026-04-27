@@ -515,7 +515,7 @@ export default function AgencyPage() {
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.dashboard')}
-          subtitle={t('agency.dashboardSubtitle') || '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브'}
+          subtitle={t('agency.dashboardSubtitle', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브' })}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
       {/* 0. 월간 매출 목표 진행률 */}

@@ -358,7 +358,7 @@ export default function SellerProfileEditPage() {
         {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.profileEdit')}
-          subtitle={t('seller.profileEditSubtitle') || '셀러 프로필 · 소개 · SNS 링크 관리'}
+          subtitle={t('seller.profileEditSubtitle', { defaultValue: '셀러 프로필 · 소개 · SNS 링크 관리' })}
           icon={<User className="h-5 w-5" />}
         />
 

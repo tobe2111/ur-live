@@ -51,7 +51,7 @@ export default function SellerCouponsPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.coupons.title')}
-          subtitle={t('seller.coupons.subtitle') || '쿠폰 발급 및 사용 이력'}
+          subtitle={t('seller.coupons.subtitle', { defaultValue: '쿠폰 발급 및 사용 이력' })}
           icon={<Ticket className="h-5 w-5" />}
           actions={
             <button onClick={() => setShowForm(!showForm)}

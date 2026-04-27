@@ -557,7 +557,7 @@ export default function SellerPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.dashboard')}
-          subtitle={t('seller.dashboardSubtitle') || '셀러 대시보드 — 매출 / 주문 / 라이브 현황'}
+          subtitle={t('seller.dashboardSubtitle', { defaultValue: '셀러 대시보드 — 매출 / 주문 / 라이브 현황' })}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
 

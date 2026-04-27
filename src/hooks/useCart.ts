@@ -33,7 +33,7 @@ export function useCart() {
         items = response.data
       }
       else {
-        console.warn('[useCart] ⚠️ Unknown cart structure, using empty array')
+        if (import.meta.env.DEV) console.warn('[useCart] ⚠️ Unknown cart structure, using empty array')
         items = []
       }
       

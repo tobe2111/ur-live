@@ -157,7 +157,7 @@ export default function SellerSupplyPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.supplyProducts')}
-          subtitle={t('seller.supplySubtitle') || '공급 상품 요청 및 관리'}
+          subtitle={t('seller.supplySubtitle', { defaultValue: '공급 상품 요청 및 관리' })}
           icon={<ShoppingBag className="h-5 w-5" />}
         />
         {/* Tabs */}

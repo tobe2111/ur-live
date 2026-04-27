@@ -152,7 +152,7 @@ export default function SellerMealVoucherNewPage() {
       <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('seller.mealVoucher.title')}
-          subtitle={t('seller.mealVoucher.subtitle') || '식사권/공동구매 상품 등록'}
+          subtitle={t('seller.mealVoucher.subtitle', { defaultValue: '식사권/공동구매 상품 등록' })}
           icon={<Utensils className="h-5 w-5" />}
         />
         <form onSubmit={handleSubmit} className="space-y-6">

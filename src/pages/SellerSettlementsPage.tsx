@@ -307,7 +307,7 @@ export default function SellerSettlementsPage() {
         {/* 🛡️ 2026-04-22 배치 128: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.revenue')}
-          subtitle={t('seller.settlements.notice') || '정산 관리'}
+          subtitle={t('seller.settlements.notice', { defaultValue: '정산 관리' })}
           icon={<DollarSign className="h-5 w-5" />}
         />
 

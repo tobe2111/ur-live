@@ -78,7 +78,7 @@ export function TossPaymentWidget({
           ? '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.'
           : errMsg.includes('auth') || errMsg.includes('400')
             ? '인증 오류가 발생했습니다. 페이지를 새로고침해주세요.'
-            : t('payment.initError') || '결제 초기화 실패'
+            : t('payment.initError', { defaultValue: '결제 초기화 실패' })
         setErrorMessage(msg)
         setLoadingState('error')
         onPaymentError(msg)
@@ -140,7 +140,7 @@ export function TossPaymentWidget({
         setLoadingState('ready')
       } catch (err: unknown) {
         if (import.meta.env.DEV) console.error('[TossPayments] 렌더링 실패:', err)
-        const msg = t('payment.renderError') || 'UI 렌더링 실패'
+        const msg = t('payment.renderError', { defaultValue: 'UI 렌더링 실패' })
         setErrorMessage(msg)
         setLoadingState('error')
         onPaymentError(msg)
@@ -199,7 +199,7 @@ export function TossPaymentWidget({
         onPaymentError('주문번호 형식이 올바르지 않습니다. 페이지를 새로고침해주세요.')
         return
       }
-      onPaymentError((errObj?.message as string) || t('payment.requestError') || '결제 요청 실패')
+      onPaymentError((errObj?.message as string) || t('payment.requestError', { defaultValue: '결제 요청 실패' }))
     }
   }, [widgets, loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t])
 

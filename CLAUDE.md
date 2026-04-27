@@ -294,6 +294,7 @@ bash scripts/quality-check.sh
 |---|---|---|---|
 | `/api/seller` | sellerAuthRoutes | `features/auth/api/seller-auth.routes.ts` | `/login`, `/register`, `/refresh`, `/forgot-password` |
 | `/api/seller` | sellerManagementRoutes | `features/seller/api/seller-management.routes.ts` | `/profile`, `/business-info`, `/stats`, `/settlements`, `/change-password`, `/upload-image`, `/register-from-user`, `/switch-to-*` |
+| `/api/seller` | sellerPinRoutes | `features/seller/api/seller-pin.routes.ts` | `/set-pin`, `/verify-pin`, `/pin-status`, `/request-kakao-stepup` |
 | `/api/seller` | sellerOrdersRoutes | `features/seller/api/seller-orders.routes.ts` | `/orders`, `/orders/:id/*`, `/products`, `/products/:id/*` |
 | `/api/seller` | sellerDonationsRoutes | `features/donations/api/seller-donations.routes.ts` | `/donations`, `/donations/summary`, `/donations/settlements` |
 | `/api/seller/analytics` | sellerAnalyticsRoutes | `features/seller/api/seller-analytics.routes.ts` | (전용 prefix) |
@@ -303,7 +304,7 @@ bash scripts/quality-check.sh
 | `/api/seller/youtube` | youtubeRoutes | `features/seller/api/youtube.routes.ts` | (전용 prefix) |
 | `/api/sellers` | sellersRouter | `worker/routes/seller.routes.ts` | `/`, `/:id`, `/:id/public`, `/:sellerId/products-public` (복수형! 공개 조회용) |
 
-**주의**: `/api/seller` 복수 라우터는 path 충돌 시 **등록 순서** 대로 우선권. 현 순서는 auth → management → orders → donations. 새 라우터 추가 시 기존 path 와 겹치는지 먼저 확인.
+**주의**: `/api/seller` 복수 라우터는 path 충돌 시 **등록 순서** 대로 우선권. 현 순서는 auth → management → pin → orders → donations. 새 라우터 추가 시 기존 path 와 겹치는지 먼저 확인.
 
 ### 자동 배포 규칙 (필수)
 - feature 브랜치에 push하면 **PostToolUse 훅**이 자동으로 main에 머지 & 푸시
