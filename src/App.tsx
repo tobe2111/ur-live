@@ -75,6 +75,7 @@ const SellerLoginPage = lazy(() => import('./pages/SellerLoginPage'))
 const SellerRegisterPage = lazy(() => import('./pages/SellerRegisterPage'))
 const SellerRegisterBusinessPage = lazy(() => import('./pages/SellerRegisterBusinessPage'))
 const SellerWaitingPage = lazy(() => import('./pages/SellerWaitingPage'))
+const SellerTikTokCallbackPage = lazy(() => import('./pages/SellerTikTokCallbackPage'))
 const AgencyRegisterBusinessPage = lazy(() => import('./pages/AgencyRegisterBusinessPage'))
 const AgencyWaitingPage = lazy(() => import('./pages/AgencyWaitingPage'))
 const SellerForgotPasswordPage = lazy(() => import('./pages/SellerForgotPasswordPage'))
@@ -463,6 +464,7 @@ function AppContent() {
             <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
             <Route path="/seller/register/business" element={<ErrorBoundary><SellerRegisterBusinessPage /></ErrorBoundary>} />
             <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
+            <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />
             <Route path="/seller/forgot-password" element={<ErrorBoundary><SellerForgotPasswordPage /></ErrorBoundary>} />
             <Route path="/seller/reset-password" element={<ErrorBoundary><SellerResetPasswordPage /></ErrorBoundary>} />
             

@@ -104,6 +104,7 @@ import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-a
 import { proxyRoutes } from './routes/proxy.routes';
 import { debugRoutes } from './routes/debug.routes';
 import { publicUtilityRoutes } from './routes/public-utility.routes';
+import { tiktokRoutes } from '../features/multi-platform/api/tiktok.routes';
 import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 import { guideRoutes } from '../features/guides/api/guide.routes';
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
@@ -1839,6 +1840,9 @@ app.route('/api/debug', debugRoutes);
 //    sub-paths 가 / (root), /api/csp-report, /manifest.webmanifest, /api/version 으로
 //    분기되므로 prefix '' 마운트.
 app.route('/', publicUtilityRoutes);
+
+// ── 🛡️ 2026-04-26 T1: TikTok Login + Display API (셀러 외부 SNS 연동) ──
+app.route('/api/seller/tiktok', tiktokRoutes);
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 // SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
