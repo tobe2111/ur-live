@@ -29,6 +29,8 @@
     "type-check:worker": "tsc --noEmit --project tsconfig.worker.json",
     "validate:routes": "bash scripts/validate-routes.sh",
     "generate:guide-refs": "node scripts/generate-guide-references.mjs",
+    "check:bundle": "node scripts/check-bundle-size.mjs",
+    "check:bundle:budget": "node scripts/check-bundle-size.mjs --budget",
     "precommit": "npm run validate:routes && npm run type-check:worker"
   },
   "dependencies": {
