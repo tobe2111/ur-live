@@ -78,7 +78,7 @@ export default function AgencyCalendarPage() {
   const [loading, setLoading] = useState(true)
   const [selectedStream, setSelectedStream] = useState<CalendarStream | null>(null)
   const [streamNotes, setStreamNotes] = useState<Note[]>([])
-  const [streamDetail, setStreamDetail] = useState<any>(null)
+  const [streamDetail, setStreamDetail] = useState<CalendarStream & { peak_viewers?: number; current_viewers?: number } | null>(null)
   const [addingNote, setAddingNote] = useState(false)
 
   const token = localStorage.getItem('agency_token')

@@ -131,7 +131,14 @@ app.get('/streams/:id', async (c) => {
   if (!stream) return c.json({ success: false, error: 'not found' }, 404)
 
   // 노트 목록
-  let notes: any[] = []
+  interface NoteRow {
+    id: number; agency_id: number; live_stream_id: number;
+    agent_member_id: number | null; type: string; content: string;
+    live_timestamp_seconds: number | null; visible_to_seller: number;
+    read_by_seller_at: string | null; created_at: string;
+    author_email: string | null;
+  }
+  let notes: NoteRow[] = []
   try {
     const r = await c.env.DB.prepare(`
       SELECT n.*, m.email AS author_email
@@ -139,7 +146,7 @@ app.get('/streams/:id', async (c) => {
       LEFT JOIN agency_members m ON m.id = n.agent_member_id
       WHERE n.live_stream_id = ? AND n.agency_id = ?
       ORDER BY n.created_at DESC
-    `).bind(id, agencyId).all<any>()
+    `).bind(id, agencyId).all<NoteRow>()
     notes = r.results || []
   } catch {
     // 마이그레이션 0218 미적용
