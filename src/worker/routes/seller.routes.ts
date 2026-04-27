@@ -97,8 +97,15 @@ sellersRouter.get('/:id/public', async (c) => {
     // 이전: SELECT * 로 bank_account/email/phone/password_hash/business_number 노출
     // 🛡️ 2026-04-27: production sellers 테이블에 follower_count/is_verified 컬럼 없어서 500 → 제거
     //                 follower_count 는 seller_follows COUNT 서브쿼리로 대체
+    // 🛡️ 2026-04-27 (2차): 너무 많이 잘라내서 셀러공개 페이지에 "이름 없음" + SNS/사업자 정보 미연동 →
+    //                       SNS 링크, 사업자 정보 (전자상거래법 표시 의무 항목), 대표자명 추가.
+    //                       프론트 호환을 위해 DB 컬럼명 alias: kakao_chat_url→kakao_chat_link, representative_name→ceo_name
+    //                       민감 필드는 여전히 제외: password_hash/email/phone/bank_*/account_holder/tax_email
     const PUBLIC_SELLER_COLUMNS =
-      's.id, s.username, s.business_name, s.profile_image, s.bio, s.commission_rate, s.created_at, ' +
+      's.id, s.username, s.name, s.business_name, s.business_number, s.business_address, ' +
+      's.profile_image, s.bio, s.commission_rate, s.created_at, ' +
+      's.sns_instagram, s.sns_youtube, s.sns_facebook, s.sns_twitter, s.website_url, ' +
+      's.kakao_chat_url AS kakao_chat_link, s.representative_name AS ceo_name, ' +
       '(SELECT COUNT(*) FROM seller_follows WHERE seller_id = s.id) AS follower_count';
     const seller = await cacheGet(
       c.env.SESSION_KV,
