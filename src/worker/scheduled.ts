@@ -30,6 +30,8 @@ import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
 import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
 import { handleAgencyInactiveSellers } from './cron/agency-inactive-sellers';
 import { handleLiveStreamMetrics } from './cron/live-stream-metrics';
+import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
+import { handlePkBattlesTick } from './cron/pk-battles-tick';
 import { handleD1Backup } from './cron/d1-backup';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -60,6 +62,8 @@ export async function handleCronScheduled(
 
   if (cron === '*/5 * * * *') {
     ctx.waitUntil(safeCron('scheduled-cleanup', () => handleScheduled(env)));
+    // Phase 2-7: PK 이벤트 매출 집계 + 종료 처리
+    ctx.waitUntil(safeCron('pk-battles-tick', () => handlePkBattlesTick(env)));
   }
 
   if (cron === '0 18 * * *') {
@@ -112,6 +116,10 @@ export async function handleCronScheduled(
       }
       if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {
         await handleAgencyMonthlyInvoices(env as any).catch(e => console.error('[cron] invoices:', e));
+      }
+      // Phase 2-6: 월간 리포트 (1주차에만 실행, 내부 멱등)
+      if (dayOfMonth <= 7) {
+        await handleAgencyMonthlyReport(env).catch(e => console.error('[cron] monthly-report:', e));
       }
     }));
   }
