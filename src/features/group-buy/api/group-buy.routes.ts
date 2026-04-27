@@ -43,10 +43,15 @@ async function ensureTables(DB: D1Database) {
     'group_buy_target INTEGER DEFAULT 0', 'group_buy_current INTEGER DEFAULT 0',
     'group_buy_deadline DATETIME', "group_buy_status TEXT DEFAULT 'active'",
     'store_verify_pin TEXT',
+    // 🛡️ 2026-04-27: Magic Link — 사장님 PIN 없이 통계 페이지 진입.
+    'store_owner_token TEXT',
   ]
   for (const col of columns) {
     try { await DB.prepare(`ALTER TABLE products ADD COLUMN ${col}`).run() } catch { /* exists */ }
   }
+  try {
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_products_store_owner_token ON products(store_owner_token)`).run()
+  } catch { /* exists */ }
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS vouchers (
@@ -450,27 +455,38 @@ groupBuyRoutes.post(
   }
 )
 
-// ── POST /api/group-buy/store-stats/:productId — 식당 사장 통계 (PIN 인증) ──
+// ── POST /api/group-buy/store-stats/:productId — 식당 사장 통계 (PIN 또는 token 인증) ──
 // 🛡️ 2026-04-22: 조회 전 PIN 검증 필수 + rate limit (PIN brute force 방어)
-groupBuyRoutes.post('/store-stats/:productId', rateLimit({ action: 'store_stats_pin', max: 3, windowSec: 300 }), async (c) => {
+// 🛡️ 2026-04-27: Magic Link 토큰(?t=...) 도 허용 — 사장님이 알림톡 링크로 무인증 진입.
+groupBuyRoutes.post('/store-stats/:productId', rateLimit({ action: 'store_stats_pin', max: 5, windowSec: 300 }), async (c) => {
   const { DB } = c.env
+  await ensureTables(DB)
   const productId = c.req.param('productId')
-  const { pin } = await c.req.json<{ pin: string }>()
+  const tokenFromQuery = c.req.query('t')?.trim() || ''
+  let pin = ''
+  try {
+    const body = await c.req.json<{ pin?: string }>()
+    pin = (body?.pin || '').trim()
+  } catch { /* GET-style 호환: body 없을 수 있음 */ }
 
-  // PIN 필수 (이전엔 store_verify_pin IS NULL 일 때 조회 가능 — IDOR)
-  if (!pin || typeof pin !== 'string' || pin.length < 4) {
-    return c.json({ success: false, error: 'PIN 4자 이상 필수' }, 400)
+  // 인증 방식: token 우선, 없으면 PIN
+  if (!tokenFromQuery && (!pin || pin.length < 4)) {
+    return c.json({ success: false, error: '인증 토큰 또는 PIN(4자 이상)이 필요합니다' }, 400)
   }
 
   try {
-    // 🛡️ CAS 패턴: PIN 검증과 조회를 한 번에 처리 (timing attack 방어)
-    const product = await DB.prepare(
-      "SELECT id, name, restaurant_name, store_verify_pin, group_buy_target, group_buy_current FROM products WHERE id = ? AND category = 'meal_voucher' AND store_verify_pin = ?"
-    ).bind(productId, pin).first<any>()
+    // 🛡️ CAS 패턴: token/PIN 검증과 조회를 한 번에 (timing attack 방어)
+    const product = tokenFromQuery
+      ? await DB.prepare(
+          "SELECT id, name, restaurant_name, group_buy_target, group_buy_current FROM products WHERE id = ? AND category = 'meal_voucher' AND store_owner_token = ?"
+        ).bind(productId, tokenFromQuery).first<any>()
+      : await DB.prepare(
+          "SELECT id, name, restaurant_name, group_buy_target, group_buy_current FROM products WHERE id = ? AND category = 'meal_voucher' AND store_verify_pin = ?"
+        ).bind(productId, pin).first<any>()
 
     if (!product) {
-      // 상품 없음 vs PIN 틀림 구분하지 않음 (enumeration 방어)
-      return c.json({ success: false, error: '상품을 찾을 수 없거나 PIN 이 올바르지 않습니다' }, 403)
+      // 상품 없음 vs 인증 실패 구분하지 않음 (enumeration 방어)
+      return c.json({ success: false, error: '상품을 찾을 수 없거나 인증이 올바르지 않습니다' }, 403)
     }
 
     // 바우처 통계
@@ -500,5 +516,61 @@ groupBuyRoutes.post('/store-stats/:productId', rateLimit({ action: 'store_stats_
     return c.json({ success: false, error: '통계 조회 실패' }, 500)
   }
 })
+
+// 🛡️ 2026-04-27: Magic Link 토큰 생성 — 32자 hex (128bit), URL-safe.
+function generateStoreOwnerToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+// 🛡️ 2026-04-27: 알림톡 발송 (사장님께 통계 페이지 link)
+// alimtalkRoutes 의 sendBillgateAlimtalk 직접 호출하기엔 의존성 큼 →
+// 간단히 ALIMTALK_API 환경변수로 fetch (Solapi/NHN/Toast/Aligo 등 구분 X).
+// 실패해도 등록은 진행 (graceful degradation).
+async function sendStoreOwnerAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { restaurantName: string; productName: string; statsUrl: string }
+): Promise<void> {
+  if (!env.ALIMTALK_API_KEY || !phone) return // 미설정 시 silently skip
+  try {
+    // 정규화: 010-xxxx-xxxx → 01012345678
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+
+    const message = `[유어딜] 식사권 통계 페이지 안내
+
+안녕하세요, ${data.restaurantName} 사장님!
+"${data.productName}" 식사권 공동구매가 등록되었습니다.
+
+📊 실시간 발급/사용 현황 확인:
+${data.statsUrl}
+
+✅ 이 링크는 사장님 전용 영구 링크입니다.
+즐겨찾기에 추가하시면 편하게 확인할 수 있어요.
+
+문의가 있으시면 언제든 연락주세요.`
+
+    // Solapi-style 호출 (실제 provider 마다 다름 — 환경변수로 baseURL 받으면 더 유연)
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: {
+          to: cleanPhone,
+          from: env.ALIMTALK_SENDER_KEY || '15441234',
+          text: message,
+          type: 'LMS', // 알림톡 템플릿 미등록 시 LMS fallback
+        },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => { /* silently fail — 운영 영향 없게 */ })
+  } catch { /* graceful */ }
+}
+
+export { generateStoreOwnerToken, sendStoreOwnerAlimtalk }
 
 export { groupBuyRoutes }

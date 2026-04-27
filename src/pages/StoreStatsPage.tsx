@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -17,18 +17,24 @@ interface StoreStats {
 
 export default function StoreStatsPage() {
   const { productId } = useParams<{ productId: string }>()
+  const [searchParams] = useSearchParams()
+  const magicToken = searchParams.get('t')?.trim() || ''
   const [pin, setPin] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
   const [stats, setStats] = useState<StoreStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function authenticate() {
-    if (!pin.trim()) return
+  async function authenticate(opts?: { token?: string }) {
+    const useToken = opts?.token || magicToken
+    if (!useToken && !pin.trim()) return
     setLoading(true)
     setError('')
     try {
-      const res = await api.post(`/api/group-buy/store-stats/${productId}`, { pin: pin.trim() })
+      const url = useToken
+        ? `/api/group-buy/store-stats/${productId}?t=${encodeURIComponent(useToken)}`
+        : `/api/group-buy/store-stats/${productId}`
+      const res = await api.post(url, useToken ? {} : { pin: pin.trim() })
       if (res.data.success) {
         setStats(res.data.data)
         setAuthenticated(true)
@@ -43,6 +49,27 @@ export default function StoreStatsPage() {
     }
   }
 
+  // 🛡️ 2026-04-27: Magic Link — ?t=token 이 있으면 자동 인증.
+  useEffect(() => {
+    if (magicToken && !authenticated && !loading && !stats) {
+      authenticate({ token: magicToken })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [magicToken])
+
+  // Magic Link 토큰으로 자동 인증 중 — 로딩 화면
+  if (magicToken && !authenticated && !error) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center px-5">
+        <SEO title="식당 통계" description="공동구매 식당 통계 페이지" url={`/store/stats/${productId ?? ''}`} noindex />
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 text-orange-500 animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-500">매장 인증 중...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-5">
@@ -52,7 +79,8 @@ export default function StoreStatsPage() {
             <Lock className="w-7 h-7 text-orange-600" />
           </div>
           <h1 className="text-lg font-extrabold text-gray-900 mb-1">식당 통계</h1>
-          <p className="text-sm text-gray-500 mb-6">인플루언서에게 받은 비밀번호를 입력하세요</p>
+          <p className="text-sm text-gray-500 mb-2">사장님께 알림톡으로 발송된 링크로 접속하시면 비밀번호 없이 바로 확인할 수 있어요.</p>
+          <p className="text-xs text-gray-400 mb-6">또는 인플루언서에게 받은 비밀번호를 입력하세요</p>
 
           {error && <p className="text-sm text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
 
@@ -65,7 +93,7 @@ export default function StoreStatsPage() {
             onKeyDown={e => e.key === 'Enter' && authenticate()}
           />
           <button
-            onClick={authenticate}
+            onClick={() => authenticate()}
             disabled={!pin.trim() || loading}
             className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold rounded-xl disabled:opacity-40"
           >

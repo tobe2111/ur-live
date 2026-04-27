@@ -242,14 +242,18 @@ export default function SellerMealVoucherNewPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.storeVerifyPin')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('seller.mealVoucher.storeVerifyPin')} <span className="text-xs text-gray-400">(선택)</span>
+                  </label>
                   <input
                     value={form.store_verify_pin}
                     onChange={e => update('store_verify_pin', e.target.value)}
                     placeholder={t('seller.mealVoucher.pinPlaceholder')}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   />
-                  <p className="text-[10px] text-gray-400 mt-1">{t('seller.mealVoucher.pinDesc')}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    💡 식당 전화번호를 입력하시면 사장님께 통계 페이지 링크가 알림톡으로 자동 발송됩니다 (PIN 불필요).
+                  </p>
                 </div>
               </div>
             </div>

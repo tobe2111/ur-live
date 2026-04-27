@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Ticket, Users, CheckCircle, Clock, TrendingUp, Eye, Copy } from 'lucide-react'
+import { Ticket, Copy, Send, RefreshCw } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
@@ -10,8 +10,10 @@ import { DashboardPageHeader } from '@/components/dashboard'
 
 interface GroupBuyProduct {
   id: number; name: string; price: number; image_url?: string
-  restaurant_name?: string; group_buy_target: number; group_buy_current: number
+  restaurant_name?: string; restaurant_phone?: string
+  group_buy_target: number; group_buy_current: number
   group_buy_deadline?: string; group_buy_status: string; store_verify_pin?: string
+  store_owner_token?: string
 }
 
 interface VoucherStat {
@@ -42,6 +44,22 @@ export default function SellerGroupBuyPage() {
       }
     } catch { /* ignore */ }
     finally { setLoading(false) }
+  }
+
+  // 🛡️ 2026-04-27: 사장님께 알림톡 재발송 (Magic Link)
+  async function resendStoreLink(productId: number, rotate = false) {
+    try {
+      const res = await api.post(`/api/seller/products/${productId}/resend-store-link`, { rotate }, { headers })
+      if (res.data.success) {
+        toast.success(rotate ? '새 링크로 재발송되었습니다 (이전 링크 만료)' : '사장님께 알림톡이 발송되었습니다')
+        loadData()
+      } else {
+        toast.error(res.data.error || '발송 실패')
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '발송 실패')
+    }
   }
 
   if (loading) {
@@ -124,21 +142,52 @@ export default function SellerGroupBuyPage() {
                     </div>
                   </div>
 
-                  {/* 식당 사장 공유 링크 */}
-                  <div className="mt-3 flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-gray-500">{t('seller.groupBuy.storeOwnerStatsLink')}</p>
-                      <p className="text-xs text-gray-700 truncate font-mono">{window.location.origin}/store/stats/{p.id}</p>
+                  {/* 식당 사장 공유 링크 (Magic Link 우선) */}
+                  <div className="mt-3 p-2.5 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-gray-500 flex items-center gap-1">
+                          {p.store_owner_token ? '🔗 사장님 전용 링크 (자동 인증)' : t('seller.groupBuy.storeOwnerStatsLink')}
+                        </p>
+                        <p className="text-xs text-gray-700 truncate font-mono">
+                          {window.location.origin}/store/stats/{p.id}
+                          {p.store_owner_token && '?t=...'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const url = p.store_owner_token
+                            ? `${window.location.origin}/store/stats/${p.id}?t=${p.store_owner_token}`
+                            : `${window.location.origin}/store/stats/${p.id}`
+                          navigator.clipboard.writeText(url)
+                          toast.success(t('seller.groupBuy.linkCopied'))
+                        }}
+                        className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shrink-0 flex items-center gap-1"
+                      >
+                        <Copy className="w-3 h-3" /> {t('common.copy')}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/store/stats/${p.id}`)
-                        toast.success(t('seller.groupBuy.linkCopied'))
-                      }}
-                      className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shrink-0 flex items-center gap-1"
-                    >
-                      <Copy className="w-3 h-3" /> {t('common.copy')}
-                    </button>
+                    {p.restaurant_phone ? (
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => resendStoreLink(p.id, false)}
+                          className="flex-1 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
+                        >
+                          <Send className="w-3 h-3" /> 사장님께 알림톡 발송
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('이전 링크가 만료되고 새 링크가 발송됩니다. 진행하시겠습니까?')) resendStoreLink(p.id, true)
+                          }}
+                          className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-xs font-medium flex items-center gap-1"
+                          title="새 링크 발급 (이전 링크 무효화)"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-amber-600 mt-2">⚠️ 식당 연락처 미등록 — 알림톡 발송 불가</p>
+                    )}
                   </div>
                 </div>
               )

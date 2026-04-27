@@ -582,6 +582,24 @@ sellerOrdersRoutes.post('/products', async (c) => {
           try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
         }
       }
+
+      // 🛡️ 2026-04-27: Magic Link — 사장님 전용 영구 token 자동 생성 + 알림톡 발송.
+      try {
+        const { generateStoreOwnerToken, sendStoreOwnerAlimtalk } = await import('../../group-buy/api/group-buy.routes');
+        const token = generateStoreOwnerToken();
+        try { await db.prepare(`UPDATE products SET store_owner_token = ? WHERE id = ?`).bind(token, productId).run(); } catch { /* ignore */ }
+        const phone = (body as any).restaurant_phone as string | undefined;
+        const restaurantName = (body as any).restaurant_name as string | undefined;
+        if (phone && restaurantName) {
+          const statsUrl = `https://live.ur-team.com/store/stats/${productId}?t=${token}`;
+          // fire-and-forget — 알림톡 실패해도 등록은 진행
+          c.executionCtx.waitUntil(
+            sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, phone, {
+              restaurantName, productName: name, statsUrl,
+            })
+          );
+        }
+      } catch { /* graceful */ }
     }
 
     const newProduct = await db.prepare(
@@ -772,6 +790,46 @@ sellerOrdersRoutes.put('/products/:id/pin', async (c) => {
     await db.prepare("UPDATE products SET store_verify_pin = ?, updated_at = datetime('now') WHERE id = ?").bind(pin, productId).run();
 
     return c.json({ success: true, message: `PIN이 설정되었습니다: ${pin}` });
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
+// ─── POST /api/seller/products/:id/resend-store-link ──────────────────────
+// 🛡️ 2026-04-27: Magic Link 재발송 — 사장님이 알림톡 분실/실수로 못 받았을 때.
+// rotate=true 시 token 자체를 새로 발급 (이전 link 무효화).
+sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+    const db = c.env.DB;
+    const productId = c.req.param('id');
+    const body = await c.req.json<{ rotate?: boolean }>().catch(() => ({} as { rotate?: boolean }));
+    const rotate = body.rotate === true;
+
+    // 소유권 확인 + 식사권 + 메타 조회
+    const product = await db.prepare(
+      "SELECT id, name, seller_id, restaurant_name, restaurant_phone, store_owner_token FROM products WHERE id = ? AND seller_id = ? AND category = 'meal_voucher'"
+    ).bind(productId, sellerId).first<any>();
+    if (!product) return c.json({ success: false, error: '식사권 상품을 찾을 수 없습니다' }, 404);
+    if (!product.restaurant_phone) return c.json({ success: false, error: '식당 연락처가 등록되지 않았습니다' }, 400);
+
+    const { generateStoreOwnerToken, sendStoreOwnerAlimtalk } = await import('../../group-buy/api/group-buy.routes');
+    let token: string = product.store_owner_token;
+    if (!token || rotate) {
+      token = generateStoreOwnerToken();
+      try { await db.prepare(`UPDATE products SET store_owner_token = ? WHERE id = ?`).bind(token, productId).run(); } catch { /* column may not exist */ }
+    }
+
+    const statsUrl = `https://live.ur-team.com/store/stats/${productId}?t=${token}`;
+    await sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, product.restaurant_phone, {
+      restaurantName: product.restaurant_name || '사장님',
+      productName: product.name,
+      statsUrl,
+    });
+
+    return c.json({ success: true, message: '사장님께 알림톡이 발송되었습니다', stats_url: statsUrl, rotated: rotate });
   } catch (error: unknown) {
     return c.json({ success: false, error: (error as Error).message }, 500);
   }
