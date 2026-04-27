@@ -227,6 +227,7 @@
   },
   "seller": {
     "dashboard": "ダッシュボード",
+    "dashboardSubtitle": "セラーダッシュボード — 売上 / 注文 / ライブ状況",
     "products": {
       "enterProductName": "商品名を入力してください",
       "priceAboveZero": "価格は0円より大きくなければなりません",
@@ -1562,6 +1563,8 @@
       "reviews": "レビュー管理",
       "coupons": "クーポン管理",
       "liveBroadcast": "ライブ配信",
+      "castings": "キャスティング依頼",
+      "promoteBoosts": "露出ブースト",
       "guide": "運営ガイド",
       "bundles": "バンドル商品"
     },

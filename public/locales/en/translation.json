@@ -227,6 +227,7 @@
   },
   "seller": {
     "dashboard": "Dashboard",
+    "dashboardSubtitle": "Seller Dashboard — Sales / Orders / Live status",
     "products": {
       "enterProductName": "Please enter a product name",
       "priceAboveZero": "Price must be greater than 0",
@@ -1557,6 +1558,8 @@
       "reviews": "Reviews",
       "coupons": "Coupons",
       "liveBroadcast": "Live Broadcast",
+      "castings": "Casting Requests",
+      "promoteBoosts": "Feed Boosts",
       "guide": "Guide"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",

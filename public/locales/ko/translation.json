@@ -227,6 +227,7 @@
   },
   "seller": {
     "dashboard": "대시보드",
+    "dashboardSubtitle": "셀러 대시보드 — 매출 / 주문 / 라이브 현황",
     "products": {
       "enterProductName": "상품명을 입력해주세요",
       "priceAboveZero": "가격은 0원보다 커야 합니다",
@@ -1562,6 +1563,8 @@
       "reviews": "리뷰 관리",
       "coupons": "쿠폰 관리",
       "liveBroadcast": "라이브 방송",
+      "castings": "캐스팅 신청",
+      "promoteBoosts": "노출 부스팅",
       "guide": "운영 가이드"
     },
     "guide": {

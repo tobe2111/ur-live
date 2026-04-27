@@ -95,7 +95,11 @@ sellersRouter.get('/:id/public', async (c) => {
     // callers that hit different keys stay cache-correct.
     // 🛡️ 2026-04-22: 공개 endpoint — 민감 필드 제외하고 public 필드만 SELECT
     // 이전: SELECT * 로 bank_account/email/phone/password_hash/business_number 노출
-    const PUBLIC_SELLER_COLUMNS = 'id, username, business_name, profile_image, bio, commission_rate, follower_count, is_verified, created_at';
+    // 🛡️ 2026-04-27: production sellers 테이블에 follower_count/is_verified 컬럼 없어서 500 → 제거
+    //                 follower_count 는 seller_follows COUNT 서브쿼리로 대체
+    const PUBLIC_SELLER_COLUMNS =
+      's.id, s.username, s.business_name, s.profile_image, s.bio, s.commission_rate, s.created_at, ' +
+      '(SELECT COUNT(*) FROM seller_follows WHERE seller_id = s.id) AS follower_count';
     const seller = await cacheGet(
       c.env.SESSION_KV,
       `seller:${param}`,
@@ -103,8 +107,8 @@ sellersRouter.get('/:id/public', async (c) => {
         const qb = new QueryBuilder(c.env.DB);
         const isNumeric = /^\d+$/.test(param);
         return isNumeric
-          ? await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS} FROM sellers WHERE id = ?`, [param])
-          : await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS} FROM sellers WHERE username = ?`, [param]);
+          ? await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS} FROM sellers s WHERE s.id = ?`, [param])
+          : await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS} FROM sellers s WHERE s.username = ?`, [param]);
       },
       { ttl: 300, staleWhileRevalidate: 120 }
     );

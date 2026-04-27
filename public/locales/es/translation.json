@@ -144,6 +144,7 @@
   },
   "seller": {
     "dashboard": "Panel",
+    "dashboardSubtitle": "Panel del vendedor — Ventas / Pedidos / Estado en vivo",
     "products": {
       "enterProductName": "상품명을 입력해주세요",
       "priceAboveZero": "가격은 0원보다 커야 합니다",
@@ -1464,6 +1465,8 @@
       "reviews": "Reseñas",
       "coupons": "Cupones",
       "liveBroadcast": "Transmisión en vivo",
+      "castings": "Solicitudes de casting",
+      "promoteBoosts": "Impulsos de exposición",
       "guide": "Guía",
       "bundles": "Paquetes"
     },

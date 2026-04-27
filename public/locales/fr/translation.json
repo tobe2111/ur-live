@@ -144,6 +144,7 @@
   },
   "seller": {
     "dashboard": "Tableau de bord",
+    "dashboardSubtitle": "Tableau de bord vendeur — Ventes / Commandes / Statut en direct",
     "products": {
       "enterProductName": "상품명을 입력해주세요",
       "priceAboveZero": "가격은 0원보다 커야 합니다",
@@ -1464,6 +1465,8 @@
       "reviews": "Avis",
       "coupons": "Coupons",
       "liveBroadcast": "Diffusion en direct",
+      "castings": "Demandes de casting",
+      "promoteBoosts": "Boosts de visibilité",
       "guide": "Guide",
       "bundles": "Lots"
     },

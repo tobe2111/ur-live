@@ -227,6 +227,7 @@
   },
   "seller": {
     "dashboard": "仪表盘",
+    "dashboardSubtitle": "卖家仪表盘 — 销售 / 订单 / 直播状态",
     "products": {
       "enterProductName": "상품명을 입력해주세요",
       "priceAboveZero": "가격은 0원보다 커야 합니다",
@@ -1547,6 +1548,8 @@
       "reviews": "评价管理",
       "coupons": "优惠券管理",
       "liveBroadcast": "直播",
+      "castings": "选角申请",
+      "promoteBoosts": "曝光加成",
       "guide": "运营指南",
       "bundles": "套装商品"
     },
