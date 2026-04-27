@@ -24,6 +24,7 @@ import { parseSessionCookie } from '@/worker/utils/session';
 import type { Env } from '@/worker/types/env';
 import { requireAgencyPermission } from './agency-role-guard';
 
+import { swallow } from '@/worker/utils/swallow';
 type AgencyCtx = {
   Bindings: Env;
   Variables: { agency: { id: number; email?: string } };
@@ -81,7 +82,7 @@ async function ensureTables(DB: D1Database) {
       created_by_email TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('agency:api:agency-self-events'));
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agency_self_event_participants (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,7 +95,7 @@ async function ensureTables(DB: D1Database) {
       reward_paid INTEGER DEFAULT 0,
       UNIQUE (event_id, seller_id)
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('agency:api:agency-self-events'));
 }
 
 // GET / — 본 에이전시 이벤트 목록
@@ -167,7 +168,7 @@ app.post('/', requireAgencyPermission('campaign'), async (c) => {
     `${body.metric === 'revenue' ? '매출' : body.metric === 'live_count' ? '라이브 횟수' : '피크 시청자'} ${body.target_value.toLocaleString()} 달성 시 ${(body.reward_deal || 0).toLocaleString()}딜 지급. 참여하시려면 에이전시에 문의.`,
     `/seller`,
     agency.id,
-  ).run().catch(() => {});
+  ).run().catch(swallow('agency:api:agency-self-events'));
 
   return c.json({ success: true, data: { id: r.meta.last_row_id } });
 });
@@ -180,7 +181,7 @@ app.post('/:id/cancel', requireAgencyPermission('campaign'), async (c) => {
   await c.env.DB.prepare(`
     UPDATE agency_self_events SET status = 'cancelled'
     WHERE id = ? AND agency_id = ? AND status = 'active'
-  `).bind(id, agencyId).run().catch(() => {});
+  `).bind(id, agencyId).run().catch(swallow('agency:api:agency-self-events'));
 
   return c.json({ success: true });
 });
@@ -210,7 +211,7 @@ app.post('/:id/join', async (c) => {
   await c.env.DB.prepare(`
     INSERT OR IGNORE INTO agency_self_event_participants (event_id, seller_id)
     VALUES (?, ?)
-  `).bind(id, body.seller_id).run().catch(() => {});
+  `).bind(id, body.seller_id).run().catch(swallow('agency:api:agency-self-events'));
 
   return c.json({ success: true });
 });

@@ -16,6 +16,7 @@ import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS, TOSS_PAYMENT_URL } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
+import { swallow } from '@/worker/utils/swallow';
 const youtubeGrowthRoutes = new Hono<{ Bindings: Env }>();
 youtubeGrowthRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
 
@@ -175,7 +176,7 @@ youtubeGrowthRoutes.post('/confirm', requireAuth(), async (c) => {
     'YouTube 구독자 늘리기 결제 완료',
     `${pending.target_subscribers.toLocaleString()}명 / ${amount.toLocaleString()}원`,
     '/admin/youtube-growth'
-  ).catch(() => {});
+  ).catch(swallow('youtube-growth:api:youtube-growth'));
 
   return c.json({
     success: true,
@@ -252,7 +253,7 @@ youtubeGrowthRoutes.put('/:id', requireAuth(), async (c) => {
       'YouTube 구독자 늘리기 상태 변경',
       `상태: ${statusLabels[status] || status}`,
       '/seller/youtube-growth'
-    ).catch(() => {});
+    ).catch(swallow('youtube-growth:api:youtube-growth'));
   }
 
   return c.json({ success: true, message: '상태가 변경되었습니다' });
@@ -301,7 +302,7 @@ youtubeGrowthAdminRoutes.put('/:id', async (c) => {
       'YouTube 구독자 늘리기 상태 변경',
       `상태: ${statusLabels[status] || status}`,
       '/seller/youtube-growth'
-    ).catch(() => {});
+    ).catch(swallow('youtube-growth:api:youtube-growth'));
   }
 
   return c.json({ success: true, message: '상태가 변경되었습니다' });

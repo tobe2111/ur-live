@@ -1,3 +1,4 @@
+import { swallow } from './swallow';
 /**
  * Account Lockout — 연속 로그인 실패 시 계정 일시 잠금
  *
@@ -23,7 +24,7 @@ async function ensureLockoutTable(DB: D1Database) {
       last_failure_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (user_type, user_id)
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('worker:utils:account-lockout'));
 }
 
 function lockDurationMs(failureCount: number): number {
@@ -101,5 +102,5 @@ export async function clearFailures(
 ): Promise<void> {
   await DB.prepare(
     'DELETE FROM account_lockouts WHERE user_type = ? AND user_id = ?'
-  ).bind(userType, userId).run().catch(() => {});
+  ).bind(userType, userId).run().catch(swallow('worker:utils:account-lockout'));
 }

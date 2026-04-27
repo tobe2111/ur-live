@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils } from 'lucide-react'
+import { Home, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -60,7 +60,9 @@ export default function BottomNav() {
 
   const leftItems = [
     { icon: Home, label: '홈', path: '/' },
-    { icon: Play, label: '쇼츠', path: '/shorts' },
+    // 🛡️ 2026-04-27: 쇼츠 자리 → 식사권/맛집 지도 (메인 유입 경로).
+    //   /shorts 페이지 자체는 라우트로 직접 접근 가능 (URL).
+    { icon: Utensils, label: '맛집', path: '/restaurant-map' },
   ]
 
   const rightItems = [

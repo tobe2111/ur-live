@@ -14,6 +14,7 @@
 
 import type { Env } from '../types/env';
 
+import { swallow } from '../utils/swallow';
 interface InactiveSellerRow {
   agency_id: number;
   seller_id: number;
@@ -82,7 +83,7 @@ export async function handleAgencyInactiveSellers(env: Env): Promise<void> {
         `⚠️ 부진 셀러: ${r.seller_name || `#${r.seller_id}`}`,
         `${reasons.join(' + ')} — 연락 권장 (마지막 라이브: ${r.last_live_at?.slice(0, 10) || '없음'}, 마지막 매출: ${r.last_paid_at?.slice(0, 10) || '없음'})`,
         `seller:${r.seller_id}`
-      ).run().catch(() => {});
+      ).run().catch(swallow('worker:cron:agency-inactive-sellers'));
 
       // 🛡️ 2026-04-27: 셀러 본인에게도 알림 (부드러운 활동 유도)
       // 7일 무라이브일 때만 (30일 무매출은 셀러가 알아서 — 압박 안 줌)
@@ -94,7 +95,7 @@ export async function handleAgencyInactiveSellers(env: Env): Promise<void> {
           String(r.seller_id),
           `라이브 시작 권장 안내 🎥`,
           `최근 7일간 라이브가 없으셨네요. 라이브를 다시 시작하면 시청자/매출 회복에 효과적입니다. 부담 없이 짧게 시작해보세요!`,
-        ).run().catch(() => {});
+        ).run().catch(swallow('worker:cron:agency-inactive-sellers'));
       }
 
       notified++;

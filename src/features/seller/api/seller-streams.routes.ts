@@ -17,6 +17,7 @@ import type { KVNamespace } from '@cloudflare/workers-types';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { cacheInvalidate } from '@/worker/utils/cache';
 
+import { swallow } from '@/worker/utils/swallow';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -261,7 +262,7 @@ sellerStreamsRoutes.post('/', async (c) => {
         `📺 새 라이브 예고!`,
         `${title}`,
         `/live/${result.meta.last_row_id}`
-      ).catch(() => {});
+      ).catch(swallow('seller:api:seller-streams'));
     } catch {}
 
     return c.json({
@@ -363,7 +364,7 @@ sellerStreamsRoutes.put('/:id', async (c) => {
         const notifyUrl = new URL(c.req.url);
         notifyUrl.pathname = `/api/broadcast-notify/send/${streamId}`;
         c.executionCtx?.waitUntil?.(
-          fetch(notifyUrl.toString(), { method: 'POST' }).catch(() => {})
+          fetch(notifyUrl.toString(), { method: 'POST' }).catch(swallow('seller:api:seller-streams'))
         );
 
         // 2. 카카오톡 메시지 발송 (구독자 중 카카오 토큰 보유자, 무료)

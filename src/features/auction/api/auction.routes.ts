@@ -14,6 +14,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 
+import { swallow } from '@/worker/utils/swallow';
 const auctionRoutes = new Hono<{ Bindings: Env }>();
 
 auctionRoutes.use('*', cors({
@@ -433,7 +434,7 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
   // 2) winner_history 기록 (마이그레이션 0211 미적용 시 silent skip)
   await DB.prepare(
     "INSERT INTO auction_winner_history (auction_id, user_id, user_name, amount, reason, notes) VALUES (?, ?, ?, ?, 'forfeited', ?)"
-  ).bind(auctionId, forfeitedUserId, forfeitedName, auction.current_price, reason).run().catch(() => {});
+  ).bind(auctionId, forfeitedUserId, forfeitedName, auction.current_price, reason).run().catch(swallow('auction:api:auction'));
 
   // 3) 후보 차순위 순회 — 같은 user 의 동일 금액 중복 제거 + forfeit 된 user 제외
   const { results: candidates } = await DB.prepare(`
@@ -489,7 +490,7 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
     ).bind(auctionId).run();
     await DB.prepare(
       "INSERT INTO auction_winner_history (auction_id, reason, notes) VALUES (?, 'cancelled', '차순위 후보 없음 또는 잔액 부족')"
-    ).bind(auctionId).run().catch(() => {});
+    ).bind(auctionId).run().catch(swallow('auction:api:auction'));
     return c.json({
       success: true,
       data: { promoted: false, message: '차순위 후보 없음 — 경매 종료 처리됨', forfeited_user_id: forfeitedUserId },
@@ -503,7 +504,7 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
 
   await DB.prepare(
     "INSERT INTO auction_winner_history (auction_id, user_id, user_name, amount, reason, notes) VALUES (?, ?, ?, ?, 'promoted', ?)"
-  ).bind(auctionId, newWinner.user_id, newWinner.user_name, newWinner.amount, `${forfeitedName} 불이행으로 승격`).run().catch(() => {});
+  ).bind(auctionId, newWinner.user_id, newWinner.user_name, newWinner.amount, `${forfeitedName} 불이행으로 승격`).run().catch(swallow('auction:api:auction'));
 
   return c.json({
     success: true,

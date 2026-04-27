@@ -20,6 +20,7 @@ import { verify } from 'hono/jwt'
 import { parseSessionCookie } from '@/worker/utils/session'
 import type { Env } from '@/worker/types/env'
 
+import { swallow } from '@/worker/utils/swallow';
 type AgencyCtx = {
   Bindings: Env
   Variables: { agency: { id: number; email?: string } }
@@ -218,7 +219,7 @@ app.post('/streams/:id/notes', async (c) => {
           String(seller.seller_id),
           body.content.trim().slice(0, 100),
           `/seller/streams/${id}`,
-        ).run().catch(() => {})
+        ).run().catch(swallow('agency:api:agency-calendar'))
       }
     }
 

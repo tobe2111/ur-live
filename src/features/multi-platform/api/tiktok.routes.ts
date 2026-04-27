@@ -28,6 +28,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 
+import { swallow } from '@/worker/utils/swallow';
 const TIKTOK_AUTH_URL = 'https://www.tiktok.com/v2/auth/authorize/'
 const TIKTOK_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/'
 const TIKTOK_USERINFO_URL = 'https://open.tiktokapis.com/v2/user/info/'
@@ -102,7 +103,7 @@ app.post('/callback', requireAuth(), async (c) => {
     if (!stored || stored !== String(user.id)) {
       return c.json({ success: false, error: '유효하지 않은 state' }, 400)
     }
-    await (env as any).RATE_LIMIT_KV.delete(`tiktok-state:${body.state}`).catch(() => {})
+    await (env as any).RATE_LIMIT_KV.delete(`tiktok-state:${body.state}`).catch(swallow('multi-platform:api:tiktok'))
   }
 
   const redirectUri = `${env.FRONTEND_URL || 'https://live.ur-team.com'}/seller/tiktok-callback`
@@ -224,7 +225,7 @@ app.post('/sync-videos', requireAuth(), async (c) => {
   if (link.token_expires_at && new Date(link.token_expires_at) < new Date()) {
     await c.env.DB.prepare(
       "UPDATE seller_platform_links SET status = 'expired' WHERE seller_id = ? AND platform = 'tiktok'"
-    ).bind(user.id).run().catch(() => {})
+    ).bind(user.id).run().catch(swallow('multi-platform:api:tiktok'))
     return c.json({ success: false, error: '토큰 만료 — 재연동 필요', code: 'TOKEN_EXPIRED' }, 401)
   }
 
@@ -244,7 +245,7 @@ app.post('/sync-videos', requireAuth(), async (c) => {
 
     await c.env.DB.prepare(
       "UPDATE seller_platform_links SET last_synced_at = datetime('now'), sync_error = NULL WHERE seller_id = ? AND platform = 'tiktok'"
-    ).bind(user.id).run().catch(() => {})
+    ).bind(user.id).run().catch(swallow('multi-platform:api:tiktok'))
 
     return c.json({
       success: true,
@@ -311,7 +312,7 @@ app.patch('/badge', requireAuth(), async (c) => {
   }
   await c.env.DB.prepare(
     "UPDATE seller_platform_links SET show_badge = ?, updated_at = datetime('now') WHERE seller_id = ? AND platform = 'tiktok'"
-  ).bind(body.show_badge ? 1 : 0, user.id).run().catch(() => {})
+  ).bind(body.show_badge ? 1 : 0, user.id).run().catch(swallow('multi-platform:api:tiktok'))
   return c.json({ success: true })
 })
 
@@ -324,7 +325,7 @@ app.delete('/unlink', requireAuth(), async (c) => {
 
   await c.env.DB.prepare(
     "UPDATE seller_platform_links SET status = 'revoked', access_token = NULL, refresh_token = NULL, updated_at = datetime('now') WHERE seller_id = ? AND platform = 'tiktok'"
-  ).bind(user.id).run().catch(() => {})
+  ).bind(user.id).run().catch(swallow('multi-platform:api:tiktok'))
 
   return c.json({ success: true })
 })

@@ -21,6 +21,7 @@ import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
 import { computeViewerLoyalty } from '@/shared/utils/viewer-loyalty';
 
+import { swallow } from '@/worker/utils/swallow';
 type SellerCtx = { Bindings: Env; Variables: { seller: { id: number; email: string } } };
 const app = new Hono<SellerCtx>();
 
@@ -74,7 +75,7 @@ app.post('/', async (c) => {
         notified_count INTEGER DEFAULT 0,
         notified_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `).run().catch(() => {});
+    `).run().catch(swallow('seller:api:live-notify-followers'));
 
     const existed = await c.env.DB.prepare(
       `SELECT live_stream_id FROM live_notify_log WHERE live_stream_id = ?`
@@ -150,7 +151,7 @@ app.post('/', async (c) => {
   await c.env.DB.prepare(`
     INSERT OR IGNORE INTO live_notify_log (live_stream_id, seller_id, notified_count)
     VALUES (?, ?, ?)
-  `).bind(body.live_id, seller.id, sent).run().catch(() => {});
+  `).bind(body.live_id, seller.id, sent).run().catch(swallow('seller:api:live-notify-followers'));
 
   return c.json({
     success: true,

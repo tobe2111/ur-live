@@ -25,6 +25,7 @@ import { Hono, type Next } from 'hono';
 import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
 
+import { swallow } from '@/worker/utils/swallow';
 type SellerCtx = {
   Bindings: Env;
   Variables: { seller: { id: number; email: string } };
@@ -63,7 +64,7 @@ async function ensureTable(DB: D1Database) {
       reward_claimed INTEGER DEFAULT 0,
       UNIQUE (seller_id, step_key)
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('seller:api:seller-onboarding'));
 }
 
 const ALL_STEPS = [
@@ -100,7 +101,7 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
     if (s?.profile_image && s?.bio && s?.address) {
       await DB.prepare(
         `INSERT OR IGNORE INTO seller_onboarding_progress (seller_id, step_key) VALUES (?, 'profile_complete')`
-      ).bind(sellerId).run().catch(() => {});
+      ).bind(sellerId).run().catch(swallow('seller:api:seller-onboarding'));
       completedSet.add('profile_complete');
     }
   }
@@ -112,7 +113,7 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
     if (r) {
       await DB.prepare(
         `INSERT OR IGNORE INTO seller_onboarding_progress (seller_id, step_key) VALUES (?, 'first_product')`
-      ).bind(sellerId).run().catch(() => {});
+      ).bind(sellerId).run().catch(swallow('seller:api:seller-onboarding'));
       completedSet.add('first_product');
     }
   }
@@ -124,7 +125,7 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
     if (r) {
       await DB.prepare(
         `INSERT OR IGNORE INTO seller_onboarding_progress (seller_id, step_key) VALUES (?, 'first_live')`
-      ).bind(sellerId).run().catch(() => {});
+      ).bind(sellerId).run().catch(swallow('seller:api:seller-onboarding'));
       completedSet.add('first_live');
     }
   }
@@ -136,7 +137,7 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
     if (r) {
       await DB.prepare(
         `INSERT OR IGNORE INTO seller_onboarding_progress (seller_id, step_key) VALUES (?, 'first_donation')`
-      ).bind(sellerId).run().catch(() => {});
+      ).bind(sellerId).run().catch(swallow('seller:api:seller-onboarding'));
       completedSet.add('first_donation');
     }
   }
@@ -148,7 +149,7 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
     if (r) {
       await DB.prepare(
         `INSERT OR IGNORE INTO seller_onboarding_progress (seller_id, step_key) VALUES (?, 'first_payment')`
-      ).bind(sellerId).run().catch(() => {});
+      ).bind(sellerId).run().catch(swallow('seller:api:seller-onboarding'));
       completedSet.add('first_payment');
     }
   }
@@ -161,7 +162,7 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
       if (r) {
         await DB.prepare(
           `INSERT OR IGNORE INTO seller_onboarding_progress (seller_id, step_key) VALUES (?, 'first_alimtalk')`
-        ).bind(sellerId).run().catch(() => {});
+        ).bind(sellerId).run().catch(swallow('seller:api:seller-onboarding'));
         completedSet.add('first_alimtalk');
       }
     } catch { /* table missing — skip */ }
@@ -172,7 +173,7 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
   if (allDone && !completedSet.has('bootcamp_completed')) {
     await DB.prepare(
       `INSERT OR IGNORE INTO seller_onboarding_progress (seller_id, step_key, reward_claimed) VALUES (?, 'bootcamp_completed', 1)`
-    ).bind(sellerId).run().catch(() => {});
+    ).bind(sellerId).run().catch(swallow('seller:api:seller-onboarding'));
 
     // 셀러에게 보상 딜 1만 지급 (user_points 시스템 활용 — 셀러도 user_id 기반으로 매핑되어 있을 경우)
     // 셀러 자체 deal balance 시스템이 있으면 거기에 추가. 없으면 알림만.
@@ -184,7 +185,7 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
           balance = balance + ?,
           total_charged = total_charged + ?
       `).bind(sellerId, BOOTCAMP_REWARD_DEAL, BOOTCAMP_REWARD_DEAL, BOOTCAMP_REWARD_DEAL, BOOTCAMP_REWARD_DEAL)
-        .run().catch(() => {});
+        .run().catch(swallow('seller:api:seller-onboarding'));
     } catch { /* 컬럼 다르면 graceful skip */ }
   }
 
@@ -235,7 +236,7 @@ app.post('/complete/:step_key', async (c) => {
   await ensureTable(c.env.DB);
   await c.env.DB.prepare(
     `INSERT OR IGNORE INTO seller_onboarding_progress (seller_id, step_key) VALUES (?, ?)`
-  ).bind(seller.id, step).run().catch(() => {});
+  ).bind(seller.id, step).run().catch(swallow('seller:api:seller-onboarding'));
   await autoEvaluate(c.env.DB, seller.id);
   return c.json({ success: true });
 });

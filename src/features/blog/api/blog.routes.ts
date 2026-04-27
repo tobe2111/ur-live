@@ -8,6 +8,7 @@ import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
 import { requireAuth, getCurrentUser } from '../../../worker/middleware/auth'
 
+import { swallow } from '@/worker/utils/swallow';
 const app = new Hono<{ Bindings: Env }>()
 
 // 테이블 자동 생성
@@ -27,7 +28,7 @@ async function ensureBlogTable(DB: D1Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {})
+  `).run().catch(swallow('blog:api:blog'))
 }
 
 // ── 공개: 발행된 글 목록 ──────────────────────────────────────

@@ -17,6 +17,7 @@ import type { Env } from './types/env';
 import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
+import { killerSwRoutes } from './routes/killer-sw.routes'; // 2026-04-27 PWA 사고 복구
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
 import { stripeRouter } from './routes/stripe.routes';
@@ -378,42 +379,8 @@ app.get('/health', (c) => c.json({
 //   Killer SW: 자기 자신 unregister + 모든 캐시 삭제 후 종료.
 //
 //   재발 방지: 30일 후 (2026-05-27) 이 endpoint 제거 — TECHNICAL_DEBT.md 참조.
-app.get('/sw.js', (c) => {
-  const KILLER_SW = `// 🚨 Killer SW - 2026-04-27 OAuth redirect 차단 사고 복구
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    try {
-      const keys = await caches.keys();
-      await Promise.all(keys.map(k => caches.delete(k)));
-    } catch {}
-    try { await self.registration.unregister(); } catch {}
-    try {
-      const clients = await self.clients.matchAll({ type: 'window' });
-      clients.forEach(c => c.navigate(c.url));
-    } catch {}
-  })());
-});
-// fetch 핸들러 없음 — 모든 요청 네트워크 직통 (OAuth redirect 통과)
-`;
-  return new Response(KILLER_SW, {
-    headers: {
-      'Content-Type': 'application/javascript; charset=utf-8',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Service-Worker-Allowed': '/',
-    },
-  });
-});
-
-// /workbox-*.js 요청도 빈 응답 (이전 SW 가 부르는 의존성)
-app.get('/workbox-:hash{[a-zA-Z0-9]+}.js', (c) => {
-  return new Response('// Killer — workbox 의존성 차단', {
-    headers: {
-      'Content-Type': 'application/javascript; charset=utf-8',
-      'Cache-Control': 'no-cache',
-    },
-  });
-});
+//   (2026-04-27 TD-006 split): 별도 라우터 파일로 분리.
+app.route('/', killerSwRoutes);
 
 // v32 FIX: PWA manifest MIME type 명시 (Workers asset serving은 _headers 미지원)
 // Chrome "Manifest: Line: 1 Syntax error" 원인 — Worker가 HTML fallback으로 응답하거나
@@ -712,7 +679,7 @@ async function ensureMigrationTrackingTable(DB: D1Database) {
       details TEXT,
       applied_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('worker:index'));
 }
 
 // ============================================================
@@ -2781,6 +2748,7 @@ app.onError(errorHandler);
 // worker/index.ts 가 90줄 줄어듦. cron 로직 변경 시 scheduled.ts 만 수정.
 import { handleCronScheduled } from './scheduled';
 
+import { swallow } from './utils/swallow';
 export default {
   fetch: app.fetch,
   scheduled: handleCronScheduled,

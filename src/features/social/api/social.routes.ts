@@ -4,6 +4,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 
+import { swallow } from '@/worker/utils/swallow';
 const socialRoutes = new Hono<{ Bindings: Env }>()
 socialRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
 
@@ -30,7 +31,7 @@ socialRoutes.post('/follow/:sellerId', requireAuth(), async (c) => {
   // 셀러에게 새 팔로워 알림
   try {
     const { notifySeller } = await import('../../../lib/notifications')
-    notifySeller(DB, sellerId || '', 'new_follower', '👤 새 팔로워!', `${user.name || '유저'}님이 팔로우했습니다`, `/profile/${sellerId}`).catch(() => {})
+    notifySeller(DB, sellerId || '', 'new_follower', '👤 새 팔로워!', `${user.name || '유저'}님이 팔로우했습니다`, `/profile/${sellerId}`).catch(swallow('social:api:social'))
   } catch {}
   return c.json({ success: true, data: { following: true } })
 })

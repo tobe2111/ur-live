@@ -28,6 +28,7 @@ import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout'
 
+import { swallow } from '@/worker/utils/swallow';
 type AgencyVars = { agency: { id: number; email: string } }
 type AgencyCtx = Context<{ Bindings: Env; Variables: AgencyVars }>
 
@@ -52,18 +53,18 @@ async function ensureAgencyTables(DB: D1Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {})
+  `).run().catch(swallow('agency:api:agency'))
 
   // 기존 DB 에 빠진 컬럼 ensure
-  await DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(() => {})
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(swallow('agency:api:agency'))
   // 🛡️ 카카오 유저 → 에이전시 확장 연결용 (users.id FK, 수동 체크)
-  await DB.prepare("ALTER TABLE agencies ADD COLUMN linked_user_id INTEGER").run().catch(() => {})
-  await DB.prepare("CREATE INDEX IF NOT EXISTS idx_agencies_linked_user ON agencies(linked_user_id)").run().catch(() => {})
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN linked_user_id INTEGER").run().catch(swallow('agency:api:agency'))
+  await DB.prepare("CREATE INDEX IF NOT EXISTS idx_agencies_linked_user ON agencies(linked_user_id)").run().catch(swallow('agency:api:agency'))
 
   // 🛡️ 2026-04-27: 정산 계좌 컬럼 — agency.routes.ts:544 의 GET /profile 가 SELECT 하지만 컬럼 없으면 D1_ERROR.
-  await DB.prepare("ALTER TABLE agencies ADD COLUMN bank_name TEXT").run().catch(() => {})
-  await DB.prepare("ALTER TABLE agencies ADD COLUMN bank_account TEXT").run().catch(() => {})
-  await DB.prepare("ALTER TABLE agencies ADD COLUMN account_holder TEXT").run().catch(() => {})
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN bank_name TEXT").run().catch(swallow('agency:api:agency'))
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN bank_account TEXT").run().catch(swallow('agency:api:agency'))
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN account_holder TEXT").run().catch(swallow('agency:api:agency'))
 
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agency_sellers (
@@ -73,7 +74,7 @@ async function ensureAgencyTables(DB: D1Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(agency_id, seller_id)
     )
-  `).run().catch(() => {})
+  `).run().catch(swallow('agency:api:agency'))
   _agencyTablesEnsured = true;
 }
 
@@ -88,10 +89,10 @@ async function ensurePasswordResetTable(DB: D1Database) {
       expires_at DATETIME NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {})
+  `).run().catch(swallow('agency:api:agency'))
   await DB.prepare(
     'CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)'
-  ).run().catch(() => {})
+  ).run().catch(swallow('agency:api:agency'))
 }
 
 /** 32자 hex 토큰 생성 (Web Crypto) */
@@ -343,7 +344,7 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
 
   if (!agency) {
     // 🛡️ 2026-04-22: 타이밍 공격 방어 — 존재하지 않는 계정에도 verifyPassword 실행
-    await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(() => {})
+    await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(swallow('agency:api:agency'))
     // 또한 메시지는 generic — "등록되지 않은 이메일" 은 user enumeration 노출 → 수정
     return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401)
   }
@@ -383,7 +384,7 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
       // last_active_at 갱신 (best-effort)
       await c.env.DB.prepare(
         "UPDATE agency_members SET last_active_at = datetime('now') WHERE id = ?"
-      ).bind(m.id).run().catch(() => {})
+      ).bind(m.id).run().catch(swallow('agency:api:agency'))
     }
   } catch { /* migration 0217 미적용 — owner fallback */ }
 
@@ -497,7 +498,7 @@ app.post('/reset-password', cors(), rateLimit({ action: 'agency_reset_password',
 
     const expiresAt = new Date(row.expires_at).getTime()
     if (isNaN(expiresAt) || Date.now() > expiresAt) {
-      await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(() => {})
+      await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(swallow('agency:api:agency'))
       return c.json({
         success: false,
         error: '토큰이 만료되었습니다. 비밀번호 재설정을 다시 요청해주세요.',
@@ -525,7 +526,7 @@ app.post('/reset-password', cors(), rateLimit({ action: 'agency_reset_password',
     // 🛡️ 2026-04-22: 비번 변경 시 기존 refresh token 전부 revoke
     await DB.prepare(
       "DELETE FROM auth_refresh_tokens WHERE user_type = 'agency' AND user_id = ?"
-    ).bind(row.user_id).run().catch(() => {})
+    ).bind(row.user_id).run().catch(swallow('agency:api:agency'))
 
     return c.json({
       success: true,
@@ -868,7 +869,7 @@ app.get('/stats/realtime', async (c) => {
   // 3. KV 캐시 저장 (best-effort, TTL 30초)
   if (KV) {
     c.executionCtx?.waitUntil?.(
-      KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 }).catch(() => {})
+      KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 }).catch(swallow('agency:api:agency'))
     )
   }
 
@@ -1144,7 +1145,7 @@ app.post('/settlements/request', async (c) => {
     // 어드민 알림
     try {
       const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
-      createDashboardNotification(c.env.DB, 'admin', null, 'agency_settlement', '에이전시 정산 신청', `${agency.name}: ${commissionAmount.toLocaleString()}원 (${eligibleOrders.length}건)`, '/admin/settlements').catch(() => {})
+      createDashboardNotification(c.env.DB, 'admin', null, 'agency_settlement', '에이전시 정산 신청', `${agency.name}: ${commissionAmount.toLocaleString()}원 (${eligibleOrders.length}건)`, '/admin/settlements').catch(swallow('agency:api:agency'))
     } catch {}
 
     return c.json({
@@ -1330,7 +1331,7 @@ app.get('/notifications', async (c) => {
         is_read INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `).run().catch(() => {})
+    `).run().catch(swallow('agency:api:agency'))
 
     const { results } = await c.env.DB.prepare(
       'SELECT * FROM agency_notifications WHERE agency_id = ? ORDER BY created_at DESC LIMIT 30'
@@ -1349,7 +1350,7 @@ app.get('/notifications', async (c) => {
 // ── PUT /notifications/read-all ──────────────────────────────────
 app.put('/notifications/read-all', async (c) => {
   const { id: agencyId } = c.get('agency') as { id: number }
-  await c.env.DB.prepare('UPDATE agency_notifications SET is_read = 1 WHERE agency_id = ?').bind(agencyId).run().catch(() => {})
+  await c.env.DB.prepare('UPDATE agency_notifications SET is_read = 1 WHERE agency_id = ?').bind(agencyId).run().catch(swallow('agency:api:agency'))
   return c.json({ success: true })
 })
 

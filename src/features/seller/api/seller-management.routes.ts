@@ -22,6 +22,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { validateFileMagicBytes } from '@/lib/upload-security';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 
+import { swallow } from '@/worker/utils/swallow';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -290,7 +291,7 @@ sellerManagementRoutes.post('/register', rateLimit({ action: 'seller_register', 
     }
 
     // 7. 셀러 가입 신청 → 어드민 알림
-    createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/sellers').catch(() => {});
+    createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/sellers').catch(swallow('seller:api:seller-management'));
 
     return c.json({
       success: true,
@@ -420,7 +421,7 @@ sellerManagementRoutes.post('/register-from-user', rateLimit({ action: 'seller_r
     }
 
     const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
-    notify(db, 'admin', null, 'seller_registered', '유저→셀러 전환 신청', `${userName} (유저 #${userId})`, '/admin/sellers').catch(() => {});
+    notify(db, 'admin', null, 'seller_registered', '유저→셀러 전환 신청', `${userName} (유저 #${userId})`, '/admin/sellers').catch(swallow('seller:api:seller-management'));
 
     return c.json({
       success: true,
@@ -1188,7 +1189,7 @@ sellerManagementRoutes.post('/change-password', async (c) => {
     const newHash = await hp(newPassword);
     await db.prepare("UPDATE sellers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").bind(newHash, sellerId).run();
     // 🛡️ 비번 변경 시 기존 refresh token 전량 revoke
-    await db.prepare("DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?").bind(Number(sellerId)).run().catch(() => {});
+    await db.prepare("DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?").bind(Number(sellerId)).run().catch(swallow('seller:api:seller-management'));
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -1326,7 +1327,7 @@ sellerManagementRoutes.post('/settlements/request', async (c) => {
       .catch(() => null);
     if (!result) return c.json({ success: false, error: '정산 신청 실패 (settlements 테이블 없음)' }, 500);
     // 1. 정산 신청 → 어드민 알림
-    createDashboardNotification(db, 'admin', null, 'settlement_request', '정산 신청', `셀러 #${sellerId}`, '/admin/settlement').catch(() => {});
+    createDashboardNotification(db, 'admin', null, 'settlement_request', '정산 신청', `셀러 #${sellerId}`, '/admin/settlement').catch(swallow('seller:api:seller-management'));
     return c.json({ success: true, message: '정산 신청이 완료되었습니다', id: result.meta.last_row_id });
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);

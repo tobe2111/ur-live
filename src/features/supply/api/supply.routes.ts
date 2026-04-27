@@ -13,6 +13,7 @@ import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
+import { swallow } from '@/worker/utils/swallow';
 const supplyRoutes = new Hono<{ Bindings: Env }>();
 
 supplyRoutes.use('*', cors({
@@ -186,7 +187,7 @@ supplyRoutes.post('/sample-requests', async (c) => {
     `).bind(sellerId, body.product_id, body.seller_memo || null).run();
 
     // 3. 공급 상품 샘플 신청 → 어드민 알림
-    createDashboardNotification(DB, 'admin', null, 'sample_request', '샘플 신청', `셀러 #${sellerId}`, '/admin/sample-requests').catch(() => {});
+    createDashboardNotification(DB, 'admin', null, 'sample_request', '샘플 신청', `셀러 #${sellerId}`, '/admin/sample-requests').catch(swallow('supply:api:supply'));
 
     return c.json({
       success: true,
@@ -350,7 +351,7 @@ supplyRoutes.post('/register', async (c) => {
     ).run();
 
     // 공급 상품 등록 → 어드민 알림
-    createDashboardNotification(DB, 'admin', null, 'supply_registered', '공급 상품 등록', `셀러 #${sellerId}`, '/admin/products').catch(() => {});
+    createDashboardNotification(DB, 'admin', null, 'supply_registered', '공급 상품 등록', `셀러 #${sellerId}`, '/admin/products').catch(swallow('supply:api:supply'));
 
     return c.json({
       success: true,

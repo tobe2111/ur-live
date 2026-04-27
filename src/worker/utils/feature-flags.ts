@@ -15,6 +15,7 @@
 
 import type { KVNamespace, D1Database } from '@cloudflare/workers-types';
 
+import { swallow } from './swallow';
 export interface FeatureFlags {
   // Kill switches — turn OFF to disable non-critical features during high load
   enable_reviews: boolean;
@@ -70,7 +71,7 @@ async function ensureFlagsTable(DB: D1Database) {
       value TEXT NOT NULL,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('worker:utils:feature-flags'));
 }
 
 export async function getFeatureFlags(KV?: KVNamespace, DB?: D1Database): Promise<FeatureFlags> {

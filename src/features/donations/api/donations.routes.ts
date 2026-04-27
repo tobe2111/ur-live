@@ -13,6 +13,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL } from '@/shared/constants';
 
+import { swallow } from '@/worker/utils/swallow';
 const donationsRoutes = new Hono<{ Bindings: Env }>();
 
 donationsRoutes.use('*', cors({
@@ -221,7 +222,7 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
       });
     }
     await DB.prepare('UPDATE donations SET payment_status = ? WHERE order_id = ?')
-      .bind('cancelled', body.orderId).run().catch(() => {});
+      .bind('cancelled', body.orderId).run().catch(swallow('donations:api:donations'));
     return c.json({
       success: false,
       error: '방송이 종료되어 후원이 취소되었습니다. 결제는 승인되지 않았습니다.',

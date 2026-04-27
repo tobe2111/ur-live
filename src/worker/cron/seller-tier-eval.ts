@@ -17,6 +17,7 @@
 
 import type { Env } from '../types/env';
 
+import { swallow } from '../utils/swallow';
 type Tier = 'bronze' | 'silver' | 'gold';
 
 const SILVER_REVENUE_MIN = 500_000;
@@ -49,7 +50,7 @@ export async function handleSellerTierEval(env: Env): Promise<void> {
   if (!DB) return;
 
   // sellers.tier 컬럼 보장 (idempotent)
-  await DB.prepare(`ALTER TABLE sellers ADD COLUMN tier TEXT DEFAULT 'bronze'`).run().catch(() => {});
+  await DB.prepare(`ALTER TABLE sellers ADD COLUMN tier TEXT DEFAULT 'bronze'`).run().catch(swallow('worker:cron:seller-tier-eval'));
 
   const sellers = await DB.prepare(`
     SELECT id, status, created_at, COALESCE(tier, 'bronze') AS tier
@@ -105,7 +106,7 @@ export async function handleSellerTierEval(env: Env): Promise<void> {
 
       if (newTier !== oldTier) {
         await DB.prepare(`UPDATE sellers SET tier = ? WHERE id = ?`)
-          .bind(newTier, s.id).run().catch(() => {});
+          .bind(newTier, s.id).run().catch(swallow('worker:cron:seller-tier-eval'));
 
         // 셀러에게 알림
         const direction = ['bronze', 'silver', 'gold'].indexOf(newTier) >
@@ -118,7 +119,7 @@ export async function handleSellerTierEval(env: Env): Promise<void> {
           String(s.id),
           `${direction} 등급 변경: ${tierKor[oldTier]} → ${tierKor[newTier]}`,
           `전월 매출 ${monthlyRevenue.toLocaleString()}원, 라이브 ${liveCount}회 기준 등급이 갱신됐어요.`,
-        ).run().catch(() => {});
+        ).run().catch(swallow('worker:cron:seller-tier-eval'));
 
         changed++;
       }

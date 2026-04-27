@@ -24,6 +24,7 @@ import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '@/worker/middleware/auth';
 
+import { swallow } from '@/worker/utils/swallow';
 type SellerCtx = {
   Bindings: Env;
   Variables: { seller: { id: number; email: string } };
@@ -69,7 +70,7 @@ async function ensureTables(DB: D1Database) {
       status TEXT DEFAULT 'pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('casting:api:casting'));
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS casting_requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,7 +90,7 @@ async function ensureTables(DB: D1Database) {
       completed_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('casting:api:casting'));
 }
 
 // ─── Admin: Advertisers ───────────────────────────────────────────
@@ -122,7 +123,7 @@ adminAdvertiserApp.patch('/:id/status', async (c) => {
   const body = await c.req.json<{ status: 'active' | 'suspended' }>().catch(() => ({} as any));
   if (!['active', 'suspended'].includes(body.status)) return c.json({ success: false, error: 'invalid status' }, 400);
   await c.env.DB.prepare(`UPDATE advertisers SET status = ? WHERE id = ?`)
-    .bind(body.status, id).run().catch(() => {});
+    .bind(body.status, id).run().catch(swallow('casting:api:casting'));
   return c.json({ success: true });
 });
 
@@ -175,7 +176,7 @@ adminCastingApp.patch('/:id/complete', async (c) => {
     UPDATE casting_requests
     SET status = 'completed', completed_at = datetime('now')
     WHERE id = ? AND status = 'accepted'
-  `).bind(id).run().catch(() => {});
+  `).bind(id).run().catch(swallow('casting:api:casting'));
   return c.json({ success: true });
 });
 

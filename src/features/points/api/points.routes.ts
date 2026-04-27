@@ -17,6 +17,7 @@ import { TOSS_PAYMENT_URL, ALLOWED_ORIGINS } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 
+import { swallow } from '@/worker/utils/swallow';
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
 pointsRoutes.use('*', cors({
@@ -255,7 +256,7 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
     '딜 충전',
     `${amount.toLocaleString()}원 → ${pointsToAdd.toLocaleString()}딜 충전`,
     '/admin/deals'
-  ).catch(() => {});
+  ).catch(swallow('points:api:points'));
 
   return c.json({
     success: true,
@@ -388,10 +389,10 @@ async function executeDonate(
   ).run();
 
   // 10. 후원 받음 → 셀러 알림
-  createDashboardNotification(DB, 'seller', String(stream.seller_id), 'donation_received', '후원 받음', `${amount}딜 후원`, '/seller/donations').catch(() => {});
+  createDashboardNotification(DB, 'seller', String(stream.seller_id), 'donation_received', '후원 받음', `${amount}딜 후원`, '/seller/donations').catch(swallow('points:api:points'));
 
   // 후원 발생 → 어드민 알림
-  createDashboardNotification(DB, 'admin', null, 'donation_received', '후원 발생', `${amount}딜 후원`, '/admin/settlement').catch(() => {});
+  createDashboardNotification(DB, 'admin', null, 'donation_received', '후원 발생', `${amount}딜 후원`, '/admin/settlement').catch(swallow('points:api:points'));
 
   return {
     status: 200,
@@ -740,7 +741,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       }
     }
 
-    createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${authoritativeTotal.toLocaleString()}딜 상품 결제`, '/admin/orders').catch(() => {});
+    createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${authoritativeTotal.toLocaleString()}딜 상품 결제`, '/admin/orders').catch(swallow('points:api:points'));
 
     return c.json({
       success: true,

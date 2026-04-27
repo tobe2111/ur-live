@@ -25,6 +25,7 @@ import {
 } from '@/worker/utils/validation';
 import { ensurePointsTables } from '@/worker/utils/ensure-tables';
 
+import { swallow } from '@/worker/utils/swallow';
 const reviewsRoutes = new Hono<{ Bindings: Env }>();
 
 reviewsRoutes.use('*', cors({
@@ -221,7 +222,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
   // 리뷰 등록 → 셀러 알림
   const productInfo = await DB.prepare('SELECT seller_id, name FROM products WHERE id = ?').bind(body.product_id).first<{seller_id: number|null, name: string}>();
   if (productInfo?.seller_id) {
-    createDashboardNotification(DB, 'seller', String(productInfo.seller_id), 'new_review', '새 리뷰', `${productInfo.name}: ★${body.rating}`, '/seller/products').catch(() => {});
+    createDashboardNotification(DB, 'seller', String(productInfo.seller_id), 'new_review', '새 리뷰', `${productInfo.name}: ★${body.rating}`, '/seller/products').catch(swallow('reviews:api:reviews'));
   }
 
   // ── 리뷰 리워드: 딜 포인트 지급 (platform_settings 기반) ──
@@ -279,10 +280,10 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
 
     // deal_balance도 동기화 (users 테이블)
     await DB.prepare('UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?')
-      .bind(rewardAmount, user.id).run().catch(() => {});
+      .bind(rewardAmount, user.id).run().catch(swallow('reviews:api:reviews'));
 
     // 유저에게 알림 생성
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => {});
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT (datetime('now')))`).run().catch(swallow('reviews:api:reviews'));
     await DB.prepare(
       "INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)"
     ).bind(
@@ -291,7 +292,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
       '리뷰 작성 보상',
       `🎁 리뷰 작성 보상으로 ${rewardAmount}딜이 지급되었습니다!`,
       '/user/profile'
-    ).run().catch(() => {});
+    ).run().catch(swallow('reviews:api:reviews'));
     } // end else (no existingProductReward)
   } catch { /* 포인트 지급 실패해도 리뷰는 성공 */ }
 

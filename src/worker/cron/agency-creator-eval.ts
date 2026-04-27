@@ -23,6 +23,7 @@
 
 import type { Env } from '../types/env'
 
+import { swallow } from '../utils/swallow';
 interface PendingApproval {
   id: number
   seller_id: number
@@ -159,7 +160,7 @@ export async function handleAgencyCreatorEval(env: Env): Promise<{
         `).bind(
           approval.agency_id,
           `신청 셀러가 30일간 활동 거의 없음 (score: ${totalScore}/100). 어드민 검토 권장.`
-        ).run().catch(() => {})
+        ).run().catch(swallow('worker:cron:agency-creator-eval'))
       }
 
       evaluated++

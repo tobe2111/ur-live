@@ -19,6 +19,7 @@ import { verify } from 'hono/jwt';
 import { parseSessionCookie } from '@/worker/utils/session';
 import type { Env } from '@/worker/types/env';
 
+import { swallow } from '@/worker/utils/swallow';
 type AgencyCtx = {
   Bindings: Env;
   Variables: { agency: { id: number; email?: string } };
@@ -78,7 +79,7 @@ async function ensureTable(DB: D1Database) {
       winner_reward_deal INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('agency:api:pk-battles'));
 }
 
 interface BattleRow {
@@ -200,7 +201,7 @@ app.post('/:id/cancel', async (c) => {
   await c.env.DB.prepare(`
     UPDATE pk_battles SET status = 'cancelled'
     WHERE id = ? AND agency_id = ? AND status IN ('pending', 'live')
-  `).bind(id, agency.id).run().catch(() => {});
+  `).bind(id, agency.id).run().catch(swallow('agency:api:pk-battles'));
   return c.json({ success: true });
 });
 
@@ -263,11 +264,11 @@ export async function tickPkBattles(DB: D1Database): Promise<void> {
           UPDATE pk_battles
           SET status = 'ended', revenue_a = ?, revenue_b = ?, winner_seller_id = ?
           WHERE id = ?
-        `).bind(revenueA, revenueB, winnerId, b.id).run().catch(() => {});
+        `).bind(revenueA, revenueB, winnerId, b.id).run().catch(swallow('agency:api:pk-battles'));
       } else {
         await DB.prepare(`
           UPDATE pk_battles SET revenue_a = ?, revenue_b = ? WHERE id = ?
-        `).bind(revenueA, revenueB, b.id).run().catch(() => {});
+        `).bind(revenueA, revenueB, b.id).run().catch(swallow('agency:api:pk-battles'));
       }
     }
   } catch (err) {

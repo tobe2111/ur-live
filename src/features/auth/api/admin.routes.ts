@@ -30,10 +30,10 @@ async function ensureAuthRefreshTokensTable(DB: D1Database) {
       expires_at TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('auth:api:admin'));
   await DB.prepare(
     'CREATE INDEX IF NOT EXISTS idx_auth_refresh_tokens_user ON auth_refresh_tokens(user_type, user_id)'
-  ).run().catch(() => {});
+  ).run().catch(swallow('auth:api:admin'));
 }
 
 type Bindings = {
@@ -83,7 +83,7 @@ adminRoutes.post('/login', cors(), async (c) => {
       if (import.meta.env.DEV) console.warn('[Admin Login] Admin not found:', maskEmail(email));
       // 🛡️ 2026-04-22: 타이밍 공격 방어 — 존재하지 않는 계정에도 verifyPassword 실행해서
       // 응답 시간을 비슷하게 맞춤 (user enumeration 방어)
-      await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(() => {});
+      await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(swallow('auth:api:admin'));
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401);
     }
 
@@ -252,7 +252,7 @@ adminRoutes.post('/refresh', cors(), async (c) => {
           return c.json({ success: false, error: 'Refresh Token이 유효하지 않습니다.' }, 401);
         }
         // rotate: 사용한 토큰 행 삭제
-        await DB.prepare('DELETE FROM auth_refresh_tokens WHERE id = ?').bind(matchedId).run().catch(() => {});
+        await DB.prepare('DELETE FROM auth_refresh_tokens WHERE id = ?').bind(matchedId).run().catch(swallow('auth:api:admin'));
       }
     } catch (e) {
       console.error('[Admin Refresh] token store verify failed:', e);
@@ -324,6 +324,7 @@ adminRoutes.post('/refresh', cors(), async (c) => {
 
 import { requireAdmin } from '@/worker/middleware/auth';
 
+import { swallow } from '@/worker/utils/swallow';
 // Setup: TOTP secret 생성 → QR 코드용 URI 반환
 adminRoutes.post('/2fa/setup', cors(), requireAdmin() as any, async (c) => {
   const { DB } = c.env;

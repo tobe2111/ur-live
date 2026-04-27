@@ -14,6 +14,7 @@
 
 import type { Env } from '../types/env';
 
+import { swallow } from '../utils/swallow';
 interface SelfEvent {
   id: number;
   agency_id: number;
@@ -56,7 +57,7 @@ export async function handleAgencySelfEventsTick(env: Env): Promise<void> {
         // 종료 시점 도달 → ended 마킹
         if (ev.end_date < now) {
           await DB.prepare(`UPDATE agency_self_events SET status = 'ended' WHERE id = ?`)
-            .bind(ev.id).run().catch(() => {});
+            .bind(ev.id).run().catch(swallow('worker:cron:agency-self-events-tick'));
           ended++;
           continue;
         }
@@ -133,14 +134,14 @@ export async function handleAgencySelfEventsTick(env: Env): Promise<void> {
               String(p.seller_id),
               `🏆 챌린지 달성!`,
               `목표 달성 보상 ${ev.reward_deal.toLocaleString()}딜이 지급되었습니다.`,
-            ).run().catch(() => {});
+            ).run().catch(swallow('worker:cron:agency-self-events-tick'));
 
             achieved++;
           } else {
             // 진행값만 갱신
             await DB.prepare(`
               UPDATE agency_self_event_participants SET current_value = ? WHERE id = ?
-            `).bind(value, p.id).run().catch(() => {});
+            `).bind(value, p.id).run().catch(swallow('worker:cron:agency-self-events-tick'));
           }
 
           processed++;

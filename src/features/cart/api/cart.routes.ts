@@ -28,6 +28,7 @@ import {
 } from '@/worker/utils/response';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 
+import { swallow } from '@/worker/utils/swallow';
 // v31 FIX: cart mutation rate limit (per-IP, 분당 30회)
 const cartRateLimit = rateLimit({ action: 'cart_mutation', max: 30, windowSec: 60 });
 
@@ -267,7 +268,7 @@ cartRoutes.post('/', cartRateLimit, requireAuth(), async (c) => {
           .prepare('UPDATE cart_items SET quantity = ? WHERE id = ?')
           .bind(Math.max(1, finalQty - quantity), updated?.id ?? 0)
           .run()
-          .catch(() => {});
+          .catch(swallow('cart:api:cart'));
         return c.json(badRequestResponse('Insufficient stock'), 400);
       }
 

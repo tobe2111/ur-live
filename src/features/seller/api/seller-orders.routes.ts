@@ -19,6 +19,7 @@ import { sendSellerAlimtalk } from '../../alimtalk/send';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 
+import { swallow } from '@/worker/utils/swallow';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -483,7 +484,7 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
           ).bind(...order_ids, sellerId).all<{ user_id: string; order_number: string }>();
           for (const o of affectedOrders || []) {
             if (o.user_id) {
-              notifyUser(db, o.user_id, 'order_status', msg, `주문번호: ${o.order_number}`, '/my-orders').catch(() => {});
+              notifyUser(db, o.user_id, 'order_status', msg, `주문번호: ${o.order_number}`, '/my-orders').catch(swallow('seller:api:seller-orders'));
             }
           }
         }
@@ -596,8 +597,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
       const { notifyFollowers, sendKakaoToFollowers } = await import('../../../lib/notifications');
       const productName = (newProduct as any).name;
       const productId = (newProduct as any).id;
-      notifyFollowers(db, Number(sellerId), 'new_product', `🛍️ 새 상품 등록!`, productName, `/products/${productId}`).catch(() => {});
-      sendKakaoToFollowers(db, Number(sellerId), `🛍️ 새 상품이 등록되었어요!`, productName, `/products/${productId}`, '상품 보기').catch(() => {});
+      notifyFollowers(db, Number(sellerId), 'new_product', `🛍️ 새 상품 등록!`, productName, `/products/${productId}`).catch(swallow('seller:api:seller-orders'));
+      sendKakaoToFollowers(db, Number(sellerId), `🛍️ 새 상품이 등록되었어요!`, productName, `/products/${productId}`, '상품 보기').catch(swallow('seller:api:seller-orders'));
     }
 
     return c.json({ success: true, data: newProduct }, 201);

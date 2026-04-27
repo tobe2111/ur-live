@@ -19,6 +19,7 @@ import { parseSessionCookie } from '@/worker/utils/session';
 import type { Env } from '@/worker/types/env';
 import { requireAgencyPermission } from './agency-role-guard';
 
+import { swallow } from '@/worker/utils/swallow';
 type AgencyCtx = {
   Bindings: Env;
   Variables: { agency: { id: number; email?: string } };
@@ -81,7 +82,7 @@ async function ensureTable(DB: D1Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       expires_at DATETIME NOT NULL
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('agency:api:agency-invites'));
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agency_invite_usage (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,7 +91,7 @@ async function ensureTable(DB: D1Database) {
       seller_id INTEGER NOT NULL,
       used_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('agency:api:agency-invites'));
 }
 
 interface InviteCodeRow {
@@ -196,7 +197,7 @@ app.delete('/:code', requireAgencyPermission('invite'), async (c) => {
   await c.env.DB.prepare(`
     UPDATE agency_invite_codes SET is_active = 0
     WHERE code = ? AND agency_id = ?
-  `).bind(code, agency.id).run().catch(() => {});
+  `).bind(code, agency.id).run().catch(swallow('agency:api:agency-invites'));
 
   return c.json({ success: true });
 });
@@ -289,14 +290,14 @@ export async function consumeInviteCode(
   // 매핑 (멱등 — UNIQUE 제약 있음)
   await DB.prepare(`
     INSERT OR IGNORE INTO agency_sellers (agency_id, seller_id) VALUES (?, ?)
-  `).bind(row.agency_id, sellerId).run().catch(() => {});
+  `).bind(row.agency_id, sellerId).run().catch(swallow('agency:api:agency-invites'));
 
   // used_count 증가 + 사용 로그
   await DB.prepare(`UPDATE agency_invite_codes SET used_count = used_count + 1 WHERE code = ?`)
-    .bind(upper).run().catch(() => {});
+    .bind(upper).run().catch(swallow('agency:api:agency-invites'));
   await DB.prepare(`
     INSERT INTO agency_invite_usage (code, agency_id, seller_id) VALUES (?, ?, ?)
-  `).bind(upper, row.agency_id, sellerId).run().catch(() => {});
+  `).bind(upper, row.agency_id, sellerId).run().catch(swallow('agency:api:agency-invites'));
 
   return { ok: true, agency_id: row.agency_id };
 }

@@ -1,3 +1,4 @@
+import { swallow } from './swallow';
 /**
  * Slow Query Logger
  *
@@ -36,11 +37,11 @@ export async function loggedQuery<T = unknown>(
           duration_ms INTEGER,
           logged_at TEXT DEFAULT (datetime('now'))
         )
-      `).run().catch(() => {});
+      `).run().catch(swallow('worker:utils:slow-query-logger'));
 
       DB.prepare(
         `INSERT INTO slow_queries (label, sql_snippet, duration_ms) VALUES (?, ?, ?)`
-      ).bind(label, sql.slice(0, 200), duration).run().catch(() => {});
+      ).bind(label, sql.slice(0, 200), duration).run().catch(swallow('worker:utils:slow-query-logger'));
     }
 
     return result.results || [];

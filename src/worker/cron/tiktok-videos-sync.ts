@@ -15,6 +15,7 @@
 
 import type { Env } from '../types/env'
 
+import { swallow } from '../utils/swallow';
 const TIKTOK_VIDEO_LIST_URL = 'https://open.tiktokapis.com/v2/video/list/'
 
 interface SellerLink {
@@ -68,7 +69,7 @@ export async function handleTikTokVideosSync(env: Env): Promise<{
     if (link.token_expires_at && new Date(link.token_expires_at) < now) {
       await DB.prepare(
         "UPDATE seller_platform_links SET status = 'expired' WHERE seller_id = ? AND platform = 'tiktok'"
-      ).bind(link.seller_id).run().catch(() => {})
+      ).bind(link.seller_id).run().catch(swallow('worker:cron:tiktok-videos-sync'))
       expired++
       continue
     }
@@ -88,7 +89,7 @@ export async function handleTikTokVideosSync(env: Env): Promise<{
       if (res.status === 401 || res.status === 403) {
         await DB.prepare(
           "UPDATE seller_platform_links SET status = 'expired', sync_error = ? WHERE seller_id = ? AND platform = 'tiktok'"
-        ).bind(`HTTP ${res.status}`, link.seller_id).run().catch(() => {})
+        ).bind(`HTTP ${res.status}`, link.seller_id).run().catch(swallow('worker:cron:tiktok-videos-sync'))
         expired++
         continue
       }
@@ -134,7 +135,7 @@ export async function handleTikTokVideosSync(env: Env): Promise<{
 
       await DB.prepare(
         "UPDATE seller_platform_links SET last_synced_at = datetime('now'), sync_error = NULL WHERE seller_id = ? AND platform = 'tiktok'"
-      ).bind(link.seller_id).run().catch(() => {})
+      ).bind(link.seller_id).run().catch(swallow('worker:cron:tiktok-videos-sync'))
       sellersSynced++
     } catch (e) {
       errors++

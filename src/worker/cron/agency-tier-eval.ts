@@ -15,6 +15,7 @@
 
 import type { Env } from '../types/env'
 
+import { swallow } from '../utils/swallow';
 const SENIOR_THRESHOLD = 5_000_000 // 500만원 (TikTok 의 500만 다이아 기준 채택)
 const JUNIOR_AGE_DAYS = 90         // 가입 90일 (TikTok 6개월의 한국 적응)
 
@@ -116,7 +117,7 @@ export async function handleAgencyTierEval(env: Env): Promise<{
         agency.id,
         `${direction} ${newTier.toUpperCase()} 등급으로 변경`,
         `전월 매출 ${lastMonthRevenue.toLocaleString()}원 / 가입 ${ageDays}일 기준`,
-      ).run().catch(() => {})
+      ).run().catch(swallow('worker:cron:agency-tier-eval'))
 
       changed++
       console.log(`[cron:agency-tier-eval] agency=${agency.id} ${agency.tier} → ${newTier} (revenue=${lastMonthRevenue}, age=${ageDays}d)`)

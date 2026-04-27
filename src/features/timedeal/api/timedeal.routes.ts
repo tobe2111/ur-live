@@ -14,6 +14,7 @@ import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { executeRun, queryFirst } from '@/worker/utils/database';
 
+import { swallow } from '@/worker/utils/swallow';
 const timedealRoutes = new Hono<{ Bindings: Env }>();
 
 timedealRoutes.use('*', cors({
@@ -298,7 +299,7 @@ timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, product_id INTEGER NOT NULL,
       quantity INTEGER DEFAULT 1, price_snapshot INTEGER, option_id INTEGER, option_value TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, product_id, option_value)
-    )`).run().catch(() => {});
+    )`).run().catch(swallow('timedeal:api:timedeal'));
 
     await executeRun(
       DB,

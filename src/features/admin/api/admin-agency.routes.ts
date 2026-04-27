@@ -16,6 +16,7 @@ import { hashPassword } from '@/lib/password'
 import { requireAdmin } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 
+import { swallow } from '@/worker/utils/swallow';
 const app = new Hono<{ Bindings: Env }>()
 
 // 🛡️ 2026-04-22: 명시적 requireAdmin 적용 (depth-in-defense).
@@ -36,7 +37,7 @@ async function ensureAgencyTables(DB: D1Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {})
+  `).run().catch(swallow('admin:api:admin-agency'))
 
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agency_sellers (
@@ -46,7 +47,7 @@ async function ensureAgencyTables(DB: D1Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(agency_id, seller_id)
     )
-  `).run().catch(() => {})
+  `).run().catch(swallow('admin:api:admin-agency'))
 }
 
 // ── GET /agencies ─────────────────────────────────────────────
@@ -130,7 +131,7 @@ app.patch('/:id', async (c) => {
   }
 
   // commission_rate 컬럼 보장
-  await c.env.DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(() => {})
+  await c.env.DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(swallow('admin:api:admin-agency'))
 
   if (tier !== undefined && !['new', 'junior', 'senior'].includes(tier)) {
     return c.json({ success: false, error: 'tier must be new/junior/senior' }, 400)

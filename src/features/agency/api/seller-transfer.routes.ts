@@ -24,6 +24,7 @@ import { verify } from 'hono/jwt';
 import { parseSessionCookie } from '@/worker/utils/session';
 import type { Env } from '@/worker/types/env';
 
+import { swallow } from '@/worker/utils/swallow';
 type AgencyCtx = {
   Bindings: Env;
   Variables: { agency: { id: number; email?: string } };
@@ -80,7 +81,7 @@ async function ensureTable(DB: D1Database) {
       rejection_reason TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('agency:api:seller-transfer'));
 }
 
 // POST / — 신청 (from = 본인 에이전시)
@@ -130,7 +131,7 @@ app.post('/', async (c) => {
     `🔄 셀러 이전 신청 도착`,
     `셀러 #${body.seller_id} 이전 신청이 들어왔습니다. 검토 후 응답해주세요.`,
     `/agency/transfers/${result.meta.last_row_id}`
-  ).run().catch(() => {});
+  ).run().catch(swallow('agency:api:seller-transfer'));
 
   return c.json({ success: true, data: { id: result.meta.last_row_id, status: 'pending' } });
 });
@@ -243,7 +244,7 @@ app.post('/:id/seller-approve', async (c) => {
   `).bind(
     t.from_agency_id, `셀러 이전 완료`, `셀러 #${t.seller_id} 가 다른 에이전시로 이전됐습니다.`,
     t.to_agency_id, `셀러 영입 완료`, `셀러 #${t.seller_id} 가 본 에이전시에 합류했습니다.`,
-  ).run().catch(() => {});
+  ).run().catch(swallow('agency:api:seller-transfer'));
 
   return c.json({ success: true, data: { status: 'completed' } });
 });
@@ -257,7 +258,7 @@ app.post('/:id/cancel', async (c) => {
     UPDATE seller_transfer_requests
     SET status = 'cancelled'
     WHERE id = ? AND from_agency_id = ? AND status = 'pending'
-  `).bind(id, agency.id).run().catch(() => {});
+  `).bind(id, agency.id).run().catch(swallow('agency:api:seller-transfer'));
 
   return c.json({ success: true });
 });

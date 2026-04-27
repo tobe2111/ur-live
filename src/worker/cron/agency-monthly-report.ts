@@ -15,6 +15,7 @@
 
 import type { Env } from '../types/env';
 
+import { swallow } from '../utils/swallow';
 interface AgencyRow {
   id: number;
   name: string;
@@ -222,7 +223,7 @@ export async function handleAgencyMonthlyReport(env: Env): Promise<void> {
         `📊 ${monthStr} 월간 리포트 도착`,
         `전월 매출: ${((r1?.rev ?? 0) / 10_000).toFixed(0)}만 딜 · 활성 셀러: ${activeRow?.cnt ?? 0}명`,
         `/agency`
-      ).run().catch(() => {});
+      ).run().catch(swallow('worker:cron:agency-monthly-report'));
 
       sent++;
     } catch (err) {

@@ -16,6 +16,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
 import { notifyUser } from '@/lib/notifications';
 
+import { swallow } from '@/worker/utils/swallow';
 const referralRoutes = new Hono<{ Bindings: Env }>();
 
 referralRoutes.use('*', cors({
@@ -279,14 +280,14 @@ referralRoutes.post('/join/:code', requireAuth(), async (c) => {
         const message = `"${productName}" 공동구매가 목표 인원에 도달했습니다! 지금 바로 결제하세요.`;
         const link = `/referral/${group.invite_code}`;
         for (const m of members) {
-          notifyUser(DB, m.user_id, 'group_buy_achieved', title, message, link).catch(() => {});
+          notifyUser(DB, m.user_id, 'group_buy_achieved', title, message, link).catch(swallow('referral:api:referral'));
         }
       } else if (tierNewlyUnlocked && unlocked) {
         const title = `🎯 ${unlocked.count}명 달성!`;
         const message = `지금 ${unlocked.discount}% 할인이 적용됐어요!`;
         const link = `/referral/${group.invite_code}`;
         for (const m of members) {
-          notifyUser(DB, m.user_id, 'group_buy_tier_unlocked', title, message, link).catch(() => {});
+          notifyUser(DB, m.user_id, 'group_buy_tier_unlocked', title, message, link).catch(swallow('referral:api:referral'));
         }
       }
     }

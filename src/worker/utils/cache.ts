@@ -9,6 +9,7 @@
 
 import type { KVNamespace } from '@cloudflare/workers-types';
 
+import { swallow } from './swallow';
 export interface CacheOptions {
   /** Fresh TTL in seconds. Default 300 (5 min). */
   ttl?: number;
@@ -126,7 +127,7 @@ export async function cacheInvalidate(
   if (!KV) return;
   const arr = Array.isArray(keys) ? keys : [keys];
   await Promise.all(
-    arr.map((k) => KV.delete(`${namespace}:${k}`).catch(() => {}))
+    arr.map((k) => KV.delete(`${namespace}:${k}`).catch(swallow('worker:utils:cache')))
   );
 }
 

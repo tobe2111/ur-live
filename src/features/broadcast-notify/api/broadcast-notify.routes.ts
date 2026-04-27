@@ -14,6 +14,7 @@ import { requireAuth, getCurrentUser, optionalAuth } from '@/worker/middleware/a
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 
+import { swallow } from '@/worker/utils/swallow';
 const broadcastNotifyRoutes = new Hono<{ Bindings: Env }>();
 
 broadcastNotifyRoutes.use('*', cors({
@@ -155,7 +156,7 @@ broadcastNotifyRoutes.post('/send/:streamId', requireAuth(), async (c) => {
             title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )
-        `).run().catch(() => {});
+        `).run().catch(swallow('broadcast-notify:api:broadcast-notify'));
 
         await DB.prepare(`
           INSERT INTO user_notifications (user_id, type, title, message, link)
@@ -188,7 +189,7 @@ broadcastNotifyRoutes.post('/send/:streamId', requireAuth(), async (c) => {
             recvname_1: sub.user_name || '고객',
             subject_1: '라이브 방송 시작 알림',
             message_1: `${seller?.name || '셀러'}님의 라이브 방송이 시작되었습니다!\n\n📺 ${stream.title}\n\n👉 지금 바로 시청하기\nhttps://live.ur-team.com/live/${stream.id}`,
-          }).catch(() => {});
+          }).catch(swallow('broadcast-notify:api:broadcast-notify'));
         }
       } catch {}
     }

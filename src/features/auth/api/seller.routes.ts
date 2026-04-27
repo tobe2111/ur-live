@@ -23,6 +23,7 @@ import {
 import { maskEmail } from '@/lib/mask';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
 
+import { swallow } from '@/worker/utils/swallow';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -45,10 +46,10 @@ async function ensureAuthRefreshTokensTable(DB: D1Database) {
       expires_at TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('auth:api:seller'));
   await DB.prepare(
     'CREATE INDEX IF NOT EXISTS idx_auth_refresh_tokens_user ON auth_refresh_tokens(user_type, user_id)'
-  ).run().catch(() => {});
+  ).run().catch(swallow('auth:api:seller'));
 }
 
 // ── 비밀번호 재설정 토큰 테이블 보장 ─────────────────────────
@@ -62,10 +63,10 @@ async function ensurePasswordResetTable(DB: D1Database) {
       expires_at DATETIME NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('auth:api:seller'));
   await DB.prepare(
     'CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)'
-  ).run().catch(() => {});
+  ).run().catch(swallow('auth:api:seller'));
 }
 
 /** 32자 hex 토큰 생성 (Web Crypto) */
@@ -185,7 +186,7 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     if (!seller) {
       if (import.meta.env.DEV) console.warn('[Seller Login] Seller not found:', maskEmail(email));
       // 🛡️ 2026-04-22: 타이밍 공격 방어 — 존재하지 않는 계정에도 verifyPassword 실행
-      await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(() => {});
+      await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(swallow('auth:api:seller'));
       return c.json<AuthResponse>({
         success: false,
         error: '이메일 또는 비밀번호가 올바르지 않습니다.'
@@ -675,7 +676,7 @@ sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_p
     // 만료 체크
     const expiresAt = new Date(row.expires_at).getTime();
     if (isNaN(expiresAt) || Date.now() > expiresAt) {
-      await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(() => {});
+      await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(swallow('auth:api:seller'));
       return c.json<AuthResponse>({
         success: false,
         error: '토큰이 만료되었습니다. 비밀번호 재설정을 다시 요청해주세요.',
@@ -690,13 +691,13 @@ sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_p
     `).bind(hash, row.user_id).run();
 
     // 토큰 삭제 (단일 사용)
-    await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(() => {});
+    await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(swallow('auth:api:seller'));
 
     // 🛡️ 2026-04-22: 비번 변경 시 기존 refresh token 전부 revoke.
     // 탈취된 토큰 유지 문제 방지 — 비번을 바꿨는데도 공격자가 기존 토큰으로 접근 가능하던 버그.
     await DB.prepare(
       "DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?"
-    ).bind(row.user_id).run().catch(() => {});
+    ).bind(row.user_id).run().catch(swallow('auth:api:seller'));
 
     return c.json({
       success: true,

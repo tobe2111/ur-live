@@ -15,6 +15,7 @@
 
 import type { Env } from '../types/env';
 
+import { swallow } from '../utils/swallow';
 interface SellerRow {
   id: number;
   business_name: string | null;
@@ -86,7 +87,7 @@ export async function handleSellerDailyReport(env: Env): Promise<void> {
   }
 
   // sellers.daily_report_enabled 컬럼 보장 (idempotent)
-  await DB.prepare(`ALTER TABLE sellers ADD COLUMN daily_report_enabled INTEGER DEFAULT 0`).run().catch(() => {});
+  await DB.prepare(`ALTER TABLE sellers ADD COLUMN daily_report_enabled INTEGER DEFAULT 0`).run().catch(swallow('worker:cron:seller-daily-report'));
 
   // 수신 활성화한 셀러만
   const sellers = await DB.prepare(`

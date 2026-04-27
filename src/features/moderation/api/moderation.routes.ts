@@ -15,6 +15,7 @@ import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
 import { moderateChat } from '@/shared/utils/chat-moderation';
 
+import { swallow } from '@/worker/utils/swallow';
 const app = new Hono<{ Bindings: Env }>();
 
 // POST /check — 채팅 메시지 사전 검사
@@ -39,7 +40,7 @@ app.post('/check', async (c) => {
           matched_patterns TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
-      `).run().catch(() => {});
+      `).run().catch(swallow('moderation:api:moderation'));
 
       await c.env.DB.prepare(`
         INSERT INTO moderation_log (message_excerpt, action, category, matched_patterns)
@@ -49,7 +50,7 @@ app.post('/check', async (c) => {
         result.action,
         result.category,
         JSON.stringify(result.matched_patterns)
-      ).run().catch(() => {});
+      ).run().catch(swallow('moderation:api:moderation'));
     } catch { /* skip */ }
   }
 

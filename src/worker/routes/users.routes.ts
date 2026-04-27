@@ -12,6 +12,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { requireAuth, getCurrentUser, optionalAuth } from '../middleware/auth';
 
+import { swallow } from '../utils/swallow';
 export const usersRouter = new Hono<{ Bindings: Env }>();
 
 // ── GET /api/users/role ───────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ usersRouter.get('/role', optionalAuth(), async (c) => {
 
 // ── POST /api/users/init ──────────────────────────────────────────────────────
 // Firebase 회원가입 후 DB 사용자 레코드 초기화 (서명 검증 포함)
-// fire-and-forget 방식으로 호출됨 (.catch(() => {}))
+// fire-and-forget 방식으로 호출됨 (.catch(swallow('worker:routes:users')))
 usersRouter.post('/init', requireAuth(), async (c) => {
   try {
     const authUser = getCurrentUser(c);

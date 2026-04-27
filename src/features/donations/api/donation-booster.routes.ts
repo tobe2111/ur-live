@@ -22,6 +22,7 @@ import { Hono, type Next } from 'hono';
 import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
 
+import { swallow } from '@/worker/utils/swallow';
 type SellerCtx = {
   Bindings: Env;
   Variables: { seller: { id: number; email: string } };
@@ -68,7 +69,7 @@ async function ensureTable(DB: D1Database) {
       total_matched_amount INTEGER DEFAULT 0,
       status TEXT DEFAULT 'active'
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('donations:api:donation-booster'));
 }
 
 // POST / — 부스터 시작
@@ -133,7 +134,7 @@ app.post('/:id/cancel', async (c) => {
     UPDATE donation_boosters
     SET status = 'cancelled', ends_at = datetime('now')
     WHERE id = ? AND seller_id = ? AND status = 'active'
-  `).bind(id, seller.id).run().catch(() => {});
+  `).bind(id, seller.id).run().catch(swallow('donations:api:donation-booster'));
 
   return c.json({ success: true });
 });
@@ -177,7 +178,7 @@ export async function applyDonationBooster(
       SET total_donation_amount = total_donation_amount + ?,
           total_matched_amount = total_matched_amount + ?
       WHERE id = ?
-    `).bind(donationAmount, matched, row.id).run().catch(() => {});
+    `).bind(donationAmount, matched, row.id).run().catch(swallow('donations:api:donation-booster'));
 
     return { matched };
   } catch {

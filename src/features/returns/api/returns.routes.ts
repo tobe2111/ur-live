@@ -23,6 +23,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { tossCancelPayment } from '@/worker/utils/toss-payments';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
+import { swallow } from '@/worker/utils/swallow';
 const returnsRoutes = new Hono<{ Bindings: Env }>();
 
 returnsRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
@@ -155,9 +156,9 @@ returnsRoutes.post('/request', requireAuth(), async (c) => {
   ).run();
 
   // 5. 반품 신청 → 어드민 + 셀러 알림
-  createDashboardNotification(DB, 'admin', null, 'return_request', '반품 신청', `주문: ${order.order_number}`, '/admin/orders').catch(() => {});
+  createDashboardNotification(DB, 'admin', null, 'return_request', '반품 신청', `주문: ${order.order_number}`, '/admin/orders').catch(swallow('returns:api:returns'));
   if (order.seller_id) {
-    createDashboardNotification(DB, 'seller', String(order.seller_id), 'return_request', '반품 신청 접수', `주문: ${order.order_number}`, '/seller/orders').catch(() => {});
+    createDashboardNotification(DB, 'seller', String(order.seller_id), 'return_request', '반품 신청 접수', `주문: ${order.order_number}`, '/seller/orders').catch(swallow('returns:api:returns'));
   }
 
   return c.json({
@@ -505,7 +506,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
         )
       );
       await DB.prepare("UPDATE order_items SET status = 'CANCELLED' WHERE order_id = ?")
-        .bind(returnRecord.order_id).run().catch(() => {});
+        .bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
     }
   } catch (err) {
     console.error('재고 복구 실패 (계속 진행):', err);
@@ -527,12 +528,12 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
       for (const row of commissions.results) {
         await DB.prepare(
           "UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?"
-        ).bind(row.commission_amount, row.beneficiary_id).run().catch(() => {});
+        ).bind(row.commission_amount, row.beneficiary_id).run().catch(swallow('returns:api:returns'));
       }
 
       await DB.prepare(
         "UPDATE referral_commissions SET status = 'withdrawn' WHERE order_id = ? AND status = 'granted'"
-      ).bind(returnRecord.order_id).run().catch(() => {});
+      ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
     }
   } catch { /* ledger may not exist */ }
 
@@ -545,11 +546,11 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
       for (const row of aff.results) {
         await DB.prepare(
           "UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?"
-        ).bind(row.commission, row.referrer_id).run().catch(() => {});
+        ).bind(row.commission, row.referrer_id).run().catch(swallow('returns:api:returns'));
       }
       await DB.prepare(
         "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND status = 'granted'"
-      ).bind(returnRecord.order_id).run().catch(() => {});
+      ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
     }
   } catch { /* table may not exist */ }
 
@@ -572,7 +573,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
           reason TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
-      `).run().catch(() => {});
+      `).run().catch(swallow('returns:api:returns'));
 
       await DB.prepare(
         "INSERT INTO settlement_adjustments (settlement_id, order_id, amount, reason) VALUES (?, ?, ?, ?)"
@@ -581,7 +582,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
         returnRecord.order_id,
         -(returnRecord.refund_amount || 0),
         'refund'
-      ).run().catch(() => {});
+      ).run().catch(swallow('returns:api:returns'));
 
       try {
         const { sendAlert } = await import('../../../worker/utils/alerts');
@@ -602,7 +603,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   // 6. 소비자에게 환불 완료 알림
   try {
     const { notifyUser } = await import('../../../lib/notifications');
-    notifyUser(DB, returnRecord.user_id, 'refund_complete', '💰 환불 완료', `${returnRecord.refund_amount?.toLocaleString()}원이 환불되었습니다`, '/my-orders').catch(() => {});
+    notifyUser(DB, returnRecord.user_id, 'refund_complete', '💰 환불 완료', `${returnRecord.refund_amount?.toLocaleString()}원이 환불되었습니다`, '/my-orders').catch(swallow('returns:api:returns'));
   } catch {}
 
   return c.json({ success: true, message: '환불이 완료되었습니다' });

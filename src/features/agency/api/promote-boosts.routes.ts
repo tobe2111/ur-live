@@ -20,6 +20,7 @@ import { parseSessionCookie } from '@/worker/utils/session';
 import type { Env } from '@/worker/types/env';
 import { requireAgencyPermission } from './agency-role-guard';
 
+import { swallow } from '@/worker/utils/swallow';
 type AgencyCtx = { Bindings: Env; Variables: { agency: { id: number; email?: string } } };
 type SellerCtx = { Bindings: Env; Variables: { seller: { id: number; email: string } } };
 
@@ -92,7 +93,7 @@ async function ensureTable(DB: D1Database) {
       boost_ends_at DATETIME,
       note TEXT
     )
-  `).run().catch(() => {});
+  `).run().catch(swallow('agency:api:promote-boosts'));
 }
 
 // ─── 에이전시: 발급/조회 ────────────────────────────────
@@ -133,7 +134,7 @@ agencyApp.post('/', requireAgencyPermission('coupon'), async (c) => {
     String(body.seller_id),
     `🚀 노출 부스팅 쿠폰 도착 (${body.tier.toUpperCase()})`,
     `라이브 시작 시 ${durationHours}시간 동안 메인 피드 상단 노출! 30일 내 사용하세요.`,
-  ).run().catch(() => {});
+  ).run().catch(swallow('agency:api:promote-boosts'));
 
   return c.json({ success: true, data: { id: r.meta.last_row_id, tier: body.tier, duration_hours: durationHours, expires_at: expiresAt } });
 });
@@ -193,7 +194,7 @@ sellerApp.post('/:id/activate', async (c) => {
   if (coupon.seller_id !== seller.id) return c.json({ success: false, error: '본인 쿠폰이 아님' }, 403);
   if (coupon.status !== 'unused') return c.json({ success: false, error: '이미 사용/만료됨' }, 409);
   if (new Date(coupon.expires_at) < new Date()) {
-    await c.env.DB.prepare(`UPDATE promote_boost_coupons SET status = 'expired' WHERE id = ?`).bind(id).run().catch(() => {});
+    await c.env.DB.prepare(`UPDATE promote_boost_coupons SET status = 'expired' WHERE id = ?`).bind(id).run().catch(swallow('agency:api:promote-boosts'));
     return c.json({ success: false, error: '쿠폰 만료됨' }, 410);
   }
 
