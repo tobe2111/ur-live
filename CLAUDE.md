@@ -167,9 +167,11 @@ bash scripts/quality-check.sh
 
 ### 새 엔드포인트 체크리스트
 1. **인증**: `requireAuth()` / `requireSeller()` / `requireAdmin()` / `requireAgency()` 필수
-2. **권한 검증**: 
+2. **권한 검증** (🚨 IDOR 방지 — 2026-04-27 사고 후 강화):
    - POST/PATCH/DELETE는 본인/본인 소속 리소스만 수정 가능
    - `resource.seller_id === authenticatedSellerId` 같은 소유권 체크
+   - **body/query 의 user_id/seller_id 를 인증 없이 신뢰하지 말 것**
+   - 토큰 발급/세션 생성 endpoint 는 호출자 본인 검증 (session cookie OR 외부 ID token verify) 필수
 3. **입력 검증**:
    - 숫자: `Number.isFinite()`, 범위 체크 (가격 0~1억, 재고 0~100만 등)
    - 문자열: 길이 제한
@@ -184,6 +186,9 @@ bash scripts/quality-check.sh
 7. **에러 처리**:
    - try-catch 래핑
    - 조용히 삼키지 말고 DEV 모드에서 로깅
+8. **i18n fallback**:
+   - `t('X') || '한글'` 사용 금지 (i18next 가 missing key 시 key 자체 반환 → fallback 미동작)
+   - 대체: `t('X', { defaultValue: '한글' })`
 
 ### 절대 하지 말 것
 - ❌ `debug-*` 엔드포인트 프로덕션 배포

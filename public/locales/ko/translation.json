@@ -140,7 +140,8 @@
     "settingChangeFailed": "설정 변경에 실패했습니다",
     "disconnectFailed": "연동 해제에 실패했습니다.",
     "copyFailed": "복사에 실패했습니다.",
-    "home": "홈으로"
+    "home": "홈으로",
+    "dismiss": "닫기"
   },
   "auth": {
     "email": "이메일",
@@ -290,7 +291,8 @@
       "replyPlaceholder": "답글 작성...",
       "replySubmitted": "답글이 등록되었습니다",
       "replyFailed": "답글 등록 실패",
-      "writeReply": "답글 작성"
+      "writeReply": "답글 작성",
+      "subtitle": "구매자 리뷰 / 답변"
     },
     "coupons": {
       "title": "쿠폰 관리",
@@ -314,7 +316,8 @@
       "percentOff": "{{value}}% 할인",
       "fixedOff": "{{value}}원 할인",
       "minOrder": "{{amount}}원 이상",
-      "usage": "사용 {{used}}/{{total}}"
+      "usage": "사용 {{used}}/{{total}}",
+      "subtitle": "쿠폰 발급 및 사용 이력"
     },
     "workspace": "워크스페이스",
     "totalRevenue": "총 매출",
@@ -1506,7 +1509,8 @@
       "originalPriceShort": "정가",
       "discount": "할인",
       "targetCount": "목표 {{count}}명",
-      "voucherSuffix": "식사권"
+      "voucherSuffix": "식사권",
+      "subtitle": "식사권 / 공동구매 등록"
     },
     "analyticsTitle": "매출 분석",
     "revenueChart": "매출 차트",
@@ -1640,7 +1644,29 @@
     "hidePassword": "비밀번호 숨기기",
     "showPassword": "비밀번호 보기",
     "viewPublicProfile": "공개 프로필 보기",
-    "agencyInviteJoin": "에이전시 초대를 통한 가입"
+    "agencyInviteJoin": "에이전시 초대를 통한 가입",
+    "analyticsSubtitle": "매출, 고객, 상품 퍼포먼스 분석",
+    "createStreamSubtitle": "새 라이브 방송 만들기",
+    "donationsSubtitle": "후원 수신 및 정산 내역",
+    "groupBuySubtitle": "공동구매 / 식사권 관리",
+    "inventorySubtitle": "재고 관리 · 바코드 스캔 · 입출고 이력",
+    "liveBroadcastSubtitle": "실시간 방송 시작 / 종료 / 통계",
+    "profileEditSubtitle": "프로필 사진 / 소개 / SNS 링크 편집",
+    "settlementApprovedEstimate": "승인 후 예상 정산액",
+    "settlementEstimate": "예상 정산액",
+    "shortsSubtitle": "쇼츠 영상 등록 / 관리",
+    "streamEditSubtitle": "방송 정보 수정",
+    "supplySubtitle": "공급 상품 관리",
+    "youtubeGrowthSubtitle": "유튜브 채널 성장 분석",
+    "onboarding": {
+      "title": "🚀 시작 가이드",
+      "subtitle": "아래 단계를 완료하면 판매를 시작할 수 있어요",
+      "addProduct": "첫 상품 등록",
+      "bankAccount": "정산 계좌 등록",
+      "firstLive": "첫 라이브 방송",
+      "firstOrder": "첫 주문 받기",
+      "completed": "완료"
+    }
   },
   "admin": {
     "login": {
@@ -1720,7 +1746,8 @@
       "agency": "에이전시 관리",
       "cafe24": "Cafe24 연동",
       "alimtalk": "브랜드메시지 관리",
-      "sampleRequests": "샘플 신청 관리"
+      "sampleRequests": "샘플 신청 관리",
+      "agencyCreatorApproval": "에이전시·크리에이터 승인"
     }
   },
   "agency": {
@@ -1857,7 +1884,10 @@
       "notices": "셀러 공지",
       "guide": "운영 가이드",
       "profile": "프로필 설정"
-    }
+    },
+    "guide": "운영 가이드",
+    "guideSubtitle": "에이전시 운영 핵심 가이드",
+    "guideTitle": "에이전시 가이드"
   },
   "nav": {
     "home": "홈",

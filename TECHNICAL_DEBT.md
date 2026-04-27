@@ -8,6 +8,25 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 🚨 2026-04-27 (저녁) Critical 보안 패치
+
+### `/api/auth/id-token` IDOR — Account Takeover 가능
+- **위치**: `src/worker/routes/auth-token.routes.ts:48`
+- **유형**: Authentication Bypass (호출자 검증 누락)
+- **노출**: 누구나 다른 사용자의 `firebase_uid` 또는 숫자 `id` 만 알면 그 사용자의 backend JWT 발급 가능
+- **수정**: 두 가지 인증 방식 중 하나 통과 필수 — (A) `ur_session` 쿠키 OR (B) Firebase ID token verify
+- **상태**: ✅ 수정 + 배포 완료 (commit `8cb3116`)
+
+### Defense-in-depth audit 결과
+- 다른 mutation/token-issue 엔드포인트 광범위 점검 → **추가 IDOR 0건**
+- agency/admin 라우트는 모두 ownership 검증 (`WHERE agency_id = ? AND seller_id = ?`)
+- `/api/streams/:id/current-product` (e1c3b99) 및 `viewer-count` 도 sound
+- `chat-messages` 의 anonymous user_id 는 display 용 (authorization 미사용 → OK)
+
+### 권장 후속 액션
+- ⚠️ JWT_SECRET 회전 검토 (취약 기간 동안 유출 가능성 시)
+- session cookie 재발급은 자동 (다음 로그인 시 갱신)
+
 ## 📅 2026-04-27 (오후) 정리 세션 — 변경사항
 
 ### ✅ 해결됨

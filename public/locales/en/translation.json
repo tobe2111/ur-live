@@ -140,7 +140,8 @@
     "settingChangeFailed": "Failed to change setting",
     "disconnectFailed": "Failed to disconnect.",
     "copyFailed": "Failed to copy.",
-    "home": "Home"
+    "home": "Home",
+    "dismiss": "Close"
   },
   "auth": {
     "email": "Email",
@@ -284,7 +285,8 @@
       "replyPlaceholder": "Write a reply...",
       "replySubmitted": "Reply has been submitted",
       "replyFailed": "Failed to submit reply",
-      "writeReply": "Write Reply"
+      "writeReply": "Write Reply",
+      "subtitle": "Buyer reviews / replies"
     },
     "coupons": {
       "title": "Coupon Management",
@@ -308,7 +310,8 @@
       "percentOff": "{{value}}% off",
       "fixedOff": "{{value}} KRW off",
       "minOrder": "{{amount}} KRW or more",
-      "usage": "Used {{used}}/{{total}}"
+      "usage": "Used {{used}}/{{total}}",
+      "subtitle": "Coupon issuance and usage history"
     },
     "workspace": "Workspace",
     "totalRevenue": "Total Revenue",
@@ -1501,7 +1504,8 @@
       "originalPriceShort": "Original",
       "discount": "off",
       "targetCount": "Target {{count}} people",
-      "voucherSuffix": "Meal Voucher"
+      "voucherSuffix": "Meal Voucher",
+      "subtitle": "Register meal voucher / group buy"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",
@@ -1640,6 +1644,28 @@
     "guide": {
       "subtitle": "How to run successful live commerce on UrDeal",
       "title": "Seller Operations Guide"
+    },
+    "analyticsSubtitle": "Sales, customer, product performance analytics",
+    "createStreamSubtitle": "Create a new live stream",
+    "donationsSubtitle": "Donation receipts and settlements",
+    "groupBuySubtitle": "Group buy / meal voucher management",
+    "inventorySubtitle": "Inventory · Barcode scan · Stock history",
+    "liveBroadcastSubtitle": "Live broadcast start / end / stats",
+    "profileEditSubtitle": "Edit profile photo / bio / SNS links",
+    "settlementApprovedEstimate": "Estimated settlement after approval",
+    "settlementEstimate": "Estimated settlement",
+    "shortsSubtitle": "Register / manage Shorts videos",
+    "streamEditSubtitle": "Edit broadcast info",
+    "supplySubtitle": "Manage supply products",
+    "youtubeGrowthSubtitle": "YouTube channel growth analytics",
+    "onboarding": {
+      "title": "🚀 Getting Started",
+      "subtitle": "Complete the steps below to start selling",
+      "addProduct": "Register first product",
+      "bankAccount": "Register settlement account",
+      "firstLive": "First live broadcast",
+      "firstOrder": "First order",
+      "completed": "completed"
     }
   },
   "admin": {
@@ -1720,7 +1746,8 @@
       "agency": "Agencies",
       "cafe24": "Cafe24 Integration",
       "alimtalk": "Brand Messages",
-      "sampleRequests": "Sample Requests"
+      "sampleRequests": "Sample Requests",
+      "agencyCreatorApproval": "Agency / Creator Approval"
     }
   },
   "agency": {
@@ -1857,7 +1884,10 @@
       "notices": "Seller Notices",
       "guide": "Operations Guide",
       "profile": "Profile Settings"
-    }
+    },
+    "guide": "Guide",
+    "guideSubtitle": "Core agency operations guide",
+    "guideTitle": "Agency Guide"
   },
   "nav": {
     "home": "Home",
