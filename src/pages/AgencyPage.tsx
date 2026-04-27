@@ -613,17 +613,17 @@ export default function AgencyPage() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              📊 핵심 지표 6 ({kpiData.period_days}일 기준)
+              📊 핵심 지표 6 ({kpiData.period_days}일 기준 · 참고용)
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             {[
-              { label: '다이아몬드', value: `${(kpiData.diamond_total / 10_000).toFixed(0)}만`, sub: '매출+후원', color: 'bg-purple-500' },
-              { label: '라이브 평가', value: `${kpiData.live_rate}%`, sub: '진행 셀러 비율', color: 'bg-blue-500' },
-              { label: '유효 라이브', value: `${kpiData.effective_live_rate}%`, sub: '1시간↑ 셀러', color: 'bg-indigo-500' },
-              { label: '활성 크리에이터', value: String(kpiData.active_creators), sub: '진행 셀러 수', color: 'bg-emerald-500' },
-              { label: '유효 활성', value: String(kpiData.effective_active_creators), sub: '1시간↑ 진행', color: 'bg-teal-500' },
-              { label: '오늘 영입', value: String(kpiData.new_creators_today), sub: '신규 셀러', color: 'bg-orange-500' },
+              { label: '총 매출(딜)', value: `${(kpiData.diamond_total / 10_000).toFixed(1)}만`, sub: '매출+후원', color: 'bg-purple-500' },
+              { label: '라이브 진행률', value: `${kpiData.live_rate}%`, sub: '진행 셀러 비율', color: 'bg-blue-500' },
+              { label: '유효 라이브 진행률', value: `${kpiData.effective_live_rate}%`, sub: '30분↑ 셀러', color: 'bg-indigo-500' },
+              { label: '활성 셀러', value: String(kpiData.active_creators), sub: '진행 셀러 수', color: 'bg-emerald-500' },
+              { label: '유효 활성 셀러', value: String(kpiData.effective_active_creators), sub: '30분↑ 진행', color: 'bg-teal-500' },
+              { label: '신규 셀러', value: String(kpiData.new_creators_today), sub: '오늘 영입', color: 'bg-orange-500' },
             ].map((kpi) => (
               <div key={kpi.label} className="rounded-xl p-3 bg-white border border-gray-200">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">{kpi.label}</p>

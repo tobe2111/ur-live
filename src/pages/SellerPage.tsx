@@ -13,6 +13,7 @@ import {
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import SellerOnboardingWidget from '@/components/seller/SellerOnboardingWidget'
 
 // recharts lazy load (377KB → 대시보드 진입 시 차트 영역만 지연 로드)
 const LazyChart = lazy(() => import('recharts').then(m => ({
@@ -562,6 +563,9 @@ export default function SellerPage() {
 
         {/* 🛡️ 2026-04-23 배치 170: 셀러 온보딩 가이드 (신규 셀러만 표시) */}
         <OnboardingChecklist stats={stats} hasBank={hasBank} />
+
+        {/* 🛡️ 2026-04-27 Phase 1-5: 7일 부트캠프 위젯 */}
+        <SellerOnboardingWidget />
 
           {/* ── 월간 매출 목표 진행률 ── */}
           <div className="bg-white rounded-2xl p-4 border border-[#E8EAEE]">
