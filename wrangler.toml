@@ -45,6 +45,20 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 # id = "YOUR_SESSION_KV_ID"
 
 # ============================================================
+# R2 Buckets (D1 백업 + 정산 송장 저장)
+# ============================================================
+# 활성화: 1) Cloudflare Dashboard → R2 → bucket 'ur-live-backups' 생성
+#         2) 아래 3줄 주석 해제 후 wrangler 재배포
+#         3) 자동 동작:
+#            - 매주 일요일 20:00 UTC: D1 dump → backups/d1-YYYY-MM-DD.sql
+#            - 매월 1일 09:00 KST: 정산 송장 → invoices/YYYY-MM/INV-*.html
+#         4) (선택) R2 lifecycle: 30일 자동 삭제 설정
+#
+# [[r2_buckets]]
+# binding = "BACKUP_BUCKET"
+# bucket_name = "ur-live-backups"
+
+# ============================================================
 # Durable Objects (for live streaming)
 # One DO instance per stream — handles WebSocket chat + product/viewer broadcasts
 # ============================================================
