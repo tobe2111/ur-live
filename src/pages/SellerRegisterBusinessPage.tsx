@@ -12,12 +12,14 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, Store, CheckCircle2, MessageCircle } from 'lucide-react'
 
 export default function SellerRegisterBusinessPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const fromKakao = searchParams.get('from') === 'kakao'
@@ -100,18 +102,18 @@ export default function SellerRegisterBusinessPage() {
           </div>
           <div>
             <h2 className="text-lg font-bold text-gray-900">
-              {existingStatus === 'active' ? '이미 셀러 권한이 활성화됨' : '승인 대기 중'}
+              {existingStatus === 'active' ? t('sellerRegisterBusiness.alreadyActive') : t('sellerRegisterBusiness.statusPending')}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
               {existingStatus === 'active'
-                ? '셀러 대시보드에서 방송을 시작하세요'
-                : '관리자 승인 후 셀러 기능을 이용할 수 있어요'}
+                ? t('sellerRegisterBusiness.activeDesc')
+                : t('sellerRegisterBusiness.pendingDesc')}
             </p>
           </div>
           <button
             onClick={() => navigate(existingStatus === 'active' ? '/seller' : '/')}
             className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm">
-            {existingStatus === 'active' ? '셀러 대시보드로' : '홈으로'}
+            {existingStatus === 'active' ? t('sellerRegisterBusiness.toDashboard') : t('common.home')}
           </button>
         </div>
       </div>
@@ -120,7 +122,7 @@ export default function SellerRegisterBusinessPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <SEO title="셀러 전환 - 유어딜" description="카카오 계정으로 셀러 권한 신청" url="/seller/register/business" noindex />
+      <SEO title={`${t('sellerRegisterBusiness.title')} - 유어딜`} description={t('sellerRegisterBusiness.description')} url="/seller/register/business" noindex />
 
       {/* 헤더 */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100">
@@ -128,7 +130,7 @@ export default function SellerRegisterBusinessPage() {
           <button onClick={() => navigate(-1)} className="p-1 -ml-1">
             <ChevronLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <h1 className="text-base font-bold text-gray-900 flex-1">셀러로 시작하기</h1>
+          <h1 className="text-base font-bold text-gray-900 flex-1">{t('sellerRegisterBusiness.headerTitle')}</h1>
         </div>
       </div>
 
@@ -137,8 +139,8 @@ export default function SellerRegisterBusinessPage() {
           <div className="bg-[#FEE500]/50 border border-[#FEE500] rounded-xl p-3 flex items-start gap-2">
             <MessageCircle className="w-4 h-4 text-[#3C1E1E] shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-xs font-bold text-[#3C1E1E]">카카오 로그인 완료 {userName && <>· {userName}</>}</p>
-              <p className="text-[11px] text-[#3C1E1E]/70 mt-0.5">아래 사업자 정보만 입력하면 셀러 신청이 끝나요</p>
+              <p className="text-xs font-bold text-[#3C1E1E]">{t('sellerRegisterBusiness.kakaoBanner')} {userName && <>· {userName}</>}</p>
+              <p className="text-[11px] text-[#3C1E1E]/70 mt-0.5">{t('sellerRegisterBusiness.kakaoBannerDesc')}</p>
             </div>
           </div>
         )}
@@ -147,80 +149,78 @@ export default function SellerRegisterBusinessPage() {
           <div className="w-14 h-14 mx-auto mb-3 bg-white rounded-full flex items-center justify-center">
             <Store className="w-7 h-7 text-red-500" />
           </div>
-          <h2 className="text-base font-bold text-gray-900">카카오 계정에 셀러 권한 추가</h2>
+          <h2 className="text-base font-bold text-gray-900">{t('sellerRegisterBusiness.heroTitle')}</h2>
           <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-            현재 카카오 계정으로 셀러 권한을 신청합니다.<br />
-            별도 가입/로그인 없이 한 번에 연동돼요.
+            {t('sellerRegisterBusiness.heroDesc')}
           </p>
         </div>
 
         {/* 폼 */}
         <div className="bg-white rounded-2xl p-5 space-y-4 border border-gray-100">
-          <Field label="사업자명 / 스토어명" required>
+          <Field label={t('sellerRegisterBusiness.fieldBusinessName')} required>
             <input value={form.business_name}
               onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))}
-              placeholder="예: 유어딜 컴퍼니"
+              placeholder={t('sellerRegisterBusiness.phBusinessName')}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
           </Field>
 
-          <Field label="사업자등록번호" required>
+          <Field label={t('sellerRegisterBusiness.fieldBusinessNumber')} required>
             <input value={form.business_number}
               onChange={e => setForm(f => ({ ...f, business_number: e.target.value }))}
               placeholder="XXX-XX-XXXXX"
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono" />
           </Field>
 
-          <Field label="연락처" required>
+          <Field label={t('sellerRegisterBusiness.fieldPhone')} required>
             <input type="tel" value={form.phone}
               onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
               placeholder="010-1234-5678"
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
           </Field>
 
-          <Field label="셀러 유형">
+          <Field label={t('sellerRegisterBusiness.fieldSellerType')}>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { key: 'influencer', label: '인플루언서' },
-                { key: 'store_owner', label: '스토어' },
-                { key: 'both', label: '둘 다' },
-              ].map(t => (
-                <button key={t.key}
-                  onClick={() => setForm(f => ({ ...f, seller_type: t.key as any }))}
+                { key: 'influencer', label: t('sellerRegisterBusiness.typeInfluencer') },
+                { key: 'store_owner', label: t('sellerRegisterBusiness.typeStoreOwner') },
+                { key: 'both', label: t('sellerRegisterBusiness.typeBoth') },
+              ].map(tp => (
+                <button key={tp.key}
+                  onClick={() => setForm(f => ({ ...f, seller_type: tp.key as any }))}
                   className={`py-2 rounded-lg text-xs font-semibold border ${
-                    form.seller_type === t.key
+                    form.seller_type === tp.key
                       ? 'bg-red-500 text-white border-red-500'
                       : 'bg-white text-gray-600 border-gray-200'
                   }`}>
-                  {t.label}
+                  {tp.label}
                 </button>
               ))}
             </div>
           </Field>
 
-          <Field label="YouTube 이메일 (선택)">
+          <Field label={t('sellerRegisterBusiness.fieldYoutubeEmail')}>
             <input type="email" value={form.youtube_email}
               onChange={e => setForm(f => ({ ...f, youtube_email: e.target.value }))}
-              placeholder="라이브 방송용 YouTube 계정"
+              placeholder={t('sellerRegisterBusiness.phYoutubeEmail')}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
           </Field>
 
-          <Field label="소개 (선택)">
+          <Field label={t('sellerRegisterBusiness.fieldDescription')}>
             <textarea value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="간단한 자기 소개" rows={2} maxLength={500}
+              placeholder={t('sellerRegisterBusiness.phDescription')} rows={2} maxLength={500}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none" />
           </Field>
         </div>
 
         <p className="text-[11px] text-gray-500 text-center leading-relaxed">
-          신청 후 관리자 승인까지 보통 1~2일 소요됩니다.<br />
-          승인 완료 시 카카오 로그인으로 바로 셀러 기능 이용 가능.
+          {t('sellerRegisterBusiness.submitNote')}
         </p>
 
         <button onClick={submit} disabled={loading}
           className="w-full py-3.5 bg-gradient-to-r from-red-500 to-pink-500 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-          {loading ? '신청 중...' : '셀러 신청하기'}
+          {loading ? t('sellerRegisterBusiness.submitting') : t('sellerRegisterBusiness.submitBtn')}
         </button>
       </div>
     </div>
