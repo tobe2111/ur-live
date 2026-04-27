@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import {
   LayoutDashboard, Users, ShoppingBag, BarChart2, LogOut, Menu, X,
   Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
-  TrendingUp, Radio, UserPlus, BookOpen, Megaphone, Award, MessageSquare, Ticket, QrCode, Swords, ArrowRightLeft, Trophy,
+  TrendingUp, Radio, UserPlus, BookOpen, Megaphone, Award, MessageSquare, Ticket, QrCode, Swords, ArrowRightLeft, Trophy, Rocket,
   type LucideIcon
 } from 'lucide-react'
 
@@ -64,6 +64,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/agency/invites',    label: '셀러 영입',     i18nKey: 'agency.nav.invites', icon: QrCode },
       { path: '/agency/pk',         label: 'PK 이벤트',     i18nKey: 'agency.nav.pk', icon: Swords },
       { path: '/agency/events',     label: '자사 챌린지',   i18nKey: 'agency.nav.events', icon: Trophy },
+      { path: '/agency/promote-boosts', label: '노출 부스팅', i18nKey: 'agency.nav.promoteBoosts', icon: Rocket },
       { path: '/agency/transfers',  label: '셀러 이전',     i18nKey: 'agency.nav.transfers', icon: ArrowRightLeft },
     ],
   },

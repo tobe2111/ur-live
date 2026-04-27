@@ -33,6 +33,8 @@ import { handleLiveStreamMetrics } from './cron/live-stream-metrics';
 import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
 import { handlePkBattlesTick } from './cron/pk-battles-tick';
 import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
+import { handleSellerTierEval } from './cron/seller-tier-eval';
+import { handleSellerDailyReport } from './cron/seller-daily-report';
 import { handleD1Backup } from './cron/d1-backup';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -91,6 +93,8 @@ export async function handleCronScheduled(
       await handleLiveStreamMetrics(env).catch(e => console.error('[cron] live-metrics:', e));
       // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
       await handleAgencySelfEventsTick(env).catch(e => console.error('[cron] self-events:', e));
+      // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
+      await handleSellerDailyReport(env).catch(e => console.error('[cron] seller-daily-report:', e));
     }));
   }
 
@@ -116,6 +120,10 @@ export async function handleCronScheduled(
       await calculateAllAgencyIncentives(env.DB, monthStr).catch(e => console.error('[cron] incentives:', e));
       if (flags.enable_agency_tier_eval && dayOfMonth <= 7) {
         await handleAgencyTierEval(env).catch(e => console.error('[cron] tier-eval:', e));
+      }
+      // 2026-04-27: 셀러 등급 자동 평가 (월 1주차)
+      if (dayOfMonth <= 7) {
+        await handleSellerTierEval(env).catch(e => console.error('[cron] seller-tier-eval:', e));
       }
       if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {
         await handleAgencyMonthlyInvoices(env as any).catch(e => console.error('[cron] invoices:', e));

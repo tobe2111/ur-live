@@ -104,6 +104,21 @@ app.get('/', async (c) => {
     insights.failed_webhooks_24h = r.results || [];
   } catch { insights.failed_webhooks_24h = []; }
 
+  // 7. Rate limit 차단 통계 (24h) — 의심 IP / 봇 탐지
+  try {
+    const since = Math.floor(Date.now() / 1000) - 86400;
+    const r = await DB.prepare(`
+      SELECT key, action, MAX(count) AS max_count, COUNT(DISTINCT window_start) AS windows
+      FROM rate_limit_attempts
+      WHERE window_start >= ?
+      GROUP BY key, action
+      HAVING max_count > 50
+      ORDER BY max_count DESC
+      LIMIT 30
+    `).bind(since).all().catch(() => ({ results: [] as any[] }));
+    insights.rate_limit_top_24h = r.results || [];
+  } catch { insights.rate_limit_top_24h = []; }
+
   // 5. 부진 셀러 알림 발송 통계 (24h)
   try {
     const r = await DB.prepare(`

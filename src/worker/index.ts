@@ -72,6 +72,7 @@ import { adminTikTokDiscoveryRoutes } from '../features/admin/api/admin-tiktok-d
 import { adminOpsInsightsRoutes } from '../features/admin/api/admin-ops-insights.routes';
 import { agencySelfEventsRoutes } from '../features/agency/api/agency-self-events.routes';
 import { promoteBoostsAgencyRoutes, promoteBoostsSellerRoutes } from '../features/agency/api/promote-boosts.routes';
+import { liveNotifyFollowersRoutes } from '../features/seller/api/live-notify-followers.routes';
 import { sellerTransferRoutes } from '../features/agency/api/seller-transfer.routes';
 import {
   adminAdvertiserRoutes,
@@ -1161,6 +1162,19 @@ app.get('/api/_internal/repair-new-tables', requireAdmin(), async (c) => {
         note TEXT
       )` },
 
+    // ── 0233: 셀러 등급 + 일일 리포트 토글 컬럼 ──
+    { desc: 'sellers.tier', sql: `ALTER TABLE sellers ADD COLUMN tier TEXT DEFAULT 'bronze'` },
+    { desc: 'sellers.daily_report_enabled', sql: `ALTER TABLE sellers ADD COLUMN daily_report_enabled INTEGER DEFAULT 0` },
+
+    // ── live_notify_log (라이브 시작 알림 멱등) ──
+    { desc: 'live_notify_log', sql: `
+      CREATE TABLE IF NOT EXISTS live_notify_log (
+        live_stream_id INTEGER PRIMARY KEY,
+        seller_id INTEGER NOT NULL,
+        notified_count INTEGER DEFAULT 0,
+        notified_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+
     { desc: '0230: casting_requests', sql: `
       CREATE TABLE IF NOT EXISTS casting_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2191,6 +2205,8 @@ app.route('/api/agency/self-events', agencySelfEventsRoutes);
 // 🛡️ 2026-04-27 노출 부스팅 쿠폰 (Promote to Live)
 app.route('/api/agency/promote-boosts', promoteBoostsAgencyRoutes);
 app.route('/api/seller/promote-boosts', promoteBoostsSellerRoutes);
+// 🛡️ 2026-04-27 라이브 시작 자동 알림 (단골/VIP)
+app.route('/api/seller/live-notify', liveNotifyFollowersRoutes);
 // 🛡️ 2026-04-27 Phase 3-5: 셀러 이전 (Network 마켓플레이스)
 app.route('/api/agency/transfers', sellerTransferRoutes);
 // 🛡️ 2026-04-27 Phase 3-6: 캐스팅 마켓플레이스
