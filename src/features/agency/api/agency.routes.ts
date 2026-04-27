@@ -126,18 +126,43 @@ function getPasswordResetEmailHTML(resetUrl: string): string {
 }
 
 // ── JWT 헬퍼 ─────────────────────────────────────────────────
-async function signAgencyToken(secret: string, agencyId: number, email: string) {
+//
+// 🛡️ 2026-04-26 R1: 토큰 페이로드에 member_role + member_id 추가.
+// 기존 토큰 (member_role 없음) 은 verifyAgencyToken 이 'owner' 로 fallback — 하위 호환.
+async function signAgencyToken(
+  secret: string,
+  agencyId: number,
+  email: string,
+  options?: { memberRole?: string; memberId?: number }
+) {
   return sign(
-    { sub: String(agencyId), email, type: 'agency', exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 },
+    {
+      sub: String(agencyId),
+      email,
+      type: 'agency',
+      member_role: options?.memberRole,        // 'owner' | 'manager' | 'agent' | 'analyst'
+      member_id: options?.memberId,            // agency_members.id
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
+    },
     secret
   )
 }
 
-async function verifyAgencyToken(secret: string, token: string): Promise<{ id: number; email: string } | null> {
+async function verifyAgencyToken(secret: string, token: string): Promise<{
+  id: number;
+  email: string;
+  member_role?: string;
+  member_id?: number;
+} | null> {
   try {
     const payload = await verify(token, secret, 'HS256') as Record<string, unknown>
     if (payload.type !== 'agency' || !payload.sub) return null
-    return { id: Number(payload.sub), email: String(payload.email) }
+    return {
+      id: Number(payload.sub),
+      email: String(payload.email),
+      member_role: typeof payload.member_role === 'string' ? payload.member_role : undefined,
+      member_id: typeof payload.member_id === 'number' ? payload.member_id : undefined,
+    }
   } catch {
     return null
   }
@@ -339,7 +364,27 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
 
   await clearFailures(c.env.DB, 'agency', String(agency.id))
 
-  const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email)
+  // 🛡️ 2026-04-26 R1: 멤버 role 조회 → JWT 페이로드에 포함
+  // agency.email = owner email (기존 가정 유지). agency_members 미적용 시 'owner' fallback.
+  let memberRole: string = 'owner'
+  let memberId: number | undefined
+  try {
+    const m = await c.env.DB.prepare(
+      "SELECT id, role FROM agency_members WHERE agency_id = ? AND email = ? AND status = 'active' LIMIT 1"
+    ).bind(agency.id, agency.email).first<{ id: number; role: string }>()
+    if (m) {
+      memberRole = m.role
+      memberId = m.id
+      // last_active_at 갱신 (best-effort)
+      await c.env.DB.prepare(
+        "UPDATE agency_members SET last_active_at = datetime('now') WHERE id = ?"
+      ).bind(m.id).run().catch(() => {})
+    }
+  } catch { /* migration 0217 미적용 — owner fallback */ }
+
+  const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email, {
+    memberRole, memberId,
+  })
 
   // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 (Bearer 병행)
   let agencyCookie = ''
