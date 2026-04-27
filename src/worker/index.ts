@@ -809,6 +809,11 @@ app.get('/api/_internal/repair-new-tables', requireAdmin(), async (c) => {
     { desc: '0212: agencies.tier_evaluated_at', sql: `ALTER TABLE agencies ADD COLUMN tier_evaluated_at DATETIME` },
     { desc: '0212: agencies.tier_locked', sql: `ALTER TABLE agencies ADD COLUMN tier_locked INTEGER DEFAULT 0` },
 
+    // ── 정산 계좌 컬럼 (GET /api/agency/profile 이 SELECT 하므로 필수) ──
+    { desc: 'agencies.bank_name', sql: `ALTER TABLE agencies ADD COLUMN bank_name TEXT` },
+    { desc: 'agencies.bank_account', sql: `ALTER TABLE agencies ADD COLUMN bank_account TEXT` },
+    { desc: 'agencies.account_holder', sql: `ALTER TABLE agencies ADD COLUMN account_holder TEXT` },
+
     // ── 0213: agency_creator_evaluations ────
     { desc: '0213: agency_creator_evaluations', sql: `
       CREATE TABLE IF NOT EXISTS agency_creator_evaluations (

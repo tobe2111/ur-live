@@ -60,6 +60,11 @@ async function ensureAgencyTables(DB: D1Database) {
   await DB.prepare("ALTER TABLE agencies ADD COLUMN linked_user_id INTEGER").run().catch(() => {})
   await DB.prepare("CREATE INDEX IF NOT EXISTS idx_agencies_linked_user ON agencies(linked_user_id)").run().catch(() => {})
 
+  // 🛡️ 2026-04-27: 정산 계좌 컬럼 — agency.routes.ts:544 의 GET /profile 가 SELECT 하지만 컬럼 없으면 D1_ERROR.
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN bank_name TEXT").run().catch(() => {})
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN bank_account TEXT").run().catch(() => {})
+  await DB.prepare("ALTER TABLE agencies ADD COLUMN account_holder TEXT").run().catch(() => {})
+
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agency_sellers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
