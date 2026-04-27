@@ -99,6 +99,7 @@ import { handleD1Backup } from './cron/d1-backup';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
+import { debugRoutes } from './routes/debug.routes';
 import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 import { guideRoutes } from '../features/guides/api/guide.routes';
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
@@ -1356,19 +1357,7 @@ app.get('/api/_internal/smoke-test-auth', async (c) => {
 
 // 배포 검증용 — 현재 worker 빌드가 언제 / 어떤 커밋에서 빌드됐는지 즉시 확인
 // 이 핸들러의 존재 자체가 "최신 배포 반영" 증거
-app.get('/api/debug/build-info', requireAdmin(), (c) => {
-  return c.json({
-    success: true,
-    // 빌드 시점 commit SHA — CI가 BUILD_SHA env로 주입
-    commitSha: (c.env as any).BUILD_SHA || 'unknown',
-    buildTimestamp: (c.env as any).BUILD_TIMESTAMP || 'unknown',
-    // 이 엔드포인트가 도입된 커밋 기준 — 존재하면 그 이후 배포
-    markers: {
-      whoamiEndpoint: true,    // 2026-04-22 8b82323 이후
-      buildInfoEndpoint: true, // 현재 커밋 이후
-    },
-  });
-});
+// build-info 는 src/worker/routes/debug.routes.ts 로 이동됨 (M9 분리, 2026-04-26)
 
 app.get('/api/debug/whoami', requireAdmin(), async (c) => {
   const authHeader = c.req.header('Authorization') || '';
@@ -1481,17 +1470,7 @@ app.get('/api/docs', swaggerUI({ url: '/api/openapi.json' }));
 // ============================================================
 
 // Debug endpoint to check bindings (admin only)
-app.get('/api/debug/bindings', requireAdmin(), (c) => {
-  const env = c.env as Env;
-  return c.json({
-    hasDB: !!env.DB,
-    hasSessionKV: !!env.SESSION_KV,
-    environment: env.ENVIRONMENT,
-    frontendUrl: env.FRONTEND_URL,
-    region: env.REGION,
-    envKeys: Object.keys(env || {}),
-  });
-});
+// bindings 는 src/worker/routes/debug.routes.ts 로 이동됨 (M9 분리, 2026-04-26)
 
 // KV usage monitoring (admin only)
 app.get('/api/debug/kv-usage', requireAdmin(), async (c) => {
@@ -1951,6 +1930,9 @@ app.route('/api/kakao-social', kakaoSocialRoutes);
 // ── 외부 서비스 프록시 (kakao/naver place + image) ──
 // 2026-04-26 worker/index.ts 비대화 해소를 위해 src/worker/routes/proxy.routes.ts 로 추출
 app.route('/api', proxyRoutes);
+
+// ── 디버그 (build-info, bindings) — 2026-04-26 M9 부분 추출
+app.route('/api/debug', debugRoutes);
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 // SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
