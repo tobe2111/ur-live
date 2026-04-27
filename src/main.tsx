@@ -20,8 +20,32 @@ if (import.meta.env.DEV) logRegionInfo()
 // 빌드 버전 자동 감지 & 자동 리로드
 import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck())
 
-// Service Worker 완전 비활성화 — sw.js 배포 누락으로 MIME 에러 발생 방지
-if ('serviceWorker' in navigator) {
+// 🛡️ 2026-04-27 (PWA): Workbox SW 등록 (vite-plugin-pwa 가 빌드 시 sw.js 생성).
+//   기존 미사용 SW 들 (예: /static/sw.js) 은 unregister, 새 /sw.js 만 등록.
+//   푸시 알림은 PushNotificationSetup 컴포넌트가 별도 처리.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  // 1) 기존 등록된 미사용 SW 정리 (이전 버전 / 다른 path)
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => {
+      if (r.active && !r.active.scriptURL.endsWith('/sw.js')) r.unregister()
+    })
+  })
+
+  // 2) 새 PWA SW 등록 (workbox-window 사용)
+  import('workbox-window').then(({ Workbox }) => {
+    const wb = new Workbox('/sw.js')
+    wb.addEventListener('waiting', () => {
+      if (confirm('새 버전이 있습니다. 지금 새로고침하시겠습니까?')) {
+        wb.messageSW({ type: 'SKIP_WAITING' })
+        window.location.reload()
+      }
+    })
+    wb.register().catch(err => {
+      if (import.meta.env.DEV) console.warn('[PWA] SW register failed:', err)
+    })
+  })
+} else if ('serviceWorker' in navigator) {
+  // DEV 모드: 모든 SW unregister (HMR 충돌 방지)
   navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()))
 }
 

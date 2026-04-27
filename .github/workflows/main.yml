@@ -57,6 +57,10 @@ jobs:
           VITE_TOSS_CLIENT_KEY: ${{ secrets.VITE_TOSS_CLIENT_KEY || 'live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY' }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || 'https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488' }}
           VITE_SENTRY_ENVIRONMENT: production
+          # 🛡️ 2026-04-27: Sentry release 와 source map upload 의 release 이름 통일.
+          #   sentry.ts 의 `release: webapp@VITE_APP_VERSION` ↔ GitHub Actions 의 `releases new $GITHUB_SHA`
+          #   둘이 일치해야 Sentry 가 source map 을 매칭함.
+          VITE_APP_VERSION: ${{ github.sha }}
 
       - name: Verify build output
         run: |
@@ -100,13 +104,16 @@ jobs:
         run: |
           # sentry-cli 1회 사용 — 의존성 추가 안 함
           curl -sL https://sentry.io/get-cli/ | bash
-          export RELEASE="${{ github.sha }}"
+          # 🛡️ 2026-04-27: sentry.ts 의 `release: webapp@${VITE_APP_VERSION}` 형식과 일치.
+          export RELEASE="webapp@${{ github.sha }}"
           ~/.local/bin/sentry-cli releases new "$RELEASE" || true
           ~/.local/bin/sentry-cli releases files "$RELEASE" upload-sourcemaps \
             dist/client/assets \
             --url-prefix '~/assets' \
             --rewrite || true
           ~/.local/bin/sentry-cli releases finalize "$RELEASE" || true
+          # 🛡️ 2026-04-27: deployment 마킹 (Sentry 가 어느 release 가 production 에 deploy 됐는지 추적)
+          ~/.local/bin/sentry-cli releases deploys "$RELEASE" new -e production || true
           # 보안: 소스맵 파일은 R2/CDN 에 노출되지 않도록 삭제 (hidden 모드라 자동으로 노출 X 지만 방어)
           find dist/client/assets -name '*.map' -delete
           echo "✅ Sentry source maps uploaded for release $RELEASE"

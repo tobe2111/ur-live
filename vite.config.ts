@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import fs from 'fs';
 
@@ -23,7 +24,41 @@ function swVersionPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), swVersionPlugin()],
+  plugins: [
+    react(),
+    swVersionPlugin(),
+    // 🛡️ 2026-04-27 PWA 통합 — vite-plugin-pwa.
+    //   - sw.js 자동 생성 (Workbox 기반 — precache + runtime cache)
+    //   - manifest.webmanifest 는 기존 public/ 경로의 것을 사용 (injectRegister: null + manifest: false)
+    //   - registerType: 'prompt' — 새 SW 발견 시 사용자에게 새로고침 알림
+    VitePWA({
+      registerType: 'prompt',
+      manifest: false, // public/manifest.webmanifest 그대로 사용
+      injectRegister: null, // SW 등록은 main.tsx 에서 수동 (push notification 통합 위해)
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        // 결제/인증/실시간 API 는 캐시 X — 항상 네트워크
+        navigateFallbackDenylist: [/^\/api\//, /^\/admin\//, /^\/seller\//, /^\/agency\//],
+        runtimeCaching: [
+          {
+            // 정적 이미지 (CDN/Unsplash 등) 1일 캐시
+            urlPattern: /\.(png|jpg|jpeg|webp|svg|gif)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images-cache',
+              expiration: { maxEntries: 100, maxAgeSeconds: 86400 },
+            },
+          },
+        ],
+        // 결제/계정/관리 API 는 캐시 안 함
+        navigateFallback: '/index.html',
+        cleanupOutdatedCaches: true,
+        skipWaiting: false, // 사용자가 새로고침할 때까지 대기 (안전)
+        clientsClaim: false,
+      },
+      devOptions: { enabled: false },
+    }),
+  ],
   define: {
     __BUILD_VERSION__: JSON.stringify(BUILD_VERSION),
   },
