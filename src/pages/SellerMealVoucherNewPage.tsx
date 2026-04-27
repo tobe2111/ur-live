@@ -57,11 +57,15 @@ export default function SellerMealVoucherNewPage() {
     toast.success(t('seller.mealVoucher.placeAutoFilled', { name: place.place_name }))
 
     // 네이버 이미지 검색으로 맛집 사진 추천
+    // 🛡️ 2026-04-27: 검색 정확도 개선 — 주소 단어를 너무 많이 포함하면 일반적인 '서울 맛집' 같은 이미지가 섞임.
+    //               place_name 만 가장 specific. 동(洞) 단어 1개만 보조 (e.g. '강남유나이트 역삼동').
     if (place.place_name) {
       setLoadingImages(true)
-      const area = (place.road_address_name || place.address_name || '').split(' ').slice(0, 2).join(' ')
-      const searchQuery = area ? `${place.place_name} ${area}` : `${place.place_name} 맛집`
-      api.get(`/api/naver/image/search?query=${encodeURIComponent(searchQuery)}&display=6`)
+      const fullAddr = place.road_address_name || place.address_name || ''
+      const dongMatch = fullAddr.match(/[가-힣]+(동|읍|면|로|길)\s*\d*/)
+      const dong = dongMatch ? dongMatch[0].replace(/\s*\d+/, '') : ''
+      const searchQuery = dong ? `${place.place_name} ${dong}` : place.place_name
+      api.get(`/api/naver/image/search?query=${encodeURIComponent(searchQuery)}&display=9`)
         .then(res => {
           if (res.data.success && res.data.data?.items) {
             setSuggestedImages(res.data.data.items.map((img: any) => (img.link || '').replace(/^http:\/\//, 'https://')).filter(Boolean))
@@ -254,21 +258,71 @@ export default function SellerMealVoucherNewPage() {
           {/* 2. 추천 이미지 (맛집 선택 후 표시) */}
           {(loadingImages || suggestedImages.length > 0 || form.image_url) && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-1">
                 <span className="text-lg">📸</span>
                 <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.mainImage')}</h2>
               </div>
+              <p className="text-[11px] text-gray-500 mb-4">AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.</p>
 
               <div className="space-y-3">
+                {/* 미리보기 */}
+                {form.image_url && (
+                  <div className="relative inline-block">
+                    <img src={form.image_url} alt="대표 이미지" className="w-full max-w-[240px] h-48 rounded-lg object-cover border border-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => update('image_url', '')}
+                      aria-label="이미지 제거"
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white text-xs hover:bg-black/80"
+                    >✕</button>
+                  </div>
+                )}
+
+                {/* URL 입력 */}
                 <input
                   value={form.image_url}
                   onChange={e => update('image_url', e.target.value)}
                   placeholder={t('seller.mealVoucher.imageUrlPlaceholder')}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                 />
-                {form.image_url && (
-                  <img src={form.image_url} alt="" className="w-full max-w-[200px] h-40 rounded-lg object-cover" />
-                )}
+
+                {/* 직접 업로드 + 직접 검색 */}
+                <div className="flex gap-2 flex-wrap">
+                  <label className="cursor-pointer flex items-center gap-1.5 px-3 py-2 bg-pink-50 border border-pink-200 text-pink-600 text-xs font-semibold rounded-lg hover:bg-pink-100">
+                    📁 내 사진 업로드
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        if (!f) return
+                        if (f.size > 5 * 1024 * 1024) { toast.error('5MB 이하 이미지만 업로드 가능합니다'); return }
+                        const r = new FileReader()
+                        r.onload = () => { update('image_url', r.result as string); toast.success('업로드 완료') }
+                        r.readAsDataURL(f)
+                      }}
+                    />
+                  </label>
+                  <input
+                    placeholder="다른 키워드로 이미지 재검색 (예: 가게 인테리어, 대표 메뉴 이름)"
+                    className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900 focus:border-pink-500 focus:outline-none"
+                    onKeyDown={async (e) => {
+                      if (e.key !== 'Enter') return
+                      const q = (e.target as HTMLInputElement).value.trim()
+                      if (!q) return
+                      setLoadingImages(true)
+                      try {
+                        const res = await api.get(`/api/naver/image/search?query=${encodeURIComponent(q)}&display=9`)
+                        if (res.data.success && res.data.data?.items) {
+                          setSuggestedImages(res.data.data.items.map((img: { link?: string }) => (img.link || '').replace(/^http:\/\//, 'https://')).filter(Boolean))
+                        }
+                      } catch { toast.error('이미지 검색 실패') }
+                      finally { setLoadingImages(false) }
+                    }}
+                  />
+                </div>
+
                 {loadingImages && (
                   <p className="text-xs text-gray-500">{t('seller.mealVoucher.searchingImages')}</p>
                 )}

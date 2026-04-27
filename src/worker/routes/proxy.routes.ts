@@ -74,15 +74,17 @@ app.get('/naver/place/search', rateLimit({ action: 'naver_place', max: 30, windo
 });
 
 // ── 네이버 이미지 검색 ──
+// 🛡️ 2026-04-27: query 에 '맛집' 자동 append 제거. 프론트가 보낸 query 를 그대로 사용해
+//               place_name 일치도 향상 (중복 키워드로 dilution 되던 문제).
 app.get('/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windowSec: 60 }), async (c) => {
   const query = c.req.query('query');
-  const display = c.req.query('display') || '3';
+  const display = c.req.query('display') || '6';
   if (!query) return c.json({ success: false, error: 'query required' }, 400);
   const clientId = (c.env as Env).NAVER_CLIENT_ID;
   const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET;
   if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500);
   try {
-    const url = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query + ' 맛집')}&display=${display}&sort=sim&filter=large`;
+    const url = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query)}&display=${display}&sort=sim&filter=large`;
     const res = await fetch(url, {
       headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
     });

@@ -253,16 +253,25 @@ export default function GroupBuyListPage() {
         </div>
       </header>
 
-      {/* 배너 */}
+      {/* 배너 — 클릭 시 맛집 공구 시작 */}
       <div className="px-4 pt-4">
-        <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 rounded-2xl px-5 py-4">
-          <p className="text-white text-[15px] font-extrabold">
-            <Sparkles className="inline w-4 h-4 mr-1 -mt-0.5" />
-            함께 모일수록 더 싸져요!
-          </p>
-          <p className="text-white/90 text-[11px] mt-1">
-            최대 50% 할인 — 목표 달성 시 특가로 구매 가능
-          </p>
+        <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 rounded-2xl px-5 py-4 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-[15px] font-extrabold">
+              <Sparkles className="inline w-4 h-4 mr-1 -mt-0.5" />
+              함께 모일수록 더 싸져요!
+            </p>
+            <p className="text-white/90 text-[11px] mt-1">
+              최대 50% 할인 — 목표 달성 시 특가로 구매 가능
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/community-group-buy/new')}
+            className="shrink-0 flex items-center gap-1 bg-white text-rose-600 px-3 py-2 rounded-full text-[12px] font-extrabold shadow-sm active:scale-95 transition-transform"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            시작
+          </button>
         </div>
       </div>
 
@@ -358,20 +367,9 @@ export default function GroupBuyListPage() {
         </div>
       </div>
 
-      {/* 맛집 공구 시작 FAB — 🛡️ 2026-04-22 배치 124:
-          1) 430px 컬럼 내부로 정렬 (PC viewport 밖으로 나가던 문제 수정)
-          2) bottom-36 으로 올림 (bottom-20 의 카카오 상담 버튼과 겹치지 않게) */}
-      <div className="fixed bottom-36 left-0 right-0 z-40 px-4 pointer-events-none">
-        <div className="max-w-[430px] mx-auto flex justify-end">
-          <button
-            onClick={() => navigate('/community-group-buy/new')}
-            className="pointer-events-auto flex items-center gap-1.5 bg-gray-900 text-white pl-3 pr-4 py-3 rounded-full shadow-lg active:scale-95 transition-transform"
-          >
-            <Plus className="w-5 h-5" />
-            <span className="text-[13px] font-bold">맛집 공구 시작</span>
-          </button>
-        </div>
-      </div>
+      {/* 🛡️ 2026-04-27: 맛집 공구 시작 FAB 제거.
+          기존엔 우측 하단 floating 버튼이 카카오 상담 버튼과 겹치고 우측 벽에 붙어 어색했음.
+          현재는 hero banner 우측 '시작' 버튼 + empty state CTA 로 자연스럽게 통합. */}
 
       {/* 콘텐츠 영역 */}
       <div className="px-4 py-4 pb-20">
@@ -397,12 +395,20 @@ export default function GroupBuyListPage() {
                 <p className="text-gray-500 text-[12px] mt-1">
                   곧 새로운 상품이 올라와요!
                 </p>
-                <button
-                  onClick={() => navigate('/browse')}
-                  className="mt-5 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
-                >
-                  쇼핑하러 가기
-                </button>
+                <div className="mt-5 flex gap-2 justify-center">
+                  <button
+                    onClick={() => navigate('/browse')}
+                    className="px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
+                  >
+                    쇼핑하러 가기
+                  </button>
+                  <button
+                    onClick={() => navigate('/community-group-buy/new')}
+                    className="flex items-center gap-1 px-5 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 text-[13px] font-semibold rounded-full"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> 맛집 공구 시작
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-x-3 gap-y-5">
