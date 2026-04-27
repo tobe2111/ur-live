@@ -964,6 +964,163 @@ const AGENCY_SEED: SeedSection[] = [
 - 이사회/투자자 보고용으로도 활용`,
   },
   {
+    key: 'tier-system', icon: '🎖️', title: '에이전시 등급제 (Tier)', order: 45,
+    content: `> 🆕 2026-04-26 신규 도입. TikTok Backstage 학습 반영.
+
+### 등급 3단계
+| 등급 | 조건 | 기본 수수료 |
+|------|------|-----------|
+| **NEW** (신규) | 가입 90일 이내 + 전월 매출 < 500만원 | 1.5% |
+| **JUNIOR** (주니어) | 가입 90일 이상 + 전월 매출 < 500만원 | 2.0% |
+| **SENIOR** (시니어) ⭐ | 전월 매출 ≥ 500만원 | 2.5% |
+
+### 자동 평가
+- **매월 첫 월요일 09:00 KST** cron 자동 실행
+- 가입 경과일 + 전월 매출(주문+후원) 기준 산정
+- 등급 변경 시 알림 자동 발송
+
+### 어드민 수동 변경
+- \`/admin/agencies\` → 등급 select 변경 시 \`tier_locked=1\` 자동 설정
+- 자동 평가 비활성화. '자동평가 ↻' 버튼으로 다시 활성화 가능
+
+### 활용
+- 등급 = 인센티브 규칙 평가의 입력값
+- 시니어 승급 시 commission_rate 자동 +0.5% (별도 설정 시)
+- 의무 작업 디폴트 목표가 등급별 다름 (신규는 가벼움, 시니어는 높음)`,
+  },
+  {
+    key: 'campaigns', icon: '📣', title: '캠페인 (이벤트 기획)', order: 46,
+    content: `> 🆕 2026-04-26 신규. \`/agency/campaigns\`
+
+### 캠페인이란?
+에이전시가 **직접 기획하는 매출 이벤트**. 셀러를 모아 기간별 KPI 달성 추적.
+
+### 만들기
+1. \`/agency/campaigns\` → **[캠페인 만들기]**
+2. 입력:
+   - **이름** (필수, 100자 이하)
+   - **시작일/종료일** (필수)
+   - **기본 인센티브율** (옵션, 0~100%)
+   - **목표 금액** (옵션, 표시용)
+   - **참여 셀러** (옵션, 멀티 체크)
+3. 생성 시 시작일이 오늘 이전이면 'active', 아니면 'scheduled'
+
+### 진행 중 관리
+- 셀러 추가/제거: 상세 모달
+- 셀러별 KPI/보너스 수정 (PATCH /participants/:sid)
+- **누적 재집계** (RefreshCw 아이콘): 수동 트리거. 자동 재집계는 매일 18:00 UTC.
+
+### 자동 동작
+- 시작일 도래 → status='active' 자동
+- 종료일 경과 → status='ended' 자동
+- 참여 셀러 \`current_amount\` 매일 자동 갱신 (캠페인 기간 내 PAID/DONE 주문)`,
+  },
+  {
+    key: 'incentives', icon: '🏆', title: '인센티브 규칙 엔진', order: 47,
+    content: `> 🆕 2026-04-26 신규. \`/agency/incentives\`
+
+### 개념
+\`commission_rate\` 외에 **추가 보너스율** 을 KPI 충족 셀러에게 자동 지급.
+
+### 5종 metric
+| metric | 의미 | 단위 |
+|--------|------|------|
+| sales | 월 매출 | 원 |
+| rating | 평균 별점 | 0~5 |
+| streams | 라이브 횟수 | 회 |
+| orders | 주문 수 | 건 |
+| viewers | 누적 시청자 | 명 |
+
+### 규칙 추가 예시
+\`\`\`
+이름: 매출 1000만 우수 셀러
+metric: sales
+threshold: 10000000  (1천만원)
+bonus_rate: 0.5      (+0.5%)
+priority: 100
+\`\`\`
+
+### 매칭 로직
+- 우선순위 (priority) DESC 순으로 평가
+- **첫 매치 = 적용** (max-bonus 패턴)
+- 어떤 규칙도 미충족 시 base commission 만 지급
+
+### 자동 계산
+- **매주 월요일 00:00 UTC** cron 자동 실행 (전월 분 재계산)
+- ON CONFLICT 멱등 — 이미 \`status='paid'\` 인 row 는 변경 안 함
+- /preview 탭에서 dry-run 시뮬레이션 가능
+
+### 지급 흐름
+1. cron 이 payouts row \`status='calculated'\` 로 INSERT
+2. 어드민이 정산 처리 후 \`status='paid'\` 로 변경 (수동 또는 정산 cron 통합 향후)
+3. 에이전시는 \`/agency/incentives\` → 지급 이력 탭에서 확인`,
+  },
+  {
+    key: 'messages', icon: '💬', title: '메시지 템플릿 (셀러 일괄 발송)', order: 48,
+    content: `> 🆕 2026-04-26 신규. \`/agency/messages\`
+
+### 템플릿 만들기
+\`/agency/messages\` → **[템플릿 추가]**
+
+### 변수 치환
+- \`{{seller_name}}\` — 받는 셀러 이름
+- \`{{agency_name}}\` — 본인 에이전시 이름
+- \`{{commission_rate}}\` — 수수료율 (%)
+
+### 카테고리 5종
+- **invite** — 신규 영입
+- **follow_up** — 활동 안 한 셀러 follow-up
+- **reactivation** — 휴면 재활성화
+- **announcement** — 공지
+- **general** — 일반
+
+### 발송
+1. 템플릿 옆 ✈️ 아이콘 클릭
+2. 셀러 멀티 체크박스 (소속 셀러만 표시, 1~200명)
+3. **[N명 발송]** 클릭 → 각 셀러 dashboard_notifications 에 INSERT
+
+### 효과 분석
+- \`usage_count\` 자동 증가 → 어떤 템플릿이 자주 쓰이는지 파악
+- 발송 이력 탭: 누구에게 / 언제 / 무슨 내용 (rendered) 추적
+
+### 향후 확장
+- 알림톡 / 이메일 외부 채널 (현재는 in-app only)
+- 외부 phone/email 영입용 (미가입 셀러)`,
+  },
+  {
+    key: 'coupon-cascade', icon: '🎫', title: '쿠폰 캐스케이드 (3단 배포)', order: 49,
+    content: `> 🆕 2026-04-26 신규. \`/agency/coupons\`
+
+### 흐름 (TikTok Backstage 5.3 모델)
+\`\`\`
+에이전시 (템플릿 쿠폰 1개)
+  ↓ 일괄 배포
+셀러 N명 (각자 복제 쿠폰 받음)
+  ↓ 시청자에게 발급
+시청자 (실제 사용)
+\`\`\`
+
+### 배포 만들기
+\`/agency/coupons\` → **[쿠폰 배포]**
+
+1. **쿠폰 정보**:
+   - 이름, 유형 (% / 정액)
+   - 값 (% 면 1~100, 정액이면 원 단위)
+   - 최소 주문액, 만료일
+2. **셀러당 발급 가능 수량** (필수)
+   - 각 셀러가 시청자에게 발급할 수 있는 한도
+3. **셀러 멀티 선택** (1~100명)
+4. 모달 하단: 총 발행 예정 수량 자동 계산
+
+### 자동 처리
+- 부모 쿠폰 1개 + 자식 쿠폰 N개 (셀러 수만큼) 자동 생성
+- 각 셀러에게 dashboard_notifications 자동 발송
+
+### 효과 분석
+- 카드 뷰: 사용율 진행 바 (used / total)
+- 카드 클릭 → 셀러별 사용율 모달 (어느 셀러가 잘 쓰는지)`,
+  },
+  {
     key: 'settlement', icon: '💰', title: '정산 및 수익 관리', order: 50,
     content: `### 에이전시 정산 프로세스
 1. **매월 말일** — 전월 소속 셀러 매출 집계 완료
