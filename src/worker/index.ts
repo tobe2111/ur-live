@@ -18,6 +18,7 @@ import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
 import { killerSwRoutes } from './routes/killer-sw.routes'; // 2026-04-27 PWA 사고 복구
+import { sitemapRoutes } from './routes/sitemap.routes'; // 2026-04-27 TD-006 분할
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
 import { stripeRouter } from './routes/stripe.routes';
@@ -381,6 +382,7 @@ app.get('/health', (c) => c.json({
 //   재발 방지: 30일 후 (2026-05-27) 이 endpoint 제거 — TECHNICAL_DEBT.md 참조.
 //   (2026-04-27 TD-006 split): 별도 라우터 파일로 분리.
 app.route('/', killerSwRoutes);
+app.route('/', sitemapRoutes);
 
 // v32 FIX: PWA manifest MIME type 명시 (Workers asset serving은 _headers 미지원)
 // Chrome "Manifest: Line: 1 Syntax error" 원인 — Worker가 HTML fallback으로 응답하거나
@@ -598,68 +600,7 @@ app.get('/api/_internal/health-dashboard', requireAdmin(), async (c) => {
 // 기존 정적 public/sitemap.xml 은 상품/스트림 누락 + 7일 stale.
 // 서버가 현재 DB 상태로 매번 생성 → 검색엔진이 항상 최신 인덱싱.
 // ============================================================
-app.get('/sitemap.xml', async (c) => {
-  const origin = new URL(c.req.url).origin;
-  const DB = c.env.DB as D1Database | undefined;
-  const urls: Array<{ loc: string; priority: number; changefreq: string }> = [
-    // 정적 페이지
-    { loc: '/', priority: 1.0, changefreq: 'daily' },
-    { loc: '/browse', priority: 0.9, changefreq: 'daily' },
-    { loc: '/live', priority: 0.9, changefreq: 'hourly' },
-    { loc: '/shorts', priority: 0.8, changefreq: 'hourly' },
-    { loc: '/search', priority: 0.7, changefreq: 'weekly' },
-    { loc: '/login', priority: 0.5, changefreq: 'monthly' },
-    { loc: '/blog', priority: 0.6, changefreq: 'daily' },
-  ];
-
-  if (DB) {
-    try {
-      // 활성 상품 최신 500개
-      const products = await DB.prepare(
-        `SELECT id FROM products WHERE is_active = 1 ORDER BY id DESC LIMIT 500`
-      ).all<{ id: number }>();
-      for (const p of products.results || []) {
-        urls.push({ loc: `/products/${p.id}`, priority: 0.8, changefreq: 'weekly' });
-      }
-
-      // 활성 셀러 공개 프로필
-      const sellers = await DB.prepare(
-        `SELECT id, username FROM sellers WHERE status = 'approved' ORDER BY id DESC LIMIT 200`
-      ).all<{ id: number; username: string }>();
-      for (const s of sellers.results || []) {
-        urls.push({ loc: `/s/${s.username || s.id}`, priority: 0.7, changefreq: 'weekly' });
-      }
-
-      // 최근 라이브 스트림
-      const streams = await DB.prepare(
-        `SELECT id FROM live_streams WHERE status IN ('live','scheduled','ended') ORDER BY id DESC LIMIT 100`
-      ).all<{ id: number }>();
-      for (const s of streams.results || []) {
-        urls.push({ loc: `/live/${s.id}`, priority: 0.6, changefreq: 'hourly' });
-      }
-
-      // 블로그 글
-      const blogs = await DB.prepare(
-        `SELECT slug FROM blog_posts WHERE published = 1 ORDER BY id DESC LIMIT 100`
-      ).all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
-      for (const b of blogs.results || []) {
-        if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly' });
-      }
-    } catch {
-      // DB 쿼리 실패해도 정적 URL 은 응답
-    }
-  }
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map(u => `  <url><loc>${origin}${u.loc}</loc><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`).join('\n')}
-</urlset>`;
-
-  return c.body(xml, 200, {
-    'Content-Type': 'application/xml; charset=utf-8',
-    'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
-  });
-});
+// /sitemap.xml → routes/sitemap.routes.ts (TD-006 partial split, 2026-04-27)
 
 // /api/version → public-utility.routes.ts (P1, 2026-04-26)
 
