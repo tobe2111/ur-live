@@ -71,6 +71,7 @@ import { moderationRoutes } from '../features/moderation/api/moderation.routes';
 import { adminTikTokDiscoveryRoutes } from '../features/admin/api/admin-tiktok-discovery.routes';
 import { adminOpsInsightsRoutes } from '../features/admin/api/admin-ops-insights.routes';
 import { agencySelfEventsRoutes } from '../features/agency/api/agency-self-events.routes';
+import { promoteBoostsAgencyRoutes, promoteBoostsSellerRoutes } from '../features/agency/api/promote-boosts.routes';
 import { sellerTransferRoutes } from '../features/agency/api/seller-transfer.routes';
 import {
   adminAdvertiserRoutes,
@@ -1143,6 +1144,23 @@ app.get('/api/_internal/repair-new-tables', requireAdmin(), async (c) => {
         UNIQUE (event_id, seller_id)
       )` },
 
+    // ── 0232: promote_boost_coupons (Promote to Live) ──
+    { desc: '0232: promote_boost_coupons', sql: `
+      CREATE TABLE IF NOT EXISTS promote_boost_coupons (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agency_id INTEGER NOT NULL,
+        seller_id INTEGER NOT NULL,
+        tier TEXT NOT NULL DEFAULT 'silver',
+        duration_hours INTEGER NOT NULL,
+        status TEXT DEFAULT 'unused',
+        issued_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME,
+        used_live_id INTEGER,
+        boost_ends_at DATETIME,
+        note TEXT
+      )` },
+
     { desc: '0230: casting_requests', sql: `
       CREATE TABLE IF NOT EXISTS casting_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2170,6 +2188,9 @@ app.route('/api/admin/tiktok-discovery', adminTikTokDiscoveryRoutes);
 app.route('/api/admin/ops-insights', adminOpsInsightsRoutes);
 // 🛡️ 2026-04-27 자사 이벤트 (매출 챌린지)
 app.route('/api/agency/self-events', agencySelfEventsRoutes);
+// 🛡️ 2026-04-27 노출 부스팅 쿠폰 (Promote to Live)
+app.route('/api/agency/promote-boosts', promoteBoostsAgencyRoutes);
+app.route('/api/seller/promote-boosts', promoteBoostsSellerRoutes);
 // 🛡️ 2026-04-27 Phase 3-5: 셀러 이전 (Network 마켓플레이스)
 app.route('/api/agency/transfers', sellerTransferRoutes);
 // 🛡️ 2026-04-27 Phase 3-6: 캐스팅 마켓플레이스

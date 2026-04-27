@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
-  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles,
+  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle,
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
@@ -26,6 +26,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: '운영',
     items: [
       { path: '/admin',                  label: '대시보드',      icon: LayoutDashboard, exact: true },
+      { path: '/admin/insights',         label: '운영 인사이트', icon: AlertTriangle },
       { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
       { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
       { path: '/admin/live-monitor',     label: '라이브 모니터', icon: Radio },

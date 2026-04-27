@@ -32,6 +32,7 @@ import { handleAgencyInactiveSellers } from './cron/agency-inactive-sellers';
 import { handleLiveStreamMetrics } from './cron/live-stream-metrics';
 import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
 import { handlePkBattlesTick } from './cron/pk-battles-tick';
+import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleD1Backup } from './cron/d1-backup';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -88,6 +89,8 @@ export async function handleCronScheduled(
       await handleAgencyInactiveSellers(env).catch(e => console.error('[cron] inactive-sellers:', e));
       // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일)
       await handleLiveStreamMetrics(env).catch(e => console.error('[cron] live-metrics:', e));
+      // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
+      await handleAgencySelfEventsTick(env).catch(e => console.error('[cron] self-events:', e));
     }));
   }
 

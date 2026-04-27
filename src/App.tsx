@@ -182,6 +182,8 @@ const AgencyTransfersPage = lazy(() => import('./pages/AgencyTransfersPage'))
 const SellerCastingsPage = lazy(() => import('./pages/SellerCastingsPage'))
 const AdminTikTokDiscoveryPage = lazy(() => import('./pages/AdminTikTokDiscoveryPage'))
 const AdminCastingsPage = lazy(() => import('./pages/AdminCastingsPage'))
+const AdminOpsInsightsPage = lazy(() => import('./pages/AdminOpsInsightsPage'))
+const AgencySelfEventsPage = lazy(() => import('./pages/AgencySelfEventsPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 const AgencyGroupBuyPage = lazy(() => import('./pages/AgencyGroupBuyPage'))
 
@@ -746,6 +748,11 @@ function AppContent() {
                 <ErrorBoundary><AdminCastingsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
+            <Route path="/admin/insights" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminOpsInsightsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
             <Route path="/admin/coupons" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminCouponsPage /></ErrorBoundary>
@@ -824,6 +831,7 @@ function AppContent() {
             <Route path="/agency/invites" element={<AgencyAuthGuard><AgencyInvitesPage /></AgencyAuthGuard>} />
             <Route path="/agency/pk" element={<AgencyAuthGuard><AgencyPKBattlesPage /></AgencyAuthGuard>} />
             <Route path="/agency/transfers" element={<AgencyAuthGuard><AgencyTransfersPage /></AgencyAuthGuard>} />
+            <Route path="/agency/events" element={<AgencyAuthGuard><AgencySelfEventsPage /></AgencyAuthGuard>} />
             <Route path="/a/:slug" element={<AgencyPublicPage />} />
             <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
             <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
