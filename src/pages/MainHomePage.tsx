@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Search, ShoppingCart, Eye, Play, Clock, Bell, MapPin, ChevronDown } from 'lucide-react'
+import { Search, ShoppingCart, Eye, Play, Clock, Bell, MapPin, ChevronDown, Map } from 'lucide-react'
 import api from '@/lib/api'
 import { isLoggedInSync } from '@/utils/auth'
 import SiteFooter from '@/components/main/SiteFooter'
@@ -383,8 +383,28 @@ export default function MainHomePage() {
             <p className="text-[18px] font-extrabold text-white" style={{ letterSpacing: '-0.03em' }}>{region.split(' ')[0]} 맛집 식사권</p>
             <p className="text-[11px] text-gray-400 mt-0.5">{displayMeals.length}개 · 인기순</p>
           </div>
-          <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[11px] text-gray-400 pb-1">전체 →</button>
+          <div className="flex items-center gap-2 pb-1">
+            <button onClick={() => navigate('/restaurant-map')} className="flex items-center gap-1 text-[11px] text-[#FBBF24] font-bold">
+              <Map className="w-3.5 h-3.5" /> 지도
+            </button>
+            <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[11px] text-gray-400">전체 →</button>
+          </div>
         </div>
+
+        {/* 🛡️ 2026-04-27: 카카오맵 지도 페이지 유입 — 메인 hook CTA 배너 */}
+        <button
+          onClick={() => navigate('/restaurant-map')}
+          className="w-full mb-3 rounded-xl p-3 flex items-center gap-3 bg-gradient-to-r from-[#FBBF24]/[0.12] via-[#F59E0B]/[0.10] to-[#FB923C]/[0.08] border border-[#FBBF24]/30 active:scale-[0.99] transition-transform"
+        >
+          <div className="w-9 h-9 rounded-lg bg-[#FBBF24]/20 flex items-center justify-center shrink-0">
+            <Map className="w-5 h-5 text-[#FBBF24]" />
+          </div>
+          <div className="flex-1 text-left min-w-0">
+            <p className="text-[13px] font-extrabold text-white leading-tight">🗺️ 지도에서 한눈에 보기</p>
+            <p className="text-[10px] text-gray-400 mt-0.5 truncate">내 위치 기준 가까운 맛집 식사권</p>
+          </div>
+          <span className="text-[14px] text-[#FBBF24] shrink-0">→</span>
+        </button>
 
         <div className="space-y-2">
           {displayMeals.slice(0, 5).map((m, i) => {
