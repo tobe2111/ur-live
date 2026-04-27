@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { swallow } from '@/shared/utils/swallow'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
@@ -176,7 +177,7 @@ function SettlementInvoicesSection() {
   useEffect(() => {
     api.get('/api/agency/settlement-invoices', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => { if (r.data?.success) setInvoices(r.data.data || []) })
-      .catch(() => {})
+      .catch(swallow('agency:settlements-fetch-invoices'))
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

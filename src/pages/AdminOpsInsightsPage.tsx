@@ -10,6 +10,7 @@ interface OpsInsightSummary {
   dormant_new_sellers: number
   stuck_pending_orders: number
   dormant_sellers: number
+  failed_webhooks_24h?: number
 }
 
 interface OpsInsight {
@@ -18,6 +19,7 @@ interface OpsInsight {
   stuck_pending_orders: Array<{ id: number; order_number: string; total_amount: number; created_at: string }>
   dormant_sellers: Array<{ id: number; business_name: string; last_live: string | null; last_paid: string | null }>
   notifications_24h: Array<{ type: string; cnt: number }>
+  failed_webhooks_24h?: Array<{ id: number; source: string; event_type: string; error_message: string; retry_count: number; created_at: string }>
 }
 
 export default function AdminOpsInsightsPage() {
@@ -140,6 +142,23 @@ export default function AdminOpsInsightsPage() {
                 </Table>
               )}
             </Section>
+
+            {/* Webhook 실패 (TD-009) */}
+            {data.failed_webhooks_24h && data.failed_webhooks_24h.length > 0 && (
+              <Section title="🔴 Webhook 실패 (24h)" count={data.failed_webhooks_24h.length}>
+                <Table headers={['Source', 'Event', '오류', 'Retry', '시각']}>
+                  {data.failed_webhooks_24h.map(w => (
+                    <tr key={w.id} className="border-t border-gray-100">
+                      <td className="py-2 px-3 text-sm">{w.source}</td>
+                      <td className="py-2 px-3 text-xs text-gray-700">{w.event_type}</td>
+                      <td className="py-2 px-3 text-xs text-red-600 max-w-md truncate" title={w.error_message}>{w.error_message}</td>
+                      <td className="py-2 px-3 text-xs text-center">{w.retry_count}</td>
+                      <td className="py-2 px-3 text-xs text-gray-500">{w.created_at?.slice(0, 16)}</td>
+                    </tr>
+                  ))}
+                </Table>
+              </Section>
+            )}
 
             {/* 24h 알림 통계 */}
             {data.notifications_24h.length > 0 && (

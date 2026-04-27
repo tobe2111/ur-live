@@ -84,6 +84,22 @@ export async function runDailySelfDiagnostic(env: Env) {
     }
   } catch {}
 
+  // 🛡️ 2026-04-27 (TD-009): Webhook 실패 24h 요약
+  try {
+    const row = await DB.prepare(`
+      SELECT COUNT(*) as total,
+             SUM(CASE WHEN retry_count >= 3 THEN 1 ELSE 0 END) as fatal
+      FROM webhook_events
+      WHERE status = 'FAILED'
+        AND created_at >= datetime('now', '-24 hours')
+    `).first<{ total: number; fatal: number }>();
+    if (row && row.total > 0) {
+      info.push(`Webhook 실패 24h: ${row.total}건 (FATAL ${row.fatal}건)`);
+      if (row.fatal > 0) issues.push(`🔴 Webhook FATAL ${row.fatal}건 — 운영 검토 필요`);
+      else if (row.total > 10) issues.push(`⚠️ Webhook 실패 ${row.total}건 — 평소보다 많음`);
+    }
+  } catch {}
+
   // 알림 발송
   if (!webhookUrl) {
     // 🛡️ 2026-04-22: webhook 미설정 알림 — 진단 자체 작동 안 함을 운영자가 인지하도록

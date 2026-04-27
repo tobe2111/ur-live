@@ -5,6 +5,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { MessageSquare, Plus, Trash2, Send, X, History } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { swallow } from '@/shared/utils/swallow'
 
 type Category = 'invite' | 'follow_up' | 'reactivation' | 'announcement' | 'general'
 
@@ -98,7 +99,7 @@ export default function AgencyMessagesPage() {
   const loadSellers = () => {
     api.get('/api/agency/sellers', { headers })
       .then(r => { if (r.data?.success) setSellers(r.data.data || []) })
-      .catch(() => {})
+      .catch(swallow('agency:messages-fetch-sellers'))
   }
 
   useEffect(() => {

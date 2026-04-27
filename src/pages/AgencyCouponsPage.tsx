@@ -5,6 +5,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Ticket, Plus, X, BarChart3, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { swallow } from '@/shared/utils/swallow'
 
 interface Distribution {
   parent_coupon_id: number
@@ -74,7 +75,7 @@ export default function AgencyCouponsPage() {
   const loadSellers = () => {
     api.get('/api/agency/sellers', { headers })
       .then(r => { if (r.data?.success) setSellers(r.data.data || []) })
-      .catch(() => {})
+      .catch(swallow('agency:coupons-fetch-sellers'))
   }
 
   const distribute = async () => {

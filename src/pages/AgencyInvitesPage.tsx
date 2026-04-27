@@ -81,7 +81,9 @@ export default function AgencyInvitesPage() {
   function copyCode(code: string) {
     navigator.clipboard.writeText(code).then(() => {
       toast.success('코드 복사 완료')
-    }).catch(() => {})
+    }).catch(() => {
+      // clipboard 거부 시 silent — 사용자가 수동 복사 가능
+    })
   }
 
   return (

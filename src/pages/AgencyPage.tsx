@@ -7,6 +7,7 @@ import PLSimulator from '@/components/agency/PLSimulator'
 import { LayoutDashboard } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { swallow } from '@/shared/utils/swallow'
 import {
   Users, ShoppingBag, DollarSign, Play,
   TrendingUp, ArrowUpRight, CheckCircle, XCircle, Clock, Download, Bell,
@@ -312,10 +313,10 @@ export default function AgencyPage() {
     // 🛡️ 2026-04-26 L2: KPI 6 + 의무 작업 추가 fetch (실패해도 기존 화면 유지)
     api.get('/api/agency/stats/kpi', { headers })
       .then(r => { if (r.data?.success) setKpiData(r.data.data) })
-      .catch(() => {})
+      .catch(swallow('agency:fetch-kpi'))
     api.get('/api/agency/monthly-tasks', { headers })
       .then(r => { if (r.data?.success) setMonthlyTasks(r.data.data || []) })
-      .catch(() => {})
+      .catch(swallow('agency:fetch-monthly-tasks'))
 
     // Promise.allSettled: 하나 실패해도 나머지 데이터 표시
     Promise.allSettled([

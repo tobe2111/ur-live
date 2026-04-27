@@ -91,6 +91,19 @@ app.get('/', async (c) => {
     insights.dormant_sellers = r.results || [];
   } catch { insights.dormant_sellers = []; }
 
+  // 6. Webhook 실패 (TD-009) — 24h 동안 FAILED 이벤트
+  try {
+    const r = await DB.prepare(`
+      SELECT id, source, event_type, status, error_message, retry_count, created_at
+      FROM webhook_events
+      WHERE status = 'FAILED'
+        AND created_at >= datetime('now', '-24 hours')
+      ORDER BY created_at DESC
+      LIMIT 50
+    `).all().catch(() => ({ results: [] as any[] }));
+    insights.failed_webhooks_24h = r.results || [];
+  } catch { insights.failed_webhooks_24h = []; }
+
   // 5. 부진 셀러 알림 발송 통계 (24h)
   try {
     const r = await DB.prepare(`
@@ -110,6 +123,7 @@ app.get('/', async (c) => {
       dormant_new_sellers: insights.dormant_new_sellers?.length ?? 0,
       stuck_pending_orders: insights.stuck_pending_orders?.length ?? 0,
       dormant_sellers: insights.dormant_sellers?.length ?? 0,
+      failed_webhooks_24h: insights.failed_webhooks_24h?.length ?? 0,
     },
   });
 });

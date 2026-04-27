@@ -6,6 +6,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Megaphone, Plus, Calendar, Target, Users, RefreshCw, X, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { swallow } from '@/shared/utils/swallow'
 
 interface Campaign {
   id: number
@@ -103,7 +104,7 @@ export default function AgencyCampaignsPage() {
   const loadSellers = () => {
     api.get('/api/agency/sellers', { headers })
       .then(r => { if (r.data?.success) setSellers(r.data.data || []) })
-      .catch(() => {})
+      .catch(swallow('agency:campaigns-fetch-sellers'))
   }
 
   const openCampaignDetail = async (c: Campaign) => {
