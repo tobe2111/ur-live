@@ -138,6 +138,19 @@ function isUpgrade(prev: string, next: string): boolean {
   return n > p
 }
 
+// 🛡️ R2: 테스트 가능하도록 export.
+export { isUpgrade }
+
+/**
+ * 등급 산정 — 가입 경과일 + 전월 매출 기준.
+ * 순수 함수 (DB 의존 X) — 단위 테스트 용도로 추출.
+ */
+export function determineTier(args: { ageDays: number; lastMonthRevenue: number }): 'new' | 'junior' | 'senior' {
+  if (args.lastMonthRevenue >= SENIOR_THRESHOLD) return 'senior'
+  if (args.ageDays >= JUNIOR_AGE_DAYS) return 'junior'
+  return 'new'
+}
+
 /**
  * tier 별 기본 commission rate (% of revenue).
  * 호환성: agencies.commission_rate 가 별도 설정되어 있으면 그것을 우선.
