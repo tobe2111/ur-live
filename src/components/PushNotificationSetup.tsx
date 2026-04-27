@@ -22,10 +22,19 @@ export default function PushNotificationSetup() {
     // Wait 10 seconds before asking (don't interrupt UX)
     const timer = setTimeout(async () => {
       try {
+        // 🛡️ 2026-04-27: Service Worker 가 main.tsx 에서 unregister 되므로
+        // navigator.serviceWorker.ready 는 영원히 pending. 등록된 SW 가 없으면 즉시 종료.
+        const reg = await navigator.serviceWorker.getRegistration()
+        if (!reg) {
+          if (import.meta.env.DEV) {
+            console.info('[PushNotification] Service Worker not registered — push disabled.')
+          }
+          return
+        }
+
         const permission = await Notification.requestPermission()
         if (permission !== 'granted') return
 
-        const reg = await navigator.serviceWorker.ready
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY

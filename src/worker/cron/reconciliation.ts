@@ -235,4 +235,59 @@ export async function runReconciliation(env: Env): Promise<void> {
   if (details.length > 0) {
     console.log('[Reconciliation] Details:', JSON.stringify(details));
   }
+
+  // 🛡️ 2026-04-27: 매출 mismatch 임계값 초과 시 Discord 알림.
+  // 기준 (조정 가능):
+  //   - stuck_with_payment_key > 5: 토스 결제됐는데 우리 PENDING 인 주문 > 5건
+  //   - auto_reconciled_paid > 10: 평소보다 너무 많은 누락 (웹훅 수신 이슈 가능성)
+  //   - negative_stock_fixed > 0: 음수 재고 발견 (코드 버그)
+  await alertOnReconciliationAnomaly(env, results);
+}
+
+interface ReconciliationAlertContext {
+  stuck_with_payment_key?: number | string;
+  auto_reconciled_paid?: number | string;
+  negative_stock_fixed?: number | string;
+  [k: string]: number | string | undefined;
+}
+
+const STUCK_THRESHOLD = 5;
+const AUTO_RECONCILED_THRESHOLD = 10;
+
+async function alertOnReconciliationAnomaly(
+  env: Env,
+  results: ReconciliationAlertContext,
+): Promise<void> {
+  const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL;
+  if (!webhook) return;
+
+  const alerts: string[] = [];
+
+  const stuck = Number(results.stuck_with_payment_key) || 0;
+  const autoReconciled = Number(results.auto_reconciled_paid) || 0;
+  const negativeStock = Number(results.negative_stock_fixed) || 0;
+
+  if (stuck > STUCK_THRESHOLD) {
+    alerts.push(`🔴 stuck_with_payment_key=${stuck} (>${STUCK_THRESHOLD}) — 토스 결제됐으나 DB PENDING 주문. 수동 검토 필요.`);
+  }
+  if (autoReconciled > AUTO_RECONCILED_THRESHOLD) {
+    alerts.push(`🟡 auto_reconciled_paid=${autoReconciled} (>${AUTO_RECONCILED_THRESHOLD}) — 평소보다 많은 웹훅 누락 가능성.`);
+  }
+  if (negativeStock > 0) {
+    alerts.push(`🔴 negative_stock_fixed=${negativeStock} — 음수 재고 발견. 코드 버그 의심.`);
+  }
+
+  if (alerts.length === 0) return;
+
+  try {
+    const { sendDiscordAlert } = await import('../utils/discord-alert');
+    await sendDiscordAlert(
+      webhook,
+      `📊 Daily Reconciliation Anomaly`,
+      alerts.join('\n'),
+      'warn'
+    );
+  } catch (err) {
+    console.warn('[Reconciliation] Discord alert failed:', err);
+  }
 }

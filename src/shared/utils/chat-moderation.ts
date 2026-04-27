@@ -52,8 +52,9 @@ export interface ModerationResult {
 }
 
 function normalizeForMatching(s: string): string {
-  // 띄어쓰기/특수문자 제거하여 우회 표현 검출
-  return s.toLowerCase().replace(/[\s\W_]+/g, '');
+  // 한글(자모/완성형) + 영숫자만 유지 — 띄어쓰기/특수문자만 제거하여 우회 표현 검출.
+  // 🛡️ 2026-04-27 (FIX): 이전 `[\s\W_]+` 는 한글도 \W 로 분류해 모두 제거 → 모든 메시지 block 버그.
+  return s.toLowerCase().replace(/[^ㄱ-ㅣ가-힣a-z0-9]+/g, '');
 }
 
 export function moderateChat(message: string): ModerationResult {
