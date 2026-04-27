@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Send } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
+import ViewerLoyaltyBadge from './ViewerLoyaltyBadge'
 import { useLiveStreamWebSocket } from '@/hooks/useLiveStreamWebSocket'
 
 /**
@@ -20,6 +21,7 @@ interface UnifiedMsg {
   timestamp: number
   source: 'kakao' | 'youtube' | 'seller' | 'viewer' | 'system'
   avatarUrl?: string
+  userId?: number  // 🛡️ 2026-04-27: 시청자 충성도 배지용 (viewer 만)
 }
 
 export default function LiveChatPanel({ streamId }: { streamId: number }) {
@@ -74,6 +76,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
       message: m.message,
       timestamp: m.timestamp,
       source: (m.isSeller ? 'seller' : m.isAdmin ? 'system' : 'viewer') as UnifiedMsg['source'],
+      userId: m.userId,
     })),
     ...ytMessages,
   ]
@@ -152,11 +155,15 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
                 </span>
               )}
               <p className="text-[11px] leading-snug">
+                {/* 🛡️ 2026-04-27: viewer 시청자 등급 배지 (Phase 2-3) */}
+                {msg.source === 'viewer' && msg.userId && (
+                  <ViewerLoyaltyBadge userId={msg.userId} compact />
+                )}
                 <span className={`font-bold ${
                   msg.source === 'seller' ? 'text-blue-600' :
                   msg.source === 'system' ? 'text-gray-700' :
                   'text-gray-900'
-                }`}>{msg.author}</span>
+                }`}> {msg.author}</span>
                 <span className="text-gray-600"> {msg.message}</span>
               </p>
             </div>

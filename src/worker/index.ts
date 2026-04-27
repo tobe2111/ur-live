@@ -69,6 +69,8 @@ import { optimalTimeRoutes } from '../features/seller/api/optimal-time.routes';
 import { faqBotRoutes } from '../features/guides/api/faq-bot.routes';
 import { moderationRoutes } from '../features/moderation/api/moderation.routes';
 import { adminTikTokDiscoveryRoutes } from '../features/admin/api/admin-tiktok-discovery.routes';
+import { adminOpsInsightsRoutes } from '../features/admin/api/admin-ops-insights.routes';
+import { agencySelfEventsRoutes } from '../features/agency/api/agency-self-events.routes';
 import { sellerTransferRoutes } from '../features/agency/api/seller-transfer.routes';
 import {
   adminAdvertiserRoutes,
@@ -1111,6 +1113,36 @@ app.get('/api/_internal/repair-new-tables', requireAdmin(), async (c) => {
         status TEXT DEFAULT 'pending',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )` },
+    // ── 0231: agency_self_events (매출 챌린지) ──
+    { desc: '0231: agency_self_events', sql: `
+      CREATE TABLE IF NOT EXISTS agency_self_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agency_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        metric TEXT NOT NULL,
+        target_value INTEGER NOT NULL,
+        reward_deal INTEGER NOT NULL DEFAULT 0,
+        max_winners INTEGER DEFAULT 100,
+        status TEXT DEFAULT 'active',
+        created_by_email TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { desc: '0231: agency_self_event_participants', sql: `
+      CREATE TABLE IF NOT EXISTS agency_self_event_participants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        seller_id INTEGER NOT NULL,
+        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        current_value INTEGER DEFAULT 0,
+        achieved INTEGER DEFAULT 0,
+        achieved_at DATETIME,
+        reward_paid INTEGER DEFAULT 0,
+        UNIQUE (event_id, seller_id)
+      )` },
+
     { desc: '0230: casting_requests', sql: `
       CREATE TABLE IF NOT EXISTS casting_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2134,6 +2166,10 @@ app.route('/api/faq-bot', faqBotRoutes);
 app.route('/api/moderation', moderationRoutes);
 // 🛡️ 2026-04-27 Phase 3-4: 어드민 TikTok 발굴
 app.route('/api/admin/tiktok-discovery', adminTikTokDiscoveryRoutes);
+// 🛡️ 2026-04-27 운영 안정: 어드민 운영 인사이트 (부진 검출)
+app.route('/api/admin/ops-insights', adminOpsInsightsRoutes);
+// 🛡️ 2026-04-27 자사 이벤트 (매출 챌린지)
+app.route('/api/agency/self-events', agencySelfEventsRoutes);
 // 🛡️ 2026-04-27 Phase 3-5: 셀러 이전 (Network 마켓플레이스)
 app.route('/api/agency/transfers', sellerTransferRoutes);
 // 🛡️ 2026-04-27 Phase 3-6: 캐스팅 마켓플레이스

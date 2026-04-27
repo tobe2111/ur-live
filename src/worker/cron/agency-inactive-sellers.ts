@@ -84,6 +84,19 @@ export async function handleAgencyInactiveSellers(env: Env): Promise<void> {
         `seller:${r.seller_id}`
       ).run().catch(() => {});
 
+      // 🛡️ 2026-04-27: 셀러 본인에게도 알림 (부드러운 활동 유도)
+      // 7일 무라이브일 때만 (30일 무매출은 셀러가 알아서 — 압박 안 줌)
+      if (noLive) {
+        await DB.prepare(`
+          INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
+          VALUES ('seller', ?, 'inactivity_reminder', ?, ?, '/seller/streams', datetime('now'))
+        `).bind(
+          String(r.seller_id),
+          `라이브 시작 권장 안내 🎥`,
+          `최근 7일간 라이브가 없으셨네요. 라이브를 다시 시작하면 시청자/매출 회복에 효과적입니다. 부담 없이 짧게 시작해보세요!`,
+        ).run().catch(() => {});
+      }
+
       notified++;
     }
   } catch (err) {
