@@ -288,14 +288,16 @@ app.post('/oauth/callback', async (c) => {
   try {
     const body = await c.req.json()
     code = body.code
-  } catch {
-    return c.json({ success: false, error: 'Invalid request body' }, 400)
+  } catch (e) {
+    console.error('[YouTube OAuth] Invalid JSON body:', e)
+    return c.json({ success: false, error: 'Invalid request body', error_code: 'INVALID_BODY' }, 400)
   }
 
   if (!code) {
     return c.json({
       success: false,
-      error: 'Authorization code is required'
+      error: '인증 코드가 없습니다. 다시 시도해주세요.',
+      error_code: 'NO_CODE'
     }, 400)
   }
 
@@ -306,23 +308,46 @@ app.post('/oauth/callback', async (c) => {
   if (!clientId || !clientSecret) {
     return c.json({
       success: false,
-      error: 'YouTube OAuth not configured'
+      error: 'YouTube OAuth not configured',
+      error_code: 'OAUTH_NOT_CONFIGURED'
     }, 500)
   }
 
   try {
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-    
+
     // Exchange code for tokens
-    const tokens = await youtubeService.exchangeCodeForTokens(code, redirectUri)
-    
+    // 🛡️ 2026-04-27: invalid_grant 별도 catch — 가장 흔한 사유 (code 만료/재사용)
+    let tokens
+    try {
+      tokens = await youtubeService.exchangeCodeForTokens(code, redirectUri)
+    } catch (tokenErr) {
+      const msg = tokenErr instanceof Error ? tokenErr.message : String(tokenErr)
+      console.error('[YouTube OAuth] Token exchange failed:', msg)
+      // invalid_grant 면 400 + 사용자 친화 메시지
+      if (msg.includes('invalid_grant') || msg.includes('expired')) {
+        return c.json({
+          success: false,
+          error: '인증 코드가 만료되었거나 이미 사용됐습니다. 다시 연동을 시도해주세요.',
+          error_code: 'INVALID_GRANT',
+          detail: msg,
+        }, 400)
+      }
+      return c.json({
+        success: false,
+        error: `Google 토큰 교환 실패: ${msg}`,
+        error_code: 'TOKEN_EXCHANGE_FAILED',
+      }, 502)
+    }
+
     // Get user's channels
     const channels = await youtubeService.getChannels(tokens.access_token)
-    
+
     if (channels.length === 0) {
       return c.json({
         success: false,
-        error: 'No YouTube channels found'
+        error: '연결한 Google 계정에 YouTube 채널이 없습니다. YouTube Studio 에서 채널을 먼저 만들어주세요.',
+        error_code: 'NO_CHANNELS'
       }, 400)
     }
 
@@ -377,11 +402,12 @@ app.post('/oauth/callback', async (c) => {
       }
     })
   } catch (error: unknown) {
-    console.error('[YouTube OAuth] Error:', error)
+    console.error('[YouTube OAuth] Unexpected error:', error)
     const msg = error instanceof Error ? error.message : String(error)
     return c.json({
       success: false,
-      error: msg
+      error: `YouTube 연동 중 오류: ${msg}`,
+      error_code: 'UNEXPECTED'
     }, 500)
   }
 })
