@@ -973,6 +973,57 @@ app.get('/settlements', async (c) => {
   }
 })
 
+// ── GET /settlement-invoices — 발행된 송장 목록 (M6) ──
+//
+// 매월 자동 발행되는 송장. cron 이 매월 1일 01:00 UTC 실행.
+// 참조: src/worker/cron/agency-monthly-invoices.ts
+app.get('/settlement-invoices', async (c) => {
+  const agencyId = c.get('agency').id
+  const limit = Math.min(parseInt(c.req.query('limit') || '24'), 60)
+
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, month, invoice_number, total_orders, total_amount,
+             commission_rate, commission_amount, tax_amount, net_amount,
+             status, paid_at, generated_by, created_at
+      FROM agency_settlement_invoices
+      WHERE agency_id = ?
+      ORDER BY month DESC
+      LIMIT ?
+    `).bind(agencyId, limit).all()
+    return c.json({ success: true, data: results || [] })
+  } catch {
+    return c.json({ success: true, data: [], _note: 'migration 0219 not applied' })
+  }
+})
+
+// ── GET /settlement-invoices/:id — 송장 HTML 다운로드 ──
+//
+// HTML 본문 그대로 반환 (브라우저에서 inline 표시 또는 PDF 인쇄).
+app.get('/settlement-invoices/:id', async (c) => {
+  const agencyId = c.get('agency').id
+  const id = parseInt(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+
+  try {
+    const row = await c.env.DB.prepare(
+      'SELECT html_content, invoice_number FROM agency_settlement_invoices WHERE id = ? AND agency_id = ?'
+    ).bind(id, agencyId).first<{ html_content: string; invoice_number: string }>()
+
+    if (!row) return c.json({ success: false, error: 'not found' }, 404)
+
+    // HTML 직접 응답
+    return new Response(row.html_content, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': `inline; filename="${row.invoice_number}.html"`,
+      },
+    })
+  } catch {
+    return c.json({ success: false, error: '조회 실패' }, 500)
+  }
+})
+
 // ── POST /settlements/request — 에이전시 정산 신청 ──
 app.post('/settlements/request', async (c) => {
   await ensureAgencyTables(c.env.DB)

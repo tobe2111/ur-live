@@ -98,6 +98,7 @@ import { handleAgencyTierEval } from './cron/agency-tier-eval';
 import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
 import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { handleD1Backup } from './cron/d1-backup';
+import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -2255,6 +2256,15 @@ export default {
     // Sunday 20:00 UTC (KST Monday 05:00): D1 백업 → R2 (BACKUP_BUCKET 바인딩 있을 때만 실제 동작)
     if (cron === '0 20 * * 0') {
       ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
+    }
+
+    // 🛡️ 2026-04-26 M6: 매월 1일 01:00 UTC (= KST 10:00) — 전월 정산 송장 자동 발행
+    // 매주 월요일 00:00 UTC 자동 정산 cron 1시간 후 실행 (월 1일 ~ 7일 사이)
+    if (cron === '0 0 * * 1') {
+      const dayOfMonth = new Date().getUTCDate();
+      if (dayOfMonth <= 7) {
+        ctx.waitUntil(safeCron('agency-monthly-invoices', () => handleAgencyMonthlyInvoices(env as any)));
+      }
     }
 
     // Weekly Monday 00:00 UTC (= KST 09:00): 에이전시 자동 정산 (P0 #3) + 전월 인센티브 (P0 #5) + 등급 평가 (Q1)
