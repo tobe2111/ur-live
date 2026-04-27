@@ -16,11 +16,34 @@
 import type { Env } from '../types/env'
 
 // 등급별 디폴트 목표 (tier_locked 인 경우 어드민이 별도 조정)
-const TIER_DEFAULTS = {
+// 🛡️ W2: 테스트 가능하도록 export
+export const TIER_DEFAULTS = {
   new:    { creator_growth: 2,  sales_quota: 1_000_000,  activation: 1 },
   junior: { creator_growth: 3,  sales_quota: 3_000_000,  activation: 3 },
   senior: { creator_growth: 5,  sales_quota: 10_000_000, activation: 5 },
 } as const
+
+/**
+ * 의무 작업 진행률 계산 (순수 함수 — 테스트 가능)
+ *
+ * @returns { pct: 0~100, completed: boolean, label: 진행률 + 단위 }
+ */
+export function taskProgress(taskType: 'creator_growth' | 'sales_quota' | 'activation', actual: number, target: number): {
+  pct: number
+  completed: boolean
+  label: string
+} {
+  const safeTarget = Math.max(1, target)
+  const pct = Math.min(100, Math.round((actual / safeTarget) * 100))
+  const completed = actual >= target
+  let label: string
+  if (taskType === 'sales_quota') {
+    label = `${(actual / 10_000).toFixed(0)}만원 / ${(target / 10_000).toFixed(0)}만원`
+  } else {
+    label = `${actual}명 / ${target}명`
+  }
+  return { pct, completed, label }
+}
 
 type TaskType = 'creator_growth' | 'sales_quota' | 'activation'
 
