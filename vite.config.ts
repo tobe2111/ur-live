@@ -68,6 +68,10 @@ export default defineConfig({
       },
     },
     chunkSizeWarningLimit: 600,
+    // 🛡️ 2026-04-26 (O1): hidden 소스맵 생성 — 클라이언트 노출 X, Sentry 업로드 용도
+    //   배포 후 Sentry CLI 가 dist/client/assets/*.map 업로드 → 그 다음 삭제 또는 .gitignore.
+    //   sourcemap: false 면 production 에러가 minified — Sentry 디버깅 어려움.
+    sourcemap: 'hidden',
     minify: 'terser',
     terserOptions: {
       compress: {

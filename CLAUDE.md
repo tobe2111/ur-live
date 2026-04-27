@@ -73,7 +73,7 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
 **남은 기술 부채는 `TECHNICAL_DEBT.md` 참조.** 특히 주의:
 - 🔴 DB Migration CI 파이프라인 미작동 (D1 권한 없음) → `/api/_internal/repair-schema` 응급 처치 중
 - 🔴 `.dev.vars` git history 노출 (비밀값 rotation 필요)
-- 🟡 이중 라우팅 구조 (/api/orders, /api/payments, /api/seller)
+- 🟢 Co-mounted routing (/api/orders, /api/seller) — path 충돌 0건 확인 (2026-04-26, `docs/DOUBLE_ROUTING_AUDIT.md`). worker = 핵심 CRUD, feature = 부가 기능. /api/payments 의 dead `/rollback` 제거 완료.
 - 🟡 스키마 이중화 컬럼 (stock/stock_quantity, shipping_fee/base_shipping_fee)
 
 ## 테마 규칙 (필수)

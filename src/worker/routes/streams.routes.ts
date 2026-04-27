@@ -14,6 +14,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { cacheGet, cacheInvalidate, buildCacheKey } from '../utils/cache';
+import { swallow } from '../utils/swallow';
 
 interface StreamListRow {
   id: number;
@@ -590,7 +591,7 @@ streamsRouter.post('/:id/viewer/join', async (c) => {
           )
           .bind(liveNow, liveNow, streamId)
           .run()
-          .catch(() => {});
+          .catch(swallow('streams:viewer-bump'));
       } catch { /* non-fatal */ }
     } else {
       // heartbeat: current_viewers 만 주기적으로 재동기화 (TTL 만료된 세션 반영)
@@ -610,7 +611,7 @@ streamsRouter.post('/:id/viewer/join', async (c) => {
           )
           .bind(Number(row?.live ?? 0), streamId)
           .run()
-          .catch(() => {});
+          .catch(swallow('streams:current-viewers-resync-join'));
       } catch { /* ignore */ }
     }
 
@@ -644,7 +645,7 @@ streamsRouter.post('/:id/viewer/leave', async (c) => {
       )
       .bind(streamId, sessionId)
       .run()
-      .catch(() => {});
+      .catch(swallow('streams:viewer-leave'));
 
     // current_viewers 즉시 재동기화
     try {
@@ -663,7 +664,7 @@ streamsRouter.post('/:id/viewer/leave', async (c) => {
         )
         .bind(Number(row?.live ?? 0), streamId)
         .run()
-        .catch(() => {});
+        .catch(swallow('streams:current-viewers-resync-leave'));
     } catch { /* ignore */ }
 
     return c.json({ success: true });

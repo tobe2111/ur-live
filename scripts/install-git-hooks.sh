@@ -26,6 +26,19 @@ bash scripts/check-schema-refs.sh || {
   exit 1
 }
 
+# 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
+staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
+if [ -n "$staged_migrations" ]; then
+  echo "==> Pre-commit: schema drift 검증 (migrations ↔ production-schema.ts)..."
+  if ! node scripts/verify-schema.mjs --json > /tmp/schema-drift.json 2>&1; then
+    drift_count=$(jq '.summary.drift // 0' /tmp/schema-drift.json 2>/dev/null || echo 0)
+    if [ "$drift_count" != "0" ]; then
+      echo "⚠️  schema drift $drift_count 건 — 정보 용도, 차단 안 함"
+      echo "    상세: node scripts/verify-schema.mjs"
+    fi
+  fi
+fi
+
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
 

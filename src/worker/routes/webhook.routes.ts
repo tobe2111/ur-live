@@ -16,6 +16,7 @@ import type { TossWebhookPayload } from '../../shared/types';
 import { arrayBufferToHex } from '../../shared/utils';
 import { sendAlert } from '../utils/alerts';
 import { rateLimit } from '../middleware/rate-limit';
+import { swallow } from '../utils/swallow';
 
 // ============================================================
 // Order Notification Helper
@@ -181,7 +182,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
               content: '🚨 TOSS_WEBHOOK_SECRET not configured — webhook delivery dropped. Set the secret immediately.',
             }),
             signal: AbortSignal.timeout(5000),
-          }).catch(() => {});
+          }).catch(swallow('webhook:discord-secret-missing'));
         }
         return c.json({ success: false, error: 'webhook_secret_not_configured', processed: false }, 200);
       }
@@ -288,7 +289,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
           title: '결제 분쟁 발생',
           message: `주문 ${tossOrderId}에 분쟁 제기됨`,
           context: { orderNumber: tossOrderId, paymentKey, payload },
-        }).catch(() => {});
+        }).catch(swallow('webhook:dispute-alert-CRITICAL'));
         await webhookRepo.markSkipped(webhookEventId, 'dispute_requires_manual_handling');
         return c.json({ received: true, status: 'dispute_alerted' }, 200);
 
@@ -300,7 +301,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
           title: `알 수 없는 Toss 이벤트: ${eventType}`,
           message: `${tossOrderId}에 대한 미지원 이벤트 수신`,
           context: { eventType, orderNumber: tossOrderId },
-        }).catch(() => {});
+        }).catch(swallow('webhook:unknown-event-alert'));
         await webhookRepo.markSkipped(webhookEventId, `unknown_event:${eventType}`);
         return c.json({ received: true, status: 'unhandled' }, 200);
     }

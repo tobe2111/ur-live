@@ -1,4 +1,5 @@
 import { TOSS_PAYMENT_URL } from '../../shared/constants';
+import { swallow } from './swallow';
 
 // Cloudflare Worker용 환불 처리 유틸리티
 //
@@ -199,7 +200,7 @@ export async function processRefund(
       )
       .bind(orderId, requested, reason || '')
       .run()
-      .catch(() => {})
+      .catch(swallow('refund:history-insert'))
 
     // 5. 전액 환불일 때만 상태 전환
     const fullyRefunded = alreadyRefunded + requested >= orderAmount
@@ -219,7 +220,7 @@ export async function processRefund(
     }
 
     // 6. 레거시 환불 내역 기록 (기존 테이블 유지)
-    await recordRefundHistory(db, orderId, requested, reason).catch(() => {})
+    await recordRefundHistory(db, orderId, requested, reason).catch(swallow('refund:legacy-history'))
 
     return { success: true, refundId: orderId }
   } catch (error) {

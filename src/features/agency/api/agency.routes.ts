@@ -126,18 +126,43 @@ function getPasswordResetEmailHTML(resetUrl: string): string {
 }
 
 // ── JWT 헬퍼 ─────────────────────────────────────────────────
-async function signAgencyToken(secret: string, agencyId: number, email: string) {
+//
+// 🛡️ 2026-04-26 R1: 토큰 페이로드에 member_role + member_id 추가.
+// 기존 토큰 (member_role 없음) 은 verifyAgencyToken 이 'owner' 로 fallback — 하위 호환.
+async function signAgencyToken(
+  secret: string,
+  agencyId: number,
+  email: string,
+  options?: { memberRole?: string; memberId?: number }
+) {
   return sign(
-    { sub: String(agencyId), email, type: 'agency', exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 },
+    {
+      sub: String(agencyId),
+      email,
+      type: 'agency',
+      member_role: options?.memberRole,        // 'owner' | 'manager' | 'agent' | 'analyst'
+      member_id: options?.memberId,            // agency_members.id
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
+    },
     secret
   )
 }
 
-async function verifyAgencyToken(secret: string, token: string): Promise<{ id: number; email: string } | null> {
+async function verifyAgencyToken(secret: string, token: string): Promise<{
+  id: number;
+  email: string;
+  member_role?: string;
+  member_id?: number;
+} | null> {
   try {
     const payload = await verify(token, secret, 'HS256') as Record<string, unknown>
     if (payload.type !== 'agency' || !payload.sub) return null
-    return { id: Number(payload.sub), email: String(payload.email) }
+    return {
+      id: Number(payload.sub),
+      email: String(payload.email),
+      member_role: typeof payload.member_role === 'string' ? payload.member_role : undefined,
+      member_id: typeof payload.member_id === 'number' ? payload.member_id : undefined,
+    }
   } catch {
     return null
   }
@@ -339,7 +364,27 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
 
   await clearFailures(c.env.DB, 'agency', String(agency.id))
 
-  const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email)
+  // 🛡️ 2026-04-26 R1: 멤버 role 조회 → JWT 페이로드에 포함
+  // agency.email = owner email (기존 가정 유지). agency_members 미적용 시 'owner' fallback.
+  let memberRole: string = 'owner'
+  let memberId: number | undefined
+  try {
+    const m = await c.env.DB.prepare(
+      "SELECT id, role FROM agency_members WHERE agency_id = ? AND email = ? AND status = 'active' LIMIT 1"
+    ).bind(agency.id, agency.email).first<{ id: number; role: string }>()
+    if (m) {
+      memberRole = m.role
+      memberId = m.id
+      // last_active_at 갱신 (best-effort)
+      await c.env.DB.prepare(
+        "UPDATE agency_members SET last_active_at = datetime('now') WHERE id = ?"
+      ).bind(m.id).run().catch(() => {})
+    }
+  } catch { /* migration 0217 미적용 — owner fallback */ }
+
+  const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email, {
+    memberRole, memberId,
+  })
 
   // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 (Bearer 병행)
   let agencyCookie = ''
@@ -606,6 +651,110 @@ app.get('/stats', async (c) => {
   })
 })
 
+// ── GET /stats/kpi — TikTok Backstage 1.4 핵심 지표 6가지 (Q5) ──
+//
+// 에이전시 운영의 핵심 KPI. 매일 봐야 하는 지표를 한 번에 반환.
+// "유효" 라이브 = 1시간 이상 진행 (TikTok 기준).
+//
+// 반환:
+//  - diamond_total: 30일 누적 받은 딜 + 후원 (다이아몬드 등가)
+//  - live_rate: 라이브 진행 셀러 / 총 소속 셀러
+//  - effective_live_rate: 1시간 이상 라이브 진행 셀러 / 총 소속 셀러
+//  - active_creators: 라이브 진행 셀러 수 (탈퇴 제외)
+//  - effective_active_creators: 1시간 이상 진행 셀러 수
+//  - new_creators_today: 오늘 시작된 매니지먼트 관계 셀러 수
+//
+// 참조: docs/AGENCY_BACKSTAGE_LEARNING.md (1.2 핵심 데이터 지표 6가지)
+app.get('/stats/kpi', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+
+  const period = parseInt(c.req.query('days') || '30')
+  const since = new Date(Date.now() - period * 86400_000).toISOString()
+  const todayStart = new Date(Date.UTC(
+    new Date().getUTCFullYear(),
+    new Date().getUTCMonth(),
+    new Date().getUTCDate()
+  )).toISOString()
+
+  const [totalSellersRow, diamondRow, liveStatsRow, newTodayRow] = await Promise.all([
+    // 1) 총 소속 활성 셀러 수
+    c.env.DB.prepare(`
+      SELECT COUNT(DISTINCT ag.seller_id) AS total
+      FROM agency_sellers ag
+      INNER JOIN sellers s ON s.id = ag.seller_id
+      WHERE ag.agency_id = ? AND COALESCE(s.is_active, 1) = 1
+    `).bind(agencyId).first<{ total: number }>(),
+
+    // 2) 다이아몬드 (= 매출 + 후원) 30일 누적
+    c.env.DB.prepare(`
+      SELECT
+        COALESCE((SELECT SUM(o.total_amount)
+          FROM orders o
+          INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+          WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?), 0) AS revenue,
+        COALESCE((SELECT SUM(d.amount)
+          FROM donations d
+          INNER JOIN agency_sellers ag ON ag.seller_id = d.seller_id
+          WHERE ag.agency_id = ? AND d.payment_status = 'approved' AND d.created_at >= ?), 0) AS donations
+    `).bind(agencyId, since, agencyId, since).first<{ revenue: number; donations: number }>(),
+
+    // 3) 라이브 진행 통계 (period 기준)
+    //    - active: started_at 이 있는 라이브 1회 이상 셀러
+    //    - effective: 종료 시각 - 시작 시각 >= 60분
+    c.env.DB.prepare(`
+      SELECT
+        COUNT(DISTINCT ls.seller_id) AS active_count,
+        COUNT(DISTINCT CASE
+          WHEN ls.ended_at IS NOT NULL
+            AND (julianday(ls.ended_at) - julianday(ls.started_at)) * 1440 >= 60
+          THEN ls.seller_id
+        END) AS effective_count
+      FROM live_streams ls
+      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
+      WHERE ag.agency_id = ?
+        AND ls.created_at >= ?
+        AND ls.status IN ('live','ended')
+    `).bind(agencyId, since).first<{ active_count: number; effective_count: number }>(),
+
+    // 4) 오늘 매니지먼트 관계 시작 (agency_sellers 의 created_at)
+    //    실제 컬럼이 없을 수 있어 try/catch 로 감쌈 (구 스키마 호환)
+    c.env.DB.prepare(`
+      SELECT COUNT(*) AS cnt
+      FROM agency_sellers ag
+      WHERE ag.agency_id = ?
+        AND ag.created_at >= ?
+    `).bind(agencyId, todayStart).first<{ cnt: number }>().catch(() => ({ cnt: 0 })),
+  ])
+
+  const totalSellers = totalSellersRow?.total ?? 0
+  const activeCount = liveStatsRow?.active_count ?? 0
+  const effectiveCount = liveStatsRow?.effective_count ?? 0
+  const diamondTotal = (diamondRow?.revenue ?? 0) + (diamondRow?.donations ?? 0)
+
+  return c.json({
+    success: true,
+    data: {
+      // 30일 누적 매출 + 후원 (= 다이아몬드 등가)
+      diamond_total: diamondTotal,
+      // 라이브 진행 셀러 비율 (총 소속 셀러 대비)
+      live_rate: totalSellers > 0 ? Math.round((activeCount / totalSellers) * 1000) / 10 : 0,
+      // 1시간 이상 라이브 진행 셀러 비율
+      effective_live_rate: totalSellers > 0 ? Math.round((effectiveCount / totalSellers) * 1000) / 10 : 0,
+      // 활성 라이브 크리에이터 수 (탈퇴/비활성 제외)
+      active_creators: activeCount,
+      // 유효 활성 크리에이터 수 (1시간 이상)
+      effective_active_creators: effectiveCount,
+      // 오늘 영입한 셀러 수
+      new_creators_today: newTodayRow?.cnt ?? 0,
+      // 메타
+      total_sellers: totalSellers,
+      period_days: period,
+      timestamp: new Date().toISOString(),
+    },
+  })
+})
+
 // ── GET /stats/daily — 일별 매출 추이 (RevenueTrendChart 용) ───
 app.get('/stats/daily', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
@@ -626,6 +775,99 @@ app.get('/stats/daily', async (c: AgencyCtx) => {
   } catch {
     return c.json({ success: true, data: [] })
   }
+})
+
+// ── GET /stats/realtime — 실시간 매출/주문 (Agency P0 #2) ─────
+//
+// 대시보드 폴링용. Today (KST midnight ~ now) + 최근 1시간 + 라이브 카운트.
+// KV 캐시 30초 TTL (RATE_LIMIT_KV 가 있으면). 없으면 매번 D1 직접 조회.
+//
+// 클라이언트 권장 폴링: 30초 간격 (캐시 TTL 와 동기).
+//
+// 참조: docs/AGENCY_BACKSTAGE_GAP_ANALYSIS.md (P0 #2)
+app.get('/stats/realtime', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+  const cacheKey = `agency:${agencyId}:realtime`
+
+  // 1. KV 캐시 시도
+  const KV = (c.env as any).RATE_LIMIT_KV as KVNamespace | undefined
+  if (KV) {
+    try {
+      const cached = await KV.get(cacheKey, 'json')
+      if (cached) return c.json({ success: true, data: cached, _cached: true })
+    } catch { /* KV miss → fall through */ }
+  }
+
+  // 2. KST midnight (UTC-9 → KST 자정 = UTC 15:00 전날)
+  // 간단화: SQLite 의 datetime 'now', 'localtime' 은 환경 의존이므로 직접 계산.
+  const now = new Date()
+  const kstOffsetMs = 9 * 60 * 60 * 1000
+  const kstNow = new Date(now.getTime() + kstOffsetMs)
+  const kstMidnight = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate()))
+  const todayStart = new Date(kstMidnight.getTime() - kstOffsetMs).toISOString()
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
+
+  const [today, lastHour, activeStreams, todayViewers] = await Promise.all([
+    c.env.DB.prepare(`
+      SELECT
+        COUNT(*) AS order_count,
+        COALESCE(SUM(o.total_amount), 0) AS revenue,
+        COUNT(DISTINCT o.user_id) AS unique_buyers
+      FROM orders o
+      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+      WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?
+    `).bind(agencyId, todayStart).first<{ order_count: number; revenue: number; unique_buyers: number }>(),
+    c.env.DB.prepare(`
+      SELECT
+        COUNT(*) AS order_count,
+        COALESCE(SUM(o.total_amount), 0) AS revenue
+      FROM orders o
+      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+      WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?
+    `).bind(agencyId, oneHourAgo).first<{ order_count: number; revenue: number }>(),
+    c.env.DB.prepare(`
+      SELECT
+        COUNT(*) AS live_count,
+        COALESCE(SUM(ls.current_viewers), 0) AS total_viewers
+      FROM live_streams ls
+      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
+      WHERE ag.agency_id = ? AND ls.status = 'live'
+    `).bind(agencyId).first<{ live_count: number; total_viewers: number }>(),
+    c.env.DB.prepare(`
+      SELECT COALESCE(SUM(ls.peak_viewers), 0) AS peak_today
+      FROM live_streams ls
+      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
+      WHERE ag.agency_id = ? AND ls.created_at >= ?
+    `).bind(agencyId, todayStart).first<{ peak_today: number }>().catch(() => ({ peak_today: 0 })),
+  ])
+
+  const data = {
+    timestamp: now.toISOString(),
+    today: {
+      orders: today?.order_count ?? 0,
+      revenue: today?.revenue ?? 0,
+      unique_buyers: today?.unique_buyers ?? 0,
+    },
+    last_hour: {
+      orders: lastHour?.order_count ?? 0,
+      revenue: lastHour?.revenue ?? 0,
+    },
+    streams: {
+      live_count: activeStreams?.live_count ?? 0,
+      current_viewers: activeStreams?.total_viewers ?? 0,
+      peak_today: todayViewers?.peak_today ?? 0,
+    },
+  }
+
+  // 3. KV 캐시 저장 (best-effort, TTL 30초)
+  if (KV) {
+    c.executionCtx?.waitUntil?.(
+      KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 }).catch(() => {})
+    )
+  }
+
+  return c.json({ success: true, data, _cached: false })
 })
 
 // ── GET /stats/batch — 셀러별 일괄 통계 (N+1 방지) ─────────────
@@ -773,6 +1015,57 @@ app.get('/settlements', async (c) => {
     return c.json({ success: true, data: enriched, summary })
   } catch {
     return c.json({ success: true, data: [], summary: { total: 0, pending: 0, confirmed: 0, completed: 0, total_amount: 0, agency_commission_rate: 2, total_agency_commission: 0 } })
+  }
+})
+
+// ── GET /settlement-invoices — 발행된 송장 목록 (M6) ──
+//
+// 매월 자동 발행되는 송장. cron 이 매월 1일 01:00 UTC 실행.
+// 참조: src/worker/cron/agency-monthly-invoices.ts
+app.get('/settlement-invoices', async (c) => {
+  const agencyId = c.get('agency').id
+  const limit = Math.min(parseInt(c.req.query('limit') || '24'), 60)
+
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, month, invoice_number, total_orders, total_amount,
+             commission_rate, commission_amount, tax_amount, net_amount,
+             status, paid_at, generated_by, created_at
+      FROM agency_settlement_invoices
+      WHERE agency_id = ?
+      ORDER BY month DESC
+      LIMIT ?
+    `).bind(agencyId, limit).all()
+    return c.json({ success: true, data: results || [] })
+  } catch {
+    return c.json({ success: true, data: [], _note: 'migration 0219 not applied' })
+  }
+})
+
+// ── GET /settlement-invoices/:id — 송장 HTML 다운로드 ──
+//
+// HTML 본문 그대로 반환 (브라우저에서 inline 표시 또는 PDF 인쇄).
+app.get('/settlement-invoices/:id', async (c) => {
+  const agencyId = c.get('agency').id
+  const id = parseInt(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+
+  try {
+    const row = await c.env.DB.prepare(
+      'SELECT html_content, invoice_number FROM agency_settlement_invoices WHERE id = ? AND agency_id = ?'
+    ).bind(id, agencyId).first<{ html_content: string; invoice_number: string }>()
+
+    if (!row) return c.json({ success: false, error: 'not found' }, 404)
+
+    // HTML 직접 응답
+    return new Response(row.html_content, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': `inline; filename="${row.invoice_number}.html"`,
+      },
+    })
+  } catch {
+    return c.json({ success: false, error: '조회 실패' }, 500)
   }
 })
 
@@ -1205,11 +1498,23 @@ app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, 
   const { hashPassword: hashPw } = await import('../../../lib/password')
   const hash = await hashPw(password)
 
-  // 셀러 계정 생성 (승인 상태)
-  const result = await c.env.DB.prepare(`
-    INSERT INTO sellers (username, name, email, password_hash, business_name, phone, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'approved', datetime('now'), datetime('now'))
-  `).bind(email.split('@')[0], name, email, hash, business_name || null, phone || null).run()
+  // 🛡️ 2026-04-26 (P0 #1): 에이전시 초대 셀러는 'pending' 으로 생성 → 어드민 심사 후 'approved'.
+  // affiliated_agency_id 로 어드민 심사 페이지에서 출처 식별.
+  // 하위 호환: affiliated_agency_id 컬럼 없으면 (구 schema) 그냥 생성 진행.
+  let result;
+  try {
+    result = await c.env.DB.prepare(`
+      INSERT INTO sellers (username, name, email, password_hash, business_name, phone, status, affiliated_agency_id, documents_submitted_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, datetime('now'), datetime('now'), datetime('now'))
+    `).bind(email.split('@')[0], name, email, hash, business_name || null, phone || null, agencyId).run()
+  } catch (err) {
+    // affiliated_agency_id / documents_submitted_at 컬럼 미존재 시 (마이그레이션 0207 미적용)
+    if (import.meta.env.DEV) console.warn('[agency:invite-seller] new columns missing, falling back:', err);
+    result = await c.env.DB.prepare(`
+      INSERT INTO sellers (username, name, email, password_hash, business_name, phone, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+    `).bind(email.split('@')[0], name, email, hash, business_name || null, phone || null).run()
+  }
 
   const sellerId = result.meta.last_row_id
 
@@ -1217,7 +1522,22 @@ app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, 
   await c.env.DB.prepare('INSERT OR IGNORE INTO agency_sellers (agency_id, seller_id) VALUES (?, ?)')
     .bind(agencyId, sellerId).run()
 
-  return c.json({ success: true, data: { seller_id: sellerId }, message: `${name} 셀러가 생성되어 에이전시에 소속되었습니다.` }, 201)
+  // 심사 큐에 등록 (어드민 페이지에서 승인/반려)
+  try {
+    await c.env.DB.prepare(`
+      INSERT INTO agency_creator_approvals (seller_id, agency_id, status, created_at)
+      VALUES (?, ?, 'pending', datetime('now'))
+    `).bind(sellerId, agencyId).run()
+  } catch (err) {
+    // 테이블 미존재 시 (마이그레이션 0207 미적용) — 셀러는 생성됐고 status=pending 으로 어드민이 접근 가능
+    if (import.meta.env.DEV) console.warn('[agency:invite-seller] approval queue not yet migrated:', err);
+  }
+
+  return c.json({
+    success: true,
+    data: { seller_id: sellerId, status: 'pending' },
+    message: `${name} 셀러가 생성되었습니다. 어드민 승인 후 활성화됩니다.`
+  }, 201)
 })
 
 // ── GET /api/agency/report/csv — 매출 리포트 CSV 다운로드 ──
@@ -1289,6 +1609,33 @@ app.get('/notices', async (c: AgencyCtx) => {
   `).bind(agencyId).all()
 
   return c.json({ success: true, data: results || [] })
+})
+
+// ── GET /monthly-tasks — 의무 작업 진행 상황 (Q6) ──
+//
+// 응답: 이번 달 3종 의무 작업의 target/actual/status.
+// row 가 없으면 cron 이 다음 실행 시 자동 생성. 빈 배열 반환.
+//
+// 참조: docs/AGENCY_STRATEGY_QUICKWIN.md (Q6)
+app.get('/monthly-tasks', async (c: AgencyCtx) => {
+  const agencyId = c.get('agency').id
+  const now = new Date()
+  const month = c.req.query('month') ||
+    `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return c.json({ success: false, error: 'month 형식: YYYY-MM' }, 400)
+  }
+
+  try {
+    const { results } = await c.env.DB.prepare(
+      `SELECT * FROM agency_monthly_tasks WHERE agency_id = ? AND month = ? ORDER BY task_type`
+    ).bind(agencyId, month).all<Record<string, unknown>>()
+    return c.json({ success: true, data: results || [], month })
+  } catch {
+    // migration 0215 미적용
+    return c.json({ success: true, data: [], month, _note: 'migration 0215 not applied yet' })
+  }
 })
 
 // ── GET/PUT /api/agency/targets — 셀러 매출 목표 ──

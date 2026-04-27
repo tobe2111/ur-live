@@ -56,7 +56,6 @@ import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
 import { resendWebhookRoutes } from '../features/notifications/api/resend-webhook.routes';
 import { ordersRoutes as featureOrdersRoutes } from '../features/orders/api/orders.routes';
-import { paymentRoutes as featurePaymentRoutes } from '../features/payments/api/payment.routes';
 import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
 import { pushRoutes } from '../features/push/api/push.routes';
 import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
@@ -84,6 +83,64 @@ import { hashPassword } from '../lib/password';
 import { botProtection } from './middleware/bot-detection';
 import { bodyLimit } from './middleware/body-limit';
 import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
+
+// 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
+import { blogRoutes } from '../features/blog/api/blog.routes';
+import { agencyRoutes } from '../features/agency/api/agency.routes';
+import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
+import { agencyCampaignsRoutes, recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
+import { agencyIncentivesRoutes, calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
+import { agencyMessagesRoutes } from '../features/agency/api/agency-messages.routes';
+import { agencyCouponsRoutes } from '../features/agency/api/agency-coupons.routes';
+import { agencyMembersRoutes } from '../features/agency/api/agency-members.routes';
+import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.routes';
+import { handleAgencyTierEval } from './cron/agency-tier-eval';
+import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
+import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
+import { handleD1Backup } from './cron/d1-backup';
+import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
+import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
+import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
+import { proxyRoutes } from './routes/proxy.routes';
+import { debugRoutes } from './routes/debug.routes';
+import { publicUtilityRoutes } from './routes/public-utility.routes';
+import { tiktokRoutes } from '../features/multi-platform/api/tiktok.routes';
+import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
+import { guideRoutes } from '../features/guides/api/guide.routes';
+import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
+import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
+import { reportsRoutes } from '../features/reports/api/reports.routes';
+import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
+import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
+import { interestRoutes } from '../features/loyalty/api/interest.routes';
+import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
+import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
+import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
+import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
+import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
+import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
+import { pointsRoutes } from '../features/points/api/points.routes';
+import { shortsRoutes } from '../features/shorts/api/shorts.routes';
+import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
+import { couponRoutes } from '../features/coupons/api/coupons.routes';
+import { socialRoutes } from '../features/social/api/social.routes';
+import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
+import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
+import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
+import { sectionsRoutes } from '../features/sections/api/sections.routes';
+import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
+import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
+import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
+import { returnsRoutes } from '../features/returns/api/returns.routes';
+import { auctionRoutes } from '../features/auction/api/auction.routes';
+import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
+import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
+import { referralRoutes } from '../features/referral/api/referral.routes';
+import { handleScheduled } from './cron/scheduled-cleanup';
+import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
+import { runReconciliation } from './cron/reconciliation';
+import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
+import { handleAgencyAutoSettle } from './cron/agency-auto-settle';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -291,46 +348,7 @@ app.use('*', async (c, next) => {
 // Browsers POST violation reports here when CSP blocks a resource.
 // Keep handler minimal and always return 204 to avoid influencing browser behavior.
 // ============================================================
-app.post('/api/csp-report', async (c) => {
-  try {
-    const report = await c.req.json().catch(() => null);
-    if (import.meta.env.DEV && report) console.warn('[CSP violation]', report);
-    // 🛡️ 2026-04-22: CSP 위반 DB 저장 — 어드민이 이상 패턴 분석 가능.
-    // 테이블은 auto-create (마이그레이션 미적용 환경 호환).
-    if (report && c.env.DB) {
-      try {
-        await c.env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS csp_violations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            blocked_uri TEXT,
-            violated_directive TEXT,
-            document_uri TEXT,
-            source_file TEXT,
-            line_number INTEGER,
-            user_agent TEXT,
-            ip TEXT,
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-          )
-        `).run();
-        const body = (report as any)['csp-report'] || report;
-        await c.env.DB.prepare(`
-          INSERT INTO csp_violations
-            (blocked_uri, violated_directive, document_uri, source_file, line_number, user_agent, ip)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          String(body?.['blocked-uri'] || body?.blockedURL || '').slice(0, 500),
-          String(body?.['violated-directive'] || body?.effectiveDirective || '').slice(0, 200),
-          String(body?.['document-uri'] || body?.documentURL || '').slice(0, 500),
-          String(body?.['source-file'] || body?.sourceFile || '').slice(0, 500),
-          Number(body?.['line-number'] || body?.lineNumber || 0) || null,
-          (c.req.header('User-Agent') || '').slice(0, 300),
-          c.req.header('CF-Connecting-IP') || '',
-        ).run();
-      } catch { /* DB 실패도 CSP 에 영향 주지 않음 */ }
-    }
-  } catch { /* swallow — never surface parse errors to the browser */ }
-  return c.body(null, 204);
-});
+// /api/csp-report → public-utility.routes.ts (P1, 2026-04-26)
 
 // ============================================================
 // Health Check
@@ -346,41 +364,7 @@ app.get('/health', (c) => c.json({
 // v32 FIX: PWA manifest MIME type 명시 (Workers asset serving은 _headers 미지원)
 // Chrome "Manifest: Line: 1 Syntax error" 원인 — Worker가 HTML fallback으로 응답하거나
 // MIME이 text/plain으로 나올 때 발생. 명시적 intercept로 application/manifest+json 반환.
-app.get('/manifest.webmanifest', async (c) => {
-  try {
-    const assets = (c.env as any).ASSETS;
-    if (assets) {
-      const res = await assets.fetch(new Request(new URL('/manifest.webmanifest', c.req.url).toString()));
-      if (res && res.ok) {
-        const body = await res.text();
-        return new Response(body, {
-          headers: {
-            'Content-Type': 'application/manifest+json; charset=utf-8',
-            'Cache-Control': 'public, max-age=3600',
-          },
-        });
-      }
-    }
-  } catch {}
-  // Fallback: 인라인 매니페스트
-  return new Response(JSON.stringify({
-    name: '유어딜',
-    short_name: '유어딜',
-    start_url: '/',
-    display: 'standalone',
-    background_color: '#020202',
-    theme_color: '#020202',
-    orientation: 'portrait',
-    icons: [
-      { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' },
-    ],
-  }), {
-    headers: {
-      'Content-Type': 'application/manifest+json; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600',
-    },
-  });
-});
+// /manifest.webmanifest → public-utility.routes.ts (P1, 2026-04-26)
 
 app.get('/api/health', async (c) => {
   const env = c.env as Env;
@@ -587,7 +571,7 @@ app.get('/api/_internal/health-dashboard', requireAdmin(), async (c) => {
   });
 });
 
-let _cachedBuildVersion: { version: string; fetchedAt: number } | null = null;
+// _cachedBuildVersion 모듈 캐시 → public-utility.routes.ts 로 이동 (P1)
 // ============================================================
 // 🌐 Dynamic Sitemap.xml (2026-04-22 추가)
 // 기존 정적 public/sitemap.xml 은 상품/스트림 누락 + 7일 stale.
@@ -656,37 +640,7 @@ ${urls.map(u => `  <url><loc>${origin}${u.loc}</loc><changefreq>${u.changefreq}<
   });
 });
 
-app.get('/api/version', async (c) => {
-  // 공개 secret 존재 여부 boolean — 값 자체는 노출 안 됨. 500 진단용.
-  const env = c.env as any;
-  const secrets = {
-    JWT_SECRET: !!env.JWT_SECRET,
-    REFRESH_TOKEN_SECRET: !!env.REFRESH_TOKEN_SECRET,
-    KAKAO_REST_API_KEY: !!env.KAKAO_REST_API_KEY,
-    FIREBASE_PRIVATE_KEY: !!env.FIREBASE_PRIVATE_KEY,
-    FIREBASE_CLIENT_EMAIL: !!env.FIREBASE_CLIENT_EMAIL,
-    TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
-    DB: !!env.DB,
-  };
-  try {
-    const now = Date.now();
-    if (_cachedBuildVersion && (now - _cachedBuildVersion.fetchedAt) < 60_000) {
-      return c.json({ success: true, version: _cachedBuildVersion.version, secrets });
-    }
-
-    const origin = new URL(c.req.url).origin;
-    const htmlRes = await fetch(`${origin}/`, { cf: { cacheTtl: 30 } } as RequestInit);
-    if (!htmlRes.ok) return c.json({ success: false, version: null, secrets }, 200);
-
-    const html = await htmlRes.text();
-    const match = html.match(/assets\/(index-[A-Za-z0-9_-]+\.js)/);
-    const version = match?.[1] || 'unknown';
-    _cachedBuildVersion = { version, fetchedAt: now };
-    return c.json({ success: true, version, secrets });
-  } catch {
-    return c.json({ success: false, version: null, secrets }, 200);
-  }
-});
+// /api/version → public-utility.routes.ts (P1, 2026-04-26)
 
 // ============================================================
 // 🩹 Self-healing schema repair (idempotent, 재실행 안전)
@@ -1305,19 +1259,7 @@ app.get('/api/_internal/smoke-test-auth', async (c) => {
 
 // 배포 검증용 — 현재 worker 빌드가 언제 / 어떤 커밋에서 빌드됐는지 즉시 확인
 // 이 핸들러의 존재 자체가 "최신 배포 반영" 증거
-app.get('/api/debug/build-info', requireAdmin(), (c) => {
-  return c.json({
-    success: true,
-    // 빌드 시점 commit SHA — CI가 BUILD_SHA env로 주입
-    commitSha: (c.env as any).BUILD_SHA || 'unknown',
-    buildTimestamp: (c.env as any).BUILD_TIMESTAMP || 'unknown',
-    // 이 엔드포인트가 도입된 커밋 기준 — 존재하면 그 이후 배포
-    markers: {
-      whoamiEndpoint: true,    // 2026-04-22 8b82323 이후
-      buildInfoEndpoint: true, // 현재 커밋 이후
-    },
-  });
-});
+// build-info 는 src/worker/routes/debug.routes.ts 로 이동됨 (M9 분리, 2026-04-26)
 
 app.get('/api/debug/whoami', requireAdmin(), async (c) => {
   const authHeader = c.req.header('Authorization') || '';
@@ -1430,17 +1372,7 @@ app.get('/api/docs', swaggerUI({ url: '/api/openapi.json' }));
 // ============================================================
 
 // Debug endpoint to check bindings (admin only)
-app.get('/api/debug/bindings', requireAdmin(), (c) => {
-  const env = c.env as Env;
-  return c.json({
-    hasDB: !!env.DB,
-    hasSessionKV: !!env.SESSION_KV,
-    environment: env.ENVIRONMENT,
-    frontendUrl: env.FRONTEND_URL,
-    region: env.REGION,
-    envKeys: Object.keys(env || {}),
-  });
-});
+// bindings 는 src/worker/routes/debug.routes.ts 로 이동됨 (M9 분리, 2026-04-26)
 
 // KV usage monitoring (admin only)
 app.get('/api/debug/kv-usage', requireAdmin(), async (c) => {
@@ -1681,7 +1613,6 @@ app.route('/api/seller/streams', sellerStreamsRoutes);
 app.route('/api/email', emailRoutes);
 
 // Affiliate marketing
-import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
 app.route('/api/affiliate', affiliateRoutes);
 
 // ============================================================
@@ -1705,15 +1636,15 @@ app.route('/api/orders', ordersRouter);
 app.route('/api/orders', featureOrdersRoutes);
 
 // -------------------------------------------------------
-// Payment routing: TWO routers on /api/payments (non-overlapping sub-routes).
+// Payment routing: /api/payments (single router)
 //
-// paymentsRouter       → POST /confirm, POST /checkout-session (worker-native, PRIMARY)
-// featurePaymentRoutes → POST /rollback (feature module, SECONDARY)
+// paymentsRouter → POST /confirm, POST /checkout-session, POST /webhook
 //
-// ⚠️ Both mounted on /api/payments — paymentsRouter registered first for priority.
+// 과거에 featurePaymentRoutes (/rollback) 가 추가 마운트되어 있었으나,
+// 호출처가 0건으로 dead code 확인되어 2026-04-26 제거.
+// 결제 취소는 POST /api/orders/:id/cancel 사용.
 // -------------------------------------------------------
 app.route('/api/payments', paymentsRouter);
-app.route('/api/payments', featurePaymentRoutes);
 
 // ✅ Stripe routes (Global region): POST /api/payment/stripe/create-intent
 app.route('/api/payment/stripe', stripeRouter);
@@ -1745,11 +1676,11 @@ app.route('/api/banners', bannerRoutes);
 // adminApp has: CORS + IP whitelist + requireAdmin() + audit log
 // ============================================================
 adminApp.route('/agencies', adminAgencyRoutes);
+// 🛡️ 2026-04-26: 에이전시 셀러 심사 큐 (Agency P0 #1)
+adminApp.route('/agency-creator-approvals', adminAgencyApprovalsRoutes);
 // Admin tools (chart, sellers, banners, notices, settlements, reports, settings)
-import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 adminApp.route('/tools', adminToolsRoutes);
 // Admin real-time health metrics (active streams, orders/min, stuck orders, webhooks)
-import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
 adminApp.route('/metrics', adminMetricsRoutes);
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
@@ -1785,10 +1716,8 @@ adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
-import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
 adminApp.route('/blog', adminBlogRoutes);
 // Restaurant settlement (admin)
-import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // Naver Ad Scraper 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + 기술 불안정
 // 남은 `/api/scraper/d1/*` 엔드포인트도 단계적 제거. scraped_advertisers 테이블은 데이터 보존 목적으로 남김.
@@ -1824,245 +1753,125 @@ app.route('/api/seller', sellerDonationsRoutes); // (see /api/seller routing not
 app.route('/api/seller/restaurant-settlements', sellerSettlementRoutes);
 
 // ── 딜 포인트 ──
-import { pointsRoutes } from '../features/points/api/points.routes';
 app.route('/api/points', pointsRoutes);
 
 // ── 쇼츠 ──
-import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 app.route('/api/shorts', shortsRoutes);
 
 // ── 공동구매 & 바우처 ──
-import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
 
 // ── 쿠폰 ──
-import { couponRoutes } from '../features/coupons/api/coupons.routes';
 app.route('/api/coupons', couponRoutes);
 
 // ── 소셜 (팔로우 + 알림) ──
-import { socialRoutes } from '../features/social/api/social.routes';
 app.route('/api/social', socialRoutes);
 
 // ── 상품 리뷰 ──
-import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
 app.route('/api/reviews', reviewsRoutes);
 
 // ── 셀러 등급 ──
-import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
 app.route('/api/seller-tiers', sellerTiersRoutes);
 
 // ── 바코드 + 재고 관리 ──
-import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 app.route('/api/inventory', inventoryRoutes);
 
 // ── 홈페이지 섹션 관리 ──
-import { sectionsRoutes } from '../features/sections/api/sections.routes';
 app.route('/api/sections', sectionsRoutes);
 
 // ── YouTube 구독자 늘리기 ──
-import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 app.route('/api/youtube-growth', youtubeGrowthRoutes);
 // SECURITY (HIGH-5): admin 엔드포인트는 adminApp 내부로 별도 마운트 (IP whitelist + audit log)
 adminApp.route('/youtube-growth', youtubeGrowthAdminRoutes);
 
 // ── 대시보드 알림 ──
-import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
 app.route('/api/dashboard-notifications', dashboardNotificationsRoutes);
 
 // ── 상품 대량등록 ──
-import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
 app.route('/api/bulk-upload', bulkUploadRoutes);
 
 // ── 반품/환불 ──
-import { returnsRoutes } from '../features/returns/api/returns.routes';
 app.route('/api/returns', returnsRoutes);
 
 // ── 라이브 경매 ──
-import { auctionRoutes } from '../features/auction/api/auction.routes';
 app.route('/api/auction', auctionRoutes);
 
 // ── 타임딜 룰렛 ──
-import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 app.route('/api/timedeal', timedealRoutes);
 
 // ── 유저 공동구매 (커뮤니티) ──
 app.use('/api/community-group-buy/create', rateLimit({ action: 'group_buy_create', max: 10, windowSec: 300 }));
 app.use('/api/community-group-buy/join/*', rateLimit({ action: 'group_buy_join', max: 20, windowSec: 300 }));
-import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
 app.route('/api/community-group-buy', communityGroupBuyRoutes);
 
 // ── 친구 초대 공동구매 ──
-import { referralRoutes } from '../features/referral/api/referral.routes';
 app.route('/api/referral', referralRoutes);
 
 // ── 초대 보상 ──
-import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
 app.route('/api/invite', inviteRewardRoutes);
 
 // ── 다단계 추천 커미션 ──
-import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
 app.route('/api/referral-tree', referralTreeRoutes);
 
 // ── CS 신고 (유저 신고 접수) ──
-import { reportsRoutes } from '../features/reports/api/reports.routes';
 app.route('/api/reports', reportsRoutes);
 
 // ── 방송 알림 구독 ──
-import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 app.route('/api/broadcast-notify', broadcastNotifyRoutes);
 
 // ── VIP 등급 (유저 로열티) ──
-import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
 app.route('/api/loyalty', loyaltyRoutes);
 
 // ── 관심/알림 (맛집·상품·공동구매 관심 등록) ──
-import { interestRoutes } from '../features/loyalty/api/interest.routes';
 app.route('/api/interest', interestRoutes);
 
 // ── 카카오 소셜 (메시지 + 캘린더) + 글로벌 (.ics) ──
-import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
 app.route('/api/kakao-social', kakaoSocialRoutes);
 
-// ── 카카오 장소 검색 프록시 (브라우저 CORS 우회) ──
-app.get('/api/kakao/place/search', async (c) => {
-  const query = c.req.query('query')
-  const category = c.req.query('category_group_code') || 'FD6,CE7'
-  const size = c.req.query('size') || '15'
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY
-  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500)
-  try {
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=${size}${category && !category.includes(',') ? `&category_group_code=${category}` : ''}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
+// ── 외부 서비스 프록시 (kakao/naver place + image) ──
+// 2026-04-26 worker/index.ts 비대화 해소를 위해 src/worker/routes/proxy.routes.ts 로 추출
+app.route('/api', proxyRoutes);
 
-app.get('/api/kakao/place/address', async (c) => {
-  const query = c.req.query('query')
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY
-  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500)
-  try {
-    const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
+// ── 디버그 (build-info, bindings) — 2026-04-26 M9 부분 추출
+app.route('/api/debug', debugRoutes);
 
-// ── 네이버 검색 API 프록시 (식당 이미지/정보) ──
-// 지역 검색: 식당명 + 주소 + 전화번호 + 카테고리
-app.get('/api/naver/place/search', rateLimit({ action: 'naver_place', max: 30, windowSec: 60 }), async (c) => {
-  const query = c.req.query('query')
-  const display = c.req.query('display') || '5'
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const clientId = (c.env as Env).NAVER_CLIENT_ID
-  const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500)
-  try {
-    const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=${display}&sort=comment`
-    const res = await fetch(url, {
-      headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
-    })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
+// ── 공개 유틸 (csp-report, manifest, version) — 2026-04-26 P1 추출
+//    sub-paths 가 / (root), /api/csp-report, /manifest.webmanifest, /api/version 으로
+//    분기되므로 prefix '' 마운트.
+app.route('/', publicUtilityRoutes);
 
-// 이미지 검색: 식당명으로 이미지 가져오기
-app.get('/api/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windowSec: 60 }), async (c) => {
-  const query = c.req.query('query')
-  const display = c.req.query('display') || '3'
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const clientId = (c.env as Env).NAVER_CLIENT_ID
-  const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500)
-  try {
-    const url = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query + ' 맛집')}&display=${display}&sort=sim&filter=large`
-    const res = await fetch(url, {
-      headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
-    })
-    const data = await res.json()
-    return c.json({ success: true, data })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
-
-// 통합 식당 정보 (지역 검색 + 이미지 한번에)
-app.get('/api/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30, windowSec: 60 }), async (c) => {
-  const query = c.req.query('query')
-  if (!query) return c.json({ success: false, error: 'query required' }, 400)
-  const clientId = (c.env as Env).NAVER_CLIENT_ID
-  const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET
-  if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500)
-
-  const headers = { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
-
-  try {
-    // 🛡️ 2026-04-22: Naver 느리면 5초 후 중단 (Worker CPU/메모리 보호)
-    const [localRes, imageRes] = await Promise.all([
-      fetch(`https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=1&sort=comment`, { headers, signal: AbortSignal.timeout(5000) }),
-      fetch(`https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query + ' 맛집 음식')}&display=3&sort=sim&filter=large`, { headers, signal: AbortSignal.timeout(5000) }),
-    ])
-
-    const localData: any = await localRes.json()
-    const imageData: any = await imageRes.json()
-
-    const place = localData.items?.[0] || null
-    const images = (imageData.items || []).map((img: any) => img.link)
-
-    return c.json({
-      success: true,
-      data: {
-        place: place ? {
-          title: place.title?.replace(/<[^>]*>/g, ''),
-          address: place.roadAddress || place.address,
-          phone: place.telephone,
-          category: place.category,
-          link: place.link,
-          mapx: place.mapx,
-          mapy: place.mapy,
-        } : null,
-        images,
-      },
-    })
-  } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
-  }
-})
+// ── 🛡️ 2026-04-26 T1: TikTok Login + Display API (셀러 외부 SNS 연동) ──
+app.route('/api/seller/tiktok', tiktokRoutes);
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 // SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
 // /api/blog는 공개 GET /public, /public/:slug만 허용 (나머지는 라우터 내부에서 admin 체크)
-import { blogRoutes } from '../features/blog/api/blog.routes';
 app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용 (내부에서 /public만 공개)
 
 // ── 에이전시 ──
-import { agencyRoutes } from '../features/agency/api/agency.routes';
-import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
-import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 app.route('/api/agency', agencyPinRoutes);
 app.route('/api/agency', agencyRoutes);
+// 🛡️ 2026-04-26: Agency P0 #4 캠페인 관리
+app.route('/api/agency/campaigns', agencyCampaignsRoutes);
+// 🛡️ 2026-04-26: Agency P0 #5 인센티브 규칙 엔진
+app.route('/api/agency/incentives', agencyIncentivesRoutes);
+// 🛡️ 2026-04-26 Q2: 메시지 템플릿 + 일괄 발송
+app.route('/api/agency/messages', agencyMessagesRoutes);
+// 🛡️ 2026-04-26 Q7: 쿠폰 캐스케이드 (에이전시 → 셀러 → 시청자)
+app.route('/api/agency/coupons', agencyCouponsRoutes);
+// 🛡️ 2026-04-26 M4: 에이전시 멀티 권한 (owner/manager/agent/analyst)
+app.route('/api/agency/members', agencyMembersRoutes);
+// 🛡️ 2026-04-26 M5: 라이브 캘린더 + 에이전트 노트
+app.route('/api/agency/calendar', agencyCalendarRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
-import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 app.route('/api/bundles', bundlePublicRoutes);
 app.route('/api/bundles', bundleCartRoutes);
 app.route('/api/seller/bundles', bundleSellerRoutes);
 
 // 🛡️ 2026-04-23 배치 174: 운영 가이드 (어드민 편집, 셀러/에이전시 읽기)
-import { guideRoutes } from '../features/guides/api/guide.routes';
 app.route('/api/guides', guideRoutes);
 
 // YouTube / Live streaming
@@ -2306,11 +2115,6 @@ app.onError(errorHandler);
 // Export Worker + Scheduled Handler (Cron Triggers)
 // ============================================================
 
-import { handleScheduled } from './cron/scheduled-cleanup';
-import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
-import { runReconciliation } from './cron/reconciliation';
-import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
-
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
@@ -2338,16 +2142,52 @@ export default {
       ctx.waitUntil(safeCron('scheduled-cleanup', () => handleScheduled(env)));
     }
 
-    // Daily 18:00 UTC (KST 03:00): heavy tasks (settlement + expired-voucher refund + self diagnostic)
+    // Daily 18:00 UTC (KST 03:00): heavy tasks (settlement + expired-voucher refund + self diagnostic + campaign + creator eval)
     if (cron === '0 18 * * *') {
       ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
       ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
       ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
+      // 🛡️ 2026-04-26: Agency P0 #4 — 캠페인 상태 전환 + participants 누적 매출 재집계
+      ctx.waitUntil(safeCron('agency-campaigns-aggregate', () => recomputeAllActiveCampaigns(env.DB)));
+      // 🛡️ 2026-04-26 Q3: 30일 경과 pending 셀러 신청 자동 평가 (어드민 추천만, 자동 처리 X)
+      ctx.waitUntil(safeCron('agency-creator-eval', () => handleAgencyCreatorEval(env)));
+      // 🛡️ 2026-04-26 Q6: 의무 작업 (매출/영입/활성화) actual_value 갱신
+      ctx.waitUntil(safeCron('agency-monthly-tasks', () => handleAgencyMonthlyTasks(env)));
     }
 
     // Daily 19:00 UTC (KST 04:00): reconciliation
     if (cron === '0 19 * * *') {
       ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
+    }
+
+    // Sunday 20:00 UTC (KST Monday 05:00): D1 백업 → R2 (BACKUP_BUCKET 바인딩 있을 때만 실제 동작)
+    if (cron === '0 20 * * 0') {
+      ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
+    }
+
+    // 🛡️ 2026-04-26 M6: 매월 1일 01:00 UTC (= KST 10:00) — 전월 정산 송장 자동 발행
+    // 매주 월요일 00:00 UTC 자동 정산 cron 1시간 후 실행 (월 1일 ~ 7일 사이)
+    if (cron === '0 0 * * 1') {
+      const dayOfMonth = new Date().getUTCDate();
+      if (dayOfMonth <= 7) {
+        ctx.waitUntil(safeCron('agency-monthly-invoices', () => handleAgencyMonthlyInvoices(env as any)));
+      }
+    }
+
+    // Weekly Monday 00:00 UTC (= KST 09:00): 에이전시 자동 정산 (P0 #3) + 전월 인센티브 (P0 #5) + 등급 평가 (Q1)
+    if (cron === '0 0 * * 1') {
+      ctx.waitUntil(safeCron('agency-auto-settle', () => handleAgencyAutoSettle(env)));
+      // 매주 월요일에 전월 인센티브 재계산 (월 1회만 실제 변경, 멱등 — INSERT ON CONFLICT)
+      const now = new Date();
+      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const monthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+      ctx.waitUntil(safeCron('agency-incentives-recalc', () => calculateAllAgencyIncentives(env.DB, monthStr)));
+      // 🛡️ 2026-04-26 Q1: 에이전시 등급 평가 (월 1회만 의미 있음 — 매주 실행해도 매월 1일~7일 사이만 실제 변경)
+      // 매월 첫 월요일에만 의미 있게 변경됨. 정확한 월 1일 cron 은 추후 추가 가능.
+      const dayOfMonth = now.getUTCDate();
+      if (dayOfMonth <= 7) {
+        ctx.waitUntil(safeCron('agency-tier-eval', () => handleAgencyTierEval(env)));
+      }
     }
   },
 };

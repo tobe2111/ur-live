@@ -1,0 +1,102 @@
+name: PR Verification
+
+# PR 단위 빠른 검증 — 빌드 + 정적 분석 + 번들 예산 체크.
+# 배포는 main.yml 이 담당하므로 여기는 검증만.
+#
+# 트리거: PR open/sync, push to non-main branch
+# 작성: 2026-04-26 (N1)
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches-ignore: [ main ]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    name: Verify
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 1. 정적 검사 (빠름, 의존성 없음) ──
+      - name: Schema references check
+        run: bash scripts/check-schema-refs.sh
+        continue-on-error: false
+
+      - name: API auth check
+        run: bash scripts/check-api-auth.sh
+        # 기존 워닝 있어 fail 하지 않음
+        continue-on-error: true
+
+      - name: Guide sync check
+        run: bash scripts/check-guide-sync.sh
+        continue-on-error: true
+
+      - name: Naming conflicts
+        run: bash scripts/check-naming-conflicts.sh
+        continue-on-error: true
+
+      # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
+      - name: Schema verification (drift detection)
+        run: node scripts/verify-schema.mjs --json
+        continue-on-error: true   # drift 가 있어도 fail 하지 않음 (정보 용도)
+
+      # ── 3. 타입 체크 ──
+      - name: Type check (frontend)
+        run: npx tsc --noEmit --skipLibCheck
+        continue-on-error: true
+
+      - name: Type check (worker)
+        run: npx tsc --noEmit --skipLibCheck --project tsconfig.worker.json
+        continue-on-error: true
+
+      # ── 4. 빌드 ──
+      - name: Build client
+        env:
+          # PR 검증용 더미 — production 배포 아님
+          VITE_FIREBASE_API_KEY: 'pr-verify-dummy'
+          VITE_FIREBASE_AUTH_DOMAIN: 'pr.example.com'
+          VITE_FIREBASE_PROJECT_ID: 'pr-verify'
+          VITE_FIREBASE_STORAGE_BUCKET: 'pr.example.com'
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '0'
+          VITE_FIREBASE_APP_ID: '0'
+          VITE_KAKAO_APP_KEY: 'pr-verify'
+          VITE_TOSS_CLIENT_KEY: 'pr-verify'
+        run: npm run build:client
+
+      - name: Build worker
+        run: npm run build:worker
+
+      # ── 5. 번들 예산 ──
+      - name: Bundle size budget
+        run: npm run check:bundle:budget
+
+      # ── 6. 결과 요약 (artifact) ──
+      - name: Bundle size report
+        if: always()
+        run: |
+          npm run check:bundle 2>&1 | tee bundle-report.txt
+          node scripts/check-bundle-size.mjs --json > bundle-report.json
+
+      - name: Upload bundle artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report
+          path: |
+            bundle-report.txt
+            bundle-report.json
+          retention-days: 14

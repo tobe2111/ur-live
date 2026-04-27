@@ -45,6 +45,20 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 # id = "YOUR_SESSION_KV_ID"
 
 # ============================================================
+# R2 Buckets (D1 백업 + 정산 송장 저장)
+# ============================================================
+# 활성화: 1) Cloudflare Dashboard → R2 → bucket 'ur-live-backups' 생성
+#         2) 아래 3줄 주석 해제 후 wrangler 재배포
+#         3) 자동 동작:
+#            - 매주 일요일 20:00 UTC: D1 dump → backups/d1-YYYY-MM-DD.sql
+#            - 매월 1일 09:00 KST: 정산 송장 → invoices/YYYY-MM/INV-*.html
+#         4) (선택) R2 lifecycle: 30일 자동 삭제 설정
+#
+# [[r2_buckets]]
+# binding = "BACKUP_BUCKET"
+# bucket_name = "ur-live-backups"
+
+# ============================================================
 # Durable Objects (for live streaming)
 # One DO instance per stream — handles WebSocket chat + product/viewer broadcasts
 # ============================================================
@@ -77,8 +91,14 @@ SCRAPER_URL = "https://live.ur-team.com"
 # - 오래된 알림/토큰 정리
 # - 바우처 자동 정산 (사용 후 7일 경과)
 # UTC 18:00 = KST 03:00 daily trigger for settlement
+# UTC Monday 00:00 = KST Monday 09:00 — 에이전시 자동 정산 (P0 #3)
 [triggers]
-crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *"]
+# 5min: 짧은 cleanup
+# 18:00 UTC: 자동 정산 + voucher 환불 + 일일 진단 + 캠페인 집계 + 셀러 신청 평가 + 의무 작업 갱신
+# 19:00 UTC: reconciliation
+# 일요일 20:00 UTC (KST 월요일 05:00): D1 백업 → R2 (BACKUP_BUCKET 바인딩 있어야 동작)
+# 월요일 00:00 UTC (KST 09:00): 에이전시 자동 정산 + 인센티브 재계산 + 등급 평가
+crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "0 20 * * 0", "0 0 * * 1"]
 
 # ============================================================
 # Production Secrets — NEVER add actual secrets here!

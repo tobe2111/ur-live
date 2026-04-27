@@ -139,7 +139,8 @@
     "dataLoadFailed": "数据加载失败，请刷新页面。",
     "settingChangeFailed": "设置更改失败",
     "disconnectFailed": "断开连接失败。",
-    "copyFailed": "复制失败。"
+    "copyFailed": "复制失败。",
+    "home": "首页"
   },
   "auth": {
     "email": "邮箱",
@@ -1548,7 +1549,9 @@
       "mealVoucher": "餐券·团购",
       "reviews": "评价管理",
       "coupons": "优惠券管理",
-      "liveBroadcast": "直播"
+      "liveBroadcast": "直播",
+      "guide": "运营指南",
+      "bundles": "套装商品"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -1616,7 +1619,20 @@
     "hidePassword": "隐藏密码",
     "showPassword": "显示密码",
     "viewPublicProfile": "查看公开资料",
-    "agencyInviteJoin": "通过代理邀请加入"
+    "agencyInviteJoin": "通过代理邀请加入",
+    "guide": {
+      "subtitle": "在UrDeal上成功运营直播电商的方法",
+      "title": "卖家运营指南"
+    },
+    "bundleCreate": "创建套装",
+    "bundleEdit": "编辑套装",
+    "bundleName": "套装名称",
+    "bundleProducts": "选择商品",
+    "bundlesSubtitle": "多个商品打包成套装折扣销售",
+    "discountAmount": "折扣金额",
+    "discountPercent": "折扣百分比",
+    "discountType": "折扣方式",
+    "noBundles": "没有注册的套装"
   },
   "admin": {
     "login": {
@@ -1803,7 +1819,37 @@
     "dashboardSubtitle": "代理综合状况",
     "statsSubtitle": "期间销售、订单、直播综合分析",
     "noData": "没有数据",
-    "noReturns": "没有退货记录"
+    "noReturns": "没有退货记录",
+    "nav": {
+      "operations": "运营",
+      "dashboard": "仪表板",
+      "sellers": "管理卖家",
+      "streams": "直播状况",
+      "schedule": "播出日历",
+      "sales": "销售管理",
+      "orders": "订单状况",
+      "groupBuy": "团购",
+      "returns": "退货/客服",
+      "analytics": "分析与成果",
+      "stats": "统计分析",
+      "ranking": "卖家排名",
+      "compare": "卖家对比",
+      "targets": "销售目标",
+      "campaignSales": "活动与销售",
+      "campaigns": "活动",
+      "incentives": "激励规则",
+      "messages": "消息模板",
+      "coupons": "优惠券分发",
+      "calendar": "直播日历",
+      "teamOps": "团队运营",
+      "members": "团队成员",
+      "finance": "财务与设置",
+      "settlements": "结算管理",
+      "contracts": "合同管理",
+      "notices": "卖家公告",
+      "guide": "运营指南",
+      "profile": "档案设置"
+    }
   },
   "nav": {
     "home": "首页",
@@ -1853,5 +1899,51 @@
       "seoTitle": "餐券确认",
       "seoDescription": "通过二维码确认餐券"
     }
+  },
+  "sellerWaiting": {
+    "title": "卖家审核等待",
+    "description": "卖家审核等待信息",
+    "statusPending": "审核等待中",
+    "statusSuspended": "账户已暂停",
+    "statusRejected": "申请被拒绝",
+    "statusUnknown": "无法确认状态",
+    "pendingDesc": "管理员审核通常需要1-2天。审核通过后可以使用Kakao账号直接登录。",
+    "contactSupport": "请联系客服",
+    "rejectedDesc": "如需重新申请请联系客服",
+    "afterApproval": "审核通过后可以",
+    "benefit1": "直播放送",
+    "benefit2": "商品注册和销售",
+    "benefit3": "查看营业额和结算",
+    "contactCS": "联系客服",
+    "reloadHint": "重新加载页面以刷新状态"
+  },
+  "sellerRegisterBusiness": {
+    "title": "成为卖家",
+    "description": "通过Kakao账户申请卖家权限",
+    "headerTitle": "开始成为卖家",
+    "kakaoBanner": "Kakao登录完成",
+    "kakaoBannerDesc": "请填写以下商业信息以完成卖家申请",
+    "heroTitle": "为Kakao账户添加卖家权限",
+    "heroDesc": "通过当前Kakao账户申请卖家权限。无需单独注册/登录。",
+    "fieldBusinessName": "商家名称 / 店铺名称",
+    "phBusinessName": "例：UrDeal公司",
+    "fieldBusinessNumber": "营业执照号码",
+    "fieldPhone": "联系电话",
+    "fieldSellerType": "卖家类型",
+    "typeInfluencer": "网红",
+    "typeStoreOwner": "店铺",
+    "typeBoth": "两者",
+    "fieldYoutubeEmail": "YouTube邮箱（可选）",
+    "phYoutubeEmail": "用于直播的YouTube账户",
+    "fieldDescription": "简介（可选）",
+    "phDescription": "简短的自我介绍",
+    "submitNote": "申请后通常需要1-2天获得管理员批准。批准后即可通过Kakao登录使用卖家功能。",
+    "submitBtn": "提交申请",
+    "submitting": "提交中...",
+    "alreadyActive": "卖家权限已激活",
+    "statusPending": "等待批准",
+    "activeDesc": "前往卖家仪表板开始直播",
+    "pendingDesc": "管理员批准后可使用卖家功能",
+    "toDashboard": "前往卖家仪表板"
   }
 }

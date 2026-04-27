@@ -139,7 +139,8 @@
     "dataLoadFailed": "データの読み込みに失敗しました。ページを更新してください。",
     "settingChangeFailed": "設定の変更に失敗しました",
     "disconnectFailed": "連携解除に失敗しました。",
-    "copyFailed": "コピーに失敗しました。"
+    "copyFailed": "コピーに失敗しました。",
+    "home": "ホーム"
   },
   "auth": {
     "email": "メールアドレス",
@@ -1560,7 +1561,9 @@
       "mealVoucher": "食事券・共同購入",
       "reviews": "レビュー管理",
       "coupons": "クーポン管理",
-      "liveBroadcast": "ライブ配信"
+      "liveBroadcast": "ライブ配信",
+      "guide": "運営ガイド",
+      "bundles": "バンドル商品"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -1613,7 +1616,20 @@
     "hidePassword": "パスワードを隠す",
     "showPassword": "パスワードを表示",
     "viewPublicProfile": "公開プロフィールを見る",
-    "agencyInviteJoin": "エージェンシー招待による参加"
+    "agencyInviteJoin": "エージェンシー招待による参加",
+    "guide": {
+      "subtitle": "ユーディールで成功するライブコマース運営方法",
+      "title": "セラー運営ガイド"
+    },
+    "bundleCreate": "バンドル作成",
+    "bundleEdit": "バンドル編集",
+    "bundleName": "バンドル名",
+    "bundleProducts": "商品選択",
+    "bundlesSubtitle": "複数商品をまとめてセット割引販売",
+    "discountAmount": "割引額",
+    "discountPercent": "割引率",
+    "discountType": "割引方式",
+    "noBundles": "登録されたバンドルがありません"
   },
   "admin": {
     "login": {
@@ -1800,7 +1816,37 @@
     "dashboardSubtitle": "エージェンシー総合状況",
     "statsSubtitle": "期間別売上・注文・ライブ統合分析",
     "noData": "データがありません",
-    "noReturns": "返品履歴がありません"
+    "noReturns": "返品履歴がありません",
+    "nav": {
+      "operations": "運営",
+      "dashboard": "ダッシュボード",
+      "sellers": "担当セラー",
+      "streams": "ライブ状況",
+      "schedule": "放送カレンダー",
+      "sales": "販売管理",
+      "orders": "注文状況",
+      "groupBuy": "共同購入",
+      "returns": "返品/CS",
+      "analytics": "分析・成果",
+      "stats": "統計分析",
+      "ranking": "セラーランキング",
+      "compare": "セラー比較",
+      "targets": "売上目標",
+      "campaignSales": "キャンペーン・営業",
+      "campaigns": "キャンペーン",
+      "incentives": "インセンティブ規則",
+      "messages": "メッセージテンプレート",
+      "coupons": "クーポン配布",
+      "calendar": "ライブカレンダー",
+      "teamOps": "チーム運営",
+      "members": "チームメンバー",
+      "finance": "財務・設定",
+      "settlements": "精算管理",
+      "contracts": "契約管理",
+      "notices": "セラー告知",
+      "guide": "運営ガイド",
+      "profile": "プロフィール設定"
+    }
   },
   "nav": {
     "home": "ホーム",
@@ -1850,5 +1896,51 @@
       "seoTitle": "クーポン確認",
       "seoDescription": "QRコードでクーポンを確認します"
     }
+  },
+  "sellerWaiting": {
+    "title": "セラー承認待機",
+    "description": "セラー承認待機の案内",
+    "statusPending": "承認待機中",
+    "statusSuspended": "アカウントが停止されました",
+    "statusRejected": "申請が却下されました",
+    "statusUnknown": "状態を確認できません",
+    "pendingDesc": "管理者の承認まで通常1〜2日かかります。承認完了後はカカオログインですぐにご利用いただけます。",
+    "contactSupport": "カスタマーサポートにお問い合わせください",
+    "rejectedDesc": "再申請をご希望の場合はサポートまでお問い合わせください",
+    "afterApproval": "承認後にできること",
+    "benefit1": "ライブ放送送出",
+    "benefit2": "商品登録・販売",
+    "benefit3": "精算・売上確認",
+    "contactCS": "カスタマーサポートに問い合わせ",
+    "reloadHint": "状態を更新するにはページを再読み込みしてください"
+  },
+  "sellerRegisterBusiness": {
+    "title": "セラー転換",
+    "description": "カカオアカウントでセラー権限を申請",
+    "headerTitle": "セラーとして始める",
+    "kakaoBanner": "カカオログイン完了",
+    "kakaoBannerDesc": "以下の事業者情報を入力すれば申請完了です",
+    "heroTitle": "カカオアカウントにセラー権限追加",
+    "heroDesc": "現在のカカオアカウントでセラー権限を申請します。別途のサインアップ/ログイン不要です。",
+    "fieldBusinessName": "事業者名 / ストア名",
+    "phBusinessName": "例: ユーディール株式会社",
+    "fieldBusinessNumber": "事業者登録番号",
+    "fieldPhone": "連絡先",
+    "fieldSellerType": "セラータイプ",
+    "typeInfluencer": "インフルエンサー",
+    "typeStoreOwner": "ストア",
+    "typeBoth": "両方",
+    "fieldYoutubeEmail": "YouTubeメール (任意)",
+    "phYoutubeEmail": "ライブ放送用YouTubeアカウント",
+    "fieldDescription": "自己紹介 (任意)",
+    "phDescription": "簡単な自己紹介",
+    "submitNote": "申請後、管理者の承認まで通常1〜2日かかります。承認完了後はカカオログインですぐにセラー機能をご利用いただけます。",
+    "submitBtn": "セラー申請",
+    "submitting": "申請中...",
+    "alreadyActive": "既にセラー権限がアクティブです",
+    "statusPending": "承認待機中",
+    "activeDesc": "セラーダッシュボードで放送を開始",
+    "pendingDesc": "管理者承認後、セラー機能をご利用いただけます",
+    "toDashboard": "セラーダッシュボードへ"
   }
 }

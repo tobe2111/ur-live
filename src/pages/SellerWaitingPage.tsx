@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Loader2, Clock, AlertCircle, ArrowRight, Home } from 'lucide-react'
@@ -17,6 +18,7 @@ import { Loader2, Clock, AlertCircle, ArrowRight, Home } from 'lucide-react'
 type Status = 'pending' | 'suspended' | 'rejected' | 'active' | 'unknown'
 
 export default function SellerWaitingPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [status, setStatus] = useState<Status>('unknown')
   const [loading, setLoading] = useState(true)
@@ -59,7 +61,7 @@ export default function SellerWaitingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <SEO title="셀러 승인 대기 - 유어딜" description="셀러 승인 대기 안내" url="/seller/waiting" noindex />
+      <SEO title={`${t('sellerWaiting.title')} - 유어딜`} description={t('sellerWaiting.description')} url="/seller/waiting" noindex />
       <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-sm">
         <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
           isRejected ? 'bg-red-100' : 'bg-amber-100'
@@ -71,31 +73,30 @@ export default function SellerWaitingPage() {
 
         <div className="text-center space-y-2 mb-6">
           <h2 className="text-lg font-bold text-gray-900">
-            {status === 'pending' && '승인 대기 중'}
-            {status === 'suspended' && '계정이 정지되었습니다'}
-            {status === 'rejected' && '신청이 거절되었습니다'}
-            {status === 'unknown' && '상태를 확인할 수 없습니다'}
+            {status === 'pending' && t('sellerWaiting.statusPending')}
+            {status === 'suspended' && t('sellerWaiting.statusSuspended')}
+            {status === 'rejected' && t('sellerWaiting.statusRejected')}
+            {status === 'unknown' && t('sellerWaiting.statusUnknown')}
           </h2>
           <p className="text-sm text-gray-500 leading-relaxed">
             {status === 'pending' && (
               <>
                 {businessName && <><span className="font-semibold text-gray-700">{businessName}</span><br /></>}
-                관리자 승인까지 보통 1~2일 소요됩니다.<br />
-                승인 완료 시 카카오 로그인으로 바로 이용 가능.
+                {t('sellerWaiting.pendingDesc')}
               </>
             )}
-            {status === 'suspended' && '고객센터로 문의해주세요'}
-            {status === 'rejected' && '다시 신청하시려면 고객센터로 문의해주세요'}
+            {status === 'suspended' && t('sellerWaiting.contactSupport')}
+            {status === 'rejected' && t('sellerWaiting.rejectedDesc')}
           </p>
         </div>
 
         {status === 'pending' && (
           <div className="bg-gray-50 rounded-xl p-4 mb-5 space-y-2">
-            <p className="text-xs font-semibold text-gray-700">승인 후 할 수 있는 것</p>
+            <p className="text-xs font-semibold text-gray-700">{t('sellerWaiting.afterApproval')}</p>
             <ul className="text-xs text-gray-500 space-y-1 list-disc pl-4">
-              <li>라이브 방송 송출</li>
-              <li>상품 등록 및 판매</li>
-              <li>정산 및 매출 확인</li>
+              <li>{t('sellerWaiting.benefit1')}</li>
+              <li>{t('sellerWaiting.benefit2')}</li>
+              <li>{t('sellerWaiting.benefit3')}</li>
             </ul>
           </div>
         )}
@@ -103,21 +104,21 @@ export default function SellerWaitingPage() {
         <div className="space-y-2">
           <Link to="/" className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm">
             <Home className="w-4 h-4" />
-            홈으로
+            {t('common.home')}
           </Link>
           {isRejected && (
             <a
               href="mailto:support@ur-team.com"
               className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 rounded-xl font-semibold text-sm"
             >
-              고객센터 문의
+              {t('sellerWaiting.contactCS')}
               <ArrowRight className="w-4 h-4" />
             </a>
           )}
         </div>
 
         <p className="text-[11px] text-gray-400 text-center mt-4">
-          상태를 새로고침하려면 페이지를 리로드하세요
+          {t('sellerWaiting.reloadHint')}
         </p>
       </div>
     </div>

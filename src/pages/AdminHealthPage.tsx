@@ -177,6 +177,9 @@ export default function AdminHealthPage() {
           </div>
         )}
 
+        {/* 🛡️ 2026-04-26 M7: Webhook 실패 상세 + 재시도 (TD-009) */}
+        <WebhookFailuresSection />
+
         {metrics?.timestamp && (
           <div className="mt-6 text-xs text-gray-500">
             서버 타임스탬프: {metrics.timestamp}
@@ -185,5 +188,138 @@ export default function AdminHealthPage() {
         )}
       </div>
     </AdminLayout>
+  )
+}
+
+// 🛡️ 2026-04-26 M7 (TD-009): Webhook 실패 상세 섹션
+interface WebhookFailureStats {
+  total: number
+  by_source: { source: string; count: number }[]
+  by_event_type: { event_type: string; count: number }[]
+  escalated: number
+}
+
+interface WebhookEvent {
+  id: string
+  source: string
+  event_type: string
+  status: string
+  toss_order_id?: string
+  order_number?: string
+  error_message?: string
+  created_at: string
+}
+
+function WebhookFailuresSection() {
+  const [stats, setStats] = useState<WebhookFailureStats | null>(null)
+  const [recent, setRecent] = useState<WebhookEvent[]>([])
+  const [hours, setHours] = useState(24)
+  const [loading, setLoading] = useState(true)
+  const adminToken = localStorage.getItem('admin_token')
+
+  const load = () => {
+    setLoading(true)
+    api.get(`/api/admin/metrics/webhook-failures?hours=${hours}`, {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    })
+      .then(r => {
+        if (r.data?.success) {
+          setStats(r.data.data.stats)
+          setRecent(r.data.data.recent || [])
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [hours])
+
+  const retry = async (id: string) => {
+    if (!confirm('이 webhook event 를 재처리 마킹하시겠습니까?')) return
+    try {
+      await api.post(`/api/admin/metrics/webhook-failures/${id}/retry`, {}, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      })
+      alert('재처리 큐에 추가됨')
+      load()
+    } catch (e: any) {
+      alert(e?.response?.data?.error || '재시도 실패')
+    }
+  }
+
+  return (
+    <div className="mt-8 bg-white rounded-2xl border border-gray-200 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-gray-900">📡 Webhook 실패 (TD-009)</h3>
+        <select value={hours} onChange={e => setHours(Number(e.target.value))}
+          className="text-xs border border-gray-200 rounded px-2 py-1 text-gray-900">
+          <option value={1}>1시간</option>
+          <option value={24}>24시간</option>
+          <option value={72}>3일</option>
+          <option value={168}>7일</option>
+        </select>
+      </div>
+
+      {loading ? (
+        <p className="text-xs text-gray-400 text-center py-3">불러오는 중...</p>
+      ) : (
+        <>
+          {stats && (
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className={`rounded-xl p-3 ${stats.total > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+                <p className="text-xs text-gray-600 font-bold">총 실패</p>
+                <p className="text-2xl font-extrabold text-gray-900">{stats.total}</p>
+              </div>
+              <div className={`rounded-xl p-3 ${stats.escalated > 0 ? 'bg-red-100' : 'bg-gray-50'}`}>
+                <p className="text-xs text-gray-600 font-bold">escalated (retry≥3)</p>
+                <p className="text-2xl font-extrabold text-red-600">{stats.escalated}</p>
+              </div>
+              <div className="rounded-xl p-3 bg-gray-50">
+                <p className="text-xs text-gray-600 font-bold">소스</p>
+                <p className="text-xs text-gray-700 mt-1 line-clamp-2">
+                  {stats.by_source.map(s => `${s.source}(${s.count})`).join(' · ') || '-'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {recent.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-6">실패 이벤트 없음 ✓</p>
+          ) : (
+            <div className="space-y-1 max-h-96 overflow-y-auto">
+              {recent.map(r => (
+                <div key={r.id} className={`text-xs p-2 rounded border ${
+                  r.status === 'FAILED' ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'
+                }`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <span className="font-bold text-gray-900">{r.event_type}</span>
+                      <span className="text-gray-400 mx-1">·</span>
+                      <span className="text-gray-500">{r.source}</span>
+                      {r.toss_order_id && (
+                        <>
+                          <span className="text-gray-400 mx-1">·</span>
+                          <span className="font-mono text-gray-600">{r.toss_order_id}</span>
+                        </>
+                      )}
+                    </div>
+                    {r.status === 'FAILED' && (
+                      <button onClick={() => retry(r.id)}
+                        className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded hover:bg-blue-200 font-bold">
+                        재처리
+                      </button>
+                    )}
+                  </div>
+                  {r.error_message && (
+                    <p className="text-[10px] text-red-600 mt-1 line-clamp-2">{r.error_message}</p>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-0.5">{new Date(r.created_at).toLocaleString('ko-KR')}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }

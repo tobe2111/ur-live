@@ -75,6 +75,7 @@ const SellerLoginPage = lazy(() => import('./pages/SellerLoginPage'))
 const SellerRegisterPage = lazy(() => import('./pages/SellerRegisterPage'))
 const SellerRegisterBusinessPage = lazy(() => import('./pages/SellerRegisterBusinessPage'))
 const SellerWaitingPage = lazy(() => import('./pages/SellerWaitingPage'))
+const SellerTikTokCallbackPage = lazy(() => import('./pages/SellerTikTokCallbackPage'))
 const AgencyRegisterBusinessPage = lazy(() => import('./pages/AgencyRegisterBusinessPage'))
 const AgencyWaitingPage = lazy(() => import('./pages/AgencyWaitingPage'))
 const SellerForgotPasswordPage = lazy(() => import('./pages/SellerForgotPasswordPage'))
@@ -134,6 +135,7 @@ const AdminOperationsGuidePage = lazy(() => import('./pages/admin/AdminOperation
 const AdminBlogPage = lazy(() => import('./pages/AdminBlogPage'))
 const AdminAgencyPage = lazy(() => import('./pages/AdminAgencyPage'))
 const AdminSellerApprovalPage = lazy(() => import('./pages/AdminSellerApprovalPage'))
+const AdminAgencyCreatorApprovalPage = lazy(() => import('./pages/AdminAgencyCreatorApprovalPage'))
 const AdminSettlementsBulkPage = lazy(() => import('./pages/AdminSettlementsBulkPage'))
 const AdminNoticesPage = lazy(() => import('./pages/AdminNoticesPage'))
 const AdminPlatformSettingsPage = lazy(() => import('./pages/AdminPlatformSettingsPage'))
@@ -167,6 +169,12 @@ const AgencyNoticesPage = lazy(() => import('./pages/AgencyNoticesPage'))
 const AgencyComparePage = lazy(() => import('./pages/AgencyComparePage'))
 const AgencyContractsPage = lazy(() => import('./pages/AgencyContractsPage'))
 const AgencyTargetsPage = lazy(() => import('./pages/AgencyTargetsPage'))
+const AgencyCampaignsPage = lazy(() => import('./pages/AgencyCampaignsPage'))
+const AgencyIncentivesPage = lazy(() => import('./pages/AgencyIncentivesPage'))
+const AgencyMessagesPage = lazy(() => import('./pages/AgencyMessagesPage'))
+const AgencyCouponsPage = lazy(() => import('./pages/AgencyCouponsPage'))
+const AgencyMembersPage = lazy(() => import('./pages/AgencyMembersPage'))
+const AgencyCalendarPage = lazy(() => import('./pages/AgencyCalendarPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 const AgencyGroupBuyPage = lazy(() => import('./pages/AgencyGroupBuyPage'))
 
@@ -456,6 +464,7 @@ function AppContent() {
             <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
             <Route path="/seller/register/business" element={<ErrorBoundary><SellerRegisterBusinessPage /></ErrorBoundary>} />
             <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
+            <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />
             <Route path="/seller/forgot-password" element={<ErrorBoundary><SellerForgotPasswordPage /></ErrorBoundary>} />
             <Route path="/seller/reset-password" element={<ErrorBoundary><SellerResetPasswordPage /></ErrorBoundary>} />
             
@@ -695,6 +704,9 @@ function AppContent() {
             <Route path="/admin/seller-approval" element={
               <ProtectedRoute requireAdmin><AdminSellerApprovalPage /></ProtectedRoute>
             } />
+            <Route path="/admin/agency-creator-approval" element={
+              <ProtectedRoute requireAdmin><AdminAgencyCreatorApprovalPage /></ProtectedRoute>
+            } />
             <Route path="/admin/settlements-bulk" element={
               <ProtectedRoute requireAdmin><AdminSettlementsBulkPage /></ProtectedRoute>
             } />
@@ -781,6 +793,12 @@ function AppContent() {
             <Route path="/agency/compare" element={<AgencyAuthGuard><AgencyComparePage /></AgencyAuthGuard>} />
             <Route path="/agency/contracts" element={<AgencyAuthGuard><AgencyContractsPage /></AgencyAuthGuard>} />
             <Route path="/agency/targets" element={<AgencyAuthGuard><AgencyTargetsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/campaigns" element={<AgencyAuthGuard><AgencyCampaignsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/incentives" element={<AgencyAuthGuard><AgencyIncentivesPage /></AgencyAuthGuard>} />
+            <Route path="/agency/messages" element={<AgencyAuthGuard><AgencyMessagesPage /></AgencyAuthGuard>} />
+            <Route path="/agency/coupons" element={<AgencyAuthGuard><AgencyCouponsPage /></AgencyAuthGuard>} />
+            <Route path="/agency/members" element={<AgencyAuthGuard><AgencyMembersPage /></AgencyAuthGuard>} />
+            <Route path="/agency/calendar" element={<AgencyAuthGuard><AgencyCalendarPage /></AgencyAuthGuard>} />
             <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
             <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
             

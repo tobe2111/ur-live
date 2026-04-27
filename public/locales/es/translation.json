@@ -139,7 +139,8 @@
     "dataLoadFailed": "Error al cargar datos. Actualice la página.",
     "settingChangeFailed": "Error al cambiar configuración",
     "disconnectFailed": "Error al desconectar.",
-    "copyFailed": "Error al copiar."
+    "copyFailed": "Error al copiar.",
+    "home": "Inicio"
   },
   "seller": {
     "dashboard": "Panel",
@@ -1465,7 +1466,9 @@
       "mealVoucher": "Vales de comida",
       "reviews": "Reseñas",
       "coupons": "Cupones",
-      "liveBroadcast": "Transmisión en vivo"
+      "liveBroadcast": "Transmisión en vivo",
+      "guide": "Guía",
+      "bundles": "Paquetes"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -1533,7 +1536,20 @@
     "hidePassword": "Ocultar contraseña",
     "showPassword": "Mostrar contraseña",
     "viewPublicProfile": "Ver perfil público",
-    "agencyInviteJoin": "Unirse por invitación de agencia"
+    "agencyInviteJoin": "Unirse por invitación de agencia",
+    "guide": {
+      "subtitle": "Cómo administrar comercio en vivo exitoso en UrDeal",
+      "title": "Guía de Operaciones para Vendedores"
+    },
+    "bundleCreate": "Crear Paquete",
+    "bundleEdit": "Editar Paquete",
+    "bundleName": "Nombre del Paquete",
+    "bundleProducts": "Seleccionar Productos",
+    "bundlesSubtitle": "Agrupa varios productos para vender con descuento",
+    "discountAmount": "Monto de Descuento",
+    "discountPercent": "Porcentaje de Descuento",
+    "discountType": "Tipo de Descuento",
+    "noBundles": "No hay paquetes registrados"
   },
   "admin": {
     "login": {
@@ -1720,7 +1736,37 @@
     "dashboardSubtitle": "Resumen de agencia",
     "statsSubtitle": "Análisis por período",
     "noData": "Sin datos",
-    "noReturns": "Sin devoluciones"
+    "noReturns": "Sin devoluciones",
+    "nav": {
+      "operations": "Operaciones",
+      "dashboard": "Panel",
+      "sellers": "Vendedores",
+      "streams": "Transmisiones",
+      "schedule": "Calendario",
+      "sales": "Ventas",
+      "orders": "Pedidos",
+      "groupBuy": "Compra Grupal",
+      "returns": "Devoluciones/CS",
+      "analytics": "Analítica",
+      "stats": "Estadísticas",
+      "ranking": "Ranking",
+      "compare": "Comparar",
+      "targets": "Metas",
+      "campaignSales": "Campañas y Ventas",
+      "campaigns": "Campañas",
+      "incentives": "Reglas Incentivos",
+      "messages": "Plantillas",
+      "coupons": "Cupones",
+      "calendar": "Calendario Live",
+      "teamOps": "Equipo",
+      "members": "Miembros",
+      "finance": "Finanzas",
+      "settlements": "Liquidaciones",
+      "contracts": "Contratos",
+      "notices": "Avisos",
+      "guide": "Guía",
+      "profile": "Perfil"
+    }
   },
   "nav": {
     "home": "Inicio",
@@ -1853,5 +1899,51 @@
       "seoTitle": "Verificación de cupón",
       "seoDescription": "Verificar cupón mediante código QR"
     }
+  },
+  "sellerWaiting": {
+    "title": "Aprobación de Vendedor Pendiente",
+    "description": "Información sobre aprobación pendiente",
+    "statusPending": "Aprobación Pendiente",
+    "statusSuspended": "Cuenta suspendida",
+    "statusRejected": "Solicitud rechazada",
+    "statusUnknown": "Estado desconocido",
+    "pendingDesc": "La aprobación normalmente tarda 1-2 días. Una vez aprobado podrás iniciar sesión con Kakao.",
+    "contactSupport": "Por favor contacte al servicio al cliente",
+    "rejectedDesc": "Para volver a aplicar contacte al servicio al cliente",
+    "afterApproval": "Después de la aprobación podrá",
+    "benefit1": "Transmitir en vivo",
+    "benefit2": "Registrar y vender productos",
+    "benefit3": "Ver ingresos y liquidaciones",
+    "contactCS": "Contactar Soporte",
+    "reloadHint": "Recargue la página para actualizar el estado"
+  },
+  "sellerRegisterBusiness": {
+    "title": "Convertirse en Vendedor",
+    "description": "Solicitar permiso de vendedor con cuenta Kakao",
+    "headerTitle": "Comenzar como Vendedor",
+    "kakaoBanner": "Inicio de sesión Kakao completo",
+    "kakaoBannerDesc": "Complete la información comercial a continuación para finalizar",
+    "heroTitle": "Agregar rol de vendedor a su cuenta Kakao",
+    "heroDesc": "Solicite permiso de vendedor con su cuenta Kakao actual. Sin registro/login separado.",
+    "fieldBusinessName": "Nombre Comercial / Tienda",
+    "phBusinessName": "ej. UrDeal Company",
+    "fieldBusinessNumber": "Número de Registro Comercial",
+    "fieldPhone": "Teléfono",
+    "fieldSellerType": "Tipo de Vendedor",
+    "typeInfluencer": "Influencer",
+    "typeStoreOwner": "Tienda",
+    "typeBoth": "Ambos",
+    "fieldYoutubeEmail": "Correo YouTube (opcional)",
+    "phYoutubeEmail": "Cuenta YouTube para transmisión en vivo",
+    "fieldDescription": "Biografía (opcional)",
+    "phDescription": "Breve presentación",
+    "submitNote": "La aprobación administrativa suele tardar 1-2 días. Una vez aprobado podrá usar funciones de vendedor con Kakao.",
+    "submitBtn": "Enviar Solicitud",
+    "submitting": "Enviando...",
+    "alreadyActive": "Rol de vendedor ya activo",
+    "statusPending": "Aprobación Pendiente",
+    "activeDesc": "Vaya al panel del vendedor para comenzar transmisiones",
+    "pendingDesc": "Funciones de vendedor disponibles tras aprobación",
+    "toDashboard": "Al Panel del Vendedor"
   }
 }

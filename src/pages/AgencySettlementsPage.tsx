@@ -136,6 +136,9 @@ export default function AgencySettlementsPage() {
             </table>
           </div>
         )}
+
+        {/* 🛡️ 2026-04-26 M6: 월별 송장 (자동 발행) */}
+        <SettlementInvoicesSection />
       </div>
       {pinPrompt && (
         <SellerPinPrompt
@@ -145,5 +148,107 @@ export default function AgencySettlementsPage() {
         />
       )}
     </AgencyLayout>
+  )
+}
+
+// 🛡️ 2026-04-26 M6: 월별 송장 섹션
+interface InvoiceRow {
+  id: number
+  month: string
+  invoice_number: string
+  total_orders: number
+  total_amount: number
+  commission_rate: number
+  commission_amount: number
+  tax_amount: number
+  net_amount: number
+  status: 'draft' | 'issued' | 'paid' | 'cancelled'
+  paid_at: string | null
+  generated_by: string | null
+  created_at: string
+}
+
+function SettlementInvoicesSection() {
+  const [invoices, setInvoices] = useState<InvoiceRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const token = localStorage.getItem('agency_token')
+
+  useEffect(() => {
+    api.get('/api/agency/settlement-invoices', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => { if (r.data?.success) setInvoices(r.data.data || []) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const downloadInvoice = (inv: InvoiceRow) => {
+    const url = `/api/agency/settlement-invoices/${inv.id}`
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.text())
+      .then(html => {
+        const blob = new Blob([html], { type: 'text/html' })
+        const blobUrl = URL.createObjectURL(blob)
+        window.open(blobUrl, '_blank')
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+      })
+      .catch(() => alert('송장 다운로드 실패'))
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5">
+      <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+        📋 월별 정산 명세서
+        <span className="text-[10px] text-gray-400 font-normal">매월 1일 자동 발행</span>
+      </h3>
+      {invoices.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-6">
+          아직 발행된 송장 없음 — 매월 1일 09:00 KST 이후 자동 발행됩니다.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+              <tr>
+                <th className="px-3 py-2 text-left">월</th>
+                <th className="px-3 py-2 text-left">송장번호</th>
+                <th className="px-3 py-2 text-right">총 매출</th>
+                <th className="px-3 py-2 text-right">수수료</th>
+                <th className="px-3 py-2 text-right">실수령</th>
+                <th className="px-3 py-2 text-center">상태</th>
+                <th className="px-3 py-2 text-center">다운로드</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {invoices.map(inv => (
+                <tr key={inv.id} className="hover:bg-gray-50">
+                  <td className="px-3 py-2 text-gray-700 font-medium">{inv.month}</td>
+                  <td className="px-3 py-2 text-xs font-mono text-gray-500">{inv.invoice_number}</td>
+                  <td className="px-3 py-2 text-right text-gray-700">{inv.total_amount.toLocaleString()}원</td>
+                  <td className="px-3 py-2 text-right text-gray-700">{inv.commission_amount.toLocaleString()}원</td>
+                  <td className="px-3 py-2 text-right font-bold text-emerald-600">{inv.net_amount.toLocaleString()}원</td>
+                  <td className="px-3 py-2 text-center">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      inv.status === 'paid' ? 'bg-green-100 text-green-700' :
+                      inv.status === 'issued' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {inv.status === 'paid' ? '지급완료' : inv.status === 'issued' ? '발행됨' : inv.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <button onClick={() => downloadInvoice(inv)}
+                      className="text-xs text-blue-600 hover:underline font-bold">
+                      열기
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   )
 }

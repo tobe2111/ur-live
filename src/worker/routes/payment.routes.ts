@@ -13,6 +13,7 @@ import { requireAuth, type AuthUser } from '../middleware/auth';
 import { webhookRouter } from './webhook.routes';
 import { TOSS_PAYMENT_URL } from '../../shared/constants';
 import { sendSellerAlimtalk } from '../../features/alimtalk/send';
+import { swallow } from '../utils/swallow';
 import { buildOrderConfirmMessage } from '../../features/alimtalk/aligo';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { logInfo, logError, logWarn } from '../utils/logger';
@@ -234,7 +235,7 @@ paymentsRouter.post('/confirm', async (c) => {
         `retry_${orderNumber}_${Date.now()}`,
         JSON.stringify({ paymentKey, orderIds: orders.map(o => o.id), totalAmount }),
         orderNumber,
-      ).run().catch(() => {});
+      ).run().catch(swallow('payment:webhook-event-retry-log'));
 
       // Alert ops — critical: customer paid but DB didn't update.
       await sendAlert(c.env, {
@@ -246,7 +247,7 @@ paymentsRouter.post('/confirm', async (c) => {
           orderIds: orders.map(o => o.id),
           error: String(dbErr).slice(0, 200),
         },
-      }).catch(() => {});
+      }).catch(swallow('payment:send-alert-CRITICAL'));
 
       // Do not call reduceStock — order rows weren't updated either. Return
       // success to client so they see the payment-success page (the money is

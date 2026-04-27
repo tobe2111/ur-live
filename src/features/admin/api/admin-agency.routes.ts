@@ -111,8 +111,12 @@ app.post('/', async (c) => {
 app.patch('/:id', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const id = Number(c.req.param('id'))
-  const { name, contact_name, phone, status, password, commission_rate } = await c.req.json<{
-    name?: string; contact_name?: string; phone?: string; status?: string; password?: string; commission_rate?: number
+  const { name, contact_name, phone, status, password, commission_rate, tier, tier_locked, auto_settle } = await c.req.json<{
+    name?: string; contact_name?: string; phone?: string; status?: string; password?: string;
+    commission_rate?: number;
+    tier?: 'new'|'junior'|'senior';        // Q1 — 어드민 수동 등급 변경
+    tier_locked?: boolean;                  // Q1 — true 면 자동 평가 무시
+    auto_settle?: boolean;                  // P0 #3 — 자동 정산 ON/OFF
   }>()
 
   const existing = await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(id).first()
@@ -128,6 +132,10 @@ app.patch('/:id', async (c) => {
   // commission_rate 컬럼 보장
   await c.env.DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(() => {})
 
+  if (tier !== undefined && !['new', 'junior', 'senior'].includes(tier)) {
+    return c.json({ success: false, error: 'tier must be new/junior/senior' }, 400)
+  }
+
   await c.env.DB.prepare(`
     UPDATE agencies SET
       name = COALESCE(?, name),
@@ -135,9 +143,33 @@ app.patch('/:id', async (c) => {
       phone = COALESCE(?, phone),
       status = COALESCE(?, status),
       commission_rate = COALESCE(?, commission_rate),
+      tier = COALESCE(?, tier),
+      tier_locked = COALESCE(?, tier_locked),
+      tier_evaluated_at = CASE WHEN ? IS NOT NULL THEN datetime('now') ELSE tier_evaluated_at END,
+      auto_settle = COALESCE(?, auto_settle),
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).bind(name ?? null, contact_name ?? null, phone ?? null, status ?? null, commission_rate ?? null, id).run()
+  `).bind(
+    name ?? null, contact_name ?? null, phone ?? null, status ?? null, commission_rate ?? null,
+    tier ?? null,
+    tier_locked === undefined ? null : (tier_locked ? 1 : 0),
+    tier ?? null,                                              // tier_evaluated_at 갱신 트리거
+    auto_settle === undefined ? null : (auto_settle ? 1 : 0),
+    id,
+  ).run().catch(async (err) => {
+    // tier / tier_locked / auto_settle 컬럼 미존재 (마이그레이션 0212/0208 미적용) → fallback
+    if (import.meta.env.DEV) console.warn('[admin:agency:patch] new columns missing, fallback:', err)
+    await c.env.DB.prepare(`
+      UPDATE agencies SET
+        name = COALESCE(?, name),
+        contact_name = COALESCE(?, contact_name),
+        phone = COALESCE(?, phone),
+        status = COALESCE(?, status),
+        commission_rate = COALESCE(?, commission_rate),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(name ?? null, contact_name ?? null, phone ?? null, status ?? null, commission_rate ?? null, id).run()
+  })
 
   return c.json({ success: true })
 })

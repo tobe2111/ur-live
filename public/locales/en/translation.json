@@ -139,7 +139,8 @@
     "dataLoadFailed": "Failed to load data. Please refresh the page.",
     "settingChangeFailed": "Failed to change setting",
     "disconnectFailed": "Failed to disconnect.",
-    "copyFailed": "Failed to copy."
+    "copyFailed": "Failed to copy.",
+    "home": "Home"
   },
   "auth": {
     "email": "Email",
@@ -1555,16 +1556,17 @@
       "mealVoucher": "Meal Vouchers",
       "reviews": "Reviews",
       "coupons": "Coupons",
-      "liveBroadcast": "Live Broadcast"
+      "liveBroadcast": "Live Broadcast",
+      "guide": "Guide"
     },
-    "bundlesSubtitle": "Bundle multiple products for set discounts",
+    "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
     "bundleEdit": "Edit Bundle",
     "bundleName": "Bundle Name",
     "bundleProducts": "Select Products",
-    "noBundles": "No bundles yet",
+    "noBundles": "No bundles registered",
     "discountType": "Discount Type",
-    "discountPercent": "Discount %",
+    "discountPercent": "Discount Percent",
     "discountAmount": "Discount Amount",
     "shortsSync": {
       "syncComplete": "Sync complete",
@@ -1623,7 +1625,11 @@
     "hidePassword": "Hide password",
     "showPassword": "Show password",
     "viewPublicProfile": "View public profile",
-    "agencyInviteJoin": "Joining via agency invitation"
+    "agencyInviteJoin": "Joining via agency invitation",
+    "guide": {
+      "subtitle": "How to run successful live commerce on UrDeal",
+      "title": "Seller Operations Guide"
+    }
   },
   "admin": {
     "login": {
@@ -1810,7 +1816,37 @@
     "dashboardSubtitle": "Agency overview — seller performance, revenue, live streams",
     "statsSubtitle": "Period-based revenue, orders, live analytics",
     "noData": "No data",
-    "noReturns": "No return history"
+    "noReturns": "No return history",
+    "nav": {
+      "operations": "Operations",
+      "dashboard": "Dashboard",
+      "sellers": "Managed Sellers",
+      "streams": "Live Streams",
+      "schedule": "Broadcast Calendar",
+      "sales": "Sales",
+      "orders": "Orders",
+      "groupBuy": "Group Buy",
+      "returns": "Returns/CS",
+      "analytics": "Analytics",
+      "stats": "Statistics",
+      "ranking": "Seller Ranking",
+      "compare": "Compare Sellers",
+      "targets": "Revenue Targets",
+      "campaignSales": "Campaigns & Sales",
+      "campaigns": "Campaigns",
+      "incentives": "Incentive Rules",
+      "messages": "Message Templates",
+      "coupons": "Coupon Distribution",
+      "calendar": "Live Calendar",
+      "teamOps": "Team",
+      "members": "Team Members",
+      "finance": "Finance & Settings",
+      "settlements": "Settlements",
+      "contracts": "Contracts",
+      "notices": "Seller Notices",
+      "guide": "Operations Guide",
+      "profile": "Profile Settings"
+    }
   },
   "nav": {
     "home": "Home",
@@ -1860,5 +1896,51 @@
       "seoTitle": "Voucher Verification",
       "seoDescription": "Verify a voucher by QR code"
     }
+  },
+  "sellerWaiting": {
+    "title": "Seller Approval Pending",
+    "description": "Seller approval pending information",
+    "statusPending": "Approval Pending",
+    "statusSuspended": "Account suspended",
+    "statusRejected": "Application rejected",
+    "statusUnknown": "Status unknown",
+    "pendingDesc": "Admin approval typically takes 1-2 days. Once approved you can sign in with Kakao right away.",
+    "contactSupport": "Please contact customer support",
+    "rejectedDesc": "To re-apply please contact customer support",
+    "afterApproval": "After approval you can",
+    "benefit1": "Broadcast live streams",
+    "benefit2": "Register and sell products",
+    "benefit3": "View revenue and settlements",
+    "contactCS": "Contact Support",
+    "reloadHint": "Reload the page to refresh status"
+  },
+  "sellerRegisterBusiness": {
+    "title": "Become a Seller",
+    "description": "Apply for seller permission via Kakao account",
+    "headerTitle": "Start as a Seller",
+    "kakaoBanner": "Kakao login complete",
+    "kakaoBannerDesc": "Enter business info below to finish your seller application",
+    "heroTitle": "Add seller role to your Kakao account",
+    "heroDesc": "Apply for seller permission with your current Kakao account. No separate signup/login needed.",
+    "fieldBusinessName": "Business / Store Name",
+    "phBusinessName": "e.g. UrDeal Company",
+    "fieldBusinessNumber": "Business Registration Number",
+    "fieldPhone": "Phone Number",
+    "fieldSellerType": "Seller Type",
+    "typeInfluencer": "Influencer",
+    "typeStoreOwner": "Store",
+    "typeBoth": "Both",
+    "fieldYoutubeEmail": "YouTube Email (optional)",
+    "phYoutubeEmail": "YouTube account for live broadcasting",
+    "fieldDescription": "Bio (optional)",
+    "phDescription": "Brief self introduction",
+    "submitNote": "Admin approval typically takes 1-2 days. Once approved you can use seller features via Kakao login immediately.",
+    "submitBtn": "Submit Application",
+    "submitting": "Submitting...",
+    "alreadyActive": "Seller role already active",
+    "statusPending": "Approval Pending",
+    "activeDesc": "Go to seller dashboard to start broadcasting",
+    "pendingDesc": "Seller features available after admin approval",
+    "toDashboard": "To Seller Dashboard"
   }
 }

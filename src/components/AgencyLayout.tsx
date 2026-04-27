@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import {
   LayoutDashboard, Users, ShoppingBag, BarChart2, LogOut, Menu, X,
   Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
-  TrendingUp, Radio, UserPlus, BookOpen, type LucideIcon
+  TrendingUp, Radio, UserPlus, BookOpen, Megaphone, Award, MessageSquare, Ticket,
+  type LucideIcon
 } from 'lucide-react'
 
 interface NavItem {
   path: string
-  label: string
+  label: string         // Korean fallback (i18n 미적용 시)
+  i18nKey?: string      // 'agency.nav.dashboard' 등 — 우선 사용
   icon: LucideIcon
   exact?: boolean
   badge?: string
@@ -17,45 +20,63 @@ interface NavItem {
 }
 
 interface NavGroup {
-  label: string
+  label: string         // Korean fallback
+  i18nKey?: string      // 'agency.nav.operations' 등
   items: NavItem[]
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: '운영',
+    label: '운영', i18nKey: 'agency.nav.operations',
     items: [
-      { path: '/agency',          label: '대시보드',    icon: LayoutDashboard, exact: true },
-      { path: '/agency/sellers',  label: '담당 셀러',   icon: Users },
-      { path: '/agency/streams',  label: '라이브 현황',  icon: Radio, liveBadge: true },
-      { path: '/agency/schedule', label: '방송 캘린더',  icon: Calendar },
+      { path: '/agency',          label: '대시보드',    i18nKey: 'agency.nav.dashboard', icon: LayoutDashboard, exact: true },
+      { path: '/agency/sellers',  label: '담당 셀러',   i18nKey: 'agency.nav.sellers', icon: Users },
+      { path: '/agency/streams',  label: '라이브 현황',  i18nKey: 'agency.nav.streams', icon: Radio, liveBadge: true },
+      { path: '/agency/schedule', label: '방송 캘린더',  i18nKey: 'agency.nav.schedule', icon: Calendar },
     ],
   },
   {
-    label: '판매 관리',
+    label: '판매 관리', i18nKey: 'agency.nav.sales',
     items: [
-      { path: '/agency/orders',    label: '주문 현황', icon: ShoppingBag },
-      { path: '/agency/group-buy', label: '공동구매',  icon: Utensils },
-      { path: '/agency/returns',   label: '반품/CS',  icon: ShoppingBag },
+      { path: '/agency/orders',    label: '주문 현황', i18nKey: 'agency.nav.orders', icon: ShoppingBag },
+      { path: '/agency/group-buy', label: '공동구매',  i18nKey: 'agency.nav.groupBuy', icon: Utensils },
+      { path: '/agency/returns',   label: '반품/CS',  i18nKey: 'agency.nav.returns', icon: ShoppingBag },
     ],
   },
   {
-    label: '분석 & 성과',
+    label: '분석 & 성과', i18nKey: 'agency.nav.analytics',
     items: [
-      { path: '/agency/stats',   label: '통계 분석', icon: BarChart2 },
-      { path: '/agency/ranking', label: '셀러 랭킹', icon: BarChart2 },
-      { path: '/agency/compare', label: '셀러 비교', icon: GitCompare },
-      { path: '/agency/targets', label: '매출 목표', icon: Target },
+      { path: '/agency/stats',   label: '통계 분석', i18nKey: 'agency.nav.stats', icon: BarChart2 },
+      { path: '/agency/ranking', label: '셀러 랭킹', i18nKey: 'agency.nav.ranking', icon: BarChart2 },
+      { path: '/agency/compare', label: '셀러 비교', i18nKey: 'agency.nav.compare', icon: GitCompare },
+      { path: '/agency/targets', label: '매출 목표', i18nKey: 'agency.nav.targets', icon: Target },
+    ],
+  },
+  // 🛡️ 2026-04-26: TikTok Backstage 학습 기반 신규 운영 도구
+  {
+    label: '캠페인 & 영업', i18nKey: 'agency.nav.campaignSales',
+    items: [
+      { path: '/agency/campaigns',  label: '캠페인',       i18nKey: 'agency.nav.campaigns', icon: Megaphone },
+      { path: '/agency/incentives', label: '인센티브 규칙', i18nKey: 'agency.nav.incentives', icon: Award },
+      { path: '/agency/messages',   label: '메시지 템플릿', i18nKey: 'agency.nav.messages', icon: MessageSquare },
+      { path: '/agency/coupons',    label: '쿠폰 배포',     i18nKey: 'agency.nav.coupons', icon: Ticket },
+      { path: '/agency/calendar',   label: '라이브 캘린더', i18nKey: 'agency.nav.calendar', icon: Calendar },
     ],
   },
   {
-    label: '재무 & 설정',
+    label: '팀 운영', i18nKey: 'agency.nav.teamOps',
     items: [
-      { path: '/agency/settlements', label: '정산 관리',   icon: TrendingUp },
-      { path: '/agency/contracts',   label: '계약 관리',   icon: FileText },
-      { path: '/agency/notices',     label: '셀러 공지',   icon: Bell },
-      { path: '/agency/guide',       label: '운영 가이드',  icon: BookOpen },
-      { path: '/agency/profile',     label: '프로필 설정',  icon: Settings },
+      { path: '/agency/members', label: '팀 멤버', i18nKey: 'agency.nav.members', icon: Users },
+    ],
+  },
+  {
+    label: '재무 & 설정', i18nKey: 'agency.nav.finance',
+    items: [
+      { path: '/agency/settlements', label: '정산 관리',   i18nKey: 'agency.nav.settlements', icon: TrendingUp },
+      { path: '/agency/contracts',   label: '계약 관리',   i18nKey: 'agency.nav.contracts', icon: FileText },
+      { path: '/agency/notices',     label: '셀러 공지',   i18nKey: 'agency.nav.notices', icon: Bell },
+      { path: '/agency/guide',       label: '운영 가이드',  i18nKey: 'agency.nav.guide', icon: BookOpen },
+      { path: '/agency/profile',     label: '프로필 설정',  i18nKey: 'agency.nav.profile', icon: Settings },
     ],
   },
 ]
@@ -67,6 +88,7 @@ interface AgencyLayoutProps {
 }
 
 export default function AgencyLayout({ title, children, headerRight }: AgencyLayoutProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -191,9 +213,9 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
               className="px-4 py-1.5 font-extrabold uppercase text-white/30"
               style={{ fontSize: '9px', letterSpacing: '0.12em' }}
             >
-              {group.label}
+              {group.i18nKey ? t(group.i18nKey, group.label) : group.label}
             </div>
-            {group.items.map(({ path, label, icon: Icon, exact, badge, liveBadge }) => {
+            {group.items.map(({ path, label, i18nKey, icon: Icon, exact, badge, liveBadge }) => {
               const active = isActive(path, exact)
               return (
                 <Link
@@ -221,7 +243,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
                   }}
                 >
                   <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
-                  <span className="flex-1 truncate">{label}</span>
+                  <span className="flex-1 truncate">{i18nKey ? t(i18nKey, label) : label}</span>
                   {liveBadge && (
                     <span
                       className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center gap-1"

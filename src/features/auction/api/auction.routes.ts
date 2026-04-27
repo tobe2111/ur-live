@@ -341,6 +341,143 @@ auctionRoutes.post('/:id/cancel', requireAuth(), async (c) => {
   return c.json({ success: true });
 });
 
+// 🛡️ 2026-04-26 (TD-007): POST /api/auction/:id/forfeit-winner
+// 낙찰자가 결제 불이행 시 차순위 자동 승격.
+//
+// 동작:
+// 1. 셀러/어드민 권한 확인
+// 2. 현재 winner 의 hold 를 'released' (forfeit_reason 기록) + winner_history 'forfeited'
+// 3. auction_bids 에서 forfeit 안 된 차순위 후보를 amount DESC 로 순회
+// 4. 각 후보 별로 hold 재생성 시도 (가용 잔액 확인)
+//    - 성공: live_auctions.winner_user_id 갱신, winner_history 'promoted', 알림
+//    - 실패: 다음 후보 시도
+// 5. 후보 모두 실패 시 winner_user_id = NULL, status = 'ended', 모두 release
+//
+// 마이그레이션 0211 미적용 시: 부분 동작 (winner_history INSERT 만 silent skip).
+auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+  const { DB } = c.env;
+  const auctionId = Number(c.req.param('id'));
+  if (!Number.isFinite(auctionId) || auctionId <= 0) return c.json({ success: false, error: 'invalid id' }, 400);
+
+  const reason = (await c.req.json<{ reason?: string }>().catch(() => ({}))).reason?.trim().slice(0, 500) || '결제 불이행';
+
+  const auction = await DB.prepare(
+    'SELECT id, seller_id, current_price, start_price, winner_user_id, winner_name FROM live_auctions WHERE id = ?'
+  ).bind(auctionId).first<{
+    id: number; seller_id: number; current_price: number; start_price: number;
+    winner_user_id: string | null; winner_name: string | null;
+  }>();
+  if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
+  if (user.type !== 'admin') {
+    if (user.type !== 'seller' || Number(auction.seller_id) !== Number(user.id)) {
+      return c.json({ success: false, error: 'forbidden — not your auction' }, 403);
+    }
+  }
+  if (!auction.winner_user_id) {
+    return c.json({ success: false, error: '낙찰자가 없습니다' }, 400);
+  }
+
+  const forfeitedUserId = auction.winner_user_id;
+  const forfeitedName = auction.winner_name;
+
+  // 1) 현재 winner 의 active hold 를 forfeited 처리
+  await DB.prepare(
+    "UPDATE auction_holds SET status = 'released', released_at = datetime('now'), forfeit_reason = ? WHERE auction_id = ? AND user_id = ? AND status = 'active'"
+  ).bind(reason, auctionId, forfeitedUserId).run().catch((e) => {
+    // forfeit_reason 컬럼 미존재 → fallback (status 만 release)
+    return DB.prepare(
+      "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id = ? AND status = 'active'"
+    ).bind(auctionId, forfeitedUserId).run();
+  });
+
+  // 2) winner_history 기록 (마이그레이션 0211 미적용 시 silent skip)
+  await DB.prepare(
+    "INSERT INTO auction_winner_history (auction_id, user_id, user_name, amount, reason, notes) VALUES (?, ?, ?, ?, 'forfeited', ?)"
+  ).bind(auctionId, forfeitedUserId, forfeitedName, auction.current_price, reason).run().catch(() => {});
+
+  // 3) 후보 차순위 순회 — 같은 user 의 동일 금액 중복 제거 + forfeit 된 user 제외
+  const { results: candidates } = await DB.prepare(`
+    SELECT user_id, user_name, MAX(amount) AS amount
+    FROM auction_bids
+    WHERE auction_id = ? AND user_id != ?
+    GROUP BY user_id
+    ORDER BY amount DESC
+  `).bind(auctionId, forfeitedUserId).all<{ user_id: string; user_name: string; amount: number }>();
+
+  let newWinner: { user_id: string; user_name: string; amount: number } | null = null;
+
+  for (const cand of (candidates || [])) {
+    if (cand.amount < auction.start_price) break; // 시작가 미만은 자격 없음
+
+    // 가용 잔액 확인 (기존 hold 있으면 그대로 인정; 없으면 신규 생성)
+    const balance = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+      .bind(cand.user_id).first<{ balance: number }>();
+    const userBalance = balance?.balance ?? 0;
+    const otherActiveHolds = await DB.prepare(
+      "SELECT COALESCE(SUM(amount), 0) as total FROM auction_holds WHERE user_id = ? AND status = 'active' AND auction_id != ?"
+    ).bind(cand.user_id, auctionId).first<{ total: number }>();
+    const heldElsewhere = otherActiveHolds?.total ?? 0;
+    const available = Math.max(0, userBalance - heldElsewhere);
+
+    if (available < cand.amount) continue; // 잔액 부족 → 다음 후보
+
+    // 기존 hold 있으면 활성화 갱신, 없으면 신규 생성
+    const existing = await DB.prepare(
+      "SELECT id FROM auction_holds WHERE auction_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1"
+    ).bind(auctionId, cand.user_id).first<{ id: number }>();
+    if (existing) {
+      await DB.prepare(
+        "UPDATE auction_holds SET status = 'active', amount = ?, released_at = NULL WHERE id = ?"
+      ).bind(cand.amount, existing.id).run();
+    } else {
+      await DB.prepare(
+        "INSERT INTO auction_holds (auction_id, user_id, amount, status) VALUES (?, ?, ?, 'active')"
+      ).bind(auctionId, cand.user_id, cand.amount).run();
+    }
+
+    newWinner = cand;
+    break;
+  }
+
+  if (!newWinner) {
+    // 4) 후보 없음 → winner 비움 + 경매 종료
+    await DB.prepare(
+      "UPDATE live_auctions SET winner_user_id = NULL, winner_name = NULL, status = 'ended' WHERE id = ?"
+    ).bind(auctionId).run();
+    await DB.prepare(
+      "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND status = 'active'"
+    ).bind(auctionId).run();
+    await DB.prepare(
+      "INSERT INTO auction_winner_history (auction_id, reason, notes) VALUES (?, 'cancelled', '차순위 후보 없음 또는 잔액 부족')"
+    ).bind(auctionId).run().catch(() => {});
+    return c.json({
+      success: true,
+      data: { promoted: false, message: '차순위 후보 없음 — 경매 종료 처리됨', forfeited_user_id: forfeitedUserId },
+    });
+  }
+
+  // 5) 새 winner 반영
+  await DB.prepare(
+    "UPDATE live_auctions SET winner_user_id = ?, winner_name = ?, current_price = ? WHERE id = ?"
+  ).bind(newWinner.user_id, newWinner.user_name, newWinner.amount, auctionId).run();
+
+  await DB.prepare(
+    "INSERT INTO auction_winner_history (auction_id, user_id, user_name, amount, reason, notes) VALUES (?, ?, ?, ?, 'promoted', ?)"
+  ).bind(auctionId, newWinner.user_id, newWinner.user_name, newWinner.amount, `${forfeitedName} 불이행으로 승격`).run().catch(() => {});
+
+  return c.json({
+    success: true,
+    data: {
+      promoted: true,
+      forfeited: { user_id: forfeitedUserId, user_name: forfeitedName, amount: auction.current_price },
+      new_winner: newWinner,
+    },
+  });
+});
+
 // GET /api/auction/:id — 경매 상세
 auctionRoutes.get('/:id', async (c) => {
   const { DB } = c.env;

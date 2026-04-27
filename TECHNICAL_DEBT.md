@@ -86,27 +86,32 @@
 
 ## 🟡 High
 
-### TD-004: 이중 라우팅 구조
-**문제:**
+### TD-004: 이중 라우팅 구조 — 🟢 **Downgrade (2026-04-26 감사 완료)**
+
+**감사 결과:** [`docs/DOUBLE_ROUTING_AUDIT.md`](docs/DOUBLE_ROUTING_AUDIT.md)
+
 ```
-/api/orders ← ordersRouter (worker/routes/order.routes.ts)
-              + featureOrdersRoutes (features/orders/api/orders.routes.ts)
+/api/orders ← ordersRouter (worker/routes/order.routes.ts)        ← CRUD 핵심
+              + featureOrdersRoutes (features/orders/api/orders.routes.ts) ← 배송/CRON
 
-/api/payments ← paymentsRouter + featurePaymentRoutes
+/api/payments ← paymentsRouter (worker)         ← confirm/checkout/webhook
+              + featurePaymentRoutes (features) ← /rollback (dead code)
 
-/api/seller ← sellerAuthRoutes + sellerManagementRoutes +
-              sellerOrdersRoutes + sellerAnalyticsRoutes + ...
+/api/seller ← 7 라우터 (sub-path 분리 — 충돌 0)
 ```
 
-**영향:** 같은 경로에 여러 핸들러. 매칭 순서 헷갈림. 새 기능 추가 시 어디에 넣어야 하는지 판단 어려움.
+**실제 충돌:** 0건. worker 와 feature 가 path 레벨에서 완벽히 분리됨.
 
-**해결법 (장기):**
-- worker/routes/order.routes.ts → features/orders/api/orders.routes.ts 로 통합
-- 비슷하게 다른 중복 라우트도 한 파일에 모으기
-- `app.route('/api/orders', ordersRouter)` 한 줄만 남기기
+**남은 정리 (LOW):**
+- `POST /api/payments/rollback` (features/payments/api/payment.routes.ts:154) 는 호출처 없음 (dead code)
+- `src/shared/api-routes.ts:159` 의 `payments.rollback` 상수도 dead
 
-**예상 작업 시간:** 3일
-**소유자:** Backend 리드
+**권장:**
+- 외부 연동 확인 후 dead `/rollback` 제거
+- worker/feature 강제 통합 시도 금지 (이득 미미, 회귀 비용 큼)
+- CLAUDE.md "이중 라우팅" 표현은 "co-mounted routing" 으로 정정 권장
+
+**소유자:** Backend (정리 단계만 — 통합 시도 X)
 
 ---
 
