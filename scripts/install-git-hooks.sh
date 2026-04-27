@@ -26,6 +26,13 @@ bash scripts/check-schema-refs.sh || {
   exit 1
 }
 
+# 🚨 2026-04-27 (PWA 사고 재발 방지): Service Worker 등록 코드 차단
+echo "==> Pre-commit: Service Worker 등록 코드 검사..."
+bash scripts/check-no-sw-register.sh || {
+  echo "❌ Commit blocked. PWA SW 재도입 시도 발견 — 2026-04-27 사고 재발 위험!"
+  exit 1
+}
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then
