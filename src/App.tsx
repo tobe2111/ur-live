@@ -177,6 +177,11 @@ const AgencyMembersPage = lazy(() => import('./pages/AgencyMembersPage'))
 const AgencyCalendarPage = lazy(() => import('./pages/AgencyCalendarPage'))
 const AgencyInvitesPage = lazy(() => import('./pages/AgencyInvitesPage'))
 const AgencyPublicPage = lazy(() => import('./pages/AgencyPublicPage'))
+const AgencyPKBattlesPage = lazy(() => import('./pages/AgencyPKBattlesPage'))
+const AgencyTransfersPage = lazy(() => import('./pages/AgencyTransfersPage'))
+const SellerCastingsPage = lazy(() => import('./pages/SellerCastingsPage'))
+const AdminTikTokDiscoveryPage = lazy(() => import('./pages/AdminTikTokDiscoveryPage'))
+const AdminCastingsPage = lazy(() => import('./pages/AdminCastingsPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 const AgencyGroupBuyPage = lazy(() => import('./pages/AgencyGroupBuyPage'))
 
@@ -482,6 +487,11 @@ function AppContent() {
                 <SellerBusinessInfoPage />
               </ProtectedRoute>
             } />
+            <Route path="/seller/castings" element={
+              <ProtectedRoute requireSeller>
+                <SellerCastingsPage />
+              </ProtectedRoute>
+            } />
             <Route path="/seller/orders" element={
               <ProtectedRoute requireSeller>
                 <SellerOrdersPage />
@@ -726,6 +736,16 @@ function AppContent() {
             <Route path="/auth/kakao/consent/callback" element={<KakaoConsentCallbackPage />} />
             <Route path="/auth/kakao/link/callback" element={<KakaoLinkCallbackPage />} />
             <Route path="/admin/kakao-test/callback" element={<AdminKakaoTestCallbackPage />} />
+            <Route path="/admin/tiktok-discovery" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminTikTokDiscoveryPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/castings" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminCastingsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
             <Route path="/admin/coupons" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminCouponsPage /></ErrorBoundary>
@@ -802,6 +822,8 @@ function AppContent() {
             <Route path="/agency/members" element={<AgencyAuthGuard><AgencyMembersPage /></AgencyAuthGuard>} />
             <Route path="/agency/calendar" element={<AgencyAuthGuard><AgencyCalendarPage /></AgencyAuthGuard>} />
             <Route path="/agency/invites" element={<AgencyAuthGuard><AgencyInvitesPage /></AgencyAuthGuard>} />
+            <Route path="/agency/pk" element={<AgencyAuthGuard><AgencyPKBattlesPage /></AgencyAuthGuard>} />
+            <Route path="/agency/transfers" element={<AgencyAuthGuard><AgencyTransfersPage /></AgencyAuthGuard>} />
             <Route path="/a/:slug" element={<AgencyPublicPage />} />
             <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
             <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
