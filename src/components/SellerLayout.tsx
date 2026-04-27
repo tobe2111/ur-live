@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign,
+  LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign, Megaphone,
   Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity, Ticket, Star, BarChart2, BookOpen
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
@@ -58,6 +58,7 @@ const NAV_GROUPS: {
       { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2 },
       { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign },
       { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'] },
+      { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone },
     ],
   },
   {

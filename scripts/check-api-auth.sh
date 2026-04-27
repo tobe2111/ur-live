@@ -101,13 +101,20 @@ fi
 # 4) Idempotency-Key 누락 검사 (Toss API 호출 시)
 echo ""
 echo "4️⃣  Toss API 호출 Idempotency-Key 검사..."
-TOSS_FILES=$(grep -rlE "api\.tosspayments\.com|TOSS_SECRET_KEY" $SEARCH_PATHS "${EXCLUDE_GLOBS[@]}" --include="*.ts" --include="*.tsx" 2>/dev/null || true)
+# v36 (2026-04-27): 정밀도 개선 — 변경성(POST/PATCH/PUT) 토스 fetch 만 검출.
+# - GET 호출은 idempotent (자체적으로) — 제외.
+# - type 정의 파일 또는 단순 환경변수 체크는 제외 (실제 fetch 코드만).
+# - utils/toss-payments.ts 같은 helper 함수는 내부에 Idempotency-Key 있어서 자동 적용됨.
+TOSS_FILES=$(grep -rlE "fetch\(.*TOSS_PAYMENT_URL.*payments|fetch\(.*api\.tosspayments\.com.*v1/payments" $SEARCH_PATHS "${EXCLUDE_GLOBS[@]}" --include="*.ts" --include="*.tsx" 2>/dev/null || true)
 MISSING_IDEMP=()
 if [ -n "$TOSS_FILES" ]; then
   while IFS= read -r f; do
     [ -z "$f" ] && continue
-    if ! grep -qi "Idempotency-Key" "$f" 2>/dev/null; then
-      MISSING_IDEMP+=("$f")
+    # POST/PATCH/PUT 메소드 호출이 있는데 Idempotency-Key 없으면 경고
+    if grep -qE "method:\s*['\"](POST|PATCH|PUT)['\"]" "$f" 2>/dev/null; then
+      if ! grep -qi "Idempotency-Key" "$f" 2>/dev/null; then
+        MISSING_IDEMP+=("$f")
+      fi
     fi
   done <<< "$TOSS_FILES"
 fi

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { formatKSTDate } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import DonationBoosterButton from '@/components/seller/DonationBoosterButton'
+import PKLiveBanner from '@/components/live/PKLiveBanner'
 import {
   Youtube, Loader2, Radio, Play,
   VideoIcon, CheckCircle2, AlertCircle, Copy,
@@ -2106,6 +2108,10 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
 
       {/* 실시간 통계 카운터 */}
       <LiveStatsBar streamId={stream.id} />
+
+      {/* 🛡️ 2026-04-27 후원 부스터 발동 버튼 + PK 진행 표시 */}
+      <DonationBoosterButton liveStreamId={stream.id} />
+      <PKLiveBanner liveStreamId={stream.id} />
 
       {/* 시청자 링크 공유 */}
       <ShareLiveLink streamId={stream.id} />

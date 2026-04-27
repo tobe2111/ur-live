@@ -64,6 +64,19 @@ export default defineConfig({
           if (id.includes('@sentry')) return 'sentry'
           // Embla carousel
           if (id.includes('embla-carousel')) return 'embla'
+          // 🛡️ 2026-04-27 추가 분할 — index entry 크기 줄이기
+          // i18next + 6개 언어 번들 (모든 페이지에서 쓰지만 별도 lazy 가능)
+          if (id.includes('i18next') || id.includes('react-i18next')) return 'i18n'
+          // Radix UI components (대부분 셀러/어드민 페이지에서만 사용)
+          if (id.includes('@radix-ui')) return 'radix-ui'
+          // Date utility (date-fns 등)
+          if (id.includes('date-fns') || id.includes('/dayjs/')) return 'date-utils'
+          // Validation (zod, yup)
+          if (id.includes('node_modules/zod/') || id.includes('node_modules/yup/')) return 'validation'
+          // Animation
+          if (id.includes('framer-motion')) return 'animation'
+          // QR / 바코드
+          if (id.includes('qrcode') || id.includes('jsbarcode') || id.includes('html5-qrcode')) return 'codes'
         },
       },
     },

@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
-  BarChart3, Shield, UserCog, Radio, Users, MessageSquare,
+  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles,
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
@@ -48,6 +48,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/settlements-bulk', label: '정산 일괄',     icon: CreditCard },
       { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
       { path: '/admin/coupons',          label: '쿠폰 관리',    icon: Ticket },
+      { path: '/admin/castings',         label: '캐스팅',        icon: Megaphone },
+      { path: '/admin/tiktok-discovery', label: 'TikTok 발굴',   icon: Sparkles },
     ],
   },
   {

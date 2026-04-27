@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2 } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
+import PKLiveBanner from '@/components/live/PKLiveBanner'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
@@ -1117,6 +1118,10 @@ export default function ReelCard({
 
         {/* Content area — safe area 대응 */}
         <div className="pointer-events-auto relative flex flex-col px-3 pb-safe" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+          {/* 🛡️ 2026-04-27 PK 진행 배너 (활성 PK 만 표시) */}
+          <div className="mb-2">
+            <PKLiveBanner liveStreamId={stream.id} />
+          </div>
           {/* Chat + action icons row */}
           <div className="flex items-end gap-2 mb-2">
             {/* Live chat feed - left side, wide */}
