@@ -319,7 +319,15 @@ bash scripts/quality-check.sh
 6. Actions 탭에서 **녹색 성공** 확인
 
 ### 절대 하지 말 것
-- ❌ Service Worker 등록 (`navigator.serviceWorker.register`) — sw.js 배포 누락 위험
+- ❌ **Service Worker 등록 + PWA 라이브러리** (`vite-plugin-pwa`, `workbox-window`, `navigator.serviceWorker.register`)
+  - 2026-04-27 사고: vite-plugin-pwa 의 navigateFallback 가 카카오 OAuth `/auth/kakao/start?redirect=...` 까지 가로채 ERR_FAILED → **모든 사이트 다운**
+  - 'FetchEvent resulted in a network error: a redirected response was used for a request whose redirect mode is not "follow"'
+  - 복구: Killer sw.js 배포 + 의존성 제거 + main.tsx 강제 unregister
+  - 재도입 시 필수:
+    1. `redirect: 'follow'` 명시 (OAuth 호환)
+    2. `/auth/*`, `/oauth/*`, `/api/*` denylist 추가
+    3. e2e 테스트로 카카오 로그인 흐름 사전 검증
+    4. PR 단독 + 1주 prod 안정 확인 후 다음 작업
 - ❌ `_redirects`에 `/* /index.html 200` — Workers에서 무한 루프
 - ❌ `_headers`에 2000자 초과 줄 — Workers 배포 실패
 - ❌ `wrangler.toml`에서 `new_classes` 사용 — free plan은 `new_sqlite_classes` 필요
