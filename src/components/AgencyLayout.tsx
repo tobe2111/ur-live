@@ -60,6 +60,12 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: '팀 운영',
+    items: [
+      { path: '/agency/members', label: '팀 멤버', icon: Users },
+    ],
+  },
+  {
     label: '재무 & 설정',
     items: [
       { path: '/agency/settlements', label: '정산 관리',   icon: TrendingUp },
