@@ -57,6 +57,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/agency/incentives', label: '인센티브 규칙', icon: Award },
       { path: '/agency/messages',   label: '메시지 템플릿', icon: MessageSquare },
       { path: '/agency/coupons',    label: '쿠폰 배포',     icon: Ticket },
+      { path: '/agency/calendar',   label: '라이브 캘린더', icon: Calendar },
     ],
   },
   {

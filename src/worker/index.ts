@@ -93,6 +93,7 @@ import { agencyIncentivesRoutes, calculateAllAgencyIncentives } from '../feature
 import { agencyMessagesRoutes } from '../features/agency/api/agency-messages.routes';
 import { agencyCouponsRoutes } from '../features/agency/api/agency-coupons.routes';
 import { agencyMembersRoutes } from '../features/agency/api/agency-members.routes';
+import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.routes';
 import { handleAgencyTierEval } from './cron/agency-tier-eval';
 import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
 import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
@@ -1953,6 +1954,8 @@ app.route('/api/agency/messages', agencyMessagesRoutes);
 app.route('/api/agency/coupons', agencyCouponsRoutes);
 // 🛡️ 2026-04-26 M4: 에이전시 멀티 권한 (owner/manager/agent/analyst)
 app.route('/api/agency/members', agencyMembersRoutes);
+// 🛡️ 2026-04-26 M5: 라이브 캘린더 + 에이전트 노트
+app.route('/api/agency/calendar', agencyCalendarRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품

@@ -173,6 +173,7 @@ const AgencyIncentivesPage = lazy(() => import('./pages/AgencyIncentivesPage'))
 const AgencyMessagesPage = lazy(() => import('./pages/AgencyMessagesPage'))
 const AgencyCouponsPage = lazy(() => import('./pages/AgencyCouponsPage'))
 const AgencyMembersPage = lazy(() => import('./pages/AgencyMembersPage'))
+const AgencyCalendarPage = lazy(() => import('./pages/AgencyCalendarPage'))
 const AgencyRegisterPage = lazy(() => import('./pages/AgencyRegisterPage'))
 const AgencyGroupBuyPage = lazy(() => import('./pages/AgencyGroupBuyPage'))
 
@@ -795,6 +796,7 @@ function AppContent() {
             <Route path="/agency/messages" element={<AgencyAuthGuard><AgencyMessagesPage /></AgencyAuthGuard>} />
             <Route path="/agency/coupons" element={<AgencyAuthGuard><AgencyCouponsPage /></AgencyAuthGuard>} />
             <Route path="/agency/members" element={<AgencyAuthGuard><AgencyMembersPage /></AgencyAuthGuard>} />
+            <Route path="/agency/calendar" element={<AgencyAuthGuard><AgencyCalendarPage /></AgencyAuthGuard>} />
             <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
             <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
             
