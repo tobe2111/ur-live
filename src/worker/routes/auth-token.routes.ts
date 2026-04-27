@@ -59,6 +59,47 @@ authTokenRoutes.post('/id-token', async (c) => {
       }, 400);
     }
 
+    // 🛡️ 2026-04-27 (CRITICAL SECURITY FIX): 호출자 본인 확인 필수.
+    // 이전에는 검증 없이 uid 만 받아 임의 사용자의 backend JWT 발급 가능 (full account takeover).
+    // 두 가지 인증 방식 중 하나라도 통과해야 함:
+    //   A) ur_session 쿠키 (카카오 세션 로그인) — userId 가 요청 uid 와 일치
+    //   B) Firebase ID token (Authorization: Bearer ...) — verify 후 sub 가 요청 uid 와 일치
+    let authVerifiedUid: string | null = null;
+
+    // Method A: session cookie
+    try {
+      const { parseSessionCookie } = await import('../utils/session');
+      const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user']);
+      if (sessionUser?.userId) {
+        if (String(sessionUser.userId) === String(uid)) {
+          authVerifiedUid = String(sessionUser.userId);
+        }
+      }
+    } catch { /* fall through to method B */ }
+
+    // Method B: Firebase ID token
+    if (!authVerifiedUid) {
+      const authHeader = c.req.header('Authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        try {
+          const { verifyFirebaseIdToken } = await import('../../lib/firebase-token-verify');
+          const firebaseProjectId = c.env.FIREBASE_PROJECT_ID || 'ur-live-prod';
+          const payload = await verifyFirebaseIdToken(authHeader.slice(7), firebaseProjectId);
+          if (payload?.sub && String(payload.sub) === String(uid)) {
+            authVerifiedUid = String(payload.sub);
+          }
+        } catch { /* invalid firebase token */ }
+      }
+    }
+
+    if (!authVerifiedUid) {
+      return c.json({
+        success: false,
+        error: '인증되지 않았습니다 — 세션 쿠키 또는 Firebase ID token 필요',
+        code: 'AUTH_REQUIRED'
+      }, 401);
+    }
+
     // Get database
     const db = c.env.DB;
     if (!db) {
