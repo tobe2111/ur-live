@@ -20,6 +20,7 @@ import { verify } from 'hono/jwt'
 import { parseSessionCookie } from '@/worker/utils/session'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
+import { requireAgencyPermission } from './agency-role-guard'
 
 type AgencyCtx = {
   Bindings: Env
@@ -65,7 +66,8 @@ app.use('*', requireAgency)
 //   seller_ids: number[],
 //   quantity_per_seller: number  // 셀러당 시청자에게 발급 가능한 수
 // }
-app.post('/distribute', async (c) => {
+// 🛡️ 2026-04-27: coupon 권한 필요 (analyst 차단)
+app.post('/distribute', requireAgencyPermission('coupon'), async (c) => {
   const agencyId = c.get('agency').id
   const body = await c.req.json<{
     name: string;

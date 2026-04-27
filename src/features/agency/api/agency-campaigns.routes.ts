@@ -25,6 +25,7 @@ import { verify } from 'hono/jwt'
 import { parseSessionCookie } from '@/worker/utils/session'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
+import { requireAgencyPermission } from './agency-role-guard'
 
 type AgencyCtx = {
   Bindings: Env
@@ -172,7 +173,8 @@ app.get('/', async (c) => {
 })
 
 // ── POST / — 캠페인 생성 ───────────────────────────────────
-app.post('/', async (c) => {
+// 🛡️ 2026-04-27: campaign 권한 필요 (agent/analyst 차단)
+app.post('/', requireAgencyPermission('campaign'), async (c) => {
   const agencyId = c.get('agency').id
   const body = await c.req.json<{
     name: string

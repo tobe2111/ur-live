@@ -25,6 +25,7 @@ import { verify } from 'hono/jwt'
 import { parseSessionCookie } from '@/worker/utils/session'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
+import { requireAgencyPermission } from './agency-role-guard'
 
 type AgencyCtx = {
   Bindings: Env
@@ -184,7 +185,8 @@ app.delete('/templates/:id', async (c) => {
 //
 // body: { template_id, seller_ids[], custom_link? }
 // 변수 치환: {{seller_name}} (각 셀러별), {{agency_name}}
-app.post('/send', async (c) => {
+// 🛡️ 2026-04-27: message 권한 필요 (analyst 차단)
+app.post('/send', requireAgencyPermission('message'), async (c) => {
   const agencyId = c.get('agency').id
   const body = await c.req.json<{
     template_id: number; seller_ids: number[]; custom_link?: string;
@@ -222,11 +224,23 @@ app.post('/send', async (c) => {
   let failed = 0
   const link = body.custom_link || '/seller'
 
+  // 🛡️ 2026-04-27: 9개 변수 지원 (message-template utility 사용)
+  const { renderTemplate } = await import('@/shared/utils/message-template')
+
   for (const seller of (ownedSellers || [])) {
-    const rendered = tmpl.body
-      .replace(/\{\{seller_name\}\}/g, seller.seller_name || '')
-      .replace(/\{\{agency_name\}\}/g, agencyName)
-      .replace(/\{\{commission_rate\}\}/g, String(commissionRate))
+    const sellerExtra = await c.env.DB.prepare(
+      `SELECT business_name, email FROM sellers WHERE id = ?`
+    ).bind(seller.seller_id).first<{ business_name: string | null; email: string | null }>()
+      .catch(() => null)
+
+    const rendered = renderTemplate(tmpl.body, {
+      seller_name: seller.seller_name,
+      seller_business_name: sellerExtra?.business_name || '',
+      seller_email: sellerExtra?.email || '',
+      agency_name: agencyName,
+      commission_rate: commissionRate,
+      custom_link: body.custom_link || '',
+    })
 
     try {
       // in-app 알림 (셀러용 dashboard_notifications)
@@ -286,5 +300,89 @@ app.get('/sends', async (c) => {
     return c.json({ success: false, data: [] })
   }
 })
+
+// 🛡️ 2026-04-27: 변수 미리보기 + 검증 endpoint
+// POST /preview — 본문에 들어갈 변수 치환 결과 + 알려지지 않은 변수 경고
+app.post('/preview', async (c) => {
+  const agencyId = c.get('agency').id
+  const body = await c.req.json<{
+    body: string;
+    sample_seller_id?: number;
+    custom_link?: string;
+  }>().catch(() => null)
+
+  if (!body || !body.body) {
+    return c.json({ success: false, error: 'body 필수' }, 400)
+  }
+
+  const { renderTemplate, findUnknownVariables, extractVariables } = await import('@/shared/utils/message-template')
+
+  // 검증
+  const usedVars = extractVariables(body.body)
+  const unknownVars = findUnknownVariables(body.body)
+
+  // 샘플 셀러 + 에이전시 정보 조회
+  let sampleSeller: { name: string; business_name: string | null; email: string | null } | null = null
+  if (body.sample_seller_id) {
+    sampleSeller = await c.env.DB.prepare(
+      `SELECT s.name, s.business_name, s.email
+       FROM agency_sellers ag JOIN sellers s ON s.id = ag.seller_id
+       WHERE ag.agency_id = ? AND ag.seller_id = ? LIMIT 1`
+    ).bind(agencyId, body.sample_seller_id)
+      .first<{ name: string; business_name: string | null; email: string | null }>()
+      .catch(() => null)
+  }
+
+  const agency = await c.env.DB.prepare('SELECT name, commission_rate FROM agencies WHERE id = ?')
+    .bind(agencyId).first<{ name: string; commission_rate: number }>()
+
+  const rendered = renderTemplate(body.body, {
+    seller_name: sampleSeller?.name || '○○○',
+    seller_business_name: sampleSeller?.business_name || '○○○ 사업자',
+    seller_email: sampleSeller?.email || 'sample@example.com',
+    agency_name: agency?.name || '에이전시',
+    commission_rate: agency?.commission_rate ?? 2.0,
+    custom_link: body.custom_link || '/seller',
+  })
+
+  return c.json({
+    success: true,
+    data: {
+      rendered,
+      used_variables: usedVars,
+      unknown_variables: unknownVars,
+    },
+  })
+})
+
+// GET /variables — 사용 가능한 변수 목록 (UI 도움말용)
+app.get('/variables', async (c) => {
+  const { ALLOWED_VARIABLE_LIST } = await import('@/shared/utils/message-template')
+  return c.json({
+    success: true,
+    data: {
+      variables: ALLOWED_VARIABLE_LIST.map(v => ({
+        key: v,
+        placeholder: `{{${v}}}`,
+        description: getVariableDescription(v),
+      })),
+    },
+  })
+})
+
+function getVariableDescription(key: string): string {
+  const descriptions: Record<string, string> = {
+    seller_name: '셀러 이름 (담당자명)',
+    seller_business_name: '셀러 사업자명',
+    seller_email: '셀러 이메일',
+    seller_tier: '셀러 등급 (브론즈/실버/골드)',
+    agency_name: '본 에이전시 이름',
+    commission_rate: '수수료율 (%)',
+    current_month: '이번 달 (YYYY-MM)',
+    current_date: '오늘 날짜 (YYYY-MM-DD)',
+    custom_link: '커스텀 링크 URL (발송 시 지정)',
+  }
+  return descriptions[key] || ''
+}
 
 export const agencyMessagesRoutes = app

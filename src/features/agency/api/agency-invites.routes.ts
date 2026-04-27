@@ -17,6 +17,7 @@ import { Hono, type Next } from 'hono';
 import { verify } from 'hono/jwt';
 import { parseSessionCookie } from '@/worker/utils/session';
 import type { Env } from '@/worker/types/env';
+import { requireAgencyPermission } from './agency-role-guard';
 
 type AgencyCtx = {
   Bindings: Env;
@@ -106,11 +107,33 @@ interface InviteCodeRow {
 // POST /api/agency/invites — 새 코드 발급
 app.use('*', requireAgency);
 
-app.post('/', async (c) => {
+// 🛡️ 2026-04-27: 일일 발급 제한 (TikTok 자료의 "한 명이 하루에 최대 X개" 정책).
+// 에이전시 멤버 1명이 하루 최대 10개 코드 발급 가능. 남용 방지.
+const DAILY_ISSUE_LIMIT = 10;
+
+// 🛡️ 2026-04-27: invite 권한 필요 (owner/manager/agent — analyst 차단)
+app.post('/', requireAgencyPermission('invite'), async (c) => {
   const agency = c.get('agency');
   const body = await c.req.json<{ label?: string; max_uses?: number }>().catch(() => ({} as { label?: string; max_uses?: number }));
 
   await ensureTable(c.env.DB);
+
+  // 일일 발급 제한 검증 — 같은 발급자 (created_by_email) 의 오늘 발급 코드 수
+  if (agency.email) {
+    const todayCount = await c.env.DB.prepare(`
+      SELECT COUNT(*) AS cnt FROM agency_invite_codes
+      WHERE created_by_email = ?
+        AND created_at >= datetime('now', '-1 day')
+    `).bind(agency.email).first<{ cnt: number }>().catch(() => null);
+    const cnt = todayCount?.cnt ?? 0;
+    if (cnt >= DAILY_ISSUE_LIMIT) {
+      return c.json({
+        success: false,
+        error: `일일 발급 제한 (${DAILY_ISSUE_LIMIT}개) 초과 — 24시간 후 다시 시도해주세요.`,
+        code: 'DAILY_LIMIT_EXCEEDED',
+      }, 429);
+    }
+  }
 
   let code = '';
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -166,7 +189,7 @@ app.get('/', async (c) => {
 });
 
 // DELETE /api/agency/invites/:code — 비활성화 (soft)
-app.delete('/:code', async (c) => {
+app.delete('/:code', requireAgencyPermission('invite'), async (c) => {
   const agency = c.get('agency');
   const code = c.req.param('code');
 
@@ -248,6 +271,20 @@ export async function consumeInviteCode(
   if (!row.is_active) return { ok: false, reason: 'inactive' };
   if (row.expires_at < now) return { ok: false, reason: 'expired' };
   if (row.used_count >= row.max_uses) return { ok: false, reason: 'used_up' };
+
+  // 🛡️ 2026-04-27: 거부 후 10일 cooldown — 같은 에이전시에서 최근 reject 된 셀러 차단.
+  // TikTok Backstage 자료의 "거부 후 14일 재신청 불가" 정책을 10일로 적응.
+  try {
+    const recentReject = await DB.prepare(`
+      SELECT id FROM agency_creator_approvals
+      WHERE agency_id = ? AND seller_id = ? AND status = 'rejected'
+        AND reviewed_at > datetime('now', '-10 days')
+      LIMIT 1
+    `).bind(row.agency_id, sellerId).first().catch(() => null);
+    if (recentReject) {
+      return { ok: false, reason: 'rejection_cooldown' };
+    }
+  } catch { /* table missing — skip */ }
 
   // 매핑 (멱등 — UNIQUE 제약 있음)
   await DB.prepare(`
