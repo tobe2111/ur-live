@@ -19,7 +19,8 @@
   Referrer-Policy: strict-origin-when-cross-origin
 
   # Permissions Policy
-  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(self), usb=(), interest-cohort=()
+  # 🛡️ 2026-04-27: geolocation=(self) — MainHomePage 의 GPS 자동 지역 감지 허용
+  Permissions-Policy: geolocation=(self), microphone=(), camera=(self), payment=(self), usb=(), interest-cohort=()
 
   # Strict Transport Security (HSTS)
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload

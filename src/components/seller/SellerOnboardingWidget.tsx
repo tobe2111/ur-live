@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { CheckCircle2, Circle, Trophy, Sparkles, BookOpen } from 'lucide-react'
+import { CheckCircle2, Circle, Trophy, Sparkles, BookOpen, ChevronRight } from 'lucide-react'
 import LiveStartGuideModal from './LiveStartGuideModal'
 
 interface OnboardingStep {
@@ -18,16 +19,17 @@ interface OnboardingData {
   reward_claimed: boolean
 }
 
-const STEP_LABEL: Record<string, { title: string; desc: string }> = {
-  profile_complete: { title: '프로필 완성', desc: '사진/소개/주소 입력' },
-  first_product: { title: '첫 상품 등록', desc: '판매할 상품 1개 추가' },
-  first_live: { title: '첫 라이브 시작', desc: '15분 이상 권장' },
-  first_donation: { title: '첫 후원 받기', desc: '시청자에게 첫 응원' },
-  first_payment: { title: '첫 결제 완료', desc: '시청자가 상품 구매' },
-  first_alimtalk: { title: '첫 알림톡 발송', desc: '카카오톡 알림 1회' },
+const STEP_LABEL: Record<string, { title: string; desc: string; path: string }> = {
+  profile_complete: { title: '프로필 완성', desc: '사진/소개/주소 입력', path: '/seller/profile' },
+  first_product: { title: '첫 상품 등록', desc: '판매할 상품 1개 추가', path: '/seller/products' },
+  first_live: { title: '첫 라이브 시작', desc: '15분 이상 권장', path: '/seller/live-broadcast' },
+  first_donation: { title: '첫 후원 받기', desc: '시청자에게 첫 응원', path: '/seller/donations' },
+  first_payment: { title: '첫 결제 완료', desc: '시청자가 상품 구매', path: '/seller/orders' },
+  first_alimtalk: { title: '첫 알림톡 발송', desc: '카카오톡 알림 1회', path: '/seller/alimtalk' },
 }
 
 export default function SellerOnboardingWidget() {
+  const navigate = useNavigate()
   const [data, setData] = useState<OnboardingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [dismissed, setDismissed] = useState(() => localStorage.getItem('seller_bootcamp_dismissed') === 'true')
@@ -90,12 +92,17 @@ export default function SellerOnboardingWidget() {
         />
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {data.steps.map((s) => {
           const meta = STEP_LABEL[s.step_key]
           if (!meta) return null
           return (
-            <div key={s.step_key} className="flex items-center gap-2 text-xs">
+            <button
+              key={s.step_key}
+              type="button"
+              onClick={() => navigate(meta.path)}
+              className="w-full flex items-center gap-2 text-xs px-2 py-1.5 -mx-2 rounded-lg hover:bg-white/60 active:bg-white/80 transition-colors text-left"
+            >
               {s.completed ? (
                 <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
               ) : (
@@ -105,18 +112,15 @@ export default function SellerOnboardingWidget() {
                 <span className="font-medium">{meta.title}</span>
                 <span className="text-gray-400 ml-1">— {meta.desc}</span>
               </span>
-            </div>
+              <ChevronRight className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+            </button>
           )
         })}
       </div>
 
-      {data.bootcamp_completed ? (
+      {data.bootcamp_completed && (
         <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-          🏆 모든 단계를 완료했습니다! 보상 <strong>{data.reward_deal.toLocaleString()}딜</strong> 이 자동 지급되었습니다.
-        </div>
-      ) : (
-        <div className="mt-3 text-xs text-gray-500">
-          💡 7단계 모두 완료하면 <strong className="text-purple-600">{data.reward_deal.toLocaleString()}딜</strong> 보상!
+          🏆 모든 단계를 완료했습니다!
         </div>
       )}
 
