@@ -29,6 +29,7 @@ import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
 import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
 import { handleAgencyInactiveSellers } from './cron/agency-inactive-sellers';
+import { handleLiveStreamMetrics } from './cron/live-stream-metrics';
 import { handleD1Backup } from './cron/d1-backup';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -81,6 +82,8 @@ export async function handleCronScheduled(
       }
       // Phase 1-2: 부진 셀러 알림 (매일)
       await handleAgencyInactiveSellers(env).catch(e => console.error('[cron] inactive-sellers:', e));
+      // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일)
+      await handleLiveStreamMetrics(env).catch(e => console.error('[cron] live-metrics:', e));
     }));
   }
 

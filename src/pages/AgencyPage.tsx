@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import PLSimulator from '@/components/agency/PLSimulator'
 import { LayoutDashboard } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -634,6 +635,9 @@ export default function AgencyPage() {
           </div>
         </div>
       )}
+
+      {/* 🛡️ 2026-04-27 Phase 2-2: PL 시뮬레이터 */}
+      <PLSimulator />
 
       {/* 🛡️ 2026-04-26 L2: 이번 달 의무 작업 진행률 (Q6) */}
       {monthlyTasks.length > 0 && (

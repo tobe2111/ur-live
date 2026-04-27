@@ -64,6 +64,7 @@ import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes'
 import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
 import { sellerStreamsRoutes } from '../features/seller/api/seller-streams.routes';
 import { sellerOnboardingRoutes } from '../features/seller/api/seller-onboarding.routes';
+import { viewerLoyaltyRoutes } from '../features/seller/api/viewer-loyalty.routes';
 import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
 import { supplyRoutes } from '../features/supply/api/supply.routes';
@@ -1659,6 +1660,8 @@ app.route('/api/seller/analytics', sellerAnalyticsRoutes);
 app.route('/api/seller/streams', sellerStreamsRoutes);
 // 🛡️ 2026-04-27 Phase 1-5: 셀러 7일 부트캠프 온보딩
 app.route('/api/seller/onboarding', sellerOnboardingRoutes);
+// 🛡️ 2026-04-27 Phase 2-3: 시청자 충성도 4단계
+app.route('/api/seller/viewers', viewerLoyaltyRoutes);
 
 // Email notifications (global)
 app.route('/api/email', emailRoutes);
