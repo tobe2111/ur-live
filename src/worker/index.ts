@@ -103,6 +103,7 @@ import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
 import { debugRoutes } from './routes/debug.routes';
+import { publicUtilityRoutes } from './routes/public-utility.routes';
 import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 import { guideRoutes } from '../features/guides/api/guide.routes';
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
@@ -346,46 +347,7 @@ app.use('*', async (c, next) => {
 // Browsers POST violation reports here when CSP blocks a resource.
 // Keep handler minimal and always return 204 to avoid influencing browser behavior.
 // ============================================================
-app.post('/api/csp-report', async (c) => {
-  try {
-    const report = await c.req.json().catch(() => null);
-    if (import.meta.env.DEV && report) console.warn('[CSP violation]', report);
-    // 🛡️ 2026-04-22: CSP 위반 DB 저장 — 어드민이 이상 패턴 분석 가능.
-    // 테이블은 auto-create (마이그레이션 미적용 환경 호환).
-    if (report && c.env.DB) {
-      try {
-        await c.env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS csp_violations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            blocked_uri TEXT,
-            violated_directive TEXT,
-            document_uri TEXT,
-            source_file TEXT,
-            line_number INTEGER,
-            user_agent TEXT,
-            ip TEXT,
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-          )
-        `).run();
-        const body = (report as any)['csp-report'] || report;
-        await c.env.DB.prepare(`
-          INSERT INTO csp_violations
-            (blocked_uri, violated_directive, document_uri, source_file, line_number, user_agent, ip)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          String(body?.['blocked-uri'] || body?.blockedURL || '').slice(0, 500),
-          String(body?.['violated-directive'] || body?.effectiveDirective || '').slice(0, 200),
-          String(body?.['document-uri'] || body?.documentURL || '').slice(0, 500),
-          String(body?.['source-file'] || body?.sourceFile || '').slice(0, 500),
-          Number(body?.['line-number'] || body?.lineNumber || 0) || null,
-          (c.req.header('User-Agent') || '').slice(0, 300),
-          c.req.header('CF-Connecting-IP') || '',
-        ).run();
-      } catch { /* DB 실패도 CSP 에 영향 주지 않음 */ }
-    }
-  } catch { /* swallow — never surface parse errors to the browser */ }
-  return c.body(null, 204);
-});
+// /api/csp-report → public-utility.routes.ts (P1, 2026-04-26)
 
 // ============================================================
 // Health Check
@@ -401,41 +363,7 @@ app.get('/health', (c) => c.json({
 // v32 FIX: PWA manifest MIME type 명시 (Workers asset serving은 _headers 미지원)
 // Chrome "Manifest: Line: 1 Syntax error" 원인 — Worker가 HTML fallback으로 응답하거나
 // MIME이 text/plain으로 나올 때 발생. 명시적 intercept로 application/manifest+json 반환.
-app.get('/manifest.webmanifest', async (c) => {
-  try {
-    const assets = (c.env as any).ASSETS;
-    if (assets) {
-      const res = await assets.fetch(new Request(new URL('/manifest.webmanifest', c.req.url).toString()));
-      if (res && res.ok) {
-        const body = await res.text();
-        return new Response(body, {
-          headers: {
-            'Content-Type': 'application/manifest+json; charset=utf-8',
-            'Cache-Control': 'public, max-age=3600',
-          },
-        });
-      }
-    }
-  } catch {}
-  // Fallback: 인라인 매니페스트
-  return new Response(JSON.stringify({
-    name: '유어딜',
-    short_name: '유어딜',
-    start_url: '/',
-    display: 'standalone',
-    background_color: '#020202',
-    theme_color: '#020202',
-    orientation: 'portrait',
-    icons: [
-      { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' },
-    ],
-  }), {
-    headers: {
-      'Content-Type': 'application/manifest+json; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600',
-    },
-  });
-});
+// /manifest.webmanifest → public-utility.routes.ts (P1, 2026-04-26)
 
 app.get('/api/health', async (c) => {
   const env = c.env as Env;
@@ -642,7 +570,7 @@ app.get('/api/_internal/health-dashboard', requireAdmin(), async (c) => {
   });
 });
 
-let _cachedBuildVersion: { version: string; fetchedAt: number } | null = null;
+// _cachedBuildVersion 모듈 캐시 → public-utility.routes.ts 로 이동 (P1)
 // ============================================================
 // 🌐 Dynamic Sitemap.xml (2026-04-22 추가)
 // 기존 정적 public/sitemap.xml 은 상품/스트림 누락 + 7일 stale.
@@ -711,37 +639,7 @@ ${urls.map(u => `  <url><loc>${origin}${u.loc}</loc><changefreq>${u.changefreq}<
   });
 });
 
-app.get('/api/version', async (c) => {
-  // 공개 secret 존재 여부 boolean — 값 자체는 노출 안 됨. 500 진단용.
-  const env = c.env as any;
-  const secrets = {
-    JWT_SECRET: !!env.JWT_SECRET,
-    REFRESH_TOKEN_SECRET: !!env.REFRESH_TOKEN_SECRET,
-    KAKAO_REST_API_KEY: !!env.KAKAO_REST_API_KEY,
-    FIREBASE_PRIVATE_KEY: !!env.FIREBASE_PRIVATE_KEY,
-    FIREBASE_CLIENT_EMAIL: !!env.FIREBASE_CLIENT_EMAIL,
-    TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
-    DB: !!env.DB,
-  };
-  try {
-    const now = Date.now();
-    if (_cachedBuildVersion && (now - _cachedBuildVersion.fetchedAt) < 60_000) {
-      return c.json({ success: true, version: _cachedBuildVersion.version, secrets });
-    }
-
-    const origin = new URL(c.req.url).origin;
-    const htmlRes = await fetch(`${origin}/`, { cf: { cacheTtl: 30 } } as RequestInit);
-    if (!htmlRes.ok) return c.json({ success: false, version: null, secrets }, 200);
-
-    const html = await htmlRes.text();
-    const match = html.match(/assets\/(index-[A-Za-z0-9_-]+\.js)/);
-    const version = match?.[1] || 'unknown';
-    _cachedBuildVersion = { version, fetchedAt: now };
-    return c.json({ success: true, version, secrets });
-  } catch {
-    return c.json({ success: false, version: null, secrets }, 200);
-  }
-});
+// /api/version → public-utility.routes.ts (P1, 2026-04-26)
 
 // ============================================================
 // 🩹 Self-healing schema repair (idempotent, 재실행 안전)
@@ -1936,6 +1834,11 @@ app.route('/api', proxyRoutes);
 
 // ── 디버그 (build-info, bindings) — 2026-04-26 M9 부분 추출
 app.route('/api/debug', debugRoutes);
+
+// ── 공개 유틸 (csp-report, manifest, version) — 2026-04-26 P1 추출
+//    sub-paths 가 / (root), /api/csp-report, /manifest.webmanifest, /api/version 으로
+//    분기되므로 prefix '' 마운트.
+app.route('/', publicUtilityRoutes);
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 // SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
