@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
@@ -9,6 +9,8 @@ export default function SellerRegisterPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const agencyId = searchParams.get('agency')
+  const inviteCode = searchParams.get('invite')?.toUpperCase()
+  const [inviteAgency, setInviteAgency] = useState<{ name: string; contact: string } | null>(null)
   const [formData, setFormData] = useState({
     sellerType: 'influencer' as 'influencer' | 'store_owner' | 'both',
     username: '',
@@ -23,6 +25,20 @@ export default function SellerRegisterPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // 영입 코드가 있으면 에이전시 정보 prefill
+  useEffect(() => {
+    if (!inviteCode) return
+    api.get(`/api/invite/${inviteCode}`)
+      .then((r) => {
+        if (r.data.success) {
+          setInviteAgency({ name: r.data.data.agency_name, contact: r.data.data.agency_contact })
+        }
+      })
+      .catch(() => {
+        setInviteAgency(null)
+      })
+  }, [inviteCode])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setFormData(prev => ({
@@ -81,8 +97,9 @@ export default function SellerRegisterPage() {
         business_name: formData.businessName,
         youtube_email: formData.sellerType !== 'store_owner' ? formData.youtubeEmail : undefined,
         seller_type: formData.sellerType,
-        agency_id: agencyId ? Number(agencyId) : undefined
-      })
+        agency_id: agencyId ? Number(agencyId) : undefined,
+        invite_code: inviteCode || undefined,
+      } as any)
 
       if (response.data.success) {
         toast.success(t('seller.registerSuccessMsg'))
@@ -109,6 +126,11 @@ export default function SellerRegisterPage() {
           {agencyId && (
             <div className="mt-3 inline-flex items-center gap-1.5 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-xs font-medium">
               <span>🤝</span> {t('seller.agencyInviteJoin')}
+            </div>
+          )}
+          {inviteAgency && (
+            <div className="mt-3 inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full text-xs font-medium">
+              <span>🎟️</span> <strong>{inviteAgency.name}</strong> 영입 코드로 가입
             </div>
           )}
         </div>

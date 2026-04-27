@@ -277,6 +277,18 @@ sellerManagementRoutes.post('/register', rateLimit({ action: 'seller_register', 
       throw new Error('Failed to create seller account');
     }
 
+    // 🛡️ 2026-04-27 Phase 1-3: 영입 코드 자동 매핑
+    const inviteCode = (body as any).invite_code as string | undefined;
+    if (inviteCode && result.meta.last_row_id) {
+      try {
+        const { consumeInviteCode } = await import('../../agency/api/agency-invites.routes');
+        const sellerId = Number(result.meta.last_row_id);
+        await consumeInviteCode(db, inviteCode, sellerId);
+      } catch (e) {
+        console.warn('[seller-register] invite_code mapping failed (non-fatal):', e);
+      }
+    }
+
     // 7. 셀러 가입 신청 → 어드민 알림
     createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/sellers').catch(() => {});
 

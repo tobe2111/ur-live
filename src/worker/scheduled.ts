@@ -28,6 +28,7 @@ import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
 import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
 import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
+import { handleAgencyInactiveSellers } from './cron/agency-inactive-sellers';
 import { handleD1Backup } from './cron/d1-backup';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -78,6 +79,8 @@ export async function handleCronScheduled(
       if (flags.enable_tiktok_videos_sync) {
         await handleTikTokVideosSync(env).catch(e => console.error('[cron] tiktok:', e));
       }
+      // Phase 1-2: 부진 셀러 알림 (매일)
+      await handleAgencyInactiveSellers(env).catch(e => console.error('[cron] inactive-sellers:', e));
     }));
   }
 

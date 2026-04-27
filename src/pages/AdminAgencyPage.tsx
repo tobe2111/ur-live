@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle, KeyRound, Users } from 'lucide-react'
+import { tierLabel, tierBadgeClass } from '@/shared/utils/agency-tier'
 
 interface Agency {
   id: number
@@ -315,13 +316,9 @@ export default function AdminAgencyPage() {
                       {a.tier && (
                         <span
                           title={a.tier_locked ? '어드민 수동 고정 (자동 평가 무시)' : `자동 평가: ${a.tier_evaluated_at || '없음'}`}
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
-                            a.tier === 'senior' ? 'bg-purple-100 text-purple-700' :
-                            a.tier === 'junior' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border ${tierBadgeClass(a.tier)}`}
                         >
-                          {a.tier_locked ? '🔒' : ''}{a.tier.toUpperCase()}
+                          {a.tier_locked ? '🔒' : ''}{tierLabel(a.tier)}
                         </span>
                       )}
                       {a.auto_settle === 1 && (
@@ -345,7 +342,7 @@ export default function AdminAgencyPage() {
                       if (a.tier === newTier) return
                       try {
                         await api.patch(`/api/admin/agencies/${a.id}`, { tier: newTier, tier_locked: true }, { headers })
-                        toast.success(`${a.name} → ${newTier.toUpperCase()} (수동 고정)`)
+                        toast.success(`${a.name} → ${tierLabel(newTier)} (수동 고정)`)
                         fetchAgencies()
                       } catch (err: any) {
                         toast.error(err?.response?.data?.error || '등급 변경 실패')
@@ -354,9 +351,9 @@ export default function AdminAgencyPage() {
                     title="등급 수동 변경 (자동 평가 비활성화됨)"
                     className="text-xs bg-white border border-gray-200 rounded-lg px-2 py-1 cursor-pointer hover:border-gray-300"
                   >
-                    <option value="new">NEW</option>
-                    <option value="junior">JUNIOR</option>
-                    <option value="senior">SENIOR</option>
+                    <option value="new">브론즈</option>
+                    <option value="junior">실버</option>
+                    <option value="senior">골드</option>
                   </select>
                   {a.tier_locked === 1 && (
                     <button

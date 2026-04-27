@@ -94,6 +94,7 @@ import { agencyMessagesRoutes } from '../features/agency/api/agency-messages.rou
 import { agencyCouponsRoutes } from '../features/agency/api/agency-coupons.routes';
 import { agencyMembersRoutes } from '../features/agency/api/agency-members.routes';
 import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.routes';
+import { agencyInvitesRoutes, inviteCodePublicRoutes } from '../features/agency/api/agency-invites.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -1909,6 +1910,9 @@ app.route('/api/agency/coupons', agencyCouponsRoutes);
 app.route('/api/agency/members', agencyMembersRoutes);
 // 🛡️ 2026-04-26 M5: 라이브 캘린더 + 에이전트 노트
 app.route('/api/agency/calendar', agencyCalendarRoutes);
+// 🛡️ 2026-04-27 Phase 1-3: QR/링크 영입 코드
+app.route('/api/agency/invites', agencyInvitesRoutes);
+app.route('/api/invite', inviteCodePublicRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
