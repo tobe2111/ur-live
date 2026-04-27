@@ -58,6 +58,10 @@ export interface Env {
   YOUTUBE_CLIENT_SECRET?: string;
   YOUTUBE_REDIRECT_URI?: string;
 
+  // ---- TikTok (2026-04-26 T1 통합) ----
+  TIKTOK_CLIENT_KEY?: string;
+  TIKTOK_CLIENT_SECRET?: string;
+
   // ---- Push Notifications ----
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;

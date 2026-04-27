@@ -8,6 +8,27 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 📅 2026-04-27 마라톤 세션 — 변경사항 요약
+
+### ✅ 해결됨
+- **TD-002 시크릿 노출**: 4종 회전 (JWT/Refresh/Cron/Toss-Webhook) + Toss 결제 키 재발급. 이전 노출 값 모두 무효 처리.
+- **chat-moderation 한글 차단 버그** (Phase 3-3 출시 후 미발견): `normalizeForMatching` 정규식 수정.
+- **PushNotificationSetup 메모리 누수**: SW unregister 후 ready 영원히 pending → `getRegistration()` null check.
+- **PK shouldEndPK ISO 문자열 비교 버그**: Date.getTime() 비교로 변경.
+- **Idempotency-Key 검사 가짜 양성 5건**: 스크립트 정밀화 (POST/PATCH + 실제 fetch만).
+
+### 🆕 추가됨 (32개 신기능 + 49개 단위 테스트 + PWA + 11개 마이그레이션)
+- Phase 1: 에이전시 등급 / 부진셀러 알림 / QR 영입 / KPI / 부트캠프 / 라이브가이드 / 공개페이지 (7개)
+- Phase 2: 가이드 / PL / 충성도 / 라이브KPI / 부스터 / 월간리포트 / PK이벤트 (7개)
+- Phase 3: 최적시간 / FAQ봇 / 모더레이션 / TikTok발굴 / Network / 캐스팅 (6개) + 클립 보류
+- UI 통합 6개 + 후속 5개 = 11개
+- PWA (vite-plugin-pwa) + Sentry release 통일 + 결제 reconciliation Discord 알림
+
+### 🟢 신규 운영 도구
+- `/api/_internal/migration-status` — 마이그레이션 적용 검증 (admin)
+- `npm run check:i18n` — 6개 언어 동기 검사
+- `bash scripts/check-api-auth.sh` — 인증/Idempotency 검증
+
 ---
 
 ## 🔴 Critical
@@ -30,38 +51,18 @@
 
 ---
 
-### TD-002: `.dev.vars` 가 Git History 에 노출
-**문제:**
-- Commit `96f502d` 에 secrets 포함된 `.dev.vars` 최초 commit
-- Commit `1665681` 에서 untrack 했지만 history 에는 그대로 남음
-- 노출된 secrets:
-  - `JWT_SECRET`
-  - `REFRESH_TOKEN_SECRET`
-  - `KAKAO_REST_API_KEY`
-  - `FIREBASE_PRIVATE_KEY` (production service account!)
-  - `FIREBASE_CLIENT_EMAIL`
-  - `TOSS_SECRET_KEY` (test key, lower risk)
+### TD-002: `.dev.vars` 가 Git History 에 노출 — ✅ **2026-04-27 해결**
+**해결 내역:**
+- JWT_SECRET / REFRESH_TOKEN_SECRET / INTERNAL_CRON_TOKEN / TOSS_WEBHOOK_SECRET → 4종 회전
+- TOSS_SECRET_KEY / TOSS_CLIENT_KEY → 토스 라이브 모드 재발급
+- 이전 노출 시크릿은 모두 무효 처리됨 (현재 사용되는 시크릿은 새 값)
+- Git history 정리는 의식적 보류 (모든 값 무효라 실해 0 — 사용자 결정)
 
-**영향:** Git repo 열람 가능한 누구나 production secrets 조회 가능.
+**현재 보안 상태:** 🟢 안정. 이전 노출 시크릿 활용 X.
 
-**해결법 (순서):**
-1. **우선순위 1: Firebase Private Key** — Firebase Console 에서 재발급 + 기존 취소
-2. **우선순위 2: JWT/Refresh Secret** — 아래 값으로 Pages Dashboard 에서 교체
-   ```
-   JWT_SECRET = YiXorQ7veam3W4/Y9woD/yNuQPoJG1/87fOd9Tpzcq8=
-   REFRESH_TOKEN_SECRET = +VJyeeTA1imGHwh0xuqV/7Em27Rnz3BQTa+eiOwDq68=
-   ```
-3. **우선순위 3: Kakao REST API Key** — Kakao Developers 에서 재발급
-4. **우선순위 4: Toss Secret Key** — production 키일 경우만 재발급
-5. **선택: Git history 정리** — BFG 로 `.dev.vars` 커밋 제거
-   ```bash
-   bfg --delete-files .dev.vars
-   git reflog expire --expire=now --all && git gc --prune=now
-   git push --force --all
-   ```
-
-**예상 작업 시간:** 1시간
-**소유자:** 보안 담당
+**참조 문서:**
+- `docs/IMMEDIATE_DEPLOY_GUIDE.md` — 회전 절차
+- `docs/POST_ROTATION_USER_ACTIONS.md` — 회전 후 액션
 
 ---
 

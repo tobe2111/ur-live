@@ -103,6 +103,49 @@ NODE_ENV=development
 
 # Sentry (Error monitoring)
 # SENTRY_DSN=...
+# VITE_SENTRY_DSN=...               # Frontend (브라우저 에러 추적)
 
 # Google Analytics
 # GA_MEASUREMENT_ID=...
+
+# =================================
+# Discord 알림 (Cron 실패 / Reconciliation 이상)
+# =================================
+# DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+
+# =================================
+# 푸시 알림 (PWA — VAPID)
+# =================================
+# 생성: npx web-push generate-vapid-keys
+# VITE_VAPID_PUBLIC_KEY=...         # 프론트엔드 (subscribe 시 사용)
+# VAPID_PRIVATE_KEY=...             # 백엔드 (push 발송 시 사용)
+
+# =================================
+# Resend (자동 월간 리포트 메일)
+# =================================
+# RESEND_API_KEY=re_...
+# RESEND_FROM=noreply@ur-team.com
+
+# =================================
+# TikTok 통합 (T1 — 2026-04-26 추가)
+# =================================
+# 발급: https://developers.tiktok.com → Manage apps → Create an app
+# Redirect URI: https://live.ur-team.com/seller/tiktok/callback
+# Scopes: user.info.basic, user.info.profile, video.list
+# TIKTOK_CLIENT_KEY=...
+# TIKTOK_CLIENT_SECRET=...
+
+# =================================
+# 신규 secrets — 2026-04-27 추가
+# =================================
+# 시크릿 회전 시 generated 값 (rotate-secrets.mjs 실행)
+# JWT_SECRET=...                    # 위에 이미 정의됨
+# REFRESH_TOKEN_SECRET=...          # JWT 와 별도, 회전 시 함께
+# INTERNAL_CRON_TOKEN=...           # /api/_internal/* endpoint 보호
+# TOSS_WEBHOOK_SECRET=...           # 토스 대시보드 보안 키와 동일
+
+# =================================
+# 환경 식별 (필수)
+# =================================
+# ENVIRONMENT=production            # production | development
+# REGION=KR                         # KR | GLOBAL (cosmetic)
