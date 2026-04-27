@@ -87,6 +87,30 @@ jobs:
 
           echo "✅ Build verification + size budget 통과"
 
+      # 🛡️ 2026-04-26 (O1): Sentry 소스맵 업로드
+      # vite.config.ts 의 sourcemap: 'hidden' 으로 .map 파일이 dist/client/assets/ 에 생성됨.
+      # @sentry/cli 로 release 별 소스맵 업로드 → production 에러 stack trace 가독성 ↑.
+      # SENTRY_AUTH_TOKEN 미설정이면 graceful skip.
+      - name: Upload Sentry source maps
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG || 'ur-live' }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT || 'ur-live-frontend' }}
+        run: |
+          # sentry-cli 1회 사용 — 의존성 추가 안 함
+          curl -sL https://sentry.io/get-cli/ | bash
+          export RELEASE="${{ github.sha }}"
+          ~/.local/bin/sentry-cli releases new "$RELEASE" || true
+          ~/.local/bin/sentry-cli releases files "$RELEASE" upload-sourcemaps \
+            dist/client/assets \
+            --url-prefix '~/assets' \
+            --rewrite || true
+          ~/.local/bin/sentry-cli releases finalize "$RELEASE" || true
+          # 보안: 소스맵 파일은 R2/CDN 에 노출되지 않도록 삭제 (hidden 모드라 자동으로 노출 X 지만 방어)
+          find dist/client/assets -name '*.map' -delete
+          echo "✅ Sentry source maps uploaded for release $RELEASE"
+
       # 2026-04-22: Workers 프로젝트 제거 — 이 프로젝트는 Pages (with _worker.js) 구조.
       # 사용자가 이미 Pages(ur-live.pages.dev)에 모든 secret(JWT_SECRET 등)을 세팅함.
       # `live.ur-team.com` Custom Domain을 Workers → Pages로 이동 (사용자 Dashboard 작업).
