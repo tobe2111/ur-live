@@ -65,6 +65,16 @@ import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.r
 import { sellerStreamsRoutes } from '../features/seller/api/seller-streams.routes';
 import { sellerOnboardingRoutes } from '../features/seller/api/seller-onboarding.routes';
 import { viewerLoyaltyRoutes } from '../features/seller/api/viewer-loyalty.routes';
+import { optimalTimeRoutes } from '../features/seller/api/optimal-time.routes';
+import { faqBotRoutes } from '../features/guides/api/faq-bot.routes';
+import { moderationRoutes } from '../features/moderation/api/moderation.routes';
+import { adminTikTokDiscoveryRoutes } from '../features/admin/api/admin-tiktok-discovery.routes';
+import { sellerTransferRoutes } from '../features/agency/api/seller-transfer.routes';
+import {
+  adminAdvertiserRoutes,
+  adminCastingRoutes,
+  sellerCastingRoutes,
+} from '../features/casting/api/casting.routes';
 import { donationBoosterRoutes, donationBoosterPublicRoutes } from '../features/donations/api/donation-booster.routes';
 import { pkBattlesRoutes, pkBattlesPublicRoutes } from '../features/agency/api/pk-battles.routes';
 import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
@@ -1664,6 +1674,20 @@ app.route('/api/seller/streams', sellerStreamsRoutes);
 app.route('/api/seller/onboarding', sellerOnboardingRoutes);
 // 🛡️ 2026-04-27 Phase 2-3: 시청자 충성도 4단계
 app.route('/api/seller/viewers', viewerLoyaltyRoutes);
+// 🛡️ 2026-04-27 Phase 3-1: 데이터 기반 최적 라이브 시간 추천
+app.route('/api/seller/optimal-time', optimalTimeRoutes);
+// 🛡️ 2026-04-27 Phase 3-2: FAQ 봇 (가이드 검색)
+app.route('/api/faq-bot', faqBotRoutes);
+// 🛡️ 2026-04-27 Phase 3-3: 채팅 모더레이션
+app.route('/api/moderation', moderationRoutes);
+// 🛡️ 2026-04-27 Phase 3-4: 어드민 TikTok 발굴
+app.route('/api/admin/tiktok-discovery', adminTikTokDiscoveryRoutes);
+// 🛡️ 2026-04-27 Phase 3-5: 셀러 이전 (Network 마켓플레이스)
+app.route('/api/agency/transfers', sellerTransferRoutes);
+// 🛡️ 2026-04-27 Phase 3-6: 캐스팅 마켓플레이스
+app.route('/api/admin/advertisers', adminAdvertiserRoutes);
+app.route('/api/admin/castings', adminCastingRoutes);
+app.route('/api/seller/castings', sellerCastingRoutes);
 // 🛡️ 2026-04-27 Phase 2-5: 라이브 후원 부스터 이벤트
 app.route('/api/donation-boosters', donationBoosterRoutes);
 app.route('/api/donation-boosters-public', donationBoosterPublicRoutes);
