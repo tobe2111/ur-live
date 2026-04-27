@@ -25,6 +25,16 @@ export interface FeatureFlags {
   enable_search_suggestions: boolean;
   enable_realtime_viewer_count: boolean;
   enable_donation_live_toast: boolean;
+  // 🛡️ 2026-04-26 (X2): 신규 에이전시 기능 kill switches.
+  // 마이그레이션 0207~0221 미적용 또는 cron 오작동 시 즉시 OFF 가능.
+  // OFF 시: cron handler 가 시작 시 graceful skip.
+  enable_agency_tier_eval: boolean;        // Q1
+  enable_agency_creator_eval: boolean;     // Q3
+  enable_agency_monthly_tasks: boolean;    // Q6
+  enable_agency_auto_settle: boolean;      // P0 #3
+  enable_agency_monthly_invoices: boolean; // M6
+  enable_tiktok_videos_sync: boolean;      // T2
+  enable_agency_campaigns_aggregate: boolean; // P0 #4
   // Always-on critical features (never flag these off)
   // - checkout
   // - payment
@@ -40,6 +50,14 @@ const DEFAULT_FLAGS: FeatureFlags = {
   enable_search_suggestions: true,
   enable_realtime_viewer_count: true,
   enable_donation_live_toast: true,
+  // 신규 cron — 디폴트 ON. 문제 발생 시 즉시 OFF.
+  enable_agency_tier_eval: true,
+  enable_agency_creator_eval: true,
+  enable_agency_monthly_tasks: true,
+  enable_agency_auto_settle: true,
+  enable_agency_monthly_invoices: true,
+  enable_tiktok_videos_sync: true,
+  enable_agency_campaigns_aggregate: true,
 };
 
 let cached: { flags: FeatureFlags; loadedAt: number } | null = null;
@@ -158,6 +176,14 @@ export const EMERGENCY_MODE_FLAGS: FeatureFlags = {
   enable_search_suggestions: false,
   enable_realtime_viewer_count: false,
   enable_donation_live_toast: false,
+  // 비상 모드 시 cron 도 모두 OFF
+  enable_agency_tier_eval: false,
+  enable_agency_creator_eval: false,
+  enable_agency_monthly_tasks: false,
+  enable_agency_auto_settle: false,
+  enable_agency_monthly_invoices: false,
+  enable_tiktok_videos_sync: false,
+  enable_agency_campaigns_aggregate: false,
 };
 
 /**

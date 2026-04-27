@@ -371,6 +371,43 @@ export async function calculatePayouts(
   return result
 }
 
+// ============================================================
+// 🛡️ W2: 순수 함수 — 단위 테스트 가능
+// ============================================================
+
+/**
+ * 셀러 stats + 규칙 목록으로 매칭되는 규칙 찾기.
+ * priority DESC 순 (calculatePayouts 가 정렬 후 호출 가정).
+ * 첫 번째 충족하는 규칙 반환 (max-bonus 패턴).
+ */
+export function matchIncentiveRule(
+  stats: SellerStats,
+  rules: Array<{ metric: keyof SellerStats; threshold: number; bonus_rate: number; id: number; name: string }>
+): { matched: typeof rules[0] | null; metricValue: number } {
+  for (const rule of rules) {
+    const v = (stats[rule.metric] as number) ?? 0
+    if (v >= rule.threshold) {
+      return { matched: rule, metricValue: v }
+    }
+  }
+  // 매치 없음 — 첫 규칙 의 metric 값을 snapshot 으로 (있다면)
+  const fallbackValue = rules.length > 0 ? ((stats[rules[0].metric] as number) ?? 0) : 0
+  return { matched: null, metricValue: fallbackValue }
+}
+
+/**
+ * commission 계산: base + bonus.
+ */
+export function computeCommission(args: {
+  sales: number
+  baseRate: number          // % (예: 2.0)
+  bonusRate?: number        // % (예: 0.5)
+}): { base: number; bonus: number; total: number } {
+  const base = Math.round(args.sales * args.baseRate / 100)
+  const bonus = args.bonusRate ? Math.round(args.sales * args.bonusRate / 100) : 0
+  return { base, bonus, total: base + bonus }
+}
+
 /**
  * 모든 에이전시 대상 인센티브 계산 (cron 매월 1일 사용)
  */

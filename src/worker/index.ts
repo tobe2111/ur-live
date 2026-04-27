@@ -99,6 +99,7 @@ import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
 import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { handleD1Backup } from './cron/d1-backup';
 import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
+import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -141,6 +142,7 @@ import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-s
 import { runReconciliation } from './cron/reconciliation';
 import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
 import { handleAgencyAutoSettle } from './cron/agency-auto-settle';
+import { getFeatureFlags } from './utils/feature-flags';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -2147,12 +2149,26 @@ export default {
       ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
       ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
       ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
-      // 🛡️ 2026-04-26: Agency P0 #4 — 캠페인 상태 전환 + participants 누적 매출 재집계
-      ctx.waitUntil(safeCron('agency-campaigns-aggregate', () => recomputeAllActiveCampaigns(env.DB)));
-      // 🛡️ 2026-04-26 Q3: 30일 경과 pending 셀러 신청 자동 평가 (어드민 추천만, 자동 처리 X)
-      ctx.waitUntil(safeCron('agency-creator-eval', () => handleAgencyCreatorEval(env)));
-      // 🛡️ 2026-04-26 Q6: 의무 작업 (매출/영입/활성화) actual_value 갱신
-      ctx.waitUntil(safeCron('agency-monthly-tasks', () => handleAgencyMonthlyTasks(env)));
+      // 🛡️ 2026-04-26 (X2): 신규 cron 들은 feature flag 로 보호 — 문제 시 즉시 OFF.
+      ctx.waitUntil(safeCron('agency-cron-batch', async () => {
+        const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
+        // 캠페인 (P0 #4)
+        if (flags.enable_agency_campaigns_aggregate) {
+          await recomputeAllActiveCampaigns(env.DB).catch(e => console.error('[cron] campaigns:', e));
+        }
+        // 셀러 신청 평가 (Q3)
+        if (flags.enable_agency_creator_eval) {
+          await handleAgencyCreatorEval(env).catch(e => console.error('[cron] creator-eval:', e));
+        }
+        // 의무 작업 (Q6)
+        if (flags.enable_agency_monthly_tasks) {
+          await handleAgencyMonthlyTasks(env).catch(e => console.error('[cron] monthly-tasks:', e));
+        }
+        // TikTok 비디오 sync (T2)
+        if (flags.enable_tiktok_videos_sync) {
+          await handleTikTokVideosSync(env).catch(e => console.error('[cron] tiktok:', e));
+        }
+      }));
     }
 
     // Daily 19:00 UTC (KST 04:00): reconciliation
@@ -2165,29 +2181,32 @@ export default {
       ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
     }
 
-    // 🛡️ 2026-04-26 M6: 매월 1일 01:00 UTC (= KST 10:00) — 전월 정산 송장 자동 발행
-    // 매주 월요일 00:00 UTC 자동 정산 cron 1시간 후 실행 (월 1일 ~ 7일 사이)
-    if (cron === '0 0 * * 1') {
-      const dayOfMonth = new Date().getUTCDate();
-      if (dayOfMonth <= 7) {
-        ctx.waitUntil(safeCron('agency-monthly-invoices', () => handleAgencyMonthlyInvoices(env as any)));
-      }
-    }
+    // 🛡️ 2026-04-26 M6: 송장은 아래 weekly batch 에 통합됨 (매월 1주차 월요일).
 
     // Weekly Monday 00:00 UTC (= KST 09:00): 에이전시 자동 정산 (P0 #3) + 전월 인센티브 (P0 #5) + 등급 평가 (Q1)
     if (cron === '0 0 * * 1') {
-      ctx.waitUntil(safeCron('agency-auto-settle', () => handleAgencyAutoSettle(env)));
-      // 매주 월요일에 전월 인센티브 재계산 (월 1회만 실제 변경, 멱등 — INSERT ON CONFLICT)
-      const now = new Date();
-      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const monthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
-      ctx.waitUntil(safeCron('agency-incentives-recalc', () => calculateAllAgencyIncentives(env.DB, monthStr)));
-      // 🛡️ 2026-04-26 Q1: 에이전시 등급 평가 (월 1회만 의미 있음 — 매주 실행해도 매월 1일~7일 사이만 실제 변경)
-      // 매월 첫 월요일에만 의미 있게 변경됨. 정확한 월 1일 cron 은 추후 추가 가능.
-      const dayOfMonth = now.getUTCDate();
-      if (dayOfMonth <= 7) {
-        ctx.waitUntil(safeCron('agency-tier-eval', () => handleAgencyTierEval(env)));
-      }
+      ctx.waitUntil(safeCron('agency-weekly-batch', async () => {
+        const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
+        const now = new Date();
+        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const monthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+        const dayOfMonth = now.getUTCDate();
+
+        // 자동 정산 (P0 #3) — 매주
+        if (flags.enable_agency_auto_settle) {
+          await handleAgencyAutoSettle(env).catch(e => console.error('[cron] auto-settle:', e));
+        }
+        // 전월 인센티브 (P0 #5) — 매주 멱등
+        await calculateAllAgencyIncentives(env.DB, monthStr).catch(e => console.error('[cron] incentives:', e));
+        // 등급 평가 (Q1) — 매월 1주차
+        if (flags.enable_agency_tier_eval && dayOfMonth <= 7) {
+          await handleAgencyTierEval(env).catch(e => console.error('[cron] tier-eval:', e));
+        }
+        // 송장 (M6) — 매월 1주차
+        if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {
+          await handleAgencyMonthlyInvoices(env as any).catch(e => console.error('[cron] invoices:', e));
+        }
+      }));
     }
   },
 };

@@ -644,8 +644,11 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     if (body.price !== undefined) { fields.push('price = ?'); values.push(body.price); }
     if (body.original_price !== undefined) { fields.push('original_price = ?'); values.push(body.original_price); }
     if (body.stock !== undefined) {
-      fields.push('stock_quantity = ?', 'stock = ?');
-      values.push(body.stock, body.stock);
+      // 🛡️ 2026-04-26 (W1/TD-005): stock_quantity 이중 쓰기 제거 — canonical 'stock' 만 사용.
+      // 기존 row 의 stock_quantity 는 SELECT fallback (COALESCE) 로 보호됨.
+      // 참조: docs/SCHEMA_DEDUP_PLAN.md
+      fields.push('stock = ?');
+      values.push(body.stock);
     }
     if (body.image_url !== undefined) {
       fields.push('image_url = ?', 'thumbnail_url = ?');
