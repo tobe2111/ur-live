@@ -99,6 +99,7 @@ import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
 import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { handleD1Backup } from './cron/d1-backup';
 import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
+import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -2153,6 +2154,8 @@ export default {
       ctx.waitUntil(safeCron('agency-creator-eval', () => handleAgencyCreatorEval(env)));
       // 🛡️ 2026-04-26 Q6: 의무 작업 (매출/영입/활성화) actual_value 갱신
       ctx.waitUntil(safeCron('agency-monthly-tasks', () => handleAgencyMonthlyTasks(env)));
+      // 🛡️ 2026-04-26 T2: TikTok 비디오 자동 sync (활성 연동 셀러 한정)
+      ctx.waitUntil(safeCron('tiktok-videos-sync', () => handleTikTokVideosSync(env)));
     }
 
     // Daily 19:00 UTC (KST 04:00): reconciliation

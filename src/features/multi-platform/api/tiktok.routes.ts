@@ -260,6 +260,62 @@ app.post('/sync-videos', requireAuth(), async (c) => {
   }
 })
 
+// ── GET /seller/:id/videos ─────────────────────────
+// 공개 — 셀러 프로필에서 TikTok 비디오 위젯 표시용.
+// 인증 불필요. show_badge=0 인 셀러는 빈 배열.
+//
+// ⚠️ 이 엔드포인트는 /api/seller/tiktok/seller/:id/videos 가 됨 (마운트 prefix 와 결합).
+//    권한 검증 무관 — 모든 셀러의 공개 비디오 조회 가능.
+app.get('/seller/:id/videos', async (c) => {
+  const id = parseInt(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
+
+  try {
+    // show_badge 검증
+    const link = await c.env.DB.prepare(
+      "SELECT show_badge, username, display_name, status FROM seller_platform_links WHERE seller_id = ? AND platform = 'tiktok' AND status = 'active'"
+    ).bind(id).first<{ show_badge: number; username: string; display_name: string; status: string }>()
+
+    if (!link || !link.show_badge) {
+      return c.json({ success: true, data: { profile: null, videos: [] } })
+    }
+
+    const { results: videos } = await c.env.DB.prepare(`
+      SELECT video_id, title, cover_image_url, share_url, view_count, like_count, comment_count, tiktok_create_time
+        FROM tiktok_videos_cache
+       WHERE seller_id = ? AND hidden_by_seller = 0
+       ORDER BY tiktok_create_time DESC
+       LIMIT 12
+    `).bind(id).all().catch(() => ({ results: [] }))
+
+    return c.json({
+      success: true,
+      data: {
+        profile: { username: link.username, display_name: link.display_name },
+        videos: videos || [],
+      },
+    })
+  } catch {
+    return c.json({ success: true, data: { profile: null, videos: [] } })
+  }
+})
+
+// ── PATCH /badge — 셀러가 뱃지/위젯 표시 여부 변경 ──
+app.patch('/badge', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user || user.type !== 'seller') {
+    return c.json({ success: false, error: '셀러 인증 필요' }, 401)
+  }
+  const body = await c.req.json<{ show_badge: boolean }>().catch(() => null)
+  if (!body || typeof body.show_badge !== 'boolean') {
+    return c.json({ success: false, error: 'show_badge 필수 (boolean)' }, 400)
+  }
+  await c.env.DB.prepare(
+    "UPDATE seller_platform_links SET show_badge = ?, updated_at = datetime('now') WHERE seller_id = ? AND platform = 'tiktok'"
+  ).bind(body.show_badge ? 1 : 0, user.id).run().catch(() => {})
+  return c.json({ success: true })
+})
+
 // ── DELETE /unlink ─────────────────────────────────
 app.delete('/unlink', requireAuth(), async (c) => {
   const user = getCurrentUser(c)

@@ -111,7 +111,18 @@ export async function handleAgencyCreatorEval(env: Env): Promise<{
       const streamCountScore = Math.min(20, snapshot.stream_count * 5 + (snapshot.stream_count >= 3 ? 5 : 0))
       const activityScore = snapshot.has_any_activity ? 10 : 0
 
-      const totalScore = liveHoursScore + revenueScore + streamCountScore + activityScore
+      // 🛡️ 2026-04-26 T3: TikTok 인증 셀러 가산 (+20)
+      // TikTok Display API 로 검증된 셀러는 외부 신뢰도 보유 → 어드민 승인 추천에 가산.
+      // seller_platform_links 미적용 (마이그레이션 0220) 시 0 — graceful.
+      let tiktokBonus = 0
+      try {
+        const tiktok = await DB.prepare(
+          "SELECT id FROM seller_platform_links WHERE seller_id = ? AND platform = 'tiktok' AND status = 'active' LIMIT 1"
+        ).bind(approval.seller_id).first()
+        if (tiktok) tiktokBonus = 20
+      } catch { /* migration 미적용 → 0 */ }
+
+      const totalScore = liveHoursScore + revenueScore + streamCountScore + activityScore + tiktokBonus
 
       let decision: 'recommend_approve' | 'recommend_reject' | 'inconclusive'
       if (totalScore >= 70) {
@@ -127,7 +138,7 @@ export async function handleAgencyCreatorEval(env: Env): Promise<{
 
       const evalData = JSON.stringify({
         snapshot,
-        scores: { liveHoursScore, revenueScore, streamCountScore, activityScore, totalScore },
+        scores: { liveHoursScore, revenueScore, streamCountScore, activityScore, tiktokBonus, totalScore },
         evaluated_at: new Date().toISOString(),
       })
 
