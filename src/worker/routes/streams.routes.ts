@@ -382,10 +382,39 @@ streamsRouter.get('/:id/current-product', async (c) => {
 // ── POST /api/streams/:id/current-product ─────────────────────────────────────
 // 현재 방송 상품 변경 (판매자 JWT 필요)
 streamsRouter.post('/:id/current-product', async (c) => {
+  // 🛡️ 2026-04-27 (보안 패치): 비인증 사용자가 임의 라이브의 current_product_id 변경 가능했음.
+  // 셀러 인증 + 라이브 소유 검증 필수.
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
+  let userId: number | null = null;
+  let userType: string | null = null;
+  try {
+    const { verify } = await import('hono/jwt');
+    const payload = await verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256') as any;
+    if (!['seller', 'admin'].includes(payload.type)) {
+      return c.json({ success: false, error: 'Seller or admin only' }, 403);
+    }
+    userId = Number(payload.sub);
+    userType = String(payload.type);
+  } catch {
+    return c.json({ success: false, error: 'Invalid token' }, 401);
+  }
+
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
     const { productId } = await c.req.json<{ productId: number }>();
+
+    // 라이브 소유 검증 (admin 은 모든 라이브 가능)
+    if (userType === 'seller') {
+      const owner = await db.prepare(
+        'SELECT seller_id FROM live_streams WHERE id = ?'
+      ).bind(streamId).first<{ seller_id: number }>();
+      if (!owner) return c.json({ success: false, error: 'live not found' }, 404);
+      if (Number(owner.seller_id) !== Number(userId)) {
+        return c.json({ success: false, error: 'forbidden — not your live' }, 403);
+      }
+    }
 
     await db
       .prepare('UPDATE live_streams SET current_product_id = ?, updated_at = datetime(\'now\') WHERE id = ?')
