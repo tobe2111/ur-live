@@ -159,7 +159,7 @@ export default function AgencyMembersPage() {
           title="팀 멤버"
           subtitle="에이전시 운영 팀원 — owner/manager/agent/analyst 역할 분리"
           icon={<Users className="h-5 w-5" />}
-          action={
+          actions={
             <button onClick={() => setInviting(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">
               <UserPlus className="w-4 h-4" /> 멤버 초대

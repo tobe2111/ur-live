@@ -122,7 +122,7 @@ export default function AgencyCouponsPage() {
           title="쿠폰 캐스케이드"
           subtitle="에이전시 → 셀러 → 시청자 3단 쿠폰 배포. 셀러별 사용율 분석 가능."
           icon={<Ticket className="h-5 w-5" />}
-          action={
+          actions={
             <button onClick={() => { loadSellers(); setCreating(true) }}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">
               <Plus className="w-4 h-4" /> 쿠폰 배포

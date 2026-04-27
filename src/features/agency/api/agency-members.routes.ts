@@ -224,7 +224,7 @@ app.patch('/:id', async (c) => {
   const owner = await isOwner(c.env.DB, agency.id, agency.email || '')
   if (!owner) return c.json({ success: false, error: 'owner 권한 필요' }, 403)
 
-  const body = await c.req.json<{ role?: Role; permissions?: Partial<Permissions> }>().catch(() => ({}))
+  const body = await c.req.json<{ role?: Role; permissions?: Partial<Permissions> }>().catch(() => ({} as { role?: Role; permissions?: Partial<Permissions> }))
 
   // 자기 자신 (owner) 의 role 변경 차단
   const target = await c.env.DB.prepare(

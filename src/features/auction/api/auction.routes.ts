@@ -362,7 +362,7 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
   const auctionId = Number(c.req.param('id'));
   if (!Number.isFinite(auctionId) || auctionId <= 0) return c.json({ success: false, error: 'invalid id' }, 400);
 
-  const reason = (await c.req.json<{ reason?: string }>().catch(() => ({}))).reason?.trim().slice(0, 500) || '결제 불이행';
+  const reason = (await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }))).reason?.trim().slice(0, 500) || '결제 불이행';
 
   const auction = await DB.prepare(
     'SELECT id, seller_id, current_price, start_price, winner_user_id, winner_name FROM live_auctions WHERE id = ?'

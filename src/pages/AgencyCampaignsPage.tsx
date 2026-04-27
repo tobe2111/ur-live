@@ -176,7 +176,7 @@ export default function AgencyCampaignsPage() {
           title="캠페인"
           subtitle="에이전시 주도의 매출 캠페인 — 셀러별 KPI/보너스 설정"
           icon={<Megaphone className="h-5 w-5" />}
-          action={
+          actions={
             <button
               onClick={() => { loadSellers(); setCreating(true) }}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg"

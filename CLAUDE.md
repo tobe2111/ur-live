@@ -68,13 +68,21 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
 
 후속 PR로 미루면 커밋 메시지에 `guide-update-pending` 명시.
 
-## 🚨 기술 부채 & 알려진 이슈 (2026-04-22)
+## 🚨 기술 부채 & 알려진 이슈 (2026-04-27 갱신)
 
 **남은 기술 부채는 `TECHNICAL_DEBT.md` 참조.** 특히 주의:
-- 🔴 DB Migration CI 파이프라인 미작동 (D1 권한 없음) → `/api/_internal/repair-schema` 응급 처치 중
-- 🔴 `.dev.vars` git history 노출 (비밀값 rotation 필요)
+- 🔴 DB Migration CI 파이프라인 미작동 (D1 권한 없음) → `/api/_internal/repair-schema` 응급 처치 중. 적용 상태 확인은 `/api/_internal/migration-status` (admin, 읽기 전용).
+- 🟢 시크릿 회전 완료 (2026-04-27): JWT/Refresh/Cron/Toss-Webhook 4종 + Toss live sk/ck 재발급. 이전 노출 시크릿은 무효화됨.
+- 🟡 git history 시크릿 잔존 (commit 204f2f9 등) — 의식적 무시 처리. 모든 값 무효 상태라 실해 없음.
 - 🟢 Co-mounted routing (/api/orders, /api/seller) — path 충돌 0건 확인 (2026-04-26, `docs/DOUBLE_ROUTING_AUDIT.md`). worker = 핵심 CRUD, feature = 부가 기능. /api/payments 의 dead `/rollback` 제거 완료.
 - 🟡 스키마 이중화 컬럼 (stock/stock_quantity, shipping_fee/base_shipping_fee)
+- 🟢 신규 에이전시 cron (tier-eval, monthly-tasks, monthly-invoices, creator-eval, auto-settle, campaigns-aggregate, tiktok-videos-sync) — Feature flag kill switch 로 보호됨. emergency-mode endpoint 로 일괄 OFF 가능.
+
+### 시크릿 회전 메모 (2026-04-27)
+- 4종 secrets 회전: PowerShell `[Security.Cryptography.RandomNumberGenerator]` 로 사용자가 직접 생성 → Cloudflare Pages Variables 에 등록
+- Toss `TOSS_WEBHOOK_SECRET` 은 토스 대시보드 "보안 키" (hex 64) 와 동일해야 함. 우리 코드는 HMAC-SHA256 검증만 수행 (`webhook.routes.ts:90` `verifyTossSignature`)
+- `ENVIRONMENT=production` (Plain text) 등록 필수 — 미등록 시 webhook 서명 검증이 우회됨
+- 운영 MID 는 `urteamizy1` 만 사용 (`cp_urteamw10d` 는 잘못 등록된 것, 의식적 방치)
 
 ## 테마 규칙 (필수)
 

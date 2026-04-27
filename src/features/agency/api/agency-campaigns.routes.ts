@@ -264,10 +264,11 @@ app.patch('/:id', async (c) => {
     return c.json({ success: false, error: '종료/취소된 캠페인은 수정 불가' }, 409)
   }
 
-  const body = await c.req.json<Partial<{
+  type PatchBody = Partial<{
     name: string; description: string; end_date: string;
     base_incentive_rate: number; target_amount: number; category: string;
-  }>>().catch(() => ({}))
+  }>
+  const body = await c.req.json<PatchBody>().catch(() => ({} as PatchBody))
 
   const sets: string[] = []
   const binds: unknown[] = []
@@ -365,7 +366,8 @@ app.patch('/:id/participants/:sid', async (c) => {
   const campaign = await loadOwnedCampaign(c.env.DB, agencyId, id)
   if (!campaign) return c.json({ success: false, error: 'not found' }, 404)
 
-  const body = await c.req.json<{ target_amount?: number; bonus_rate?: number }>().catch(() => ({}))
+  type UpdateBody = { target_amount?: number; bonus_rate?: number }
+  const body = await c.req.json<UpdateBody>().catch(() => ({} as UpdateBody))
   const sets: string[] = []
   const binds: unknown[] = []
   if (body.target_amount !== undefined) {

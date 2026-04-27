@@ -234,11 +234,8 @@ app.patch('/notes/:id', async (c) => {
   const id = parseInt(c.req.param('id'))
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
 
-  const body = await c.req.json<{
-    content?: string;
-    type?: string;
-    visible_to_seller?: boolean;
-  }>().catch(() => ({}))
+  type PatchBody = { content?: string; type?: string; visible_to_seller?: boolean }
+  const body = await c.req.json<PatchBody>().catch(() => ({} as PatchBody))
 
   const existing = await c.env.DB.prepare(
     'SELECT * FROM agency_live_notes WHERE id = ? AND agency_id = ?'

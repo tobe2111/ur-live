@@ -8,6 +8,7 @@ import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
 import PushNotificationSetup from './components/PushNotificationSetup'
 import OfflineBanner from './components/OfflineBanner'
+import SecurityReloginBanner from './components/SecurityReloginBanner'
 import BottomNav from '@/components/main/BottomNav'
 import SideBanner from '@/components/SideBanner'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -953,6 +954,7 @@ function AppContent() {
         </Suspense>
       </FrameWrapper>
       <ToastContainer />
+      <SecurityReloginBanner />
     </>
   )
 }

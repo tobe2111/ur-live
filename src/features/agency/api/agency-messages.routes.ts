@@ -137,7 +137,8 @@ app.patch('/templates/:id', async (c) => {
   const id = parseInt(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
 
-  const body = await c.req.json<Partial<TemplateRow & { is_active: boolean }>>().catch(() => ({}))
+  type UpdateBody = Partial<Omit<TemplateRow, 'is_active'>> & { is_active?: boolean }
+  const body = await c.req.json<UpdateBody>().catch(() => ({} as UpdateBody))
   const sets: string[] = []
   const binds: unknown[] = []
 

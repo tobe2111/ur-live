@@ -702,6 +702,61 @@ app.post('/api/_internal/reset-admin-password', async (c) => {
   return c.json({ success: true, message: 'Password reset successful. Login with the new password.' });
 });
 
+// 🛡️ 2026-04-27: 마이그레이션 적용 상태 검증 (admin 전용, 읽기만).
+// 신규 에이전시/TikTok 테이블이 D1 에 적용됐는지 한 번에 확인.
+// 응답: { summary: { applied, missing }, results: [{ table, exists }] }
+app.get('/api/_internal/migration-status', requireAdmin(), async (c) => {
+  const env = c.env as any;
+  const DB = env.DB as D1Database;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+
+  // 이번 세션 (2026-04-26) 추가된 마이그레이션 0207~0222 의 핵심 테이블 목록
+  const tables = [
+    { mig: '0207', name: 'agency_creator_approvals' },
+    { mig: '0208', name: 'agency_auto_settle_log' },
+    { mig: '0209', name: 'agency_campaigns' },
+    { mig: '0209', name: 'agency_campaign_sellers' },
+    { mig: '0210', name: 'agency_incentive_rules' },
+    { mig: '0211', name: 'auction_winner_history' },
+    { mig: '0212', name: 'agency_tier_log' },
+    { mig: '0213', name: 'agency_creator_evaluations' },
+    { mig: '0214', name: 'agency_message_templates' },
+    { mig: '0215', name: 'agency_monthly_tasks' },
+    { mig: '0216', name: 'coupons_agency_distribution' },
+    { mig: '0217', name: 'agency_members' },
+    { mig: '0218', name: 'agency_live_notes' },
+    { mig: '0219', name: 'settlement_invoices' },
+    { mig: '0220', name: 'seller_platform_links' },
+    { mig: '0221', name: 'tiktok_videos_cache' },
+    { mig: '0222', name: 'agency_notifications' },
+    { mig: '0222', name: 'agency_contracts' },
+    { mig: '0222', name: 'agency_settlements' },
+    { mig: '0222', name: 'agency_seller_targets' },
+  ];
+
+  const results: Array<{ migration: string; table: string; exists: boolean }> = [];
+  for (const t of tables) {
+    let exists = false;
+    try {
+      await DB.prepare(`SELECT 1 FROM ${t.name} LIMIT 1`).first();
+      exists = true;
+    } catch {
+      exists = false;
+    }
+    results.push({ migration: t.mig, table: t.name, exists });
+  }
+
+  const applied = results.filter((r) => r.exists).length;
+  const missing = results.filter((r) => !r.exists);
+
+  return c.json({
+    success: true,
+    summary: { total: results.length, applied, missing: missing.length },
+    missing_tables: missing.map((m) => `${m.migration}: ${m.table}`),
+    results,
+  });
+});
+
 // 🛡️ 2026-04-22: admin 전용. 이전: 공개 → 누구나 DB 스키마 수정 가능 (CRITICAL)
 app.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
   const env = c.env as any;

@@ -162,7 +162,7 @@ export default function AgencyMessagesPage() {
           title="메시지 템플릿"
           subtitle="셀러에게 일괄 발송할 수 있는 메시지 템플릿. 변수: {{seller_name}}, {{agency_name}}, {{commission_rate}}"
           icon={<MessageSquare className="h-5 w-5" />}
-          action={tab === 'templates' && (
+          actions={tab === 'templates' && (
             <button onClick={() => setCreating(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">
               <Plus className="w-4 h-4" /> 템플릿 추가

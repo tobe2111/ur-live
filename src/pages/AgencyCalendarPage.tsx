@@ -256,9 +256,9 @@ export default function AgencyCalendarPage() {
                 <p className="text-xs text-gray-500 mt-0.5">
                   {selectedStream.seller_business_name || selectedStream.seller_name} · {STATUS_LABEL[selectedStream.status]}
                 </p>
-                {streamDetail?.peak_viewers > 0 && (
+                {streamDetail && (streamDetail.peak_viewers ?? 0) > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    현재 {streamDetail.current_viewers ?? 0}명 / 피크 {streamDetail.peak_viewers}명
+                    현재 {streamDetail.current_viewers ?? 0}명 / 피크 {streamDetail.peak_viewers ?? 0}명
                   </p>
                 )}
               </div>

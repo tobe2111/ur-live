@@ -38,7 +38,6 @@ const SCOPES = 'user.info.basic,user.info.profile,video.list'
 interface TikTokEnv extends Env {
   TIKTOK_CLIENT_KEY?: string
   TIKTOK_CLIENT_SECRET?: string
-  FRONTEND_URL?: string
 }
 
 const app = new Hono<{ Bindings: TikTokEnv }>()

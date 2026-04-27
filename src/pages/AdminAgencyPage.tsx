@@ -344,9 +344,9 @@ export default function AdminAgencyPage() {
                       const newTier = e.target.value as 'new' | 'junior' | 'senior'
                       if (a.tier === newTier) return
                       try {
-                        await api.patch(`/api/admin/agencies/${a.id}`, { tier: newTier, tier_locked: true }, h)
+                        await api.patch(`/api/admin/agencies/${a.id}`, { tier: newTier, tier_locked: true }, { headers })
                         toast.success(`${a.name} → ${newTier.toUpperCase()} (수동 고정)`)
-                        load()
+                        fetchAgencies()
                       } catch (err: any) {
                         toast.error(err?.response?.data?.error || '등급 변경 실패')
                       }
@@ -362,9 +362,9 @@ export default function AdminAgencyPage() {
                     <button
                       onClick={async () => {
                         if (!confirm('자동 평가를 다시 활성화하시겠습니까? 다음 cron 실행 시 등급이 자동 재산정됩니다.')) return
-                        await api.patch(`/api/admin/agencies/${a.id}`, { tier_locked: false }, h)
+                        await api.patch(`/api/admin/agencies/${a.id}`, { tier_locked: false }, { headers })
                         toast.info('자동 평가 활성화')
-                        load()
+                        fetchAgencies()
                       }}
                       title="자동 평가 다시 켜기"
                       className="text-[10px] text-blue-600 hover:text-blue-800 underline"
