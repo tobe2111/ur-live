@@ -84,6 +84,7 @@ const SellerResetPasswordPage = lazy(() => import('./pages/SellerResetPasswordPa
 const SellerBusinessInfoPage = lazy(() => import('./pages/SellerBusinessInfoPage'))
 const SellerOrdersPage = lazy(() => import('./pages/SellerOrdersPage'))
 const SellerConsignmentPage = lazy(() => import('./pages/SellerConsignmentPage'))
+const GiftClaimPage = lazy(() => import('./pages/GiftClaimPage'))
 const SellerProductsPage = lazy(() => import('./pages/SellerProductsPage'))
 const SellerInventoryPage = lazy(() => import('./pages/SellerInventoryPage'))
 const SellerProductNewPage = lazy(() => import('./pages/SellerProductNewPage'))
@@ -443,6 +444,8 @@ function AppContent() {
             <Route path="/" element={<MainHomePage />} />
             <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
+            {/* 🛡️ 2026-04-28: 선물 받기 페이지 (인증 불필요) */}
+            <Route path="/gift/claim/:token" element={<GiftClaimPage />} />
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/group-buy" element={<GroupBuyListPage />} />

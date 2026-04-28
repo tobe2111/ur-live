@@ -28,6 +28,7 @@ import { ProgressiveImage } from '@/components/ui/progressive-image'
 // Lazy load heavy components
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
+const GiftSendModal = lazy(() => import('@/components/gift/GiftSendModal'))
 
 function ReviewForm({ productId, onSubmitted }: { productId: string | number; onSubmitted: () => void }) {
   const [open, setOpen] = useState(false)
@@ -284,6 +285,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [isWishlisted, setIsWishlisted] = useState(false)
+  const [giftModalOpen, setGiftModalOpen] = useState(false)  // 🛡️ 2026-04-28: 선물하기 모달
   const [wishlistLoading, setWishlistLoading] = useState(false)
   const [reviewSummary, setReviewSummary] = useState<{ avg_rating: number; total_count: number } | null>(null)
 
@@ -755,6 +757,29 @@ export default function ProductDetailPage() {
           originalPrice={product.original_price}
         />
       </Suspense>
+
+      {/* 🛡️ 2026-04-28: 선물하기 버튼 (FloatingActionBar 위에 오버레이) */}
+      <button
+        onClick={() => setGiftModalOpen(true)}
+        className="fixed bottom-20 right-4 z-30 w-12 h-12 rounded-full bg-pink-500 text-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+        style={{ maxWidth: '430px' }}
+        aria-label="선물하기"
+      >
+        <Gift className="w-5 h-5" />
+      </button>
+
+      {giftModalOpen && (
+        <Suspense fallback={null}>
+          <GiftSendModal
+            open={giftModalOpen}
+            onClose={() => setGiftModalOpen(false)}
+            productId={product.id}
+            productName={product.name}
+            productThumbnail={product.thumbnail || product.image_url}
+            productPrice={product.price}
+          />
+        </Suspense>
+      )}
 
       {/* Toast Notification */}
       {toast && (

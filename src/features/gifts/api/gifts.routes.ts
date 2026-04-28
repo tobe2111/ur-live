@@ -111,6 +111,106 @@ giftsRoutes.post('/', requireAuth(), async (c) => {
   }
 })
 
+// ── POST /api/gifts/:id/confirm — 토스 결제 confirm + gift status='paid' ──
+//    클라이언트가 토스 결제 위젯에서 결제 완료 후 paymentKey 받으면 호출.
+//    토스 confirm API 호출 → 성공 시 gift status 업데이트 + 알림톡 발송 트리거.
+giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
+  try {
+    const user = getCurrentUser(c)
+    const userId = user?.id
+    if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+
+    const giftId = Number(c.req.param('id'))
+    if (!Number.isFinite(giftId)) return c.json({ success: false, error: 'invalid id' }, 400)
+
+    const body = await c.req.json<{
+      paymentKey: string
+      orderId: string  // 토스 orderId (gift_<id>_<random> 형식 권장)
+      amount: number
+    }>()
+
+    if (!body.paymentKey || !body.orderId || !Number.isFinite(body.amount)) {
+      return c.json({ success: false, error: 'paymentKey, orderId, amount 필수' }, 400)
+    }
+
+    // 1) gift 조회 + 소유 검증
+    const gift = await c.env.DB.prepare(
+      'SELECT id, sender_user_id, amount, status, claim_token, recipient_phone, product_id FROM gifts WHERE id = ?'
+    ).bind(giftId).first<{
+      id: number; sender_user_id: number; amount: number; status: GiftStatus;
+      claim_token: string; recipient_phone: string; product_id: number;
+    }>()
+
+    if (!gift) return c.json({ success: false, error: '선물을 찾을 수 없습니다' }, 404)
+    if (gift.sender_user_id !== userId) return c.json({ success: false, error: 'Forbidden' }, 403)
+    if (gift.status !== 'pending') {
+      return c.json({ success: false, error: `이미 처리된 선물입니다 (${gift.status})` }, 409)
+    }
+
+    // 2) 금액 검증 (서버 amount === client amount === DB gift.amount)
+    if (body.amount !== gift.amount) {
+      return c.json({ success: false, error: '금액이 일치하지 않습니다' }, 400)
+    }
+
+    // 3) 토스 결제 confirm 호출
+    const tossSecretKey = (c.env as { TOSS_SECRET_KEY?: string }).TOSS_SECRET_KEY
+    if (!tossSecretKey) {
+      return c.json({ success: false, error: 'Payment configuration error' }, 500)
+    }
+
+    const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + btoa(tossSecretKey + ':'),
+        'Content-Type': 'application/json',
+        'Idempotency-Key': body.paymentKey,
+      },
+      body: JSON.stringify({
+        paymentKey: body.paymentKey,
+        orderId: body.orderId,
+        amount: body.amount,
+      }),
+    })
+
+    if (!tossRes.ok) {
+      const err = await tossRes.json().catch(() => ({})) as { message?: string }
+      return c.json({ success: false, error: err.message || '결제 승인 실패' }, 400)
+    }
+
+    // 4) gift status 업데이트
+    await c.env.DB.prepare(`
+      UPDATE gifts SET status = 'paid', paid_at = datetime('now'), updated_at = datetime('now') WHERE id = ?
+    `).bind(giftId).run()
+
+    // 5) 알림톡 발송 (best-effort, 실패해도 결제는 성공 처리)
+    try {
+      const baseUrl = new URL(c.req.url).origin
+      const claimUrl = `${baseUrl}/gift/claim/${gift.claim_token}`
+      // alimtalk 인프라 호출 (sendAlimtalk dynamic import — Worker bundle 분리 위해)
+      const ALIGO_API_KEY = (c.env as { ALIGO_API_KEY?: string }).ALIGO_API_KEY
+      const ALIGO_USER_ID = (c.env as { ALIGO_USER_ID?: string }).ALIGO_USER_ID
+      if (ALIGO_API_KEY && ALIGO_USER_ID) {
+        const { sendAlimtalk } = await import('../../../lib/aligo')
+        await sendAlimtalk(
+          { ALIGO_API_KEY, ALIGO_USER_ID },
+          {
+            senderKey: '',  // 플랫폼 senderKey (공통, 환경변수 등으로 주입 필요)
+            templateCode: 'gift_received',
+            to: gift.recipient_phone,
+            message: `[유어딜] 선물이 도착했어요! 받기 → ${claimUrl}`,
+          }
+        )
+      }
+    } catch (notifyErr) {
+      if (typeof console !== 'undefined') console.error('[gift confirm] alimtalk 실패:', notifyErr)
+    }
+
+    return c.json({ success: true, data: { id: giftId, status: 'paid', claim_token: gift.claim_token } })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
 // ── GET /api/gifts/sent — 내가 보낸 선물 목록 ──────────────────────────
 giftsRoutes.get('/sent', requireAuth(), async (c) => {
   try {

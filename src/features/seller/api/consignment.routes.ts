@@ -14,6 +14,7 @@ import { cors } from 'hono/cors'
 import { requireSeller, getCurrentUser } from '@/worker/middleware/auth'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { canApprove, canTerminate } from '@/lib/consignment-split'
+import { getConsignmentSettlementsForSeller } from '@/lib/consignment-settlement'
 
 type Bindings = {
   DB: D1Database
@@ -230,6 +231,28 @@ consignmentRoutes.get('/', requireSeller(), async (c) => {
     if ((err as Error).message?.includes('no such table')) {
       return c.json({ success: true, data: [] })
     }
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// ── GET /api/seller/consignment/settlements — 위탁 정산 조회 ─────────────
+//   ?from=YYYY-MM-DD&to=YYYY-MM-DD (default: 이번 달)
+//   응답: { as_host: [...], as_owner: [...], host_total, owner_total, platform_total }
+consignmentRoutes.get('/settlements', requireSeller(), async (c) => {
+  try {
+    const user = getCurrentUser(c)
+    const sellerId = user?.id
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+
+    const now = new Date()
+    const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+    const defaultTo = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString().slice(0, 19).replace('T', ' ')
+    const from = c.req.query('from') || defaultFrom
+    const to = c.req.query('to') || defaultTo
+
+    const result = await getConsignmentSettlementsForSeller(c.env.DB, sellerId, from, to)
+    return c.json({ success: true, data: { ...result, period: { from, to } } })
+  } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500)
   }
 })
