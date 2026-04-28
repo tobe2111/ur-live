@@ -36,7 +36,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: '파트너',
     items: [
       { path: '/admin/users',           label: '유저 관리',     icon: Users },
-      { path: '/admin/seller-approval', label: '셀러 승인',     icon: UserCheck },
+      { path: '/admin/seller-approval', label: '셀러 관리',     icon: UserCheck },
       { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
     ],
   },
@@ -89,6 +89,24 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // 🛡️ 2026-04-28: 전역 검색 — 실제 input + Enter 키로 분기 navigate.
+  const [searchQuery, setSearchQuery] = useState('')
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const q = searchQuery.trim()
+    if (!q) return
+    // 숫자만 = order_number 또는 id 조회 → /admin/users 또는 /admin/orders
+    // @ 포함 = email 조회 → users
+    // 그 외 = users 검색 (셀러 검색은 /admin/seller-approval 에서 별도)
+    if (/^\d+$/.test(q)) {
+      navigate(`/admin/orders?q=${encodeURIComponent(q)}`)
+    } else if (q.includes('@')) {
+      navigate(`/admin/users?q=${encodeURIComponent(q)}`)
+    } else {
+      navigate(`/admin/users?q=${encodeURIComponent(q)}`)
+    }
+    setSearchQuery('')
+  }
 
   const adminName = localStorage.getItem('admin_name') || localStorage.getItem('admin_email') || '관리자'
 
@@ -127,23 +145,31 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
         </div>
       </div>
 
-      {/* Global search bar (UI only) */}
-      <div className="px-4 py-3">
+      {/* 🛡️ 2026-04-28: Global search bar — 실제 동작.
+           숫자만: 주문 / @포함: 유저 / 일반: 유저 검색 */}
+      <form onSubmit={handleSearch} className="px-4 py-3">
         <div
-          className="flex items-center gap-2 px-3 py-2 rounded-lg"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg focus-within:ring-1 focus-within:ring-white/20"
           style={{ background: 'rgba(255,255,255,0.05)' }}
         >
           <Search size={13} strokeWidth={2} className="text-white/40 flex-shrink-0" />
-          <span className="text-white/40 text-[11px] flex-1 truncate">
-            주문/유저/셀러 전역 검색…
-          </span>
-          <kbd
-            className="text-[9px] text-white/30 border border-white/10 rounded px-1 py-0.5 font-mono"
-          >
-            ⌘K
-          </kbd>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="주문번호 / 이메일 / 이름…"
+            className="flex-1 bg-transparent text-white text-[11px] placeholder:text-white/40 focus:outline-none min-w-0"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="text-white/40 hover:text-white/70 text-xs flex-shrink-0"
+              aria-label="검색어 지우기"
+            >×</button>
+          )}
         </div>
-      </div>
+      </form>
 
       {/* Grouped navigation */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">

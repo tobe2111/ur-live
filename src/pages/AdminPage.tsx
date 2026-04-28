@@ -523,23 +523,27 @@ export default function AdminPage() {
         </DeferUntilVisible>
       </div>
 
-      {/* ── 판매자 통계 카드 ── */}
+      {/* ── 판매자 통계 카드 — 🛡️ 2026-04-28: 클릭 가능 (해당 페이지 이동) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
-          { label: '총 판매자', value: stats.totalSellers, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: '승인된 판매자', value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: '총 라이브', value: stats.totalStreams, icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50' },
-          { label: '진행 중 라이브', value: stats.activeStreams, icon: <TrendingUp className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: '총 판매자', value: stats.totalSellers, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50', link: '/admin/seller-approval' },
+          { label: '승인된 판매자', value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/admin/seller-approval?status=active' },
+          { label: '총 라이브', value: stats.totalStreams, icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50', link: '/admin/live-monitor' },
+          { label: '진행 중 라이브', value: stats.activeStreams, icon: <TrendingUp className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50', link: '/admin/live-monitor?status=live' },
         ].map(card => (
-          <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm">
+          <button
+            key={card.label}
+            onClick={() => navigate(card.link)}
+            className="bg-white rounded-xl p-4 shadow-sm text-left hover:shadow-md hover:bg-gray-50 transition-all group cursor-pointer"
+          >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-500">{card.label}</span>
-              <div className={`w-8 h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
+              <span className="text-xs font-medium text-gray-500 group-hover:text-gray-700">{card.label}</span>
+              <div className={`w-8 h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                 {card.icon}
               </div>
             </div>
             <p className="text-xl font-bold text-gray-900">{card.value}</p>
-          </div>
+          </button>
         ))}
       </div>
 
