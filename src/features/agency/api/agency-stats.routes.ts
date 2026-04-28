@@ -17,42 +17,10 @@ import { verify } from 'hono/jwt'
 import type { Context, Next } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
-
-type AgencyVars = { agency: { id: number; email: string } }
-type AgencyCtx = Context<{ Bindings: Env; Variables: AgencyVars }>
-
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
-
-async function verifyAgencyToken(secret: string, token: string): Promise<{ id: number; email: string } | null> {
-  try {
-    const payload = await verify(token, secret, 'HS256') as Record<string, unknown>
-    if (payload.type !== 'agency' || !payload.sub) return null
-    return { id: Number(payload.sub), email: String(payload.email) }
-  } catch {
-    return null
-  }
-}
-
-function getToken(authHeader: string | undefined) {
-  if (!authHeader?.startsWith('Bearer ')) return null
-  return authHeader.slice(7)
-}
-
-const requireAgency = async (c: AgencyCtx, next: Next) => {
-  let payload = await verifyAgencyToken(c.env.JWT_SECRET, getToken(c.req.header('Authorization')) ?? '')
-  if (!payload) {
-    try {
-      const { parseSessionCookie } = await import('../../../worker/utils/session')
-      const sess = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['agency'])
-      if (sess && sess.userId) payload = { id: Number(sess.userId), email: sess.email || '' }
-    } catch { /* fall-through */ }
-  }
-  if (!payload) return c.json({ success: false, error: '인증이 필요합니다.' }, 401)
-  c.set('agency', payload)
-  return next()
-}
 
 app.use('*', requireAgency)
 

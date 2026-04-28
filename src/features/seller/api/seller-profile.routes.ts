@@ -13,6 +13,7 @@ import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
@@ -39,15 +40,6 @@ interface BusinessInfoUpdate {
 
 export const sellerProfileRoutes = new Hono<{ Bindings: Bindings }>()
 sellerProfileRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
-
-async function getSellerIdFromToken(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization || !authorization.startsWith('Bearer ')) return null
-  try {
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as JWTPayload & { seller_id?: number }
-    return payload.seller_id || null
-  } catch { return null }
-}
-
 sellerProfileRoutes.get('/profile', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);

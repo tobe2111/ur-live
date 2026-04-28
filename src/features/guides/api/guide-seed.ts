@@ -437,7 +437,40 @@ donations 테이블에서 payment_status='approved' 만 집계. 수수료(15%) �
 
 #### 알림톡 템플릿
 - \`gift_received\` 템플릿 등록 필요 (Aligo 콘솔)
-- 변수: \`#{sender_name}\`, \`#{product_name}\`, \`#{claim_url}\``,
+- 변수: \`#{sender_name}\`, \`#{product_name}\`, \`#{claim_url}\`
+- \`gift_refunded\` 템플릿 — sender 에게 30일 미수령 환불 알림 (cron 자동 발송)`,
+  },
+  {
+    key: 'business-monitoring', icon: '📊', title: '비즈니스 모니터링 (gift + consignment)', order: 750,
+    content: `### 운영 통계 API
+
+\`/api/admin/business-monitoring/*\` — 어드민 전용 모니터링 endpoint.
+
+#### GET /gift-stats
+- \`by_status\` — 상태별 건수 (pending/paid/claimed/shipped/delivered/expired/refunded)
+- \`expired_no_payment_key\` — 환불 자동화 못 돌아가는 케이스 (이상 신호, 0 이어야 정상)
+- \`refund_failure_recent_24h\` — expired 인 채로 24시간 머문 건 (cron 환불 호출 실패)
+- \`pending_24h_overdue\` — pending 24시간 초과 (cron 21번 미작동)
+- \`paid_unclaimed_15d\` — paid 후 15일 미수령 (만료 임박)
+- \`total_30d\`, \`total_revenue_30d\` — 30일 누적
+
+#### GET /consignment-stats
+- \`pending_30d_overdue\` — cron 22번 자동 정리 안 됨 (이상 신호)
+- \`active_no_orders_30d\` — 활성이지만 30일 무주문 (협업 비활성)
+- \`settlements_recorded_30d\` + \`settlements_total_amount_30d\` — 정산 기록량
+- \`distribution_anomalies\` — host + owner + platform != total 인 행 수 (있으면 안됨, 0 정상)
+
+### Cron 자동화 흐름 (scheduled-cleanup.ts, 5분 주기)
+1. **#20**: gifts paid + expires_at 경과 → expired
+2. **#20-b**: expired + toss_payment_key 보유 → 토스 cancel API → refunded + sender 알림톡
+3. **#21**: gifts pending + 24시간 → refunded (결제 미완료)
+4. **#22**: consignment_partnerships pending + 30일 → ended
+5. **#23**: 당월 consignment 주문 → consignment_settlements 자동 INSERT (멱등)
+
+### 알림 trigger 권장
+- expired_no_payment_key > 0 → 즉시 점검 (토스 키 누락 데이터 무결성 문제)
+- distribution_anomalies > 0 → 즉시 점검 (분배 식 버그 가능성)
+- refund_failure_recent_24h > 5 → 토스 API 장애 의심`,
   },
 ]
 const SELLER_SEED: SeedSection[] = [

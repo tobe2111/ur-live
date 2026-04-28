@@ -12,6 +12,7 @@ import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+import { getSellerIdFromToken } from '@/lib/seller-shared'
 
 type Bindings = {
   DB: D1Database
@@ -25,17 +26,6 @@ sellerKakaoLinkRoutes.use('*', cors({
   origin: [...ALLOWED_ORIGINS],
   credentials: true,
 }))
-
-async function getSellerIdFromToken(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization || !authorization.startsWith('Bearer ')) return null
-  try {
-    const token = authorization.substring(7)
-    const payload = await verify(token, jwtSecret, 'HS256') as JWTPayload & { seller_id?: number }
-    return payload.seller_id || null
-  } catch {
-    return null
-  }
-}
 
 /**
  * POST /api/seller/link-kakao

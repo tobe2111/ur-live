@@ -13,6 +13,7 @@ import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { validateFileMagicBytes } from '@/lib/upload-security'
 import { swallow } from '@/worker/utils/swallow'
 
@@ -30,15 +31,6 @@ interface ImgbbResponse {
 
 export const sellerAccountRoutes = new Hono<{ Bindings: Bindings }>()
 sellerAccountRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
-
-async function getSellerIdFromToken(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization || !authorization.startsWith('Bearer ')) return null
-  try {
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as JWTPayload & { seller_id?: number }
-    return payload.seller_id || null
-  } catch { return null }
-}
-
 sellerAccountRoutes.get('/personal-info', async (c) => {
   return c.redirect('/api/seller/profile', 301);
 });

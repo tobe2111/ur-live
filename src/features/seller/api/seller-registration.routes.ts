@@ -21,6 +21,7 @@ import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
+import { getSellerIdFromToken } from '@/lib/seller-shared'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -54,17 +55,6 @@ async function ensureSellerColumns(db: D1Database) {
   try { await db.prepare(`ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER`).run() } catch { /* exists */ }
   try { await db.prepare(`ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'`).run() } catch { /* exists */ }
   _sellerColumnsEnsured = true
-}
-
-async function getSellerIdFromToken(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization || !authorization.startsWith('Bearer ')) return null
-  try {
-    const token = authorization.substring(7)
-    const payload = await verify(token, jwtSecret, 'HS256') as JWTPayload & { seller_id?: number }
-    return payload.seller_id || null
-  } catch {
-    return null
-  }
 }
 
 sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register', max: 5, windowSec: 3600 }), async (c) => {
