@@ -13,7 +13,7 @@ interface Notification {
 }
 
 interface Props {
-  tokenKey: 'admin_token' | 'seller_token'
+  tokenKey: 'admin_token' | 'seller_token' | 'agency_token'
 }
 
 function timeAgo(dateStr: string): string {

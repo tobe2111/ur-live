@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import DashboardNotificationBell from './DashboardNotificationBell'
 import {
   LayoutDashboard, Users, ShoppingBag, BarChart2, LogOut, Menu, X,
   Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
@@ -320,7 +321,11 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
             </button>
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
-          {headerRight && <div className="flex items-center gap-2">{headerRight}</div>}
+          <div className="flex items-center gap-2">
+            {/* 🛡️ 2026-04-28: 에이전시 알림 벨 — 이전엔 마운트 안 됐었음 */}
+            <DashboardNotificationBell tokenKey="agency_token" />
+            {headerRight}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">

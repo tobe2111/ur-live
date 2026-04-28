@@ -145,11 +145,15 @@ api.interceptors.request.use(
     }
 
     // ── Notifications: 토큰 존재 여부로 분기 ─────────────────────────────
-    if (url.startsWith('/api/notifications')) {
+    // 🛡️ 2026-04-28: /api/dashboard-notifications 도 같은 분기 (이전엔 누락 → 알림 401)
+    if (url.startsWith('/api/notifications') || url.startsWith('/api/dashboard-notifications')) {
       const sellerToken = localStorage.getItem('seller_token');
       const adminToken = localStorage.getItem('admin_token');
-      if (sellerToken) { config.headers['Authorization'] = `Bearer ${sellerToken}`; return config; }
+      const agencyToken = localStorage.getItem('agency_token');
+      // 우선순위: agency > admin > seller (대시보드 컨텍스트 따라)
+      if (agencyToken) { config.headers['Authorization'] = `Bearer ${agencyToken}`; return config; }
       if (adminToken) { config.headers['Authorization'] = `Bearer ${adminToken}`; return config; }
+      if (sellerToken) { config.headers['Authorization'] = `Bearer ${sellerToken}`; return config; }
       // fallthrough to Firebase
     }
 
