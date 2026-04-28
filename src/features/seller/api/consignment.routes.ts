@@ -250,7 +250,7 @@ consignmentRoutes.get('/settlements', requireSeller(), async (c) => {
     const from = c.req.query('from') || defaultFrom
     const to = c.req.query('to') || defaultTo
 
-    const result = await getConsignmentSettlementsForSeller(c.env.DB, sellerId, from, to)
+    const result = await getConsignmentSettlementsForSeller(c.env.DB, Number(sellerId), from, to)
     return c.json({ success: true, data: { ...result, period: { from, to } } })
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500)

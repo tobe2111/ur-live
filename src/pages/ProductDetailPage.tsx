@@ -773,9 +773,9 @@ export default function ProductDetailPage() {
           <GiftSendModal
             open={giftModalOpen}
             onClose={() => setGiftModalOpen(false)}
-            productId={product.id}
+            productId={Number(product.id)}
             productName={product.name}
-            productThumbnail={product.thumbnail || product.image_url}
+            productThumbnail={product.image_url}
             productPrice={product.price}
           />
         </Suspense>

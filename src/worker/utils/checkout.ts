@@ -258,9 +258,9 @@ export async function processCheckout(
     //   각 product_id 에 대해 active 한 consignment_partnership 이 있는지 조회 →
     //   있으면 order_items.consignment_id 에 기록 (정산 시 분배 분기용).
     //   조회 실패는 무시 (consignment_partnerships 테이블 미존재 환경 허용).
-    const consignmentMap = new Map<number, number>()
+    const consignmentMap = new Map<string, number>()
     try {
-      const productIds = products.map(p => p.productId)
+      const productIds = products.map(p => String(p.productId))
       if (productIds.length > 0) {
         const placeholders = productIds.map(() => '?').join(',')
         const { results: cps } = await db
@@ -271,7 +271,7 @@ export async function processCheckout(
           .bind(...productIds)
           .all<{ id: number; product_id: number }>()
         for (const cp of cps ?? []) {
-          consignmentMap.set(Number(cp.product_id), Number(cp.id))
+          consignmentMap.set(String(cp.product_id), Number(cp.id))
         }
       }
     } catch { /* table missing or query failure — proceed without consignment */ }
@@ -280,7 +280,7 @@ export async function processCheckout(
       // 주문 아이템 생성 (schema: order_id, product_id, product_name [NOT NULL], quantity, price, consignment_id?)
       // 🛡️ price 는 server-side priceMap 에서 가져옴 (client price_snapshot 무시)
       ...products.map((item) => {
-        const cid = consignmentMap.get(item.productId)
+        const cid = consignmentMap.get(String(item.productId))
         if (cid != null) {
           return db
             .prepare(
