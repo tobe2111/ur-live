@@ -37,6 +37,28 @@ app.get('/kakao/place/search', async (c) => {
   }
 });
 
+// ── 카카오 주변 음식점 검색 (좌표 기반) ──
+// 🛡️ 2026-04-28: restaurant-map 페이지가 우리 식사권 외에 카카오 맛집도 표시할 때 사용.
+// 사용자 lat/lng + radius (m) → FD6 (음식점) + CE7 (카페) 자동 검색.
+app.get('/kakao/place/nearby', async (c) => {
+  const x = c.req.query('lng'); // longitude
+  const y = c.req.query('lat'); // latitude
+  const radius = c.req.query('radius') || '1000'; // meters (max 20000)
+  const category = c.req.query('category') || 'FD6'; // FD6=음식점, CE7=카페
+  const size = c.req.query('size') || '15';
+  if (!x || !y) return c.json({ success: false, error: 'lat,lng required' }, 400);
+  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY;
+  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500);
+  try {
+    const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=${category}&x=${x}&y=${y}&radius=${Math.min(20000, Number(radius) || 1000)}&size=${size}&sort=distance`;
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
+    const data = await res.json();
+    return c.json({ success: true, data });
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500);
+  }
+});
+
 // ── 카카오 주소 검색 ──
 app.get('/kakao/place/address', async (c) => {
   const query = c.req.query('query');
