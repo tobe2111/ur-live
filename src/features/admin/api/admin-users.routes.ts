@@ -128,23 +128,44 @@ adminUsersRoutes.get('/users/:id', cors(), async (c) => {
       return c.json({ success: false, error: 'Invalid user ID' }, 400);
     }
 
-    const users = await executeQuery<UserRow>(DB,
-      `SELECT id, name, email, phone, created_at
-       FROM users WHERE id = ?`, [userId]
-    );
+    // 🛡️ 2026-04-28: phone 컬럼이 production users 테이블에 없을 수도 → fallback 처리.
+    let users: UserRow[] = [];
+    try {
+      users = await executeQuery<UserRow>(DB,
+        `SELECT id, name, email, phone, created_at
+         FROM users WHERE id = ?`, [userId]
+      );
+    } catch {
+      // phone 컬럼 없을 때 fallback (NULL 로 채움)
+      const usersNoPhone = await executeQuery<Omit<UserRow, 'phone'>>(DB,
+        `SELECT id, name, email, created_at FROM users WHERE id = ?`, [userId]
+      );
+      users = usersNoPhone.map(u => ({ ...u, phone: null }) as UserRow);
+    }
     if (users.length === 0) {
       return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
     }
 
-    const orderStats = await executeQuery<{ order_count: number; total_spent: number }>(DB,
-      `SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_spent
-       FROM orders WHERE user_id = ? AND status IN ('PAID','DONE','SHIPPING','DELIVERED')`,
-      [userId]
-    );
+    // 🛡️ 각 통계 쿼리 try-catch — 한 쿼리 실패해도 다른 통계는 반환
+    let orderStats: { order_count: number; total_spent: number }[] = [];
+    try {
+      orderStats = await executeQuery<{ order_count: number; total_spent: number }>(DB,
+        `SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_spent
+         FROM orders WHERE user_id = ? AND status IN ('PAID','DONE','SHIPPING','DELIVERED')`,
+        [userId]
+      );
+    } catch (e) {
+      if (typeof console !== 'undefined') console.warn('[admin-users] order stats failed:', e);
+    }
 
-    const reviewStats = await executeQuery<CountRow>(DB,
-      `SELECT COUNT(*) as count FROM reviews WHERE user_id = ?`, [userId]
-    );
+    let reviewStats: CountRow[] = [];
+    try {
+      reviewStats = await executeQuery<CountRow>(DB,
+        `SELECT COUNT(*) as count FROM reviews WHERE user_id = ?`, [userId]
+      );
+    } catch (e) {
+      if (typeof console !== 'undefined') console.warn('[admin-users] review stats failed:', e);
+    }
 
     // 🛡️ 이 카카오 유저에 연결된 셀러 / 에이전시 계정 조회 (있으면 어드민에게 통합 표시)
     let linkedSeller: Record<string, unknown> | null = null
