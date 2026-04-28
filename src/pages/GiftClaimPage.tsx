@@ -1,0 +1,240 @@
+/**
+ * 🛡️ 2026-04-28: 선물 받기 페이지
+ *
+ * URL: /gift/claim/:token
+ * 동작:
+ *   - token 으로 선물 정보 조회 (인증 불필요)
+ *   - 만료/이미 받음 시 안내
+ *   - 새 받기: 주소 입력 폼 (postal/address/detail/phone)
+ *   - 받기 완료 → 셀러가 발송 시 추가 알림
+ *
+ * 화이트 테마 (쇼핑/결제 페이지) — text-gray-900 등
+ */
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import SEO from '@/components/SEO'
+import { Gift, Loader2, CheckCircle2, XCircle, MapPin, Phone, Sparkles } from 'lucide-react'
+
+interface GiftInfo {
+  id: number
+  product_id: number
+  product_name: string
+  product_thumbnail: string | null
+  amount: number
+  message: string | null
+  status: 'pending' | 'paid' | 'claimed' | 'shipped' | 'delivered' | 'expired' | 'refunded'
+  recipient_name: string | null
+  sender_name: string
+  expires_at: string
+  created_at: string
+}
+
+export default function GiftClaimPage() {
+  const { token } = useParams<{ token: string }>()
+  const navigate = useNavigate()
+  const [gift, setGift] = useState<GiftInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+
+  // 폼
+  const [address, setAddress] = useState('')
+  const [addressDetail, setAddressDetail] = useState('')
+  const [postalCode, setPostalCode] = useState('')
+  const [phone, setPhone] = useState('')
+
+  useEffect(() => {
+    if (!token) {
+      setLoading(false)
+      return
+    }
+    api.get(`/api/gifts/claim/${token}`)
+      .then(r => setGift(r.data?.data || null))
+      .catch(() => setGift(null))
+      .finally(() => setLoading(false))
+  }, [token])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token) return
+    if (address.trim().length < 5) {
+      toast.error('주소를 정확히 입력해주세요')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await api.post(`/api/gifts/claim/${token}`, {
+        address: address.trim(),
+        address_detail: addressDetail.trim() || undefined,
+        postal_code: postalCode.trim() || undefined,
+        phone: phone.trim() || undefined,
+      })
+      toast.success('선물 받기 완료! 곧 발송됩니다.')
+      // 새로고침해서 상태 업데이트
+      const r = await api.get(`/api/gifts/claim/${token}`)
+      setGift(r.data?.data || null)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || '받기에 실패했어요')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (!gift) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
+        <SEO title="선물을 찾을 수 없어요 - 유어딜" description="선물 링크가 만료되었거나 잘못되었습니다" url={`/gift/claim/${token}`} />
+        <div className="text-center max-w-sm">
+          <XCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h1 className="text-lg font-bold text-gray-900 mb-2">선물을 찾을 수 없어요</h1>
+          <p className="text-sm text-gray-500 mb-6">링크가 만료됐거나 잘못된 주소입니다.</p>
+          <button onClick={() => navigate('/')} className="px-6 py-3 bg-pink-500 text-white rounded-full text-sm font-bold">
+            홈으로
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const isExpired = gift.status === 'expired'
+  const isClaimed = ['claimed', 'shipped', 'delivered'].includes(gift.status)
+  const isPending = gift.status === 'pending'  // 결제 안 끝남
+  const canClaim = gift.status === 'paid'
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white">
+      <SEO
+        title={`${gift.sender_name}님이 선물을 보냈어요 - 유어딜`}
+        description={`${gift.product_name} 선물을 확인해보세요`}
+        url={`/gift/claim/${token}`}
+      />
+
+      <div className="max-w-[430px] mx-auto px-5 py-10">
+        {/* 헤더 */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-pink-100 mb-3">
+            <Gift className="w-8 h-8 text-pink-500" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-1">
+            <span className="text-pink-500">{gift.sender_name}</span>님이<br/>선물을 보냈어요!
+          </h1>
+          <p className="text-xs text-gray-500 mt-2">{new Date(gift.created_at).toLocaleDateString('ko-KR')}</p>
+        </div>
+
+        {/* 상품 카드 */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4">
+          <div className="flex gap-3 mb-4">
+            {gift.product_thumbnail ? (
+              <img src={gift.product_thumbnail} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <Gift className="w-8 h-8 text-gray-300" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <h2 className="font-bold text-gray-900 text-sm leading-tight mb-2">{gift.product_name}</h2>
+              <div className="text-pink-500 font-bold text-base">{gift.amount.toLocaleString()}원</div>
+            </div>
+          </div>
+
+          {gift.message && (
+            <div className="bg-pink-50 rounded-xl p-4 border border-pink-100">
+              <div className="flex items-center gap-1 text-xs font-bold text-pink-600 mb-2">
+                <Sparkles className="w-3 h-3" /> 메시지
+              </div>
+              <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{gift.message}</p>
+            </div>
+          )}
+        </div>
+
+        {/* 상태별 액션 */}
+        {isExpired && (
+          <div className="bg-gray-50 rounded-2xl p-5 text-center">
+            <XCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-gray-700">선물이 만료됐어요</p>
+            <p className="text-xs text-gray-500 mt-1">유효기간 30일이 지나 자동 환불됩니다.</p>
+          </div>
+        )}
+
+        {isPending && (
+          <div className="bg-yellow-50 rounded-2xl p-5 text-center border border-yellow-100">
+            <Loader2 className="w-6 h-6 text-yellow-600 mx-auto mb-2 animate-spin" />
+            <p className="text-sm font-semibold text-yellow-800">결제 진행 중</p>
+            <p className="text-xs text-yellow-700 mt-1">잠시 후 다시 확인해주세요.</p>
+          </div>
+        )}
+
+        {isClaimed && (
+          <div className="bg-green-50 rounded-2xl p-5 text-center border border-green-100">
+            <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-green-700">
+              {gift.status === 'claimed' && '받기 완료! 곧 발송됩니다.'}
+              {gift.status === 'shipped' && '발송 완료! 배송을 기다려주세요.'}
+              {gift.status === 'delivered' && '배송 완료되었어요. 즐거운 시간 되세요!'}
+            </p>
+          </div>
+        )}
+
+        {canClaim && (
+          <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-pink-500" /> 받을 주소를 입력해주세요
+            </h3>
+            <div className="space-y-3">
+              <input
+                value={postalCode}
+                onChange={e => setPostalCode(e.target.value)}
+                placeholder="우편번호"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
+              />
+              <input
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                placeholder="기본 주소 *"
+                required
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
+              />
+              <input
+                value={addressDetail}
+                onChange={e => setAddressDetail(e.target.value)}
+                placeholder="상세 주소"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
+              />
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="휴대폰 번호 (배송 안내용)"
+                  type="tel"
+                  className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={submitting || !address.trim()}
+              className="w-full mt-5 py-4 bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600 transition-colors disabled:opacity-50"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
+              선물 받기
+            </button>
+            <p className="text-[11px] text-gray-400 text-center mt-3">
+              유효기간: {new Date(gift.expires_at).toLocaleDateString('ko-KR')} 까지
+            </p>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}

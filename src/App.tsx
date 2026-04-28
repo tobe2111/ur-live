@@ -83,6 +83,7 @@ const SellerForgotPasswordPage = lazy(() => import('./pages/SellerForgotPassword
 const SellerResetPasswordPage = lazy(() => import('./pages/SellerResetPasswordPage'))
 const SellerBusinessInfoPage = lazy(() => import('./pages/SellerBusinessInfoPage'))
 const SellerOrdersPage = lazy(() => import('./pages/SellerOrdersPage'))
+const SellerConsignmentPage = lazy(() => import('./pages/SellerConsignmentPage'))
 const SellerProductsPage = lazy(() => import('./pages/SellerProductsPage'))
 const SellerInventoryPage = lazy(() => import('./pages/SellerInventoryPage'))
 const SellerProductNewPage = lazy(() => import('./pages/SellerProductNewPage'))
@@ -507,6 +508,12 @@ function AppContent() {
             <Route path="/seller/orders" element={
               <ProtectedRoute requireSeller>
                 <SellerOrdersPage />
+              </ProtectedRoute>
+            } />
+            {/* 🛡️ 2026-04-28: MD 위탁 판매 (셀러간 협업) */}
+            <Route path="/seller/consignment" element={
+              <ProtectedRoute requireSeller>
+                <SellerConsignmentPage />
               </ProtectedRoute>
             } />
             <Route path="/seller/products" element={
