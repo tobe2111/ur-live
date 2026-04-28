@@ -244,6 +244,16 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
     '새 에이전시 가입 신청', `${name} (${contact_name})`, '/admin/agencies'
   ).catch((_e) => { if (typeof console !== 'undefined') console.warn('[agency:register] notify failed:', _e) })
 
+  // 🛡️ 2026-04-28: 신청자에게 카카오 알림톡
+  if (phone) {
+    try {
+      const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+      sendSystemAlimtalk(c.env, phone, 'agency_registered',
+        `[유어딜] ${contact_name}님,\n에이전시 가입 신청이 접수되었어요.\n1~3일 내 검토 후 결과를 안내드립니다.`
+      ).catch(() => {})
+    } catch { /* ignore */ }
+  }
+
   return c.json({ success: true, message: '가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.' }, 201)
 })
 

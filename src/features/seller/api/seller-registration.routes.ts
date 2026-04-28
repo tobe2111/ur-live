@@ -169,8 +169,18 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       }
     }
 
-    // 7. 셀러 가입 신청 → 어드민 알림
+    // 7. 셀러 가입 신청 → 어드민 대시보드 알림 + 신청자 알림톡
     createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/sellers').catch(swallow('seller:api:seller-management'));
+
+    // 🛡️ 2026-04-28: 신청자에게 카카오 알림톡 (Aligo 환경변수 + 템플릿 등록 시 자동 동작)
+    if (phone) {
+      try {
+        const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
+        sendSystemAlimtalk(c.env, phone, 'seller_registered',
+          `[유어딜] 안녕하세요 ${name}님,\n셀러 가입 신청이 접수되었어요.\n1~3일 내 검토 후 결과를 안내드립니다.`
+        ).catch(() => {});
+      } catch { /* ignore */ }
+    }
 
     return c.json({
       success: true,

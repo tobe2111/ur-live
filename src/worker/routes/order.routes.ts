@@ -285,6 +285,19 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     // 셀러에게도 알림 (seller_id가 있는 경우)
     if (order.seller_id) {
       createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'new_order', '새 주문', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-new'));
+
+      // 🛡️ 2026-04-28: 셀러 본인에게 카카오 알림톡 (새 주문 즉시 통지)
+      try {
+        const seller = await c.env.DB.prepare(
+          'SELECT name, phone FROM sellers WHERE id = ?'
+        ).bind(order.seller_id).first<{ name: string; phone: string | null }>();
+        if (seller?.phone) {
+          const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk');
+          sendSystemAlimtalk(c.env, seller.phone, 'new_order',
+            `[유어딜] ${seller.name}님,\n새 주문이 들어왔어요.\n주문번호: ${order.order_number}\n대시보드에서 확인 후 빠르게 발송 처리해주세요.`
+          ).catch(() => {});
+        }
+      } catch { /* ignore */ }
     }
 
     // 재고 부족 체크

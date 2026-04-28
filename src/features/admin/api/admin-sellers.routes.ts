@@ -207,6 +207,22 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
     await executeQuery(DB, `UPDATE sellers SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     await writeAuditLog(c, { action: 'approve_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'approved' } });
     createDashboardNotification(DB, 'seller', String(sellerId), 'seller_approved', '셀러 승인 완료', '판매를 시작할 수 있습니다', '/seller').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
+
+    // 🛡️ 2026-04-28: 셀러에게 카카오 알림톡
+    try {
+      const sellerInfo = await executeQuery<{ name: string; phone: string | null }>(DB,
+        'SELECT name, phone FROM sellers WHERE id = ?', [sellerId]
+      );
+      const phone = sellerInfo[0]?.phone;
+      const sellerName = sellerInfo[0]?.name || '';
+      if (phone) {
+        const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
+        sendSystemAlimtalk(c.env, phone, 'seller_approved',
+          `[유어딜] ${sellerName}님,\n셀러 가입이 승인되었어요!\n지금 바로 판매를 시작해보세요.`
+        ).catch(() => {});
+      }
+    } catch { /* ignore */ }
+
     return c.json({ success: true, data: { id: sellerId, status: 'approved' } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);

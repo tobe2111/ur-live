@@ -181,6 +181,19 @@ app.patch('/:id', async (c) => {
         '에이전시 승인 완료', '대시보드 사용을 시작할 수 있습니다', '/agency'
       ).catch(() => {})
     } catch { /* notification 실패는 무시 */ }
+
+    // 🛡️ 2026-04-28: 카카오 알림톡 (승인됨)
+    try {
+      const agency = await c.env.DB.prepare(
+        'SELECT contact_name, phone FROM agencies WHERE id = ?'
+      ).bind(id).first<{ contact_name: string; phone: string | null }>()
+      if (agency?.phone) {
+        const { sendSystemAlimtalk } = await import('@/lib/system-alimtalk')
+        sendSystemAlimtalk(c.env, agency.phone, 'agency_approved',
+          `[유어딜] ${agency.contact_name}님,\n에이전시 승인이 완료되었어요!\n대시보드에 접속해 셀러 관리를 시작하세요.`
+        ).catch(() => {})
+      }
+    } catch { /* ignore */ }
   }
 
   return c.json({ success: true })
