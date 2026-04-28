@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import { swallow } from '@/shared/utils/swallow'
 import { hasOBSExtension, loadOBSConfig } from '@/lib/obs-websocket'
 
 interface Check {
@@ -97,7 +98,7 @@ export function BroadcastDiagnostic({ streamId, method, onClose }: Props) {
       setChecks([...results])
       try {
         const t0 = performance.now()
-        await api.get('/api/health').catch(() => {})
+        await api.get('/api/health').catch(swallow('broadcast:diag-health'))
         const rtt = performance.now() - t0
         if (!active) return
         if (rtt < 300) results[results.length - 1] = { label: '네트워크 상태', status: 'ok', hint: `RTT ${Math.round(rtt)}ms` }

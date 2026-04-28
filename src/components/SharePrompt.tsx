@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import KakaoShareButton from './KakaoShareButton'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface SharePromptProps {
   title: string
@@ -19,9 +20,10 @@ interface SharePromptProps {
 }
 
 export default function SharePrompt({ title, message, shareTitle, shareDescription, shareLink, shareButtonText, reward, onClose }: SharePromptProps) {
+  useEscapeKey(onClose)
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="w-full max-w-sm bg-white rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose} role="presentation">
+      <div className="w-full max-w-sm bg-white rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-bold text-gray-900">{title}</h3>

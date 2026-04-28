@@ -6,6 +6,7 @@
  */
 
 import { Capacitor } from '@capacitor/core'
+import { swallow } from '@/shared/utils/swallow'
 
 /** 네이티브 앱인지 여부 */
 export const isNative = () => Capacitor.isNativePlatform()
@@ -71,7 +72,7 @@ export async function initNativeFeatures() {
       localStorage.setItem('push_token', token.value)
       // 서버에 토큰 저장
       import('@/lib/api').then(({ default: api }) => {
-        api.post('/api/push/register', { token: token.value, platform: Capacitor.getPlatform() }).catch(() => {})
+        api.post('/api/push/register', { token: token.value, platform: Capacitor.getPlatform() }).catch(swallow('native:push-register'))
       })
     })
 

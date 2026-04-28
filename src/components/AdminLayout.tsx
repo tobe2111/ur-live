@@ -159,6 +159,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="주문번호 / 이메일 / 이름…"
+            aria-label="전역 검색 (주문번호 / 이메일 / 이름)"
             className="flex-1 bg-transparent text-white text-[11px] placeholder:text-white/40 focus:outline-none min-w-0"
           />
           {searchQuery && (

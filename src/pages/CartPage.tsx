@@ -8,6 +8,7 @@ import { CartItemComponent } from '@/components/cart/CartItem'
 import { CartSummary } from '@/components/cart/CartSummary'
 import { EmptyCart } from '@/components/cart/EmptyCart'
 import { AlertCircle, CheckCircle, X, Info, ShoppingCart, ChevronRight, Store } from 'lucide-react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 
@@ -26,6 +27,7 @@ interface ModalProps {
 }
 
 function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert' }: ModalProps) {
+  useEscapeKey(onClose)
   if (!isOpen) return null
 
   const getIcon = () => {
@@ -42,8 +44,8 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={onClose} role="presentation">
+      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? 'cart-modal-title' : undefined}>
         <div className="mb-4 flex justify-center">{getIcon()}</div>
         {title && <h2 className="mb-2 text-center text-lg font-bold text-gray-900">{title}</h2>}
         <p className="mb-6 text-center text-sm text-gray-400">{message}</p>

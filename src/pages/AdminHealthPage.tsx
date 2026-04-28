@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { swallow } from '@/shared/utils/swallow'
 import AdminLayout from '@/components/AdminLayout'
 import { toast } from '@/hooks/useToast'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -229,7 +230,7 @@ function WebhookFailuresSection() {
           setRecent(r.data.data.recent || [])
         }
       })
-      .catch(() => {})
+      .catch(swallow('admin-health:load'))
       .finally(() => setLoading(false))
   }
 

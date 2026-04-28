@@ -5,6 +5,7 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Gift, Share2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface Voucher {
   id: number
@@ -40,6 +41,7 @@ function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) 
 
 function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }) {
   const { t } = useTranslation()
+  useEscapeKey(onClose)
   const qrUrl = `https://live.ur-team.com/v/${voucher.code}`
 
   async function shareVoucher() {
@@ -59,8 +61,8 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="bg-white rounded-2xl p-6 mx-4 max-w-xs w-full relative" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose} role="presentation">
+      <div className="bg-white rounded-2xl p-6 mx-4 max-w-xs w-full relative" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
         <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
           <X className="w-5 h-5 text-gray-500" />
         </button>

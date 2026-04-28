@@ -17,6 +17,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { swallow } from '@/shared/utils/swallow'
 import { Loader2, X, ShieldCheck } from 'lucide-react'
 
 interface Props {
@@ -136,7 +137,7 @@ export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKak
   useEffect(() => {
     api.get(`${basePath}/pin-status`).then(res => {
       if (res.data?.success) setPinSet(res.data.data.pin_set)
-    }).catch(() => {})
+    }).catch(swallow('pin:status-load'))
   }, [basePath])
 
   async function save() {
