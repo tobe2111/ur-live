@@ -9,6 +9,8 @@ import {
   LiveStatsBar, ShareLiveLink, StreamList,
 } from './SellerLiveBroadcast.parts'
 import AuctionTimeDealControls from './SellerLiveBroadcast.AuctionTimeDealControls'
+import ChannelCard from './SellerLiveBroadcast.ChannelCard'
+import { ScheduledBroadcastWaiting, YouTubeStudioWaiting } from './SellerLiveBroadcast.WaitingScreens'
 import { Button } from '@/components/ui/button'
 import { formatKSTDate } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
@@ -85,73 +87,7 @@ interface DestinationPlatform {
 // 프리셋/RTMP/Stats/Share/StreamList → SellerLiveBroadcast.parts.tsx (TD-006 / audit #10 추가 분할)
 
 // ── 모달 4종 → SellerLiveBroadcast.modals.tsx (TD-006 / audit #10 partial)
-// EndBroadcastModal / ConfirmModal / PromptModal / RecapModal
-// ── 채널 카드 (다중 채널 + 해제 + 토큰 만료 재연동) ──────────────
-function ChannelCard({ channels, activeChannelId, onSelectChannel, onDisconnect, onReauthenticate, connectingYouTube }: {
-  channels: YouTubeChannel[]
-  activeChannelId: number | null
-  onSelectChannel: (id: number) => void
-  onDisconnect: (id: number) => void
-  onReauthenticate: () => void
-  connectingYouTube: boolean
-}) {
-  const { t } = useTranslation()
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const active = channels.find(c => c.id === activeChannelId) || channels[0]
-  if (!active) return null
-  const hasMultiple = channels.length > 1
-
-  return (
-    <div className={`relative bg-white rounded-xl px-4 py-3 border mb-5 ${active.token_expired ? 'border-amber-300' : 'border-gray-200'}`}>
-      <div className="flex items-center gap-3">
-        {active.channel_thumbnail
-          ? <img src={active.channel_thumbnail} alt="" className="w-8 h-8 rounded-full" />
-          : <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center"><Youtube className="h-4 w-4 text-red-500" /></div>}
-        <button
-          onClick={() => hasMultiple && setPickerOpen(v => !v)}
-          className="flex-1 min-w-0 text-left">
-          <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1">
-            {active.channel_title}
-            {hasMultiple && <span className="text-xs text-gray-400">▾</span>}
-          </p>
-          <p className="text-xs text-gray-400">{String(t('seller.liveBroadcast.subscribers', { count: active.subscriber_count?.toLocaleString() || '0' } as Record<string, string>))}</p>
-        </button>
-        {active.token_expired ? (
-          <button onClick={onReauthenticate} disabled={connectingYouTube}
-            className="text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 rounded-full font-medium flex items-center gap-1">
-            {connectingYouTube ? <Loader2 className="w-3 h-3 animate-spin" /> : <Youtube className="w-3 h-3" />}
-            재연동
-          </button>
-        ) : (
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t('seller.liveBroadcast.linked')}</span>
-        )}
-        <button onClick={() => onDisconnect(active.id)}
-          className="text-gray-300 hover:text-red-500 transition-colors p-1"
-          title={t('seller.liveBroadcast.disconnectChannel')}
-          aria-label={t('seller.liveBroadcast.disconnectChannel')}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-          </svg>
-        </button>
-      </div>
-
-      {pickerOpen && hasMultiple && (
-        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-60 overflow-y-auto">
-          {channels.map(ch => (
-            <button key={ch.id}
-              onClick={() => { onSelectChannel(ch.id); setPickerOpen(false) }}
-              className={`w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 ${ch.id === active.id ? 'bg-blue-50' : ''}`}>
-              {ch.channel_thumbnail && <img src={ch.channel_thumbnail} alt="" className="w-6 h-6 rounded-full" />}
-              <span className="text-xs font-medium text-gray-900 truncate flex-1">{ch.channel_title}</span>
-              {ch.id === active.id && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
-            </button>
-          ))}
-        </div>
-      )}
-
-    </div>
-  )
-}
+// ChannelCard → SellerLiveBroadcast.ChannelCard.tsx (TD-006)
 
 // ── 송출 도구 마지막 선택 기억 ──────────────────────────────────
 const METHOD_STORAGE_KEY = 'seller_live_last_method'
@@ -1084,108 +1020,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
 }
 
 // ── 예약 방송 대기 화면 (P1-5) ──────────────────────────────────
-function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStream; onBack: () => void }) {
-  const { t } = useTranslation()
-  const [countdown, setCountdown] = useState('')
-  const [obsAutoStartEnabled, setObsAutoStartEnabled] = useState(false)
-  const obsClientRef = useRef<OBSWebSocketClient | null>(null)
-  const autoStartedRef = useRef(false)
-
-  // OBS 연결 설정이 저장되어 있으면 자동 시작 옵션 활성화
-  useEffect(() => {
-    const cfg = loadOBSConfig()
-    if (!cfg) return
-    const client = new OBSWebSocketClient()
-    client.connect(cfg).then(ok => {
-      if (ok) {
-        obsClientRef.current = client
-        setObsAutoStartEnabled(true)
-      }
-    })
-    return () => client.disconnect()
-  }, [])
-
-  useEffect(() => {
-    const tick = () => {
-      if (!stream.scheduled_at) return
-      const target = new Date(stream.scheduled_at).getTime()
-      const diff = target - Date.now()
-      if (diff <= 0) { setCountdown('00:00:00') } else {
-        const days = Math.floor(diff / (24 * 3600 * 1000))
-        const hours = Math.floor((diff % (24 * 3600 * 1000)) / (3600 * 1000))
-        const minutes = Math.floor((diff % (3600 * 1000)) / 60000)
-        const seconds = Math.floor((diff % 60000) / 1000)
-        setCountdown(days > 0
-          ? `${days}일 ${hours}시간 ${minutes}분`
-          : `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
-      }
-      // 예약 시간 도달 + OBS 연결됨 + 아직 자동 시작 안 했으면 → 자동 시작
-      if (diff <= 0 && obsClientRef.current && obsAutoStartEnabled && !autoStartedRef.current
-          && stream.rtmp_url && stream.rtmp_key) {
-        autoStartedRef.current = true
-        ;(async () => {
-          try {
-            await obsClientRef.current!.setRtmpTarget(stream.rtmp_url!, stream.rtmp_key!)
-            await obsClientRef.current!.startStreaming()
-            toast.success('⏰ 예약 시간 도달. OBS 자동 시작!')
-          } catch {
-            toast.error('OBS 자동 시작 실패. 수동으로 시작해주세요.')
-          }
-        })()
-      }
-    }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [stream.scheduled_at, stream.rtmp_url, stream.rtmp_key, obsAutoStartEnabled])
-
-  const scheduledDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null
-  const scheduledStr = scheduledDate
-    ? `${scheduledDate.getFullYear()}-${String(scheduledDate.getMonth() + 1).padStart(2, '0')}-${String(scheduledDate.getDate()).padStart(2, '0')} ${String(scheduledDate.getHours()).padStart(2, '0')}:${String(scheduledDate.getMinutes()).padStart(2, '0')}`
-    : ''
-
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-      <div className="text-center space-y-1">
-        <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-          <span className="text-2xl">📅</span>
-        </div>
-        <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{t('seller.liveBroadcast.scheduledBroadcast')}</p>
-        <h2 className="text-lg font-bold text-gray-900 truncate">{stream.title}</h2>
-        <p className="text-xs text-gray-500">{scheduledStr}</p>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 text-center">
-        <p className="text-[11px] text-blue-700 font-semibold mb-1">{t('seller.liveBroadcast.timeRemaining')}</p>
-        <p className="text-2xl font-bold font-mono text-blue-900">{countdown}</p>
-      </div>
-
-      <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 flex items-start gap-2.5">
-        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-        <p className="text-xs text-amber-800 flex-1">{t('seller.liveBroadcast.scheduledStartHint')}</p>
-      </div>
-
-      {obsAutoStartEnabled && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-          <div className="flex-1 text-xs text-green-800">
-            <p className="font-semibold">✨ OBS 자동 시작 활성화됨</p>
-            <p className="text-[11px] mt-0.5">예약 시간이 되면 OBS가 자동으로 스트리밍 시작됩니다. 컴퓨터만 켜둬주세요.</p>
-          </div>
-        </div>
-      )}
-
-      <ShareLiveLink streamId={stream.id} />
-
-      <div className="flex items-center justify-center pt-2 border-t border-gray-100">
-        <button onClick={onBack}
-          className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
-          {t('common.cancel')}
-        </button>
-      </div>
-    </div>
-  )
-}
+// ScheduledBroadcastWaiting → SellerLiveBroadcast.WaitingScreens.tsx (TD-006)
 
 // OBS timecode "HH:MM:SS.mmm" → seconds
 function parseTimecode(tc: string): number {
@@ -1476,99 +1311,7 @@ function OBSRemoteControl({ stream, hasPersistentKey, copiedField, onCopy }: {
 // Step 2 진입 시 자동으로 Studio 팝업 오픈 + 자동 감지 안내.
 // onGoLive() 호출 안 함 — 폴링이 YouTube live 상태 감지 시에만 전환.
 // stream.status === 'live' 가 되면 부모가 이 컴포넌트를 unmount → cleanup에서 팝업 자동 닫힘.
-function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStream; accent: 'pink' | 'red' }) {
-  const { t } = useTranslation()
-  const popupRef = useRef<Window | null>(null)
-  const openedRef = useRef(false)
-  const vid = stream.youtube_video_id || stream.youtube_broadcast_id
-  // ?ur_stream_id 로 우리 Chrome Extension 에 streamId 전달
-  //   → Extension content-studio.js 가 사이드바 iframe 을 /embed/live/:id 로 자동 연결
-  const studioUrl = vid
-    ? `https://studio.youtube.com/video/${vid}/livestreaming?ur_stream_id=${stream.id}`
-    : `https://studio.youtube.com/channel/UC/livestreaming?ur_stream_id=${stream.id}`
-
-  function openPopup() {
-    const w = Math.min(1280, Math.floor(window.screen.availWidth * 0.85))
-    const h = Math.min(820, Math.floor(window.screen.availHeight * 0.85))
-    const left = Math.floor((window.screen.availWidth - w) / 2)
-    const top = Math.floor((window.screen.availHeight - h) / 2)
-    const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},noopener`
-    try {
-      const p = window.open(studioUrl, 'ur-yt-studio', features)
-      if (p) popupRef.current = p
-    } catch { /* blocked */ }
-  }
-
-  // YouTube 공식 앱 Deep link (모바일) — 구독자 50+ 필요 (YouTube 정책)
-  // 설치된 YouTube 앱을 직접 엶 → 새로운 앱 설치 부담 0
-  function openYouTubeApp() {
-    // Universal link / App Store scheme
-    // iOS: youtube:// / Android: vnd.youtube:// OR 그냥 https 링크 (자동 앱 열기)
-    const videoUrl = vid ? `https://www.youtube.com/watch?v=${vid}` : 'https://m.youtube.com/'
-    try {
-      window.location.href = videoUrl
-    } catch { /* ignore */ }
-  }
-
-  useEffect(() => {
-    if (openedRef.current) return
-    openedRef.current = true
-    const tid = setTimeout(openPopup, 200)
-    return () => {
-      clearTimeout(tid)
-      // 컴포넌트 unmount 시 (= live 전환 시) 팝업 자동 닫기
-      try {
-        if (popupRef.current && !popupRef.current.closed) popupRef.current.close()
-      } catch { /* ignore */ }
-      popupRef.current = null
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const colorMap = {
-    pink: { bg: 'bg-pink-50', border: 'border-pink-200', icon: 'bg-pink-100 text-pink-600', dot: 'bg-pink-400', accent: 'text-pink-700' },
-    red: { bg: 'bg-red-50', border: 'border-red-200', icon: 'bg-red-100 text-red-600', dot: 'bg-red-400', accent: 'text-red-700' },
-  }[accent]
-
-  return (
-    <div className={`${colorMap.bg} border ${colorMap.border} rounded-xl p-5 space-y-4`}>
-      <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 ${colorMap.icon} rounded-xl flex items-center justify-center`}>
-          <Youtube className="w-5 h-5" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-gray-900">{t('seller.liveBroadcast.studioOpened')}</p>
-          <p className="text-xs text-gray-600 mt-0.5">{t('seller.liveBroadcast.studioOpenedDesc')}</p>
-        </div>
-      </div>
-
-      <div className={`flex items-center gap-2 bg-white/60 rounded-lg px-3 py-2.5 border ${colorMap.border}`}>
-        <span className="flex gap-1 shrink-0">
-          {[0, 0.2, 0.4].map((d, i) => (
-            <span key={i} className={`w-1.5 h-1.5 rounded-full ${colorMap.dot} animate-bounce`}
-              style={{ animationDelay: `${d}s` }} />
-          ))}
-        </span>
-        <p className={`text-xs font-medium ${colorMap.accent} flex-1`}>
-          {t('seller.liveBroadcast.autoDetecting')}
-        </p>
-      </div>
-
-      <button onClick={openPopup}
-        className="w-full text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">
-        {t('seller.liveBroadcast.reopenStudio')}
-      </button>
-
-      {/* 모바일 기기 접속 시 YouTube 앱 딥링크 대안 제시 */}
-      {typeof navigator !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent) && (
-        <button onClick={openYouTubeApp}
-          className="w-full mt-1 py-2 bg-white/70 hover:bg-white border border-red-200 text-red-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
-          📱 YouTube 앱에서 열기
-        </button>
-      )}
-    </div>
-  )
-}
+// YouTubeStudioWaiting → SellerLiveBroadcast.WaitingScreens.tsx (TD-006)
 
 // ── Step 2: 연결 설정 ────────────────────────────────────────────
 interface StepSetupProps {
