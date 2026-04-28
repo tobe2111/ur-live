@@ -102,6 +102,9 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
       <button
         onClick={() => setOpen(!open)}
         className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 있음` : '알림 열기'}
+        aria-haspopup="true"
+        aria-expanded={open}
       >
         <Bell className="w-5 h-5 text-gray-600" />
         {unreadCount > 0 && (
@@ -112,7 +115,7 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden" role="dialog" aria-label="알림 목록">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <span className="text-sm font-semibold text-gray-900">알림</span>
             {unreadCount > 0 && (
@@ -135,13 +138,22 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
                 <div
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
-                  className={`px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handleNotificationClick(n)
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${n.title}${n.message ? ' — ' + n.message : ''} (${timeAgo(n.created_at)})${!n.is_read ? ' — 읽지 않음' : ''}`}
+                  className={`px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 focus:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-inset transition-colors ${
                     !n.is_read ? 'bg-blue-50/50' : ''
                   }`}
                 >
                   <div className="flex items-start gap-2">
                     {!n.is_read && (
-                      <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                      <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-hidden="true" />
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
