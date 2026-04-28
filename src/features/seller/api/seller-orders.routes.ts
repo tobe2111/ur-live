@@ -516,6 +516,15 @@ sellerOrdersRoutes.post('/products', async (c) => {
       image_url?: string;
       category?: string;
       live_stream_id?: number | null;
+      // 식사권 (meal_voucher) 전용 필드 — category=meal_voucher 일 때만 사용
+      restaurant_name?: string;
+      restaurant_address?: string;
+      restaurant_phone?: string;
+      voucher_terms?: string;
+      voucher_expiry?: string;
+      group_buy_target?: number;
+      group_buy_deadline?: string;
+      store_verify_pin?: string;
     }>();
 
     const { name, description, price, stock, image_url, category } = body;
@@ -577,7 +586,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
     if (category === 'meal_voucher') {
       const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin'] as const;
       for (const field of mealFields) {
-        const val = (body as any)[field];
+        const val = body[field];
         if (val !== undefined && val !== null && val !== '') {
           try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
         }
@@ -588,8 +597,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
         const { generateStoreOwnerToken, sendStoreOwnerAlimtalk } = await import('../../group-buy/api/group-buy.routes');
         const token = generateStoreOwnerToken();
         try { await db.prepare(`UPDATE products SET store_owner_token = ? WHERE id = ?`).bind(token, productId).run(); } catch { /* ignore */ }
-        const phone = (body as any).restaurant_phone as string | undefined;
-        const restaurantName = (body as any).restaurant_name as string | undefined;
+        const phone = body.restaurant_phone;
+        const restaurantName = body.restaurant_name;
         if (phone && restaurantName) {
           const statsUrl = `https://live.ur-team.com/store/stats/${productId}?t=${token}`;
           // fire-and-forget — 알림톡 실패해도 등록은 진행

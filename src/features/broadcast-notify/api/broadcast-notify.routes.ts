@@ -50,14 +50,14 @@ broadcastNotifyRoutes.post('/subscribe/:streamId', requireAuth(), async (c) => {
   await ensureTables(DB);
 
   const streamId = c.req.param('streamId');
-  const body = await c.req.json<{ phone?: string }>().catch(() => ({}));
+  const body = await c.req.json<{ phone?: string }>().catch(() => ({} as { phone?: string }));
 
   // 스트림 존재 확인
   const stream = await DB.prepare('SELECT id, title, scheduled_at FROM live_streams WHERE id = ?')
     .bind(streamId).first();
   if (!stream) return c.json({ success: false, error: '방송을 찾을 수 없습니다' }, 404);
 
-  const phone = (body as any)?.phone?.replace(/-/g, '') || '';
+  const phone = body.phone?.replace(/-/g, '') || '';
   const notifyAlimtalk = phone ? 1 : 0;
 
   try {

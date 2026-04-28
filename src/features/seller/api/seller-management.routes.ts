@@ -42,6 +42,7 @@ type SellerRegisterRequest = {
   description?: string;
   youtube_email: string; // 유튜브 라이브에 사용할 구글 계정 (필수)
   seller_type?: 'influencer' | 'store_owner' | 'both';
+  invite_code?: string; // 🛡️ 2026-04-27 Phase 1-3: 영입 코드 자동 매핑
 };
 
 type SellerProfileUpdate = {
@@ -279,7 +280,7 @@ sellerManagementRoutes.post('/register', rateLimit({ action: 'seller_register', 
     }
 
     // 🛡️ 2026-04-27 Phase 1-3: 영입 코드 자동 매핑
-    const inviteCode = (body as any).invite_code as string | undefined;
+    const inviteCode = body.invite_code;
     if (inviteCode && result.meta.last_row_id) {
       try {
         const { consumeInviteCode } = await import('../../agency/api/agency-invites.routes');

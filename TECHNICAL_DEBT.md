@@ -8,6 +8,29 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 🎉 2026-04-27 (저녁 2차) TD-006 worker/index.ts 분할 완료
+
+**Before**: 2787줄 단일 파일 (2026-04-22 사고의 직접 원인)
+**After**: 1259줄 + 6개 라우트 파일 (54.8% 감소)
+
+| 신규 파일 | 라인 | Phase |
+|---|---|---|
+| `routes/sitemap.routes.ts` | 75 | 1 |
+| `routes/docs.routes.ts` | 15 | A |
+| `routes/internal-diagnostics.routes.ts` | 250 | B |
+| `routes/internal-admin-tools.routes.ts` | 640 | C |
+| `routes/smoke-test.routes.ts` | 265 | D |
+| `routes/repair-schema.routes.ts` | 325 | E |
+
+**효과**:
+- inline 핸들러 25개 → 약 7개 (catch-all `*`, health, csrf 등 잔존 — 분리 가치 적음)
+- 파일 중간 import 사고 재발 위험 크게 감소 (각 라우트 독립 모듈)
+- 모든 endpoint path/auth 동일 — 외부 API 호환성 유지
+
+**잔여 코드 정리** (이번 세션):
+- `as any` 249건 → 238건 (11건 정리, 나머지는 Hono/Cloudflare framework 한계)
+- 위험한 body cast 제거 (seller-orders, broadcast-notify, seller-management)
+
 ## 🚨 2026-04-27 (저녁) Critical 보안 패치
 
 ### `/api/auth/id-token` IDOR — Account Takeover 가능
