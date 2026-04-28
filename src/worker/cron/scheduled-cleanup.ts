@@ -84,15 +84,61 @@ export async function handleScheduled(env: Env) {
     results.vouchers_expired = meta.changes ?? 0;
   } catch (e) { console.error('[Cron] vouchers error:', e) }
 
-  // ── 5. 경매: 시간 초과 자동 종료 ──
+  // ── 5. 경매: 시간 초과 자동 종료 + hold 해제 + winner 알림 ──
+  // 🛡️ 2026-04-28: 단순 status 변경에서 → hold 정리 + 낙찰자 결제 안내까지 통합
   try {
-    const { meta } = await DB.prepare(`
+    // 1) 종료 대상 조회 (RETURNING 으로 atomic + winner 정보 동시 획득)
+    const { results: endedAuctions } = await DB.prepare(`
       UPDATE live_auctions
       SET status = 'ended'
-      WHERE status = 'active'
-        AND ends_at < datetime('now')
-    `).run();
-    results.auctions_ended = meta.changes ?? 0;
+      WHERE status = 'active' AND ends_at < datetime('now')
+      RETURNING id, stream_id, winner_user_id, winner_name, current_price, title
+    `).all<{
+      id: number; stream_id: number; winner_user_id: string | null;
+      winner_name: string | null; current_price: number; title: string;
+    }>();
+
+    results.auctions_ended = endedAuctions?.length ?? 0;
+
+    // 2) 각 경매별 hold 정리 + winner 알림 (best-effort, 실패해도 다른 경매 영향 0)
+    for (const a of endedAuctions || []) {
+      // hold 해제: winner 외 모든 active hold (winner 는 결제 완료 시 consumed 처리)
+      try {
+        if (a.winner_user_id) {
+          await DB.prepare(
+            "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id != ? AND status = 'active'"
+          ).bind(a.id, a.winner_user_id).run();
+        } else {
+          await DB.prepare(
+            "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND status = 'active'"
+          ).bind(a.id).run();
+        }
+      } catch (e) { console.error('[Cron] auction hold release error:', a.id, e) }
+
+      // winner 결제 안내 알림 (push + alimtalk best-effort)
+      if (a.winner_user_id) {
+        try {
+          const { sendSystemPush } = await import('../../lib/system-push');
+          sendSystemPush(env, 'user', a.winner_user_id, {
+            title: '경매 낙찰 🎉',
+            body: `${a.title} ${a.current_price.toLocaleString()}원에 낙찰됐어요. 결제를 진행해주세요.`,
+            url: `/live/${a.stream_id}`,
+          }).catch(() => {});
+        } catch { /* ignore */ }
+
+        try {
+          const phoneRow = await DB.prepare(
+            'SELECT phone FROM users WHERE CAST(id AS TEXT) = ? OR firebase_uid = ? LIMIT 1'
+          ).bind(a.winner_user_id, a.winner_user_id).first<{ phone: string | null }>();
+          if (phoneRow?.phone) {
+            const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk');
+            sendSystemAlimtalk(env, phoneRow.phone, 'auction_won',
+              `[유어딜] 경매 낙찰 안내\n${a.title}\n낙찰가: ${a.current_price.toLocaleString()}원\n결제를 진행해주세요.`
+            ).catch(() => {});
+          }
+        } catch { /* ignore */ }
+      }
+    }
   } catch (e) { console.error('[Cron] auctions error:', e) }
 
   // ── 6. 타임딜: 만료 자동 종료 ──

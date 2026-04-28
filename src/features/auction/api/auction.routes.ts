@@ -99,6 +99,50 @@ async function getAvailableBalance(DB: D1Database, userId: string): Promise<numb
   return Math.max(0, balance - held);
 }
 
+/**
+ * 🛡️ 2026-04-28: 경매 사용자 phone 조회 — user_id 가 numeric session id 또는
+ *   firebase_uid 둘 다 가능하므로 OR 매칭. 미존재 시 null.
+ */
+async function getUserPhone(DB: D1Database, userId: string): Promise<string | null> {
+  try {
+    const row = await DB.prepare(
+      'SELECT phone FROM users WHERE CAST(id AS TEXT) = ? OR firebase_uid = ? LIMIT 1'
+    ).bind(userId, userId).first<{ phone: string | null }>();
+    return row?.phone ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 🛡️ 2026-04-28: 경매 알림 통합 발송 (push + 옵션 alimtalk).
+ *   push 는 항상 시도. alimtalk 은 phone 있을 때만 + 중요한 알림 (won/promoted) 만.
+ */
+async function notifyAuctionUser(
+  env: Env,
+  userId: string,
+  notifyType: 'auction_won' | 'auction_outbid' | 'auction_promoted',
+  pushPayload: { title: string; body: string; url?: string },
+  alimtalkText?: string,
+): Promise<void> {
+  // 1) Push (best-effort, 가장 즉시성 높음)
+  try {
+    const { sendSystemPush } = await import('../../../lib/system-push');
+    sendSystemPush(env, 'user', userId, pushPayload).catch(() => {});
+  } catch { /* module load fail */ }
+
+  // 2) Alimtalk (phone 있고 alimtalkText 지정 시 — 도달률 보강용)
+  if (alimtalkText) {
+    try {
+      const phone = await getUserPhone(env.DB, userId);
+      if (phone) {
+        const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
+        sendSystemAlimtalk(env, phone, notifyType, alimtalkText).catch(() => {});
+      }
+    } catch { /* phone lookup fail */ }
+  }
+}
+
 // POST /api/auction/create — 셀러가 경매 시작
 auctionRoutes.post('/create', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
@@ -214,16 +258,13 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
     return c.json({ success: false, error: '다른 입찰자가 더 높은 금액을 입찰했습니다. 다시 시도해주세요.' }, 409);
   }
 
-  // 🛡️ 2026-04-28: 이전 최고 입찰자가 본인이 아니면 outbid 푸시 알림 (best-effort)
+  // 🛡️ 2026-04-28: 이전 최고 입찰자가 본인이 아니면 outbid 알림 (push only — alimtalk 은 빈도 높아 비용 부담)
   if (previousWinnerId && previousWinnerId !== userIdStr) {
-    try {
-      const { sendSystemPush } = await import('../../../lib/system-push');
-      sendSystemPush(c.env, 'user', previousWinnerId, {
-        title: '경매 입찰 갱신',
-        body: `${auction.title}: ${amount.toLocaleString()}원으로 더 높은 입찰자가 나타났어요`,
-        url: `/live/${auction.stream_id}`,
-      }).catch(() => {});
-    } catch { /* push module load fail — ignore */ }
+    notifyAuctionUser(c.env, previousWinnerId, 'auction_outbid', {
+      title: '경매 입찰 갱신',
+      body: `${auction.title}: ${amount.toLocaleString()}원으로 더 높은 입찰자가 나타났어요`,
+      url: `/live/${auction.stream_id}`,
+    }).catch(() => {});
   }
 
   // 🛡️ 배치 115: hold 관리
@@ -328,16 +369,16 @@ auctionRoutes.post('/:id/end', requireAuth(), async (c) => {
 
   const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
 
-  // 🛡️ 2026-04-28: 낙찰자에게 결제 안내 푸시 (best-effort)
+  // 🛡️ 2026-04-28: 낙찰자에게 결제 안내 (push + alimtalk — 큰 금액 결제이므로 도달률 중요)
   if (auction?.winner_user_id) {
-    try {
-      const { sendSystemPush } = await import('../../../lib/system-push');
-      sendSystemPush(c.env, 'user', auction.winner_user_id, {
+    notifyAuctionUser(c.env, auction.winner_user_id, 'auction_won',
+      {
         title: '경매 낙찰 🎉',
         body: `${auction.title} ${auction.current_price.toLocaleString()}원에 낙찰됐어요. 결제를 진행해주세요.`,
         url: `/live/${auction.stream_id}`,
-      }).catch(() => {});
-    } catch { /* ignore */ }
+      },
+      `[유어딜] 경매 낙찰 안내\n${auction.title}\n낙찰가: ${auction.current_price.toLocaleString()}원\n결제를 진행해주세요.`
+    ).catch(() => {});
   }
 
   return c.json({ success: true, data: auction });
@@ -535,15 +576,15 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
     "INSERT INTO auction_winner_history (auction_id, user_id, user_name, amount, reason, notes) VALUES (?, ?, ?, ?, 'promoted', ?)"
   ).bind(auctionId, newWinner.user_id, newWinner.user_name, newWinner.amount, `${forfeitedName} 불이행으로 승격`).run().catch(swallow('auction:api:auction'));
 
-  // 🛡️ 2026-04-28: 차순위 승격된 새 winner 에게 push 알림
-  try {
-    const { sendSystemPush } = await import('../../../lib/system-push');
-    sendSystemPush(c.env, 'user', newWinner.user_id, {
+  // 🛡️ 2026-04-28: 차순위 승격된 새 winner 에게 push + alimtalk
+  notifyAuctionUser(c.env, newWinner.user_id, 'auction_promoted',
+    {
       title: '경매 차순위 승격 🎉',
       body: `이전 낙찰자 결제 불이행으로 ${newWinner.amount.toLocaleString()}원에 승격됐어요. 결제 진행해주세요.`,
       url: `/auction/${auctionId}`,
-    }).catch(() => {});
-  } catch { /* ignore */ }
+    },
+    `[유어딜] 경매 차순위 승격\n이전 낙찰자 결제 불이행으로\n${newWinner.amount.toLocaleString()}원에 승격됐어요.\n결제를 진행해주세요.`
+  ).catch(() => {});
 
   return c.json({
     success: true,
@@ -713,15 +754,15 @@ auctionRoutes.post('/:id/promote-runner-up', requireAuth(), async (c) => {
     "INSERT INTO auction_holds (auction_id, user_id, amount, status) VALUES (?, ?, ?, 'active')"
   ).bind(auctionId, runnerUp.user_id, runnerUp.amount).run();
 
-  // 🛡️ 2026-04-28: 승격된 새 winner 에게 push 알림
-  try {
-    const { sendSystemPush } = await import('../../../lib/system-push');
-    sendSystemPush(c.env, 'user', runnerUp.user_id, {
+  // 🛡️ 2026-04-28: 승격된 새 winner 에게 push + alimtalk
+  notifyAuctionUser(c.env, runnerUp.user_id, 'auction_promoted',
+    {
       title: '경매 차순위 승격 🎉',
       body: `이전 낙찰자 포기로 ${runnerUp.amount.toLocaleString()}원에 승격됐어요. 결제 진행해주세요.`,
       url: `/auction/${auctionId}`,
-    }).catch(() => {});
-  } catch { /* ignore */ }
+    },
+    `[유어딜] 경매 차순위 승격\n이전 낙찰자 결제 포기로\n${runnerUp.amount.toLocaleString()}원에 승격됐어요.\n결제를 진행해주세요.`
+  ).catch(() => {});
 
   return c.json({
     success: true,
