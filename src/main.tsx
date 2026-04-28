@@ -1,3 +1,8 @@
+// 🛡️ 2026-04-28: 카카오톡 인앱 강제 외부 브라우저 redirect (흰화면 + 무한 reload 회피)
+//   *반드시* React/i18n/sentry 등 import 보다 먼저 실행 (모듈 로딩 자체 차단 위해).
+import { autoRedirectKakaoToExternal, detectInAppBrowser } from '@/lib/in-app-browser'
+const _kakaoRedirected = autoRedirectKakaoToExternal()
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -8,10 +13,11 @@ import { logRegionInfo, isKorea } from '@/shared/config/region'
 import { validateEnvForRuntime } from '@/shared/config/env-validator'
 import { initNativeFeatures, isNative } from '@/lib/native'
 
-// 🛡️ 2026-04-28: 인앱 브라우저(카카오톡/네이버/페북/IG/라인 등) 감지를 window 에 노출
-//   App 단에서 안내 배너 렌더 시 사용. 강제 redirect 는 하지 않음 (사용자 이탈 방지).
-import { detectInAppBrowser } from '@/lib/in-app-browser'
+// 다른 인앱(네이버/페북/IG/라인 등) 감지 → App 단 배너로 안내 (강제 redirect 안 함)
 ;(window as { __urInAppBrowser?: string | null }).__urInAppBrowser = detectInAppBrowser()
+
+// 카카오 외부브라우저 redirect 시도했으면 React 마운트 skip (이미 외부 브라우저로 이동 중)
+if (!_kakaoRedirected) {
 
 // ✅ 런타임 환경 변수 검증 — throw 해도 React 마운트는 진행 (흰화면 방지)
 try {
@@ -77,3 +83,5 @@ if (!rootElement) {
     `
   }
 }
+
+} // end if (!_kakaoRedirected)

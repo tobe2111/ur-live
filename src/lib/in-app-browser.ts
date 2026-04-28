@@ -58,6 +58,39 @@ export function isAndroid(): boolean {
 }
 
 /**
+ * 🛡️ 2026-04-28: 카카오톡 인앱 → 외부 브라우저 *자동* redirect.
+ *
+ * 카카오톡 인앱은 무한 reload + 흰화면 발생 케이스가 많아서, detect 즉시 강제 이동.
+ * (다른 인앱은 안내 배너로 사용자 선택)
+ *
+ * sessionStorage 로 1회만 시도 — 사용자가 외부 브라우저에서 다시 카톡 링크 클릭 시
+ * 무한 redirect 안 일어나도록 가드.
+ *
+ * @returns redirect 시도했으면 true (호출자가 React 마운트 중단해야 함)
+ */
+const KAKAO_REDIRECT_KEY = 'ur_kakao_external_redirect_v1'
+
+export function autoRedirectKakaoToExternal(): boolean {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false
+  if (detectInAppBrowser() !== 'kakao') return false
+
+  // 이미 한 번 시도했으면 스킵 (무한 루프 방지)
+  try {
+    if (sessionStorage.getItem(KAKAO_REDIRECT_KEY) === '1') return false
+    sessionStorage.setItem(KAKAO_REDIRECT_KEY, '1')
+  } catch { /* sessionStorage 차단된 경우에도 진행 */ }
+
+  const url = window.location.href
+  if (isIOS()) {
+    window.location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url)
+  } else {
+    const target = url.replace(/^https?:\/\//, '')
+    window.location.href = 'intent://' + target + '#Intent;scheme=https;package=com.android.chrome;end'
+  }
+  return true
+}
+
+/**
  * 외부 브라우저로 열기 시도. OS·인앱 종류별 분기.
  * @returns scheme 호출했으면 true. (실제 redirect 성공 여부는 OS 가 결정 — 알 수 없음)
  */
