@@ -5,9 +5,12 @@
     <!-- WCAG 1.4.4: pinch-zoom is required for accessibility. Do NOT re-add maximum-scale/user-scalable=no. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <!-- 🛡️ 2026-04-28: 카카오톡/네이버/페북 등 인앱 브라우저 → 안내 페이지 즉시 표시.
-         자동 redirect 는 카톡 정책으로 차단 + 무한 루프 케이스 발견 → 사용자가 직접
-         외부 브라우저 열도록 안내. document.write 로 페이지 전체 교체 (모듈/React 로드 자체를 차단). -->
+    <!-- 🛡️ 2026-04-28: 인앱 브라우저 이상적 핸들링.
+         1) 카톡/네이버/페북/IG/라인 detect → document.write 로 안내 페이지 즉시 교체
+         2) iOS 카톡은 kakaotalk://web/openExternal, 안드로이드는 intent:// 로 *자동* 호출
+         3) 1.5초 후 페이지 살아있으면 (자동 호출 실패) → 수동 버튼 강조 + 가이드 표시
+         4) 모든 모듈/React 로드 차단되어 흰화면 100% 회피
+         5) 일반 브라우저(Chrome/Safari/삼성/Whale)에는 영향 0 (UA 매칭 X) -->
     <script>
       (function() {
         try {
@@ -24,20 +27,23 @@
           var isIOS = /iPhone|iPad|iPod/i.test(ua);
           var isAndroid = /Android/i.test(ua);
 
-          // 안드로이드는 Chrome intent 한 번 시도 (카톡 외 인앱들)
-          var tryIntent = '';
-          if (isAndroid) {
+          // OS 별 자동 호출용 스킴 결정
+          var autoScheme = '';
+          if (isKakao && isIOS) {
+            autoScheme = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
+          } else if (isLine && (isIOS || isAndroid)) {
+            // 라인 공식 external browser 파라미터
+            var sep = url.indexOf('?') >= 0 ? '&' : '?';
+            autoScheme = url + sep + 'openExternalBrowser=1';
+          } else if (isAndroid) {
+            // 카톡 안드로이드 + 네이버/페북/IG 안드로이드 인앱 → Chrome intent
             var t = url.replace(/^https?:\/\//, '');
-            tryIntent = 'intent://' + t + '#Intent;scheme=https;package=com.android.chrome;end';
+            autoScheme = 'intent://' + t + '#Intent;scheme=https;package=com.android.chrome;end';
           }
-          // iOS 카톡은 공식 외부브라우저 스킴
-          var tryKakaoIOS = (isKakao && isIOS) ? 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url) : '';
 
-          var openBtn = '';
-          if (tryIntent || tryKakaoIOS) {
-            var schemeUrl = tryKakaoIOS || tryIntent;
-            openBtn = '<a href="' + schemeUrl + '" style="display:inline-block;padding:14px 28px;background:#FEE500;color:#3C1E1E;border-radius:24px;font-weight:700;text-decoration:none;font-size:15px;margin:8px;">외부 브라우저 열기</a>';
-          }
+          var manualBtn = autoScheme
+            ? '<a href="' + autoScheme + '" id="ud-open" style="display:inline-block;padding:14px 32px;background:#FEE500;color:#3C1E1E;border-radius:28px;font-weight:800;text-decoration:none;font-size:15px;margin:8px 0;box-shadow:0 4px 12px rgba(254,229,0,0.35);">📲 외부 브라우저 열기</a>'
+            : '';
 
           var html = ''
             + '<!doctype html><html lang="ko"><head>'
@@ -45,34 +51,65 @@
             + '<meta name="viewport" content="width=device-width, initial-scale=1.0"/>'
             + '<title>외부 브라우저로 열어주세요 - 유어딜</title>'
             + '<style>'
-            + 'body{margin:0;background:#fbfbfd;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#1d1d1f;}'
-            + '.wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}'
-            + '.logo{font-size:28px;font-weight:800;letter-spacing:-0.04em;margin-bottom:8px;}'
-            + '.icon{font-size:64px;margin-bottom:16px;}'
-            + '.title{font-size:18px;font-weight:700;margin:0 0 12px;}'
-            + '.desc{font-size:14px;color:#6e6e73;line-height:1.6;margin:0 0 24px;max-width:340px;}'
-            + '.url{background:#f2f2f7;border-radius:12px;padding:14px;margin:8px 0;width:100%;max-width:340px;word-break:break-all;font-size:12px;color:#1d1d1f;}'
+            + 'body{margin:0;background:linear-gradient(180deg,#fafafa 0%,#f0f0f5 100%);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#1d1d1f;-webkit-text-size-adjust:100%;}'
+            + '.wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;box-sizing:border-box;}'
+            + '.logo{font-size:32px;font-weight:800;letter-spacing:-0.04em;margin-bottom:8px;background:linear-gradient(135deg,#ff6b6b,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}'
+            + '.tagline{font-size:11px;color:#8e8e93;margin-bottom:32px;letter-spacing:0.05em;font-weight:500;}'
+            + '.icon{font-size:64px;margin-bottom:20px;animation:bob 2s ease-in-out infinite;}'
+            + '@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}'
+            + '.title{font-size:19px;font-weight:700;margin:0 0 12px;line-height:1.4;}'
+            + '.desc{font-size:14px;color:#6e6e73;line-height:1.6;margin:0 0 28px;max-width:340px;}'
+            + '#ud-redirect-msg{display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:14px 18px;font-size:13px;color:#8b6914;line-height:1.6;margin:8px 0 24px;max-width:340px;width:100%;box-sizing:border-box;}'
+            + '.url{background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:14px;margin:16px 0 8px;width:100%;max-width:340px;word-break:break-all;font-size:12px;color:#1d1d1f;box-sizing:border-box;}'
             + '.copy{margin-top:8px;padding:10px 20px;background:#007aff;color:#fff;border:0;border-radius:18px;font-size:13px;font-weight:600;cursor:pointer;}'
-            + '.hint{margin-top:24px;font-size:12px;color:#8e8e93;line-height:1.6;max-width:300px;}'
-            + 'kbd{background:#fff;border:1px solid #d2d2d7;border-radius:4px;padding:2px 6px;font-family:inherit;font-size:11px;font-weight:600;}'
+            + '.steps{margin-top:32px;padding:18px;background:#fff;border-radius:12px;max-width:340px;width:100%;text-align:left;box-sizing:border-box;border:1px solid #e5e5ea;}'
+            + '.steps-title{font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:10px;}'
+            + '.steps ol{margin:0;padding-left:20px;font-size:12px;color:#6e6e73;line-height:1.8;}'
+            + 'kbd{background:#f2f2f7;border:1px solid #d2d2d7;border-radius:4px;padding:1px 6px;font-family:inherit;font-size:11px;font-weight:600;color:#1d1d1f;}'
             + '</style></head><body>'
             + '<div class="wrap">'
             +   '<div class="logo">유어딜</div>'
+            +   '<div class="tagline">UR · DEAL</div>'
             +   '<div class="icon">🌐</div>'
-            +   '<h1 class="title">' + name + ' 인앱 브라우저에서는<br/>유어딜이 동작하지 않아요</h1>'
-            +   '<p class="desc">아래 버튼을 누르거나, 우측 상단 메뉴(<kbd>⋮</kbd> 또는 <kbd>⋯</kbd>) 에서<br/><strong>"다른 브라우저로 열기"</strong> 를 선택해주세요.</p>'
-            +   openBtn
+            +   '<h1 class="title">' + name + ' 인앱 브라우저에서는<br/>일부 기능이 제한돼요</h1>'
+            +   '<p class="desc">최적의 환경을 위해<br/><strong>외부 브라우저(Chrome / Safari)</strong> 에서 열어주세요.</p>'
+            +   '<div id="ud-redirect-msg">⏳ 외부 브라우저로 이동 중... 안 열리면 아래 버튼을 눌러주세요.</div>'
+            +   manualBtn
             +   '<div class="url" id="ud-url">' + url + '</div>'
             +   '<button class="copy" id="ud-copy">URL 복사</button>'
-            +   '<p class="hint">위 방법으로도 안 열리면 Chrome / Safari 를 직접 열어 URL 을 붙여넣어주세요.</p>'
+            +   '<div class="steps" id="ud-steps">'
+            +     '<div class="steps-title">자동 이동이 안 되는 경우</div>'
+            +     '<ol>'
+            +       '<li>우측 상단 메뉴(<kbd>⋮</kbd> 또는 <kbd>⋯</kbd>) 클릭</li>'
+            +       '<li><strong>"다른 브라우저로 열기"</strong> 또는 <strong>"Safari 로 열기"</strong> 선택</li>'
+            +       '<li>안 보이면 위의 <strong>URL 복사</strong> 버튼 누른 후 Chrome / Safari 직접 열어 붙여넣기</li>'
+            +     '</ol>'
+            +   '</div>'
             + '</div>'
-            + '<script>'
-            +   'document.getElementById("ud-copy").addEventListener("click",function(){'
-            +     'var t=document.getElementById("ud-url").textContent;'
-            +     'var b=this;'
-            +     'if(navigator.clipboard){navigator.clipboard.writeText(t).then(function(){b.textContent="복사됨 ✓";});}'
-            +     'else{var ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}document.body.removeChild(ta);b.textContent="복사됨 ✓";}'
-            +   '});'
+            + '<' + 'script>'
+            +   '(function(){'
+            +     'var BTN=document.getElementById("ud-copy"),URLEL=document.getElementById("ud-url"),MSG=document.getElementById("ud-redirect-msg"),OPEN=document.getElementById("ud-open");'
+            +     'BTN.addEventListener("click",function(){'
+            +       'var t=URLEL.textContent;'
+            +       'var done=function(){BTN.textContent="복사됨 ✓";BTN.style.background="#34c759";};'
+            +       'if(navigator.clipboard){navigator.clipboard.writeText(t).then(done).catch(function(){fallback();});}'
+            +       'else{fallback();}'
+            +       'function fallback(){var ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}document.body.removeChild(ta);}'
+            +     '});'
+            +     // 자동 redirect 시도 (페이지 로드 직후 즉시)
+            +     'var SCHEME=' + JSON.stringify(autoScheme) + ';'
+            +     'if(SCHEME){'
+            +       'MSG.style.display="block";'
+            +       'try{window.location.href=SCHEME;}catch(e){}'
+            +       // 1.5초 후에도 살아있으면 자동 redirect 실패 → 안내 강조
+            +       'setTimeout(function(){'
+            +         'MSG.style.background="#fee2e2";MSG.style.borderColor="#fca5a5";MSG.style.color="#991b1b";'
+            +         'MSG.innerHTML="⚠️ 자동 이동이 차단됐어요. 아래 <strong>외부 브라우저 열기</strong> 버튼을 눌러주세요.";'
+            +         'if(OPEN){OPEN.style.animation="pulse 1.2s ease-in-out infinite";}'
+            +         'var st=document.createElement("style");st.textContent="@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}";document.head.appendChild(st);'
+            +       '},1500);'
+            +     '}'
+            +   '})();'
             + '<' + '/script>'
             + '</body></html>';
           document.open();
