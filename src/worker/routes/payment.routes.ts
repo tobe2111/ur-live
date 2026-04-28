@@ -15,6 +15,7 @@ import { TOSS_PAYMENT_URL } from '../../shared/constants';
 import { sendSellerAlimtalk } from '../../features/alimtalk/send';
 import { swallow } from '../utils/swallow';
 import { buildOrderConfirmMessage } from '../../features/alimtalk/aligo';
+import { captureException } from '../utils/sentry';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { logInfo, logError, logWarn } from '../utils/logger';
 import { sendAlert } from '../utils/alerts';
@@ -120,6 +121,11 @@ paymentsRouter.post('/confirm', async (c) => {
     const unauthorized = orders.find(o => String(o.user_id) !== String(userId));
     if (unauthorized) {
       console.error('[PAYMENTS] User mismatch:', { authUserId: userId, orderUserId: unauthorized.user_id });
+      // 🚨 fraud signal — Sentry 보고
+      captureException(new Error('PAYMENT_USER_MISMATCH'), {
+        tags: { area: 'payment', kind: 'user_mismatch', severity: 'warning' },
+        extra: { authUserId: userId, orderUserId: unauthorized.user_id, orderNumber },
+      }).catch(swallow('payment:sentry-user-mismatch'));
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
@@ -127,6 +133,11 @@ paymentsRouter.post('/confirm', async (c) => {
     const totalAmount = orders.reduce((sum, o) => sum + o.total_amount, 0);
     if (totalAmount !== amount) {
       console.error('[PAYMENTS] Amount mismatch:', { expected: totalAmount, received: amount, orderNumber });
+      // 🚨 fraud signal — 금액 변조 시도
+      captureException(new Error('PAYMENT_AMOUNT_MISMATCH'), {
+        tags: { area: 'payment', kind: 'amount_mismatch', severity: 'warning' },
+        extra: { expected: totalAmount, received: amount, orderNumber, userId },
+      }).catch(swallow('payment:sentry-amount-mismatch'));
       return c.json({ success: false, error: '결제 금액이 일치하지 않습니다' }, 400);
     }
 
@@ -319,6 +330,9 @@ paymentsRouter.post('/confirm', async (c) => {
 
   } catch (err) {
     console.error('[PAYMENTS] Confirm error:', err);
+    captureException(err as Error, {
+      tags: { area: 'payment', kind: 'confirm_unexpected', severity: 'error' },
+    }).catch(swallow('payment:sentry-confirm'));
     return c.json({ success: false, error: '결제 처리 중 오류가 발생했습니다' }, 500);
   }
 });

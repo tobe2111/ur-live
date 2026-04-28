@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
@@ -14,13 +14,13 @@ export default function SellerCouponsPage() {
   const [form, setForm] = useState({ code: '', name: '', type: 'fixed', value: '', min_order: '', max_discount: '', total_count: '100', expires_at: '' })
   const getAuthHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true)
     api.get('/api/seller/analytics/coupons', getAuthHeaders())
       .then(r => { if (r.data.success) setCoupons(r.data.data || []) })
       .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
-  }
-  useEffect(() => { load() }, [])
+  }, [])
+  useEffect(() => { load() }, [load])
 
   const handleCreate = async () => {
     if (!form.code || !form.name || !form.value) { toast.error(t('seller.coupons.fillRequired')); return }

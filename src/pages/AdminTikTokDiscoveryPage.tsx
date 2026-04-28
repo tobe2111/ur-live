@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
@@ -24,7 +24,7 @@ export default function AdminTikTokDiscoveryPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'inactive' | 'active'>('all')
 
-  async function fetchAll() {
+  const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
       const token = localStorage.getItem('admin_token')
@@ -33,9 +33,9 @@ export default function AdminTikTokDiscoveryPage() {
     } catch (err: any) {
       toast.error(err?.response?.data?.error || '불러오기 실패')
     } finally { setLoading(false) }
-  }
+  }, [])
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => { fetchAll() }, [fetchAll])
 
   const filtered = items.filter(i => {
     if (filter === 'inactive') return !i.is_seller_active

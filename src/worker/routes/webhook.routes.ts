@@ -17,6 +17,7 @@ import { arrayBufferToHex } from '../../shared/utils';
 import { sendAlert } from '../utils/alerts';
 import { rateLimit } from '../middleware/rate-limit';
 import { swallow } from '../utils/swallow';
+import { captureException } from '../utils/sentry';
 
 // ============================================================
 // Order Notification Helper
@@ -192,6 +193,11 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
         console.error('[WEBHOOK] ❌ INVALID_SIGNATURE', {
           ip: c.req.header('CF-Connecting-IP'),
         });
+        // 🚨 보안 알림 — Toss webhook 위장 시도 가능성
+        captureException(new Error('WEBHOOK_INVALID_SIGNATURE'), {
+          tags: { area: 'webhook', kind: 'invalid_signature', severity: 'warning' },
+          extra: { ip: c.req.header('CF-Connecting-IP') },
+        }).catch(swallow('webhook:sentry-sig'));
         // Return 401 so Toss retries legitimate deliveries whose signatures failed transiently
         return c.json({ received: false, status: 'rejected', error: 'invalid_signature' }, 401);
       }
@@ -203,6 +209,11 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
           timestamp: timestampHeader,
           ip: c.req.header('CF-Connecting-IP'),
         });
+        // 🚨 replay attack signal — Sentry 보고
+        captureException(new Error('WEBHOOK_INVALID_TIMESTAMP'), {
+          tags: { area: 'webhook', kind: 'invalid_timestamp', severity: 'warning' },
+          extra: { timestamp: timestampHeader, ip: c.req.header('CF-Connecting-IP') },
+        }).catch(swallow('webhook:sentry-ts'));
         // Return 401 — do not silently accept possibly-replayed requests
         return c.json({ received: false, status: 'rejected', error: 'invalid_timestamp' }, 401);
       }

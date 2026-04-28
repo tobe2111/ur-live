@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
@@ -32,7 +32,7 @@ export default function SellerCastingsPage() {
   const [items, setItems] = useState<Casting[]>([])
   const [loading, setLoading] = useState(true)
 
-  async function fetchAll() {
+  const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
       const token = localStorage.getItem('seller_token')
@@ -41,9 +41,9 @@ export default function SellerCastingsPage() {
     } catch (err: any) {
       toast.error(err?.response?.data?.error || '불러오기 실패')
     } finally { setLoading(false) }
-  }
+  }, [])
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => { fetchAll() }, [fetchAll])
 
   async function respond(id: number, response: 'accept' | 'reject') {
     const reason = response === 'reject' ? prompt('거절 사유 (선택):') || '' : undefined

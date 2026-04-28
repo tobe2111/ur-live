@@ -197,6 +197,10 @@ bash scripts/quality-check.sh
 - ❌ 권한 체크 없는 POST/PATCH/DELETE
 - ❌ `SELECT *` with LIMIT/OFFSET but no ORDER BY
 - ❌ 하드코딩된 내부 API 토큰
+- ❌ `Function('p', 'return import(p)')(...)` 패턴에 **사용자 입력 전달**
+  - 현재 사용처 (`src/components/my-page/reward-ad-card.tsx:67`) 는 하드코딩된 패키지명 (`@capacitor-community/admob`) 만 받아 안전.
+  - 동적 import 가 필요한 이유: Capacitor native 플러그인을 웹 번들에서 제외하기 위함.
+  - 새로 추가 시: 입력 문자열이 hardcoded 인지 반드시 확인. 사용자 입력 / API 응답 / URL 파라미터에서 온 값 절대 금지 (RCE 위험).
 
 ## 개발 환경 셋업 (새 컨트리뷰터)
 1. `npm install`

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -121,10 +121,7 @@ export default function AdminOrdersPage() {
   const itemsPerPage = 20
   const [sellers, setSellers] = useState<Array<{ id: number; name: string }>>([])
 
-  useEffect(() => { loadOrders(); loadSellers() }, [])
-  useEffect(() => { filterOrders() }, [orders, statusFilter, sellerFilter, searchQuery, dateFilter])
-
-  async function loadOrders() {
+  const loadOrders = useCallback(async () => {
     setLoading(true); setError('')
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
@@ -136,9 +133,9 @@ export default function AdminOrdersPage() {
       setError('주문 목록을 불러올 수 없습니다.')
       if (err_.response?.status === 401) navigate('/admin/login')
     } finally { setLoading(false) }
-  }
+  }, [navigate])
 
-  async function loadSellers() {
+  const loadSellers = useCallback(async () => {
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       const response = await api.get('/api/admin/sellers', { headers: { Authorization: `Bearer ${token}` } })
@@ -149,7 +146,9 @@ export default function AdminOrdersPage() {
       if (import.meta.env.DEV) console.error('[AdminOrders] loadSellers failed:', e)
       toast.error('셀러 목록을 불러올 수 없습니다.')
     }
-  }
+  }, [])
+
+  useEffect(() => { loadOrders(); loadSellers() }, [loadOrders, loadSellers])
 
   function filterOrders() {
     let result = [...orders]
