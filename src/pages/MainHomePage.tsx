@@ -158,6 +158,10 @@ export default function MainHomePage() {
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
+    // 🛡️ 2026-04-28: 비로그인 사용자는 /api/cart 호출 안 함.
+    //   이전: 카톡 인앱에서 비로그인 + 옛 localStorage 토큰 잔존 → 401 →
+    //   api.ts 인터셉터가 alert() + redirect → 카톡이 alert 차단 → throw → 흰화면.
+    if (!isLoggedInSync()) { setCartCount(0); return }
     // ✅ UX C2 FIX: API 응답은 { success, data: { items: [...], summary } } 구조
     api.get('/api/cart').then(res => {
       if (res.data?.success) {

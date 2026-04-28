@@ -377,15 +377,23 @@ api.interceptors.response.use(
       } catch (_) {} // non-critical: best-effort clearAuth on 401
       captureError(new Error('Buyer 401: Unauthorized'), { url });
 
-      alert('인증이 만료되었습니다.\n다시 로그인해주세요.');
+      // 🛡️ 2026-04-28: alert 제거 (카톡 인앱이 alert 차단 → throw → 흰화면).
+      //   대신 toast 로 안내 + redirect (콘솔에는 로그).
+      console.warn('[Auth] 401 — 자동 로그아웃 후 로그인 페이지 이동');
       localStorage.setItem('loginReturnUrl', currentPath);
-      window.location.href = currentPath.startsWith('/seller')
-        ? '/seller/login'
-        : currentPath.startsWith('/admin')
-        ? '/admin/login'
-        : currentPath.startsWith('/agency')
-        ? '/agency/login'
-        : '/login';
+
+      // 셀러/어드민/에이전시 대시보드 영역만 강제 redirect.
+      // 일반 사용자(/, /products 등) 는 *현재 페이지 유지* + 401 reject.
+      //   그래야 카톡 인앱에서 비로그인 사용자가 홈 둘러보다 알림톡/위시리스트 등
+      //   호출 시 401 받아도 redirect 안 함 (UX 보호).
+      if (currentPath.startsWith('/seller')) {
+        window.location.href = '/seller/login';
+      } else if (currentPath.startsWith('/admin')) {
+        window.location.href = '/admin/login';
+      } else if (currentPath.startsWith('/agency')) {
+        window.location.href = '/agency/login';
+      }
+      // 일반 사용자: redirect 하지 않음 — 401 reject 만
       return Promise.reject(error);
     }
 
