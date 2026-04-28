@@ -1171,7 +1171,12 @@ app.all('/api/*', (c) => c.json({ success: false, error: 'Not found' }, 404));
 // index.html의 메타 태그를 동적으로 교체하여 응답
 // ============================================================
 
-const BOT_UA_REGEX = /googlebot|bingbot|yandex|baiduspider|twitterbot|facebookexternalhit|rogerbot|linkedinbot|embedly|quora link|showyoubot|outbrain|pinterest|slackbot|vkshare|w3c_validator|kakaotalk|kakaostory|naver|daumoa|daum|telegram|whatsapp|discord/i;
+// 🛡️ 2026-04-28 결정적 fix: kakaotalk/kakaostory/naver 제거.
+//   이들은 *일반 사용자의 인앱 브라우저* 라 SSR meta-only HTML 응답하면
+//   `window.location.href = canonical` 무한 reload + 흰화면.
+//   진짜 검색엔진 크롤러만 유지: googlebot/bingbot/yandex/baiduspider/yeti/naverbot/daumoa
+//   메신저 링크 preview 봇 유지: facebookexternalhit/twitterbot/linkedinbot/slackbot/whatsapp/telegram/discord
+const BOT_UA_REGEX = /googlebot|bingbot|yandex|baiduspider|twitterbot|facebookexternalhit|rogerbot|linkedinbot|embedly|quora link|showyoubot|outbrain|pinterest|slackbot|vkshare|w3c_validator|yeti|naverbot|daumoa|telegram|whatsapp|discord/i;
 
 const BASE_URL = 'https://live.ur-team.com';
 const DEFAULT_OG = {
@@ -1285,7 +1290,9 @@ app.get('*', async (c) => {
 </head>
 <body>
 <div id="root"></div>
-<script>window.location.href="${canonical}";</script>
+<!-- 🛡️ 2026-04-28: window.location.href 제거. 이전 코드: 같은 URL redirect →
+     봇으로 잘못 매칭된 일반 사용자가 무한 reload + 흰화면 (카톡 인앱 사고).
+     봇은 어차피 JS 실행 안 하므로 redirect 불필요. -->
 </body>
 </html>`;
 
