@@ -42,6 +42,20 @@ const CATEGORIES: { key: string; emoji: string; label: string; keywords: string[
 
 type SortBy = 'distance' | 'discount' | 'price' | 'rating'
 
+// 🛡️ 2026-04-28: 옵션 B — 카카오 Places 일반 맛집 (식사권 미출시)
+interface KakaoPlace {
+  id: string
+  place_name: string
+  category_name: string
+  phone: string
+  road_address_name: string
+  address_name: string
+  x: string // longitude (string)
+  y: string // latitude (string)
+  place_url: string
+  distance?: string // meters
+}
+
 // Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
 
 const REGIONS = [
@@ -74,6 +88,9 @@ export default function RestaurantMapPage() {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   const [category, setCategory] = useState<string>('')
   const [sortBy, setSortBy] = useState<SortBy>('discount')
+  // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
+  const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
+  const [suggestionFor, setSuggestionFor] = useState<KakaoPlace | null>(null)
 
   const kr = isKorea()
 
@@ -117,6 +134,24 @@ export default function RestaurantMapPage() {
       .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
   }, [])
+
+  // 🛡️ 2026-04-28: 옵션 B — 사용자 위치 기반 카카오 일반 맛집 자동 로드.
+  //  식사권 적은 단계에 빈 지도 문제 해결 + 수요 신호 (영입 신청) 수집.
+  //  핀 색상으로 구분 — 식사권 (분홍) / 일반 (회색).
+  useEffect(() => {
+    if (!userLoc || !kr) return
+    const cat = CATEGORIES.find(c => c.key === category)
+    const url = cat && cat.keywords.length > 0
+      ? `/api/kakao/place/search?query=${encodeURIComponent(cat.keywords[0] + ' 맛집')}&category_group_code=FD6&size=15`
+      : `/api/kakao/place/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&radius=1500&category=FD6&size=15`
+    api.get(url)
+      .then(r => {
+        if (r.data?.success && r.data.data?.documents) {
+          setKakaoPlaces(r.data.data.documents.slice(0, 15))
+        }
+      })
+      .catch(() => { /* silent */ })
+  }, [userLoc, kr, category])
 
   // 🛡️ 2026-04-28: 좌표 없는 식사권 자동 geocoding (카카오 주소 → lat/lng).
   //   셀러가 카카오 장소검색을 안 거치고 등록한 식사권은 lat/lng 비어 있어 핀 X.
@@ -271,7 +306,42 @@ export default function RestaurantMapPage() {
       overlaysRef.current.push(overlay)
     })
 
-    // 범위 맞추기
+    // 🛡️ 2026-04-28: 옵션 B — 카카오 일반 맛집 회색 핀 (식사권 미출시 표시)
+    kakaoPlaces.forEach(p => {
+      const lat = Number(p.y), lng = Number(p.x)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+      const safeName = escapeHtml(p.place_name || '')
+      const grayContent = document.createElement('div')
+      grayContent.innerHTML = `
+        <div style="
+          background: rgba(255,255,255,0.92);
+          color: #6b7280;
+          border: 1.5px dashed #d1d5db;
+          border-radius: 10px;
+          padding: 3px 8px;
+          font-size: 10px;
+          font-weight: 600;
+          white-space: nowrap;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+          cursor: pointer;
+          transform: translateY(-50%);
+        ">
+          ${safeName}
+          <span style="color:#9ca3af; margin-left:3px; font-size:9px;">+</span>
+        </div>
+      `
+      grayContent.addEventListener('click', () => setSuggestionFor(p))
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(lat, lng),
+        content: grayContent,
+        yAnchor: 1.3,
+        zIndex: 1, // 식사권 핀 (default 2) 보다 아래
+        map: mapInstance.current,
+      })
+      overlaysRef.current.push(overlay)
+    })
+
+    // 범위 맞추기 (식사권 우선, 없으면 일반 맛집)
     if (withCoords.length > 1) {
       const bounds = new window.kakao.maps.LatLngBounds()
       withCoords.forEach(r => bounds.extend(new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)))
@@ -279,8 +349,12 @@ export default function RestaurantMapPage() {
     } else if (withCoords.length === 1) {
       mapInstance.current.setCenter(new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng))
       mapInstance.current.setLevel(5)
+    } else if (kakaoPlaces.length > 0 && userLoc) {
+      // 식사권 0건 → 사용자 위치 중심으로
+      mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
+      mapInstance.current.setLevel(4)
     }
-  }, [sdkLoaded, withCoords, selected?.id])
+  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc])
 
   useEffect(() => { initMap() }, [initMap])
 
@@ -578,6 +652,116 @@ export default function RestaurantMapPage() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 🛡️ 옵션 B — 회색 핀 (일반 맛집) 클릭 모달 */}
+      {suggestionFor && (
+        <SuggestionModal
+          place={suggestionFor}
+          onClose={() => setSuggestionFor(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── 일반 맛집 클릭 시 모달 — 알림/영입 신청 + 길찾기 ─────────────────
+function SuggestionModal({ place, onClose }: { place: KakaoPlace; onClose: () => void }) {
+  const [phone, setPhone] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState<'invite' | 'notify' | null>(null)
+
+  async function submit(kind: 'invite' | 'notify') {
+    if (kind === 'notify' && !/^010-?\d{3,4}-?\d{4}$/.test(phone.replace(/-/g, ''))) {
+      toast.error('전화번호 형식: 010-0000-0000')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res = await api.post('/api/restaurant-suggestions', {
+        kakao_place_id: place.id,
+        place_name: place.place_name,
+        category_name: place.category_name,
+        road_address: place.road_address_name || place.address_name,
+        phone: place.phone,
+        lat: Number(place.y),
+        lng: Number(place.x),
+        kind,
+        user_phone: kind === 'notify' ? phone.replace(/-/g, '') : undefined,
+      })
+      if (res.data?.success) {
+        setDone(kind)
+        toast.success(kind === 'notify' ? '출시 시 알림드릴게요!' : '영입 신청 완료!')
+      } else {
+        toast.error(res.data?.error || '신청 실패')
+      }
+    } catch {
+      toast.error('네트워크 오류')
+    } finally { setSubmitting(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+        <div>
+          <p className="text-xs text-gray-500">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
+          <h3 className="text-lg font-bold text-gray-900">{place.place_name}</h3>
+          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            {place.road_address_name || place.address_name}
+            {place.distance && <span className="ml-1 text-pink-500">· {Math.round(Number(place.distance))}m</span>}
+          </p>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+          ⓘ 이 매장은 <strong>아직 식사권이 출시되지 않았어요</strong>. 출시되면 알려드릴까요?
+        </div>
+
+        {done === 'notify' ? (
+          <div className="text-center py-2 text-sm text-green-600 font-bold">✅ 출시 시 {phone} 로 알림드릴게요!</div>
+        ) : done === 'invite' ? (
+          <div className="text-center py-2 text-sm text-green-600 font-bold">✅ 영입 신청이 어드민에 전달됐어요!</div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-700">📨 출시 알림 받기 (선택)</label>
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="010-0000-0000"
+                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-pink-400 focus:outline-none"
+                />
+                <button
+                  onClick={() => submit('notify')}
+                  disabled={submitting || !phone.trim()}
+                  className="px-4 py-2.5 bg-pink-500 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+                >알림</button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => submit('invite')}
+              disabled={submitting}
+              className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-xl disabled:opacity-50"
+            >
+              🤝 이 매장 셀러 영입 신청
+            </button>
+          </>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <a
+            href={`https://map.kakao.com/link/to/${encodeURIComponent(place.place_name)},${place.y},${place.x}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold"
+          >
+            <Navigation className="w-4 h-4" /> 카카오맵 길찾기
+          </a>
+          <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium">닫기</button>
         </div>
       </div>
     </div>
