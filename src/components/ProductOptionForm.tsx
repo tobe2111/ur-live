@@ -82,8 +82,8 @@ export default function ProductOptionForm({
           </p>
           <div className="space-y-2">
             {options.map((option, index) => (
-              <div 
-                key={index}
+              <div
+                key={option.id ?? `${option.option_type}__${option.option_value}__${index}`}
                 className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
               >
                 <div className="flex-1 grid grid-cols-4 gap-2">

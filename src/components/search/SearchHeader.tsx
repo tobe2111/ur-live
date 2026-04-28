@@ -103,7 +103,7 @@ export default function SearchHeader({
             <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
               {suggestions.map((suggestion, index) => (
                 <button
-                  key={index}
+                  key={`${suggestion.type}-${suggestion.text}-${index}`}
                   onClick={() => handleSuggestionClick(suggestion.text)}
                   className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-50 last:border-b-0"
                 >

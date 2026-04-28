@@ -33,7 +33,7 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex">
           {images.map((src, index) => (
-            <div key={index} className="relative aspect-square w-full flex-none">
+            <div key={src || `slide-${index}`} className="relative aspect-square w-full flex-none">
               <img
                 src={src}
                 alt={`Product image ${index + 1}`}
@@ -48,9 +48,9 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
       {/* v4 Dot indicators */}
       {images.length > 1 && (
         <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-1">
-          {images.map((_, index) => (
+          {images.map((src, index) => (
             <button
-              key={index}
+              key={`dot-${src || index}`}
               aria-label={`이미지 ${index + 1}`}
               className="rounded-full transition-all duration-300"
               style={{
