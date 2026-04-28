@@ -8,6 +8,41 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 📊 최신 상태 요약 (2026-04-27 종료 시)
+
+| TD | 제목 | 상태 |
+|---|---|---|
+| TD-001 | D1 Migration CI | 🔴 사용자 액션 필요 (Cloudflare API token D1 권한) |
+| TD-002 | 시크릿 노출 | ✅ 해결 (4종 회전 + Toss 재발급) |
+| TD-003 | 유령 CF 프로젝트 | 🔴 사용자 액션 (Dashboard 정리) |
+| TD-004 | 이중 라우팅 | ✅ 해결 (dead /rollback 제거) |
+| TD-005 | 스키마 이중화 | 🟡 prep 완료 (migration 0233 — TD-001 대기) |
+| TD-006 | 거대 파일 worker/index.ts | ✅ 해결 (54.8% 감소, 6개 파일 분산) |
+| TD-007 | Auction 결제 reservation | 🟡 미해결 (1주 spec 작업) |
+| TD-008 | INTERNAL_CRON_TOKEN | 🟢 사용자 액션 (Pages Variables) |
+| TD-009 | Webhook 실패 모니터링 | ✅ 해결 (Sentry + getFailedStats) |
+| TD-010 | i18n 완성도 | ✅ 해결 (35건 fallback + 28건 keys) |
+| TD-011 | npm CVE | ✅ 해결 (xmldom DoS fix) |
+| TD-012 | Node.js 20 deprecation | ✅ 해결 (FORCE_NODE24) |
+| TD-013 | /api/seller 라우터 도표 | ✅ 해결 (CLAUDE.md 갱신) |
+| **🆕** | `/api/auth/id-token` IDOR | ✅ 즉시 해결 (commit 8cb3116) |
+
+**합계**: 14건 중 9건 해결 + 1건 prep + 4건 사용자 액션 대기.
+
+## 🎯 사용자 액션 우선순위
+
+1. **🔴 즉시 권장** — JWT_SECRET 회전 검토 (IDOR 취약 기간 토큰 무효화)
+2. **🔴 TD-001** — Cloudflare Dashboard → API Tokens → 기존 token 에 `Account > D1 > Edit` 권한 추가 → migrate.yml 수동 실행 (30분)
+3. **🟡 TD-008** — `INTERNAL_CRON_TOKEN` Pages Variables 등록 (5분, `openssl rand -base64 32`)
+4. **🟡 TD-003** — 유령 CF 프로젝트 (`ur-live` Worker, `ur-live-global`, `ur-live-cleanup-cron`) 정리 (1시간)
+5. **🟢 ALIMTALK_API_KEY** — Magic Link 식사권 알림톡 발송 활성화 (5분)
+
+TD-001 해결 시 자동 후속 가능:
+- migration 0233 적용 → 스키마 이중 컬럼 (stock_quantity, base_shipping_fee) drop → TD-005 마무리
+- 응급 ensure*Columns/Tables 패턴 10+ 곳 deprecate 가능
+
+---
+
 ## 🎉 2026-04-27 (저녁 2차) TD-006 worker/index.ts 분할 완료
 
 **Before**: 2787줄 단일 파일 (2026-04-22 사고의 직접 원인)
