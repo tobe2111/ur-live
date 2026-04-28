@@ -41,11 +41,19 @@ import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck(
 //   "FetchEvent resulted in a network error: a redirected response was used for
 //   a request whose redirect mode is not 'follow'"
 //   원인: vite-plugin-pwa 의 navigateFallback 가 카카오 OAuth redirect 도 가로챔.
-//   해결: 모든 SW 강제 unregister + 캐시 비우기. try-catch 로 storage 차단 환경 안전.
+//   해결: 옛 SW 강제 unregister + 캐시 비우기.
+//
+// 🛡️ 2026-04-28: push-sw.js (push-only, fetch 핸들러 없음) 는 보호.
+//   PushNotificationSetup 이 명시적으로 등록한 SW 는 unregister 대상 제외.
 try {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(r => { r.unregister().catch(() => {}) })
+      regs.forEach(r => {
+        const scriptUrl = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || ''
+        // push-sw.js 는 보호 (push 받기용, fetch 가로채기 없음 → OAuth 안전)
+        if (scriptUrl.includes('push-sw.js')) return
+        r.unregister().catch(() => {})
+      })
     }).catch(() => {})
     if ('caches' in window) {
       caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {})
