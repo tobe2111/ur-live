@@ -136,6 +136,7 @@ const AdminKakaoTestCallbackPage = lazy(() => import('./pages/admin/AdminKakaoTe
 const AdminSampleRequestsPage = lazy(() => import('./pages/admin/AdminSampleRequestsPage'))
 const AdminOperationsGuidePage = lazy(() => import('./pages/admin/AdminOperationsGuidePage'))
 const AdminBlogPage = lazy(() => import('./pages/AdminBlogPage'))
+const AdminNotificationSettingsPage = lazy(() => import('./pages/AdminNotificationSettingsPage'))
 const AdminAgencyPage = lazy(() => import('./pages/AdminAgencyPage'))
 const AdminSellerApprovalPage = lazy(() => import('./pages/AdminSellerApprovalPage'))
 const AdminAgencyCreatorApprovalPage = lazy(() => import('./pages/AdminAgencyCreatorApprovalPage'))
@@ -718,6 +719,12 @@ function AppContent() {
             <Route path="/admin/blog" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminBlogPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            {/* 🛡️ 2026-04-28: 알림 채널 설정 */}
+            <Route path="/admin/notification-settings" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminNotificationSettingsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/deals" element={

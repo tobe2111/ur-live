@@ -84,6 +84,7 @@ import { faqBotRoutes } from '../features/guides/api/faq-bot.routes';
 import { moderationRoutes } from '../features/moderation/api/moderation.routes';
 import { adminTikTokDiscoveryRoutes } from '../features/admin/api/admin-tiktok-discovery.routes';
 import { adminOpsInsightsRoutes } from '../features/admin/api/admin-ops-insights.routes';
+import { adminNotificationSettingsRoutes } from '../features/admin/api/admin-notification-settings.routes';
 import { adminBusinessMonitoringRoutes } from '../features/admin/api/admin-business-monitoring.routes';
 import { agencySelfEventsRoutes } from '../features/agency/api/agency-self-events.routes';
 import { promoteBoostsAgencyRoutes, promoteBoostsSellerRoutes } from '../features/agency/api/promote-boosts.routes';
@@ -751,6 +752,8 @@ app.route('/api/moderation', moderationRoutes);
 app.route('/api/admin/tiktok-discovery', adminTikTokDiscoveryRoutes);
 // 🛡️ 2026-04-27 운영 안정: 어드민 운영 인사이트 (부진 검출)
 app.route('/api/admin/ops-insights', adminOpsInsightsRoutes);
+// 🛡️ 2026-04-28: 알림 채널 설정 (어드민 대시보드)
+app.route('/api/admin/notification-settings', adminNotificationSettingsRoutes);
 // 🛡️ 2026-04-28: business-monitoring (gift + consignment 운영 통계)
 app.route('/api/admin/business-monitoring', adminBusinessMonitoringRoutes);
 // 🛡️ 2026-04-27 자사 이벤트 (매출 챌린지)

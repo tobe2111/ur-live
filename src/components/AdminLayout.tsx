@@ -69,8 +69,9 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/accounts',          label: '관리자 계정',   icon: UserCog },
       { path: '/admin/audit-log',         label: '감사 로그',     icon: Shield },
-      { path: '/admin/platform-settings', label: '플랫폼 설정',   icon: Settings },
-      { path: '/admin/alimtalk',          label: '브랜드메시지',  icon: Bell },
+      { path: '/admin/platform-settings',      label: '플랫폼 설정',   icon: Settings },
+      { path: '/admin/notification-settings',  label: '알림 채널 설정', icon: Bell },
+      { path: '/admin/alimtalk',               label: '브랜드메시지',  icon: Bell },
       { path: '/admin/sample-requests',   label: '샘플 신청',     icon: ClipboardList },
       { path: '/admin/kv-monitoring',     label: 'KV 모니터링',   icon: Monitor },
       { path: '/admin/cafe24',            label: 'Cafe24 연동',   icon: Store },
