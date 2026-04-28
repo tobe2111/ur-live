@@ -59,6 +59,8 @@ import { ordersRoutes as featureOrdersRoutes } from '../features/orders/api/orde
 import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
 import { pushRoutes } from '../features/push/api/push.routes';
 import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
+import { sellerKakaoLinkRoutes } from '../features/seller/api/seller-kakao-link.routes';
+import { sellerAlimtalkMgmtRoutes } from '../features/seller/api/seller-alimtalk-mgmt.routes';
 import { sellerPinRoutes } from '../features/seller/api/seller-pin.routes';
 import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes';
 import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
@@ -87,6 +89,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 // 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
+import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
 import { agencyCampaignsRoutes, recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { agencyIncentivesRoutes, calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -1606,6 +1609,10 @@ app.route('/api/sellers', sellersRouter);
 
 // Feature seller management (see /api/seller routing note above — non-overlapping sub-routes)
 app.route('/api/seller', sellerManagementRoutes);
+// 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
+app.route('/api/seller', sellerKakaoLinkRoutes);
+// 🛡️ 2026-04-28 TD-006 (split): /alimtalk* (account/balance/test/send/messages/charge)
+app.route('/api/seller', sellerAlimtalkMgmtRoutes);
 app.route('/api/seller', sellerPinRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller/analytics', sellerAnalyticsRoutes);
@@ -1854,6 +1861,8 @@ app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용 (내부�
 // ── 에이전시 ──
 app.route('/api/agency', agencyPinRoutes);
 app.route('/api/agency', agencyRoutes);
+// 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
+app.route('/api/agency', agencyKakaoLinkRoutes);
 // 🛡️ 2026-04-26: Agency P0 #4 캠페인 관리
 app.route('/api/agency/campaigns', agencyCampaignsRoutes);
 // 🛡️ 2026-04-26: Agency P0 #5 인센티브 규칙 엔진
