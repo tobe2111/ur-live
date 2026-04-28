@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
+import { toast } from '@/hooks/useToast'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { Activity, RefreshCw } from 'lucide-react'
@@ -240,10 +241,10 @@ function WebhookFailuresSection() {
       await api.post(`/api/admin/metrics/webhook-failures/${id}/retry`, {}, {
         headers: { Authorization: `Bearer ${adminToken}` }
       })
-      alert('재처리 큐에 추가됨')
+      toast.success('재처리 큐에 추가됨')
       load()
     } catch (e: any) {
-      alert(e?.response?.data?.error || '재시도 실패')
+      toast.error(e?.response?.data?.error || '재시도 실패')
     }
   }
 

@@ -192,7 +192,7 @@ function SettlementInvoicesSection() {
         window.open(blobUrl, '_blank')
         setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
       })
-      .catch(() => alert('송장 다운로드 실패'))
+      .catch(() => toast.error('송장 다운로드 실패'))
   }
 
   if (loading) return null

@@ -172,6 +172,17 @@ app.patch('/:id', async (c) => {
     `).bind(name ?? null, contact_name ?? null, phone ?? null, status ?? null, commission_rate ?? null, id).run()
   })
 
+  // 🛡️ 2026-04-28: 에이전시 측 알림 — status='active' 로 변경 시 (승인 처리)
+  if (status === 'active') {
+    try {
+      const { createDashboardNotification } = await import('@/features/notifications/api/dashboard-notifications.routes')
+      createDashboardNotification(
+        c.env.DB, 'agency', String(id), 'agency_approved',
+        '에이전시 승인 완료', '대시보드 사용을 시작할 수 있습니다', '/agency'
+      ).catch(() => {})
+    } catch { /* notification 실패는 무시 */ }
+  }
+
   return c.json({ success: true })
 })
 
