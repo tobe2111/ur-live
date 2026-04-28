@@ -83,34 +83,44 @@ function generateVoucherCode(): string {
 }
 
 // ── GET /api/group-buy/products ─────────────────────────────────────
+//   ?status=active|achieved|expired|all  (default: active)
+//   ?category=meal_voucher|beauty_voucher|health_voucher|all  (default: all = 3종 모두)
+//   🛡️ 2026-04-28: beauty/health 카테고리 추가 — meal 인프라 그대로 재활용.
 groupBuyRoutes.get('/products', async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
-  // 마감된 공동구매 자동 상태 업데이트
+  // 마감된 공동구매 자동 상태 업데이트 (3종 카테고리 모두 대상)
   try {
     await DB.prepare(`
       UPDATE products SET group_buy_status = 'expired', updated_at = CURRENT_TIMESTAMP
-      WHERE category = 'meal_voucher' AND group_buy_status = 'active'
+      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher')
+        AND group_buy_status = 'active'
         AND group_buy_deadline IS NOT NULL AND group_buy_deadline < datetime('now')
     `).run()
   } catch { /* ignore */ }
 
   const status = c.req.query('status') || 'active'
+  const categoryParam = c.req.query('category') || 'all'
+  const validCategories = ['meal_voucher', 'beauty_voucher', 'health_voucher']
+  const categories = categoryParam === 'all'
+    ? validCategories
+    : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
 
   const results = await cacheGet(
     c.env.SESSION_KV,
-    `group_buy_products:${status}`,
+    `group_buy_products:${status}:${categories.join(',')}`,
     async () => {
+      const placeholders = categories.map(() => '?').join(',')
       const { results } = await DB.prepare(`
         SELECT p.*, s.name as seller_name, s.profile_image as seller_avatar
         FROM products p
         LEFT JOIN sellers s ON p.seller_id = s.id
-        WHERE p.category = 'meal_voucher' AND p.is_active = 1
+        WHERE p.category IN (${placeholders}) AND p.is_active = 1
           AND (p.group_buy_status = ? OR ? = 'all')
         ORDER BY p.created_at DESC
         LIMIT 50
-      `).bind(status, status).all()
+      `).bind(...categories, status, status).all()
       return results ?? []
     },
     { ttl: 60, staleWhileRevalidate: 30 }

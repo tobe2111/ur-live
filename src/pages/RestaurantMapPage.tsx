@@ -89,6 +89,8 @@ export default function RestaurantMapPage() {
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   const [category, setCategory] = useState<string>('')
+  // 🛡️ 2026-04-28: 공구권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
+  const [voucherType, setVoucherType] = useState<'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher'>('all')
   const [sortBy, setSortBy] = useState<SortBy>('discount')
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
@@ -156,9 +158,9 @@ export default function RestaurantMapPage() {
     })
   }, [kr])
 
-  // 데이터 로드
+  // 데이터 로드 — voucherType 으로 카테고리 필터 (all / meal / beauty / health)
   useEffect(() => {
-    api.get('/api/group-buy/products', { params: { category: 'meal_voucher' } })
+    api.get('/api/group-buy/products', { params: { category: voucherType === 'all' ? 'all' : voucherType } })
       .then(r => {
         if (r.data.success) {
           setRestaurants(r.data.data || [])
@@ -166,7 +168,7 @@ export default function RestaurantMapPage() {
       })
       .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
-  }, [])
+  }, [voucherType])
 
   // 🛡️ 2026-04-28: 옵션 B — 사용자 위치 기반 카카오 일반 맛집 자동 로드.
   //  식사권 적은 단계에 빈 지도 문제 해결 + 수요 신호 (영입 신청) 수집.
@@ -459,6 +461,29 @@ export default function RestaurantMapPage() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* 🛡️ 2026-04-28: 공구권 카테고리 칩 (식사/뷰티/헬스) — MVP */}
+        <div className="flex gap-2 px-4 pt-1 pb-2 overflow-x-auto no-scrollbar">
+          {[
+            { key: 'all', label: '전체', emoji: '✨' },
+            { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
+            { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
+            { key: 'health_voucher', label: '헬스', emoji: '💪' },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setVoucherType(t.key as typeof voucherType)}
+              className={`flex items-center gap-1 px-3.5 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
+                voucherType === t.key
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-400'
+              }`}
+            >
+              <span>{t.emoji}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* 지역 필터 칩 */}

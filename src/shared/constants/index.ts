@@ -104,3 +104,25 @@ export const ALIGO_API_BASE = 'https://kakaoapi.aligo.in/akv10';
 export const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 export const YOUTUBE_OAUTH_BASE = 'https://oauth2.googleapis.com';
 export const TRACKER_GRAPHQL_URL = 'https://apis.tracker.delivery/graphql';
+
+// ============================================================
+// 🛡️ 2026-04-28: 공구권 카테고리 (식사/뷰티/헬스)
+// products.category 의 텍스트 enum. SQL 에선 항상 IN (...) 으로 매칭.
+// ============================================================
+export const VOUCHER_CATEGORIES = ['meal_voucher', 'beauty_voucher', 'health_voucher'] as const;
+export type VoucherCategory = typeof VOUCHER_CATEGORIES[number];
+
+export const VOUCHER_CATEGORY_LABELS: Record<VoucherCategory, string> = {
+  meal_voucher: '식사 공구권',
+  beauty_voucher: '뷰티 공구권',
+  health_voucher: '헬스 공구권',
+};
+
+export const VOUCHER_CATEGORY_ICONS: Record<VoucherCategory, string> = {
+  meal_voucher: '🍽️',
+  beauty_voucher: '💇',
+  health_voucher: '💪',
+};
+
+// SQL IN 절용 SQL placeholder (?, ?, ?) — bind 인자는 [...VOUCHER_CATEGORIES]
+export const VOUCHER_CATEGORY_SQL_PLACEHOLDERS = VOUCHER_CATEGORIES.map(() => '?').join(',');
