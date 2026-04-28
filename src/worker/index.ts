@@ -1171,12 +1171,14 @@ app.all('/api/*', (c) => c.json({ success: false, error: 'Not found' }, 404));
 // index.html의 메타 태그를 동적으로 교체하여 응답
 // ============================================================
 
-// 🛡️ 2026-04-28 결정적 fix: kakaotalk/kakaostory/naver 제거.
-//   이들은 *일반 사용자의 인앱 브라우저* 라 SSR meta-only HTML 응답하면
-//   `window.location.href = canonical` 무한 reload + 흰화면.
+// 🛡️ 2026-04-28 결정적 fix: 일반 카톡 인앱 (kakaotalk/kakaostory/naver) 제거.
+//   이들은 *일반 사용자의 인앱 브라우저* 라 SSR meta-only HTML 응답하면 흰화면 + 무한 reload.
 //   진짜 검색엔진 크롤러만 유지: googlebot/bingbot/yandex/baiduspider/yeti/naverbot/daumoa
-//   메신저 링크 preview 봇 유지: facebookexternalhit/twitterbot/linkedinbot/slackbot/whatsapp/telegram/discord
-const BOT_UA_REGEX = /googlebot|bingbot|yandex|baiduspider|twitterbot|facebookexternalhit|rogerbot|linkedinbot|embedly|quora link|showyoubot|outbrain|pinterest|slackbot|vkshare|w3c_validator|yeti|naverbot|daumoa|telegram|whatsapp|discord/i;
+//   메신저 링크 preview 봇 유지 (link card 표시용):
+//     - facebookexternalhit/twitterbot/linkedinbot/slackbot/whatsapp/telegram/discord
+//     - 🛡️ 2026-04-28 추가: KakaoTalk-Scrap (카톡 link preview 봇) — 카톡 채팅방
+//       link card 의 제목/이미지/설명 표시. 일반 카톡 인앱 'KAKAOTALK' 와 다른 UA.
+const BOT_UA_REGEX = /googlebot|bingbot|yandex|baiduspider|twitterbot|facebookexternalhit|rogerbot|linkedinbot|embedly|quora link|showyoubot|outbrain|pinterest|slackbot|vkshare|w3c_validator|yeti|naverbot|daumoa|telegram|whatsapp|discord|KakaoTalk-Scrap/i;
 
 const BASE_URL = 'https://live.ur-team.com';
 const DEFAULT_OG = {
