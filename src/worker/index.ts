@@ -654,6 +654,8 @@ app.use('/api/banners', edgeCache(300), cacheControl(300));    // 5 min
 app.use('/api/shorts', edgeCache(60), cacheControl(60));                // 쇼츠 피드 1min
 app.use('/api/reviews/product/*', edgeCache(120), cacheControl(120));   // 리뷰 목록 2min (리뷰 쓰기는 POST 라 캐시 무영향)
 app.use('/api/restaurants', edgeCache(300), cacheControl(300));         // 식당 목록 5min
+// 🛡️ 2026-04-28: 메인페이지 통합 endpoint — 1회 호출 + 1분 edge cache
+app.use('/api/home/bundle', edgeCache(60), cacheControl(60));
 
 // ============================================================
 // Rate limits for read/write endpoints

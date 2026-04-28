@@ -127,3 +127,63 @@ publicUtilityRoutes.get('/api/version', async (c) => {
     return c.json({ success: false, version: null, secrets }, 200)
   }
 })
+
+// 🛡️ 2026-04-28: 메인페이지 perf — 6개 분리 호출 → 1개 통합
+//   /api/streams x3 + /api/group-buy/products + /api/products x2 → /api/home/bundle
+//   서버 측 D1 호출은 동일 (병렬), 클라이언트 round-trip 6→1 (50-300ms 절감)
+publicUtilityRoutes.get('/api/home/bundle', async (c) => {
+  const DB = c.env.DB
+  const safeAll = async <T>(p: Promise<T>): Promise<T | null> => p.catch(() => null)
+  try {
+    const [live, scheduled, ended, mealVouchers, featured, latest] = await Promise.all([
+      safeAll(DB.prepare(
+        `SELECT id, title, youtube_video_id, viewer_count, current_viewers, status, seller_id,
+                created_at, scheduled_at, current_product_id
+         FROM live_streams WHERE status='live' ORDER BY current_viewers DESC LIMIT 12`
+      ).all<Record<string, unknown>>()),
+      safeAll(DB.prepare(
+        `SELECT id, title, youtube_video_id, status, seller_id, scheduled_at, created_at
+         FROM live_streams WHERE status='scheduled' ORDER BY scheduled_at ASC LIMIT 8`
+      ).all<Record<string, unknown>>()),
+      safeAll(DB.prepare(
+        `SELECT id, title, youtube_video_id, status, seller_id, ended_at, created_at
+         FROM live_streams WHERE status='ended' ORDER BY ended_at DESC LIMIT 6`
+      ).all<Record<string, unknown>>()),
+      safeAll(DB.prepare(
+        `SELECT id, name, price, original_price, image_url, restaurant_name, restaurant_address,
+                group_buy_target, group_buy_current, group_buy_deadline, category
+         FROM products
+         WHERE category='meal_voucher' AND is_active=1
+           AND (group_buy_status='active' OR group_buy_status IS NULL)
+         ORDER BY created_at DESC LIMIT 20`
+      ).all<Record<string, unknown>>()),
+      safeAll(DB.prepare(
+        `SELECT id, name, price, original_price, image_url, category, seller_id,
+                view_count, sold_count, avg_rating, review_count
+         FROM products
+         WHERE is_active=1
+         ORDER BY view_count DESC, created_at DESC LIMIT 12`
+      ).all<Record<string, unknown>>()),
+      safeAll(DB.prepare(
+        `SELECT id, name, price, original_price, image_url, category, seller_id, created_at
+         FROM products
+         WHERE is_active=1
+         ORDER BY created_at DESC LIMIT 8`
+      ).all<Record<string, unknown>>()),
+    ])
+
+    return c.json({
+      success: true,
+      data: {
+        live: live?.results ?? [],
+        scheduled: scheduled?.results ?? [],
+        ended: ended?.results ?? [],
+        meal_vouchers: mealVouchers?.results ?? [],
+        featured: featured?.results ?? [],
+        latest: latest?.results ?? [],
+      },
+    })
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500)
+  }
+})

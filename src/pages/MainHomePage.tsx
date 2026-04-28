@@ -216,20 +216,21 @@ export default function MainHomePage() {
 
   useEffect(() => {
     document.title = '유어딜 - 라이브 커머스'
-    Promise.allSettled([
-      api.get('/api/streams?status=live'),
-      api.get('/api/streams?status=scheduled'),
-      api.get('/api/streams?status=ended&limit=6'),
-      api.get('/api/group-buy/products?status=active'),
-      api.get('/api/products?limit=12&sort=ranking&featured=true'),
-      api.get('/api/products?limit=8&sort=latest'),  // 🛡️ 신상품
-    ]).then(([liveRes, schedRes, endedRes, mealRes, prodRes, newRes]) => {
-      if (liveRes.status === 'fulfilled' && liveRes.value.data.success) setLiveStreams(liveRes.value.data.data || [])
-      if (schedRes.status === 'fulfilled' && schedRes.value.data.success) setScheduledStreams(schedRes.value.data.data || [])
-      if (endedRes.status === 'fulfilled' && endedRes.value.data.success) setEndedStreams(endedRes.value.data.data || [])
-      if (mealRes.status === 'fulfilled' && mealRes.value.data.success) setMealProducts(mealRes.value.data.data || [])
-      if (prodRes.status === 'fulfilled' && prodRes.value.data.success) setProducts(prodRes.value.data.data || [])
-    }).finally(() => setLoading(false))
+    // 🛡️ 2026-04-28: 6 calls → 1 (/api/home/bundle) — 1분 edge cache + swr.
+    //   첫 진입: 1회 round-trip (D1 6쿼리 병렬). 이후 진입: edge cache hit (수십 ms).
+    api.get('/api/home/bundle')
+      .then(res => {
+        if (!res.data.success) return
+        const d = res.data.data || {}
+        if (Array.isArray(d.live)) setLiveStreams(d.live)
+        if (Array.isArray(d.scheduled)) setScheduledStreams(d.scheduled)
+        if (Array.isArray(d.ended)) setEndedStreams(d.ended)
+        if (Array.isArray(d.meal_vouchers)) setMealProducts(d.meal_vouchers)
+        if (Array.isArray(d.featured)) setProducts(d.featured)
+        if (Array.isArray(d.latest)) setNewProducts(d.latest)
+      })
+      .catch(() => { /* swallow — 빈 페이지 fallback */ })
+      .finally(() => setLoading(false))
   }, [])
 
   // Nearby 지역 필터링

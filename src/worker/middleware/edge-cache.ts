@@ -46,7 +46,12 @@ export function edgeCache(ttlSeconds: number) {
     // 성공 응답만 캐싱 (4xx/5xx 캐싱 안 함)
     if (c.res.status >= 200 && c.res.status < 300) {
       const response = c.res.clone();
-      response.headers.set('Cache-Control', `public, max-age=${ttlSeconds}`);
+      // 🛡️ 2026-04-28: stale-while-revalidate 추가 (browser cache 활용)
+      //  - max-age 동안 즉시 사용 (서버 호출 0)
+      //  - 그 후 swr 동안 stale 사용 + 백그라운드 refresh → 체감 속도 ↑
+      //  - swr = 5분 (정적 콘텐츠 정도면 충분, 신선도 너무 떨어지지 않음)
+      const swr = Math.max(60, Math.min(600, ttlSeconds * 10));
+      response.headers.set('Cache-Control', `public, max-age=${ttlSeconds}, stale-while-revalidate=${swr}`);
       response.headers.set('X-Cache-Status', 'MISS');
       // 백그라운드에서 저장 (응답 블로킹 안 함)
       c.executionCtx.waitUntil(cache.put(cacheKey, response));
