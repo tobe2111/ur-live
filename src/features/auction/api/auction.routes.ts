@@ -203,12 +203,27 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
     .bind(auctionId, user.id, user.name || '익명', amount).run();
 
   // conditional update: current_price < amount 일 때만 갱신 (동시 입찰 race condition 방지)
+  // 이전 winner 정보 미리 저장 (outbid 알림용)
+  const previousWinnerId = auction.winner_user_id;
+
   const updateResult = await DB.prepare(
     'UPDATE live_auctions SET current_price = ?, bid_count = bid_count + 1, winner_user_id = ?, winner_name = ? WHERE id = ? AND current_price < ?'
   ).bind(amount, user.id, user.name || '익명', auctionId, amount).run();
 
   if (!updateResult.meta.changes) {
     return c.json({ success: false, error: '다른 입찰자가 더 높은 금액을 입찰했습니다. 다시 시도해주세요.' }, 409);
+  }
+
+  // 🛡️ 2026-04-28: 이전 최고 입찰자가 본인이 아니면 outbid 푸시 알림 (best-effort)
+  if (previousWinnerId && previousWinnerId !== userIdStr) {
+    try {
+      const { sendSystemPush } = await import('../../../lib/system-push');
+      sendSystemPush(c.env, 'user', previousWinnerId, {
+        title: '경매 입찰 갱신',
+        body: `${auction.title}: ${amount.toLocaleString()}원으로 더 높은 입찰자가 나타났어요`,
+        url: `/live/${auction.stream_id}`,
+      }).catch(() => {});
+    } catch { /* push module load fail — ignore */ }
   }
 
   // 🛡️ 배치 115: hold 관리
@@ -312,6 +327,19 @@ auctionRoutes.post('/:id/end', requireAuth(), async (c) => {
   }
 
   const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
+
+  // 🛡️ 2026-04-28: 낙찰자에게 결제 안내 푸시 (best-effort)
+  if (auction?.winner_user_id) {
+    try {
+      const { sendSystemPush } = await import('../../../lib/system-push');
+      sendSystemPush(c.env, 'user', auction.winner_user_id, {
+        title: '경매 낙찰 🎉',
+        body: `${auction.title} ${auction.current_price.toLocaleString()}원에 낙찰됐어요. 결제를 진행해주세요.`,
+        url: `/live/${auction.stream_id}`,
+      }).catch(() => {});
+    } catch { /* ignore */ }
+  }
+
   return c.json({ success: true, data: auction });
 });
 
@@ -507,6 +535,16 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
     "INSERT INTO auction_winner_history (auction_id, user_id, user_name, amount, reason, notes) VALUES (?, ?, ?, ?, 'promoted', ?)"
   ).bind(auctionId, newWinner.user_id, newWinner.user_name, newWinner.amount, `${forfeitedName} 불이행으로 승격`).run().catch(swallow('auction:api:auction'));
 
+  // 🛡️ 2026-04-28: 차순위 승격된 새 winner 에게 push 알림
+  try {
+    const { sendSystemPush } = await import('../../../lib/system-push');
+    sendSystemPush(c.env, 'user', newWinner.user_id, {
+      title: '경매 차순위 승격 🎉',
+      body: `이전 낙찰자 결제 불이행으로 ${newWinner.amount.toLocaleString()}원에 승격됐어요. 결제 진행해주세요.`,
+      url: `/auction/${auctionId}`,
+    }).catch(() => {});
+  } catch { /* ignore */ }
+
   return c.json({
     success: true,
     data: {
@@ -674,6 +712,16 @@ auctionRoutes.post('/:id/promote-runner-up', requireAuth(), async (c) => {
   await DB.prepare(
     "INSERT INTO auction_holds (auction_id, user_id, amount, status) VALUES (?, ?, ?, 'active')"
   ).bind(auctionId, runnerUp.user_id, runnerUp.amount).run();
+
+  // 🛡️ 2026-04-28: 승격된 새 winner 에게 push 알림
+  try {
+    const { sendSystemPush } = await import('../../../lib/system-push');
+    sendSystemPush(c.env, 'user', runnerUp.user_id, {
+      title: '경매 차순위 승격 🎉',
+      body: `이전 낙찰자 포기로 ${runnerUp.amount.toLocaleString()}원에 승격됐어요. 결제 진행해주세요.`,
+      url: `/auction/${auctionId}`,
+    }).catch(() => {});
+  } catch { /* ignore */ }
 
   return c.json({
     success: true,

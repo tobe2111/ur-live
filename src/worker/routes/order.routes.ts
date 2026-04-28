@@ -295,7 +295,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
           const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk');
           sendSystemAlimtalk(c.env, seller.phone, 'new_order',
             `[유어딜] ${seller.name}님,\n새 주문이 들어왔어요.\n주문번호: ${order.order_number}\n대시보드에서 확인 후 빠르게 발송 처리해주세요.`
-          ).catch(() => {});
+          ).catch(swallow('order:new-order-alimtalk'));
         }
       } catch { /* ignore */ }
     }

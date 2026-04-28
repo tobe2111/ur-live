@@ -56,6 +56,10 @@ async function ensureTable(db: D1Database) {
     // 후원·리뷰
     ['donation_received',      1, 0, 1, 1, '[셀러] 후원 받음 (라이브)'],
     ['new_review',             1, 0, 0, 1, '[셀러] 새 리뷰 등록'],
+    // 경매
+    ['auction_won',            1, 0, 0, 1, '[user] 경매 낙찰 (결제 안내)'],
+    ['auction_outbid',         0, 0, 0, 1, '[user] 더 높은 입찰자 등장 (push 권장)'],
+    ['auction_promoted',       1, 0, 0, 1, '[user] 차순위 승격 낙찰'],
     // 재고·딜
     ['low_stock',              1, 0, 0, 1, '[셀러] 재고 부족 (5개 이하)'],
     ['deal_charged',           1, 0, 0, 0, '[어드민] 딜 충전'],

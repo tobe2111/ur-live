@@ -44,7 +44,7 @@
 | TD-004 | 이중 라우팅 | ✅ 해결 (dead /rollback 제거) |
 | TD-005 | 스키마 이중화 | 🟡 prep 완료 (migration 0233 — TD-001 대기) |
 | TD-006 | 거대 파일 worker/index.ts | ✅ 해결 (54.8% 감소, 6개 파일 분산) |
-| TD-007 | Auction 결제 reservation | 🟡 미해결 (1주 spec 작업) |
+| TD-007 | Auction 결제 reservation | ✅ 해결 (auction_holds escrow + forfeit + promote-runner-up + winner-paid + 알림) |
 | TD-008 | INTERNAL_CRON_TOKEN | 🟢 사용자 액션 (Pages Variables) |
 | TD-009 | Webhook 실패 모니터링 | ✅ 해결 (Sentry + getFailedStats) |
 | TD-010 | i18n 완성도 | ✅ 해결 (35건 fallback + 28건 keys) |
@@ -284,23 +284,24 @@ TD-001 해결 시 자동 후속 가능:
 
 ---
 
-### TD-007: Auction 결제 capacity reservation 부재
-**문제:**
-- `/api/auction/:id/bid` 는 입찰만 받고 결제 금액 예약 안 함
-- 낙찰자가 결제 거부 시 차순위 자동 승격 없음
-- 실제 escrow 시스템 없음
+### TD-007: Auction 결제 capacity reservation — ✅ **2026-04-28 해결**
 
-**코드 위치:** `src/features/auction/api/auction.routes.ts:99` — TODO 주석 있음
+**해결 내역:**
+- `auction_holds` 테이블 (active/released/consumed) — deal balance escrow
+- `getAvailableBalance()` — balance - active holds 합계
+- 입찰 시 hold 자동 생성 + outbid 시 자동 해제
+- self-outbid 시 본인 이전 hold 해제
+- `/forfeit-winner` — 결제 불이행 차순위 자동 승격 + winner_history 기록
+- `/promote-runner-up` — 차순위 수동 승격
+- `/winner-paid` — hold consume (수동 트리거)
+- webhook handlePaymentConfirmed — user_id + current_price 매칭으로 자동 hold consume
+- `/release-hold` — 낙찰자 구매 포기
+- `/holds/me` — UI 표시 (활성 hold + 가용 balance)
+- 알림 (2026-04-28 마무리): outbid push / 낙찰 push / 승격 push
 
-**영향:** 경매 사용 시 낙찰자가 지불 안 하면 deal 무효.
-
-**해결법:**
-- Deal balance 를 입찰 시 예약 (hold)
-- 상회 입찰 시 기존 예약 해제 + 새 예약
-- 경매 종료 시 낙찰자만 확정 결제
-
-**예상 작업 시간:** 1주
-**소유자:** 결제 팀
+**잔여 (Low priority):**
+- 경매 자동 종료 cron 미구현 — 현재는 lazy (다음 GET/POST 시 status='ended')
+  → 입찰 0건으로 끝나면 status='active' 채로 남음 (실해 X, cosmetic)
 
 ---
 

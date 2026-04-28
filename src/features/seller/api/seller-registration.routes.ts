@@ -178,7 +178,7 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
         sendSystemAlimtalk(c.env, phone, 'seller_registered',
           `[유어딜] 안녕하세요 ${name}님,\n셀러 가입 신청이 접수되었어요.\n1~3일 내 검토 후 결과를 안내드립니다.`
-        ).catch(() => {});
+        ).catch(swallow('seller-registration:applicant-alimtalk'));
       } catch { /* ignore */ }
     }
 

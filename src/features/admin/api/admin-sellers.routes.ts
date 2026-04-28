@@ -22,6 +22,7 @@ import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { swallow } from '@/worker/utils/swallow';
 
 export const adminSellersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -219,7 +220,7 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
         sendSystemAlimtalk(c.env, phone, 'seller_approved',
           `[유어딜] ${sellerName}님,\n셀러 가입이 승인되었어요!\n지금 바로 판매를 시작해보세요.`
-        ).catch(() => {});
+        ).catch(swallow('admin-sellers:approve-alimtalk'));
       }
     } catch { /* ignore */ }
 

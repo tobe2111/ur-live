@@ -250,7 +250,7 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
       const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
       sendSystemAlimtalk(c.env, phone, 'agency_registered',
         `[유어딜] ${contact_name}님,\n에이전시 가입 신청이 접수되었어요.\n1~3일 내 검토 후 결과를 안내드립니다.`
-      ).catch(() => {})
+      ).catch(swallow('agency:applicant-alimtalk'))
     } catch { /* ignore */ }
   }
 
