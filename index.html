@@ -4,6 +4,34 @@
     <meta charset="UTF-8" />
     <!-- WCAG 1.4.4: pinch-zoom is required for accessibility. Do NOT re-add maximum-scale/user-scalable=no. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- 🛡️ 2026-04-28: 카카오톡 인앱 → 외부 브라우저 강제 redirect (ES5, 모듈 로드 전 실행).
+         main.tsx 의 redirect 는 ESM import 가 실행돼야 동작 → 옛 WebView/SyntaxError 케이스
+         에서 무력. 이 inline script 는 모든 모듈/CSS 보다 먼저 실행돼 흰화면 자체 회피. -->
+    <script>
+      (function() {
+        try {
+          var ua = navigator.userAgent || '';
+          if (!/KAKAOTALK/i.test(ua)) return;
+          // sessionStorage 가드 (무한 redirect 방지)
+          try {
+            if (sessionStorage.getItem('ur_kakao_external_v1') === '1') return;
+            sessionStorage.setItem('ur_kakao_external_v1', '1');
+          } catch (e) { /* storage blocked, proceed */ }
+          var url = window.location.href;
+          var isIOS = /iPhone|iPad|iPod/i.test(ua);
+          if (isIOS) {
+            window.location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
+          } else {
+            var t = url.replace(/^https?:\/\//, '');
+            window.location.href = 'intent://' + t + '#Intent;scheme=https;package=com.android.chrome;end';
+          }
+          // 화면을 비워서 깜빡임 최소화
+          document.write('<div style="padding:24px;text-align:center;font-family:sans-serif;color:#333;">외부 브라우저로 이동 중...</div>');
+        } catch (e) { /* never break the page on detect failure */ }
+      })();
+    </script>
+
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -70,7 +98,28 @@
   </head>
   <body style="background-color:#020202">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[9999] focus:bg-white focus:p-4 focus:text-blue-600 focus:font-bold">본문 바로가기</a>
-    <div id="root" role="application" aria-label="유어딜 라이브 커머스"></div>
+    <div id="root" role="application" aria-label="유어딜 라이브 커머스">
+      <!-- 🛡️ 2026-04-28: React 마운트 실패 / 모듈 로드 지연 시 흰화면 대신 placeholder.
+           React 가 마운트되면 자동으로 덮어쓰임 (createRoot.render). -->
+      <div id="ur-pre-react" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#020202;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+        <div style="text-align:center;padding:24px;">
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin-bottom:10px;">유어딜</div>
+          <div style="font-size:13px;color:#888;">로딩 중...</div>
+          <div id="ur-slow-hint" style="display:none;font-size:11px;color:#666;margin-top:24px;max-width:280px;line-height:1.5;">
+            10초 이상 멈춰있다면 브라우저 캐시를 비우거나<br/>다른 브라우저(Chrome/Safari)로 열어주세요.
+            <br/><br/>
+            <a href="javascript:location.reload()" style="color:#4a9eff;text-decoration:none;">↻ 새로고침</a>
+          </div>
+        </div>
+      </div>
+      <script>
+        // 8초 후에도 placeholder 가 남아있으면 (React 마운트 실패) 사용자에게 안내
+        setTimeout(function() {
+          var hint = document.getElementById('ur-slow-hint');
+          if (hint) hint.style.display = 'block';
+        }, 8000);
+      </script>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
