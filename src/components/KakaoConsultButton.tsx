@@ -24,7 +24,8 @@ export default function KakaoConsultButton() {
   if (isDashboard || isFullScreen) return null
 
   return (
-    <div className="fixed bottom-20 left-0 right-0 z-40 px-4 pointer-events-none">
+    <div className="fixed bottom-20 left-0 right-0 z-40 px-4 pr-5 pointer-events-none">
+      {/* 🛡️ 2026-04-28: pr-5 로 우측 여백 보강 (모바일에서 화면 벽에 너무 붙던 문제) */}
       <div className="max-w-[430px] mx-auto flex justify-end">
         <a
           href={KAKAO_CHAT_URL}

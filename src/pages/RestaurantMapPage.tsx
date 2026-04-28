@@ -541,17 +541,13 @@ export default function RestaurantMapPage() {
         </div>
       </div>
 
-      {/* ═══ 지도 / 목록 토글 ═══ */}
-      <div className="flex-1 relative overflow-hidden">
+      {/* ═══ 지도 (위 50vh) + 목록 (아래) 동시 표시 ═══
+          🛡️ 2026-04-28: 토글 → 동시 표시 패턴 (카카오맵/네이버맵 스타일).
+            지도와 목록을 같이 보면서, 목록 부분 자유 스크롤 가능. */}
+      <div className="relative shrink-0" style={{ height: '50vh', minHeight: 280 }}>
         {/* 카카오맵 */}
         {sdkLoaded && window.kakao?.maps ? (
-          <div
-            ref={mapRef}
-            className={`absolute inset-0 transition-transform duration-300 ${
-              !mapView ? '-translate-y-full' : 'translate-y-0'
-            }`}
-            style={{ height: '100%' }}
-          />
+          <div ref={mapRef} className="absolute inset-0" />
         ) : (
           <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center">
             <MapPin className="w-12 h-12 text-gray-300 mb-3" />
@@ -570,7 +566,7 @@ export default function RestaurantMapPage() {
         )}
 
         {/* 선택된 맛집 카드 (지도 위 오버레이) */}
-        {selected && mapView && (
+        {selected && (
           <div className="absolute bottom-4 left-4 right-4 z-30 animate-in slide-in-from-bottom duration-200">
             <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4">
               <button onClick={() => setSelected(null)} className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200">
@@ -653,29 +649,11 @@ export default function RestaurantMapPage() {
           </div>
         )}
 
-        {/* 지도/목록 전환 FAB */}
-        <button
-          onClick={() => setMapView(!mapView)}
-          className="absolute top-4 right-4 z-30 flex items-center gap-1.5 px-4 py-2.5 bg-white rounded-full shadow-lg border border-gray-200 text-sm font-semibold text-gray-700 active:scale-95 transition-transform"
-        >
-          {mapView ? (
-            <>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
-              목록
-            </>
-          ) : (
-            <>
-              <MapPin className="w-4 h-4" />
-              지도
-            </>
-          )}
-        </button>
+      </div>
 
-        {/* 목록 뷰 */}
-        <div className={`absolute inset-0 bg-gray-50 overflow-y-auto transition-transform duration-300 ${
-          mapView ? 'translate-y-full' : 'translate-y-0'
-        }`}>
-          <div className="px-4 py-4">
+      {/* ═══ 목록 (지도 아래) — flex-1 로 자연 스크롤 ═══ */}
+      <div className="flex-1 bg-gray-50 overflow-y-auto">
+        <div className="px-4 py-4">
             {/* 통계 */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[16px] font-bold text-gray-900">
@@ -753,7 +731,6 @@ export default function RestaurantMapPage() {
             )}
           </div>
         </div>
-      </div>
 
       {/* 🛡️ 옵션 B — 회색 핀 (일반 맛집) 클릭 모달 */}
       {suggestionFor && (
