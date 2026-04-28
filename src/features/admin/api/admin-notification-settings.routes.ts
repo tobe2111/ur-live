@@ -47,6 +47,7 @@ async function ensureTable(db: D1Database) {
     ['order_delivered',        1, 0, 0, 1, '[셀러+어드민] 배송 완료'],
     ['purchase_confirmed',     1, 0, 0, 1, '[셀러] 구매 확정 (정산 가능)'],
     ['return_request',         1, 1, 0, 1, '[셀러+어드민] 반품 신청'],
+    ['order_cancelled',        1, 0, 0, 1, '[셀러+어드민] 주문 취소'],
     ['deal_payment',           1, 0, 0, 1, '[어드민] 딜 결제'],
     // 정산
     ['settlement_completed',   1, 1, 0, 1, '[셀러] 정산 완료'],

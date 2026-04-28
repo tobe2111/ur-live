@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { swallow } from '../utils/swallow';
+import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 
 const stripeRouter = new Hono<{ Bindings: Env }>();
 
@@ -201,6 +202,9 @@ stripeRouter.post('/webhook', async (c) => {
         await DB.prepare(
           "UPDATE orders SET status = 'FAILED', payment_status = 'failed', updated_at = datetime('now') WHERE order_number = ?"
         ).bind(orderNumber).run();
+
+        // 🛡️ 2026-04-28: 어드민에 결제 실패 알림 (운영 모니터링)
+        createDashboardNotification(DB, 'admin', null, 'payment_failed', '결제 실패', `주문번호: ${orderNumber} (Stripe)`, '/admin/orders').catch(swallow('stripe:notify-payment-failed'));
       }
     }
 

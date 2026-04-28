@@ -18,6 +18,7 @@ import { sendAlert } from '../utils/alerts';
 import { rateLimit } from '../middleware/rate-limit';
 import { swallow } from '../utils/swallow';
 import { captureException } from '../utils/sentry';
+import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 
 // ============================================================
 // Order Notification Helper
@@ -568,6 +569,18 @@ async function handlePaymentFailed(
 
   await sendOrderNotification(orderRepo, orderNumber, 'failed', env)
     .catch(err => console.error('[WEBHOOK] Notification failed:', err));
+
+  // 🛡️ 2026-04-28: 어드민에 결제 실패 대시보드 알림
+  createDashboardNotification(
+    env.DB,
+    'admin',
+    null,
+    'payment_failed',
+    '결제 실패 (Toss)',
+    `${orderNumber}: ${data.failureCode ?? 'UNKNOWN'} ${data.failureMessage ?? ''}`,
+    '/admin/orders'
+  ).catch(swallow('webhook:notify-payment-failed'));
+
   console.log('[WEBHOOK] PAYMENT_FAILED_COMPLETE', { orderNumber });
 }
 

@@ -239,6 +239,10 @@ adminSellersRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     await executeQuery(DB, `UPDATE sellers SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     await writeAuditLog(c, { action: 'reject_seller', targetType: 'seller', targetId: sellerId, after: { status: 'rejected', reason } });
+
+    // 🛡️ 2026-04-28: 셀러에게 거절 알림 (대시보드)
+    createDashboardNotification(DB, 'seller', String(sellerId), 'seller_rejected', '셀러 가입 거절', reason ? `사유: ${reason}` : '관리자에게 문의해주세요', '/seller').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
+
     return c.json({ success: true, data: { id: sellerId, status: 'rejected', reason } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
