@@ -371,6 +371,44 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch { /* table may not exist */ }
 
+  // ── 20. 🛡️ 2026-04-28: gift 만료 처리 (paid 상태 + expires_at 경과) ──
+  //   - 30일 내 recipient 가 claim 안 하면 expired
+  //   - 환불은 후속 작업 (별도 cron 이 status='expired' → Toss 부분취소 호출)
+  try {
+    const { meta } = await DB.prepare(`
+      UPDATE gifts
+      SET status = 'expired', updated_at = datetime('now')
+      WHERE status = 'paid'
+        AND expires_at IS NOT NULL
+        AND expires_at < datetime('now')
+    `).run();
+    results.gifts_expired = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  // ── 21. 🛡️ 2026-04-28: pending 상태 gift 자동 정리 (24시간 결제 미완료) ──
+  //   토스 결제 confirm 호출 안 된 채 24시간 경과 → refunded (실 결제 안 된 상태)
+  try {
+    const { meta } = await DB.prepare(`
+      UPDATE gifts
+      SET status = 'refunded', updated_at = datetime('now')
+      WHERE status = 'pending'
+        AND created_at < datetime('now', '-24 hours')
+    `).run();
+    results.gifts_pending_cleaned = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
+  // ── 22. 🛡️ 2026-04-28: consignment_partnerships pending 30일 자동 정리 ──
+  //   양측 모두 응답 안 하면 자동 ended (cleanup)
+  try {
+    const { meta } = await DB.prepare(`
+      UPDATE consignment_partnerships
+      SET status = 'ended', ended_at = datetime('now'), updated_at = datetime('now')
+      WHERE status = 'pending'
+        AND created_at < datetime('now', '-30 days')
+    `).run();
+    results.consignment_pending_expired = meta.changes ?? 0;
+  } catch { /* table may not exist */ }
+
   console.log('[Cron] Scheduled cleanup:', JSON.stringify(results));
   return results;
 }

@@ -262,7 +262,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     // 6. Process by event type
     switch (eventType as string) {
       case 'payment.confirmed':
-        await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey);
+        await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
         break;
 
       case 'payment.cancelled':
@@ -364,7 +364,8 @@ async function handlePaymentConfirmed(
   orderRepo: OrderRepository,
   data: TossWebhookPayload['data'],
   orderNumber: string,
-  paymentKey: string
+  paymentKey: string,
+  DB?: D1Database
 ): Promise<void> {
   console.log('[WEBHOOK] PAYMENT_CONFIRMED', {
     orderNumber,
@@ -394,6 +395,33 @@ async function handlePaymentConfirmed(
     orderNumber,
     ordersUpdated: result.confirmed,
   });
+
+  // 🛡️ 2026-04-28 (TD-007 자동화): auction winner-paid 자동 처리.
+  //   결제한 user 가 낙찰한 ended auction 이 있고 current_price 가 결제 amount 와
+  //   같으면 해당 auction_holds 를 'consumed' 마킹. best-effort (실패해도 결제는 성공).
+  if (DB) {
+    try {
+      const orders = await orderRepo.findByOrderNumber(orderNumber);
+      const order = orders[0];
+      if (order && order.user_id) {
+        const consumeResult = await DB.prepare(`
+          UPDATE auction_holds
+          SET status = 'consumed', released_at = datetime('now')
+          WHERE user_id = ? AND status = 'active'
+            AND auction_id IN (
+              SELECT id FROM live_auctions
+              WHERE winner_user_id = ? AND status = 'ended' AND current_price = ?
+            )
+        `).bind(order.user_id, String(order.user_id), data.totalAmount).run();
+        const changes = (consumeResult.meta as { changes?: number })?.changes ?? 0;
+        if (changes > 0) {
+          console.log('[WEBHOOK] AUCTION_HOLD_CONSUMED', { orderNumber, user_id: order.user_id, changes });
+        }
+      }
+    } catch (e) {
+      console.warn('[WEBHOOK] auction hold consume best-effort failed:', (e as Error).message);
+    }
+  }
 }
 
 /**

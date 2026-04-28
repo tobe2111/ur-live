@@ -116,6 +116,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
+import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
 import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
 import { agencyCampaignsRoutes } from '../features/agency/api/agency-campaigns.routes';
 import { agencyIncentivesRoutes } from '../features/agency/api/agency-incentives.routes';
@@ -997,6 +998,8 @@ app.route('/api/agency', agencyPinRoutes);
 app.route('/api/agency', agencyRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
 app.route('/api/agency', agencyKakaoLinkRoutes);
+// 🛡️ 2026-04-28 TD-006 (split): /stats, /stats/kpi, /stats/daily, /stats/realtime, /stats/batch
+app.route('/api/agency', agencyStatsRoutes);
 // 🛡️ 2026-04-26: Agency P0 #4 캠페인 관리
 app.route('/api/agency/campaigns', agencyCampaignsRoutes);
 // 🛡️ 2026-04-26: Agency P0 #5 인센티브 규칙 엔진

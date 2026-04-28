@@ -359,8 +359,9 @@ auctionRoutes.post('/:id/cancel', requireAuth(), async (c) => {
 // 🛡️ 2026-04-27 (TD-007 마무리): POST /api/auction/:id/winner-paid
 // 낙찰자 결제 완료 시 hold 를 'consumed' 로 마킹.
 // 권한: 셀러(본인 경매) 또는 어드민
-// TODO(P1): 결제 webhook 에서 자동 호출 — 토스 PAYMENT_STATUS_CHANGED → orders.kind='auction'
-//   인 경우 이 endpoint 자동 트리거. 별도 PR 로 분리.
+// 🛡️ 2026-04-28 (자동화 완료): worker/routes/webhook.routes.ts 의 handlePaymentConfirmed 가
+//   user_id 매칭 + current_price 매칭으로 best-effort 자동 hold consume 처리.
+//   본 endpoint 는 수동 트리거용 (관리자/테스트) 으로 유지.
 auctionRoutes.post('/:id/winner-paid', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
