@@ -104,6 +104,7 @@ import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/
 import { donationsRoutes } from '../features/donations/api/donations.routes';
 import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
+import { youtubeLiveRoutes } from '../features/youtube/api/youtube-live.routes';
 import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
 import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
@@ -1061,6 +1062,9 @@ app.route('/api/guides', guideRoutes);
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
 app.route('/api/youtube', youtubeRoutes); // legacy path alias
+// 🛡️ 2026-04-28 TD-006 (split): /live/* 5개 endpoint
+app.route('/api/seller/youtube', youtubeLiveRoutes);
+app.route('/api/youtube', youtubeLiveRoutes);
 app.route('/api/youtube/chat', youtubeChatRoutes);
 
 // 🛡️ 2026-04-23 배치 164: 다중 플랫폼 stub (TikTok / Naver Chzzk / SOOP)
