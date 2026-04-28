@@ -1456,6 +1456,43 @@
       "storeOwnerStatsLink": "Store owner stats link",
       "linkCopied": "Link copied! Share it with the store owner."
     },
+    "voucher": {
+      "categoryTitle": "Voucher Category",
+      "categoryMeal": "Meal Voucher",
+      "categoryMealDesc": "Restaurant·Cafe",
+      "categoryBeauty": "Beauty Voucher",
+      "categoryBeautyDesc": "Hair·Nails·Skincare",
+      "categoryHealth": "Health Voucher",
+      "categoryHealthDesc": "PT·Yoga·Pilates"
+    },
+    "gift": {
+      "title": "Send a Gift",
+      "recipientPhone": "Recipient's Phone",
+      "recipientName": "Recipient's Name",
+      "messagePlaceholder": "Happy birthday! Wishing you the best ✨",
+      "kakaoNotice": "Gift link will be sent via KakaoTalk",
+      "expiryNotice": "Auto-refunded if not claimed within 30 days",
+      "buyAndGift": "Pay & Send Gift",
+      "claimTitle": "You've received a gift!",
+      "claimAddress": "Enter delivery address",
+      "claimSuccess": "Claimed! Will ship soon.",
+      "expired": "Gift has expired"
+    },
+    "consignment": {
+      "title": "MD Consignment",
+      "subtitle": "Sell other sellers' products in your live, or lend yours to other sellers",
+      "asHost": "I am host (received product)",
+      "asOwner": "I am owner (lent product)",
+      "statusPending": "Pending Approval",
+      "statusActive": "Active",
+      "statusPaused": "Paused",
+      "statusEnded": "Ended",
+      "approve": "Approve",
+      "terminate": "Terminate",
+      "commissionRate": "Host commission rate",
+      "noPartnerships": "No partnerships yet.",
+      "startPartnership": "Start collaborating with other sellers."
+    },
     "mealVoucher": {
       "title": "Register Meal Voucher",
       "restaurantInfo": "Restaurant Info",

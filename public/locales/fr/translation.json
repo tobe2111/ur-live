@@ -1369,6 +1369,43 @@
       "storeOwnerStatsLink": "Lien statistiques du propriétaire",
       "linkCopied": "Lien copié ! Partagez-le avec le propriétaire du restaurant."
     },
+    "voucher": {
+      "categoryTitle": "Catégorie de Bon",
+      "categoryMeal": "Bon Repas",
+      "categoryMealDesc": "Restaurant·Café",
+      "categoryBeauty": "Bon Beauté",
+      "categoryBeautyDesc": "Cheveux·Ongles·Peau",
+      "categoryHealth": "Bon Santé",
+      "categoryHealthDesc": "PT·Yoga·Pilates"
+    },
+    "gift": {
+      "title": "Envoyer un Cadeau",
+      "recipientPhone": "Téléphone du destinataire",
+      "recipientName": "Nom du destinataire",
+      "messagePlaceholder": "Joyeux anniversaire ! ✨",
+      "kakaoNotice": "Le lien du cadeau sera envoyé par KakaoTalk",
+      "expiryNotice": "Remboursement automatique si non réclamé sous 30 jours",
+      "buyAndGift": "Payer et Offrir",
+      "claimTitle": "Vous avez reçu un cadeau !",
+      "claimAddress": "Saisissez l'adresse de livraison",
+      "claimSuccess": "Réclamé ! Expédition bientôt.",
+      "expired": "Le cadeau a expiré"
+    },
+    "consignment": {
+      "title": "Consignation MD",
+      "subtitle": "Vendez les produits d'autres vendeurs dans votre live, ou prêtez les vôtres",
+      "asHost": "Je suis hôte (produit reçu)",
+      "asOwner": "Je suis propriétaire (produit prêté)",
+      "statusPending": "En attente d'approbation",
+      "statusActive": "Actif",
+      "statusPaused": "En pause",
+      "statusEnded": "Terminé",
+      "approve": "Approuver",
+      "terminate": "Terminer",
+      "commissionRate": "Taux de commission de l'hôte",
+      "noPartnerships": "Aucun partenariat pour le moment.",
+      "startPartnership": "Commencez à collaborer avec d'autres vendeurs."
+    },
     "mealVoucher": {
       "title": "Enregistrer un bon repas",
       "restaurantInfo": "Informations du restaurant",

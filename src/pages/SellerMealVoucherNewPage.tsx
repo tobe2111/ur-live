@@ -20,6 +20,8 @@ export default function SellerMealVoucherNewPage() {
     price: 0,
     original_price: 0,
     image_url: '',
+    // 🛡️ 2026-04-28: voucher 카테고리 (식사/뷰티/헬스) — 같은 인프라 재활용
+    category: 'meal_voucher' as 'meal_voucher' | 'beauty_voucher' | 'health_voucher',
     restaurant_name: '',
     restaurant_address: '',
     restaurant_phone: '',
@@ -119,7 +121,7 @@ export default function SellerMealVoucherNewPage() {
         price: form.price,
         original_price: form.original_price || form.price,
         image_url: form.image_url,
-        category: 'meal_voucher',
+        category: form.category,
         product_type: 'featured',
         stock: form.stock,
         restaurant_name: form.restaurant_name,
@@ -160,6 +162,37 @@ export default function SellerMealVoucherNewPage() {
           icon={<Utensils className="h-5 w-5" />}
         />
         <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* 🛡️ 2026-04-28: voucher 카테고리 (식사/뷰티/헬스) — 같은 인프라 재활용 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-base font-bold text-gray-900">
+                {t('seller.voucher.categoryTitle', { defaultValue: '공구권 종류' })}
+              </h2>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { key: 'meal_voucher' as const, emoji: '🍽️', label: t('seller.voucher.categoryMeal', { defaultValue: '식사 공구권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
+                { key: 'beauty_voucher' as const, emoji: '💇', label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 공구권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
+                { key: 'health_voucher' as const, emoji: '💪', label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 공구권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
+              ].map(c => (
+                <button
+                  type="button"
+                  key={c.key}
+                  onClick={() => setForm(f => ({ ...f, category: c.key }))}
+                  className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    form.category === c.key
+                      ? 'border-pink-500 bg-pink-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{c.emoji}</div>
+                  <div className={`text-xs font-bold ${form.category === c.key ? 'text-pink-700' : 'text-gray-900'}`}>{c.label}</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">{c.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* 1. 맛집 정보 — 카카오맵 검색 (가장 위) */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">

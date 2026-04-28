@@ -1452,6 +1452,43 @@
       "storeOwnerStatsLink": "店舗オーナー統計リンク",
       "linkCopied": "リンクがコピーされました！店舗オーナーに共有してください。"
     },
+    "voucher": {
+      "categoryTitle": "クーポンカテゴリ",
+      "categoryMeal": "食事券",
+      "categoryMealDesc": "レストラン·カフェ",
+      "categoryBeauty": "ビューティー券",
+      "categoryBeautyDesc": "ヘア·ネイル·スキンケア",
+      "categoryHealth": "ヘルス券",
+      "categoryHealthDesc": "PT·ヨガ·ピラティス"
+    },
+    "gift": {
+      "title": "ギフトを送る",
+      "recipientPhone": "受取人の電話",
+      "recipientName": "受取人のお名前",
+      "messagePlaceholder": "お誕生日おめでとう! ✨",
+      "kakaoNotice": "カカオトークでギフトリンクが送信されます",
+      "expiryNotice": "30日以内に受け取らない場合自動返金",
+      "buyAndGift": "決済してギフト",
+      "claimTitle": "ギフトが届きました",
+      "claimAddress": "受取住所を入力してください",
+      "claimSuccess": "受取完了!まもなく発送されます。",
+      "expired": "ギフトの有効期限切れ"
+    },
+    "consignment": {
+      "title": "MD委託販売",
+      "subtitle": "他のセラーの商品を自分のライブで販売したり、自分の商品を他のセラーに委託できます",
+      "asHost": "私がホスト (受け取った商品)",
+      "asOwner": "私がオーナー (貸した商品)",
+      "statusPending": "承認待ち",
+      "statusActive": "進行中",
+      "statusPaused": "一時停止",
+      "statusEnded": "終了",
+      "approve": "承認",
+      "terminate": "終了",
+      "commissionRate": "ホスト手数料率",
+      "noPartnerships": "委託パートナーシップがありません。",
+      "startPartnership": "他のセラーとのコラボを始めましょう。"
+    },
     "mealVoucher": {
       "title": "食事券登録",
       "restaurantInfo": "レストラン情報",

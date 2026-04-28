@@ -1452,6 +1452,43 @@
       "storeOwnerStatsLink": "店主统计链接",
       "linkCopied": "链接已复制！请分享给店主。"
     },
+    "voucher": {
+      "categoryTitle": "团购券类型",
+      "categoryMeal": "餐券",
+      "categoryMealDesc": "餐厅·咖啡",
+      "categoryBeauty": "美容券",
+      "categoryBeautyDesc": "美发·美甲·护肤",
+      "categoryHealth": "健身券",
+      "categoryHealthDesc": "私教·瑜伽·普拉提"
+    },
+    "gift": {
+      "title": "送礼物",
+      "recipientPhone": "收件人电话",
+      "recipientName": "收件人姓名",
+      "messagePlaceholder": "生日快乐! ✨",
+      "kakaoNotice": "礼物链接将通过KakaoTalk发送",
+      "expiryNotice": "30天内未领取自动退款",
+      "buyAndGift": "支付并送礼",
+      "claimTitle": "您收到一份礼物!",
+      "claimAddress": "请输入收货地址",
+      "claimSuccess": "已领取!即将发货。",
+      "expired": "礼物已过期"
+    },
+    "consignment": {
+      "title": "MD代销",
+      "subtitle": "在您的直播中销售其他卖家的商品,或将您的商品委托给其他卖家",
+      "asHost": "我是主持人 (收到商品)",
+      "asOwner": "我是所有者 (借出商品)",
+      "statusPending": "等待审批",
+      "statusActive": "进行中",
+      "statusPaused": "暂停",
+      "statusEnded": "已结束",
+      "approve": "批准",
+      "terminate": "终止",
+      "commissionRate": "主持人佣金率",
+      "noPartnerships": "暂无代销合作。",
+      "startPartnership": "开始与其他卖家合作。"
+    },
     "mealVoucher": {
       "title": "注册餐券",
       "restaurantInfo": "餐厅信息",

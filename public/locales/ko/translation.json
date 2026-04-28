@@ -1461,6 +1461,43 @@
       "storeOwnerStatsLink": "식당 사장 통계 링크",
       "linkCopied": "링크 복사됨! 식당 사장에게 공유하세요."
     },
+    "voucher": {
+      "categoryTitle": "공구권 종류",
+      "categoryMeal": "식사 공구권",
+      "categoryMealDesc": "맛집·카페",
+      "categoryBeauty": "뷰티 공구권",
+      "categoryBeautyDesc": "헤어·네일·피부",
+      "categoryHealth": "헬스 공구권",
+      "categoryHealthDesc": "PT·요가·필라테스"
+    },
+    "gift": {
+      "title": "선물하기",
+      "recipientPhone": "받는 사람 휴대폰",
+      "recipientName": "받는 사람 이름",
+      "messagePlaceholder": "생일 축하해! 늘 행복하길 ✨",
+      "kakaoNotice": "카카오톡 알림으로 선물 링크가 발송됩니다",
+      "expiryNotice": "30일 내 받기 안 하면 자동 환불됩니다",
+      "buyAndGift": "결제하고 선물하기",
+      "claimTitle": "선물이 도착했어요",
+      "claimAddress": "받을 주소를 입력해주세요",
+      "claimSuccess": "받기 완료! 곧 발송됩니다.",
+      "expired": "선물이 만료됐어요"
+    },
+    "consignment": {
+      "title": "MD 위탁 판매",
+      "subtitle": "다른 셀러의 상품을 내 라이브에서 판매하거나, 내 상품을 다른 셀러에게 위탁할 수 있어요",
+      "asHost": "내가 host (받은 상품)",
+      "asOwner": "내가 owner (빌려준 상품)",
+      "statusPending": "승인 대기",
+      "statusActive": "진행 중",
+      "statusPaused": "일시정지",
+      "statusEnded": "종료됨",
+      "approve": "승인",
+      "terminate": "종료",
+      "commissionRate": "host 수수료율",
+      "noPartnerships": "위탁 파트너십이 없습니다.",
+      "startPartnership": "다른 셀러와 협업을 시작해보세요."
+    },
     "mealVoucher": {
       "title": "식사권 등록",
       "restaurantInfo": "맛집 정보",

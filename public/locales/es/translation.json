@@ -1369,6 +1369,43 @@
       "storeOwnerStatsLink": "Enlace de estadísticas del dueño",
       "linkCopied": "¡Enlace copiado! Compártelo con el dueño de la tienda."
     },
+    "voucher": {
+      "categoryTitle": "Categoría de Vale",
+      "categoryMeal": "Vale de Comida",
+      "categoryMealDesc": "Restaurante·Café",
+      "categoryBeauty": "Vale de Belleza",
+      "categoryBeautyDesc": "Cabello·Uñas·Piel",
+      "categoryHealth": "Vale de Salud",
+      "categoryHealthDesc": "PT·Yoga·Pilates"
+    },
+    "gift": {
+      "title": "Enviar Regalo",
+      "recipientPhone": "Teléfono del destinatario",
+      "recipientName": "Nombre del destinatario",
+      "messagePlaceholder": "¡Feliz cumpleaños! ✨",
+      "kakaoNotice": "El enlace del regalo se enviará por KakaoTalk",
+      "expiryNotice": "Reembolso automático si no se reclama en 30 días",
+      "buyAndGift": "Pagar y Regalar",
+      "claimTitle": "¡Has recibido un regalo!",
+      "claimAddress": "Ingresa la dirección de entrega",
+      "claimSuccess": "¡Reclamado! Pronto se enviará.",
+      "expired": "El regalo ha expirado"
+    },
+    "consignment": {
+      "title": "Consignación MD",
+      "subtitle": "Vende productos de otros vendedores en tu live, o presta los tuyos a otros",
+      "asHost": "Soy host (producto recibido)",
+      "asOwner": "Soy owner (producto prestado)",
+      "statusPending": "Pendiente de Aprobación",
+      "statusActive": "Activo",
+      "statusPaused": "Pausado",
+      "statusEnded": "Finalizado",
+      "approve": "Aprobar",
+      "terminate": "Terminar",
+      "commissionRate": "Tasa de comisión del host",
+      "noPartnerships": "Aún sin asociaciones.",
+      "startPartnership": "Comienza a colaborar con otros vendedores."
+    },
     "mealVoucher": {
       "title": "Registrar vale de comida",
       "restaurantInfo": "Información del restaurante",
