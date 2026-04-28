@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, MapPin, Search, Ticket, Phone, X, Navigation, ArrowUpDown } from 'lucide-react'
+import { ArrowLeft, MapPin, Search, Ticket, Phone, X, Navigation, ArrowUpDown, Heart, Radio } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { isKorea } from '@/shared/config/region'
+import { storage } from '@/shared/utils/storage'
 import { escapeHtml } from '@/shared/utils/html'
 
 interface Restaurant {
@@ -13,6 +14,7 @@ interface Restaurant {
   price: number; original_price: number; image_url: string
   discount_percent: number; rating: number
   category?: string
+  seller_id?: number
 }
 
 // 카카오맵 길찾기 외부 링크 — 사용자 위치에서 매장까지
@@ -91,8 +93,39 @@ export default function RestaurantMapPage() {
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
   const [suggestionFor, setSuggestionFor] = useState<KakaoPlace | null>(null)
+  // 즐겨찾기 (localStorage) + 라이브 셀러 ID 집합
+  const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [liveSellerIds, setLiveSellerIds] = useState<Set<number>>(new Set())
 
   const kr = isKorea()
+
+  // 즐겨찾기 토글 + 영속 저장
+  const toggleFavorite = useCallback((id: number) => {
+    setFavorites(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      storage.setJSON('restaurant_favorites', next)
+      return next
+    })
+  }, [])
+
+  // 라이브 셀러 폴링 (30초) — 식사권 셀러가 라이브 중이면 핀에 LIVE 배지
+  useEffect(() => {
+    let cancelled = false
+    const fetchLive = async () => {
+      try {
+        const res = await api.get('/api/streams', { params: { status: 'live', limit: 50 } })
+        if (cancelled) return
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          const ids = new Set<number>(res.data.data.map((s: { seller_id?: number }) => s.seller_id).filter(Boolean) as number[])
+          setLiveSellerIds(ids)
+        }
+      } catch { /* silent */ }
+    }
+    fetchLive()
+    const id = setInterval(fetchLive, 30000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
 
   // 사용자 위치 자동 감지 (1회) — 거리순 정렬용
   useEffect(() => {
@@ -188,6 +221,7 @@ export default function RestaurantMapPage() {
 
   const filtered = useMemo(() => {
     let items = restaurants.filter(r => {
+      if (showFavoritesOnly && !favorites.includes(r.id)) return false
       if (region && !r.restaurant_address?.includes(region)) return false
       if (search) {
         const q = search.toLowerCase()
@@ -221,7 +255,7 @@ export default function RestaurantMapPage() {
       return 0
     })
     return items
-  }, [restaurants, region, search, category, sortBy, userLoc])
+  }, [restaurants, region, search, category, sortBy, userLoc, showFavoritesOnly, favorites])
 
   const withCoords = filtered.filter(r => r.restaurant_lat && r.restaurant_lng)
 
@@ -260,13 +294,18 @@ export default function RestaurantMapPage() {
       // XSS 방지: restaurant_name/discountText 등 외부 데이터는 이스케이프 후 삽입
       const safeName = escapeHtml(r.restaurant_name || '')
       const safeDiscount = escapeHtml(discountText)
+      // 🛡️ 2026-04-28 Tier 2: 셀러 라이브 중이면 LIVE 배지 / 즐겨찾기면 ❤️
+      const isLive = r.seller_id ? liveSellerIds.has(r.seller_id) : false
+      const isFav = favorites.includes(r.id)
+      const liveBadge = isLive ? `<span style="display:inline-flex;align-items:center;gap:2px;margin-left:4px;background:#ef4444;color:#fff;border-radius:4px;padding:0 4px;font-size:9px;font-weight:800;"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#fff;animation:pulse 1s infinite;"></span>LIVE</span>` : ''
+      const favBadge = isFav ? `<span style="margin-left:3px;color:#ef4444;">❤</span>` : ''
 
       const content = document.createElement('div')
       content.innerHTML = `
         <div style="
           background: ${selected?.id === r.id ? '#ec4899' : '#fff'};
           color: ${selected?.id === r.id ? '#fff' : '#111'};
-          border: 2px solid ${selected?.id === r.id ? '#ec4899' : '#e5e7eb'};
+          border: 2px solid ${isLive ? '#ef4444' : (selected?.id === r.id ? '#ec4899' : '#e5e7eb')};
           border-radius: 12px;
           padding: 4px 10px;
           font-size: 11px;
@@ -277,8 +316,9 @@ export default function RestaurantMapPage() {
           transform: translateY(-50%);
           position: relative;
         ">
-          ${safeName}
+          ${safeName}${favBadge}
           ${safeDiscount ? `<span style="color:${selected?.id === r.id ? '#fef08a' : '#ef4444'};margin-left:4px;">${safeDiscount}</span>` : ''}
+          ${liveBadge}
           <div style="
             position: absolute;
             bottom: -6px;
@@ -288,7 +328,7 @@ export default function RestaurantMapPage() {
             height: 0;
             border-left: 6px solid transparent;
             border-right: 6px solid transparent;
-            border-top: 6px solid ${selected?.id === r.id ? '#ec4899' : '#e5e7eb'};
+            border-top: 6px solid ${isLive ? '#ef4444' : (selected?.id === r.id ? '#ec4899' : '#e5e7eb')};
           "></div>
         </div>
       `
@@ -354,7 +394,7 @@ export default function RestaurantMapPage() {
       mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
       mapInstance.current.setLevel(4)
     }
-  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc])
+  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites])
 
   useEffect(() => { initMap() }, [initMap])
 
@@ -436,12 +476,27 @@ export default function RestaurantMapPage() {
           ))}
         </div>
 
-        {/* 정렬 + 카운트 */}
+        {/* 정렬 + 카운트 + 즐겨찾기 토글 */}
         <div className="flex items-center justify-between px-4 pb-2">
-          <span className="text-[11px] text-gray-500">
-            <span className="font-bold text-gray-900">{filtered.length}</span>곳
-            {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">📍 내 위치 기준</span>}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-gray-500">
+              <span className="font-bold text-gray-900">{filtered.length}</span>곳
+              {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">📍 내 위치 기준</span>}
+            </span>
+            {favorites.length > 0 && (
+              <button
+                onClick={() => setShowFavoritesOnly(v => !v)}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+                  showFavoritesOnly
+                    ? 'bg-pink-500 text-white border-pink-500'
+                    : 'bg-white text-pink-500 border-pink-200'
+                }`}
+              >
+                <Heart className="w-2.5 h-2.5" fill={showFavoritesOnly ? 'currentColor' : 'none'} />
+                {favorites.length}
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <ArrowUpDown className="w-3 h-3 text-gray-400" />
             <select
@@ -502,7 +557,15 @@ export default function RestaurantMapPage() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0 pr-6">
-                  <p className="font-bold text-gray-900 text-[15px]">{selected.restaurant_name}</p>
+                  <p className="font-bold text-gray-900 text-[15px] flex items-center gap-1.5">
+                    {selected.restaurant_name}
+                    {selected.seller_id && liveSellerIds.has(selected.seller_id) && (
+                      <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                        <Radio className="w-2.5 h-2.5 animate-pulse" />
+                        LIVE
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-gray-400 mt-0.5 line-clamp-1 flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" />
                     {selected.restaurant_address}
@@ -526,6 +589,15 @@ export default function RestaurantMapPage() {
                 </div>
               </div>
               <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => toggleFavorite(selected.id)}
+                  aria-label={favorites.includes(selected.id) ? '즐겨찾기 해제' : '즐겨찾기'}
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
+                    favorites.includes(selected.id) ? 'bg-pink-50 text-pink-500' : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  <Heart className="w-4 h-4" fill={favorites.includes(selected.id) ? 'currentColor' : 'none'} />
+                </button>
                 {selected.restaurant_phone && (
                   <a href={`tel:${selected.restaurant_phone}`} aria-label="전화" className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-xl text-gray-700">
                     <Phone className="w-4 h-4" />
