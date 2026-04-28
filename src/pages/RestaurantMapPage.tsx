@@ -257,7 +257,31 @@ export default function RestaurantMapPage() {
     return items
   }, [restaurants, region, search, category, sortBy, userLoc, showFavoritesOnly, favorites])
 
-  const withCoords = filtered.filter(r => r.restaurant_lat && r.restaurant_lng)
+  // 🛡️ 2026-04-28: 동일 좌표 식사권 그룹화 (핀 겹침 방지).
+  //   같은 매장에 식사권 여러 개 등록 시 핀 1개 + 개수 배지.
+  //   그룹 대표 = 첫 번째 (정렬 순서 따름).
+  const withCoords = useMemo(() => {
+    const list = filtered.filter(r => r.restaurant_lat && r.restaurant_lng)
+    const groups = new Map<string, Restaurant[]>()
+    for (const r of list) {
+      // 5자리 반올림 → ~1m 정밀도 (효과적으로 동일 매장)
+      const key = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(r)
+    }
+    // 그룹 대표만 반환 (count 별도로 노출은 핀 markup 에서)
+    return Array.from(groups.values()).map(g => g[0])
+  }, [filtered])
+
+  // 좌표 키 → 그룹 size 매핑 (핀 markup 에서 배지 표시용)
+  const coordGroupSize = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const r of filtered.filter(x => x.restaurant_lat && x.restaurant_lng)) {
+      const key = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
+      map.set(key, (map.get(key) || 0) + 1)
+    }
+    return map
+  }, [filtered])
 
   // 지도 초기화 + 마커
   const initMap = useCallback(() => {
@@ -299,6 +323,10 @@ export default function RestaurantMapPage() {
       const isFav = favorites.includes(r.id)
       const liveBadge = isLive ? `<span style="display:inline-flex;align-items:center;gap:2px;margin-left:4px;background:#ef4444;color:#fff;border-radius:4px;padding:0 4px;font-size:9px;font-weight:800;"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#fff;animation:pulse 1s infinite;"></span>LIVE</span>` : ''
       const favBadge = isFav ? `<span style="margin-left:3px;color:#ef4444;">❤</span>` : ''
+      // 동일 좌표 그룹 사이즈 — 2개 이상이면 +N 배지
+      const groupKey = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
+      const groupSize = coordGroupSize.get(groupKey) || 1
+      const groupBadge = groupSize > 1 ? `<span style="margin-left:3px;background:#3b82f6;color:#fff;border-radius:4px;padding:0 4px;font-size:9px;font-weight:800;">+${groupSize - 1}</span>` : ''
 
       const content = document.createElement('div')
       content.innerHTML = `
@@ -316,7 +344,7 @@ export default function RestaurantMapPage() {
           transform: translateY(-50%);
           position: relative;
         ">
-          ${safeName}${favBadge}
+          ${safeName}${favBadge}${groupBadge}
           ${safeDiscount ? `<span style="color:${selected?.id === r.id ? '#fef08a' : '#ef4444'};margin-left:4px;">${safeDiscount}</span>` : ''}
           ${liveBadge}
           <div style="
@@ -394,7 +422,7 @@ export default function RestaurantMapPage() {
       mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
       mapInstance.current.setLevel(4)
     }
-  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites])
+  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize])
 
   useEffect(() => { initMap() }, [initMap])
 

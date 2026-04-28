@@ -93,9 +93,13 @@ echo "[5/5] TD-006 분할 라우터 + 신규 endpoint..."
 sitemap_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/sitemap.xml" || echo "timeout")
 docs_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/docs" || echo "timeout")
 sw_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/sw.js" || echo "timeout")
+bundle_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/api/home/bundle" || echo "timeout")
+nearby_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/api/kakao/place/nearby?lat=37.5&lng=127.0" || echo "timeout")
 echo "  /sitemap.xml → $sitemap_status  $([ "$sitemap_status" = "200" ] && echo "✅ TD-006 sitemap 분리 정상" || echo "⚠️ 확인 필요")"
 echo "  /docs → $docs_status  $([ "$docs_status" = "200" ] && echo "✅ Swagger UI 정상" || echo "⚠️ 확인 필요")"
 echo "  /sw.js (Killer SW) → $sw_status  $([ "$sw_status" = "200" ] && echo "✅ PWA 사고 방지 동작 중" || echo "⚠️ 확인 필요")"
+echo "  /api/home/bundle → $bundle_status  $([ "$bundle_status" = "200" ] && echo "✅ 메인 통합 endpoint" || echo "⚠️ 확인 필요")"
+echo "  /api/kakao/place/nearby → $nearby_status  $([ "$nearby_status" = "200" ] || [ "$nearby_status" = "500" ] && echo "✅ 옵션 B Kakao Places (KAKAO_REST_API_KEY 미설정 시 500)" || echo "⚠️ 확인 필요")"
 
 if [ -n "$ADMIN_TOKEN" ]; then
   echo ""
