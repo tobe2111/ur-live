@@ -21,6 +21,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { sign, verify } from 'hono/jwt'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import type { Context, Next } from 'hono'
 import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password'
 import { sendEmail } from '@/services/email'
@@ -237,6 +238,12 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
     VALUES (?, ?, ?, ?, ?, 'pending')
   `).bind(name, contact_name, email, hash, phone || null).run()
 
+  // 🛡️ 2026-04-28: 어드민 알림 — 셀러 가입 흐름과 동일하게 추가 (이전 누락).
+  createDashboardNotification(
+    c.env.DB, 'admin', null, 'agency_registered',
+    '새 에이전시 가입 신청', `${name} (${contact_name})`, '/admin/agencies'
+  ).catch((_e) => { if (typeof console !== 'undefined') console.warn('[agency:register] notify failed:', _e) })
+
   return c.json({ success: true, message: '가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.' }, 201)
 })
 
@@ -304,6 +311,12 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
       INSERT INTO agencies (name, contact_name, email, password_hash, phone, status, linked_user_id)
       VALUES (?, ?, ?, ?, ?, 'pending', ?)
     `).bind(name, contact_name, email, passwordHash, phone || null, userId).run()
+
+    // 🛡️ 2026-04-28: 어드민 알림 — 유저→에이전시 전환 신청 (이전 누락).
+    createDashboardNotification(
+      db, 'admin', null, 'agency_registered',
+      '유저→에이전시 전환 신청', `${name} (유저 #${userId})`, '/admin/agencies'
+    ).catch((_e) => { if (typeof console !== 'undefined') console.warn('[agency:register-from-user] notify failed:', _e) })
 
     return c.json({
       success: true,

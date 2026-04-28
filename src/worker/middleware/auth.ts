@@ -35,7 +35,8 @@ interface JwtPayload {
 /**
  * User types
  */
-export type UserType = 'user' | 'seller' | 'admin';
+// 🛡️ 2026-04-28: 'agency' 추가 — dashboard-notifications fetch 분기에 필요.
+export type UserType = 'user' | 'seller' | 'admin' | 'agency';
 
 /**
  * Authenticated user context

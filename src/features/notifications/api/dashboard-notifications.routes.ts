@@ -17,9 +17,11 @@ dashboardNotificationsRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], crede
 
 async function ensureTable(DB: D1Database) {
   try {
+    // 🛡️ 2026-04-28: CHECK 제약에 'agency' 추가. 이전엔 'admin'/'seller' 만 허용해
+    //   에이전시 측 알림 INSERT 가 실패 → 어드민이 에이전시 신청 알림 못 봄.
     await DB.prepare(`CREATE TABLE IF NOT EXISTS dashboard_notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      recipient_type TEXT NOT NULL CHECK (recipient_type IN ('admin', 'seller')),
+      recipient_type TEXT NOT NULL CHECK (recipient_type IN ('admin', 'seller', 'agency')),
       recipient_id TEXT,
       type TEXT NOT NULL,
       title TEXT NOT NULL,
@@ -37,10 +39,14 @@ async function ensureTable(DB: D1Database) {
 /**
  * Helper: create a dashboard notification.
  * For admin notifications, recipientId can be null (all admins see it).
+ *
+ * 🛡️ 2026-04-28: type 'agency' 추가. ensureTable 의 CHECK 제약과 동기화.
+ *   기존 production DB 가 옛 CHECK ('admin','seller') 으로 만들어져 있으면
+ *   agency INSERT 시 throw — try-catch 로 감싸 best-effort.
  */
 export async function createDashboardNotification(
   DB: D1Database,
-  recipientType: 'admin' | 'seller',
+  recipientType: 'admin' | 'seller' | 'agency',
   recipientId: string | null,
   type: string,
   title: string,
@@ -48,10 +54,25 @@ export async function createDashboardNotification(
   link?: string
 ) {
   await ensureTable(DB);
-  await DB.prepare(
-    `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).bind(recipientType, recipientId, type, title, message ?? null, link ?? null).run();
+  try {
+    await DB.prepare(
+      `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(recipientType, recipientId, type, title, message ?? null, link ?? null).run();
+  } catch (err) {
+    // 🛡️ 옛 CHECK 제약 (admin/seller 만) production DB 에서 agency INSERT 실패 시
+    //   recipient_type='admin' fallback (어드민이라도 알림 받게).
+    if (recipientType === 'agency') {
+      try {
+        await DB.prepare(
+          `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
+           VALUES ('admin', NULL, ?, ?, ?, ?)`
+        ).bind(type, '[에이전시] ' + title, message ?? null, link ?? null).run();
+      } catch { /* ignore */ }
+    } else {
+      throw err;
+    }
+  }
 }
 
 // GET / — 내 알림 목록
@@ -65,7 +86,8 @@ dashboardNotificationsRoutes.get('/', requireAuth(), async (c) => {
   const limit = Math.min(Number(c.req.query('limit') || '20'), 100);
   const unreadOnly = c.req.query('unread_only') === 'true';
 
-  const recipientType = user.type === 'admin' ? 'admin' : 'seller';
+  // 🛡️ 2026-04-28: agency 분기 추가. 이전엔 admin/seller 만 분기 → 에이전시는 자기 알림 못 봄.
+  const recipientType = user.type === 'admin' ? 'admin' : user.type === 'agency' ? 'agency' : 'seller';
   const recipientId = String(user.id);
 
   let whereClause: string;
@@ -74,6 +96,9 @@ dashboardNotificationsRoutes.get('/', requireAuth(), async (c) => {
   if (recipientType === 'admin') {
     // Admins see notifications where recipient_type='admin' (recipient_id NULL = all admins)
     whereClause = `recipient_type = 'admin' AND (recipient_id IS NULL OR recipient_id = ?)`;
+    params = [recipientId];
+  } else if (recipientType === 'agency') {
+    whereClause = `recipient_type = 'agency' AND recipient_id = ?`;
     params = [recipientId];
   } else {
     whereClause = `recipient_type = 'seller' AND recipient_id = ?`;
