@@ -8,7 +8,33 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
-## 📊 최신 상태 요약 (2026-04-27 종료 시)
+## 📊 최신 상태 요약 (2026-04-28 종료 시)
+
+### 2026-04-28 마라톤 세션 — TD 추가 정리
+
+| TD | 제목 | 상태 변경 |
+|---|---|---|
+| TD-006 | seller-management split | 2103 → 1167줄 (44.5%↓, registration + alimtalk + kakao-link 분리) |
+| TD-006 | agency.routes split | 1984 → 1389줄 (30.0%↓, kakao-link + stats + settlements 분리) |
+| TD-007 | Auction 자동 confirm | ✅ 토스 webhook handlePaymentConfirmed 가 user_id + current_price 매칭으로 자동 consume |
+| 비즈니스 #1 | 뷰티/헬스 공구권 | ✅ 카테고리 enum + API + UI 칩 + 셀러 등록 폼 셀렉터 |
+| 비즈니스 #2 | MD 위탁 판매 | ✅ migration 0236 + 4 endpoints + 정산 통합 + 셀러 대시보드 UI |
+| 비즈니스 #3 | 선물하기 | ✅ migration 0237 + 4 endpoints + 받기 페이지 + 보내기 모달 + 환불 cron |
+| Cron | gift expire/refund + consignment cleanup | ✅ scheduled-cleanup.ts 20-22번 추가 |
+| Mobile | 카톡 인앱 흰화면 | ✅ index.html inline script 가 모듈 로드 전 안내 페이지로 교체 |
+
+신규 파일 (2026-04-28):
+- `src/features/seller/api/seller-{registration,kakao-link,alimtalk-mgmt,consignment}.routes.ts`
+- `src/features/agency/api/agency-{kakao-link,stats,settlements}.routes.ts`
+- `src/features/gifts/api/gifts.routes.ts`
+- `src/lib/{consignment-split,consignment-settlement,gift,in-app-browser}.ts`
+- `src/components/{InAppBrowserBanner,gift/GiftSendModal}.tsx`
+- `src/pages/{SellerConsignmentPage,GiftClaimPage}.tsx`
+- `migrations/{0236_consignment_partnerships,0237_gifts}.sql`
+
+신규 단위 테스트: 89건 (gift 35 + consignment-split 20 + consignment-settlement 6 + scheduled-cleanup-cron 14 + in-app-browser 24 + voucher-categories 10 - 중복 제외).
+
+### 2026-04-27 종료 시점 (이전)
 
 | TD | 제목 | 상태 |
 |---|---|---|
