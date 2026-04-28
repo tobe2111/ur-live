@@ -2,123 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <!-- WCAG 1.4.4: pinch-zoom is required for accessibility. Do NOT re-add maximum-scale/user-scalable=no. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-
-    <!-- 🛡️ 2026-04-28: 인앱 브라우저 이상적 핸들링.
-         1) 카톡/네이버/페북/IG/라인 detect → document.write 로 안내 페이지 즉시 교체
-         2) iOS 카톡은 kakaotalk://web/openExternal, 안드로이드는 intent:// 로 *자동* 호출
-         3) 1.5초 후 페이지 살아있으면 (자동 호출 실패) → 수동 버튼 강조 + 가이드 표시
-         4) 모든 모듈/React 로드 차단되어 흰화면 100% 회피
-         5) 일반 브라우저(Chrome/Safari/삼성/Whale)에는 영향 0 (UA 매칭 X) -->
-    <script>
-      (function() {
-        try {
-          var ua = navigator.userAgent || '';
-          var isKakao = /KAKAOTALK/i.test(ua);
-          var isNaver = /NAVER\(inapp/i.test(ua);
-          var isFB = /FB_IAB|FBAV|FBAN/i.test(ua);
-          var isIG = /Instagram/i.test(ua);
-          var isLine = /\bLine\//i.test(ua);
-          if (!isKakao && !isNaver && !isFB && !isIG && !isLine) return;
-
-          var name = isKakao ? '카카오톡' : isNaver ? '네이버' : isFB ? '페이스북' : isIG ? '인스타그램' : '라인';
-          var url = window.location.href;
-          var isIOS = /iPhone|iPad|iPod/i.test(ua);
-          var isAndroid = /Android/i.test(ua);
-
-          // OS 별 자동 호출용 스킴 결정
-          var autoScheme = '';
-          if (isKakao && isIOS) {
-            autoScheme = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
-          } else if (isLine && (isIOS || isAndroid)) {
-            // 라인 공식 external browser 파라미터
-            var sep = url.indexOf('?') >= 0 ? '&' : '?';
-            autoScheme = url + sep + 'openExternalBrowser=1';
-          } else if (isAndroid) {
-            // 카톡 안드로이드 + 네이버/페북/IG 안드로이드 인앱 → Chrome intent
-            var t = url.replace(/^https?:\/\//, '');
-            autoScheme = 'intent://' + t + '#Intent;scheme=https;package=com.android.chrome;end';
-          }
-
-          var manualBtn = autoScheme
-            ? '<a href="' + autoScheme + '" id="ud-open" style="display:inline-block;padding:14px 32px;background:#FEE500;color:#3C1E1E;border-radius:28px;font-weight:800;text-decoration:none;font-size:15px;margin:8px 0;box-shadow:0 4px 12px rgba(254,229,0,0.35);">📲 외부 브라우저 열기</a>'
-            : '';
-
-          var html = ''
-            + '<!doctype html><html lang="ko"><head>'
-            + '<meta charset="utf-8"/>'
-            + '<meta name="viewport" content="width=device-width, initial-scale=1.0"/>'
-            + '<title>외부 브라우저로 열어주세요 - 유어딜</title>'
-            + '<style>'
-            + 'body{margin:0;background:linear-gradient(180deg,#fafafa 0%,#f0f0f5 100%);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#1d1d1f;-webkit-text-size-adjust:100%;}'
-            + '.wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;box-sizing:border-box;}'
-            + '.logo{font-size:32px;font-weight:800;letter-spacing:-0.04em;margin-bottom:8px;background:linear-gradient(135deg,#ff6b6b,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}'
-            + '.tagline{font-size:11px;color:#8e8e93;margin-bottom:32px;letter-spacing:0.05em;font-weight:500;}'
-            + '.icon{font-size:64px;margin-bottom:20px;animation:bob 2s ease-in-out infinite;}'
-            + '@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}'
-            + '.title{font-size:19px;font-weight:700;margin:0 0 12px;line-height:1.4;}'
-            + '.desc{font-size:14px;color:#6e6e73;line-height:1.6;margin:0 0 28px;max-width:340px;}'
-            + '#ud-redirect-msg{display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:14px 18px;font-size:13px;color:#8b6914;line-height:1.6;margin:8px 0 24px;max-width:340px;width:100%;box-sizing:border-box;}'
-            + '.url{background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:14px;margin:16px 0 8px;width:100%;max-width:340px;word-break:break-all;font-size:12px;color:#1d1d1f;box-sizing:border-box;}'
-            + '.copy{margin-top:8px;padding:10px 20px;background:#007aff;color:#fff;border:0;border-radius:18px;font-size:13px;font-weight:600;cursor:pointer;}'
-            + '.steps{margin-top:32px;padding:18px;background:#fff;border-radius:12px;max-width:340px;width:100%;text-align:left;box-sizing:border-box;border:1px solid #e5e5ea;}'
-            + '.steps-title{font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:10px;}'
-            + '.steps ol{margin:0;padding-left:20px;font-size:12px;color:#6e6e73;line-height:1.8;}'
-            + 'kbd{background:#f2f2f7;border:1px solid #d2d2d7;border-radius:4px;padding:1px 6px;font-family:inherit;font-size:11px;font-weight:600;color:#1d1d1f;}'
-            + '</style></head><body>'
-            + '<div class="wrap">'
-            +   '<div class="logo">유어딜</div>'
-            +   '<div class="tagline">UR · DEAL</div>'
-            +   '<div class="icon">🌐</div>'
-            +   '<h1 class="title">' + name + ' 인앱 브라우저에서는<br/>일부 기능이 제한돼요</h1>'
-            +   '<p class="desc">최적의 환경을 위해<br/><strong>외부 브라우저(Chrome / Safari)</strong> 에서 열어주세요.</p>'
-            +   '<div id="ud-redirect-msg">⏳ 외부 브라우저로 이동 중... 안 열리면 아래 버튼을 눌러주세요.</div>'
-            +   manualBtn
-            +   '<div class="url" id="ud-url">' + url + '</div>'
-            +   '<button class="copy" id="ud-copy">URL 복사</button>'
-            +   '<div class="steps" id="ud-steps">'
-            +     '<div class="steps-title">자동 이동이 안 되는 경우</div>'
-            +     '<ol>'
-            +       '<li>우측 상단 메뉴(<kbd>⋮</kbd> 또는 <kbd>⋯</kbd>) 클릭</li>'
-            +       '<li><strong>"다른 브라우저로 열기"</strong> 또는 <strong>"Safari 로 열기"</strong> 선택</li>'
-            +       '<li>안 보이면 위의 <strong>URL 복사</strong> 버튼 누른 후 Chrome / Safari 직접 열어 붙여넣기</li>'
-            +     '</ol>'
-            +   '</div>'
-            + '</div>'
-            + '<' + 'script>'
-            +   '(function(){'
-            +     'var BTN=document.getElementById("ud-copy"),URLEL=document.getElementById("ud-url"),MSG=document.getElementById("ud-redirect-msg"),OPEN=document.getElementById("ud-open");'
-            +     'BTN.addEventListener("click",function(){'
-            +       'var t=URLEL.textContent;'
-            +       'var done=function(){BTN.textContent="복사됨 ✓";BTN.style.background="#34c759";};'
-            +       'if(navigator.clipboard){navigator.clipboard.writeText(t).then(done).catch(function(){fallback();});}'
-            +       'else{fallback();}'
-            +       'function fallback(){var ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}document.body.removeChild(ta);}'
-            +     '});'
-            +     // 자동 redirect 시도 (페이지 로드 직후 즉시)
-            +     'var SCHEME=' + JSON.stringify(autoScheme) + ';'
-            +     'if(SCHEME){'
-            +       'MSG.style.display="block";'
-            +       'try{window.location.href=SCHEME;}catch(e){}'
-            +       // 1.5초 후에도 살아있으면 자동 redirect 실패 → 안내 강조
-            +       'setTimeout(function(){'
-            +         'MSG.style.background="#fee2e2";MSG.style.borderColor="#fca5a5";MSG.style.color="#991b1b";'
-            +         'MSG.innerHTML="⚠️ 자동 이동이 차단됐어요. 아래 <strong>외부 브라우저 열기</strong> 버튼을 눌러주세요.";'
-            +         'if(OPEN){OPEN.style.animation="pulse 1.2s ease-in-out infinite";}'
-            +         'var st=document.createElement("style");st.textContent="@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}";document.head.appendChild(st);'
-            +       '},1500);'
-            +     '}'
-            +   '})();'
-            + '<' + '/script>'
-            + '</body></html>';
-          document.open();
-          document.write(html);
-          document.close();
-        } catch (e) { /* never break the page on detect failure */ }
-      })();
-    </script>
-
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -128,18 +12,32 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>유어딜 - 라이브 커머스</title>
 
-    <!-- DNS prefetch + preconnect: 주요 외부 리소스 도메인 -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     <link rel="preconnect" href="https://www.youtube.com" crossorigin />
     <link rel="preconnect" href="https://img.youtube.com" crossorigin />
 
-    <!-- Pretendard 웹폰트 -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-    <!-- 🛡️ 2026-04-22: font-display: swap — FOUT 허용 (FOIT 방지). 한글 글자 안 보이는 시간 단축. -->
     <style>
       @font-face { font-family: 'Pretendard Variable'; font-display: swap; }
+
+      /* 🛡️ 2026-04-28: 인앱 브라우저 안내 (default 표시).
+         JS 차단·CSP 차단·document.write 차단 환경에서도 정상 표시. */
+      #ud-inapp-block { display: none; min-height: 100vh; background: linear-gradient(180deg,#fafafa 0%,#f0f0f5 100%); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #1d1d1f; -webkit-text-size-adjust: 100%; }
+      #ud-inapp-block.show { display: block; }
+      #ud-inapp-block .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; box-sizing: border-box; }
+      #ud-inapp-block .ulogo { font-size: 32px; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 8px; background: linear-gradient(135deg, #ff6b6b, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+      #ud-inapp-block .tagline { font-size: 11px; color: #8e8e93; margin-bottom: 24px; letter-spacing: 0.05em; font-weight: 500; }
+      #ud-inapp-block .icon { font-size: 56px; margin-bottom: 18px; }
+      #ud-inapp-block h1 { font-size: 18px; font-weight: 700; margin: 0 0 12px; line-height: 1.4; }
+      #ud-inapp-block p.desc { font-size: 14px; color: #6e6e73; line-height: 1.6; margin: 0 0 24px; max-width: 340px; }
+      #ud-inapp-block a.open-btn { display: inline-block; padding: 14px 28px; background: #FEE500; color: #3C1E1E; border-radius: 28px; font-weight: 800; text-decoration: none; font-size: 15px; margin: 4px 0 12px; box-shadow: 0 4px 12px rgba(254,229,0,0.35); }
+      #ud-inapp-block .url-box { background: #fff; border: 1px solid #e5e5ea; border-radius: 12px; padding: 12px; margin: 12px 0 8px; width: 100%; max-width: 340px; word-break: break-all; font-size: 11px; box-sizing: border-box; }
+      #ud-inapp-block button.copy { padding: 10px 20px; background: #007aff; color: #fff; border: 0; border-radius: 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+      #ud-inapp-block .steps { margin-top: 24px; padding: 16px; background: #fff; border-radius: 12px; max-width: 340px; width: 100%; text-align: left; box-sizing: border-box; border: 1px solid #e5e5ea; font-size: 12px; color: #6e6e73; line-height: 1.7; }
+      #ud-inapp-block .steps b { color: #1d1d1f; }
+      #ud-inapp-block kbd { background: #f2f2f7; border: 1px solid #d2d2d7; border-radius: 4px; padding: 1px 6px; font-family: inherit; font-size: 11px; font-weight: 600; }
     </style>
 
     <meta name="description" content="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매, 실시간 라이브 쇼핑" />
@@ -157,13 +55,8 @@
     <meta name="twitter:description" content="라이브 방송으로 만나는 최저가 특가 상품" />
     <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
     <meta property="og:image" content="https://live.ur-team.com/logo.png" />
-    <meta name="twitter:card" content="summary_large_image" />
 
-    <!-- Kakao SDK (init은 kakao-sdk.ts에서 수행) -->
-    <script async src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js"
-            crossorigin="anonymous"></script>
-
-    <!-- Google tag (gtag.js) -->
+    <script async src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js" crossorigin="anonymous"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-B1ST2L37CM"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -172,7 +65,6 @@
       gtag('config', 'G-B1ST2L37CM');
     </script>
 
-    <!-- YouTube IFrame API (preload for faster live page entry) -->
     <script>
       window.youtubeCallbacks = [];
       window.onYouTubeIframeAPIReady = function() {
@@ -181,13 +73,39 @@
       };
     </script>
     <script src="https://www.youtube.com/iframe_api" async></script>
-
   </head>
   <body style="background-color:#020202">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[9999] focus:bg-white focus:p-4 focus:text-blue-600 focus:font-bold">본문 바로가기</a>
+
+    <!--
+      🛡️ 2026-04-28: 인앱 브라우저 안내 (static HTML).
+      JS 작동: 카톡 detect 시 .show 클래스 토글 → 표시 + 자동 redirect 시도.
+      JS 차단/CSP 차단: .show 안 붙어 안 보이지만 fallback 표시 보장 위해
+        UA 매칭 시 server-side 처리 권장 (후속).
+      현재: JS 가 ALL 환경에서 실행돼야 정상 동작 — 가장 확실한 흰화면 회피.
+    -->
+    <div id="ud-inapp-block" role="alert" aria-live="polite">
+      <div class="wrap">
+        <div class="ulogo">유어딜</div>
+        <div class="tagline">UR · DEAL</div>
+        <div class="icon">🌐</div>
+        <h1 id="ud-title">인앱 브라우저에서는<br/>일부 기능이 제한돼요</h1>
+        <p class="desc">최적의 환경을 위해<br/><b>외부 브라우저(Chrome / Safari)</b> 에서 열어주세요.</p>
+        <a id="ud-open-btn" href="#" class="open-btn">📲 외부 브라우저 열기</a>
+        <div class="url-box" id="ud-url"></div>
+        <button class="copy" id="ud-copy-btn" type="button">URL 복사</button>
+        <div class="steps">
+          <b>자동 이동이 안 되는 경우</b>
+          <ol style="margin:8px 0 0;padding-left:20px;">
+            <li>우측 상단 메뉴 (<kbd>⋮</kbd> / <kbd>⋯</kbd>) 클릭</li>
+            <li><b>"다른 브라우저로 열기"</b> 또는 <b>"Safari 로 열기"</b> 선택</li>
+            <li>안 되면 위 <b>URL 복사</b> 버튼 → Chrome/Safari 직접 열어 붙여넣기</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
     <div id="root" role="application" aria-label="유어딜 라이브 커머스">
-      <!-- 🛡️ 2026-04-28: React 마운트 실패 / 모듈 로드 지연 시 흰화면 대신 placeholder.
-           React 가 마운트되면 자동으로 덮어쓰임 (createRoot.render). -->
       <div id="ur-pre-react" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#020202;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
         <div style="text-align:center;padding:24px;">
           <div style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin-bottom:10px;">유어딜</div>
@@ -199,14 +117,97 @@
           </div>
         </div>
       </div>
-      <script>
-        // 8초 후에도 placeholder 가 남아있으면 (React 마운트 실패) 사용자에게 안내
-        setTimeout(function() {
-          var hint = document.getElementById('ur-slow-hint');
-          if (hint) hint.style.display = 'block';
-        }, 8000);
-      </script>
     </div>
+
+    <script>
+      // 🛡️ 2026-04-28: 인앱 detect → block 표시 + root 숨김 + 자동 redirect 시도.
+      //   JS 가 작동하면 카톡 사용자는 안내 화면 봄. JS 차단 시 root 의 placeholder 만 보임 (root 검정).
+      //   document.write 사용 안 함 → 카톡 인앱 호환성 ↑.
+      (function() {
+        try {
+          var ua = navigator.userAgent || '';
+          var isKakao = /KAKAOTALK/i.test(ua);
+          var isNaver = /NAVER\(inapp/i.test(ua);
+          var isFB = /FB_IAB|FBAV|FBAN/i.test(ua);
+          var isIG = /Instagram/i.test(ua);
+          var isLine = /\bLine\//i.test(ua);
+          var inApp = isKakao || isNaver || isFB || isIG || isLine;
+          if (!inApp) {
+            // 8초 후에도 placeholder 남으면 슬로우 힌트 표시 (일반 브라우저 전용)
+            setTimeout(function() {
+              var hint = document.getElementById('ur-slow-hint');
+              if (hint && document.getElementById('ur-pre-react')) hint.style.display = 'block';
+            }, 8000);
+            return;
+          }
+
+          // block 표시 + root 숨김
+          var block = document.getElementById('ud-inapp-block');
+          var root = document.getElementById('root');
+          if (block) block.className = 'show';
+          if (root) root.style.display = 'none';
+
+          var name = isKakao ? '카카오톡' : isNaver ? '네이버' : isFB ? '페이스북' : isIG ? '인스타그램' : '라인';
+          var title = document.getElementById('ud-title');
+          if (title) title.innerHTML = name + ' 인앱 브라우저에서는<br/>일부 기능이 제한돼요';
+
+          var url = window.location.href;
+          var urlEl = document.getElementById('ud-url');
+          if (urlEl) urlEl.textContent = url;
+
+          // OS 별 자동 호출 스킴
+          var isIOS = /iPhone|iPad|iPod/i.test(ua);
+          var isAndroid = /Android/i.test(ua);
+          var scheme = '';
+          if (isKakao && isIOS) {
+            scheme = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
+          } else if (isLine && (isIOS || isAndroid)) {
+            scheme = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1';
+          } else if (isAndroid) {
+            scheme = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+          }
+
+          var openBtn = document.getElementById('ud-open-btn');
+          if (openBtn) {
+            if (scheme) {
+              openBtn.href = scheme;
+            } else {
+              openBtn.style.display = 'none'; // iOS 페북/IG 자동 스킴 없음
+            }
+          }
+
+          var copyBtn = document.getElementById('ud-copy-btn');
+          if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+              var text = url;
+              var done = function() {
+                copyBtn.textContent = '복사됨 ✓';
+                copyBtn.style.background = '#34c759';
+              };
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(done).catch(function() { fallback(); });
+              } else {
+                fallback();
+              }
+              function fallback() {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); done(); } catch (e) {}
+                document.body.removeChild(ta);
+              }
+            });
+          }
+
+          // 자동 redirect 시도 (iOS 카톡, Android 인앱, Line)
+          if (scheme) {
+            try { window.location.href = scheme; } catch (e) {}
+          }
+        } catch (e) { /* never break the page */ }
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

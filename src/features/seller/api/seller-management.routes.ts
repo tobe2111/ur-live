@@ -133,10 +133,6 @@ interface ImgbbResponse {
   error?: { message: string };
 }
 
-interface SellerJWTPayload extends Record<string, unknown> {
-  seller_id?: number;
-}
-
 export const sellerManagementRoutes = new Hono<{ Bindings: Bindings }>();
 
 let _sellerColumnsEnsured = false;

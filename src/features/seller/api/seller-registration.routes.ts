@@ -21,11 +21,9 @@ import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
-import { getSellerIdFromToken } from '@/lib/seller-shared'
+import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
-
-interface SellerJWTPayload extends Record<string, unknown> { seller_id?: number }
 
 interface SellerRegisterRequest {
   username: string

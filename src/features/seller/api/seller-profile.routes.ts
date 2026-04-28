@@ -13,12 +13,10 @@ import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
-import { getSellerIdFromToken } from '@/lib/seller-shared'
+import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
-interface SellerJWTPayload extends Record<string, unknown> { seller_id?: number }
-
 interface SellerProfileUpdate {
   name?: string
   business_name?: string
