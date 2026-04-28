@@ -418,12 +418,14 @@ export async function handleScheduled(env: Env) {
                   SELECT g.amount, u.phone, u.name FROM gifts g
                   LEFT JOIN users u ON u.id = g.sender_user_id WHERE g.id = ?
                 `).bind(g.id).first<{ amount: number; phone: string | null; name: string | null }>();
-                if (giftDetail?.phone) {
+                // 🛡️ 2026-04-28: 플랫폼 senderKey 필요. 미설정이면 발송 skip.
+                const aligoSender = (env as { ALIGO_SENDER_KEY?: string }).ALIGO_SENDER_KEY;
+                if (giftDetail?.phone && aligoSender) {
                   const { sendAlimtalk } = await import('../../lib/aligo');
                   await sendAlimtalk(
                     { ALIGO_API_KEY: aligoKey, ALIGO_USER_ID: aligoUser },
                     {
-                      senderKey: '',
+                      senderKey: aligoSender,
                       templateCode: 'gift_refunded',
                       to: giftDetail.phone,
                       message: `[유어딜] 보내신 선물 (${giftDetail.amount.toLocaleString()}원) 이 30일 미수령으로 자동 환불됐어요.`,

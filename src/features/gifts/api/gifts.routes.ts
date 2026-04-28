@@ -194,12 +194,14 @@ giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
       // alimtalk 인프라 호출 (sendAlimtalk dynamic import — Worker bundle 분리 위해)
       const ALIGO_API_KEY = (c.env as { ALIGO_API_KEY?: string }).ALIGO_API_KEY
       const ALIGO_USER_ID = (c.env as { ALIGO_USER_ID?: string }).ALIGO_USER_ID
-      if (ALIGO_API_KEY && ALIGO_USER_ID) {
+      // 🛡️ 2026-04-28: 플랫폼 공통 senderKey — 빈값이면 발송 실패. env 에 등록 필요.
+      const ALIGO_SENDER_KEY = (c.env as { ALIGO_SENDER_KEY?: string }).ALIGO_SENDER_KEY
+      if (ALIGO_API_KEY && ALIGO_USER_ID && ALIGO_SENDER_KEY) {
         const { sendAlimtalk } = await import('../../../lib/aligo')
         await sendAlimtalk(
           { ALIGO_API_KEY, ALIGO_USER_ID },
           {
-            senderKey: '',  // 플랫폼 senderKey (공통, 환경변수 등으로 주입 필요)
+            senderKey: ALIGO_SENDER_KEY,
             templateCode: 'gift_received',
             to: gift.recipient_phone,
             message: `[유어딜] 선물이 도착했어요! 받기 → ${claimUrl}`,
