@@ -72,6 +72,7 @@ import { sellerSettlementsRoutes } from '../features/seller/api/seller-settlemen
 import { sellerAccountRoutes } from '../features/seller/api/seller-account.routes';
 import { consignmentRoutes } from '../features/seller/api/consignment.routes';
 import { giftsRoutes } from '../features/gifts/api/gifts.routes';
+import { fundingRoutes } from '../features/funding/api/funding.routes';
 import { sellerPinRoutes } from '../features/seller/api/seller-pin.routes';
 import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes';
 import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
@@ -729,6 +730,8 @@ app.route('/api/seller', sellerAlimtalkMgmtRoutes);
 app.route('/api/seller/consignment', consignmentRoutes);
 // 🛡️ 2026-04-28: 선물하기 (라이브 시청 중 다른 사람에게 상품 선물)
 app.route('/api/gifts', giftsRoutes);
+// 🛡️ 2026-04-28: 라이브 펀딩 (와디즈 모델 — 셀러 PB 사전 펀딩)
+app.route('/api/funding', fundingRoutes);
 app.route('/api/seller', sellerPinRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller/analytics', sellerAnalyticsRoutes);

@@ -90,7 +90,7 @@ export default function RestaurantMapPage() {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   const [category, setCategory] = useState<string>('')
   // 🛡️ 2026-04-28: 공구권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
-  const [voucherType, setVoucherType] = useState<'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher'>('all')
+  const [voucherType, setVoucherType] = useState<'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'>('all')
   const [sortBy, setSortBy] = useState<SortBy>('discount')
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
@@ -470,6 +470,9 @@ export default function RestaurantMapPage() {
             { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
             { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
             { key: 'health_voucher', label: '헬스', emoji: '💪' },
+            { key: 'pet_voucher', label: '반려', emoji: '🐶' },
+            { key: 'stay_voucher', label: '숙박', emoji: '🏨' },
+            { key: 'activity_voucher', label: '액티비티', emoji: '🎯' },
           ].map(t => (
             <button
               key={t.key}

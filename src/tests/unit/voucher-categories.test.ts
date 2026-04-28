@@ -22,10 +22,12 @@ function resolveCategories(param: string): VoucherCategory[] {
   return [...VOUCHER_CATEGORIES]; // unknown → 안전한 fallback (전체)
 }
 
+const ALL_CATS = ['meal_voucher', 'beauty_voucher', 'health_voucher', 'pet_voucher', 'stay_voucher', 'activity_voucher'];
+
 describe('VOUCHER_CATEGORIES — 카테고리 enum', () => {
-  it('3종 카테고리만 존재', () => {
-    expect(VOUCHER_CATEGORIES).toHaveLength(3);
-    expect(VOUCHER_CATEGORIES).toEqual(['meal_voucher', 'beauty_voucher', 'health_voucher']);
+  it('6종 카테고리 존재', () => {
+    expect(VOUCHER_CATEGORIES).toHaveLength(6);
+    expect(VOUCHER_CATEGORIES).toEqual(ALL_CATS);
   });
 
   it('모든 카테고리에 라벨 정의', () => {
@@ -42,39 +44,33 @@ describe('VOUCHER_CATEGORIES — 카테고리 enum', () => {
     }
   });
 
-  it('SQL placeholder 가 카테고리 수만큼 (3개) 생성', () => {
-    expect(VOUCHER_CATEGORY_SQL_PLACEHOLDERS).toBe('?,?,?');
+  it('SQL placeholder 가 카테고리 수만큼 (6개) 생성', () => {
+    expect(VOUCHER_CATEGORY_SQL_PLACEHOLDERS).toBe('?,?,?,?,?,?');
   });
 });
 
 describe('resolveCategories — API 파라미터 → SQL list', () => {
-  it('"all" → 3종 모두', () => {
-    expect(resolveCategories('all')).toEqual(['meal_voucher', 'beauty_voucher', 'health_voucher']);
+  it('"all" → 6종 모두', () => {
+    expect(resolveCategories('all')).toEqual(ALL_CATS);
   });
 
-  it('"meal_voucher" → 단일', () => {
-    expect(resolveCategories('meal_voucher')).toEqual(['meal_voucher']);
-  });
-
-  it('"beauty_voucher" → 단일', () => {
-    expect(resolveCategories('beauty_voucher')).toEqual(['beauty_voucher']);
-  });
-
-  it('"health_voucher" → 단일', () => {
-    expect(resolveCategories('health_voucher')).toEqual(['health_voucher']);
+  it('각 단일 카테고리 통과', () => {
+    for (const cat of ALL_CATS) {
+      expect(resolveCategories(cat)).toEqual([cat]);
+    }
   });
 
   it('알 수 없는 값 → 전체 fallback (안전)', () => {
-    expect(resolveCategories('hack_voucher')).toEqual(['meal_voucher', 'beauty_voucher', 'health_voucher']);
-    expect(resolveCategories('')).toEqual(['meal_voucher', 'beauty_voucher', 'health_voucher']);
-    expect(resolveCategories('all; DROP TABLE')).toEqual(['meal_voucher', 'beauty_voucher', 'health_voucher']);
+    expect(resolveCategories('hack_voucher')).toEqual(ALL_CATS);
+    expect(resolveCategories('')).toEqual(ALL_CATS);
+    expect(resolveCategories('all; DROP TABLE')).toEqual(ALL_CATS);
   });
 });
 
 describe('SQL injection 방어 — placeholder 만 사용', () => {
   it('카테고리 값이 placeholder bind 로만 들어감 (SQL 문자열 직접 삽입 X)', () => {
     const placeholders = VOUCHER_CATEGORIES.map(() => '?').join(',');
-    expect(placeholders).toBe('?,?,?');
+    expect(placeholders).toBe('?,?,?,?,?,?');
     expect(placeholders).not.toMatch(/['"]/); // 따옴표 없음
     expect(placeholders).not.toMatch(/\bvoucher\b/); // enum 값 자체가 placeholder 에 안 섞임
   });

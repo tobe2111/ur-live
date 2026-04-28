@@ -90,11 +90,11 @@ groupBuyRoutes.get('/products', async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
-  // 마감된 공동구매 자동 상태 업데이트 (3종 카테고리 모두 대상)
+  // 마감된 공동구매 자동 상태 업데이트 (6종 카테고리 모두 대상)
   try {
     await DB.prepare(`
       UPDATE products SET group_buy_status = 'expired', updated_at = CURRENT_TIMESTAMP
-      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher')
+      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
         AND group_buy_status = 'active'
         AND group_buy_deadline IS NOT NULL AND group_buy_deadline < datetime('now')
     `).run()
@@ -102,7 +102,7 @@ groupBuyRoutes.get('/products', async (c) => {
 
   const status = c.req.query('status') || 'active'
   const categoryParam = c.req.query('category') || 'all'
-  const validCategories = ['meal_voucher', 'beauty_voucher', 'health_voucher']
+  const validCategories = ['meal_voucher', 'beauty_voucher', 'health_voucher', 'pet_voucher', 'stay_voucher', 'activity_voucher']
   const categories = categoryParam === 'all'
     ? validCategories
     : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)

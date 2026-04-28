@@ -21,7 +21,7 @@ export default function SellerMealVoucherNewPage() {
     original_price: 0,
     image_url: '',
     // 🛡️ 2026-04-28: voucher 카테고리 (식사/뷰티/헬스) — 같은 인프라 재활용
-    category: 'meal_voucher' as 'meal_voucher' | 'beauty_voucher' | 'health_voucher',
+    category: 'meal_voucher' as 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher',
     restaurant_name: '',
     restaurant_address: '',
     restaurant_phone: '',
@@ -172,9 +172,12 @@ export default function SellerMealVoucherNewPage() {
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { key: 'meal_voucher' as const, emoji: '🍽️', label: t('seller.voucher.categoryMeal', { defaultValue: '식사 공구권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
-                { key: 'beauty_voucher' as const, emoji: '💇', label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 공구권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
-                { key: 'health_voucher' as const, emoji: '💪', label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 공구권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
+                { key: 'meal_voucher' as const, emoji: '🍽️', label: '식사 공구권', desc: '맛집·카페' },
+                { key: 'beauty_voucher' as const, emoji: '💇', label: '뷰티 공구권', desc: '헤어·네일·피부' },
+                { key: 'health_voucher' as const, emoji: '💪', label: '헬스 공구권', desc: 'PT·요가·필라테스' },
+                { key: 'pet_voucher' as const, emoji: '🐶', label: '반려 공구권', desc: '미용·호텔·병원' },
+                { key: 'stay_voucher' as const, emoji: '🏨', label: '숙박 공구권', desc: '펜션·호텔·모텔' },
+                { key: 'activity_voucher' as const, emoji: '🎯', label: '액티비티 공구권', desc: '방탈출·볼링·클래스' },
               ].map(c => (
                 <button
                   type="button"
