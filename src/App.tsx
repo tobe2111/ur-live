@@ -181,6 +181,7 @@ const AgencyPKBattlesPage = lazy(() => import('./pages/AgencyPKBattlesPage'))
 const AgencyTransfersPage = lazy(() => import('./pages/AgencyTransfersPage'))
 const SellerCastingsPage = lazy(() => import('./pages/SellerCastingsPage'))
 const AdminTikTokDiscoveryPage = lazy(() => import('./pages/AdminTikTokDiscoveryPage'))
+const AdminRestaurantDemandPage = lazy(() => import('./pages/AdminRestaurantDemandPage'))
 const AdminCastingsPage = lazy(() => import('./pages/AdminCastingsPage'))
 const AdminOpsInsightsPage = lazy(() => import('./pages/AdminOpsInsightsPage'))
 const AgencySelfEventsPage = lazy(() => import('./pages/AgencySelfEventsPage'))
@@ -748,6 +749,11 @@ function AppContent() {
             <Route path="/admin/tiktok-discovery" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminTikTokDiscoveryPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/restaurant-demand" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminRestaurantDemandPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/castings" element={

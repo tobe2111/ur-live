@@ -832,7 +832,7 @@ function SuggestionModal({ place, onClose }: { place: KakaoPlace; onClose: () =>
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   placeholder="010-0000-0000"
-                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-pink-400 focus:outline-none"
+                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-pink-400 focus:outline-none"
                 />
                 <button
                   onClick={() => submit('notify')}
