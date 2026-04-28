@@ -9,8 +9,8 @@ import type { Context, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timing } from 'hono/timing';
-import { swaggerUI } from '@hono/swagger-ui';
-import { openApiSpec } from './openapi';
+import { docsRoutes } from './routes/docs.routes'; // 2026-04-27 TD-006 split (openapi/swagger)
+import { internalDiagnosticsRoutes } from './routes/internal-diagnostics.routes'; // 2026-04-27 TD-006 split
 
 // ---- Worker-local routes (multi-seller MVP) ----
 import type { Env } from './types/env';
@@ -383,6 +383,8 @@ app.get('/health', (c) => c.json({
 //   (2026-04-27 TD-006 split): 별도 라우터 파일로 분리.
 app.route('/', killerSwRoutes);
 app.route('/', sitemapRoutes);
+app.route('/', docsRoutes);
+app.route('/', internalDiagnosticsRoutes);
 
 // v32 FIX: PWA manifest MIME type 명시 (Workers asset serving은 _headers 미지원)
 // Chrome "Manifest: Line: 1 Syntax error" 원인 — Worker가 HTML fallback으로 응답하거나
@@ -494,105 +496,7 @@ app.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
 // ============================================================
 // 🛡️ 2026-04-22: admin 전용 (또는 INTERNAL_OPS_TOKEN 헤더 매치).
 // 이전: 누구나 호출 가능 → DB 스키마 조작, 내부 구조 노출 위험.
-app.get('/api/_internal/health-dashboard', requireAdmin(), async (c) => {
-  const env = c.env as any;
-  const DB = env.DB as D1Database;
-  const start = Date.now();
-
-  // DB latency 측정
-  let dbLatency = 0;
-  let dbOk = false;
-  try {
-    const t0 = Date.now();
-    await DB.prepare('SELECT 1').first();
-    dbLatency = Date.now() - t0;
-    dbOk = true;
-  } catch {}
-
-  // 주요 테이블 행 수
-  const tableCounts: Record<string, number | null> = {};
-  const tablesToCheck = ['users', 'sellers', 'products', 'orders', 'live_streams'];
-  for (const t of tablesToCheck) {
-    try {
-      const row = await DB.prepare(`SELECT COUNT(*) as c FROM ${t}`).first<{ c: number }>();
-      tableCounts[t] = row?.c ?? null;
-    } catch {
-      tableCounts[t] = null;
-    }
-  }
-
-  // 최근 24시간 주문/결제 건수
-  let recentOrders = 0;
-  let recentPaidOrders = 0;
-  try {
-    const o = await DB.prepare(
-      "SELECT COUNT(*) as c FROM orders WHERE created_at >= datetime('now', '-24 hours')"
-    ).first<{ c: number }>();
-    recentOrders = o?.c ?? 0;
-    const p = await DB.prepare(
-      "SELECT COUNT(*) as c FROM orders WHERE created_at >= datetime('now', '-24 hours') AND payment_status = 'approved'"
-    ).first<{ c: number }>();
-    recentPaidOrders = p?.c ?? 0;
-  } catch {}
-
-  // 환경 변수 sanity
-  const envCheck = {
-    JWT_SECRET: !!env.JWT_SECRET,
-    REFRESH_TOKEN_SECRET: !!env.REFRESH_TOKEN_SECRET,
-    KAKAO_REST_API_KEY: !!env.KAKAO_REST_API_KEY,
-    FIREBASE_PRIVATE_KEY: !!env.FIREBASE_PRIVATE_KEY,
-    TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
-    RESEND_WEBHOOK_SECRET: !!env.RESEND_WEBHOOK_SECRET,
-    INTERNAL_CRON_TOKEN: !!env.INTERNAL_CRON_TOKEN,
-  };
-  const secretsTotal = Object.keys(envCheck).length;
-  const secretsSet = Object.values(envCheck).filter(Boolean).length;
-
-  // Slow query 통계 (24h)
-  let slowQueries: Array<{ label: string; count: number; avg_ms: number; max_ms: number }> = [];
-  try {
-    const { getSlowQueryStats } = await import('./utils/slow-query-logger');
-    slowQueries = await getSlowQueryStats(DB, 24);
-  } catch {}
-
-  // 최근 5xx spike 기록
-  let recent5xxSpikes = 0;
-  try {
-    const row = await DB.prepare(
-      "SELECT COUNT(*) as c FROM rate_limit_attempts WHERE action='5xx_spike' AND window_start >= ?"
-    ).bind(Math.floor(Date.now() / 1000) - 86400).first<{ c: number }>();
-    recent5xxSpikes = row?.c ?? 0;
-  } catch {}
-
-  return c.json({
-    timestamp: new Date().toISOString(),
-    totalDurationMs: Date.now() - start,
-    db: {
-      status: dbOk ? 'healthy' : 'unhealthy',
-      latencyMs: dbLatency,
-      latencyGrade: dbLatency < 50 ? 'excellent' : dbLatency < 200 ? 'good' : dbLatency < 500 ? 'slow' : 'critical',
-    },
-    tables: tableCounts,
-    traffic: {
-      last24hOrders: recentOrders,
-      last24hPaidOrders: recentPaidOrders,
-      conversionPct: recentOrders > 0 ? Math.round((recentPaidOrders / recentOrders) * 100) : 0,
-    },
-    secrets: {
-      total: secretsTotal,
-      configured: secretsSet,
-      missing: Object.entries(envCheck).filter(([, v]) => !v).map(([k]) => k),
-      health: secretsSet === secretsTotal ? 'complete' : 'incomplete',
-    },
-    performance: {
-      slowQueriesLast24h: slowQueries.length,
-      topSlow: slowQueries.slice(0, 5),
-    },
-    errors: {
-      spikesLast24h: recent5xxSpikes,
-    },
-  });
-});
+// /api/_internal/health-dashboard → routes/internal-diagnostics.routes.ts (TD-006 split)
 
 // _cachedBuildVersion 모듈 캐시 → public-utility.routes.ts 로 이동 (P1)
 // ============================================================
@@ -1177,57 +1081,7 @@ app.get('/api/_internal/repair-new-tables', requireAdmin(), async (c) => {
 // 🛡️ 2026-04-27: 마이그레이션 적용 상태 검증 (admin 전용, 읽기만).
 // 신규 에이전시/TikTok 테이블이 D1 에 적용됐는지 한 번에 확인.
 // 응답: { summary: { applied, missing }, results: [{ table, exists }] }
-app.get('/api/_internal/migration-status', requireAdmin(), async (c) => {
-  const env = c.env as any;
-  const DB = env.DB as D1Database;
-  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
-
-  // 이번 세션 (2026-04-26) 추가된 마이그레이션 0207~0222 의 핵심 테이블 목록
-  const tables = [
-    { mig: '0207', name: 'agency_creator_approvals' },
-    { mig: '0208', name: 'agency_auto_settle_log' },
-    { mig: '0209', name: 'agency_campaigns' },
-    { mig: '0209', name: 'agency_campaign_sellers' },
-    { mig: '0210', name: 'agency_incentive_rules' },
-    { mig: '0211', name: 'auction_winner_history' },
-    { mig: '0212', name: 'agency_tier_log' },
-    { mig: '0213', name: 'agency_creator_evaluations' },
-    { mig: '0214', name: 'agency_message_templates' },
-    { mig: '0215', name: 'agency_monthly_tasks' },
-    { mig: '0216', name: 'coupons_agency_distribution' },
-    { mig: '0217', name: 'agency_members' },
-    { mig: '0218', name: 'agency_live_notes' },
-    { mig: '0219', name: 'settlement_invoices' },
-    { mig: '0220', name: 'seller_platform_links' },
-    { mig: '0221', name: 'tiktok_videos_cache' },
-    { mig: '0222', name: 'agency_notifications' },
-    { mig: '0222', name: 'agency_contracts' },
-    { mig: '0222', name: 'agency_settlements' },
-    { mig: '0222', name: 'agency_seller_targets' },
-  ];
-
-  const results: Array<{ migration: string; table: string; exists: boolean }> = [];
-  for (const t of tables) {
-    let exists = false;
-    try {
-      await DB.prepare(`SELECT 1 FROM ${t.name} LIMIT 1`).first();
-      exists = true;
-    } catch {
-      exists = false;
-    }
-    results.push({ migration: t.mig, table: t.name, exists });
-  }
-
-  const applied = results.filter((r) => r.exists).length;
-  const missing = results.filter((r) => !r.exists);
-
-  return c.json({
-    success: true,
-    summary: { total: results.length, applied, missing: missing.length },
-    missing_tables: missing.map((m) => `${m.migration}: ${m.table}`),
-    results,
-  });
-});
+// /api/_internal/migration-status → routes/internal-diagnostics.routes.ts (TD-006 split)
 
 // 🛡️ 2026-04-22: admin 전용. 이전: 공개 → 누구나 DB 스키마 수정 가능 (CRITICAL)
 app.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
@@ -1790,112 +1644,10 @@ app.get('/api/_internal/smoke-test-auth', async (c) => {
 // 이 핸들러의 존재 자체가 "최신 배포 반영" 증거
 // build-info 는 src/worker/routes/debug.routes.ts 로 이동됨 (M9 분리, 2026-04-26)
 
-app.get('/api/debug/whoami', requireAdmin(), async (c) => {
-  const authHeader = c.req.header('Authorization') || '';
-  const hasAuthHeader = authHeader.length > 0;
-  const cookieHeader = c.req.header('Cookie') || '';
-  const hasCookie = cookieHeader.length > 0;
-  const cookieNames = cookieHeader.split(';').map(s => s.split('=')[0].trim()).filter(Boolean);
-
-  // 토큰 앞 20자만 (전체 노출 안 됨)
-  const authPreview = hasAuthHeader ? authHeader.slice(0, 20) + '...' : null;
-
-  // 쿠키 파싱: 세션 쿠키 존재 여부 (값은 노출 안 함)
-  const sessionCookieNames = ['ur_session', 'firebase_token', 'seller_session', 'admin_session'];
-  const presentSessionCookies = sessionCookieNames.filter(n => cookieNames.includes(n));
-
-  // 미들웨어가 아직 안 돌았으므로 requireAuth 없이 수동 토큰 검증만
-  let tokenInfo: any = null;
-  if (hasAuthHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    try {
-      const { verify } = await import('hono/jwt');
-      const payload = await verify(token, c.env.JWT_SECRET, 'HS256');
-      tokenInfo = {
-        valid: true,
-        type: (payload as any).type,
-        sub: (payload as any).sub ? String((payload as any).sub).slice(0, 8) + '...' : null,
-        exp: (payload as any).exp,
-        expired: (payload as any).exp && (payload as any).exp < Math.floor(Date.now() / 1000),
-      };
-    } catch (err: any) {
-      tokenInfo = { valid: false, error: String(err?.message || err).slice(0, 100) };
-    }
-  }
-
-  return c.json({
-    success: true,
-    request: {
-      url: c.req.url,
-      method: c.req.method,
-      origin: c.req.header('Origin') || null,
-      userAgent: (c.req.header('User-Agent') || '').slice(0, 60),
-      cfConnectingIp: c.req.header('CF-Connecting-IP') || null,
-    },
-    auth: {
-      hasAuthHeader,
-      authPreview,
-      hasCookie,
-      cookieNames,
-      presentSessionCookies,
-      tokenInfo,
-    },
-    env: {
-      hasJwtSecret: !!c.env.JWT_SECRET,
-      hasDb: !!c.env.DB,
-      environment: (c.env as any).ENVIRONMENT || 'unknown',
-    },
-  });
-});
-
-// 세션 검증 시도 + 결과 리포트 (인증 경로 어느 스텝에서 실패하는지)
-app.get('/api/debug/auth-trace', requireAdmin(), async (c) => {
-  const steps: any[] = [];
-  try {
-    const authHeader = c.req.header('Authorization') || '';
-    steps.push({ step: 'headers', authHeaderPresent: !!authHeader });
-
-    if (authHeader.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
-      steps.push({ step: 'bearer-found', length: token.length });
-      try {
-        const { verify } = await import('hono/jwt');
-        const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as any;
-        steps.push({ step: 'jwt-verified', type: payload.type, sub: String(payload.sub).slice(0, 6) + '...' });
-      } catch (e: any) {
-        steps.push({ step: 'jwt-error', error: String(e?.message || e).slice(0, 100) });
-      }
-    }
-
-    // 카카오 세션 쿠키 체크
-    const cookieHeader = c.req.header('Cookie') || '';
-    const urSession = cookieHeader.split(';').map(s => s.trim()).find(c => c.startsWith('ur_session='));
-    if (urSession) {
-      steps.push({ step: 'ur_session-found', length: urSession.length });
-    }
-
-    return c.json({ success: true, trace: steps });
-  } catch (e: any) {
-    steps.push({ step: 'exception', error: String(e?.message || e).slice(0, 200) });
-    return c.json({ success: false, trace: steps });
-  }
-});
+// /api/debug/whoami + /api/debug/auth-trace → routes/internal-diagnostics.routes.ts (TD-006 split)
 
 // ============================================================
-// API Documentation (OpenAPI / Swagger UI)
-// ============================================================
-
-// OpenAPI Spec JSON endpoint
-app.get('/api/openapi.json', (c) => {
-  return c.json(openApiSpec);
-});
-
-// Swagger UI at /docs
-app.get('/docs', swaggerUI({ url: '/api/openapi.json' }));
-
-// Alternative: /api/docs
-app.get('/api/docs', swaggerUI({ url: '/api/openapi.json' }));
-
+// API Documentation (OpenAPI / Swagger UI) → routes/docs.routes.ts (TD-006 split, 2026-04-27)
 // ============================================================
 // Debug & Utilities
 // ============================================================
@@ -1904,49 +1656,7 @@ app.get('/api/docs', swaggerUI({ url: '/api/openapi.json' }));
 // bindings 는 src/worker/routes/debug.routes.ts 로 이동됨 (M9 분리, 2026-04-26)
 
 // KV usage monitoring (admin only)
-app.get('/api/debug/kv-usage', requireAdmin(), async (c) => {
-  const env = c.env as Env;
-  try {
-    // SESSION_KV의 활성 세션 키 수를 집계 (KV list 사용)
-    let sessionCount = 0;
-    if (env.SESSION_KV) {
-      const listed = await env.SESSION_KV.list({ limit: 1000 });
-      sessionCount = listed.keys.length;
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const nextReset = new Date();
-    nextReset.setUTCHours(24, 0, 0, 0);
-
-    // Free tier limits: reads 100k/day, writes 1k/day
-    // Paid plan: reads 10M/day, writes 1M/day
-    const readLimit = 100000;
-    const writeLimit = 1000;
-    // Estimate: each session = ~10 reads/day (token validation), 1 write (creation)
-    const estimatedReads = sessionCount * 10;
-    const estimatedWrites = Math.ceil(sessionCount * 0.3);
-    const readUsagePercent = Math.min(100, Math.round((estimatedReads / readLimit) * 100));
-    const writeUsagePercent = Math.min(100, Math.round((estimatedWrites / writeLimit) * 100));
-
-    return c.json({
-      success: true,
-      data: {
-        timestamp: new Date().toISOString(),
-        note: 'KV 사용량은 활성 세션 수 기반 추정치입니다. 정확한 수치는 Cloudflare 대시보드에서 확인하세요.',
-        activeSessions: sessionCount,
-        reads: estimatedReads,
-        writes: estimatedWrites,
-        readLimit,
-        writeLimit,
-        readUsagePercent,
-        writeUsagePercent,
-        estimatedDailyCost: 0,
-      },
-    });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
+// /api/debug/kv-usage → routes/internal-diagnostics.routes.ts (TD-006 split)
 
 // ============================================================
 // Database Index Optimization (admin only)
