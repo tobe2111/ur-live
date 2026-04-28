@@ -90,6 +90,7 @@ import { shippingAddressRoutes } from '../features/shipping/api/shipping-address
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
 import { supplyRoutes } from '../features/supply/api/supply.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
+import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
 import { donationsRoutes } from '../features/donations/api/donations.routes';
 import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
@@ -869,6 +870,8 @@ app.route('/api/supply', supplyRoutes);
 // 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller
 app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 60, windowSec: 60 }));
 app.route('/api/seller/alimtalk', alimtalkRoutes);
+// 🛡️ 2026-04-28: restaurant-map 옵션 B — 사용자 수요 신호 (셀러 영입/알림)
+app.route('/api/restaurant-suggestions', restaurantSuggestionsRoutes);
 
 // ── 후원(도네이션) ──
 app.route('/api/donations', donationsRoutes);
