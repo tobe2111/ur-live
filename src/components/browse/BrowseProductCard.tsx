@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bookmark } from 'lucide-react'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 
 interface Product {
   id: number
@@ -55,9 +56,9 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
     
     const userId = localStorage.getItem('userId')
     if (!userId) {
-      alert('로그인이 필요합니다.')
+      toast.error('로그인이 필요합니다')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
-      navigate('/login')
+      setTimeout(() => navigate('/login'), 600)
       return
     }
     
@@ -78,7 +79,7 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
       }
     } catch (err) {
       if (import.meta.env.DEV) console.error('위시리스트 처리 실패:', err)
-      alert('저장 중 오류가 발생했습니다.')
+      toast.error('저장 중 오류가 발생했습니다')
     } finally {
       setLoading(false)
     }

@@ -10,6 +10,7 @@
  */
 
 import { Check } from 'lucide-react'
+import { toast } from '@/hooks/useToast'
 
 interface Props {
   /** 0: 참여 전 / 1: 참여 완료 / 2: 달성 / 3: 배송 시작 */
@@ -83,7 +84,7 @@ export function GroupBuyInviteCTA({ productId, productName, remaining, className
 
   function copyLink() {
     navigator.clipboard.writeText(`${shareText}\n${shareUrl}`)
-      .then(() => alert('링크가 복사되었습니다'))
+      .then(() => toast.success('링크가 복사되었습니다'))
       .catch(() => { /* ignore */ })
   }
 

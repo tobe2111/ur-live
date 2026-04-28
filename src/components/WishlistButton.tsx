@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 
 interface WishlistButtonProps {
   productId: number
@@ -66,10 +67,10 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
 
     // 로그인 확인
     if (!userId) {
-      alert('로그인이 필요합니다.')
-      // 로그인 페이지로 이동 (현재 페이지 저장)
+      // 🛡️ 2026-04-28: alert 제거 (카톡 인앱 차단 위험). toast 안내 후 redirect.
+      toast.error('로그인이 필요합니다')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
-      window.location.href = '/login'
+      setTimeout(() => { window.location.href = '/login' }, 600)
       return
     }
 
@@ -111,9 +112,9 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
       
       // 에러 메시지 표시
       if (error.response?.data?.error) {
-        alert(error.response.data.error)
+        toast.error(error.response.data.error)
       } else {
-        alert('오류가 발생했습니다. 다시 시도해주세요.')
+        toast.error('오류가 발생했습니다. 다시 시도해주세요.')
       }
     } finally {
       setIsLoading(false)
