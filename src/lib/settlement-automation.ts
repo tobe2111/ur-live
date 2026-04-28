@@ -27,6 +27,9 @@ interface SellerSettlement {
   shipping_fee: number // 배송비 수입
   refund_amount: number // 환불 금액
   settlement_amount: number // 정산 금액 (매출 - 수수료 - 환불)
+  // 🛡️ 2026-04-28: MD 위탁 통합. 셀러가 host 일 때 받은 수수료, owner 일 때 빼낸 분배.
+  consignment_host_credit?: number   // 내가 host 로 받은 분배 합계 (+)
+  consignment_owner_debit?: number   // 내가 owner 인데 host 가 가져간 분배 합계 (-)
   orders: SettlementOrder[]
 }
 
@@ -223,6 +226,20 @@ async function calculateSellerSettlement(
       })
     }
 
+    // 🛡️ 2026-04-28: consignment 분배 통합. host 입장 + owner 입장 모두 합산.
+    let consignmentHostCredit = 0
+    let consignmentOwnerDebit = 0
+    let adjustedSettlement = settlementAmount
+    try {
+      const { getConsignmentSettlementsForSeller } = await import('./consignment-settlement')
+      const cs = await getConsignmentSettlementsForSeller(DB, sellerId, period.startDate, period.endDate)
+      consignmentHostCredit = cs.host_total
+      // owner 입장: 내가 owner 인 위탁건은 원래 settlement_amount 에 포함됐으나
+      //            host 분배 + 플랫폼 수수료 만큼 차감 필요 (= total - owner_amount).
+      consignmentOwnerDebit = cs.as_owner.reduce((sum, item) => sum + (item.host_amount + item.platform_amount), 0)
+      adjustedSettlement = settlementAmount + consignmentHostCredit - consignmentOwnerDebit
+    } catch { /* table missing or query failure — ignore (정산 분배 없이 진행) */ }
+
     return {
       seller_id: sellerId,
       seller_name: seller.business_name,
@@ -231,7 +248,9 @@ async function calculateSellerSettlement(
       platform_fee: totalPlatformFee,
       shipping_fee: totalShippingFee,
       refund_amount: refundAmount,
-      settlement_amount: settlementAmount,
+      settlement_amount: adjustedSettlement,
+      consignment_host_credit: consignmentHostCredit,
+      consignment_owner_debit: consignmentOwnerDebit,
       orders: settlementOrders
     }
   } catch (error) {

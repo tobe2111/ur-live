@@ -177,10 +177,15 @@ giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
       return c.json({ success: false, error: err.message || '결제 승인 실패' }, 400)
     }
 
-    // 4) gift status 업데이트
+    // 4) gift status 업데이트 + toss_payment_key 저장 (환불 cron 용)
+    //    🛡️ 2026-04-28: ensure ADD COLUMN — 마이그레이션 미적용 환경 안전
+    try {
+      await c.env.DB.prepare("ALTER TABLE gifts ADD COLUMN toss_payment_key TEXT").run()
+    } catch { /* exists */ }
     await c.env.DB.prepare(`
-      UPDATE gifts SET status = 'paid', paid_at = datetime('now'), updated_at = datetime('now') WHERE id = ?
-    `).bind(giftId).run()
+      UPDATE gifts SET status = 'paid', paid_at = datetime('now'),
+        toss_payment_key = ?, updated_at = datetime('now') WHERE id = ?
+    `).bind(body.paymentKey, giftId).run()
 
     // 5) 알림톡 발송 (best-effort, 실패해도 결제는 성공 처리)
     try {

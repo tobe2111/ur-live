@@ -385,6 +385,38 @@ export async function handleScheduled(env: Env) {
     results.gifts_expired = meta.changes ?? 0;
   } catch { /* table may not exist */ }
 
+  // ── 20-b. 🛡️ 2026-04-28: expired gift 의 토스 부분취소 자동 호출 ──
+  //   #20 에서 status='expired' 된 gift 들을 토스 cancel API 로 환불.
+  //   성공 시 status='refunded'. 실패는 best-effort (다음 cron tick 에서 재시도).
+  try {
+    const tossSecretKey = (env as { TOSS_SECRET_KEY?: string }).TOSS_SECRET_KEY;
+    if (tossSecretKey) {
+      const { results: expiredGifts } = await DB.prepare(`
+        SELECT id, toss_payment_key, amount FROM gifts
+        WHERE status = 'expired' AND toss_payment_key IS NOT NULL
+        LIMIT 50
+      `).all<{ id: number; toss_payment_key: string; amount: number }>();
+
+      let refunded = 0, failed = 0;
+      for (const g of expiredGifts ?? []) {
+        try {
+          const { requestTossRefund } = await import('../utils/refund');
+          const r = await requestTossRefund(g.toss_payment_key, '선물 30일 미수령 자동 환불', tossSecretKey);
+          if (r.success) {
+            await DB.prepare(`
+              UPDATE gifts SET status = 'refunded', updated_at = datetime('now') WHERE id = ?
+            `).bind(g.id).run();
+            refunded++;
+          } else {
+            failed++;
+          }
+        } catch { failed++; }
+      }
+      results.gifts_refunded = refunded;
+      if (failed > 0) results.gifts_refund_failed = failed;
+    }
+  } catch (e) { console.error('[Cron] gift refund error:', e); }
+
   // ── 21. 🛡️ 2026-04-28: pending 상태 gift 자동 정리 (24시간 결제 미완료) ──
   //   토스 결제 confirm 호출 안 된 채 24시간 경과 → refunded (실 결제 안 된 상태)
   try {
