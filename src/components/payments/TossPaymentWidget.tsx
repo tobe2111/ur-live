@@ -109,7 +109,10 @@ export function TossPaymentWidget({
     async function renderWidgets() {
       if (!widgets) return
       try {
-        const finalAmount = totalAmount + shippingFee
+        // 🛡️ 2026-04-28 버그 fix: CheckoutPage 가 이미 shipping/coupon/deal 모두 적용된
+        //   최종 totalAmount 를 전달함. 이전 코드 'totalAmount + shippingFee' 는
+        //   shipping 이중 합산 → 토스에 잘못된 금액 전달 + 결제 버튼 표시 inflated.
+        const finalAmount = totalAmount
 
         // DOM 요소가 존재할 때까지 대기 (최대 3초)
         let attempts = 0
@@ -150,14 +153,14 @@ export function TossPaymentWidget({
     renderWidgets()
   }, [widgets, isRendered, totalAmount, shippingFee, onPaymentError, t])
 
-  // 3️⃣ 금액 변경 시 위젯 금액 업데이트
+  // 3️⃣ 금액 변경 시 위젯 금액 업데이트 — totalAmount 가 이미 final (shipping 포함)
   useEffect(() => {
     if (!widgets || !isRendered) return
-    const finalAmount = Math.round(totalAmount + shippingFee)
+    const finalAmount = Math.round(totalAmount)
     widgets.setAmount({ currency: 'KRW', value: finalAmount }).catch((err: unknown) => {
       if (import.meta.env.DEV) console.error('[TossPayments] 금액 업데이트 실패:', err)
     })
-  }, [totalAmount, shippingFee, isRendered, widgets])
+  }, [totalAmount, isRendered, widgets])
 
   // 4️⃣ 결제 요청
   const handlePayment = useCallback(async () => {
@@ -230,7 +233,7 @@ export function TossPaymentWidget({
           </span>
         )}
         {loadingState === 'error' && '결제 시스템 오류 (새로고침 필요)'}
-        {loadingState === 'ready' && !isProcessing && `${(totalAmount + shippingFee).toLocaleString()}원 결제하기`}
+        {loadingState === 'ready' && !isProcessing && `${totalAmount.toLocaleString()}원 결제하기`}
         {loadingState === 'ready' && isProcessing && (
           <span className="flex items-center justify-center gap-2">
             <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>

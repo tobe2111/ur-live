@@ -83,7 +83,7 @@ function CheckoutForm({
         setIsProcessing(false)
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         const orderId = `order_${Date.now()}_${userId}`
-        onPaymentSuccess(orderId, paymentIntent.id, totalAmount + shippingFee)
+        onPaymentSuccess(orderId, paymentIntent.id, totalAmount)
       }
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('[Stripe] ❌ 결제 요청 실패:', err)
@@ -113,7 +113,7 @@ function CheckoutForm({
       >
         {isProcessing
           ? t('payment.processing', { defaultValue: 'Processing...' })
-          : t('payment.pay') || `Pay $${((totalAmount + shippingFee) / 100).toFixed(2)}`
+          : t('payment.pay') || `Pay $${(totalAmount / 100).toFixed(2)}`
         }
       </button>
     </form>
@@ -130,7 +130,9 @@ export function StripeCheckout(props: StripeCheckoutProps) {
   React.useEffect(() => {
     async function createPaymentIntent() {
       try {
-        const finalAmount = Math.round((props.totalAmount + props.shippingFee) * 100) // Convert to cents
+        // 🛡️ 2026-04-28 fix: totalAmount 가 이미 shipping/coupon/deal 모두 적용된 final.
+        //   이전 'totalAmount + shippingFee' 는 shipping 이중 합산 → Stripe 에 잘못된 금액.
+        const finalAmount = Math.round(props.totalAmount * 100) // Convert to cents
 
         const response = await fetch('/api/payment/stripe/create-intent', {
           method: 'POST',

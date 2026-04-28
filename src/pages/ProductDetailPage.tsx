@@ -758,15 +758,20 @@ export default function ProductDetailPage() {
         />
       </Suspense>
 
-      {/* 🛡️ 2026-04-28: 선물하기 버튼 (FloatingActionBar 위에 오버레이) */}
-      <button
-        onClick={() => setGiftModalOpen(true)}
-        className="fixed bottom-20 right-4 z-30 w-12 h-12 rounded-full bg-pink-500 text-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
-        style={{ maxWidth: '430px' }}
-        aria-label="선물하기"
-      >
-        <Gift className="w-5 h-5" />
-      </button>
+      {/* 🛡️ 2026-04-28: 선물하기 버튼 — KakaoConsultButton 와 같은 우하단 영역.
+           KakaoConsultButton 이 bottom-20 (80px) 에 위치하므로 그 위 (bottom-36 = 144px) 로
+           배치해 겹침 방지. max-w-[430px] mx-auto 컨테이너로 모바일 정렬도 보존. */}
+      <div className="fixed bottom-36 left-0 right-0 z-30 px-4 pr-5 pointer-events-none">
+        <div className="max-w-[430px] mx-auto flex justify-end">
+          <button
+            onClick={() => setGiftModalOpen(true)}
+            className="pointer-events-auto w-12 h-12 rounded-full bg-pink-500 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+            aria-label="선물하기"
+          >
+            <Gift className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
 
       {giftModalOpen && (
         <Suspense fallback={null}>

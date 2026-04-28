@@ -821,8 +821,11 @@ export default function CheckoutPage() {
                     aria-label="사용할 딜 포인트 입력"
                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium placeholder:text-gray-400"
                   />
+                  {/* 🛡️ 2026-04-28: '전액' 버튼이 좁은 모바일 화면에서 잘리던 문제 fix.
+                       - text-xs(12px) → text-[11px] + px-3(12px) 로 패딩 축소
+                       - whitespace-nowrap 으로 줄바꿈 방지 */}
                   <button onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
-                    className="px-4 py-3 bg-gray-900 text-white rounded-lg text-xs font-bold shrink-0">전액사용</button>
+                    className="px-3 py-3 bg-gray-900 text-white rounded-lg text-[11px] font-bold shrink-0 whitespace-nowrap">전액</button>
                 </div>
                 {dealToUse > 0 && (
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
