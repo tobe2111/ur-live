@@ -67,6 +67,7 @@ import { sellerManagementRoutes } from '../features/seller/api/seller-management
 import { sellerKakaoLinkRoutes } from '../features/seller/api/seller-kakao-link.routes';
 import { sellerAlimtalkMgmtRoutes } from '../features/seller/api/seller-alimtalk-mgmt.routes';
 import { consignmentRoutes } from '../features/seller/api/consignment.routes';
+import { giftsRoutes } from '../features/gifts/api/gifts.routes';
 import { sellerPinRoutes } from '../features/seller/api/seller-pin.routes';
 import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes';
 import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
@@ -709,6 +710,8 @@ app.route('/api/seller', sellerKakaoLinkRoutes);
 app.route('/api/seller', sellerAlimtalkMgmtRoutes);
 // 🛡️ 2026-04-28: MD 위탁 판매 (셀러간 협업)
 app.route('/api/seller/consignment', consignmentRoutes);
+// 🛡️ 2026-04-28: 선물하기 (라이브 시청 중 다른 사람에게 상품 선물)
+app.route('/api/gifts', giftsRoutes);
 app.route('/api/seller', sellerPinRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller/analytics', sellerAnalyticsRoutes);
