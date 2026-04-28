@@ -1,13 +1,25 @@
 #!/bin/bash
 # verify-deploy.sh — 현재 live.ur-team.com 배포 상태 진단
 #
-# 사용법: bash scripts/verify-deploy.sh
+# 사용법:
+#   bash scripts/verify-deploy.sh
+#   bash scripts/verify-deploy.sh --admin-token <JWT>  # admin endpoint 추가 검증
 #
 # 2026-04-22 사고 이후 추가. 로그인 500 같은 문제 발생 시
 # "코드 문제인가, 배포 문제인가?"를 30초 안에 구분.
+#
+# 2026-04-27 보강: TD-006 분리된 라우터 / 신규 endpoint 검증 추가.
 
 set -e
 PROD="https://live.ur-team.com"
+ADMIN_TOKEN=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --admin-token) ADMIN_TOKEN="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
 
 echo "===================================================="
 echo "  Cloudflare Pages 배포 상태 진단"
@@ -74,6 +86,37 @@ elif [ "$homepage_status" = "200" ] && ([ "$user_login" = "401" ] || [ "$seller_
   echo "✅ 프로덕션 정상 — 인증 플로우 작동 중"
 else
   echo "⚠️  부분적 이슈 — 개별 엔드포인트 확인 필요"
+fi
+
+echo ""
+echo "[5/5] TD-006 분할 라우터 + 신규 endpoint..."
+sitemap_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/sitemap.xml" || echo "timeout")
+docs_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/docs" || echo "timeout")
+sw_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD/sw.js" || echo "timeout")
+echo "  /sitemap.xml → $sitemap_status  $([ "$sitemap_status" = "200" ] && echo "✅ TD-006 sitemap 분리 정상" || echo "⚠️ 확인 필요")"
+echo "  /docs → $docs_status  $([ "$docs_status" = "200" ] && echo "✅ Swagger UI 정상" || echo "⚠️ 확인 필요")"
+echo "  /sw.js (Killer SW) → $sw_status  $([ "$sw_status" = "200" ] && echo "✅ PWA 사고 방지 동작 중" || echo "⚠️ 확인 필요")"
+
+if [ -n "$ADMIN_TOKEN" ]; then
+  echo ""
+  echo "[6/5] Admin 검증 (--admin-token 제공됨)..."
+  mig_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$PROD/api/_internal/migration-status" || echo "timeout")
+  health_dash=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$PROD/api/_internal/health-dashboard" || echo "timeout")
+  echo "  /api/_internal/migration-status → $mig_status  $([ "$mig_status" = "200" ] && echo "✅" || echo "❌ admin token 만료/무효 의심")"
+  echo "  /api/_internal/health-dashboard → $health_dash  $([ "$health_dash" = "200" ] && echo "✅" || echo "❌")"
+  if [ "$mig_status" = "200" ]; then
+    mig_body=$(curl -s --max-time 10 -H "Authorization: Bearer $ADMIN_TOKEN" "$PROD/api/_internal/migration-status")
+    applied=$(echo "$mig_body" | grep -oE '"applied":[0-9]+' | head -1 | grep -oE '[0-9]+')
+    total=$(echo "$mig_body" | grep -oE '"total":[0-9]+' | head -1 | grep -oE '[0-9]+')
+    echo "  마이그레이션 적용: $applied / $total"
+    if [ -n "$applied" ] && [ -n "$total" ] && [ "$applied" != "$total" ]; then
+      echo "  ⚠️ 누락 migration 존재 — TD-001 진행 후 재실행"
+    fi
+  fi
 fi
 
 echo ""
