@@ -215,7 +215,7 @@ export default function SellerSettlementsPage() {
         return
       }
       if (code === 'PIN_NOT_SET') {
-        toast.error('보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.')
+        toast.error(t('seller.settlements.pinNotSet', { defaultValue: '보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.' }))
         navigate('/seller/profile/edit')
         return
       }

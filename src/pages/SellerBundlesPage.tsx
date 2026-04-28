@@ -48,7 +48,7 @@ export default function SellerBundlesPage() {
       ])
       if (bRes.status === 'fulfilled' && bRes.value.data?.success) setBundles(bRes.value.data.data || [])
       if (pRes.status === 'fulfilled' && pRes.value.data?.success) setProducts(pRes.value.data.data || [])
-    } catch { toast.error('데이터를 불러올 수 없습니다') }
+    } catch { toast.error(t('seller.bundles.loadFailed', { defaultValue: '데이터를 불러올 수 없습니다' })) }
     finally { setLoading(false) }
   }
 
@@ -70,19 +70,19 @@ export default function SellerBundlesPage() {
   }
 
   async function handleSubmit() {
-    if (!form.name.trim()) { toast.error('번들 이름을 입력하세요'); return }
-    if (form.items.length < 2) { toast.error('최소 2개 상품을 선택하세요'); return }
+    if (!form.name.trim()) { toast.error(t('seller.bundles.nameRequired', { defaultValue: '번들 이름을 입력하세요' })); return }
+    if (form.items.length < 2) { toast.error(t('seller.bundles.minItems', { defaultValue: '최소 2개 상품을 선택하세요' })); return }
     setSubmitting(true)
     try {
       if (editId) {
         await api.patch(`/api/seller/bundles/${editId}`, form, { headers })
-        toast.success('번들이 수정되었습니다')
+        toast.success(t('seller.bundles.updated', { defaultValue: '번들이 수정되었습니다' }))
       } else {
         await api.post('/api/seller/bundles', form, { headers })
-        toast.success('번들이 생성되었습니다')
+        toast.success(t('seller.bundles.created', { defaultValue: '번들이 생성되었습니다' }))
       }
       resetForm(); loadData()
-    } catch { toast.error('처리에 실패했습니다') }
+    } catch { toast.error(t('seller.bundles.processFailed', { defaultValue: '처리에 실패했습니다' })) }
     finally { setSubmitting(false) }
   }
 
@@ -90,15 +90,15 @@ export default function SellerBundlesPage() {
     try {
       await api.patch(`/api/seller/bundles/${id}`, { is_active: !current }, { headers })
       loadData()
-    } catch { toast.error('상태 변경에 실패했습니다') }
+    } catch { toast.error(t('seller.bundles.statusFailed', { defaultValue: '상태 변경에 실패했습니다' })) }
   }
 
   async function deleteBundle(id: number) {
-    if (!confirm('번들을 삭제하시겠습니까?')) return
+    if (!confirm(t('seller.bundles.deleteConfirm', { defaultValue: '번들을 삭제하시겠습니까?' }))) return
     try {
       await api.delete(`/api/seller/bundles/${id}`, { headers })
-      toast.success('삭제되었습니다'); loadData()
-    } catch { toast.error('삭제에 실패했습니다') }
+      toast.success(t('seller.bundles.deleted', { defaultValue: '삭제되었습니다' })); loadData()
+    } catch { toast.error(t('seller.bundles.deleteFailed', { defaultValue: '삭제에 실패했습니다' })) }
   }
 
   const selectedTotal = form.items.reduce((sum, item) => {

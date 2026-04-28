@@ -37,7 +37,7 @@ export default function SellerStreamNewPage() {
     if (!token) return
     api.get('/api/seller/products?limit=100', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => { if (r.data.success) setMyProducts(r.data.data || []) })
-      .catch(() => { toast.error('상품 목록을 불러올 수 없습니다') })
+      .catch(() => { toast.error(t('seller.stream.productsLoadFailed', { defaultValue: '상품 목록을 불러올 수 없습니다' })) })
   }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {

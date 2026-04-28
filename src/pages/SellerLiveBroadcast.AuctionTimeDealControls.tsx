@@ -120,7 +120,7 @@ export default function AuctionTimeDealControls({ streamId, products }: { stream
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.data.success) {
-        toast.success('공구 시작!')
+        toast.success(t('seller.liveBroadcast.groupBuyStarted', { defaultValue: '공구 시작!' }))
         setShowGroupBuy(false)
         setActiveTimeDeal({ ...res.data.data, is_group_buy: true })
       } else {

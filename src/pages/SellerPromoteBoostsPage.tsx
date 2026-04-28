@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
@@ -33,6 +34,7 @@ const TIER_META: Record<string, { label: string; emoji: string; bg: string; hour
 }
 
 export default function SellerPromoteBoostsPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<Boost[]>([])
   const [loading, setLoading] = useState(true)
   const [activeLive, setActiveLive] = useState<ActiveLive | null>(null)
@@ -58,7 +60,7 @@ export default function SellerPromoteBoostsPage() {
 
   async function activate(boost: Boost) {
     if (!activeLive) {
-      return toast.error('활성 라이브가 필요합니다. 먼저 라이브를 시작하세요.')
+      return toast.error(t('seller.boost.liveRequired', { defaultValue: '활성 라이브가 필요합니다. 먼저 라이브를 시작하세요.' }))
     }
     if (!confirm(`${TIER_META[boost.tier].emoji} ${TIER_META[boost.tier].label} 쿠폰을 "${activeLive.title}" 라이브에 ${boost.duration_hours}시간 활성화하시겠습니까?`)) return
     try {

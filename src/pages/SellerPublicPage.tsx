@@ -188,7 +188,7 @@ export default function SellerPublicPage() {
         }
         // 라이브 종료 감지 (1+ → 0)
         if (prevLiveCount > 0 && freshLiveCount === 0) {
-          toast.info('라이브 방송이 종료됐어요.')
+          toast.info(t('seller.public.liveEnded', { defaultValue: '라이브 방송이 종료됐어요.' }))
         }
         prevLiveCount = freshLiveCount
       } catch { /* silent */ }

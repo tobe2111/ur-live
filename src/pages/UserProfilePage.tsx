@@ -164,6 +164,15 @@ function SellerApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   })
   const [submitting, setSubmitting] = useState(false)
 
+  // 🛡️ 2026-04-28 a11y: ESC 키로 모달 닫기 (키보드 사용자)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   const handleSubmit = async () => {
     if (!form.business_name || !form.business_number || !form.phone) {
       toast.error('사업자명, 사업자번호, 연락처를 입력해주세요')
@@ -197,10 +206,17 @@ function SellerApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   ] as const
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60"
+      onClick={onClose}
+      role="presentation"
+    >
       <div
         className="w-full max-w-[430px] bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="셀러 전환 신청"
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold text-white">셀러로 활동하기</h2>

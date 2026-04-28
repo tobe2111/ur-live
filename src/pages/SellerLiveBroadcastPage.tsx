@@ -744,7 +744,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
     setPrivacy('unlisted')
     setSelectedProducts([sellableProducts[0].id])
     onCreate({ title: testTitle, productIds: [sellableProducts[0].id] })
-    toast.info('테스트 방송을 생성했습니다. 송출 도구에서 시작 후 파이프라인 확인해보세요.')
+    toast.info(t('seller.liveBroadcast.testCreated', { defaultValue: '테스트 방송을 생성했습니다. 송출 도구에서 시작 후 파이프라인 확인해보세요.' }))
   }
   // 토큰 만료 시 폼 전체 차단 + 재연동 CTA
   if (tokenExpired) {
