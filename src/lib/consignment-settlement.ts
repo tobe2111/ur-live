@@ -133,3 +133,63 @@ export async function getConsignmentSettlementsForSeller(
 
   return result
 }
+
+/**
+ * 🛡️ 2026-04-28: consignment 분배를 consignment_settlements 테이블에 기록.
+ *
+ * 정산 자동화 사이클에서 호출. 멱등 보장 (UNIQUE order_item_id 가 자연스럽게 작동).
+ * 이미 기록된 order_item 은 INSERT 실패 → silent skip.
+ *
+ * @returns 새로 기록된 행 수
+ */
+export async function recordConsignmentSettlements(
+  db: D1Database,
+  periodFrom: string,
+  periodTo: string,
+): Promise<{ recorded: number; failed: number }> {
+  let recorded = 0
+  let failed = 0
+  try {
+    const { results } = await db.prepare(`
+      SELECT
+        oi.id as order_item_id,
+        oi.order_id,
+        oi.consignment_id,
+        oi.price * oi.quantity as total_amount,
+        cp.host_commission_rate
+      FROM order_items oi
+      INNER JOIN consignment_partnerships cp ON cp.id = oi.consignment_id
+      INNER JOIN orders o ON o.id = oi.order_id
+      WHERE oi.consignment_id IS NOT NULL
+        AND o.status IN ('PAID', 'DONE', 'SHIPPING', 'DELIVERED')
+        AND o.created_at >= ? AND o.created_at <= ?
+        AND NOT EXISTS (
+          SELECT 1 FROM consignment_settlements cs WHERE cs.order_item_id = oi.id
+        )
+    `).bind(periodFrom, periodTo).all<{
+      order_item_id: number; order_id: number; consignment_id: number;
+      total_amount: number; host_commission_rate: number;
+    }>()
+
+    for (const row of results ?? []) {
+      const platformAmount = Math.floor((row.total_amount * 10) / 100)
+      const net = row.total_amount - platformAmount
+      const hostAmount = Math.floor((net * row.host_commission_rate) / 100)
+      const ownerAmount = net - hostAmount
+      try {
+        await db.prepare(`
+          INSERT INTO consignment_settlements
+            (consignment_id, order_id, order_item_id, total_amount,
+             host_amount, owner_amount, platform_amount, rate_snapshot, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `).bind(
+          row.consignment_id, row.order_id, row.order_item_id, row.total_amount,
+          hostAmount, ownerAmount, platformAmount, row.host_commission_rate
+        ).run()
+        recorded++
+      } catch { failed++ }
+    }
+  } catch { /* table missing — skip */ }
+
+  return { recorded, failed }
+}

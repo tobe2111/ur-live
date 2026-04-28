@@ -68,6 +68,8 @@ import { sellerKakaoLinkRoutes } from '../features/seller/api/seller-kakao-link.
 import { sellerAlimtalkMgmtRoutes } from '../features/seller/api/seller-alimtalk-mgmt.routes';
 import { sellerRegistrationRoutes } from '../features/seller/api/seller-registration.routes';
 import { sellerProfileRoutes } from '../features/seller/api/seller-profile.routes';
+import { sellerSettlementsRoutes } from '../features/seller/api/seller-settlements.routes';
+import { sellerAccountRoutes } from '../features/seller/api/seller-account.routes';
 import { consignmentRoutes } from '../features/seller/api/consignment.routes';
 import { giftsRoutes } from '../features/gifts/api/gifts.routes';
 import { sellerPinRoutes } from '../features/seller/api/seller-pin.routes';
@@ -121,6 +123,7 @@ import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
 import { agencySettlementsRoutes } from '../features/agency/api/agency-settlements.routes';
 import { agencyOpsRoutes } from '../features/agency/api/agency-ops.routes';
+import { agencySellersRoutes } from '../features/agency/api/agency-sellers.routes';
 import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
 import { agencyCampaignsRoutes } from '../features/agency/api/agency-campaigns.routes';
 import { agencyIncentivesRoutes } from '../features/agency/api/agency-incentives.routes';
@@ -713,6 +716,10 @@ app.route('/api/seller', sellerManagementRoutes);
 app.route('/api/seller', sellerRegistrationRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /profile (GET/PUT/PATCH) + /business-info (GET/POST/PUT/PATCH)
 app.route('/api/seller', sellerProfileRoutes);
+// 🛡️ 2026-04-28 TD-006 (split): /settlements*, /dashboard/stats
+app.route('/api/seller', sellerSettlementsRoutes);
+// 🛡️ 2026-04-28 TD-006 (split): /personal-info, /change-password, /upload-image
+app.route('/api/seller', sellerAccountRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
 app.route('/api/seller', sellerKakaoLinkRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /alimtalk* (account/balance/test/send/messages/charge)
@@ -1012,6 +1019,8 @@ app.route('/api/agency', agencyStatsRoutes);
 app.route('/api/agency', agencySettlementsRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /notices, /monthly-tasks, /targets, /sellers/compare, /contracts
 app.route('/api/agency', agencyOpsRoutes);
+// 🛡️ 2026-04-28 TD-006 (split): /sellers*, /orders, /streams, /ranking, /schedule, /returns
+app.route('/api/agency', agencySellersRoutes);
 // 🛡️ 2026-04-26: Agency P0 #4 캠페인 관리
 app.route('/api/agency/campaigns', agencyCampaignsRoutes);
 // 🛡️ 2026-04-26: Agency P0 #5 인센티브 규칙 엔진

@@ -407,6 +407,31 @@ export async function handleScheduled(env: Env) {
               UPDATE gifts SET status = 'refunded', updated_at = datetime('now') WHERE id = ?
             `).bind(g.id).run();
             refunded++;
+
+            // 🛡️ 2026-04-28: sender 에게 환불 알림 (best-effort).
+            //   gift 의 sender_user_id 의 phone 을 조회해 알림톡 발송.
+            try {
+              const aligoKey = (env as { ALIGO_API_KEY?: string }).ALIGO_API_KEY;
+              const aligoUser = (env as { ALIGO_USER_ID?: string }).ALIGO_USER_ID;
+              if (aligoKey && aligoUser) {
+                const giftDetail = await DB.prepare(`
+                  SELECT g.amount, u.phone, u.name FROM gifts g
+                  LEFT JOIN users u ON u.id = g.sender_user_id WHERE g.id = ?
+                `).bind(g.id).first<{ amount: number; phone: string | null; name: string | null }>();
+                if (giftDetail?.phone) {
+                  const { sendAlimtalk } = await import('../../lib/aligo');
+                  await sendAlimtalk(
+                    { ALIGO_API_KEY: aligoKey, ALIGO_USER_ID: aligoUser },
+                    {
+                      senderKey: '',
+                      templateCode: 'gift_refunded',
+                      to: giftDetail.phone,
+                      message: `[유어딜] 보내신 선물 (${giftDetail.amount.toLocaleString()}원) 이 30일 미수령으로 자동 환불됐어요.`,
+                    }
+                  );
+                }
+              }
+            } catch { /* alimtalk 실패는 무시 */ }
           } else {
             failed++;
           }
@@ -440,6 +465,20 @@ export async function handleScheduled(env: Env) {
     `).run();
     results.consignment_pending_expired = meta.changes ?? 0;
   } catch { /* table may not exist */ }
+
+  // ── 23. 🛡️ 2026-04-28: consignment_settlements 자동 기록 (월간 윈도우) ──
+  //   당월 1일 ~ 어제까지의 consignment 주문건을 분배 기록 (멱등).
+  try {
+    const { recordConsignmentSettlements } = await import('../../lib/consignment-settlement');
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const r = await recordConsignmentSettlements(DB, monthStart, yesterday);
+    if (r.recorded > 0 || r.failed > 0) {
+      results.consignment_settlements_recorded = r.recorded;
+      if (r.failed > 0) results.consignment_settlements_failed = r.failed;
+    }
+  } catch (e) { console.error('[Cron] consignment_settlements record error:', e); }
 
   console.log('[Cron] Scheduled cleanup:', JSON.stringify(results));
   return results;
