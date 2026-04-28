@@ -24,7 +24,7 @@ internalAdminToolsRoutes.post('/api/_bootstrap/reset-dashboard-password', async 
 
   // BOOTSTRAP_TOKEN 미세팅 or 헤더 불일치 → 404 (엔드포인트 존재 감추기)
   if (!expected || !provided || expected !== provided) {
-    return c.json({ error: 'Not Found' }, 404);
+    return c.json({ success: false, error: 'Not Found' }, 404);
   }
 
   let body: { email?: string; password?: string; role?: string } = {};

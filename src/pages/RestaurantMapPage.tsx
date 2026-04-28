@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, MapPin, Search, Ticket, Phone, ExternalLink, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { ArrowLeft, MapPin, Search, Ticket, Phone, X, Navigation, ArrowUpDown } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -12,7 +12,35 @@ interface Restaurant {
   restaurant_phone: string; restaurant_lat: number; restaurant_lng: number
   price: number; original_price: number; image_url: string
   discount_percent: number; rating: number
+  category?: string
 }
+
+// 카카오맵 길찾기 외부 링크 — 사용자 위치에서 매장까지
+function kakaoDirectionsUrl(r: { restaurant_name?: string; restaurant_lat?: number; restaurant_lng?: number }): string {
+  const name = encodeURIComponent(r.restaurant_name || '맛집')
+  return `https://map.kakao.com/link/to/${name},${r.restaurant_lat},${r.restaurant_lng}`
+}
+
+// Haversine 거리 계산 (km)
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
+const CATEGORIES: { key: string; emoji: string; label: string; keywords: string[] }[] = [
+  { key: '', emoji: '🍽️', label: '전체', keywords: [] },
+  { key: 'korean', emoji: '🍚', label: '한식', keywords: ['한식', '국밥', '비빔밥', '백반', '찌개', '삼겹살'] },
+  { key: 'japanese', emoji: '🍱', label: '일식', keywords: ['일식', '스시', '돈까스', '라멘', '우동', '초밥'] },
+  { key: 'chinese', emoji: '🍜', label: '중식', keywords: ['중식', '짜장', '짬뽕', '탕수육', '마라'] },
+  { key: 'cafe', emoji: '☕', label: '카페', keywords: ['카페', '커피', '디저트', '베이커리'] },
+  { key: 'western', emoji: '🥩', label: '양식', keywords: ['양식', '파스타', '스테이크', '피자', '버거'] },
+  { key: 'snack', emoji: '🥟', label: '분식', keywords: ['분식', '떡볶이', '김밥', '튀김'] },
+]
+
+type SortBy = 'distance' | 'discount' | 'price' | 'rating'
 
 // Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
 
@@ -41,10 +69,23 @@ export default function RestaurantMapPage() {
   const [search, setSearch] = useState('')
   const [sdkLoaded, setSdkLoaded] = useState(false)
   const [sdkError, setSdkError] = useState(false)
-  const [listExpanded, setListExpanded] = useState(false)
   const [mapView, setMapView] = useState(true)
+  // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  const [category, setCategory] = useState<string>('')
+  const [sortBy, setSortBy] = useState<SortBy>('discount')
 
   const kr = isKorea()
+
+  // 사용자 위치 자동 감지 (1회) — 거리순 정렬용
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => { /* 거부/실패 — 거리순 비활성 */ },
+      { timeout: 5000, enableHighAccuracy: false, maximumAge: 600000 }
+    )
+  }, [])
 
   // 지도 SDK 로드 (한국: 카카오맵 / 글로벌: 목록만)
   useEffect(() => {
@@ -77,14 +118,42 @@ export default function RestaurantMapPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const filtered = restaurants.filter(r => {
-    if (region && !r.restaurant_address?.includes(region)) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return r.restaurant_name?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) || r.restaurant_address?.toLowerCase().includes(q)
-    }
-    return true
-  })
+  const filtered = useMemo(() => {
+    let items = restaurants.filter(r => {
+      if (region && !r.restaurant_address?.includes(region)) return false
+      if (search) {
+        const q = search.toLowerCase()
+        if (!(r.restaurant_name?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) || r.restaurant_address?.toLowerCase().includes(q))) return false
+      }
+      // 카테고리 필터: name/category/address 에 키워드 포함 여부
+      if (category) {
+        const cat = CATEGORIES.find(c => c.key === category)
+        if (cat && cat.keywords.length > 0) {
+          const haystack = `${r.name || ''} ${r.category || ''} ${r.restaurant_name || ''}`.toLowerCase()
+          if (!cat.keywords.some(kw => haystack.includes(kw.toLowerCase()))) return false
+        }
+      }
+      return true
+    })
+
+    // 정렬
+    items = [...items].sort((a, b) => {
+      if (sortBy === 'distance' && userLoc) {
+        const da = a.restaurant_lat ? distanceKm(userLoc.lat, userLoc.lng, a.restaurant_lat, a.restaurant_lng) : Infinity
+        const db = b.restaurant_lat ? distanceKm(userLoc.lat, userLoc.lng, b.restaurant_lat, b.restaurant_lng) : Infinity
+        return da - db
+      }
+      if (sortBy === 'discount') {
+        const dA = a.original_price > a.price ? (1 - a.price / a.original_price) : 0
+        const dB = b.original_price > b.price ? (1 - b.price / b.original_price) : 0
+        return dB - dA
+      }
+      if (sortBy === 'price') return (a.price || 0) - (b.price || 0)
+      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0)
+      return 0
+    })
+    return items
+  }, [restaurants, region, search, category, sortBy, userLoc])
 
   const withCoords = filtered.filter(r => r.restaurant_lat && r.restaurant_lng)
 
@@ -241,6 +310,45 @@ export default function RestaurantMapPage() {
             </button>
           ))}
         </div>
+
+        {/* 카테고리 필터 칩 */}
+        <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto no-scrollbar">
+          {CATEGORIES.map(c => (
+            <button
+              key={c.key || 'all'}
+              onClick={() => setCategory(c.key)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
+                category === c.key
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-50 text-gray-600 border border-gray-200'
+              }`}
+            >
+              <span>{c.emoji}</span>
+              <span>{c.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* 정렬 + 카운트 */}
+        <div className="flex items-center justify-between px-4 pb-2">
+          <span className="text-[11px] text-gray-500">
+            <span className="font-bold text-gray-900">{filtered.length}</span>곳
+            {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">📍 내 위치 기준</span>}
+          </span>
+          <div className="flex items-center gap-1">
+            <ArrowUpDown className="w-3 h-3 text-gray-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
+              className="text-[11px] font-semibold text-gray-700 bg-transparent focus:outline-none"
+            >
+              {userLoc && <option value="distance">거리순</option>}
+              <option value="discount">할인율순</option>
+              <option value="price">가격 낮은순</option>
+              <option value="rating">평점순</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* ═══ 지도 / 목록 토글 ═══ */}
@@ -291,6 +399,11 @@ export default function RestaurantMapPage() {
                   <p className="text-xs text-gray-400 mt-0.5 line-clamp-1 flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" />
                     {selected.restaurant_address}
+                    {userLoc && selected.restaurant_lat && selected.restaurant_lng && (
+                      <span className="ml-1 font-semibold text-pink-500">
+                        · {distanceKm(userLoc.lat, userLoc.lng, selected.restaurant_lat, selected.restaurant_lng).toFixed(1)}km
+                      </span>
+                    )}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-lg font-extrabold text-gray-900">{selected.price?.toLocaleString()}원</span>
@@ -307,13 +420,24 @@ export default function RestaurantMapPage() {
               </div>
               <div className="flex gap-2 mt-3">
                 {selected.restaurant_phone && (
-                  <a href={`tel:${selected.restaurant_phone}`} className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 rounded-xl text-sm text-gray-700 font-medium">
-                    <Phone className="w-3.5 h-3.5" /> 전화
+                  <a href={`tel:${selected.restaurant_phone}`} aria-label="전화" className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-xl text-gray-700">
+                    <Phone className="w-4 h-4" />
+                  </a>
+                )}
+                {selected.restaurant_lat && selected.restaurant_lng && (
+                  <a
+                    href={kakaoDirectionsUrl(selected)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="카카오맵 길찾기"
+                    className="flex items-center justify-center gap-1 px-3 h-10 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-xs font-bold"
+                  >
+                    <Navigation className="w-3.5 h-3.5" /> 길찾기
                   </a>
                 )}
                 <button
                   onClick={() => navigate(`/products/${selected.id}`)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold active:scale-[0.97] transition-transform"
+                  className="flex-1 flex items-center justify-center gap-1.5 h-10 bg-pink-500 text-white rounded-xl text-sm font-bold active:scale-[0.97] transition-transform"
                 >
                   <Ticket className="w-4 h-4" /> 바우처 구매
                 </button>
@@ -395,6 +519,11 @@ export default function RestaurantMapPage() {
                         <p className="text-[11px] text-gray-400 mt-0.5 truncate flex items-center gap-0.5">
                           <MapPin className="w-3 h-3 shrink-0" />
                           {r.restaurant_address || '주소 미등록'}
+                          {userLoc && r.restaurant_lat && r.restaurant_lng && (
+                            <span className="ml-1 font-semibold text-pink-500 shrink-0">
+                              · {distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng).toFixed(1)}km
+                            </span>
+                          )}
                         </p>
                         <p className="text-[11px] text-gray-400 mt-0.5 truncate">{r.name}</p>
                         <div className="flex items-baseline gap-1.5 mt-1.5">

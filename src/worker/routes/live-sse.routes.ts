@@ -106,13 +106,13 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
   const { liveId } = c.req.param()
 
   if (c.req.header('Upgrade') !== 'websocket') {
-    return c.json({ error: 'Expected WebSocket upgrade' }, 426)
+    return c.json({ success: false, error: 'Expected WebSocket upgrade' }, 426)
   }
 
   // Origin check — reject cross-origin upgrade attempts.
   const origin = c.req.header('origin') || c.req.header('Origin')
   if (!isAllowedWsOrigin(origin)) {
-    return c.json({ error: 'Origin not allowed' }, 403)
+    return c.json({ success: false, error: 'Origin not allowed' }, 403)
   }
 
   // v28 FIX: WebSocket 인증. 이전에는 origin check만 있어서 익명 접속 가능했음.
@@ -133,7 +133,7 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
   }
 
   if (!c.env.LIVE_STREAM) {
-    return c.json({ error: 'Real-time service unavailable', fallback: 'sse' }, 503)
+    return c.json({ success: false, error: 'Real-time service unavailable', fallback: 'sse' }, 503)
   }
 
   try {
@@ -154,7 +154,7 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
     return stub.fetch(forwardedReq as any) as any
   } catch (err) {
     console.error('[WS] Durable Object proxy failed:', err)
-    return c.json({ error: 'WebSocket connection failed', fallback: 'sse' }, 503)
+    return c.json({ success: false, error: 'WebSocket connection failed', fallback: 'sse' }, 503)
   }
 })
 
@@ -233,29 +233,29 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid JSON' }, 400)
+    return c.json({ success: false, error: 'Invalid JSON' }, 400)
   }
 
   const { userId: bodyUserId, userName, message } = body
 
   if (!message?.trim() || !userName) {
-    return c.json({ error: 'message and userName are required' }, 400)
+    return c.json({ success: false, error: 'message and userName are required' }, 400)
   }
 
   // Defensive: type checks + length caps + control-char sanitization
   if (typeof message !== 'string' || typeof userName !== 'string') {
-    return c.json({ error: 'message and userName must be strings' }, 400)
+    return c.json({ success: false, error: 'message and userName must be strings' }, 400)
   }
   if (message.length > MAX_CHAT_MESSAGE_LENGTH) {
-    return c.json({ error: `메시지는 ${MAX_CHAT_MESSAGE_LENGTH}자 이하여야 합니다.` }, 400)
+    return c.json({ success: false, error: `메시지는 ${MAX_CHAT_MESSAGE_LENGTH}자 이하여야 합니다.` }, 400)
   }
   if (userName.length > MAX_NAME_LENGTH) {
-    return c.json({ error: `사용자명은 ${MAX_NAME_LENGTH}자 이하여야 합니다.` }, 400)
+    return c.json({ success: false, error: `사용자명은 ${MAX_NAME_LENGTH}자 이하여야 합니다.` }, 400)
   }
   const cleanMessage = sanitizeString(message).trim()
   const cleanUserName = sanitizeString(userName).trim()
   if (!cleanMessage || !cleanUserName) {
-    return c.json({ error: 'message and userName are required' }, 400)
+    return c.json({ success: false, error: 'message and userName are required' }, 400)
   }
 
   // isSeller/isAdmin은 인증 토큰에서만 결정 — 클라이언트 입력 무시
@@ -269,7 +269,7 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
   if (!isSeller && !isAdmin) {
     const hasUrl = /https?:\/\/|www\./i.test(cleanMessage)
     if (hasUrl) {
-      return c.json({ error: '채팅에 링크를 포함할 수 없습니다.' }, 400)
+      return c.json({ success: false, error: '채팅에 링크를 포함할 수 없습니다.' }, 400)
     }
   }
 
@@ -278,7 +278,7 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
   const nowMs = Date.now()
   const prevEntry = RECENT_CHAT_CACHE.get(dupKey)
   if (prevEntry && prevEntry.message === cleanMessage && nowMs - prevEntry.at < 10_000) {
-    return c.json({ error: '동일한 메시지를 반복할 수 없습니다.' }, 429)
+    return c.json({ success: false, error: '동일한 메시지를 반복할 수 없습니다.' }, 429)
   }
   RECENT_CHAT_CACHE.set(dupKey, { message: cleanMessage, at: nowMs })
   // Bound memory in long-lived isolates
@@ -307,7 +307,7 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
     insertedId = result.meta.last_row_id
   } catch (err) {
     console.error('[Chat] D1 insert failed:', err)
-    return c.json({ error: 'Failed to save message', detail: (err as Error).message }, 500)
+    return c.json({ success: false, error: 'Failed to save message', detail: (err as Error).message }, 500)
   }
 
   // Broadcast to DO WebSocket clients (non-fatal if DO unavailable)

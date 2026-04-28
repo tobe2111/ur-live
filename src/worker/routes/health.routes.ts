@@ -106,7 +106,7 @@ healthRoutes.get('/', async (c) => {
 healthRoutes.get('/migrations', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user || user.type !== 'admin') {
-    return c.json({ error: 'forbidden' }, 403)
+    return c.json({ success: false, error: 'forbidden' }, 403)
   }
   const DB = c.env.DB
 
@@ -194,7 +194,7 @@ healthRoutes.get('/migrations', requireAuth(), async (c) => {
 healthRoutes.get('/circuits', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user || user.type !== 'admin') {
-    return c.json({ error: 'forbidden' }, 403)
+    return c.json({ success: false, error: 'forbidden' }, 403)
   }
   return c.json({
     circuits: listCircuits(),

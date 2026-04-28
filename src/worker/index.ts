@@ -1071,17 +1071,17 @@ app.get('/api/image/resize', async (c) => {
   const width = Math.min(2048, Math.max(16, parseInt(c.req.query('w') || '400', 10) || 400));
   const quality = Math.min(100, Math.max(10, parseInt(c.req.query('q') || '80', 10) || 80));
 
-  if (!url) return c.json({ error: 'url required' }, 400);
+  if (!url) return c.json({ success: false, error: 'url required' }, 400);
 
   // SSRF 방어: 허용된 도메인만 프록시
   const ALLOWED_HOSTS = ['firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com', 'live.ur-team.com', 'ur-live.pages.dev']
   try {
     const parsed = new URL(url)
     if (!ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) {
-      return c.json({ error: 'domain not allowed' }, 403)
+      return c.json({ success: false, error: 'domain not allowed' }, 403)
     }
   } catch {
-    return c.json({ error: 'invalid url' }, 400)
+    return c.json({ success: false, error: 'invalid url' }, 400)
   }
 
   try {
