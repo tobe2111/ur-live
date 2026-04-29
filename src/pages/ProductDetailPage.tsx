@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Users, Gift, Clock, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -254,6 +255,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
 }
 
 export default function ProductDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -340,7 +342,7 @@ export default function ProductDetailPage() {
 
   async function handleToggleWishlist() {
     if (!isLoggedIn) {
-      showToast('로그인이 필요합니다.', 'error')
+      showToast(t('common.loginRequired'), 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
@@ -368,7 +370,7 @@ export default function ProductDetailPage() {
 
   async function handleAddToCart() {
     if (!isLoggedIn) {
-      showToast('로그인이 필요합니다.', 'error')
+      showToast(t('common.loginRequired'), 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
@@ -381,7 +383,7 @@ export default function ProductDetailPage() {
         price_snapshot: product!.price,
         options: Object.values(selectedOptions)[0] ? JSON.stringify(selectedOptions) : null
       })
-      showToast('장바구니에 추가되었습니다. 상단의 장바구니에서 확인하세요.', 'success')
+      showToast(t('cart.itemAdded'), 'success')
       try {
         const g = (window as any).gtag
         if (typeof g === 'function') g('event', 'add_to_cart', { currency: 'KRW', value: product!.price, items: [{ item_id: product!.id, item_name: product!.name }] })
@@ -400,7 +402,7 @@ export default function ProductDetailPage() {
 
   async function handleBuyNow() {
     if (!isLoggedIn) {
-      showToast('로그인이 필요합니다.', 'error')
+      showToast(t('common.loginRequired'), 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
