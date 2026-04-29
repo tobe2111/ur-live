@@ -8,7 +8,35 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
-## 📊 최신 상태 요약 (2026-04-28 종료 시)
+## 📊 최신 상태 요약 (2026-04-29 종료 시)
+
+### 2026-04-29 카카오 모바일 무한 루프 사고 + 전수 강화
+
+| 항목 | 상태 변경 |
+|---|---|
+| **사고** 카카오 인앱 로그인 무한 redirect | ✅ 즉시 hotfix (`d750fad` — index.html sessionStorage 가드) |
+| 자기참조 검증 분산 (4곳 다른 규칙) | ✅ `src/utils/safe-internal-path.ts` 단일 헬퍼 도입 + 36 단위테스트 |
+| `KakaoCallbackPage` / `KakaoConsentCallbackPage` returnUrl 자기참조 차단 | ✅ safeInternalPath 적용 |
+| 백엔드 `kakao.routes.ts:safeRedirect()` `/auth/`, `/login` 차단 누락 | ✅ 차단 추가 (Worker 코드라 인라인 유지) |
+| `lib/api.ts` Firebase user 401 force-refresh 디바운스 부재 | ✅ 30초 시간 디바운스 추가 |
+| `lib/api.ts` 401 후 login 페이지 자기참조 가능 | ✅ auth path 면 returnUrl 저장·redirect skip |
+| 셀러/어드민/에이전시 토큰 만료 alert (카톡 인앱 흰화면 위험) | ✅ `?error=session_expired` query → toast (3 페이지 적용) |
+| `version-check.ts` MIME 에러 reload 가드 약함 | ✅ localStorage 1분 윈도우 가드 추가 |
+| `_headers` Cross-Origin-Opener-Policy 누락 | ✅ `same-origin-allow-popups` 추가 |
+| 죽은 코드: `errorHandler.checkAuthError`, `useVersionCheck` | ✅ 삭제 |
+| `utils/auth.requireLogin` currentPath 검증 누락 | ✅ auth path 면 returnUrl 생략 |
+
+**상세 사고 사례**: `CLAUDE.md` 의 "2026-04-29 사고 요약" 참조.
+
+신규 파일:
+- `src/utils/safe-internal-path.ts` — open-redirect/자기참조 검증 단일 헬퍼
+- `src/tests/unit/safe-internal-path.test.ts` — 36 테스트
+
+삭제:
+- `src/hooks/useVersionCheck.ts` — caller 0 (lib/version-check.ts 와 중복)
+- `src/lib/errorHandler.ts:checkAuthError` — caller 0 + returnUrl 화이트리스트 누락
+
+## 📊 이전 상태 요약 (2026-04-28 종료 시)
 
 ### 2026-04-28 마라톤 세션 — TD 추가 정리
 

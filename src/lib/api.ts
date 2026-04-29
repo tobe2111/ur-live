@@ -293,9 +293,11 @@ api.interceptors.response.use(
         }
         captureError(new Error(`${roleLabel} 401: Token expired`), { url });
 
+        // 🛡️ 2026-04-29: alert 제거 — 카톡 인앱이 alert 차단 → throw → 흰화면.
+        //   대신 로그인 페이지에서 ?error=session_expired query 감지해 toast 표시.
         const loginUrl = isAgency ? '/agency/login' : isSeller ? '/seller/login' : '/admin/login';
-        alert(`${roleLabel === 'Agency' ? '에이전시' : roleLabel === 'Seller' ? '셀러' : '관리자'} 인증이 만료되었습니다.\n다시 로그인해주세요.`);
-        window.location.href = loginUrl;
+        console.warn(`[Auth] ${roleLabel} 인증 만료 — 로그인 페이지 이동`);
+        window.location.href = `${loginUrl}?error=session_expired`;
         return Promise.reject(error);
       }
 

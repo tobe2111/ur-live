@@ -25,6 +25,10 @@
   # Strict Transport Security (HSTS)
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 
+  # 🛡️ 2026-04-29: Cross-Origin-Opener-Policy — Spectre/사이드채널 방어.
+  #   same-origin-allow-popups 로 OAuth popup (Google/Kakao consent) 호환 유지.
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+
 # Cache control for static assets
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

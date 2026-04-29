@@ -289,6 +289,20 @@ bash scripts/quality-check.sh
 - 원인: Pages 프로젝트에 secret 세팅했는데, 별개 Workers 프로젝트가 Custom Domain을 붙들고 있어 실제 요청은 secret 없는 Workers에서 처리 → `JWT_SECRET is not configured` 500
 - 교훈: 로그인/인증 500이 반복되면 **가장 먼저 Cloudflare Dashboard의 Workers/Pages Custom Domain 어느 쪽에 연결되어 있는지** 확인. 코드 수정 전에 설정 파악.
 
+### 2026-04-29 사고 요약 — 카카오 모바일 로그인 무한 루프
+- 증상: 카카오톡 인앱 브라우저 → live.ur-team.com 로그인 시 webview 무한 reload.
+- 원인: `index.html` inline script 가 `window.location.href = 'kakaotalk://web/openExternal?url=...'` 를 sessionStorage **가드 없이** 매 페이지 로드마다 시도. `main.tsx` 의 `autoRedirectKakaoToExternal()` 는 가드 있었지만 inline script 가 먼저 실행 → 무력화. 카톡 webview reload (메모리/포커스) 시 무한 재시도.
+- 즉시 수정 (`d750fad`): inline script 에 `ur_kakao_external_redirect_v1` sessionStorage 가드 추가 (main.tsx 와 키 공유).
+- 후속 강화 (`5952279`, `2026-04-29 C+추가`): 같은 종류 패턴 (returnUrl 자기참조 / 가드 누락) 전수조사 + `src/utils/safe-internal-path.ts` 단일 헬퍼 도입.
+- 교훈:
+  1. **외부 스킴 redirect (`kakaotalk://`, `intent://`, `line://`) 는 반드시 sessionStorage 가드** — webview reload 시 재시도 폭주.
+  2. **returnUrl / state / redirect 파라미터는 항상 `safeInternalPath()` 통과** — `/login`, `/auth/*`, `/oauth/*` 자기참조 차단. 직접 검증 로직 작성 금지.
+  3. **inline script + module script 가 같은 가드를 공유**할 땐 키 이름 명시 + 두 곳 동시 수정.
+- 관련 파일:
+  - `src/utils/safe-internal-path.ts` (Single Source of Truth — 프론트엔드)
+  - `src/features/auth/api/kakao.routes.ts:safeRedirect()` (Worker 코드라 import 못 함, **인라인으로 동일 규칙 유지**)
+  - 적용: `LoginPage`, `RouteGuards.PublicRoute`, `KakaoCallbackPage`, `KakaoConsentCallbackPage`
+
 ### 파일-라우트 매핑 (실수 방지)
 - 홈(`/`) → **`MainHomePage.tsx`** (NOT ~~HomePage.tsx~~ — 삭제됨)
 - 마이페이지(`/user/profile`) → **`UserProfilePage.tsx`**
