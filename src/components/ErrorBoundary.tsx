@@ -26,13 +26,21 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // 에러 로깅 (프로덕션에서는 Sentry 등으로 전송)
-    if (import.meta.env.DEV) console.error('Error Boundary caught an error:', error, errorInfo);
-    
-    // 개발 환경에서만 상세 정보 출력
     if (import.meta.env.DEV) {
-      if (import.meta.env.DEV) console.error('Component Stack:', errorInfo.componentStack);
+      console.error('Error Boundary caught an error:', error, errorInfo);
+      console.error('Component Stack:', errorInfo.componentStack);
     }
+
+    // 🛡️ 2026-04-29: 프로덕션 Sentry 전송 (window.Sentry 동적 사용 — 번들 영향 최소)
+    try {
+      const sentryGlobal = (window as unknown as { Sentry?: { captureException?: (e: Error, ctx?: unknown) => void } }).Sentry;
+      if (sentryGlobal?.captureException) {
+        sentryGlobal.captureException(error, {
+          tags: { boundary: 'ErrorBoundary' },
+          extra: { componentStack: errorInfo.componentStack },
+        });
+      }
+    } catch { /* Sentry 미초기화 — 조용히 무시 */ }
   }
 
   render() {

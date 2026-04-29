@@ -24,7 +24,7 @@ interface SEOProps {
 
 const SITE_NAME = '유어딜'
 const DEFAULT_DESC = '라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매, 실시간 라이브 쇼핑'
-const DEFAULT_IMAGE = 'https://live.ur-team.com/og-image.png'
+const DEFAULT_IMAGE = 'https://live.ur-team.com/og-image.svg'
 const BASE_URL = 'https://live.ur-team.com'
 
 export default function SEO({
@@ -57,6 +57,9 @@ export default function SEO({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:image:alt" content={`${SITE_NAME} - ${description.slice(0, 60)}`} />
       <meta property="og:url" content={fullUrl} />
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:locale" content={primaryLocale} />
@@ -66,9 +69,17 @@ export default function SEO({
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:site" content="@urdeal_kr" />
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
+      <meta name="twitter:image:alt" content={`${SITE_NAME} 라이브 커머스`} />
+
+      {/* Theme color (모바일 status bar) */}
+      <meta name="theme-color" content="#020202" />
+      <meta name="apple-mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
 
       {/* Naver */}
       <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
