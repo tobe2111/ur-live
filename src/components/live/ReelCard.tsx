@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2 } from 'lucide-react'
+import { ShoppingBag, MessageCircle, X, Send } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import PKLiveBanner from '@/components/live/PKLiveBanner'
 import { getUserIdSync as getUserId } from '@/utils/auth'
@@ -9,7 +9,6 @@ import { useModal } from '@/components/CustomModal'
 import { useLiveStreamWebSocket } from '@/hooks/useLiveStreamWebSocket'
 import { useProductStock } from '@/hooks/useProductStock'
 import type { ChatMessage } from '@/types/live-stream'
-import { toast } from '@/hooks/useToast'
 import { DonationEffect } from '@/components/LiveDonation'
 import { maskUserName } from '@/components/live/LiveUtils'
 import { TeamPointsBadge } from '@/components/live/TeamPointsBadge'
@@ -17,7 +16,7 @@ import LiveDonation from '@/components/LiveDonation'
 import AuctionPanel from '@/components/live/AuctionPanel'
 import TimeDealPopup from '@/components/live/TimeDealPopup'
 import HeartReaction from '@/components/live/HeartReaction'
-import { glass } from '@/components/glass/glassTokens'
+import { glass, boutiqueCTA } from '@/components/glass/glassTokens'
 import ScheduledOverlay from '@/components/live/ScheduledOverlay'
 import WishlistButton from '@/components/WishlistButton'
 
@@ -1188,7 +1187,7 @@ export default function ReelCard({
                       onClick={handleChangeProduct}
                       disabled={changingProduct || isCurrentProduct}
                       className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
-                      style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
+                      style={boutiqueCTA}
                       aria-label={isCurrentProduct ? '소개 중' : '상품 변경'}
                     >
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>
@@ -1204,7 +1203,7 @@ export default function ReelCard({
                       }}
                       disabled={!currentProduct}
                       className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
-                      style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
+                      style={boutiqueCTA}
                       aria-label="바로 구매"
                     >
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>바로구매</span>

@@ -178,13 +178,13 @@ export default function AgencyCalendarPage() {
 
         {/* 월 네비게이터 */}
         <div className="flex items-center justify-center gap-3">
-          <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded">
+          <button onClick={prevMonth} aria-label="이전 달" className="p-2 hover:bg-gray-100 rounded">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <h2 className="text-lg font-bold text-gray-900 min-w-[120px] text-center">
             {month.replace('-', '. ')}
           </h2>
-          <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded">
+          <button onClick={nextMonth} aria-label="다음 달" className="p-2 hover:bg-gray-100 rounded">
             <ChevronRight className="w-5 h-5" />
           </button>
           <button onClick={() => setMonth(ymToString(new Date()))}

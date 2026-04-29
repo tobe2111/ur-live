@@ -141,7 +141,8 @@
     "disconnectFailed": "Échec de déconnexion.",
     "copyFailed": "Échec de copie.",
     "home": "Accueil",
-    "uploadComplete": "Téléchargement terminé"
+    "uploadComplete": "Téléchargement terminé",
+    "dismiss": "Fermer"
   },
   "seller": {
     "dashboard": "Tableau de bord",
@@ -201,7 +202,8 @@
       "replyPlaceholder": "Écrire une réponse...",
       "replySubmitted": "Réponse envoyée",
       "replyFailed": "Échec de l'envoi de la réponse",
-      "writeReply": "Écrire une réponse"
+      "writeReply": "Écrire une réponse",
+      "subtitle": "Avis/réponses"
     },
     "coupons": {
       "title": "Gestion des coupons",
@@ -225,7 +227,8 @@
       "percentOff": "{{value}}% de réduction",
       "fixedOff": "{{value}} KRW de réduction",
       "minOrder": "{{amount}} KRW ou plus",
-      "usage": "Utilisé {{used}}/{{total}}"
+      "usage": "Utilisé {{used}}/{{total}}",
+      "subtitle": "Émission et utilisation de coupons"
     },
     "workspace": "Espace de travail",
     "totalRevenue": "Revenu total",
@@ -1464,7 +1467,8 @@
       "targetCount": "Objectif {{count}} personnes",
       "voucherSuffix": "Bon repas",
       "imageSizeLimit": "Seules les images de moins de 5 Mo peuvent être téléchargées",
-      "imageSearchFailed": "Recherche d'image échouée"
+      "imageSearchFailed": "Recherche d'image échouée",
+      "subtitle": "Bons / achat groupé"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1629,7 +1633,29 @@
     },
     "public": {
       "liveEnded": "La diffusion en direct est terminée."
-    }
+    },
+    "analyticsSubtitle": "Analyse ventes, clients, produits",
+    "createStreamSubtitle": "Créer un nouveau live",
+    "donationsSubtitle": "Réception de dons et règlements",
+    "groupBuySubtitle": "Achat groupé / Bons repas",
+    "inventorySubtitle": "Inventaire · Scan · Historique",
+    "liveBroadcastSubtitle": "Live: début/fin/statistiques",
+    "onboarding": {
+      "addProduct": "Premier produit",
+      "bankAccount": "Compte de règlement",
+      "completed": "Terminé",
+      "firstLive": "Premier live",
+      "firstOrder": "Première commande",
+      "subtitle": "Terminez les étapes pour commencer à vendre",
+      "title": "🚀 Guide de démarrage"
+    },
+    "profileEditSubtitle": "Modifier photo/profil/SNS",
+    "settlementApprovedEstimate": "Règlement estimé après approbation",
+    "settlementEstimate": "Règlement estimé",
+    "shortsSubtitle": "Enregistrement/gestion Shorts",
+    "streamEditSubtitle": "Modifier infos du live",
+    "supplySubtitle": "Gestion des produits fournis",
+    "youtubeGrowthSubtitle": "Analyse de croissance YouTube"
   },
   "admin": {
     "login": {
@@ -1709,7 +1735,8 @@
       "agency": "Agences",
       "cafe24": "Cafe24",
       "alimtalk": "Messages",
-      "sampleRequests": "Échantillons"
+      "sampleRequests": "Échantillons",
+      "agencyCreatorApproval": "Approbation Agence/Créateur"
     }
   },
   "agency": {
@@ -1846,7 +1873,10 @@
       "notices": "Annonces",
       "guide": "Guide",
       "profile": "Profil"
-    }
+    },
+    "guide": "Guide opérationnel",
+    "guideSubtitle": "Guide essentiel d'opérations d'agence",
+    "guideTitle": "Guide d'agence"
   },
   "nav": {
     "home": "Accueil",

@@ -5,6 +5,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { boutiqueCTA } from '@/components/glass/glassTokens'
 
 interface ShortItem {
   id: number | string
@@ -509,7 +510,7 @@ export default function ShortsPage() {
                           navigate(`/products/${item.product_id}`)
                         }}
                         className="py-3 flex flex-col items-center gap-0.5 active:opacity-90"
-                        style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
+                        style={boutiqueCTA}
                         aria-label="바로구매"
                       >
                         <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>바로구매</span>

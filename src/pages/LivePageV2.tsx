@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, Eye } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
+import { glass } from '@/components/glass/glassTokens'
 import { formatViewers } from '@/components/live/LiveUtils'
 import ReelCard from '@/components/live/ReelCard'
 import '@/utils/console-suppressor'
@@ -112,14 +113,14 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
         {/* 좌측: 뒤로가기 (Q7 = 유지) */}
         <a href="/" aria-label="홈으로 돌아가기"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+          style={glass.navPill}>
           <ChevronLeft className="h-5 w-5 text-white/80" />
         </a>
 
         {/* 중앙: 셀러 pill (Boutique 톤 — gradient avatar + 셀러명) */}
         {sellerName && (
           <div className="flex items-center gap-2 min-w-0 flex-1 rounded-full pl-1 pr-3 py-1"
-            style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+            style={glass.navPill}>
             {sellerAvatar ? (
               <img src={sellerAvatar} alt={`${sellerName} 프로필 이미지`}
                 className="rounded-full object-cover shrink-0"
@@ -154,21 +155,21 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
             <span className="text-white" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em' }}>LIVE</span>
           </div>
           <div className="inline-flex items-center gap-1 rounded-full px-2.5 py-1"
-            style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px) saturate(140%)', WebkitBackdropFilter: 'blur(16px) saturate(140%)', border: '1px solid rgba(255,255,255,0.14)' }}>
+            style={glass.statsChip}>
             <Eye className="h-3 w-3 text-white/85" />
             <span className="text-white" style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatViewers(viewers)}</span>
           </div>
           {sellerLinks?.youtube && (
             <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label="유튜브 채널 방문"
               className="flex h-7 w-7 items-center justify-center rounded-full"
-              style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              style={glass.actionRail}>
               <YouTubeIcon className="h-3.5 w-3.5 text-white/85" />
             </a>
           )}
           {sellerLinks?.instagram && (
             <a href={sellerLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label="인스타그램 방문"
               className="flex h-7 w-7 items-center justify-center rounded-full"
-              style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              style={glass.actionRail}>
               <InstagramIcon className="h-3.5 w-3.5 text-white/85" />
             </a>
           )}

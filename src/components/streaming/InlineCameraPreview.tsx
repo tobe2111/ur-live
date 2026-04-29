@@ -91,6 +91,7 @@ export function InlineCameraPreview() {
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
         <button onClick={stop}
+          aria-label="카메라 끄기"
           className="bg-black/60 hover:bg-black/80 text-white p-1.5 rounded-md backdrop-blur-sm"
           title="끄기">
           <CameraOff className="w-3.5 h-3.5" />

@@ -141,7 +141,8 @@
     "disconnectFailed": "連携解除に失敗しました。",
     "copyFailed": "コピーに失敗しました。",
     "home": "ホーム",
-    "uploadComplete": "アップロード完了"
+    "uploadComplete": "アップロード完了",
+    "dismiss": "閉じる"
   },
   "auth": {
     "email": "メールアドレス",
@@ -284,7 +285,8 @@
       "replyPlaceholder": "返信を入力...",
       "replySubmitted": "返信が登録されました",
       "replyFailed": "返信の登録に失敗しました",
-      "writeReply": "返信を書く"
+      "writeReply": "返信を書く",
+      "subtitle": "購入者レビュー/返信"
     },
     "coupons": {
       "title": "クーポン管理",
@@ -308,7 +310,8 @@
       "percentOff": "{{value}}%オフ",
       "fixedOff": "{{value}}円オフ",
       "minOrder": "{{amount}}円以上",
-      "usage": "使用 {{used}}/{{total}}"
+      "usage": "使用 {{used}}/{{total}}",
+      "subtitle": "クーポン発行および使用履歴"
     },
     "workspace": "ワークスペース",
     "totalRevenue": "総売上",
@@ -1547,7 +1550,8 @@
       "targetCount": "目標 {{count}}名",
       "voucherSuffix": "食事券",
       "imageSizeLimit": "5MB以下の画像のみアップロード可能です",
-      "imageSearchFailed": "画像検索失敗"
+      "imageSearchFailed": "画像検索失敗",
+      "subtitle": "食事券・共同購入登録"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1712,7 +1716,29 @@
     },
     "public": {
       "liveEnded": "ライブ放送が終了しました。"
-    }
+    },
+    "analyticsSubtitle": "売上・顧客・商品パフォーマンス分析",
+    "createStreamSubtitle": "新しいライブ配信を作成",
+    "donationsSubtitle": "後援受信と精算履歴",
+    "groupBuySubtitle": "共同購入・食事券管理",
+    "inventorySubtitle": "在庫管理・バーコードスキャン・入出庫履歴",
+    "liveBroadcastSubtitle": "リアルタイム配信開始/終了/統計",
+    "onboarding": {
+      "addProduct": "最初の商品登録",
+      "bankAccount": "精算口座登録",
+      "completed": "完了",
+      "firstLive": "最初のライブ配信",
+      "firstOrder": "最初の注文受付",
+      "subtitle": "以下のステップを完了すると販売を開始できます",
+      "title": "🚀 スタートガイド"
+    },
+    "profileEditSubtitle": "プロフィール写真/紹介/SNSリンク編集",
+    "settlementApprovedEstimate": "承認後の予想精算額",
+    "settlementEstimate": "予想精算額",
+    "shortsSubtitle": "ショート動画登録/管理",
+    "streamEditSubtitle": "配信情報修正",
+    "supplySubtitle": "供給商品管理",
+    "youtubeGrowthSubtitle": "YouTubeチャンネル成長分析"
   },
   "admin": {
     "login": {
@@ -1792,7 +1818,8 @@
       "agency": "エージェンシー管理",
       "cafe24": "Cafe24連携",
       "alimtalk": "ブランドメッセージ",
-      "sampleRequests": "サンプル申請"
+      "sampleRequests": "サンプル申請",
+      "agencyCreatorApproval": "エージェンシー・クリエイター承認"
     }
   },
   "agency": {
@@ -1929,7 +1956,10 @@
       "notices": "セラー告知",
       "guide": "運営ガイド",
       "profile": "プロフィール設定"
-    }
+    },
+    "guide": "運営ガイド",
+    "guideSubtitle": "エージェンシー運営の核心ガイド",
+    "guideTitle": "エージェンシーガイド"
   },
   "nav": {
     "home": "ホーム",
