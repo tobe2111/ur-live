@@ -93,6 +93,7 @@ export function ProductListSheet({
                         src={product.image_url || product.image || sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')}
                         alt={product.name}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                         onError={(e) => {
                           const img = e.target as HTMLImageElement
                           const fallback = sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')

@@ -111,7 +111,7 @@ export default function SellerGroupBuyPage() {
               return (
                 <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-4">
                   <div className="flex gap-3">
-                    {p.image_url && <img src={p.image_url} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0" />}
+                    {p.image_url && <img src={p.image_url} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0" loading="lazy" />}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${

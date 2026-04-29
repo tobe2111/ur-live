@@ -135,7 +135,7 @@ export default function GiftClaimPage() {
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4">
           <div className="flex gap-3 mb-4">
             {gift.product_thumbnail ? (
-              <img src={gift.product_thumbnail} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+              <img src={gift.product_thumbnail} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" />
             ) : (
               <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
                 <Gift className="w-8 h-8 text-gray-300" />

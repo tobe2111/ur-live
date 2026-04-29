@@ -179,7 +179,7 @@ export default function SellerConsignmentPage() {
               <DashboardCard key={p.id}>
                 <div className="flex items-start gap-3">
                   {p.product_thumbnail ? (
-                    <img src={p.product_thumbnail} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                    <img src={p.product_thumbnail} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy" />
                   ) : (
                     <div className="w-16 h-16 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center text-gray-300">
                       <Handshake className="w-6 h-6" />

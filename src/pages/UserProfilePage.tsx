@@ -632,8 +632,7 @@ export default function UserProfilePage() {
           <div className="relative">
             <img
               src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
-              alt={`${userName} 프로필 이미지`} className="w-16 h-16 rounded-full object-cover" style={{ border: '2px solid rgba(255,255,255,0.15)' }}
-            />
+              alt={`${userName} 프로필 이미지`} className="w-16 h-16 rounded-full object-cover" style={{ border: '2px solid rgba(255,255,255,0.15)' }} loading="lazy" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[17px] font-extrabold text-white" style={{ letterSpacing: '-0.01em' }}>{userName}</p>

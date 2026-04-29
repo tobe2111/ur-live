@@ -38,7 +38,7 @@ export default function ChannelCard({ channels, activeChannelId, onSelectChannel
     <div className={`relative bg-white rounded-xl px-4 py-3 border mb-5 ${active.token_expired ? 'border-amber-300' : 'border-gray-200'}`}>
       <div className="flex items-center gap-3">
         {active.channel_thumbnail
-          ? <img src={active.channel_thumbnail} alt="" className="w-8 h-8 rounded-full" />
+          ? <img src={active.channel_thumbnail} alt="" className="w-8 h-8 rounded-full" loading="lazy" />
           : <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center"><Youtube className="h-4 w-4 text-red-500" /></div>}
         <button
           onClick={() => hasMultiple && setPickerOpen(v => !v)}
@@ -74,7 +74,7 @@ export default function ChannelCard({ channels, activeChannelId, onSelectChannel
             <button key={ch.id}
               onClick={() => { onSelectChannel(ch.id); setPickerOpen(false) }}
               className={`w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 ${ch.id === active.id ? 'bg-blue-50' : ''}`}>
-              {ch.channel_thumbnail && <img src={ch.channel_thumbnail} alt="" className="w-6 h-6 rounded-full" />}
+              {ch.channel_thumbnail && <img src={ch.channel_thumbnail} alt="" className="w-6 h-6 rounded-full" loading="lazy" />}
               <span className="text-xs font-medium text-gray-900 truncate flex-1">{ch.channel_title}</span>
               {ch.id === active.id && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
             </button>

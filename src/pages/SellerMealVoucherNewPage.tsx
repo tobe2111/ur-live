@@ -308,7 +308,7 @@ export default function SellerMealVoucherNewPage() {
                 {/* 미리보기 */}
                 {form.image_url && (
                   <div className="relative inline-block">
-                    <img src={form.image_url} alt="대표 이미지" className="w-full max-w-[240px] h-48 rounded-lg object-cover border border-gray-200" />
+                    <img src={form.image_url} alt="대표 이미지" className="w-full max-w-[240px] h-48 rounded-lg object-cover border border-gray-200" loading="lazy" />
                     <button
                       type="button"
                       onClick={() => update('image_url', '')}

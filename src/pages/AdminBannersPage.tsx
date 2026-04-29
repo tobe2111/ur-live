@@ -173,7 +173,7 @@ export default function AdminBannersPage() {
                 </ul>
                 <p className="text-xs text-blue-500 mt-1.5">※ 여러 배너 등록 시 5초 간격으로 자동 슬라이드됩니다.</p>
               </div>
-              {formData.image_url && <img src={formData.image_url} alt="미리보기" className="mt-2 w-full max-w-sm aspect-video object-cover rounded-lg" />}
+              {formData.image_url && <img src={formData.image_url} alt="미리보기" className="mt-2 w-full max-w-sm aspect-video object-cover rounded-lg" loading="lazy" />}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">링크 URL</label>
@@ -218,7 +218,7 @@ export default function AdminBannersPage() {
         ) : banners.map(banner => (
           <div key={banner.id} className={`bg-white rounded-xl shadow-sm p-4 flex items-start gap-4 ${!banner.is_active ? 'opacity-60' : ''}`}>
             <div className="relative w-40 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
-              <img src={banner.image_url} alt={banner.title} className="w-full h-full object-cover" />
+              <img src={banner.image_url} alt={banner.title} className="w-full h-full object-cover" loading="lazy" />
               {!banner.is_active && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <EyeOff className="w-6 h-6 text-white" />

@@ -135,8 +135,7 @@ export default function AdminLiveMonitorPage() {
                     <div className="relative aspect-video bg-gray-100">
                       <img
                         src={`https://img.youtube.com/vi/${stream.youtube_video_id}/mqdefault.jpg`}
-                        alt="" className="w-full h-full object-cover"
-                      />
+                        alt="" className="w-full h-full object-cover" loading="lazy" />
                       <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-red-600 rounded-full">
                         <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                         <span className="text-[10px] font-bold text-white">LIVE</span>

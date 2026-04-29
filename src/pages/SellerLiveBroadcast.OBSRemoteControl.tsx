@@ -224,7 +224,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
 
       {previewUrl && (
         <div className="bg-black rounded-lg overflow-hidden">
-          <img src={previewUrl} alt="OBS preview" className="w-full aspect-video object-contain" />
+          <img src={previewUrl} alt="OBS preview" className="w-full aspect-video object-contain" loading="lazy" />
           <p className="text-[10px] text-white/70 px-2 py-1 bg-black/60">
             🎬 {t('seller.liveBroadcast.obsLivePreview')} · {obsStatus.currentScene}
           </p>

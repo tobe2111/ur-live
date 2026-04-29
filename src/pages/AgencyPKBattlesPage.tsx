@@ -263,7 +263,7 @@ function SellerCard(props: { name: string | null; image: string | null; revenue:
     <div className={`text-center p-3 rounded-lg ${props.isWinner ? 'bg-yellow-50 border-2 border-yellow-400' : 'bg-gray-50'}`}>
       {props.isWinner && <Trophy className="w-5 h-5 text-yellow-500 mx-auto mb-1" />}
       <div className="w-12 h-12 mx-auto rounded-full overflow-hidden bg-gray-200 mb-2">
-        {props.image ? <img src={props.image} alt={props.name || ''} className="w-full h-full object-cover" /> : null}
+        {props.image ? <img src={props.image} alt={props.name || ''} className="w-full h-full object-cover" loading="lazy" /> : null}
       </div>
       <div className="text-xs font-medium text-gray-900 truncate">{props.name || '?'}</div>
       <div className="text-sm font-bold text-gray-900 mt-1">

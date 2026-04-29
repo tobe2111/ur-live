@@ -138,7 +138,7 @@ export default function VoucherVerifyPage() {
             {/* 바우처 정보 카드 */}
             <div className="bg-gray-50 rounded-xl p-4 mb-5">
               {voucher.product_image && (
-                <img src={voucher.product_image} alt="" className="w-full h-32 object-cover rounded-lg mb-3" />
+                <img src={voucher.product_image} alt="" className="w-full h-32 object-cover rounded-lg mb-3" loading="lazy" />
               )}
               <p className="text-base font-bold text-gray-900">{voucher.product_name}</p>
               {voucher.restaurant_name && (

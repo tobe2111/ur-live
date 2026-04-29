@@ -62,8 +62,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         <img
           src={item.image_url}
           alt=""
-          className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 shrink-0"
-        />
+          className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 shrink-0" loading="lazy" />
       ) : (
         <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 shrink-0 flex items-center justify-center">
           <span className="text-gray-300 text-[10px]">No img</span>

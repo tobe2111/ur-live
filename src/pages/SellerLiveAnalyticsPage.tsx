@@ -170,8 +170,7 @@ function AnalyticsSummary() {
                     <img
                       src={`https://img.youtube.com/vi/${stream.youtube_video_id}/mqdefault.jpg`}
                       alt=""
-                      className="w-full h-full object-cover"
-                    />
+                      className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Play className="w-4 h-4 text-gray-400" />
@@ -436,7 +435,7 @@ function StreamAnalyticsDetail({ streamId }: { streamId: string }) {
                   <span className="w-6 text-center text-sm font-bold text-gray-400">{i + 1}</span>
                   <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                     {p.image_url ? (
-                      <img src={p.image_url} alt="" className="w-full h-full object-cover" />
+                      <img src={p.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-300">
                         <ShoppingBag className="w-4 h-4" />

@@ -86,8 +86,7 @@ export default function EmbedLivePage() {
               <img
                 src={stream.current_product.image_url}
                 alt=""
-                className="w-12 h-12 rounded-lg object-cover shrink-0"
-              />
+                className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" />
             )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-gray-900 truncate">{stream.current_product.name}</p>

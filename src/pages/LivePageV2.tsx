@@ -124,7 +124,7 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
             {sellerAvatar ? (
               <img src={sellerAvatar} alt={`${sellerName} 프로필 이미지`}
                 className="rounded-full object-cover shrink-0"
-                style={{ width: 26, height: 26 }} />
+                style={{ width: 26, height: 26 }} loading="lazy" />
             ) : (
               <div className="rounded-full flex items-center justify-center shrink-0 text-white"
                 style={{ width: 26, height: 26, background: 'linear-gradient(135deg, #EF4444, #EC4899)', fontSize: 11, fontWeight: 800 }}>

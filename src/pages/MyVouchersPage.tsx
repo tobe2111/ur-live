@@ -36,8 +36,7 @@ function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) 
       alt="QR Code"
       className="mx-auto"
       width={size}
-      height={size}
-    />
+      height={size} loading="lazy" />
   )
 }
 

@@ -287,7 +287,7 @@ export default function ShortsPage() {
                 >
                   <div className="w-7 h-7 rounded-full overflow-hidden bg-white/20 flex items-center justify-center shrink-0">
                     {item.seller_avatar ? (
-                      <img src={item.seller_avatar} alt={`${item.seller_name || '셀러'} 프로필 이미지`} className="w-full h-full object-cover" />
+                      <img src={item.seller_avatar} alt={`${item.seller_name || '셀러'} 프로필 이미지`} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <span className="text-[10px] font-bold text-white">{(item.seller_name || '?').charAt(0)}</span>
                     )}
@@ -327,8 +327,7 @@ export default function ShortsPage() {
                         <img
                           src={`https://img.youtube.com/vi/${thumb.youtube_video_id}/default.jpg`}
                           alt=""
-                          className="w-full h-full object-cover"
-                        />
+                          className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className="w-full h-full bg-white/10" />
                       )}

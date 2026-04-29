@@ -446,7 +446,7 @@ export default function AdminOrdersPage() {
                   <div className="space-y-2">
                     {selectedOrder.items.map(item => (
                       <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        {item.image_url && <img src={item.image_url} alt={item.product_name} className="w-12 h-12 object-cover rounded-lg" />}
+                        {item.image_url && <img src={item.image_url} alt={item.product_name} className="w-12 h-12 object-cover rounded-lg" loading="lazy" />}
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">{item.product_name}</p>
                           <p className="text-xs text-gray-400">수량 {item.quantity}개</p>

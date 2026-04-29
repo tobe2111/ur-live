@@ -108,7 +108,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
           {/* 상품 미리보기 */}
           <div className="flex gap-3 p-3 bg-gray-50 rounded-xl">
             {productThumbnail ? (
-              <img src={productThumbnail} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+              <img src={productThumbnail} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" loading="lazy" />
             ) : (
               <div className="w-14 h-14 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
                 <Gift className="w-6 h-6 text-gray-300" />

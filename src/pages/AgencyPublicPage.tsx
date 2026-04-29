@@ -76,7 +76,7 @@ export default function AgencyPublicPage() {
           <div className="flex items-start gap-4">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gray-100 border-4 border-white shadow flex-shrink-0 overflow-hidden">
               {data.logo_url ? (
-                <img src={data.logo_url} alt={data.name} className="w-full h-full object-cover" />
+                <img src={data.logo_url} alt={data.name} className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-3xl">
                   <Briefcase className="w-10 h-10 text-gray-400" />
@@ -141,7 +141,7 @@ export default function AgencyPublicPage() {
                 <div key={s.id} className="text-center">
                   <div className="w-14 h-14 mx-auto rounded-full bg-gray-100 overflow-hidden mb-2">
                     {s.profile_image ? (
-                      <img src={s.profile_image} alt={s.business_name} className="w-full h-full object-cover" />
+                      <img src={s.profile_image} alt={s.business_name} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400">
                         <Users className="w-6 h-6" />

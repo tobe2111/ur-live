@@ -168,7 +168,7 @@ export default function BlogDetailPage() {
 
         {/* 썸네일 */}
         {post.thumbnail_url && (
-          <img src={post.thumbnail_url} alt="" className="w-full rounded-2xl mt-6 mb-2" />
+          <img src={post.thumbnail_url} alt="" className="w-full rounded-2xl mt-6 mb-2" loading="lazy" />
         )}
 
         {/* 본문 */}
