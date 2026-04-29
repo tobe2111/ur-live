@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import OptionSelectModal from '@/components/OptionSelectModal'
 import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
@@ -74,6 +75,7 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
 }
 
 export default function CartPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const loggedIn = isUserLoggedIn()
 
@@ -84,26 +86,27 @@ export default function CartPage() {
         <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" noindex />
         <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
           <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
-            <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
-              <X className="h-5 w-5 text-gray-900" />
+            <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
+              <X className="h-5 w-5 text-gray-900" aria-hidden="true" />
             </button>
-            <h1 className="text-[16px] font-extrabold text-gray-900">장바구니</h1>
+            <h1 className="text-[16px] font-extrabold text-gray-900">{t('cart.title')}</h1>
             <div className="w-9" />
           </div>
         </div>
         <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
           <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center">
-            <ShoppingCart className="h-10 w-10 text-gray-300" />
+            <ShoppingCart className="h-10 w-10 text-gray-300" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-[16px] font-bold text-gray-900">로그인이 필요합니다</p>
+            <p className="text-[16px] font-bold text-gray-900">{t('common.loginRequired')}</p>
             <p className="mt-1.5 text-[13px] text-gray-500">장바구니를 이용하려면 로그인해 주세요</p>
           </div>
           <button
+            type="button"
             onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/cart')}`)}
             className="w-full max-w-xs rounded-xl bg-gray-900 py-3.5 text-[14px] font-bold text-white hover:bg-gray-800 active:scale-[0.98] transition-all"
           >
-            로그인하기
+            {t('common.loginButton')}
           </button>
           <button onClick={() => navigate('/')} className="text-[13px] text-gray-500 underline">
             쇼핑 계속하기
