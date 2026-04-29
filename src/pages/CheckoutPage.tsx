@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast, getUserFriendlyError } from '@/lib/errorHandler'
@@ -48,6 +49,7 @@ interface ShippingAddress {
 }
 
 export default function CheckoutPage() {
+  const { t } = useTranslation()
   // ✅ Region 기반 Store 선택
   const isKR = isKorea()
   const krUser = useAuthKR(state => state.user)
@@ -393,20 +395,20 @@ export default function CheckoutPage() {
   // 배송지 저장
   const handleSaveNewAddress = async () => {
     if (!userId) {
-      toast.info('로그인이 필요합니다.')
+      toast.info(t('common.loginRequired'))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
     }
 
     if (!newAddress.recipient_name || !newAddress.phone || !newAddress.postal_code || !newAddress.address) {
-      toast.error('모든 필수 항목을 입력해주세요.')
+      toast.error(t('common.requiredFields'))
       return
     }
 
     const phoneClean = newAddress.phone.replace(/[^0-9]/g, '')
     if (phoneClean.length < 10 || phoneClean.length > 11) {
-      toast.error('올바른 전화번호를 입력해주세요.')
+      toast.error(t('common.invalidPhone'))
       return
     }
 
@@ -848,7 +850,7 @@ export default function CheckoutPage() {
                 /* 딜 전액 결제 */
                 <button
                   onClick={async () => {
-                    if (!selectedAddress) { toast.error('배송지를 선택해주세요'); return }
+                    if (!selectedAddress) { toast.error(t('common.addressRequired')); return }
                     setPayingWithDeals(true)
                     try {
                       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
@@ -868,7 +870,7 @@ export default function CheckoutPage() {
                       })
                       if (res.data.success) {
                         if (couponId && couponDiscount > 0) {
-                          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => { toast.error('쿠폰 적용에 실패했습니다') })
+                          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => { toast.error(t('common.couponApplyFailed')) })
                         }
                         navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
                       }
