@@ -6,6 +6,8 @@ import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Gift
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
+import { walletTokens } from '@/components/wallet/walletTokens'
 
 interface Voucher {
   id: number
@@ -112,101 +114,141 @@ export default function MyVouchersPage() {
 
   const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
 
+  // 🛡️ 2026-04-29 v4 Wallet — 다크 우선 (라이트 prop 으로 변환 가능)
+  const theme = 'dark' as const
+  const tk = walletTokens[theme]
+
+  // 상태별 그룹핑
+  const groups = [
+    { key: 'unused',   label: '사용 가능',  items: vouchers.filter(v => v.status === 'unused') },
+    { key: 'used',     label: '사용 완료',  items: vouchers.filter(v => v.status === 'used') },
+    { key: 'expired',  label: '만료',       items: vouchers.filter(v => v.status === 'expired') },
+    { key: 'refunded', label: '환불',       items: vouchers.filter(v => v.status === 'refunded') },
+  ].filter(g => g.items.length > 0)
+
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <WalletPageWrapper theme={theme}>
       <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" />
-      {/* 헤더 */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="flex items-center px-4 py-3">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
-            <ArrowLeft className="w-5 h-5 text-gray-900" />
-          </button>
-          <h1 className="flex-1 text-center text-[18px] font-bold text-gray-900 pr-10">{t('voucher.myVouchers')}</h1>
-        </div>
+
+      {/* 상단 chrome — 뒤로가기 + 알림 영역 */}
+      <div className="sticky top-0 z-30 px-2 pt-3 pb-2 flex items-center"
+        style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
+        <button
+          onClick={() => navigate(-1)}
+          className="w-9 h-9 flex items-center justify-center rounded-full"
+          style={{ background: tk.fillSoft, color: tk.label }}
+          aria-label="뒤로가기"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
       </div>
 
-      <div className="px-4 py-5">
+      {/* Large Title */}
+      <LargeTitle theme={theme} title={t('voucher.myVouchers')} />
+
+      <div className="px-4 pb-2">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: tk.accent, borderTopColor: 'transparent' }} />
           </div>
         ) : vouchers.length === 0 ? (
           <div className="text-center py-20">
-            <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-900 font-bold mb-1">{t('voucher.empty')}</p>
-            <p className="text-gray-500 text-sm mb-4">{t('voucher.emptyHint')}</p>
-            <button onClick={() => navigate('/browse?category=meal_voucher')} className="px-5 py-2.5 bg-pink-500 text-white rounded-full text-sm font-bold">
+            <Ticket className="w-12 h-12 mx-auto mb-3" style={{ color: tk.tertiary }} />
+            <p className="font-bold mb-1" style={{ color: tk.label }}>{t('voucher.empty')}</p>
+            <p className="text-sm mb-4" style={{ color: tk.secondary }}>{t('voucher.emptyHint')}</p>
+            <button
+              onClick={() => navigate('/browse?category=meal_voucher')}
+              className="px-5 py-2.5 rounded-full text-sm font-bold text-white active:opacity-90"
+              style={{ background: tk.accentGradient }}
+            >
               {t('voucher.exploreRestaurants')}
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            {vouchers.map(v => {
-              const st = STATUS_MAP[v.status] || STATUS_MAP.unused
-              return (
-                <div key={v.id} className={`bg-white rounded-2xl overflow-hidden border border-gray-200 ${v.status === 'unused' ? '' : 'opacity-60'}`}>
-                  <div className="flex">
-                    {/* 상품 이미지 */}
-                    {v.product_image && (
-                      <img src={v.product_image} alt="" className="w-24 h-full object-cover shrink-0" />
-                    )}
-                    <div className="flex-1 p-4">
-                      {/* 상태 배지 */}
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${st.color}`}>
-                        <st.icon className="w-3 h-3" />
-                        {t(st.labelKey)}
-                      </span>
-                      {/* 상품명 */}
-                      <p className="text-sm font-bold text-gray-900 mt-1.5">{v.product_name}</p>
-                      {/* 식당 */}
-                      {v.restaurant_name && (
-                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                          <MapPin className="w-3 h-3" /> {v.restaurant_name}
-                        </p>
-                      )}
-                      {/* 바우처 코드 */}
-                      <div className="mt-2 bg-gray-100 rounded-lg px-3 py-2 flex items-center justify-between">
-                        <code className="text-sm font-mono font-bold text-pink-400">{v.code}</code>
-                        <div className="flex items-center gap-2">
-                          {v.status === 'unused' && (
-                            <button
-                              onClick={() => setQrVoucher(v)}
-                              className="text-[10px] text-pink-500 hover:text-pink-600 font-medium flex items-center gap-0.5"
-                            >
-                              <QrCode className="w-3 h-3" />
-                              {t('voucher.scan')}
-                            </button>
+          <>
+            {groups.map(group => (
+              <div key={group.key} className="mb-6">
+                <p className="px-1 mb-1.5 uppercase"
+                  style={{ fontSize: 12, color: tk.secondary, fontWeight: 500, letterSpacing: '-0.01em' }}>
+                  {group.label} <span style={{ color: tk.tertiary }}>· {group.items.length}</span>
+                </p>
+                <div className="space-y-2">
+                  {group.items.map(v => {
+                    const st = STATUS_MAP[v.status] || STATUS_MAP.unused
+                    const muted = v.status !== 'unused'
+                    return (
+                      <div
+                        key={v.id}
+                        className="rounded-2xl overflow-hidden"
+                        style={{ background: tk.card, opacity: muted ? 0.6 : 1 }}
+                      >
+                        <div className="flex">
+                          {v.product_image && (
+                            <img src={v.product_image} alt="" loading="lazy" className="w-24 h-auto object-cover shrink-0" />
                           )}
-                          {v.status === 'unused' && (
-                            <button
-                              onClick={() => navigator.clipboard?.writeText(v.code)}
-                              className="text-[10px] text-gray-500 hover:text-gray-900"
-                            >
-                              {t('voucher.copy')}
-                            </button>
-                          )}
+                          <div className="flex-1 p-3.5 min-w-0">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                              style={{ background: tk.fillSoft, color: tk.label, fontSize: 10, fontWeight: 700 }}>
+                              <st.icon className="w-3 h-3" />
+                              {t(st.labelKey)}
+                            </span>
+                            <p style={{ fontSize: 14, fontWeight: 700, color: tk.label, marginTop: 6 }} className="line-clamp-2">{v.product_name}</p>
+                            {v.restaurant_name && (
+                              <p className="flex items-center gap-1 mt-1" style={{ fontSize: 11, color: tk.secondary }}>
+                                <MapPin className="w-3 h-3" /> {v.restaurant_name}
+                              </p>
+                            )}
+                            {/* 바우처 코드 row */}
+                            <div className="mt-2 rounded-lg px-3 py-2 flex items-center justify-between"
+                              style={{ background: tk.fillSoft }}>
+                              <code style={{ fontSize: 13, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontWeight: 700, color: tk.accent, letterSpacing: '-0.01em' }}>{v.code}</code>
+                              <div className="flex items-center gap-2">
+                                {v.status === 'unused' && (
+                                  <button
+                                    onClick={() => setQrVoucher(v)}
+                                    className="flex items-center gap-0.5"
+                                    style={{ fontSize: 11, color: tk.accent, fontWeight: 600 }}
+                                  >
+                                    <QrCode className="w-3 h-3" />
+                                    {t('voucher.scan')}
+                                  </button>
+                                )}
+                                {v.status === 'unused' && (
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard?.writeText(v.code)
+                                      toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
+                                    }}
+                                    style={{ fontSize: 11, color: tk.secondary, fontWeight: 500 }}
+                                  >
+                                    {t('voucher.copy')}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {/* 유효기간 */}
+                            {v.expires_at && (
+                              <p className="flex items-center gap-1 mt-1.5" style={{ fontSize: 10, color: tk.secondary }}>
+                                <Clock className="w-3 h-3" />
+                                {v.status === 'used' && v.used_at
+                                  ? `${t('voucher.usedAt')}: ${new Date(v.used_at).toLocaleDateString(locale)}`
+                                  : `${t('voucher.expiresAt')}: ${new Date(v.expires_at).toLocaleDateString(locale)}${t('voucher.until')}`}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      {/* 유효기간 */}
-                      {v.expires_at && (
-                        <p className="text-[10px] text-gray-600 mt-1.5 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {v.status === 'used'
-                            ? `${t('voucher.usedAt')}: ${new Date(v.used_at!).toLocaleDateString(locale)}`
-                            : `${t('voucher.expiresAt')}: ${new Date(v.expires_at).toLocaleDateString(locale)}${t('voucher.until')}`}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            ))}
+          </>
         )}
       </div>
 
       {/* QR Code Modal */}
       {qrVoucher && <QRModal voucher={qrVoucher} onClose={() => setQrVoucher(null)} />}
-    </div>
+    </WalletPageWrapper>
   )
 }

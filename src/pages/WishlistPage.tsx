@@ -5,7 +5,9 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { isLoggedInSync, getUserIdSync } from '@/utils/auth'
 import WishlistButton from '../components/WishlistButton'
-import { ChevronLeft, Heart } from 'lucide-react'
+import { ArrowLeft, Heart } from 'lucide-react'
+import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
+import { walletTokens } from '@/components/wallet/walletTokens'
 
 interface WishlistItem {
   id: number
@@ -105,59 +107,67 @@ const WishlistPage: React.FC = () => {
     }
   }
 
+  // 🛡️ 2026-04-29 v4 Wallet — 다크 우선
+  const theme = 'dark' as const
+  const tk = walletTokens[theme]
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <WalletPageWrapper theme={theme} className="flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-          <p className="text-gray-500">위시리스트를 불러오는 중...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: tk.accent }} />
+          <p style={{ color: tk.secondary }}>위시리스트를 불러오는 중...</p>
         </div>
-      </div>
+      </WalletPageWrapper>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <WalletPageWrapper theme={theme} className="flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
+          <p className="mb-4" style={{ color: tk.danger }}>{error}</p>
           <button
             onClick={() => userId && loadWishlists(userId)}
-            className="px-6 py-2 bg-pink-500 text-white rounded-xl hover:bg-pink-600 transition-colors"
+            className="px-6 py-2 rounded-xl text-white active:opacity-90"
+            style={{ background: tk.accentGradient }}
           >
             다시 시도
           </button>
         </div>
-      </div>
+      </WalletPageWrapper>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <WalletPageWrapper theme={theme}>
       <SEO title="위시리스트 - 유어딜" description="관심 상품을 모아보세요" url="/wishlist" noindex />
 
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
-        <div className="flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} className="text-gray-900">
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <h1 className="text-gray-900 font-bold text-[15px]">위시리스트</h1>
-          <div className="w-6" />
-        </div>
+      {/* 상단 chrome — 뒤로가기 */}
+      <div className="sticky top-0 z-30 px-2 pt-3 pb-2 flex items-center"
+        style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
+        <button
+          onClick={() => navigate(-1)}
+          className="w-9 h-9 flex items-center justify-center rounded-full"
+          style={{ background: tk.fillSoft, color: tk.label }}
+          aria-label="뒤로가기"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
       </div>
 
-      <div className="px-4 py-4">
-        <p className="text-gray-500 text-sm mb-4">찜한 상품 {wishlists.length}개</p>
+      <LargeTitle theme={theme} title="위시리스트" subtitle={`찜한 상품 ${wishlists.length}개`} />
 
+      <div className="px-4 pb-2">
         {wishlists.length === 0 ? (
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-12 text-center">
-            <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">찜한 상품이 없습니다</h2>
-            <p className="text-gray-500 mb-6">마음에 드는 상품을 찜해보세요!</p>
+          <div className="rounded-2xl p-12 text-center" style={{ background: tk.card }}>
+            <Heart className="w-16 h-16 mx-auto mb-4" style={{ color: tk.tertiary }} />
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: tk.label, marginBottom: 6 }}>찜한 상품이 없습니다</h2>
+            <p className="mb-6" style={{ fontSize: 13, color: tk.secondary }}>마음에 드는 상품을 찜해보세요</p>
             <button
               onClick={() => navigate('/')}
-              className="px-6 py-3 bg-pink-500 text-white rounded-xl hover:bg-pink-600 transition-colors font-semibold"
+              className="px-6 py-3 rounded-xl text-white active:opacity-90"
+              style={{ background: tk.accentGradient, fontSize: 14, fontWeight: 700 }}
             >
               쇼핑 계속하기
             </button>
@@ -168,17 +178,18 @@ const WishlistPage: React.FC = () => {
               <div
                 key={item.id}
                 onClick={() => handleProductClick(item.product_id)}
-                className="bg-white border border-gray-200 rounded-2xl overflow-hidden cursor-pointer group hover:shadow-md transition-shadow"
+                className="rounded-2xl overflow-hidden cursor-pointer group transition-all active:scale-[0.99]"
+                style={{ background: tk.card }}
               >
-                {/* 상품 이미지 */}
-                <div className="relative aspect-square bg-gray-100">
+                <div className="relative aspect-square" style={{ background: tk.cardSub }}>
                   <img
                     src={item.image_url || '/placeholder.png'}
                     alt={item.product_name}
+                    loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
-                      target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23F3F4F6" width="200" height="200"/%3E%3Ctext fill="%239CA3AF" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
+                      target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%231C1C1E" width="200" height="200"/%3E%3Ctext fill="%2348484A" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
                     }}
                   />
 
@@ -188,46 +199,45 @@ const WishlistPage: React.FC = () => {
                       userId={userId}
                       initialWishlisted={true}
                       size="md"
-                      className="bg-white/90 rounded-full p-2 backdrop-blur-sm shadow-sm"
+                      className="rounded-full p-2 backdrop-blur-sm shadow-sm bg-black/55"
                       onToggle={(isWishlisted) => handleWishlistToggle(item.product_id, isWishlisted)}
                     />
                   </div>
 
                   {item.stock === 0 && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span className="bg-white text-gray-900 px-4 py-2 rounded-full font-semibold text-sm">품절</span>
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                      <span className="px-4 py-2 rounded-full font-semibold text-sm" style={{ background: tk.label, color: tk.bg }}>품절</span>
                     </div>
                   )}
 
                   {item.discount_rate > 0 && (
-                    <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md"
+                      style={{ background: '#EF4444', color: '#fff', fontSize: 10, fontWeight: 800 }}>
                       -{item.discount_rate}%
                     </div>
                   )}
                 </div>
 
-                {/* 상품 정보 */}
                 <div className="p-3">
-                  <p className="text-[10px] text-gray-400 mb-1">@{item.seller_name}</p>
-                  <h3 className="text-[12px] font-medium text-gray-900 mb-2 line-clamp-2 min-h-[2.5rem] leading-tight">
+                  <p style={{ fontSize: 10, color: tk.tertiary }} className="mb-1">@{item.seller_name}</p>
+                  <h3 className="line-clamp-2 leading-tight"
+                    style={{ fontSize: 12, fontWeight: 500, color: tk.label, marginBottom: 6, minHeight: '2.5rem' }}>
                     {item.product_name}
                   </h3>
 
                   <div className="mb-3">
                     {item.discount_rate > 0 ? (
                       <>
-                        <p className="text-[10px] text-gray-400 line-through">
+                        <p style={{ fontSize: 10, color: tk.tertiary, textDecoration: 'line-through' }}>
                           {item.original_price.toLocaleString()}원
                         </p>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-[13px] font-extrabold text-red-500">{item.discount_rate}%</span>
-                          <span className="text-[13px] font-extrabold text-gray-900">
-                            {item.price.toLocaleString()}원
-                          </span>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{item.discount_rate}%</span>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>{item.price.toLocaleString()}원</span>
                         </div>
                       </>
                     ) : (
-                      <p className="text-[13px] font-extrabold text-gray-900">
+                      <p style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>
                         {item.price.toLocaleString()}원
                       </p>
                     )}
@@ -236,13 +246,11 @@ const WishlistPage: React.FC = () => {
                   <button
                     onClick={(e) => handleAddToCart(item, e)}
                     disabled={item.stock === 0}
-                    className={`
-                      w-full py-2 rounded-xl text-sm font-medium transition-colors
-                      ${item.stock === 0
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-900 text-white hover:bg-gray-800'
-                      }
-                    `}
+                    className="w-full py-2 rounded-xl text-sm font-medium transition-colors disabled:cursor-not-allowed"
+                    style={{
+                      background: item.stock === 0 ? tk.fillSoft : tk.label,
+                      color: item.stock === 0 ? tk.tertiary : tk.bg,
+                    }}
                   >
                     {item.stock === 0 ? '품절' : '장바구니'}
                   </button>
@@ -252,7 +260,7 @@ const WishlistPage: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </WalletPageWrapper>
   )
 }
 
