@@ -19,7 +19,7 @@ interface SEOProps {
   url?: string
   type?: 'website' | 'article' | 'product'
   noindex?: boolean
-  jsonLd?: Record<string, unknown>
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[]
 }
 
 const SITE_NAME = '유어딜'
@@ -84,12 +84,14 @@ export default function SEO({
       {/* Naver */}
       <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
 
-      {/* JSON-LD */}
-      {jsonLd && (
-        <script type="application/ld+json">
-          {JSON.stringify(jsonLd)}
-        </script>
-      )}
+      {/* JSON-LD — 단일 또는 배열 둘 다 지원 (Google 권장: 페이지당 여러 개 OK) */}
+      {Array.isArray(jsonLd) ? (
+        jsonLd.map((ld, i) => (
+          <script key={i} type="application/ld+json">{JSON.stringify(ld)}</script>
+        ))
+      ) : jsonLd ? (
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      ) : null}
     </Helmet>
   )
 }

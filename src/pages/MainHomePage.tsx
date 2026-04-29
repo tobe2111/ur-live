@@ -4,7 +4,7 @@ import { Search, ShoppingCart, Eye, Play, Clock, Bell, MapPin, ChevronDown, Map 
 import api from '@/lib/api'
 import { isLoggedInSync } from '@/utils/auth'
 import SiteFooter from '@/components/main/SiteFooter'
-import SEO, { organizationJsonLd } from '@/components/SEO'
+import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SharePrompt from '@/components/SharePrompt'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
 // 🛡️ 2026-04-22: HeroBanner 통합 — 어드민 등록 배너가 메인페이지에 표시되도록 연결
@@ -250,7 +250,7 @@ export default function MainHomePage() {
 
   return (
     <div className="bg-[#020202] min-h-screen pb-16">
-      <SEO title="홈" description="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매" url="/" jsonLd={organizationJsonLd} />
+      <SEO title="홈" description="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매" url="/" jsonLd={[organizationJsonLd, webSiteJsonLd]} />
 
       {/* ═══ Sticky Top Bar ═══ */}
       <div className="sticky top-0 inset-x-0 px-4 pt-3 pb-2 flex items-center justify-between z-30 bg-[#020202]/95 backdrop-blur-md">

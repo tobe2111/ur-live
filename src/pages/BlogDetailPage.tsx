@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Clock, Share2, Tag } from 'lucide-react'
 import api from '@/lib/api'
-import SEO from '@/components/SEO'
+import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { escapeHtml } from '@/shared/utils/html'
@@ -118,7 +118,16 @@ export default function BlogDetailPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <SEO title={post.title} description={post.summary} url={`/blog/${post.slug}`} />
+      <SEO
+        title={post.title}
+        description={post.summary}
+        url={`/blog/${post.slug}`}
+        jsonLd={breadcrumbJsonLd([
+          { name: '홈', url: '/' },
+          { name: '블로그', url: '/blog' },
+          { name: post.title, url: `/blog/${post.slug}` },
+        ])}
+      />
 
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
