@@ -87,6 +87,8 @@
     "invalidPhone": "Por favor, introduce un número de teléfono válido.",
     "addressRequired": "Por favor, selecciona una dirección de envío.",
     "couponApplyFailed": "Error al aplicar el cupón.",
+    "wishlistAdded": "Añadido a la lista de deseos",
+    "comingSoon": "Próximamente",
     "won": "₩",
     "count": "items",
     "person": "people",

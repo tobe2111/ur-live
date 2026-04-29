@@ -87,6 +87,8 @@
     "invalidPhone": "正しい電話番号を入力してください。",
     "addressRequired": "配送先を選択してください。",
     "couponApplyFailed": "クーポンの適用に失敗しました。",
+    "wishlistAdded": "ウィッシュリストに追加しました",
+    "comingSoon": "準備中です",
     "won": "円",
     "count": "個",
     "person": "人",

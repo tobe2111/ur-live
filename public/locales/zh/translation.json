@@ -87,6 +87,8 @@
     "invalidPhone": "请输入有效的电话号码。",
     "addressRequired": "请选择配送地址。",
     "couponApplyFailed": "优惠券应用失败。",
+    "wishlistAdded": "已加入心愿单",
+    "comingSoon": "即将推出",
     "won": "元",
     "count": "个",
     "person": "人",

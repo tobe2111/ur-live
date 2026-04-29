@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Heart, MessageCircle, Share2, Bookmark, ShoppingCart, X, Volume2, VolumeX, Play, ChevronUp } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import SEO from '@/components/SEO'
@@ -39,6 +40,7 @@ interface ShortsYTPlayer {
 }
 
 export default function ShortsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [shorts, setShorts] = useState<ShortItem[]>([])
   const [activeIndex, setActiveIndex] = useState(0)
@@ -186,7 +188,7 @@ export default function ShortsPage() {
         ))
       }
     } catch {
-      toast.error('로그인이 필요합니다')
+      toast.error(t('common.loginRequired'))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
     }
@@ -301,7 +303,7 @@ export default function ShortsPage() {
                 {/* Right: follow + mute + close */}
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => item.seller_id ? navigate(`/s/${item.seller_id}`) : toast.info('팔로우 기능 준비 중입니다')}
+                    onClick={() => item.seller_id ? navigate(`/s/${item.seller_id}`) : toast.info(t('common.comingSoon'))}
                     className="px-3.5 py-1.5 bg-white rounded-full text-[11px] font-bold text-gray-900 active:scale-95 transition-transform"
                   >
                     팔로우
@@ -352,7 +354,7 @@ export default function ShortsPage() {
                 </button>
 
                 {/* Comment */}
-                <button onClick={() => toast.info('댓글 기능 준비 중입니다')} className="flex flex-col items-center gap-1">
+                <button onClick={() => toast.info(t('common.comingSoon'))} className="flex flex-col items-center gap-1">
                   <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     <MessageCircle className="w-5 h-5 text-white" />
                   </div>
@@ -369,7 +371,7 @@ export default function ShortsPage() {
                 />
 
                 {/* Wishlist */}
-                <button onClick={() => toast.info('저장 기능 준비 중입니다')} className="flex flex-col items-center gap-1">
+                <button onClick={() => toast.info(t('common.comingSoon'))} className="flex flex-col items-center gap-1">
                   <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     <Bookmark className="w-5 h-5 text-white" />
                   </div>
@@ -475,7 +477,7 @@ export default function ShortsPage() {
                           e.stopPropagation()
                           if (!item.product_id) return
                           api.post('/api/wishlists', { product_id: item.product_id })
-                            .then(() => toast.success('위시리스트에 추가했습니다'))
+                            .then(() => toast.success(t('common.wishlistAdded')))
                             .catch(() => toast.error('로그인이 필요합니다'))
                         }}
                         className="py-3 flex flex-col items-center gap-0.5"
@@ -489,9 +491,9 @@ export default function ShortsPage() {
                         onClick={(e) => {
                           e.stopPropagation()
                           api.post('/api/cart', { product_id: item.product_id, quantity: 1 })
-                            .then(() => toast.success('장바구니에 담았습니다'))
+                            .then(() => toast.success(t('cart.itemAdded')))
                             .catch(() => {
-                              toast.error('로그인이 필요합니다')
+                              toast.error(t('common.loginRequired'))
                               localStorage.setItem('loginReturnUrl', window.location.pathname)
                               navigate('/login')
                             })
