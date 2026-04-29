@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Check, AlertCircle } from 'lucide-react'
 import api from '@/lib/api'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 interface ProductOption {
   id: number
@@ -34,6 +35,7 @@ export default function OptionSelectModal({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedOptionId, setSelectedOptionId] = useState<number | undefined>(currentOptionId)
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen)
 
   // 옵션 타입별로 그룹화
   const optionsByType = options.reduce((acc, option) => {
@@ -99,6 +101,7 @@ export default function OptionSelectModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-fadeIn" onClick={onClose} role="presentation">
       <div
+        ref={dialogRef}
         className="bg-white rounded-t-3xl shadow-2xl max-w-md w-full max-h-[80vh] flex flex-col animate-slideUp"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

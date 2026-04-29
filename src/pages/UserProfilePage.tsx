@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { useNavigate, useSearchParams, Navigate } from 'react-router-dom'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
@@ -163,6 +164,7 @@ function SellerApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     description: '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const dialogRef = useFocusTrap<HTMLDivElement>(true)
 
   // 🛡️ 2026-04-28 a11y: ESC 키로 모달 닫기 (키보드 사용자)
   useEffect(() => {
@@ -212,6 +214,7 @@ function SellerApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       role="presentation"
     >
       <div
+        ref={dialogRef}
         className="w-full max-w-[430px] bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

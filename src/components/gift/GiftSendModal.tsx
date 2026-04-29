@@ -16,6 +16,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { X, Gift, Sparkles, Loader2 } from 'lucide-react'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 interface Props {
   open: boolean
@@ -30,6 +31,7 @@ const MAX_MESSAGE = 200
 
 export default function GiftSendModal({ open, onClose, productId, productName, productThumbnail, productPrice }: Props) {
   useEscapeKey(() => { if (open) onClose() })
+  const dialogRef = useFocusTrap<HTMLDivElement>(open)
   const navigate = useNavigate()
   const [recipientPhone, setRecipientPhone] = useState('')
   const [recipientName, setRecipientName] = useState('')
@@ -84,8 +86,12 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
       role="presentation"
     >
       <div
+        ref={dialogRef}
         className="bg-white w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${productName} 선물 보내기`}
       >
         {/* 헤더 */}
         <div className="sticky top-0 bg-white px-5 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 z-10">
