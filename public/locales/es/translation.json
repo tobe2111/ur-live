@@ -1930,7 +1930,34 @@
     "resetPasswordSuccess": "Password reset email sent",
     "showPassword": "Show password",
     "signupSuccess": "Account created successfully",
-    "tagline": "A new way to shop live"
+    "tagline": "A new way to shop live",
+    "pin": {
+      "invalidFormat": "El PIN debe tener entre 4 y 6 dígitos",
+      "verified": "PIN verificado. Acciones sensibles disponibles durante 15 minutos",
+      "verifyFailed": "Verificación de PIN fallida",
+      "notSet": "PIN no configurado. Por favor, configúralo desde tu perfil primero.",
+      "mismatch": "Los PIN no coinciden",
+      "set": "PIN configurado",
+      "setFailed": "Error al configurar el PIN",
+      "kakaoReverified": "Reautenticación de Kakao completada",
+      "kakaoReverifyFailed": "Reautenticación de Kakao fallida — Se requiere vinculación con Kakao",
+      "kakaoReverifyFailedGeneric": "Reautenticación de Kakao fallida"
+    },
+    "kakao": {
+      "popupBlocked": "La ventana emergente fue bloqueada. Por favor, verifica la configuración del navegador.",
+      "linked": "¡Cuenta de Kakao vinculada!",
+      "unlinked": "Vinculación de Kakao eliminada",
+      "passwordRequired": "Configuración de contraseña requerida. Por favor, configura una contraseña desde tu perfil primero."
+    }
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "loadError": "Error al cargar las notificaciones",
+    "retryLater": "Por favor, inténtalo de nuevo más tarde",
+    "markAllRead": "Marcar todo como leído",
+    "empty": "No hay notificaciones",
+    "emptyDesc": "Las nuevas actividades aparecerán aquí",
+    "back": "Volver"
   },
   "cart": {
     "continueShop": "Continue Shopping",

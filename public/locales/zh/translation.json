@@ -182,7 +182,34 @@
     "resetPasswordDesc": "Enter your registered email and\nwe'll send you a password reset link.",
     "resetPasswordSuccess": "Password reset email sent",
     "showPassword": "显示密码",
-    "signupSuccess": "注册成功"
+    "signupSuccess": "注册成功",
+    "pin": {
+      "invalidFormat": "PIN必须为4-6位数字",
+      "verified": "PIN验证完成。15分钟内可执行敏感操作",
+      "verifyFailed": "PIN验证失败",
+      "notSet": "尚未设置PIN。请先在个人资料中设置。",
+      "mismatch": "PIN不一致",
+      "set": "PIN已设置",
+      "setFailed": "PIN设置失败",
+      "kakaoReverified": "Kakao重新认证完成",
+      "kakaoReverifyFailed": "Kakao重新认证失败 — 需要Kakao绑定",
+      "kakaoReverifyFailedGeneric": "Kakao重新认证失败"
+    },
+    "kakao": {
+      "popupBlocked": "弹窗已被拦截。请检查浏览器设置。",
+      "linked": "Kakao账号已绑定!",
+      "unlinked": "Kakao绑定已解除",
+      "passwordRequired": "需要设置密码。请先在个人资料中设置密码。"
+    }
+  },
+  "notifications": {
+    "title": "通知",
+    "loadError": "加载通知失败",
+    "retryLater": "请稍后再试",
+    "markAllRead": "全部标记已读",
+    "empty": "暂无通知",
+    "emptyDesc": "有新消息时会显示在这里",
+    "back": "返回"
   },
   "payment": {
     "checkout": "结算",

@@ -182,7 +182,34 @@
     "hidePassword": "Hide password",
     "tagline": "A new way to shop live",
     "kakaoQuickStart": "Start in 3 seconds with Kakao",
-    "resetPasswordDesc": "Enter your registered email and\nwe'll send you a password reset link."
+    "resetPasswordDesc": "Enter your registered email and\nwe'll send you a password reset link.",
+    "pin": {
+      "invalidFormat": "PIN must be 4-6 digits",
+      "verified": "PIN verified. Sensitive actions available for 15 minutes",
+      "verifyFailed": "PIN verification failed",
+      "notSet": "PIN not set. Please set it from your profile first.",
+      "mismatch": "PINs do not match",
+      "set": "PIN has been set",
+      "setFailed": "Failed to set PIN",
+      "kakaoReverified": "Kakao reauthentication completed",
+      "kakaoReverifyFailed": "Kakao reauthentication failed — Kakao link required",
+      "kakaoReverifyFailedGeneric": "Kakao reauthentication failed"
+    },
+    "kakao": {
+      "popupBlocked": "Popup was blocked. Please check your browser settings.",
+      "linked": "Kakao account linked!",
+      "unlinked": "Kakao link removed",
+      "passwordRequired": "Password setup required. Please set a password from your profile first."
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "loadError": "Failed to load notifications",
+    "retryLater": "Please try again later",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications",
+    "emptyDesc": "New activity will appear here",
+    "back": "Back"
   },
   "payment": {
     "checkout": "Checkout",
