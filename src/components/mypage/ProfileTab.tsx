@@ -44,6 +44,8 @@ export function ProfileTab({ userName, userEmail, userProfileImage, onLogout }: 
             <img
               src={userProfileImage}
               alt={userName}
+              loading="lazy"
+              decoding="async"
               className="w-20 h-20 rounded-full object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement

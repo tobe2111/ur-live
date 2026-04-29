@@ -32,7 +32,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-[#020202] pb-20">
-      <SEO title="알림 - 유어딜" description="새로운 알림을 확인하세요" url="/notifications" />
+      <SEO title="알림 - 유어딜" description="새로운 알림을 확인하세요" url="/notifications" noindex />
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
         <div className="flex items-center justify-between px-5 py-3">

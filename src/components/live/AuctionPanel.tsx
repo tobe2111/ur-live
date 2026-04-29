@@ -34,7 +34,8 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
       }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     }
     poll()
-    const iv = setInterval(poll, 3000)
+    // 🛡️ 2026-04-29 perf audit: 3초 → 5초 폴링 완화 (서버 부하 ↓)
+    const iv = setInterval(poll, 5000)
     return () => clearInterval(iv)
   }, [streamId])
 

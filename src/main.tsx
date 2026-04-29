@@ -12,6 +12,7 @@ import { logRegionInfo, isKorea } from '@/shared/config/region'
 // ✅ Week 5 Day 2: 런타임 환경 변수 검증
 import { validateEnvForRuntime } from '@/shared/config/env-validator'
 import { initNativeFeatures, isNative } from '@/lib/native'
+import { swallow } from '@/shared/utils/swallow'
 
 // 다른 인앱(네이버/페북/IG/라인 등) 감지 → App 단 배너로 안내 (강제 redirect 안 함)
 ;(window as { __urInAppBrowser?: string | null }).__urInAppBrowser = detectInAppBrowser()
@@ -27,7 +28,7 @@ try {
 }
 
 // Sentry 초기화 (lazy — 262KB 번들 차단 방지)
-import('./lib/sentry').then(m => m.initSentry()).catch(() => {})
+import('./lib/sentry').then(m => m.initSentry()).catch(swallow('main:sentry-init'))
 
 // Region 정보 (개발 환경)
 if (import.meta.env.DEV) {
@@ -35,7 +36,7 @@ if (import.meta.env.DEV) {
 }
 
 // 빌드 버전 자동 감지 & 자동 리로드
-import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck()).catch(() => {})
+import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck()).catch(swallow('main:version-check'))
 
 // 🛡️ 2026-04-29: Web Vitals (LCP/CLS/INP) Sentry 추적 — 프로덕션만, lazy.
 //   sentry init 후 (1초 deferred) PerformanceMonitor 시작 — 초기 LCP 측정 누락 방지.
@@ -43,7 +44,7 @@ if (import.meta.env.PROD) {
   setTimeout(() => {
     import('@/lib/performance-monitor').then(({ PerformanceMonitor }) => {
       PerformanceMonitor.trackPageLoad('app')
-    }).catch(() => {})
+    }).catch(swallow('main:perf-monitor'))
   }, 1000)
 }
 
@@ -62,11 +63,11 @@ try {
         const scriptUrl = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || ''
         // push-sw.js 는 보호 (push 받기용, fetch 가로채기 없음 → OAuth 안전)
         if (scriptUrl.includes('push-sw.js')) return
-        r.unregister().catch(() => {})
+        r.unregister().catch(swallow('main:sw-unregister'))
       })
-    }).catch(() => {})
+    }).catch(swallow('main:sw-getRegistrations'))
     if ('caches' in window) {
-      caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {})
+      caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(swallow('main:caches-clear'))
     }
   }
 } catch { /* ignore */ }
