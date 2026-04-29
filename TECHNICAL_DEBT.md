@@ -15,16 +15,37 @@
 | 항목 | 상태 변경 |
 |---|---|
 | **사고** 카카오 인앱 로그인 무한 redirect | ✅ 즉시 hotfix (`d750fad` — index.html sessionStorage 가드) |
-| 자기참조 검증 분산 (4곳 다른 규칙) | ✅ `src/utils/safe-internal-path.ts` 단일 헬퍼 도입 + 36 단위테스트 |
+| 자기참조 검증 분산 (4곳 다른 규칙) | ✅ `src/utils/safe-internal-path.ts` 단일 헬퍼 도입 + 36 + 30 단위테스트 |
 | `KakaoCallbackPage` / `KakaoConsentCallbackPage` returnUrl 자기참조 차단 | ✅ safeInternalPath 적용 |
-| 백엔드 `kakao.routes.ts:safeRedirect()` `/auth/`, `/login` 차단 누락 | ✅ 차단 추가 (Worker 코드라 인라인 유지) |
+| 백엔드 `kakao.routes.ts:safeRedirect()` `/auth/`, `/login` 차단 누락 | ✅ 차단 추가 + trailing-slash prefix 처리 보강 + 단위 테스트 30건 |
 | `lib/api.ts` Firebase user 401 force-refresh 디바운스 부재 | ✅ 30초 시간 디바운스 추가 |
+| `lib/api.ts` 셀러/어드민/에이전시 refresh token race condition | ✅ inflight Promise 락 (`_inflightRefresh[cacheKey]`) 추가 |
 | `lib/api.ts` 401 후 login 페이지 자기참조 가능 | ✅ auth path 면 returnUrl 저장·redirect skip |
-| 셀러/어드민/에이전시 토큰 만료 alert (카톡 인앱 흰화면 위험) | ✅ `?error=session_expired` query → toast (3 페이지 적용) |
+| 셀러/어드민/에이전시 토큰 만료 alert (카톡 인앱 흰화면 위험) | ✅ `?error=session_expired` query → `t('auth.sessionExpired')` toast (6언어 i18n) |
 | `version-check.ts` MIME 에러 reload 가드 약함 | ✅ localStorage 1분 윈도우 가드 추가 |
 | `_headers` Cross-Origin-Opener-Policy 누락 | ✅ `same-origin-allow-popups` 추가 |
-| 죽은 코드: `errorHandler.checkAuthError`, `useVersionCheck` | ✅ 삭제 |
-| `utils/auth.requireLogin` currentPath 검증 누락 | ✅ auth path 면 returnUrl 생략 |
+| Worker 코드 `await import('@/...')` 5건 (CLAUDE.md 룰 위반) | ✅ 상대경로로 변환 — admin-agency/agency-messages routes |
+| `utils/auth.requireLogin` 검증 분산 | ✅ `safeInternalPath()` 헬퍼 사용 — auth path/외부 URL 거부 |
+| 죽은 코드: `errorHandler.checkAuthError`, `useVersionCheck`, `login-redirect.ts`, `market-price-chart.tsx` | ✅ 4건 삭제 |
+
+### TD-003 (Cloudflare 유령 프로젝트) 진단 — 미해결 사용자 액션
+
+**증상**: PR #286 의 `Workers Builds: ur-live-global` 빌드 매번 failure. `wrangler.toml` 변경 0건이라 PR 책임 아님.
+
+**원인 추정**:
+- `ur-live-global` 이라는 별도 Workers 프로젝트가 GitHub integration 으로 모든 push 마다 빌드 시도
+- `wrangler.toml [env.production] name = "global-marketplace"` 와 이름 미일치 → 빌드 환경 변수/secret 누락 가능성
+- CLAUDE.md "Pages 단일 배포" 정책 (2026-04-22 정리) 의 잔재 — Workers 프로젝트 자체는 삭제 안 됐을 것
+
+**위험도**: 라이브 사이트 (ur-live Pages) 에 영향 없음. PR 머지 차단 안 함. 다만 매 push 마다 false-positive CI 실패 → 신규 사고 알림 노이즈.
+
+**사용자 액션 필요**:
+1. Cloudflare Dashboard → Workers & Pages → `ur-live-global` 확인
+2. 옵션 A: GitHub integration 해제 (해당 Worker 비활성화)
+3. 옵션 B: 프로젝트 자체 삭제 (이미 사용 안 하는 경우)
+4. 옵션 C: 환경 변수/secret 정정해 빌드 통과시키기 (사용 중이면)
+
+**근거**: 2026-04-22 사고 요약 (CLAUDE.md) — "별개 Workers 프로젝트가 Custom Domain 가로채" 사고와 같은 잔재 추정.
 
 **상세 사고 사례**: `CLAUDE.md` 의 "2026-04-29 사고 요약" 참조.
 

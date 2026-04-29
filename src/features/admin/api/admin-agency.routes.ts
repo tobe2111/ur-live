@@ -175,7 +175,8 @@ app.patch('/:id', async (c) => {
   // 🛡️ 2026-04-28: 에이전시 측 알림 — status='active' 로 변경 시 (승인 처리)
   if (status === 'active') {
     try {
-      const { createDashboardNotification } = await import('@/features/notifications/api/dashboard-notifications.routes')
+      // 🛡️ 2026-04-29: Worker 코드 dynamic import 는 상대경로만 사용 (CLAUDE.md 룰)
+      const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
       createDashboardNotification(
         c.env.DB, 'agency', String(id), 'agency_approved',
         '에이전시 승인 완료', '대시보드 사용을 시작할 수 있습니다', '/agency'
@@ -188,7 +189,7 @@ app.patch('/:id', async (c) => {
         'SELECT contact_name, phone FROM agencies WHERE id = ?'
       ).bind(id).first<{ contact_name: string; phone: string | null }>()
       if (agency?.phone) {
-        const { sendSystemAlimtalk } = await import('@/lib/system-alimtalk')
+        const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
         sendSystemAlimtalk(c.env, agency.phone, 'agency_approved',
           `[유어딜] ${agency.contact_name}님,\n에이전시 승인이 완료되었어요!\n대시보드에 접속해 셀러 관리를 시작하세요.`
         ).catch(swallow('admin-agency:approve-alimtalk'))

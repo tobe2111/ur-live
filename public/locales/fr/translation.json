@@ -1907,6 +1907,7 @@
     "loginWithGoogle": "Login with Google",
     "loginWithKakao": "Login with Kakao",
     "logoutSuccess": "Logged out successfully",
+    "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter.",
     "name": "Name",
     "noAccount": "Don't have an account?",
     "password": "Password",

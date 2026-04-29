@@ -150,6 +150,7 @@
     "loginWithKakao": "Kakaoでログイン",
     "loginWithGoogle": "Googleでログイン",
     "loginWithEmail": "メールでログイン",
+    "sessionExpired": "セッションが期限切れです。再度ログインしてください。",
     "tagline": "ライブショッピングの新体験",
     "alreadyHaveAccount": "既にアカウントをお持ちですか？",
     "createAccount": "アカウント作成",

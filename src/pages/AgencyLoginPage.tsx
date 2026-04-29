@@ -17,12 +17,12 @@ export default function AgencyLoginPage() {
   // 🛡️ 2026-04-29: 401 인터셉터가 ?error=session_expired 로 redirect 시 toast 표시
   useEffect(() => {
     if (searchParams.get('error') === 'session_expired') {
-      toast.error('인증이 만료되었습니다. 다시 로그인해주세요.')
+      toast.error(t('auth.sessionExpired'))
       const next = new URLSearchParams(searchParams)
       next.delete('error')
       setSearchParams(next, { replace: true })
     }
-  }, [searchParams, setSearchParams])
+  }, [searchParams, setSearchParams, t])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

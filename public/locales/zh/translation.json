@@ -150,6 +150,7 @@
     "loginWithKakao": "Kakao登录",
     "loginWithGoogle": "Google登录",
     "loginWithEmail": "邮箱登录",
+    "sessionExpired": "会话已过期。请重新登录。",
     "tagline": "直播购物新体验",
     "alreadyHaveAccount": "已有账号？",
     "createAccount": "创建账号",

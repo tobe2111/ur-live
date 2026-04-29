@@ -235,6 +235,43 @@ bash scripts/quality-check.sh
 - 셀러/어드민: localStorage JWT 즉시 체크 (Firebase 대기 안 함)
 - 유저: Firebase Auth + optimistic rendering (캐시 있으면 스피너 없이 렌더)
 
+### 🛡️ Redirect / returnUrl 안전 규칙 (2026-04-29 추가)
+
+OAuth 콜백·로그인 페이지·401 핸들러 등에서 외부 입력 (returnUrl, state, redirect 파라미터) 을 navigate / window.location.href 로 그대로 사용하지 말 것. **반드시 `safeInternalPath()` 통과**:
+
+```ts
+import { safeInternalPath } from '@/utils/safe-internal-path'
+
+// ❌ 위험 — 자기참조 / open redirect 무한루프 가능
+const returnUrl = searchParams.get('returnUrl') || '/'
+navigate(returnUrl)
+
+// ✅ 안전
+const returnUrl = safeInternalPath(searchParams.get('returnUrl'), '/')
+navigate(returnUrl)
+```
+
+**자동 차단**: `/login`, `/seller/login`, `/admin/login`, `/agency/login`, `/auth/*`, `/oauth/*`, 외부 URL, protocol-relative `//`, backslash, 제어문자.
+
+**Worker 코드** (`src/features/*/api/*.routes.ts`, `src/worker/`) 는 alias `@/` import 못 함 → `src/features/auth/api/kakao.routes.ts:safeRedirect()` 가 동일 규칙을 인라인으로 유지. **양쪽 같이 갱신할 것**.
+
+### 🛡️ 외부 스킴 redirect 가드 의무 (2026-04-29 사고 후 룰화)
+
+`window.location.href = 'kakaotalk://...'` / `'intent://...'` / `'line://...'` 등 외부 스킴 redirect 는 **반드시 sessionStorage 가드**. webview reload (메모리/포커스 손실) 시 무한 재시도 폭주.
+
+```js
+// ❌ 위험 — 카톡 인앱에서 무한 reload
+window.location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url)
+
+// ✅ 안전 — 1회 가드
+if (sessionStorage.getItem('ur_kakao_external_redirect_v1') !== '1') {
+  sessionStorage.setItem('ur_kakao_external_redirect_v1', '1')
+  window.location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url)
+}
+```
+
+**inline script + module script 가 같은 가드를 공유**할 땐 키 이름 명시 + 두 곳 동시 수정. 사고 사례: `index.html` inline 과 `main.tsx autoRedirectKakaoToExternal` 가 키 공유 안 해 inline 만 무한 루프 발생 (2026-04-29).
+
 ## DB 스키마
 
 - 프로덕션 DB 컬럼명은 `src/shared/db/production-schema.ts` 참조

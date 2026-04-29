@@ -225,7 +225,7 @@ app.post('/send', requireAgencyPermission('message'), async (c) => {
   const link = body.custom_link || '/seller'
 
   // 🛡️ 2026-04-27: 9개 변수 지원 (message-template utility 사용)
-  const { renderTemplate } = await import('@/shared/utils/message-template')
+  const { renderTemplate } = await import('../../../shared/utils/message-template')
 
   for (const seller of (ownedSellers || [])) {
     const sellerExtra = await c.env.DB.prepare(
@@ -315,7 +315,7 @@ app.post('/preview', async (c) => {
     return c.json({ success: false, error: 'body 필수' }, 400)
   }
 
-  const { renderTemplate, findUnknownVariables, extractVariables } = await import('@/shared/utils/message-template')
+  const { renderTemplate, findUnknownVariables, extractVariables } = await import('../../../shared/utils/message-template')
 
   // 검증
   const usedVars = extractVariables(body.body)
@@ -357,7 +357,7 @@ app.post('/preview', async (c) => {
 
 // GET /variables — 사용 가능한 변수 목록 (UI 도움말용)
 app.get('/variables', async (c) => {
-  const { ALLOWED_VARIABLE_LIST } = await import('@/shared/utils/message-template')
+  const { ALLOWED_VARIABLE_LIST } = await import('../../../shared/utils/message-template')
   return c.json({
     success: true,
     data: {
