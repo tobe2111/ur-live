@@ -14,7 +14,7 @@ import { getChannelSettings, dispatchNotification } from '@/lib/notification-dis
 interface MockDB {
   prepare(sql: string): {
     bind(...args: unknown[]): {
-      first<T>(): Promise<T | null>
+      first<T = unknown>(): Promise<T | null>
       run(): Promise<{ meta: { changes: number } }>
     }
     run(): Promise<{ meta: { changes: number } }>
@@ -25,16 +25,15 @@ function makeDB(rowMap: Record<string, unknown> = {}): MockDB {
   return {
     prepare: vi.fn((_sql: string) => ({
       bind: vi.fn((..._args: unknown[]) => ({
-        first: vi.fn(async <T>() => {
-          // notification_type 인자에 따라 row 반환
+        first: vi.fn(async () => {
           const type = _args[0] as string
-          return (rowMap[type] ?? null) as T | null
+          return rowMap[type] ?? null
         }),
         run: vi.fn(async () => ({ meta: { changes: 0 } })),
       })),
       run: vi.fn(async () => ({ meta: { changes: 0 } })),
     })),
-  }
+  } as MockDB
 }
 
 describe('notification-dispatcher', () => {

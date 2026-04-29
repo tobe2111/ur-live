@@ -84,7 +84,9 @@ function KakaoTalkIcon({ className }: { className?: string }) {
   )
 }
 
-// TopNav Component
+// TopNav Component — v4 Glass · Boutique 톤 (2026-04-29)
+//   디자인: seller pill (dark glass) + 팔로우 흰 pill + LIVE 빨강 둥근 칩 + 시청자 glass chip
+//   결정: Q7=뒤로가기 유지(ChevronLeft) / Q8=팔로워 수 표시 안 함
 function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
   viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string }
   sellerName?: string; sellerAvatar?: string; sellerId?: number
@@ -106,38 +108,70 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
 
   return (
     <header className="absolute top-0 left-0 right-0 z-50 px-3 pt-safe pb-2">
-      {/* 1행: 뒤로가기 + 셀러 프로필 (하나의 pill) + SNS 링크 */}
       <div className="flex items-center justify-between gap-2">
-        {/* 왼쪽: 뒤로가기 */}
-        <a href="/" aria-label="홈으로 돌아가기" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+        {/* 좌측: 뒤로가기 (Q7 = 유지) */}
+        <a href="/" aria-label="홈으로 돌아가기"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
           <ChevronLeft className="h-5 w-5 text-white/80" />
         </a>
 
-        {/* 중앙: 셀러 프로필 pill */}
+        {/* 중앙: 셀러 pill (Boutique 톤 — gradient avatar + 셀러명) */}
         {sellerName && (
-          <div className="flex items-center gap-1.5 min-w-0 flex-1 bg-black/40 backdrop-blur-md rounded-full pl-1 pr-1 py-1">
-            <img src={sellerAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&size=28&background=random`}
-              alt={`${sellerName} 프로필 이미지`} className="w-7 h-7 rounded-full object-cover shrink-0" />
-            <span className="text-xs font-bold text-white/90 truncate">{sellerName}</span>
-            <button onClick={handleFollow}
-              className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${following ? 'bg-white/20 text-white/70' : 'bg-pink-500 text-white'}`}>
-              {following ? 'Following' : 'Follow'}
-            </button>
+          <div className="flex items-center gap-2 min-w-0 flex-1 rounded-full pl-1 pr-3 py-1"
+            style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+            {sellerAvatar ? (
+              <img src={sellerAvatar} alt={`${sellerName} 프로필 이미지`}
+                className="rounded-full object-cover shrink-0"
+                style={{ width: 26, height: 26 }} />
+            ) : (
+              <div className="rounded-full flex items-center justify-center shrink-0 text-white"
+                style={{ width: 26, height: 26, background: 'linear-gradient(135deg, #EF4444, #EC4899)', fontSize: 11, fontWeight: 800 }}>
+                {sellerName.charAt(0)}
+              </div>
+            )}
+            <span className="truncate text-white" style={{ fontSize: 11, fontWeight: 700, lineHeight: 1 }}>{sellerName}</span>
           </div>
         )}
 
-        {/* 오른쪽: LIVE 뱃지 + 시청자 수 + SNS */}
+        {/* 우측: 팔로우 흰 pill + LIVE 둥근 칩 + 시청자 glass chip + SNS */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex items-center gap-1 rounded-full bg-red-500/90 backdrop-blur-sm px-2 py-1 shadow-lg shadow-red-500/30">
-            <span className="h-1.5 w-1.5 rounded-full bg-white animate-blink-live" />
-            <span className="text-[10px] font-extrabold tracking-wider text-white">LIVE</span>
+          {sellerId && (
+            <button onClick={handleFollow}
+              aria-label={following ? '팔로우 취소' : '팔로우하기'}
+              className="rounded-full px-3 py-1.5 transition-colors"
+              style={{
+                background: following ? 'rgba(255,255,255,0.18)' : '#fff',
+                color: following ? 'rgba(255,255,255,0.9)' : '#000',
+                fontSize: 11, fontWeight: 800,
+              }}>
+              {following ? 'Following' : '팔로우'}
+            </button>
+          )}
+          <div className="inline-flex items-center gap-1 rounded-full"
+            style={{ padding: '6px 10px 6px 8px', background: 'rgba(239,68,68,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+            <span className="rounded-full" style={{ width: 6, height: 6, background: '#fff', boxShadow: '0 0 6px #fff' }} />
+            <span className="text-white" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em' }}>LIVE</span>
           </div>
-          <div className="flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-md px-2 py-1">
-            <Eye className="h-3 w-3 text-white/80" />
-            <span className="text-[10px] font-semibold text-white/90">{formatViewers(viewers)}</span>
+          <div className="inline-flex items-center gap-1 rounded-full px-2.5 py-1"
+            style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px) saturate(140%)', WebkitBackdropFilter: 'blur(16px) saturate(140%)', border: '1px solid rgba(255,255,255,0.14)' }}>
+            <Eye className="h-3 w-3 text-white/85" />
+            <span className="text-white" style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatViewers(viewers)}</span>
           </div>
-          {sellerLinks?.youtube && <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label="유튜브 채널 방문" className="flex h-7 w-7 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm"><YouTubeIcon className="h-3.5 w-3.5 text-white/80" /></a>}
-          {sellerLinks?.instagram && <a href={sellerLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label="인스타그램 방문" className="flex h-7 w-7 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm"><InstagramIcon className="h-3.5 w-3.5 text-white/80" /></a>}
+          {sellerLinks?.youtube && (
+            <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label="유튜브 채널 방문"
+              className="flex h-7 w-7 items-center justify-center rounded-full"
+              style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              <YouTubeIcon className="h-3.5 w-3.5 text-white/85" />
+            </a>
+          )}
+          {sellerLinks?.instagram && (
+            <a href={sellerLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label="인스타그램 방문"
+              className="flex h-7 w-7 items-center justify-center rounded-full"
+              style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              <InstagramIcon className="h-3.5 w-3.5 text-white/85" />
+            </a>
+          )}
         </div>
       </div>
     </header>
