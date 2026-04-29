@@ -364,20 +364,29 @@ export function getUserProfileImage(): string | null {
  */
 export function requireLogin(navigate: NavigateFunction, message: string = '로그인이 필요합니다.', force: boolean = false): void {
   // Save current URL as return destination
-  const currentPath = window.location.pathname + window.location.search
-  localStorage.setItem(FIREBASE_STORAGE_KEYS.LOGIN_RETURN_URL, currentPath)
-  
+  // 🛡️ 2026-04-29: currentPath 가 /login·/auth/* 면 returnUrl 저장·전달 안 함
+  //   (자기참조 무한 루프 방지)
+  const pathname = window.location.pathname
+  const isAuthPath = pathname.startsWith('/login') || pathname.startsWith('/seller/login') ||
+                     pathname.startsWith('/admin/login') || pathname.startsWith('/agency/login') ||
+                     pathname.startsWith('/auth/')
+  const currentPath = pathname + window.location.search
+
+  if (!isAuthPath) {
+    localStorage.setItem(FIREBASE_STORAGE_KEYS.LOGIN_RETURN_URL, currentPath)
+  }
+
   // Show alert ONCE per session to prevent repetitive popups
   const alertShownKey = 'login_alert_shown_' + currentPath
   const alertShown = sessionStorage.getItem(alertShownKey)
-  
+
   if (message && (force || !alertShown)) {
     alert(message)
     sessionStorage.setItem(alertShownKey, 'true')
   }
-  
-  // Navigate to login with returnUrl
-  navigate('/login?returnUrl=' + encodeURIComponent(currentPath))
+
+  // Navigate to login with returnUrl (auth path 면 returnUrl 생략)
+  navigate(isAuthPath ? '/login' : '/login?returnUrl=' + encodeURIComponent(currentPath))
 }
 
 /**

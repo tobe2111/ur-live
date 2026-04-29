@@ -20,6 +20,12 @@ interface TokenCache {
 let _firebaseTokenCache: TokenCache | null = null;
 const TOKEN_CACHE_TTL_MS = 55 * 60 * 1000; // 55분 (Firebase 토큰 유효기간 1시간)
 
+// 🛡️ 2026-04-29: 401 시 force refresh 디바운스 — setAuth side-effect 가
+//   다른 useEffect 트리거 시 동일 401 endpoint 가 새 request 로 들어와
+//   `_retry` 가드(request-level) 우회 가능. 시간 기반 가드로 30초 내 재갱신 차단.
+let _lastForceRefreshAt = 0;
+const FORCE_REFRESH_DEBOUNCE_MS = 30 * 1000;
+
 async function getCachedFirebaseToken(forceRefresh = false): Promise<string | null> {
   const now = Date.now();
 
@@ -294,6 +300,15 @@ api.interceptors.response.use(
       }
 
       // ── Firebase User: Token 강제 갱신 시도 ──────────────────────────
+      // 🛡️ 2026-04-29: 30초 디바운스 — _retry 가드는 request-level 이라 setAuth
+      //   side-effect 로 새 request 가 들어오면 우회 가능. 시간 기반 추가 가드.
+      const sinceLastRefresh = Date.now() - _lastForceRefreshAt;
+      if (sinceLastRefresh < FORCE_REFRESH_DEBOUNCE_MS) {
+        if (import.meta.env.DEV) console.warn('[API] 토큰 갱신 디바운스 — 직전 갱신 후 30초 미경과:', sinceLastRefresh, 'ms');
+        return Promise.reject(error);
+      }
+      _lastForceRefreshAt = Date.now();
+
       try {
         let newToken: string | null = null;
 
@@ -384,12 +399,23 @@ api.interceptors.response.use(
       // 🛡️ 2026-04-28: alert 제거 (카톡 인앱이 alert 차단 → throw → 흰화면).
       //   대신 toast 로 안내 + redirect (콘솔에는 로그).
       console.warn('[Auth] 401 — 자동 로그아웃 후 로그인 페이지 이동');
-      localStorage.setItem('loginReturnUrl', currentPath);
+      // 🛡️ 2026-04-29: login 페이지 자체에선 returnUrl 저장 안 함 (자기참조 차단).
+      //   loginReturnUrl 화이트리스트 — /login·/auth/* 면 무시.
+      const isAuthPath = currentPath.startsWith('/login') || currentPath.startsWith('/seller/login') ||
+                         currentPath.startsWith('/admin/login') || currentPath.startsWith('/agency/login') ||
+                         currentPath.startsWith('/auth/');
+      if (!isAuthPath) {
+        localStorage.setItem('loginReturnUrl', currentPath);
+      }
 
       // 셀러/어드민/에이전시 대시보드 영역만 강제 redirect.
       // 일반 사용자(/, /products 등) 는 *현재 페이지 유지* + 401 reject.
       //   그래야 카톡 인앱에서 비로그인 사용자가 홈 둘러보다 알림톡/위시리스트 등
       //   호출 시 401 받아도 redirect 안 함 (UX 보호).
+      // 🛡️ 2026-04-29: 이미 login 페이지면 redirect 안 함 (자기참조 무한 루프 차단).
+      if (isAuthPath) {
+        return Promise.reject(error);
+      }
       if (currentPath.startsWith('/seller')) {
         window.location.href = '/seller/login';
       } else if (currentPath.startsWith('/admin')) {

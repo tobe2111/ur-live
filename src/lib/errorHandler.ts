@@ -181,21 +181,9 @@ export async function safeApiCall<T>(
   }
 }
 
-/**
- * 인증 에러 체크 (자동 로그인 페이지 이동)
- */
-export function checkAuthError(error: unknown): boolean {
-  const apiError = handleApiError(error)
-  
-  if (apiError.status === 401 || apiError.code === 'Unauthorized') {
-    // 로그인 페이지로 이동
-    const returnUrl = encodeURIComponent(window.location.pathname)
-    window.location.href = `/login?returnUrl=${returnUrl}`
-    return true
-  }
-
-  return false
-}
+// 🛡️ 2026-04-29: checkAuthError 제거 — caller 0건 (죽은 코드). 또한
+//   returnUrl 화이트리스트 누락으로 /login → /login?returnUrl=/login 자기참조
+//   루프 가능했음. 401 핸들링은 lib/api.ts interceptor 가 단일 책임.
 
 /**
  * 에러 Toast 표시를 위한 헬퍼

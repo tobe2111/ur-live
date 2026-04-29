@@ -10,6 +10,7 @@ import api from '@/lib/api'
 import { isKorea } from '@/config/region'
 import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 export default function KakaoCallbackPage() {
   const navigate = useNavigate()
@@ -85,13 +86,9 @@ export default function KakaoCallbackPage() {
         }
 
         // ── returnUrl 결정 & 이동 ──
-        let returnUrl = '/'
-        if (state && state !== '/login' && state.startsWith('/')) {
-          returnUrl = decodeURIComponent(state)
-        } else {
-          const stored = localStorage.getItem('loginReturnUrl')
-          if (stored && stored !== '/login') returnUrl = stored
-        }
+        // 🛡️ 2026-04-29: safeInternalPath 로 통일 — /auth/*, /login 자기참조 차단
+        const stored = localStorage.getItem('loginReturnUrl')
+        const returnUrl = safeInternalPath(state, safeInternalPath(stored, '/'))
         localStorage.removeItem('loginReturnUrl')
         navigate(returnUrl, { replace: true })
 

@@ -111,12 +111,25 @@ const OAUTH_STATE_COOKIE = 'kakao_oauth_state';
  * Only accept internal paths as redirect target:
  *  - must start with "/"
  *  - must NOT start with "//" (protocol-relative URL)
+ *  - must NOT contain "\\" (path traversal)
+ *  - must NOT contain control chars (\n, \t, \r, \0)
+ *  - must NOT be /login·/auth/*·/oauth/* (자기참조 OAuth hop 루프 방지)
+ *
+ * 🛡️ 2026-04-29: 프론트엔드 safe-internal-path.ts 와 동일한 규칙. Worker
+ *   코드라 import 못 하므로 동일 규칙을 인라인으로 유지. 양쪽 같이 갱신할 것.
  */
 function safeRedirect(path: string | null | undefined): string {
   if (!path || typeof path !== 'string') return '/';
   if (!path.startsWith('/')) return '/';
   if (path.startsWith('//')) return '/';
   if (path.includes('\\')) return '/';
+  if (/[\n\t\r\0]/.test(path)) return '/';
+  const FORBIDDEN = ['/login', '/seller/login', '/admin/login', '/agency/login', '/auth/', '/oauth/'];
+  for (const prefix of FORBIDDEN) {
+    if (path === prefix || path.startsWith(prefix + '?') || path.startsWith(prefix + '/') || path.startsWith(prefix + '#')) {
+      return '/';
+    }
+  }
   return path;
 }
 

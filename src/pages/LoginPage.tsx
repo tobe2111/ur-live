@@ -11,6 +11,7 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { Eye, EyeOff } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 // Kakao SDK 타입 선언
 interface KakaoAuth {
@@ -74,20 +75,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
 
   // ✅ 무한루프 방지: returnUrl은 마운트 시 1회만 계산 (useRef로 고정)
-  // 🛡️ 2026-04-22: open redirect 방어 — 내부 path 만 허용 (//evil.com, http://evil 차단)
+  // 🛡️ 2026-04-29: 검증 로직을 safeInternalPath 헬퍼로 통일
   const returnUrlRef = useRef<string | null>(null)
   if (returnUrlRef.current === null) {
-    const _rawReturnUrl = searchParams.get('returnUrl')
-      ? decodeURIComponent(searchParams.get('returnUrl')!)
-      : sessionStorage.getItem('returnUrl') || '/'
-    const isInternalPath =
-      _rawReturnUrl.startsWith('/') &&
-      !_rawReturnUrl.startsWith('//') &&
-      !_rawReturnUrl.includes('\n') &&
-      !_rawReturnUrl.includes('\t') &&
-      !_rawReturnUrl.startsWith('/login') &&
-      !_rawReturnUrl.startsWith('/auth/')
-    returnUrlRef.current = isInternalPath ? _rawReturnUrl : '/'
+    const raw = searchParams.get('returnUrl') || sessionStorage.getItem('returnUrl') || '/'
+    returnUrlRef.current = safeInternalPath(raw, '/')
   }
   const returnUrl = returnUrlRef.current
   const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))

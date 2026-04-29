@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 /**
  * 카카오 추가 동의 전용 콜백 (talk_calendar 등)
@@ -20,7 +21,8 @@ export default function KakaoConsentCallbackPage() {
       setStatus('error')
       setTimeout(() => {
         if (window.opener) window.close()
-        else navigate(state ? decodeURIComponent(state) : '/', { replace: true })
+        // 🛡️ 2026-04-29: safeInternalPath — /auth/*·/login 자기참조 차단
+        else navigate(safeInternalPath(state, '/'), { replace: true })
       }, 1000)
       return
     }
@@ -47,8 +49,8 @@ export default function KakaoConsentCallbackPage() {
           }
           window.close()
         } else {
-          const returnUrl = state ? decodeURIComponent(state) : '/'
-          navigate(returnUrl, { replace: true })
+          // 🛡️ 2026-04-29: safeInternalPath — /auth/*·/login 자기참조 차단
+          navigate(safeInternalPath(state, '/'), { replace: true })
         }
       }, 500)
     }
