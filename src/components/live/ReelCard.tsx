@@ -18,6 +18,7 @@ import AuctionPanel from '@/components/live/AuctionPanel'
 import TimeDealPopup from '@/components/live/TimeDealPopup'
 import HeartReaction from '@/components/live/HeartReaction'
 import ScheduledOverlay from '@/components/live/ScheduledOverlay'
+import WishlistButton from '@/components/WishlistButton'
 
 interface ApiError {
   response?: { status?: number; statusText?: string; data?: { error?: string } }
@@ -1110,8 +1111,9 @@ export default function ReelCard({
           </div>
         )}
 
-        {/* 타임딜 팝업 */}
-        <TimeDealPopup streamId={stream.id} />
+        {/* 🛡️ 2026-04-29 v4 Boutique 톤: TimeDealPopup default off (Q6=C 보존하되 미표시).
+            타임딜 정보는 chat feed 의 inline 시스템 이벤트로 노출. */}
+        {false && <TimeDealPopup streamId={stream.id} />}
 
         {/* Spacer pushes content to bottom */}
         <div className="flex-1" />
@@ -1124,48 +1126,95 @@ export default function ReelCard({
           </div>
           {/* Chat + action icons row */}
           <div className="flex items-end gap-2 mb-2">
-            {/* Live chat feed - left side, wide */}
+            {/* 🛡️ 2026-04-29 v4 Boutique 톤: chat feed 는 chatModalOpen=true 일 때만 표시 (Q9=A).
+                평소에는 시청자가 영상에 집중. chat 버튼(우측 action rail) 클릭 시 채팅창 열림. */}
             <div className="min-w-0 flex-1">
-              <LiveChat
-                messages={mergedChatMessages}
-                onChatClick={() => setChatModalOpen(true)}
-              />
+              {chatModalOpen && (
+                <LiveChat
+                  messages={mergedChatMessages}
+                  onChatClick={() => setChatModalOpen(true)}
+                />
+              )}
             </div>
 
-            {/* Chat + Heart + Donate + Share buttons - right side */}
+            {/* 🛡️ 2026-04-29 v4 Boutique 톤 액션 rail
+                — 5개: 좋아요 / 상품 / 선물(후원) / 채팅 / 공유
+                — 40x40 dark glass + 18x18 icon + 9px label
+                — 라벨 위치: 버튼 아래 (디자인 spec) */}
             <div className="flex flex-col items-center gap-3 shrink-0 pb-1 mr-2.5">
-              {/* 하트 반응 */}
-              <HeartReaction />
-              <button
-                onClick={() => setChatModalOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
-                aria-label="Chat"
-              >
-                <MessageCircle className="h-5 w-5 text-white/90" />
-              </button>
-              <KakaoShareButton
-                title={stream?.title || '유어딜 라이브'}
-                description={safeProduct?.name || '라이브 방송 중'}
-                imageUrl={safeProduct?.image_url}
-                link={`/live/${stream?.id}`}
-                compact
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
-              />
+              {/* 1) 좋아요 (Heart) — 핑크 fill 활성화 */}
+              <div className="flex flex-col items-center gap-0.5">
+                <HeartReaction />
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>좋아요</span>
+              </div>
 
+              {/* 2) 상품 목록 */}
+              <div className="flex flex-col items-center gap-0.5">
+                <button
+                  onClick={openProductListSheet}
+                  className="flex items-center justify-center rounded-full transition-all active:scale-90"
+                  style={{
+                    width: 40, height: 40,
+                    background: 'rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                  }}
+                  aria-label="상품 목록"
+                >
+                  <ShoppingBag style={{ width: 18, height: 18, color: '#fff' }} />
+                </button>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
+                  상품 {streamProducts?.length ?? 0}
+                </span>
+              </div>
 
-              {/* 상품 목록 버튼 */}
-              <button
-                onClick={openProductListSheet}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
-                aria-label="Products"
-              >
-                <ShoppingBag className="h-5 w-5 text-white/90" />
-              </button>
-
-              {/* 후원하기 버튼 (딜 포인트) */}
+              {/* 3) 선물 (LiveDonation) — 셀러는 미표시 */}
               {!isSeller && stream?.id && (
-                <LiveDonation streamId={stream.id} />
+                <div className="flex flex-col items-center gap-0.5">
+                  <LiveDonation streamId={stream.id} />
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>선물</span>
+                </div>
               )}
+
+              {/* 4) 채팅 토글 */}
+              <div className="flex flex-col items-center gap-0.5">
+                <button
+                  onClick={() => setChatModalOpen(true)}
+                  className="flex items-center justify-center rounded-full transition-all active:scale-90"
+                  style={{
+                    width: 40, height: 40,
+                    background: 'rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                  }}
+                  aria-label="채팅 열기"
+                >
+                  <MessageCircle style={{ width: 18, height: 18, color: '#fff' }} />
+                </button>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>채팅</span>
+              </div>
+
+              {/* 5) 공유 */}
+              <div className="flex flex-col items-center gap-0.5">
+                <KakaoShareButton
+                  title={stream?.title || '유어딜 라이브'}
+                  description={safeProduct?.name || '라이브 방송 중'}
+                  imageUrl={safeProduct?.image_url}
+                  link={`/live/${stream?.id}`}
+                  compact
+                  className="flex items-center justify-center rounded-full transition-all active:scale-90"
+                  style={{
+                    width: 40, height: 40,
+                    background: 'rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                  }}
+                />
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>공유</span>
+              </div>
             </div>
           </div>
 
@@ -1208,68 +1257,105 @@ export default function ReelCard({
             </div>
           )}
 
-          {/* v4 Cinema: 하단 상품 바 (글래스모피즘) — 상품 있을 때만 표시 */}
-          {currentProduct && (
-          <div className="flex items-stretch w-full rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            <div className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2.5"
-              key={currentProduct?.id || 'default'}
-            >
-              {/* Product image */}
-              {(safeProduct.image_url || safeProduct.image) && (
-                <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || '상품'} loading="lazy" className="w-12 h-12 rounded-lg object-cover shrink-0" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-white/60 truncate">지금 소개 중</p>
-                <p className="text-[12px] font-semibold text-white/90 truncate">{safeProduct.name}</p>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  {(safeProduct.originalPrice || safeProduct.original_price || 0) > safeProduct.price && (
-                    <span className="text-[10px] text-white/40 line-through">
-                      {(safeProduct.originalPrice || safeProduct.original_price || 0).toLocaleString()}
-                    </span>
+          {/* 🛡️ 2026-04-29 v4 Boutique 톤 — 흰 카드 + 라벨 strip + 메인 row + 3분할 액션 row */}
+          {currentProduct && (() => {
+            const originalPrice = (safeProduct.originalPrice || safeProduct.original_price || 0)
+            const discountRate = originalPrice > safeProduct.price
+              ? Math.round((1 - safeProduct.price / originalPrice) * 100)
+              : 0
+            const stock = safeProduct.stock
+            return (
+              <div className="rounded-3xl overflow-hidden w-full"
+                style={{ background: 'rgba(255,255,255,0.97)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
+                key={currentProduct?.id || 'default'}>
+                {/* Label strip — NOW · 지금 소개 + 재고 */}
+                <div className="flex items-center justify-between px-4 py-2"
+                  style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.08), rgba(236,72,153,0.08))' }}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-full" style={{ width: 5, height: 5, background: '#EF4444', boxShadow: '0 0 6px #EF4444' }} />
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em' }}>NOW · 지금 소개</span>
+                  </div>
+                  {typeof stock === 'number' && stock > 0 && (
+                    <span style={{ fontSize: 10, color: '#6B7280' }}>재고 {stock}개</span>
                   )}
-                  <span className="text-[15px] font-extrabold text-white">
-                    {(safeProduct.price || 0).toLocaleString()}원
-                  </span>
+                </div>
+                {/* Main row */}
+                <div className="flex items-center gap-3 p-3">
+                  <div className="relative rounded-2xl overflow-hidden shrink-0" style={{ width: 72, height: 72 }}>
+                    {(safeProduct.image_url || safeProduct.image) ? (
+                      <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || '상품'} loading="lazy" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200" />
+                    )}
+                    {discountRate > 0 && (
+                      <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded"
+                        style={{ background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800 }}>-{discountRate}%</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#374151', lineHeight: 1.4 }} className="line-clamp-2">{safeProduct.name}</p>
+                    {originalPrice > safeProduct.price && (
+                      <div className="flex items-baseline gap-1.5 mt-1">
+                        <span style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex items-baseline gap-1">
+                      {discountRate > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>{discountRate}%</span>}
+                      <span style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{(safeProduct.price || 0).toLocaleString()}</span>
+                      <span style={{ fontSize: 11, color: '#6B7280' }}>원</span>
+                    </div>
+                  </div>
+                </div>
+                {/* Action row — 3분할 (찜 / 장바구니 / 바로구매) */}
+                <div className="grid grid-cols-3" style={{ borderTop: '1px solid #F3F4F6' }}>
+                  {/* 찜하기 — WishlistButton 재사용 */}
+                  <div className="py-3 flex items-center justify-center" style={{ borderRight: '1px solid #F3F4F6' }}>
+                    <WishlistButton productId={safeProduct.id} size="sm" />
+                  </div>
+                  {/* 장바구니 */}
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={!currentProduct || addingToCart}
+                    className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
+                    style={{ borderRight: '1px solid #F3F4F6' }}
+                    aria-label="장바구니에 담기"
+                  >
+                    <ShoppingBag style={{ width: 16, height: 16, color: '#6B7280' }} />
+                    <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>{addingToCart ? '담는 중…' : '장바구니'}</span>
+                  </button>
+                  {/* 바로구매 — 셀러는 "변경"으로 분기 */}
+                  {isSeller && product ? (
+                    <button
+                      onClick={handleChangeProduct}
+                      disabled={changingProduct || isCurrentProduct}
+                      className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
+                      style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
+                      aria-label={isCurrentProduct ? '소개 중' : '상품 변경'}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>
+                        {changingProduct ? '전환 중…' : isCurrentProduct ? '소개 중' : '변경'}
+                      </span>
+                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>{isCurrentProduct ? '✅' : '🔄'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (currentProduct) handleCheckout()
+                        else showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
+                      }}
+                      disabled={!currentProduct}
+                      className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
+                      style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
+                      aria-label="바로 구매"
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>바로구매</span>
+                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>무료배송</span>
+                    </button>
+                  )}
                 </div>
               </div>
-            </div>
-          </div>
-          )}
-          {/* 구매 버튼 2열 — 더 큰 터치 타겟 + 시각적 강조 */}
-          {currentProduct && (
-          <div className="grid grid-cols-2 gap-1.5 w-full mt-2">
-            <button
-              onClick={handleAddToCart}
-              disabled={!currentProduct || addingToCart}
-              className="py-3 text-center text-sm font-bold text-white rounded-xl active:scale-[0.97] transition-all disabled:opacity-40"
-              style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)' }}
-            >
-              {addingToCart ? '추가 중...' : '장바구니'}
-            </button>
-            {isSeller && product ? (
-              <button
-                onClick={handleChangeProduct}
-                disabled={changingProduct || isCurrentProduct}
-                className="py-3 text-center text-sm font-extrabold text-white rounded-xl active:scale-[0.97] transition-all disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
-              >
-                {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 소개 중' : '🔄 변경'}
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  if (currentProduct) handleCheckout()
-                  else showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
-                }}
-                disabled={!currentProduct}
-                className="py-3 text-center text-sm font-extrabold text-white rounded-xl active:scale-[0.97] transition-all disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
-              >
-                바로 구매
-              </button>
-            )}
-          </div>
-          )}
+            )
+          })()}
         </div>
       </div>
 

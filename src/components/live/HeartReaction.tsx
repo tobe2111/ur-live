@@ -37,10 +37,18 @@ export default function HeartReaction() {
       </div>
       <button
         onClick={addHeart}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-125"
+        className="flex items-center justify-center rounded-full transition-all active:scale-125"
+        style={{
+          width: 40, height: 40,
+          background: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,0.15)',
+        }}
         aria-label="Like"
       >
-        <Heart className="h-5 w-5 text-pink-400 fill-pink-400" />
+        {/* 🛡️ 2026-04-29 v4 Boutique 톤: Heart 18x18 + Pink fill (#F472B6) */}
+        <Heart className="fill-current" style={{ width: 18, height: 18, color: '#F472B6' }} />
       </button>
     </div>
   )
