@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { swallow } from '@/shared/utils/swallow'
 import { CheckCircle2, Circle, Trophy, Sparkles, BookOpen, ChevronRight } from 'lucide-react'
 import LiveStartGuideModal from './LiveStartGuideModal'
 
@@ -43,7 +44,7 @@ export default function SellerOnboardingWidget() {
       .then((r) => {
         if (r.data.success) setData(r.data.data)
       })
-      .catch(() => {})
+      .catch(swallow('seller:onboarding-load'))
       .finally(() => setLoading(false))
   }, [dismissed])
 

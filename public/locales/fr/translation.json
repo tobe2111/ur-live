@@ -140,7 +140,8 @@
     "settingChangeFailed": "Échec de modification des paramètres",
     "disconnectFailed": "Échec de déconnexion.",
     "copyFailed": "Échec de copie.",
-    "home": "Accueil"
+    "home": "Accueil",
+    "uploadComplete": "Téléchargement terminé"
   },
   "seller": {
     "dashboard": "Tableau de bord",
@@ -469,7 +470,8 @@
       "durationMin": "시간(분)",
       "groupBuyStarted": "🎁 라이브 공구가 시작되었습니다!",
       "groupBuyCreateFailed": "라이브 공구 생성 실패",
-      "startGroupBuy": "라이브 공구 시작"
+      "startGroupBuy": "라이브 공구 시작",
+      "testCreated": "Diffusion de test créée. Démarrez dans votre outil de streaming pour vérifier le pipeline."
     },
     "startBroadcast": "Démarrer la diffusion",
     "endBroadcast": "Terminer la diffusion",
@@ -1367,7 +1369,9 @@
       "participantCount": "{{current}}/{{target}} personnes",
       "deadline": "Date limite",
       "storeOwnerStatsLink": "Lien statistiques du propriétaire",
-      "linkCopied": "Lien copié ! Partagez-le avec le propriétaire du restaurant."
+      "linkCopied": "Lien copié ! Partagez-le avec le propriétaire du restaurant.",
+      "linkRotated": "Renvoyé avec un nouveau lien (ancien lien expiré)",
+      "alimtalkSent": "Alimtalk envoyé au commerçant"
     },
     "voucher": {
       "categoryTitle": "Catégorie de Bon",
@@ -1404,7 +1408,11 @@
       "terminate": "Terminer",
       "commissionRate": "Taux de commission de l'hôte",
       "noPartnerships": "Aucun partenariat pour le moment.",
-      "startPartnership": "Commencez à collaborer avec d'autres vendeurs."
+      "startPartnership": "Commencez à collaborer avec d'autres vendeurs.",
+      "loadFailed": "Impossible de charger la liste",
+      "approved": "Approuvé",
+      "terminateConfirm": "Vraiment terminer ? Ne peut pas être redémarré après la fin.",
+      "terminated": "Terminé"
     },
     "mealVoucher": {
       "title": "Enregistrer un bon repas",
@@ -1454,7 +1462,9 @@
       "originalPriceShort": "Original",
       "discount": "de réduction",
       "targetCount": "Objectif {{count}} personnes",
-      "voucherSuffix": "Bon repas"
+      "voucherSuffix": "Bon repas",
+      "imageSizeLimit": "Seules les images de moins de 5 Mo peuvent être téléchargées",
+      "imageSearchFailed": "Recherche d'image échouée"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1528,7 +1538,8 @@
       "notice": "정산 안내",
       "noticeCycle": "정산 주기: 매주 정산 (월~일 매출 → 다음 주 정산)",
       "noticeConfirmed": "구매 확정된 주문만 정산 대상입니다",
-      "noticeCommission": "플랫폼 수수료 15% 차감 후 정산됩니다"
+      "noticeCommission": "플랫폼 수수료 15% 차감 후 정산됩니다",
+      "pinNotSet": "PIN de sécurité non défini. Définissez-le d'abord dans votre profil."
     },
     "monthlyGoalTitle": "Objectif de ventes mensuel",
     "changeGoal": "Modifier l'objectif",
@@ -1594,7 +1605,31 @@
     "discountAmount": "Montant de la Remise",
     "discountPercent": "Pourcentage de Remise",
     "discountType": "Type de Remise",
-    "noBundles": "Aucun lot enregistré"
+    "noBundles": "Aucun lot enregistré",
+    "bundles": {
+      "loadFailed": "Impossible de charger les données",
+      "nameRequired": "Entrez le nom du lot",
+      "minItems": "Sélectionnez au moins 2 produits",
+      "updated": "Lot mis à jour",
+      "created": "Lot créé",
+      "processFailed": "Échec du traitement",
+      "statusFailed": "Échec du changement de statut",
+      "deleteConfirm": "Supprimer ce lot ?",
+      "deleted": "Supprimé",
+      "deleteFailed": "Échec de la suppression"
+    },
+    "register": {
+      "requiredFields": "Remplissez les champs obligatoires",
+      "businessNumberFormat": "Format du numéro d'entreprise: XXX-XX-XXXXX",
+      "applied": "Demande de conversion en vendeur terminée. En attente d'approbation de l'administrateur.",
+      "loginRequired": "Connexion requise. Connectez-vous avec Kakao et réessayez."
+    },
+    "stream": {
+      "productsLoadFailed": "Impossible de charger la liste des produits"
+    },
+    "public": {
+      "liveEnded": "La diffusion en direct est terminée."
+    }
   },
   "admin": {
     "login": {
@@ -1943,7 +1978,8 @@
       "processingError": "Erreur lors du traitement",
       "seoTitle": "Vérification du coupon",
       "seoDescription": "Vérifier le coupon par code QR"
-    }
+    },
+    "qrCode": "Code QR"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",

@@ -336,8 +336,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       {/* 카카오 채널 상담 플로팅 버튼 */}
       <a
         href="http://pf.kakao.com/_AITdn/chat"
-        target="_blank"
-        rel="noopener noreferrer"
+        target="_blank" rel="noopener noreferrer"
         className="fixed bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
         title={t('seller.kakaoChat')}
       >

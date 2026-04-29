@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { useNavigate, useSearchParams, Navigate } from 'react-router-dom'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
@@ -163,6 +164,16 @@ function SellerApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     description: '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const dialogRef = useFocusTrap<HTMLDivElement>(true)
+
+  // 🛡️ 2026-04-28 a11y: ESC 키로 모달 닫기 (키보드 사용자)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   const handleSubmit = async () => {
     if (!form.business_name || !form.business_number || !form.phone) {
@@ -197,10 +208,18 @@ function SellerApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   ] as const
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60"
+      onClick={onClose}
+      role="presentation"
+    >
       <div
+        ref={dialogRef}
         className="w-full max-w-[430px] bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="셀러 전환 신청"
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold text-white">셀러로 활동하기</h2>
@@ -589,6 +608,7 @@ export default function UserProfilePage() {
   return (
     <div className="bg-[#020202] flex flex-col min-h-screen">
       <SEO title="마이페이지 - 유어딜" description="내 프로필, 주문내역, 쿠폰 등을 관리하세요" url="/user/profile" noindex />
+      <h1 className="sr-only">마이페이지</h1>
       {/* v4 Premium Hero Header */}
       <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3" style={{ background: '#0A0A0A' }}>
         <p className="text-[16px] font-extrabold text-white">My</p>

@@ -140,7 +140,8 @@
     "settingChangeFailed": "Error al cambiar configuración",
     "disconnectFailed": "Error al desconectar.",
     "copyFailed": "Error al copiar.",
-    "home": "Inicio"
+    "home": "Inicio",
+    "uploadComplete": "Carga completa"
   },
   "seller": {
     "dashboard": "Panel",
@@ -469,7 +470,8 @@
       "durationMin": "시간(분)",
       "groupBuyStarted": "🎁 라이브 공구가 시작되었습니다!",
       "groupBuyCreateFailed": "라이브 공구 생성 실패",
-      "startGroupBuy": "라이브 공구 시작"
+      "startGroupBuy": "라이브 공구 시작",
+      "testCreated": "Transmisión de prueba creada. Inicie en su herramienta de streaming para verificar."
     },
     "startBroadcast": "Iniciar transmisión",
     "endBroadcast": "Finalizar transmisión",
@@ -1367,7 +1369,9 @@
       "participantCount": "{{current}}/{{target}} personas",
       "deadline": "Fecha límite",
       "storeOwnerStatsLink": "Enlace de estadísticas del dueño",
-      "linkCopied": "¡Enlace copiado! Compártelo con el dueño de la tienda."
+      "linkCopied": "¡Enlace copiado! Compártelo con el dueño de la tienda.",
+      "linkRotated": "Reenviado con nuevo enlace (enlace anterior expirado)",
+      "alimtalkSent": "Alimtalk enviado al comerciante"
     },
     "voucher": {
       "categoryTitle": "Categoría de Vale",
@@ -1404,7 +1408,11 @@
       "terminate": "Terminar",
       "commissionRate": "Tasa de comisión del host",
       "noPartnerships": "Aún sin asociaciones.",
-      "startPartnership": "Comienza a colaborar con otros vendedores."
+      "startPartnership": "Comienza a colaborar con otros vendedores.",
+      "loadFailed": "No se pudo cargar la lista",
+      "approved": "Aprobado",
+      "terminateConfirm": "¿Realmente terminar? No se puede reiniciar después de terminar.",
+      "terminated": "Terminado"
     },
     "mealVoucher": {
       "title": "Registrar vale de comida",
@@ -1454,7 +1462,9 @@
       "originalPriceShort": "Original",
       "discount": "descuento",
       "targetCount": "Objetivo {{count}} personas",
-      "voucherSuffix": "Vale de comida"
+      "voucherSuffix": "Vale de comida",
+      "imageSizeLimit": "Solo se pueden subir imágenes menores a 5MB",
+      "imageSearchFailed": "Búsqueda de imagen fallida"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1528,7 +1538,8 @@
       "notice": "정산 안내",
       "noticeCycle": "정산 주기: 매주 정산 (월~일 매출 → 다음 주 정산)",
       "noticeConfirmed": "구매 확정된 주문만 정산 대상입니다",
-      "noticeCommission": "플랫폼 수수료 15% 차감 후 정산됩니다"
+      "noticeCommission": "플랫폼 수수료 15% 차감 후 정산됩니다",
+      "pinNotSet": "PIN de seguridad no establecido. Establézcalo en su perfil primero."
     },
     "monthlyGoalTitle": "Meta de ventas mensual",
     "changeGoal": "Cambiar meta",
@@ -1594,7 +1605,31 @@
     "discountAmount": "Monto de Descuento",
     "discountPercent": "Porcentaje de Descuento",
     "discountType": "Tipo de Descuento",
-    "noBundles": "No hay paquetes registrados"
+    "noBundles": "No hay paquetes registrados",
+    "bundles": {
+      "loadFailed": "No se pudieron cargar los datos",
+      "nameRequired": "Ingrese el nombre del paquete",
+      "minItems": "Seleccione al menos 2 productos",
+      "updated": "Paquete actualizado",
+      "created": "Paquete creado",
+      "processFailed": "Procesamiento fallido",
+      "statusFailed": "Cambio de estado fallido",
+      "deleteConfirm": "¿Eliminar este paquete?",
+      "deleted": "Eliminado",
+      "deleteFailed": "Eliminación fallida"
+    },
+    "register": {
+      "requiredFields": "Complete los campos requeridos",
+      "businessNumberFormat": "Formato de número de negocio: XXX-XX-XXXXX",
+      "applied": "Solicitud de conversión a vendedor completada. Esperando aprobación del administrador.",
+      "loginRequired": "Se requiere inicio de sesión. Inicie sesión con Kakao e intente de nuevo."
+    },
+    "stream": {
+      "productsLoadFailed": "No se pudo cargar la lista de productos"
+    },
+    "public": {
+      "liveEnded": "La transmisión en vivo ha terminado."
+    }
   },
   "admin": {
     "login": {
@@ -1943,7 +1978,8 @@
       "processingError": "Error durante el procesamiento",
       "seoTitle": "Verificación de cupón",
       "seoDescription": "Verificar cupón mediante código QR"
-    }
+    },
+    "qrCode": "Código QR"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",

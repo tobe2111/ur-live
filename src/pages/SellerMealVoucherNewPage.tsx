@@ -337,9 +337,9 @@ export default function SellerMealVoucherNewPage() {
                       onChange={(e) => {
                         const f = e.target.files?.[0]
                         if (!f) return
-                        if (f.size > 5 * 1024 * 1024) { toast.error('5MB 이하 이미지만 업로드 가능합니다'); return }
+                        if (f.size > 5 * 1024 * 1024) { toast.error(t('seller.mealVoucher.imageSizeLimit', { defaultValue: '5MB 이하 이미지만 업로드 가능합니다' })); return }
                         const r = new FileReader()
-                        r.onload = () => { update('image_url', r.result as string); toast.success('업로드 완료') }
+                        r.onload = () => { update('image_url', r.result as string); toast.success(t('common.uploadComplete', { defaultValue: '업로드 완료' })) }
                         r.readAsDataURL(f)
                       }}
                     />
@@ -357,7 +357,7 @@ export default function SellerMealVoucherNewPage() {
                         if (res.data.success && res.data.data?.items) {
                           setSuggestedImages(res.data.data.items.map((img: { link?: string }) => (img.link || '').replace(/^http:\/\//, 'https://')).filter(Boolean))
                         }
-                      } catch { toast.error('이미지 검색 실패') }
+                      } catch { toast.error(t('seller.mealVoucher.imageSearchFailed', { defaultValue: '이미지 검색 실패' })) }
                       finally { setLoadingImages(false) }
                     }}
                   />

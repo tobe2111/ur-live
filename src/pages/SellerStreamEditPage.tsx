@@ -226,8 +226,7 @@ export default function SellerStreamEditPage() {
               <span className="w-32 text-gray-600">{t('seller.videoUrl')}:</span>
               <a
                 href={getVideoUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
+                target="_blank" rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"
               >
                 {getVideoUrl()}

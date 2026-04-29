@@ -71,7 +71,7 @@ export default function SellerConsignmentPage() {
       const res = await api.get('/api/seller/consignment', { params })
       setPartnerships(res.data?.data || [])
     } catch (err) {
-      toast.error('목록을 불러오지 못했어요')
+      toast.error(t('seller.consignment.loadFailed', { defaultValue: '목록을 불러오지 못했어요' }))
     } finally {
       setLoading(false)
     }
@@ -83,7 +83,7 @@ export default function SellerConsignmentPage() {
     setActingId(id)
     try {
       await api.post(`/api/seller/consignment/${id}/approve`)
-      toast.success('승인되었습니다')
+      toast.success(t('seller.consignment.approved', { defaultValue: '승인되었습니다' }))
       reload()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
@@ -94,11 +94,11 @@ export default function SellerConsignmentPage() {
   }
 
   const handleTerminate = async (id: number) => {
-    if (!confirm('정말 종료하시겠어요? 종료 후 다시 시작할 수 없습니다.')) return
+    if (!confirm(t('seller.consignment.terminateConfirm', { defaultValue: '정말 종료하시겠어요? 종료 후 다시 시작할 수 없습니다.' }))) return
     setActingId(id)
     try {
       await api.post(`/api/seller/consignment/${id}/terminate`)
-      toast.success('종료되었습니다')
+      toast.success(t('seller.consignment.terminated', { defaultValue: '종료되었습니다' }))
       reload()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }

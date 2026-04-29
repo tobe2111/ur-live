@@ -338,7 +338,7 @@ export default function AdminReplayPage() {
                   <div className="flex gap-1.5 mt-3">
                     <a
                       href={`/live/${s.id}`}
-                      target="_blank"
+                      target="_blank" rel="noopener noreferrer"
                       className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200"
                     >
                       <ExternalLink className="w-3 h-3" /> 보기

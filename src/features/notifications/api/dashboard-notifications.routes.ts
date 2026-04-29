@@ -54,6 +54,19 @@ export async function createDashboardNotification(
   link?: string
 ) {
   await ensureTable(DB);
+
+  // 🛡️ 2026-04-28: dispatcher 채널 설정 조회 — dashboard 가 disabled 면 INSERT skip.
+  //   기존 호출처 모두 자동으로 dispatcher 정책 따름 (코드 변경 0).
+  //   ⚠️ 상대경로 필수 (Worker 런타임에 path alias '@/...' 미존재 — CLAUDE.md 참조).
+  try {
+    const { getChannelSettings } = await import('../../../lib/notification-dispatcher');
+    const settings = await getChannelSettings(DB, type);
+    if (!settings.dashboard) {
+      // 어드민이 이 type 의 dashboard 채널 끔 → INSERT skip
+      return;
+    }
+  } catch { /* settings 조회 실패 → 기본 동작 (INSERT 진행) */ }
+
   try {
     await DB.prepare(
       `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)

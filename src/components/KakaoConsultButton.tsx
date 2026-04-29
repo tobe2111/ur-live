@@ -29,8 +29,7 @@ export default function KakaoConsultButton() {
       <div className="max-w-[430px] mx-auto flex justify-end">
         <a
           href={KAKAO_CHAT_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          target="_blank" rel="noopener noreferrer"
           aria-label="카카오 상담"
           className="pointer-events-auto flex items-center justify-center w-12 h-12 rounded-full shadow-lg active:scale-95 transition-transform"
           style={{ backgroundColor: '#FEE500' }}

@@ -51,7 +51,10 @@ export default function SellerGroupBuyPage() {
     try {
       const res = await api.post(`/api/seller/products/${productId}/resend-store-link`, { rotate }, { headers })
       if (res.data.success) {
-        toast.success(rotate ? '새 링크로 재발송되었습니다 (이전 링크 만료)' : '사장님께 알림톡이 발송되었습니다')
+        toast.success(rotate
+          ? t('seller.groupBuy.linkRotated', { defaultValue: '새 링크로 재발송되었습니다 (이전 링크 만료)' })
+          : t('seller.groupBuy.alimtalkSent', { defaultValue: '사장님께 알림톡이 발송되었습니다' })
+        )
         loadData()
       } else {
         toast.error(res.data.error || '발송 실패')

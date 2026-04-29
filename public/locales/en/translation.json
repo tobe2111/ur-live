@@ -141,7 +141,8 @@
     "disconnectFailed": "Failed to disconnect.",
     "copyFailed": "Failed to copy.",
     "home": "Home",
-    "dismiss": "Close"
+    "dismiss": "Close",
+    "uploadComplete": "Upload complete"
   },
   "auth": {
     "email": "Email",
@@ -556,7 +557,8 @@
       "durationMin": "Duration (min)",
       "groupBuyStarted": "Live group buy has started!",
       "groupBuyCreateFailed": "Failed to create live group buy",
-      "startGroupBuy": "Start Group Buy"
+      "startGroupBuy": "Start Group Buy",
+      "testCreated": "Test broadcast created. Start in your streaming tool to verify the pipeline."
     },
     "startBroadcast": "Start Broadcast",
     "endBroadcast": "End Broadcast",
@@ -1454,7 +1456,9 @@
       "participantCount": "{{current}}/{{target}} people",
       "deadline": "Deadline",
       "storeOwnerStatsLink": "Store owner stats link",
-      "linkCopied": "Link copied! Share it with the store owner."
+      "linkCopied": "Link copied! Share it with the store owner.",
+      "linkRotated": "Resent with new link (previous link expired)",
+      "alimtalkSent": "Alimtalk sent to the merchant"
     },
     "voucher": {
       "categoryTitle": "Voucher Category",
@@ -1491,7 +1495,11 @@
       "terminate": "Terminate",
       "commissionRate": "Host commission rate",
       "noPartnerships": "No partnerships yet.",
-      "startPartnership": "Start collaborating with other sellers."
+      "startPartnership": "Start collaborating with other sellers.",
+      "loadFailed": "Failed to load list",
+      "approved": "Approved",
+      "terminateConfirm": "Really terminate? Cannot be restarted after termination.",
+      "terminated": "Terminated"
     },
     "mealVoucher": {
       "title": "Register Meal Voucher",
@@ -1542,7 +1550,9 @@
       "discount": "off",
       "targetCount": "Target {{count}} people",
       "voucherSuffix": "Meal Voucher",
-      "subtitle": "Register meal voucher / group buy"
+      "subtitle": "Register meal voucher / group buy",
+      "imageSizeLimit": "Only images under 5MB can be uploaded",
+      "imageSearchFailed": "Image search failed"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",
@@ -1598,7 +1608,8 @@
       "notice": "Settlement Notice",
       "noticeCycle": "Settlement cycle: Weekly (Mon-Sun sales → next week settlement)",
       "noticeConfirmed": "Only confirmed orders are eligible for settlement",
-      "noticeCommission": "15% platform commission deducted before settlement"
+      "noticeCommission": "15% platform commission deducted before settlement",
+      "pinNotSet": "Security PIN not set. Please set it in your profile first."
     },
     "nav": {
       "products": "Products",
@@ -1703,6 +1714,30 @@
       "firstLive": "First live broadcast",
       "firstOrder": "First order",
       "completed": "completed"
+    },
+    "bundles": {
+      "loadFailed": "Failed to load data",
+      "nameRequired": "Please enter bundle name",
+      "minItems": "Please select at least 2 products",
+      "updated": "Bundle updated",
+      "created": "Bundle created",
+      "processFailed": "Processing failed",
+      "statusFailed": "Status change failed",
+      "deleteConfirm": "Delete this bundle?",
+      "deleted": "Deleted",
+      "deleteFailed": "Delete failed"
+    },
+    "register": {
+      "requiredFields": "Please fill required fields",
+      "businessNumberFormat": "Business number format: XXX-XX-XXXXX",
+      "applied": "Seller conversion application completed. Waiting for admin approval.",
+      "loginRequired": "Login required. Please log in with Kakao and try again."
+    },
+    "stream": {
+      "productsLoadFailed": "Failed to load product list"
+    },
+    "public": {
+      "liveEnded": "Live broadcast has ended."
     }
   },
   "admin": {
@@ -1973,7 +2008,8 @@
       "processingError": "An error occurred while processing",
       "seoTitle": "Voucher Verification",
       "seoDescription": "Verify a voucher by QR code"
-    }
+    },
+    "qrCode": "QR Code"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

@@ -241,8 +241,7 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
         </ol>
         <a
           href="https://prismlive.com/support"
-          target="_blank"
-          rel="noopener noreferrer"
+          target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium mt-2"
         >
           <ExternalLink className="h-3.5 w-3.5" />

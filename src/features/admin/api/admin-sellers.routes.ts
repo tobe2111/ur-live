@@ -22,6 +22,7 @@ import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { swallow } from '@/worker/utils/swallow';
 
 export const adminSellersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -219,7 +220,7 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
         sendSystemAlimtalk(c.env, phone, 'seller_approved',
           `[유어딜] ${sellerName}님,\n셀러 가입이 승인되었어요!\n지금 바로 판매를 시작해보세요.`
-        ).catch(() => {});
+        ).catch(swallow('admin-sellers:approve-alimtalk'));
       }
     } catch { /* ignore */ }
 
@@ -239,6 +240,10 @@ adminSellersRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     await executeQuery(DB, `UPDATE sellers SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     await writeAuditLog(c, { action: 'reject_seller', targetType: 'seller', targetId: sellerId, after: { status: 'rejected', reason } });
+
+    // 🛡️ 2026-04-28: 셀러에게 거절 알림 (대시보드)
+    createDashboardNotification(DB, 'seller', String(sellerId), 'seller_rejected', '셀러 가입 거절', reason ? `사유: ${reason}` : '관리자에게 문의해주세요', '/seller').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
+
     return c.json({ success: true, data: { id: sellerId, status: 'rejected', reason } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);

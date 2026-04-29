@@ -483,6 +483,7 @@ export default function LivePageV2() {
   return (
     <main className="relative h-dvh overflow-hidden bg-black no-scrollbar" style={{ scrollbarWidth: 'none' }}>
       <SEO title={`${reels[activeIndex]?.stream?.title || '라이브'} - 유어딜`} description="유어딜 라이브 방송을 시청하고 실시간으로 쇼핑하세요" url={`/live/${streamId}`} />
+      <h1 className="sr-only">{reels[activeIndex]?.stream?.title || '라이브 방송'}</h1>
       <TopNav
         viewers={viewerCount}
         sellerName={reels[activeIndex]?.stream?.seller_name || reels[activeIndex]?.stream?.streamerName}

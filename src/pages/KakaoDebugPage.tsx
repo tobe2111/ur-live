@@ -127,8 +127,7 @@ export default function KakaoDebugPage() {
           <CardContent className="space-y-2">
             <a
               href="https://developers.kakao.com/console/app"
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 text-blue-600 hover:underline"
             >
               <ExternalLink className="w-4 h-4" />
@@ -136,8 +135,7 @@ export default function KakaoDebugPage() {
             </a>
             <a
               href="https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api"
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 text-blue-600 hover:underline"
             >
               <ExternalLink className="w-4 h-4" />
@@ -145,8 +143,7 @@ export default function KakaoDebugPage() {
             </a>
             <a
               href="https://developers.kakao.com/docs/latest/ko/kakaologin/trouble-shooting"
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 text-blue-600 hover:underline"
             >
               <ExternalLink className="w-4 h-4" />

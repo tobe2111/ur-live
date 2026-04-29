@@ -51,11 +51,11 @@ export default function SellerRegisterBusinessPage() {
 
   async function submit() {
     if (!form.business_name.trim() || !form.business_number.trim() || !form.phone.trim()) {
-      toast.error('필수 항목을 입력해주세요')
+      toast.error(t('seller.register.requiredFields', { defaultValue: '필수 항목을 입력해주세요' }))
       return
     }
     if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number)) {
-      toast.error('사업자번호 형식: XXX-XX-XXXXX')
+      toast.error(t('seller.register.businessNumberFormat', { defaultValue: '사업자번호 형식: XXX-XX-XXXXX' }))
       return
     }
 
@@ -63,7 +63,7 @@ export default function SellerRegisterBusinessPage() {
     try {
       const res = await api.post('/api/seller/register-from-user', form)
       if (res.data?.success) {
-        toast.success('셀러 전환 신청이 완료됐어요. 관리자 승인을 기다려주세요.')
+        toast.success(t('seller.register.applied', { defaultValue: '셀러 전환 신청이 완료됐어요. 관리자 승인을 기다려주세요.' }))
         setExistingStatus('pending')
       } else {
         toast.error(res.data?.error || '신청 실패')
@@ -71,7 +71,7 @@ export default function SellerRegisterBusinessPage() {
     } catch (e: unknown) {
       const err = e as { response?: { status?: number; data?: { error?: string } } }
       if (err.response?.status === 401) {
-        toast.error('로그인이 필요합니다. 카카오 로그인 후 다시 시도해주세요.')
+        toast.error(t('seller.register.loginRequired', { defaultValue: '로그인이 필요합니다. 카카오 로그인 후 다시 시도해주세요.' }))
         navigate('/login?returnUrl=' + encodeURIComponent('/seller/register/business'))
         return
       }

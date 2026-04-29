@@ -41,8 +41,7 @@ export default function SideBanner() {
           <a
             key={banner.id}
             href={banner.link_url}
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             className="block rounded-xl overflow-hidden"
           >
             {content}

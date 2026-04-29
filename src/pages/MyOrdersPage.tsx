@@ -20,6 +20,7 @@ import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order, OrderItem } from '@/types/order'
 import type { CartItem } from '@/types/cart'
 import { formatKST } from '@/utils/date'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 type TabType = 'cart' | 'orders'
 
@@ -31,6 +32,7 @@ export default function MyOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  useEscapeKey(() => { if (selectedOrder) setSelectedOrder(null) })
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [cancelModal, setCancelModal] = useState<{
     isOpen: boolean
@@ -325,8 +327,8 @@ export default function MyOrdersPage() {
 
       {/* Order Detail Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedOrder(null)} role="presentation">
+          <div className="bg-white rounded-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="주문 상세">
             <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">주문 상세</h3>
               <button
@@ -477,8 +479,7 @@ export default function MyOrdersPage() {
                           {getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number) && (
                             <a
                               href={getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number)}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              target="_blank" rel="noopener noreferrer"
                               className="text-[13px] text-blue-600 font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
                             >
                               배송조회

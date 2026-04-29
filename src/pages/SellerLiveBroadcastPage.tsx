@@ -72,8 +72,18 @@ interface LiveStream {
 }
 
 type WizardStep = 'info' | 'setup' | 'live'
-// 송출 도구 (streaming tool): 셀러가 영상을 어떻게 push 할지
-type StreamMethod = 'youtube' | 'obs' | 'prism' | 'quick'
+// 송출 도구 (streaming tool): 셀러가 영상을 어떻게 push 할지 — type StreamMethod 는 ./SellerLiveBroadcast.storage 로 이전
+import type { StreamMethod, BroadcastTemplate } from './SellerLiveBroadcast.storage'
+import {
+  getLastUsedMethod,
+  rememberMethod,
+  getRecentProducts,
+  rememberRecentProducts,
+  getLastBroadcast,
+  rememberLastBroadcast,
+  getTemplates,
+  saveTemplates,
+} from './SellerLiveBroadcast.storage'
 // 목적지 플랫폼 (destination): 시청자가 어디서 보는지
 type Destination = 'youtube' | 'tiktok' | 'chzzk' | 'soop'
 
@@ -89,61 +99,7 @@ interface DestinationPlatform {
 
 // ── 모달 4종 → SellerLiveBroadcast.modals.tsx (TD-006 / audit #10 partial)
 // ChannelCard → SellerLiveBroadcast.ChannelCard.tsx (TD-006)
-
-// ── 송출 도구 마지막 선택 기억 ──────────────────────────────────
-const METHOD_STORAGE_KEY = 'seller_live_last_method'
-function getLastUsedMethod(): StreamMethod {
-  try {
-    const v = localStorage.getItem(METHOD_STORAGE_KEY)
-    if (v === 'youtube' || v === 'obs' || v === 'prism' || v === 'quick') return v
-  } catch { /* SSR or blocked */ }
-  if (typeof window !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)) return 'prism'
-  return 'obs'
-}
-function rememberMethod(m: StreamMethod) {
-  try { localStorage.setItem(METHOD_STORAGE_KEY, m) } catch { /* ignore */ }
-}
-
-// ── 최근 사용 상품 / 마지막 방송 값 prefill ─────────────────────
-const RECENT_PRODUCTS_KEY = 'seller_live_recent_products'
-const LAST_BROADCAST_KEY = 'seller_live_last_broadcast'
-const TEMPLATES_KEY = 'seller_live_templates'
-
-interface BroadcastTemplate {
-  name: string
-  title: string
-  description: string
-  privacy: 'public' | 'unlisted' | 'private'
-  productIds: number[]
-}
-
-function getRecentProducts(): number[] {
-  try {
-    const v = localStorage.getItem(RECENT_PRODUCTS_KEY)
-    return v ? JSON.parse(v) : []
-  } catch { return [] }
-}
-function rememberRecentProducts(ids: number[]) {
-  try { localStorage.setItem(RECENT_PRODUCTS_KEY, JSON.stringify(ids.slice(0, 20))) } catch { /* ignore */ }
-}
-function getLastBroadcast(): { description?: string; thumbnailUrl?: string; privacy?: 'public' | 'unlisted' | 'private' } {
-  try {
-    const v = localStorage.getItem(LAST_BROADCAST_KEY)
-    return v ? JSON.parse(v) : {}
-  } catch { return {} }
-}
-function rememberLastBroadcast(data: { description: string; thumbnailUrl: string; privacy: 'public' | 'unlisted' | 'private' }) {
-  try { localStorage.setItem(LAST_BROADCAST_KEY, JSON.stringify(data)) } catch { /* ignore */ }
-}
-function getTemplates(): BroadcastTemplate[] {
-  try {
-    const v = localStorage.getItem(TEMPLATES_KEY)
-    return v ? JSON.parse(v) : []
-  } catch { return [] }
-}
-function saveTemplates(templates: BroadcastTemplate[]) {
-  try { localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates.slice(0, 10))) } catch { /* ignore */ }
-}
+// localStorage helpers → SellerLiveBroadcast.storage.ts (2026-04-29 추출)
 
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────
 export default function SellerLiveBroadcastPage() {
@@ -744,7 +700,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
     setPrivacy('unlisted')
     setSelectedProducts([sellableProducts[0].id])
     onCreate({ title: testTitle, productIds: [sellableProducts[0].id] })
-    toast.info('테스트 방송을 생성했습니다. 송출 도구에서 시작 후 파이프라인 확인해보세요.')
+    toast.info(t('seller.liveBroadcast.testCreated', { defaultValue: '테스트 방송을 생성했습니다. 송출 도구에서 시작 후 파이프라인 확인해보세요.' }))
   }
   // 토큰 만료 시 폼 전체 차단 + 재연동 CTA
   if (tokenExpired) {

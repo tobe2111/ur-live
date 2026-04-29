@@ -1017,8 +1017,7 @@ export default function SellerPage() {
                       </button>
                       <a
                         href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        target="_blank" rel="noopener noreferrer"
                         className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-0.5"
                       >
                         {t('seller.newTab')} <ArrowUpRight className="w-3 h-3" />
@@ -1044,8 +1043,7 @@ export default function SellerPage() {
                   <div className="flex gap-2 mt-4">
                     <a
                       href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      target="_blank" rel="noopener noreferrer"
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200"
                     >
                       {t('seller.newTab')} <ArrowUpRight className="w-3 h-3" />

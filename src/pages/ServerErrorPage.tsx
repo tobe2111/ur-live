@@ -65,8 +65,7 @@ export default function ServerErrorPage() {
           </p>
           <a
             href="http://pf.kakao.com/_AITdn/chat"
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center justify-center px-6 py-3 text-[15px] font-normal text-[#007aff] hover:text-[#0051d5] transition-colors rounded-lg hover:bg-[#007aff]/5"
           >
             <MessageCircle className="mr-2 h-4 w-4" />
@@ -80,8 +79,7 @@ export default function ServerErrorPage() {
             서비스 상태 확인:{' '}
             <a 
               href="https://live.ur-team.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer" 
               className="text-[#007aff] hover:text-[#0051d5] transition-colors"
             >
               live.ur-team.com

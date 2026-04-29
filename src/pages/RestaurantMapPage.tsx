@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { isKorea } from '@/shared/config/region'
 import { storage } from '@/shared/utils/storage'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { escapeHtml } from '@/shared/utils/html'
 
 interface Restaurant {
@@ -658,8 +659,7 @@ export default function RestaurantMapPage() {
                 {selected.restaurant_lat && selected.restaurant_lng && (
                   <a
                     href={kakaoDirectionsUrl(selected)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    target="_blank" rel="noopener noreferrer"
                     aria-label="카카오맵 길찾기"
                     className="flex items-center justify-center gap-1 px-3 h-10 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-xs font-bold"
                   >
@@ -773,6 +773,7 @@ export default function RestaurantMapPage() {
 
 // ── 일반 맛집 클릭 시 모달 — 알림/영입 신청 + 길찾기 ─────────────────
 function SuggestionModal({ place, onClose }: { place: KakaoPlace; onClose: () => void }) {
+  useEscapeKey(onClose)
   const [phone, setPhone] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState<'invite' | 'notify' | null>(null)
@@ -807,8 +808,8 @@ function SuggestionModal({ place, onClose }: { place: KakaoPlace; onClose: () =>
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center" onClick={onClose} role="presentation">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
         <div>
           <p className="text-xs text-gray-500">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
           <h3 className="text-lg font-bold text-gray-900">{place.place_name}</h3>
@@ -860,8 +861,7 @@ function SuggestionModal({ place, onClose }: { place: KakaoPlace; onClose: () =>
         <div className="flex gap-2 pt-1">
           <a
             href={`https://map.kakao.com/link/to/${encodeURIComponent(place.place_name)},${place.y},${place.x}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold"
           >
             <Navigation className="w-4 h-4" /> 카카오맵 길찾기

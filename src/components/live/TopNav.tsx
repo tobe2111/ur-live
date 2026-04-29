@@ -37,8 +37,7 @@ export function TopNav({ viewers, sellerLinks }: {
           {sellerLinks?.youtube && (
             <a
               href={sellerLinks.youtube}
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-600/80 backdrop-blur-sm hover:bg-red-600 transition-all active:scale-95"
               aria-label="YouTube"
             >
@@ -48,8 +47,7 @@ export function TopNav({ viewers, sellerLinks }: {
           {sellerLinks?.instagram && (
             <a
               href={sellerLinks.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/80 to-pink-500/80 backdrop-blur-sm hover:from-purple-500 hover:to-pink-500 transition-all active:scale-95"
               aria-label="Instagram"
             >
@@ -59,8 +57,7 @@ export function TopNav({ viewers, sellerLinks }: {
           {sellerLinks?.tiktok && (
             <a
               href={sellerLinks.tiktok}
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center w-8 h-8 rounded-lg bg-black/80 backdrop-blur-sm hover:bg-black transition-all active:scale-95"
               aria-label="TikTok"
             >
