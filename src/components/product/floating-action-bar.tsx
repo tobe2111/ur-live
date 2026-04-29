@@ -1,4 +1,4 @@
-import { ShoppingCart, Heart } from 'lucide-react'
+import { Heart } from 'lucide-react'
 
 interface FloatingActionBarProps {
   onAddToCart: () => void;

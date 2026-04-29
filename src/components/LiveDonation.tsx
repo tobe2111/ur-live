@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync as getUserId } from '@/utils/auth'
+import { glass } from '@/components/glass/glassTokens'
 
 interface DonationEffect {
   id: string
@@ -123,13 +124,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
       <button
         onClick={() => setShowSheet(true)}
         className="flex items-center justify-center rounded-full transition-all active:scale-90"
-        style={{
-          width: 40, height: 40,
-          background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255,255,255,0.15)',
-        }}
+        style={{ width: 40, height: 40, ...glass.actionRail }}
         aria-label="선물하기"
       >
         <Gift style={{ width: 18, height: 18, color: '#fff' }} />

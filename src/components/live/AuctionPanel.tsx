@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Gavel, TrendingUp, Crown, Timer } from 'lucide-react'
+import { Gavel, Crown, Timer } from 'lucide-react'
 
 interface AuctionData {
   id: number; title: string; start_price: number; current_price: number
