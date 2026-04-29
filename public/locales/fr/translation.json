@@ -87,6 +87,12 @@
     "invalidPhone": "Veuillez saisir un numéro de téléphone valide.",
     "addressRequired": "Veuillez sélectionner une adresse de livraison.",
     "couponApplyFailed": "Échec de l'application du coupon.",
+    "wishlistAdded": "Ajouté à la liste de souhaits",
+    "comingSoon": "Bientôt disponible",
+    "loadFailed": "Échec du chargement",
+    "outOfStock": "Rupture de stock",
+    "interestAdded": "Intérêt enregistré ! Nous vous préviendrons au démarrage de l'achat groupé",
+    "interestRemoved": "Intérêt supprimé",
     "won": "₩",
     "count": "items",
     "person": "people",
@@ -1930,7 +1936,34 @@
     "resetPasswordSuccess": "Password reset email sent",
     "showPassword": "Show password",
     "signupSuccess": "Account created successfully",
-    "tagline": "A new way to shop live"
+    "tagline": "A new way to shop live",
+    "pin": {
+      "invalidFormat": "Le code PIN doit comporter 4 à 6 chiffres",
+      "verified": "PIN vérifié. Actions sensibles disponibles pendant 15 minutes",
+      "verifyFailed": "Échec de la vérification du PIN",
+      "notSet": "PIN non défini. Veuillez le configurer depuis votre profil.",
+      "mismatch": "Les codes PIN ne correspondent pas",
+      "set": "PIN configuré",
+      "setFailed": "Échec de la configuration du PIN",
+      "kakaoReverified": "Réauthentification Kakao terminée",
+      "kakaoReverifyFailed": "Échec de la réauthentification Kakao — Lien Kakao requis",
+      "kakaoReverifyFailedGeneric": "Échec de la réauthentification Kakao"
+    },
+    "kakao": {
+      "popupBlocked": "La fenêtre contextuelle a été bloquée. Veuillez vérifier les paramètres du navigateur.",
+      "linked": "Compte Kakao lié !",
+      "unlinked": "Lien Kakao supprimé",
+      "passwordRequired": "Configuration du mot de passe requise. Veuillez en définir un depuis votre profil."
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "loadError": "Échec du chargement des notifications",
+    "retryLater": "Veuillez réessayer plus tard",
+    "markAllRead": "Tout marquer comme lu",
+    "empty": "Aucune notification",
+    "emptyDesc": "Les nouvelles activités apparaîtront ici",
+    "back": "Retour"
   },
   "cart": {
     "continueShop": "Continue Shopping",

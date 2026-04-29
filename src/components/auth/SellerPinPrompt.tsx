@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props) {
+  const { t } = useTranslation()
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
   const basePath = role === 'seller' ? '/api/seller' : '/api/agency'
@@ -35,26 +37,26 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
 
   async function submit() {
     if (!/^\d{4,6}$/.test(pin)) {
-      toast.error('PIN은 4~6자리 숫자여야 합니다')
+      toast.error(t('auth.pin.invalidFormat'))
       return
     }
     setLoading(true)
     try {
       const res = await api.post(`${basePath}/verify-pin`, { pin })
       if (res.data?.success) {
-        toast.success('PIN 확인 완료. 15분간 민감 액션 사용 가능')
+        toast.success(t('auth.pin.verified'))
         onVerified()
       } else {
-        toast.error(res.data?.error || 'PIN 확인 실패')
+        toast.error(res.data?.error || t('auth.pin.verifyFailed'))
       }
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string; code?: string } } }
       if (err.response?.data?.code === 'PIN_NOT_SET') {
-        toast.error('PIN이 설정되지 않았어요. 먼저 프로필에서 설정해주세요.')
+        toast.error(t('auth.pin.notSet'))
         onCancel()
         return
       }
-      toast.error(err.response?.data?.error || 'PIN 확인 실패')
+      toast.error(err.response?.data?.error || t('auth.pin.verifyFailed'))
     } finally { setLoading(false) }
   }
 
@@ -112,14 +114,14 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
               try {
                 const res = await api.post(`${basePath}/request-kakao-stepup`)
                 if (res.data?.success) {
-                  toast.success('카카오 재인증 완료')
+                  toast.success(t('auth.pin.kakaoReverified'))
                   onVerified()
                 } else {
-                  toast.error(res.data?.error || '카카오 재인증 실패 — 카카오 연동이 필요합니다')
+                  toast.error(res.data?.error || t('auth.pin.kakaoReverifyFailed'))
                 }
               } catch (e: unknown) {
                 const err = e as { response?: { data?: { error?: string } } }
-                toast.error(err.response?.data?.error || '카카오 재인증 실패')
+                toast.error(err.response?.data?.error || t('auth.pin.kakaoReverifyFailedGeneric'))
               }
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-xs font-semibold rounded-lg">
@@ -135,6 +137,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
  * SellerPinSetup — 셀러/에이전시 프로필에서 PIN 최초 설정
  */
 export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKakao: boolean; role?: 'seller' | 'agency' }) {
+  const { t } = useTranslation()
   const basePath = role === 'seller' ? '/api/seller' : '/api/agency'
   const [pinSet, setPinSet] = useState<boolean | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -150,11 +153,11 @@ export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKak
 
   async function save() {
     if (form.pin !== form.pin_confirm) {
-      toast.error('PIN이 일치하지 않습니다')
+      toast.error(t('auth.pin.mismatch'))
       return
     }
     if (!/^\d{4,6}$/.test(form.pin)) {
-      toast.error('PIN은 4~6자리 숫자여야 합니다')
+      toast.error(t('auth.pin.invalidFormat'))
       return
     }
     setLoading(true)
@@ -163,16 +166,16 @@ export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKak
       if (!linkedToKakao) body.current_password = form.current_password
       const res = await api.post(`${basePath}/set-pin`, body)
       if (res.data?.success) {
-        toast.success('PIN이 설정되었습니다')
+        toast.success(t('auth.pin.set'))
         setPinSet(true)
         setShowForm(false)
         setForm({ current_password: '', pin: '', pin_confirm: '' })
       } else {
-        toast.error(res.data?.error || 'PIN 설정 실패')
+        toast.error(res.data?.error || t('auth.pin.setFailed'))
       }
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } } }
-      toast.error(err.response?.data?.error || 'PIN 설정 실패')
+      toast.error(err.response?.data?.error || t('auth.pin.setFailed'))
     } finally { setLoading(false) }
   }
 

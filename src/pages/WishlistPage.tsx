@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -27,6 +28,7 @@ interface WishlistItem {
 }
 
 const WishlistPage: React.FC = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [wishlists, setWishlists] = useState<WishlistItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,7 +37,7 @@ const WishlistPage: React.FC = () => {
 
   useEffect(() => {
     if (!isLoggedInSync()) {
-      toast.info('로그인이 필요합니다.')
+      toast.info(t('common.loginRequired'))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
@@ -77,7 +79,7 @@ const WishlistPage: React.FC = () => {
     e.stopPropagation()
 
     if (item.stock === 0) {
-      toast.info('품절된 상품입니다.')
+      toast.info(t('common.outOfStock'))
       return
     }
 
@@ -90,7 +92,7 @@ const WishlistPage: React.FC = () => {
       })
 
       if (response.data.success) {
-        toast.success('장바구니에 추가되었습니다.')
+        toast.success(t('cart.itemAdded'))
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };

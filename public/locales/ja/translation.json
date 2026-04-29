@@ -87,6 +87,12 @@
     "invalidPhone": "正しい電話番号を入力してください。",
     "addressRequired": "配送先を選択してください。",
     "couponApplyFailed": "クーポンの適用に失敗しました。",
+    "wishlistAdded": "ウィッシュリストに追加しました",
+    "comingSoon": "準備中です",
+    "loadFailed": "読み込みに失敗しました",
+    "outOfStock": "品切れの商品です",
+    "interestAdded": "関心登録完了!共同購入開始時にお知らせします",
+    "interestRemoved": "関心登録を解除しました",
     "won": "円",
     "count": "個",
     "person": "人",
@@ -182,7 +188,34 @@
     "resetPasswordDesc": "Enter your registered email and\nwe'll send you a password reset link.",
     "resetPasswordSuccess": "Password reset email sent",
     "showPassword": "パスワードを表示",
-    "signupSuccess": "会員登録成功"
+    "signupSuccess": "会員登録成功",
+    "pin": {
+      "invalidFormat": "PINは4〜6桁の数字である必要があります",
+      "verified": "PIN確認完了。15分間センシティブな操作が可能です",
+      "verifyFailed": "PIN確認に失敗しました",
+      "notSet": "PINが設定されていません。先にプロフィールで設定してください。",
+      "mismatch": "PINが一致しません",
+      "set": "PINが設定されました",
+      "setFailed": "PIN設定に失敗しました",
+      "kakaoReverified": "Kakao再認証完了",
+      "kakaoReverifyFailed": "Kakao再認証失敗 — Kakao連携が必要です",
+      "kakaoReverifyFailedGeneric": "Kakao再認証失敗"
+    },
+    "kakao": {
+      "popupBlocked": "ポップアップがブロックされました。ブラウザ設定をご確認ください。",
+      "linked": "Kakaoアカウントを連携しました!",
+      "unlinked": "Kakao連携を解除しました",
+      "passwordRequired": "パスワード設定が必要です。先にプロフィールでパスワードを設定してください。"
+    }
+  },
+  "notifications": {
+    "title": "お知らせ",
+    "loadError": "通知を読み込めませんでした",
+    "retryLater": "しばらくしてから再度お試しください",
+    "markAllRead": "すべて既読",
+    "empty": "通知はありません",
+    "emptyDesc": "新しいお知らせがあるとここに表示されます",
+    "back": "戻る"
   },
   "payment": {
     "checkout": "決済する",

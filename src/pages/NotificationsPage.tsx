@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { ChevronLeft, Bell } from 'lucide-react'
 import api from '@/lib/api'
@@ -10,6 +11,7 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -18,8 +20,8 @@ export default function NotificationsPage() {
   useEffect(() => {
     api.get('/api/social/notifications')
       .then(r => { if (r.data.success) setNotifications(r.data.data || []) })
-      .catch(() => { setError('알림을 불러오지 못했습니다') }).finally(() => setLoading(false))
-  }, [])
+      .catch(() => { setError(t('notifications.loadError')) }).finally(() => setLoading(false))
+  }, [t])
 
   async function markAllRead() {
     try {
@@ -34,11 +36,11 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
         <div className="flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-white">
-            <ChevronLeft className="w-6 h-6" />
+          <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="text-white">
+            <ChevronLeft className="w-6 h-6" aria-hidden="true" />
           </button>
-          <h1 className="text-white font-bold text-[15px]">알림</h1>
-          <button onClick={markAllRead} className="text-xs text-pink-400 font-medium">모두 읽음</button>
+          <h1 className="text-white font-bold text-[15px]">{t('notifications.title')}</h1>
+          <button type="button" onClick={markAllRead} className="text-xs text-pink-400 font-medium">{t('notifications.markAllRead')}</button>
         </div>
       </div>
 
@@ -49,15 +51,15 @@ export default function NotificationsPage() {
           </div>
         ) : error ? (
           <div className="text-center py-20">
-            <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" aria-hidden="true" />
             <p className="text-white font-bold">{error}</p>
-            <p className="text-sm text-gray-500 mt-1">잠시 후 다시 시도해 주세요</p>
+            <p className="text-sm text-gray-500 mt-1">{t('notifications.retryLater')}</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="text-center py-20">
-            <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-white font-bold">알림이 없습니다</p>
-            <p className="text-sm text-gray-500 mt-1">새로운 소식이 있으면 여기에 표시됩니다</p>
+            <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" aria-hidden="true" />
+            <p className="text-white font-bold">{t('notifications.empty')}</p>
+            <p className="text-sm text-gray-500 mt-1">{t('notifications.emptyDesc')}</p>
           </div>
         ) : (
           <div>

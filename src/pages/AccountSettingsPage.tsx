@@ -265,16 +265,26 @@ export default function AccountSettingsPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">이름 <span className="text-red-500">*</span></label>
-                <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                <label htmlFor="account-name" className="block text-sm font-medium text-gray-700 mb-1.5">이름 <span className="text-red-500" aria-hidden="true">*</span></label>
+                <input
+                  id="account-name"
+                  required
+                  aria-required="true"
+                  value={editForm.name}
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                  placeholder="이름을 입력하세요" />
+                  placeholder="이름을 입력하세요"
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">전화번호</label>
-                <input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                <label htmlFor="account-phone" className="block text-sm font-medium text-gray-700 mb-1.5">전화번호</label>
+                <input
+                  id="account-phone"
+                  value={editForm.phone}
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                  placeholder="010-0000-0000" type="tel" />
+                  placeholder="010-0000-0000" type="tel"
+                />
               </div>
             </div>
             <div className="flex gap-3 mt-6">

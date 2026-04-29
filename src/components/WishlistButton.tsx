@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
@@ -29,6 +30,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
   className = '',
   onToggle
 }) => {
+  const { t } = useTranslation()
   const [isWishlisted, setIsWishlisted] = useState(initialWishlisted)
   const [isLoading, setIsLoading] = useState(false)
   const [wishlistId, setWishlistId] = useState<number | null>(null)
@@ -68,7 +70,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
     // 로그인 확인
     if (!userId) {
       // 🛡️ 2026-04-28: alert 제거 (카톡 인앱 차단 위험). toast 안내 후 redirect.
-      toast.error('로그인이 필요합니다')
+      toast.error(t('common.loginRequired'))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       setTimeout(() => { window.location.href = '/login' }, 600)
       return

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List, Clock } from 'lucide-react'
 import api from '@/lib/api'
 import SEO, { itemListJsonLd } from '@/components/SEO'
@@ -90,6 +91,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 const ITEMS_PER_PAGE = 12
 
 export default function BrowsePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -144,12 +146,12 @@ export default function BrowsePage() {
       }).catch(() => {
         setInterestedIds(prev => { const next = new Set(prev); next.delete(productId); return next })
       })
-      toast.success('관심 등록됨! 공구 시작 시 알려드릴게요')
+      toast.success(t('common.interestAdded'))
     } else {
       api.post('/api/interest/remove', { product_id: productId, type: 'meal_voucher' }).catch(() => {
         setInterestedIds(prev => { const next = new Set(prev); next.add(productId); return next })
       })
-      toast.info('관심 등록이 해제되었습니다')
+      toast.info(t('common.interestRemoved'))
     }
   }
 

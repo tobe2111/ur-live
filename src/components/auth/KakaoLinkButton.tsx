@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Loader2, Unlink, AlertCircle } from 'lucide-react'
@@ -25,6 +26,7 @@ interface LinkStatus {
 }
 
 export function KakaoLinkButton({ role }: Props) {
+  const { t } = useTranslation()
   const [status, setStatus] = useState<LinkStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [working, setWorking] = useState(false)
@@ -59,7 +61,7 @@ export function KakaoLinkButton({ role }: Props) {
     )
 
     if (!popup) {
-      toast.error('팝업이 차단되었어요. 브라우저 팝업 허용 후 다시 시도해주세요.')
+      toast.error(t('auth.kakao.popupBlocked'))
       return
     }
 
@@ -81,10 +83,10 @@ export function KakaoLinkButton({ role }: Props) {
       try {
         const res = await api.post(`${basePath}/link-kakao`, {})
         if (res.data?.success) {
-          toast.success('카카오 계정이 연동되었어요!')
+          toast.success(t('auth.kakao.linked'))
           await refresh()
         } else {
-          toast.error(res.data?.error || '연동 실패')
+          toast.error(res.data?.error || t('auth.pin.verifyFailed'))
         }
       } catch (e: unknown) {
         const err = e as { response?: { data?: { error?: string } } }
@@ -105,17 +107,17 @@ export function KakaoLinkButton({ role }: Props) {
     try {
       const res = await api.post(`${basePath}/unlink-kakao`, { current_password: pw })
       if (res.data?.success) {
-        toast.success('카카오 연동이 해제되었어요')
+        toast.success(t('auth.kakao.unlinked'))
         await refresh()
       } else {
-        toast.error(res.data?.error || '해제 실패')
+        toast.error(res.data?.error || t('auth.pin.verifyFailed'))
       }
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string; code?: string } } }
       if (err.response?.data?.code === 'PASSWORD_REQUIRED') {
-        toast.error('비밀번호 설정이 필요합니다. "비밀번호 찾기" 로 설정 후 다시 시도해주세요.')
+        toast.error(t('auth.kakao.passwordRequired'))
       } else {
-        toast.error(err.response?.data?.error || '해제 실패')
+        toast.error(err.response?.data?.error || t('auth.pin.verifyFailed'))
       }
     } finally { setWorking(false) }
   }
