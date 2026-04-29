@@ -140,7 +140,8 @@
     "settingChangeFailed": "设置更改失败",
     "disconnectFailed": "断开连接失败。",
     "copyFailed": "复制失败。",
-    "home": "首页"
+    "home": "首页",
+    "uploadComplete": "上传完成"
   },
   "auth": {
     "email": "邮箱",
@@ -552,7 +553,8 @@
       "durationMin": "시간(분)",
       "groupBuyStarted": "🎁 라이브 공구가 시작되었습니다!",
       "groupBuyCreateFailed": "라이브 공구 생성 실패",
-      "startGroupBuy": "라이브 공구 시작"
+      "startGroupBuy": "라이브 공구 시작",
+      "testCreated": "测试直播已创建。在推流工具中启动后验证管道。"
     },
     "startBroadcast": "开始直播",
     "endBroadcast": "结束直播",
@@ -1450,7 +1452,9 @@
       "participantCount": "{{current}}/{{target}}人",
       "deadline": "截止",
       "storeOwnerStatsLink": "店主统计链接",
-      "linkCopied": "链接已复制！请分享给店主。"
+      "linkCopied": "链接已复制！请分享给店主。",
+      "linkRotated": "已用新链接重新发送 (旧链接已过期)",
+      "alimtalkSent": "已向商家发送Alimtalk"
     },
     "voucher": {
       "categoryTitle": "团购券类型",
@@ -1487,7 +1491,11 @@
       "terminate": "终止",
       "commissionRate": "主持人佣金率",
       "noPartnerships": "暂无代销合作。",
-      "startPartnership": "开始与其他卖家合作。"
+      "startPartnership": "开始与其他卖家合作。",
+      "loadFailed": "无法加载列表",
+      "approved": "已批准",
+      "terminateConfirm": "确定要终止吗? 终止后无法重新启动。",
+      "terminated": "已终止"
     },
     "mealVoucher": {
       "title": "注册餐券",
@@ -1537,7 +1545,9 @@
       "originalPriceShort": "原价",
       "discount": "折扣",
       "targetCount": "目标 {{count}}人",
-      "voucherSuffix": "餐券"
+      "voucherSuffix": "餐券",
+      "imageSizeLimit": "只能上传5MB以下的图片",
+      "imageSearchFailed": "图片搜索失败"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1611,7 +1621,8 @@
       "notice": "정산 안내",
       "noticeCycle": "정산 주기: 매주 정산 (월~일 매출 → 다음 주 정산)",
       "noticeConfirmed": "구매 확정된 주문만 정산 대상입니다",
-      "noticeCommission": "플랫폼 수수료 15% 차감 후 정산됩니다"
+      "noticeCommission": "플랫폼 수수료 15% 차감 후 정산됩니다",
+      "pinNotSet": "尚未设置安全PIN码。请先在个人资料中设置。"
     },
     "monthlyGoalTitle": "本月销售目标",
     "changeGoal": "修改目标",
@@ -1677,7 +1688,31 @@
     "discountAmount": "折扣金额",
     "discountPercent": "折扣百分比",
     "discountType": "折扣方式",
-    "noBundles": "没有注册的套装"
+    "noBundles": "没有注册的套装",
+    "bundles": {
+      "loadFailed": "无法加载数据",
+      "nameRequired": "请输入捆绑包名称",
+      "minItems": "请选择至少2个商品",
+      "updated": "捆绑包已更新",
+      "created": "捆绑包已创建",
+      "processFailed": "处理失败",
+      "statusFailed": "状态更改失败",
+      "deleteConfirm": "要删除此捆绑包吗?",
+      "deleted": "已删除",
+      "deleteFailed": "删除失败"
+    },
+    "register": {
+      "requiredFields": "请填写必填项",
+      "businessNumberFormat": "营业执照号格式: XXX-XX-XXXXX",
+      "applied": "卖家转换申请已完成。等待管理员批准。",
+      "loginRequired": "需要登录。请使用Kakao登录后重试。"
+    },
+    "stream": {
+      "productsLoadFailed": "无法加载商品列表"
+    },
+    "public": {
+      "liveEnded": "直播已结束。"
+    }
   },
   "admin": {
     "login": {
@@ -1943,7 +1978,8 @@
       "processingError": "处理时发生错误",
       "seoTitle": "餐券确认",
       "seoDescription": "通过二维码确认餐券"
-    }
+    },
+    "qrCode": "二维码"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",

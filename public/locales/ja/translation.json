@@ -140,7 +140,8 @@
     "settingChangeFailed": "設定の変更に失敗しました",
     "disconnectFailed": "連携解除に失敗しました。",
     "copyFailed": "コピーに失敗しました。",
-    "home": "ホーム"
+    "home": "ホーム",
+    "uploadComplete": "アップロード完了"
   },
   "auth": {
     "email": "メールアドレス",
@@ -552,7 +553,8 @@
       "durationMin": "時間（分）",
       "groupBuyStarted": "ライブ共同購入が開始されました！",
       "groupBuyCreateFailed": "ライブ共同購入の作成に失敗しました",
-      "startGroupBuy": "ライブ共同購入開始"
+      "startGroupBuy": "ライブ共同購入開始",
+      "testCreated": "テスト放送を作成しました。配信ツールで開始してパイプラインを確認してください。"
     },
     "startBroadcast": "配信開始",
     "endBroadcast": "配信終了",
@@ -1450,7 +1452,9 @@
       "participantCount": "{{current}}/{{target}}名",
       "deadline": "締切",
       "storeOwnerStatsLink": "店舗オーナー統計リンク",
-      "linkCopied": "リンクがコピーされました！店舗オーナーに共有してください。"
+      "linkCopied": "リンクがコピーされました！店舗オーナーに共有してください。",
+      "linkRotated": "新しいリンクで再送信されました (以前のリンクは期限切れ)",
+      "alimtalkSent": "オーナーにアリムトークが送信されました"
     },
     "voucher": {
       "categoryTitle": "クーポンカテゴリ",
@@ -1487,7 +1491,11 @@
       "terminate": "終了",
       "commissionRate": "ホスト手数料率",
       "noPartnerships": "委託パートナーシップがありません。",
-      "startPartnership": "他のセラーとのコラボを始めましょう。"
+      "startPartnership": "他のセラーとのコラボを始めましょう。",
+      "loadFailed": "リストを読み込めませんでした",
+      "approved": "承認されました",
+      "terminateConfirm": "本当に終了しますか? 終了後は再開できません。",
+      "terminated": "終了しました"
     },
     "mealVoucher": {
       "title": "食事券登録",
@@ -1537,7 +1545,9 @@
       "originalPriceShort": "定価",
       "discount": "割引",
       "targetCount": "目標 {{count}}名",
-      "voucherSuffix": "食事券"
+      "voucherSuffix": "食事券",
+      "imageSizeLimit": "5MB以下の画像のみアップロード可能です",
+      "imageSearchFailed": "画像検索失敗"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1600,7 +1610,8 @@
       "notice": "精算案内",
       "noticeCycle": "精算周期: 毎週精算（月～日の売上 → 翌週精算）",
       "noticeConfirmed": "購入確定済みの注文のみ精算対象です",
-      "noticeCommission": "プラットフォーム手数料15%差引後に精算されます"
+      "noticeCommission": "プラットフォーム手数料15%差引後に精算されます",
+      "pinNotSet": "セキュリティPINが設定されていません。プロフィールで先に設定してください。"
     },
     "nav": {
       "products": "商品管理",
@@ -1677,7 +1688,31 @@
     "discountAmount": "割引額",
     "discountPercent": "割引率",
     "discountType": "割引方式",
-    "noBundles": "登録されたバンドルがありません"
+    "noBundles": "登録されたバンドルがありません",
+    "bundles": {
+      "loadFailed": "データを読み込めません",
+      "nameRequired": "バンドル名を入力してください",
+      "minItems": "最低2つの商品を選択してください",
+      "updated": "バンドルが更新されました",
+      "created": "バンドルが作成されました",
+      "processFailed": "処理に失敗しました",
+      "statusFailed": "状態の変更に失敗しました",
+      "deleteConfirm": "バンドルを削除しますか?",
+      "deleted": "削除されました",
+      "deleteFailed": "削除に失敗しました"
+    },
+    "register": {
+      "requiredFields": "必須項目を入力してください",
+      "businessNumberFormat": "事業者番号形式: XXX-XX-XXXXX",
+      "applied": "セラー転換申請が完了しました。管理者の承認をお待ちください。",
+      "loginRequired": "ログインが必要です。カカオログイン後、再試行してください。"
+    },
+    "stream": {
+      "productsLoadFailed": "商品リストを読み込めません"
+    },
+    "public": {
+      "liveEnded": "ライブ放送が終了しました。"
+    }
   },
   "admin": {
     "login": {
@@ -1943,7 +1978,8 @@
       "processingError": "処理中にエラーが発生しました",
       "seoTitle": "クーポン確認",
       "seoDescription": "QRコードでクーポンを確認します"
-    }
+    },
+    "qrCode": "QRコード"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",

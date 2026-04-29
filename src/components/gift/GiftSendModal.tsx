@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { X, Gift, Sparkles, Loader2 } from 'lucide-react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface Props {
   open: boolean
@@ -28,6 +29,7 @@ interface Props {
 const MAX_MESSAGE = 200
 
 export default function GiftSendModal({ open, onClose, productId, productName, productThumbnail, productPrice }: Props) {
+  useEscapeKey(() => { if (open) onClose() })
   const navigate = useNavigate()
   const [recipientPhone, setRecipientPhone] = useState('')
   const [recipientName, setRecipientName] = useState('')
@@ -79,6 +81,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
     <div
       className="fixed inset-0 z-[100] bg-black/50 flex items-end sm:items-center justify-center"
       onClick={onClose}
+      role="presentation"
     >
       <div
         className="bg-white w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto"

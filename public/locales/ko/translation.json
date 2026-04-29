@@ -141,7 +141,8 @@
     "disconnectFailed": "연동 해제에 실패했습니다.",
     "copyFailed": "복사에 실패했습니다.",
     "home": "홈으로",
-    "dismiss": "닫기"
+    "dismiss": "닫기",
+    "uploadComplete": "업로드 완료"
   },
   "auth": {
     "email": "이메일",
@@ -562,7 +563,8 @@
       "durationMin": "시간(분)",
       "groupBuyStarted": "🎁 라이브 공구가 시작되었습니다!",
       "groupBuyCreateFailed": "라이브 공구 생성 실패",
-      "startGroupBuy": "라이브 공구 시작"
+      "startGroupBuy": "라이브 공구 시작",
+      "testCreated": "테스트 방송을 생성했습니다. 송출 도구에서 시작 후 파이프라인 확인해보세요."
     },
     "startBroadcast": "방송 시작",
     "endBroadcast": "방송 종료",
@@ -1459,7 +1461,9 @@
       "participantCount": "{{current}}/{{target}}명",
       "deadline": "마감",
       "storeOwnerStatsLink": "식당 사장 통계 링크",
-      "linkCopied": "링크 복사됨! 식당 사장에게 공유하세요."
+      "linkCopied": "링크 복사됨! 식당 사장에게 공유하세요.",
+      "linkRotated": "새 링크로 재발송되었습니다 (이전 링크 만료)",
+      "alimtalkSent": "사장님께 알림톡이 발송되었습니다"
     },
     "voucher": {
       "categoryTitle": "공구권 종류",
@@ -1496,7 +1500,11 @@
       "terminate": "종료",
       "commissionRate": "host 수수료율",
       "noPartnerships": "위탁 파트너십이 없습니다.",
-      "startPartnership": "다른 셀러와 협업을 시작해보세요."
+      "startPartnership": "다른 셀러와 협업을 시작해보세요.",
+      "loadFailed": "목록을 불러오지 못했어요",
+      "approved": "승인되었습니다",
+      "terminateConfirm": "정말 종료하시겠어요? 종료 후 다시 시작할 수 없습니다.",
+      "terminated": "종료되었습니다"
     },
     "mealVoucher": {
       "title": "식사권 등록",
@@ -1547,7 +1555,9 @@
       "discount": "할인",
       "targetCount": "목표 {{count}}명",
       "voucherSuffix": "식사권",
-      "subtitle": "식사권 / 공동구매 등록"
+      "subtitle": "식사권 / 공동구매 등록",
+      "imageSizeLimit": "5MB 이하 이미지만 업로드 가능합니다",
+      "imageSearchFailed": "이미지 검색 실패"
     },
     "analyticsTitle": "매출 분석",
     "revenueChart": "매출 차트",
@@ -1603,7 +1613,8 @@
       "notice": "정산 안내",
       "noticeCycle": "정산 주기: 매주 정산 (월~일 매출 → 다음 주 정산)",
       "noticeConfirmed": "구매 확정된 주문만 정산 대상입니다",
-      "noticeCommission": "플랫폼 수수료 15% 차감 후 정산됩니다"
+      "noticeCommission": "플랫폼 수수료 15% 차감 후 정산됩니다",
+      "pinNotSet": "보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요."
     },
     "nav": {
       "products": "상품 관리",
@@ -1703,6 +1714,30 @@
       "firstLive": "첫 라이브 방송",
       "firstOrder": "첫 주문 받기",
       "completed": "완료"
+    },
+    "bundles": {
+      "loadFailed": "데이터를 불러올 수 없습니다",
+      "nameRequired": "번들 이름을 입력하세요",
+      "minItems": "최소 2개 상품을 선택하세요",
+      "updated": "번들이 수정되었습니다",
+      "created": "번들이 생성되었습니다",
+      "processFailed": "처리에 실패했습니다",
+      "statusFailed": "상태 변경에 실패했습니다",
+      "deleteConfirm": "번들을 삭제하시겠습니까?",
+      "deleted": "삭제되었습니다",
+      "deleteFailed": "삭제에 실패했습니다"
+    },
+    "register": {
+      "requiredFields": "필수 항목을 입력해주세요",
+      "businessNumberFormat": "사업자번호 형식: XXX-XX-XXXXX",
+      "applied": "셀러 전환 신청이 완료됐어요. 관리자 승인을 기다려주세요.",
+      "loginRequired": "로그인이 필요합니다. 카카오 로그인 후 다시 시도해주세요."
+    },
+    "stream": {
+      "productsLoadFailed": "상품 목록을 불러올 수 없습니다"
+    },
+    "public": {
+      "liveEnded": "라이브 방송이 종료됐어요."
     }
   },
   "admin": {
@@ -1973,7 +2008,8 @@
       "processingError": "처리 중 오류가 발생했습니다",
       "seoTitle": "식사권 확인",
       "seoDescription": "QR 코드로 식사권을 확인합니다"
-    }
+    },
+    "qrCode": "QR 코드"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",
