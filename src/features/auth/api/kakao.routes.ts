@@ -126,12 +126,19 @@ function safeRedirect(path: string | null | undefined): string {
   if (/[\n\t\r\0]/.test(path)) return '/';
   const FORBIDDEN = ['/login', '/seller/login', '/admin/login', '/agency/login', '/auth/', '/oauth/'];
   for (const prefix of FORBIDDEN) {
-    if (path === prefix || path.startsWith(prefix + '?') || path.startsWith(prefix + '/') || path.startsWith(prefix + '#')) {
-      return '/';
+    if (prefix.endsWith('/')) {
+      if (path.startsWith(prefix)) return '/';
+    } else {
+      if (path === prefix || path.startsWith(prefix + '?') || path.startsWith(prefix + '/') || path.startsWith(prefix + '#')) {
+        return '/';
+      }
     }
   }
   return path;
 }
+
+// 🧪 단위 테스트용 export — frontend safeInternalPath 와 양쪽 일관성 검증
+export { safeRedirect as __safeRedirectForTest };
 
 /** Extract a named cookie value from a Cookie header string. */
 function readCookie(cookieHeader: string | null | undefined, name: string): string | null {
