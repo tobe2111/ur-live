@@ -28,6 +28,45 @@
 | `utils/auth.requireLogin` 검증 분산 | ✅ `safeInternalPath()` 헬퍼 사용 — auth path/외부 URL 거부 |
 | 죽은 코드: `errorHandler.checkAuthError`, `useVersionCheck`, `login-redirect.ts`, `market-price-chart.tsx` | ✅ 4건 삭제 |
 
+### 2026-04-29 후속 — 광역 audit 결과 (3개 영역)
+
+이번 세션 카카오 무한 루프 fix 후 i18n / a11y / API 보안 전수조사 (3개 Agent 병렬). 결과:
+
+#### TD-014 (신규) — i18n 하드코딩 한국어 100+건
+- **Agent 결과**: 462건 검출, 결제 / 인증 / 라이브 / 알림 / 셀러·어드민·에이전시 페이지 광범위
+- **이번 세션 처리**: 0건 (namespace 신설 필요한 광범위 작업 → 별도 PR)
+- **권고 처리 순서**: (1) CheckoutPage / TossPaymentWidget / GiftSendModal — 결제 흐름, (2) SellerPinPrompt / KakaoLinkButton — 인증, (3) NotificationsPage / LivePageV2 / ShortsPage, (4) Admin/Agency 운영자 영역
+- **주의**: B영역 (`t() || '한글'` fallback 패턴) 0건, C영역 (6언어 비대칭) 0건 — 키 인프라는 양호
+
+#### TD-015 (신규) — a11y 30건 (모달 표준화 부재 / icon-only 버튼 / 폼 라벨 미연결)
+- **Agent 결과**: 30건 HIGH/MEDIUM/LOW
+- **이번 세션 처리** ✅: CartItem (X / -/+ 버튼 aria-label + 썸네일 alt), CartHeader (뒤로 가기 aria-label), ProductListSheet (`role="dialog"`, `aria-modal`, ESC + focus trap, 닫기 한국어화)
+- **남은 작업**: LiveDonation / FirstTimeTutorial / BroadcastDiagnostic / SellerPinPrompt / ChatInputModal 모달 표준화. ProductGrid / BrowseProductCard 의 `<div onClick>` → `<a>` 변환. CheckoutPage 배송지 모달 폼 label htmlFor.
+
+#### TD-016 (신규) — API 보안 audit
+**CRITICAL 처리 ✅** (2건):
+- ✅ `seller-orders.routes.ts` POST/PUT /products — `Number.isFinite()` + 범위 검증 (가격 0~1억, 재고 0~100만, 정가, 라이브가격) + name/description 길이 + status enum
+- ✅ `agency-ops.routes.ts` PUT /targets, POST /contracts — `agency_sellers` 소유권 검증 (다른 에이전시 셀러 fake 계약 차단). target_amount Number.isFinite. PUT /contracts/:id status enum.
+
+**CRITICAL 미처리** (1건 — 코드 변경 큼, 별도 PR):
+- 🔴 `seller-transfer.routes.ts:193-249` 셀러 본인 인증 부재. `from_agency` 가 셀러 대신 이전 동의 가능. 셀러 JWT/카카오 세션 검증 + confirm-by-seller endpoint 신설 필요.
+
+**HIGH 미처리** (5건 — 별도 PR 권장):
+- admin login / 2fa rate limit 누락 (account_lockout 만 의존)
+- broadcast-notify `POST /send/:streamId` 인증 약함 (스팸 가능)
+- youtube live `start/end` stream 소유권 추가 검증
+- admin streams 입력 검증 부족 (description 길이 등)
+
+**MEDIUM 미처리** (7건 — 별도 PR):
+- auction.routes.ts 의 `.catch(() => {})` 6+곳 → `swallow()` 헬퍼
+- internal-admin-tools `BOOTSTRAP_TOKEN` 비밀번호 정책 강화
+- moderation `/check` 인증/rate limit 추가
+- signOut 빈 catch 보강
+
+**LOW 미처리** (5건 — 정리 차원):
+- donations 메시지 sanitize 강화 (DOMPurify)
+- CSRF 보호 cookie-only endpoint 정리
+
 ### TD-003 (Cloudflare 유령 프로젝트) 진단 — 미해결 사용자 액션
 
 **증상**: PR #286 의 `Workers Builds: ur-live-global` 빌드 매번 failure. `wrangler.toml` 변경 0건이라 PR 책임 아님.
