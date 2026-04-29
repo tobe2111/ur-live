@@ -211,8 +211,16 @@
             });
           }
 
-          // 자동 redirect 시도 (iOS 카톡, Android 인앱, Line)
-          if (scheme) {
+          // 🛡️ 2026-04-29: sessionStorage 가드 — 무한 redirect 루프 방어.
+          //   카톡 in-app 에서 kakaotalk:// 스킴이 외부 브라우저 호출 후
+          //   webview 가 reload 되면 이 스크립트가 다시 실행됨. 가드 없으면
+          //   "유저 로그인 무한 루프" 증상 발생 (mobile only).
+          //   key 는 main.tsx 의 autoRedirectKakaoToExternal 와 공유.
+          var REDIRECT_KEY = 'ur_kakao_external_redirect_v1';
+          var alreadyTried = false;
+          try { alreadyTried = sessionStorage.getItem(REDIRECT_KEY) === '1'; } catch (e) {}
+          if (scheme && !alreadyTried) {
+            try { sessionStorage.setItem(REDIRECT_KEY, '1'); } catch (e) {}
             try { window.location.href = scheme; } catch (e) {}
           }
         } catch (e) { /* never break the page */ }
