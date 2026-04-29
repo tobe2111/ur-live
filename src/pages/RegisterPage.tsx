@@ -236,7 +236,7 @@ export default function RegisterPage() {
                 <Link
                   to="/terms"
                   className="text-[#111] underline underline-offset-4 decoration-1 hover:text-[#555]"
-                  target="_blank"
+                  target="_blank" rel="noopener noreferrer"
                 >
                   서비스 이용약관
                 </Link>
@@ -256,7 +256,7 @@ export default function RegisterPage() {
                 <Link
                   to="/privacy"
                   className="text-[#111] underline underline-offset-4 decoration-1 hover:text-[#555]"
-                  target="_blank"
+                  target="_blank" rel="noopener noreferrer"
                 >
                   개인정보처리방침
                 </Link>

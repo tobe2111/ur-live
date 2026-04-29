@@ -36,8 +36,7 @@ export function SnsLinks({ seller, compact }: SnsLinksProps) {
             <a
               key={link.key}
               href={seller[link.key]}
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className={`w-9 h-9 rounded-full ${link.color} flex items-center justify-center hover:opacity-80 transition-opacity`}
             >
               <Icon className={`w-4 h-4 ${link.textColor}`} fill={link.fill ? 'currentColor' : 'none'} />
@@ -62,8 +61,7 @@ export function SnsLinks({ seller, compact }: SnsLinksProps) {
             <a
               key={link.key}
               href={seller[link.key]}
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="group block"
             >
               <div className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg transition-all hover:border-gray-900 hover:bg-gray-50">

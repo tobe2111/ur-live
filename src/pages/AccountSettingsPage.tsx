@@ -9,6 +9,7 @@ import { getUserIdSync, getUserNameSync, getUserEmail } from '@/utils/auth';
 import api from '@/lib/api';
 import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 // ─── 앱 버전 섹션 ──────────────────────────────────────────────
 
@@ -114,6 +115,7 @@ export default function AccountSettingsPage() {
   const [user, setUser] = useState({ id: '', name: '', email: '', phone: '' });
 
   const [editModal, setEditModal] = useState(false);
+  useEscapeKey(() => setEditModal(false));
   const [editForm, setEditForm] = useState({ name: '', phone: '' });
   const [editLoading, setEditLoading] = useState(false);
 
@@ -255,8 +257,8 @@ export default function AccountSettingsPage() {
 
       {/* 프로필 편집 모달 — stays white for readability */}
       {editModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setEditModal(false)} role="presentation">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="프로필 수정">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-gray-900">프로필 수정</h3>
               <button onClick={() => setEditModal(false)}><X className="w-5 h-5 text-gray-400" /></button>

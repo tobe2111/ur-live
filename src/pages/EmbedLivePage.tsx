@@ -79,8 +79,7 @@ export default function EmbedLivePage() {
         <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/80 to-transparent pt-12 pb-3 px-3">
           <a
             href={`https://live.ur-team.com/products/${stream.current_product.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-3 bg-white/95 backdrop-blur rounded-xl p-2.5"
           >
             {stream.current_product.image_url && (
@@ -107,8 +106,7 @@ export default function EmbedLivePage() {
       <div className="absolute top-3 right-3 z-10">
         <a
           href={`https://live.ur-team.com/live/${streamId}`}
-          target="_blank"
-          rel="noopener noreferrer"
+          target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm"
         >
           <span className="text-[9px] font-bold text-white/80">ur-live</span>

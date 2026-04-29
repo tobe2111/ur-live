@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { X, Send } from 'lucide-react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface ChatInputModalProps {
   isOpen: boolean
@@ -21,6 +22,7 @@ export default function ChatInputModal({
   isSeller,
 }: ChatInputModalProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  useEscapeKey(() => { if (isOpen) onClose() })
 
   useEffect(() => {
     if (isOpen) {
@@ -31,7 +33,7 @@ export default function ChatInputModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end" onClick={onClose} role="presentation">
       <div className="bg-black/40 absolute inset-0" />
       <div
         className="relative bg-[#1A1A1A] border-t border-[#2A2A2A] px-4 py-3 flex items-center gap-2 animate-slideUp"

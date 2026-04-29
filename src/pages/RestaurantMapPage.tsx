@@ -659,8 +659,7 @@ export default function RestaurantMapPage() {
                 {selected.restaurant_lat && selected.restaurant_lng && (
                   <a
                     href={kakaoDirectionsUrl(selected)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    target="_blank" rel="noopener noreferrer"
                     aria-label="카카오맵 길찾기"
                     className="flex items-center justify-center gap-1 px-3 h-10 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-xs font-bold"
                   >
@@ -862,8 +861,7 @@ function SuggestionModal({ place, onClose }: { place: KakaoPlace; onClose: () =>
         <div className="flex gap-2 pt-1">
           <a
             href={`https://map.kakao.com/link/to/${encodeURIComponent(place.place_name)},${place.y},${place.x}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold"
           >
             <Navigation className="w-4 h-4" /> 카카오맵 길찾기

@@ -578,8 +578,7 @@ export default function AdminPage() {
                   </div>
                   <a
                     href={`/live/${stream.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    target="_blank" rel="noopener noreferrer"
                     className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
                   >
                     보기

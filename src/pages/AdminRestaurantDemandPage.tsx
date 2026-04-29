@@ -162,8 +162,7 @@ export default function AdminRestaurantDemandPage() {
                   )}
                   <a
                     href={`https://map.kakao.com/link/to/${encodeURIComponent(it.place_name)},${it.lat},${it.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    target="_blank" rel="noopener noreferrer"
                     aria-label="카카오맵 길찾기"
                     className="p-1.5 bg-[#FEE500] text-[#3C1E1E] rounded-md"
                   >
