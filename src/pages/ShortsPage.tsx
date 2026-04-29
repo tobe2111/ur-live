@@ -424,101 +424,97 @@ export default function ShortsPage() {
                 )}
               </div>
 
-              {/* === PRODUCT CARD (bottom) === */}
+              {/* === PRODUCT CARD (bottom) — v4 Boutique 톤 === */}
               {item.product_id && item.product_name && (
                 <div className="absolute bottom-14 left-3 right-3 z-20 animate-[slideUp_0.4s_ease-out]">
-                  <div className="bg-white rounded-3xl overflow-hidden shadow-2xl">
-                    {/* Featured product label strip */}
-                    <div className="bg-gradient-to-r from-pink-500 to-rose-400 px-4 py-1.5">
-                      <span className="text-white text-[10px] font-bold tracking-wider uppercase">Featured Product</span>
+                  <div className="rounded-3xl overflow-hidden"
+                    style={{ background: 'rgba(255,255,255,0.97)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}>
+                    {/* Label strip — Boutique: 옅은 그라데이션 배경 + 빨강 텍스트 */}
+                    <div className="flex items-center justify-between px-4 py-2"
+                      style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.08), rgba(236,72,153,0.08))' }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em' }}>FEATURED PRODUCT</span>
+                      <span style={{ fontSize: 10, color: '#6B7280' }}>영상 속 상품</span>
                     </div>
 
-                    {/* Product content */}
-                    <div className="p-3.5">
-                      <div className="flex items-center gap-3.5">
-                        {/* Product image */}
+                    {/* Main row */}
+                    <div className="flex items-center gap-3 p-3">
+                      <div className="relative rounded-2xl overflow-hidden shrink-0 cursor-pointer"
+                        style={{ width: 72, height: 72 }}
+                        onClick={() => navigate(`/products/${item.product_id}`)}>
                         {item.product_image ? (
-                          <div className="relative shrink-0">
-                            <img
-                              src={item.product_image}
-                              alt={item.product_name}
-                              className="w-[72px] h-[72px] rounded-2xl object-cover cursor-pointer"
-                              onClick={() => navigate(`/products/${item.product_id}`)}
-                            />
-                            {discountRate >= 30 && (
-                              <span className="absolute -top-1 -left-1 bg-red-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-lg">
-                                -{discountRate}%
-                              </span>
-                            )}
-                          </div>
+                          <img src={item.product_image} alt={item.product_name} loading="lazy" className="w-full h-full object-cover" />
                         ) : (
-                          <div
-                            className="w-[72px] h-[72px] rounded-2xl bg-gray-100 flex items-center justify-center shrink-0 cursor-pointer"
-                            onClick={() => navigate(`/products/${item.product_id}`)}
-                          >
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                             <ShoppingCart className="w-6 h-6 text-gray-300" />
                           </div>
                         )}
-
-                        {/* Product info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-gray-900 line-clamp-2 leading-tight mb-1.5">{item.product_name}</p>
-                          {originalPrice > finalPrice && (
-                            <p className="text-[11px] text-gray-400 line-through">{originalPrice.toLocaleString()}원</p>
-                          )}
-                          <div className="flex items-baseline gap-1.5">
-                            {discountRate > 0 && (
-                              <span className="text-[14px] font-extrabold text-red-500">{discountRate}%</span>
-                            )}
-                            <span className="text-[18px] font-extrabold text-gray-900">
-                              {finalPrice.toLocaleString()}
-                            </span>
-                            <span className="text-[13px] text-gray-500">원</span>
+                        {discountRate > 0 && (
+                          <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded"
+                            style={{ background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800 }}>-{discountRate}%</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p style={{ fontSize: 12, fontWeight: 500, color: '#374151', lineHeight: 1.4 }} className="line-clamp-2">{item.product_name}</p>
+                        {originalPrice > finalPrice && (
+                          <div className="flex items-baseline gap-1.5 mt-1">
+                            <span style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()}</span>
                           </div>
+                        )}
+                        <div className="flex items-baseline gap-1">
+                          {discountRate > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>{discountRate}%</span>}
+                          <span style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{finalPrice.toLocaleString()}</span>
+                          <span style={{ fontSize: 11, color: '#6B7280' }}>원</span>
                         </div>
                       </div>
+                    </div>
 
-                      {/* 3-column action row */}
-                      <div className="mt-3 grid grid-cols-3 gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (!item.product_id) return
-                            api.post('/api/wishlists', { product_id: item.product_id })
-                              .then(() => toast.success('위시리스트에 추가했습니다'))
-                              .catch(() => toast.error('로그인이 필요합니다'))
-                          }}
-                          className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-gray-100 active:bg-gray-200 transition-colors"
-                        >
-                          <Heart className="w-3.5 h-3.5 text-gray-500" />
-                          <span className="text-[12px] font-semibold text-gray-600">찜하기</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            api.post('/api/cart', { product_id: item.product_id, quantity: 1 })
-                              .then(() => toast.success('장바구니에 담았습니다'))
-                              .catch(() => {
-                                toast.error('로그인이 필요합니다')
-                                localStorage.setItem('loginReturnUrl', window.location.pathname)
-                                navigate('/login')
-                              })
-                          }}
-                          className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-gray-100 active:bg-gray-200 transition-colors"
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5 text-gray-500" />
-                          <span className="text-[12px] font-semibold text-gray-600">장바구니</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/products/${item.product_id}`)
-                          }}
-                          className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-400 active:opacity-90 transition-opacity"
-                        >
-                          <span className="text-[12px] font-bold text-white">바로구매</span>
-                        </button>
-                      </div>
+                    {/* Action row — 3분할 (찜 / 장바구니 / 바로구매) */}
+                    <div className="grid grid-cols-3" style={{ borderTop: '1px solid #F3F4F6' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!item.product_id) return
+                          api.post('/api/wishlists', { product_id: item.product_id })
+                            .then(() => toast.success('위시리스트에 추가했습니다'))
+                            .catch(() => toast.error('로그인이 필요합니다'))
+                        }}
+                        className="py-3 flex flex-col items-center gap-0.5"
+                        style={{ borderRight: '1px solid #F3F4F6' }}
+                        aria-label="찜하기"
+                      >
+                        <Heart style={{ width: 16, height: 16, color: '#6B7280' }} />
+                        <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>찜하기</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          api.post('/api/cart', { product_id: item.product_id, quantity: 1 })
+                            .then(() => toast.success('장바구니에 담았습니다'))
+                            .catch(() => {
+                              toast.error('로그인이 필요합니다')
+                              localStorage.setItem('loginReturnUrl', window.location.pathname)
+                              navigate('/login')
+                            })
+                        }}
+                        className="py-3 flex flex-col items-center gap-0.5"
+                        style={{ borderRight: '1px solid #F3F4F6' }}
+                        aria-label="장바구니에 담기"
+                      >
+                        <ShoppingCart style={{ width: 16, height: 16, color: '#6B7280' }} />
+                        <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>장바구니</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/products/${item.product_id}`)
+                        }}
+                        className="py-3 flex flex-col items-center gap-0.5 active:opacity-90"
+                        style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
+                        aria-label="바로구매"
+                      >
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>바로구매</span>
+                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>무료배송</span>
+                      </button>
                     </div>
                   </div>
                 </div>
