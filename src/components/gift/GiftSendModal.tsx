@@ -12,6 +12,7 @@
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { X, Gift, Sparkles, Loader2 } from 'lucide-react'
@@ -30,6 +31,7 @@ interface Props {
 const MAX_MESSAGE = 200
 
 export default function GiftSendModal({ open, onClose, productId, productName, productThumbnail, productPrice }: Props) {
+  const { t } = useTranslation()
   useEscapeKey(() => { if (open) onClose() })
   const dialogRef = useFocusTrap<HTMLDivElement>(open)
   const navigate = useNavigate()
@@ -45,11 +47,11 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
 
     const cleanPhone = recipientPhone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) {
-      toast.error('올바른 휴대폰 번호를 입력해주세요')
+      toast.error(t('gift.invalidPhone'))
       return
     }
     if (message.length > MAX_MESSAGE) {
-      toast.error(`메시지는 ${MAX_MESSAGE}자 이내로 작성해주세요`)
+      toast.error(t('gift.messageTooLong', { max: MAX_MESSAGE }))
       return
     }
 
@@ -66,14 +68,14 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
       if (!giftId || !claimToken) {
         throw new Error('gift_id 또는 claim_token 누락')
       }
-      toast.success('선물 결제로 이동합니다')
+      toast.success(t('gift.movingToPayment'))
       // 결제 페이지로 이동 (Toss Payment) — gift_id 파라미터로 전달
       // PointsChargePage 가 amount + gift_id 두 파라미터 받아 토스 결제 후 gift status paid 처리
       navigate(`/checkout?gift_id=${giftId}&amount=${productPrice}&product_id=${productId}`)
       onClose()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e.response?.data?.error || '선물 생성에 실패했어요')
+      toast.error(e.response?.data?.error || t('gift.creationFailed'))
     } finally {
       setSubmitting(false)
     }

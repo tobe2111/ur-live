@@ -1485,7 +1485,11 @@
       "claimTitle": "You've received a gift!",
       "claimAddress": "Enter delivery address",
       "claimSuccess": "Claimed! Will ship soon.",
-      "expired": "Gift has expired"
+      "expired": "Gift has expired",
+      "invalidPhone": "Please enter a valid mobile number",
+      "messageTooLong": "Message must be {{max}} characters or less",
+      "movingToPayment": "Moving to gift payment",
+      "creationFailed": "Failed to create gift"
     },
     "consignment": {
       "title": "MD Consignment",

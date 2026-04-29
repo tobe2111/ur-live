@@ -1490,7 +1490,11 @@
       "claimTitle": "선물이 도착했어요",
       "claimAddress": "받을 주소를 입력해주세요",
       "claimSuccess": "받기 완료! 곧 발송됩니다.",
-      "expired": "선물이 만료됐어요"
+      "expired": "선물이 만료됐어요",
+      "invalidPhone": "올바른 휴대폰 번호를 입력해주세요",
+      "messageTooLong": "메시지는 {{max}}자 이내로 작성해주세요",
+      "movingToPayment": "선물 결제로 이동합니다",
+      "creationFailed": "선물 생성에 실패했어요"
     },
     "consignment": {
       "title": "MD 위탁 판매",

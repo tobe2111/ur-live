@@ -1400,7 +1400,11 @@
       "claimTitle": "Vous avez reçu un cadeau !",
       "claimAddress": "Saisissez l'adresse de livraison",
       "claimSuccess": "Réclamé ! Expédition bientôt.",
-      "expired": "Le cadeau a expiré"
+      "expired": "Le cadeau a expiré",
+      "invalidPhone": "Veuillez saisir un numéro de mobile valide",
+      "messageTooLong": "Le message ne doit pas dépasser {{max}} caractères",
+      "movingToPayment": "Redirection vers le paiement du cadeau",
+      "creationFailed": "Échec de la création du cadeau"
     },
     "consignment": {
       "title": "Consignation MD",

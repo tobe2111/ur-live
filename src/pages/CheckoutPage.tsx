@@ -1164,11 +1164,14 @@ export default function CheckoutPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
-              수령인 이름 <span className="text-red-500">*</span>
+            <label htmlFor="checkout-recipient-name" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              수령인 이름 <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
+              id="checkout-recipient-name"
               type="text"
+              required
+              aria-required="true"
               value={newAddress.recipient_name}
               onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
               className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -1177,11 +1180,14 @@ export default function CheckoutPage() {
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
-              연락처 <span className="text-red-500">*</span>
+            <label htmlFor="checkout-phone" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              연락처 <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
+              id="checkout-phone"
               type="tel"
+              required
+              aria-required="true"
               value={newAddress.phone}
               onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
               className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -1190,19 +1196,23 @@ export default function CheckoutPage() {
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
-              우편번호 <span className="text-red-500">*</span>
+            <label htmlFor="checkout-postal-code" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              우편번호 <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <div className="flex gap-2">
               <input
+                id="checkout-postal-code"
                 type="text"
                 inputMode="numeric"
+                required
+                aria-required="true"
                 value={newAddress.postal_code}
                 readOnly
                 className="flex-1 px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
                 placeholder="우편번호"
               />
               <button
+                type="button"
                 onClick={() => setShowPostcodePopup(true)}
                 className="px-5 py-3 border border-gray-200 rounded-2xl text-[14px] font-semibold text-gray-500 hover:bg-gray-50 transition-all whitespace-nowrap"
               >
@@ -1221,11 +1231,14 @@ export default function CheckoutPage() {
           )}
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
-              주소 <span className="text-red-500">*</span>
+            <label htmlFor="checkout-address" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              주소 <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
+              id="checkout-address"
               type="text"
+              required
+              aria-required="true"
               value={newAddress.address}
               readOnly
               className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
@@ -1234,10 +1247,11 @@ export default function CheckoutPage() {
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label htmlFor="checkout-address-detail" className="block text-[14px] font-semibold text-gray-900 mb-2">
               상세주소
             </label>
             <input
+              id="checkout-address-detail"
               type="text"
               value={newAddress.address_detail}
               onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}

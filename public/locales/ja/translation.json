@@ -1484,7 +1484,11 @@
       "claimTitle": "ギフトが届きました",
       "claimAddress": "受取住所を入力してください",
       "claimSuccess": "受取完了!まもなく発送されます。",
-      "expired": "ギフトの有効期限切れ"
+      "expired": "ギフトの有効期限切れ",
+      "invalidPhone": "正しい携帯番号を入力してください",
+      "messageTooLong": "メッセージは{{max}}文字以内で入力してください",
+      "movingToPayment": "ギフト決済に移動します",
+      "creationFailed": "ギフトの作成に失敗しました"
     },
     "consignment": {
       "title": "MD委託販売",
