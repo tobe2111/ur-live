@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Bookmark } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -25,6 +26,7 @@ interface BrowseProductCardProps {
 }
 
 export default function BrowseProductCard({ product }: BrowseProductCardProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -56,7 +58,7 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
     
     const userId = localStorage.getItem('userId')
     if (!userId) {
-      toast.error('로그인이 필요합니다')
+      toast.error(t('common.loginRequired'))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       setTimeout(() => navigate('/login'), 600)
       return

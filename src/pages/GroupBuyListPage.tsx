@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   ChevronLeft,
   ChevronDown,
@@ -90,6 +91,7 @@ function calcDiscountRate(p: GroupBuyProduct): number {
 }
 
 export default function GroupBuyListPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [mainTab, setMainTab] = useState<MainTab>('seller')
   const [items, setItems] = useState<GroupBuyProduct[]>([])
@@ -119,12 +121,12 @@ export default function GroupBuyListPage() {
       }).catch(() => {
         setInterestedIds(prev => { const next = new Set(prev); next.delete(productId); return next })
       })
-      toast.success('관심 등록됨! 공구 시작 시 알려드릴게요')
+      toast.success(t('common.interestAdded'))
     } else {
       api.post('/api/interest/remove', { product_id: productId, type: 'group_buy' }).catch(() => {
         setInterestedIds(prev => { const next = new Set(prev); next.add(productId); return next })
       })
-      toast.info('관심 등록이 해제되었습니다')
+      toast.info(t('common.interestRemoved'))
     }
   }
 
@@ -135,7 +137,7 @@ export default function GroupBuyListPage() {
       .get('/api/group-buy/products?status=active')
       .then((r) => {
         if (r.data?.success) setItems(r.data.data || [])
-        else toast.error('공동구매 상품을 불러오지 못했습니다')
+        else toast.error(t('common.loadFailed'))
       })
       .catch(() => toast.error('네트워크 오류가 발생했습니다'))
       .finally(() => setLoading(false))
