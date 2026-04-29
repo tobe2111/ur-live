@@ -60,13 +60,19 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onCancel} role="presentation">
-      <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="seller-pin-prompt-title"
+        className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-green-600" />
-            <h3 className="text-lg font-bold text-gray-900">보안 PIN 확인</h3>
+            <ShieldCheck className="w-5 h-5 text-green-600" aria-hidden="true" />
+            <h3 id="seller-pin-prompt-title" className="text-lg font-bold text-gray-900">보안 PIN 확인</h3>
           </div>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-700 p-1">
+          <button type="button" onClick={onCancel} aria-label="PIN 입력 취소" className="text-gray-400 hover:text-gray-700 p-1">
             <X className="w-5 h-5" />
           </button>
         </div>

@@ -43,6 +43,20 @@ adminStreamsRoutes.post('/streams/replay', cors(), async (c) => {
       return c.json({ success: false, error: '셀러, 제목, YouTube URL은 필수입니다' }, 400);
     }
 
+    // 🛡️ 2026-04-29 보안 audit (TD-016 HIGH): 입력 검증 — 길이/배열 크기/null-byte.
+    if (typeof title !== 'string' || title.length === 0 || title.length > 200) {
+      return c.json({ success: false, error: '제목은 1~200자여야 합니다' }, 400);
+    }
+    if (description !== undefined && description !== null && (typeof description !== 'string' || description.length > 5000)) {
+      return c.json({ success: false, error: '설명은 5000자 이내여야 합니다' }, 400);
+    }
+    if (typeof youtube_url !== 'string' || youtube_url.length > 500 || /[\n\r\0]/.test(youtube_url)) {
+      return c.json({ success: false, error: '유효하지 않은 YouTube URL' }, 400);
+    }
+    if (product_ids !== undefined && (!Array.isArray(product_ids) || product_ids.length > 50)) {
+      return c.json({ success: false, error: '상품은 최대 50개까지 연결 가능합니다' }, 400);
+    }
+
     let videoId = youtube_url;
     const urlMatch = youtube_url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
     if (urlMatch) videoId = urlMatch[1];

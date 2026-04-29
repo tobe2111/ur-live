@@ -5,6 +5,7 @@
 
 import { useState } from 'react'
 import { X, ArrowRight } from 'lucide-react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 const TUTORIAL_KEY = 'seller_live_tutorial_done'
 
@@ -54,24 +55,33 @@ export function FirstTimeTutorial({ onClose }: { onClose: () => void }) {
     onClose()
   }
 
+  // 🛡️ 2026-04-29 a11y: ESC 닫기
+  useEscapeKey(dismiss)
+
   function next() {
     if (step < STEPS.length - 1) setStep(step + 1)
     else dismiss()
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={dismiss}>
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={dismiss} role="presentation">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tutorial-title"
+        className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">첫 방송 가이드</p>
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <span>{current.emoji}</span>
+            <h3 id="tutorial-title" className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span aria-hidden="true">{current.emoji}</span>
               {current.title}
             </h3>
           </div>
-          <button onClick={dismiss} className="text-gray-400 hover:text-gray-700">
-            <X className="w-5 h-5" />
+          <button type="button" onClick={dismiss} aria-label="튜토리얼 닫기" className="text-gray-400 hover:text-gray-700">
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 

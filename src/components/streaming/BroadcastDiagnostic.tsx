@@ -10,6 +10,7 @@ import { CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { swallow } from '@/shared/utils/swallow'
 import { hasOBSExtension, loadOBSConfig } from '@/lib/obs-websocket'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface Check {
   label: string
@@ -111,11 +112,20 @@ export function BroadcastDiagnostic({ streamId, method, onClose }: Props) {
     return () => { active = false }
   }, [streamId, method])
 
+  // 🛡️ 2026-04-29 a11y: ESC 닫기
+  useEscapeKey(onClose)
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose} role="presentation">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="broadcast-diagnostic-title"
+        className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
         <div>
-          <h3 className="text-lg font-bold text-gray-900">🔍 방송 감지 진단</h3>
+          <h3 id="broadcast-diagnostic-title" className="text-lg font-bold text-gray-900">🔍 방송 감지 진단</h3>
           <p className="text-xs text-gray-500 mt-1">아래 체크를 확인하여 문제 위치를 찾아보세요.</p>
         </div>
         <ul className="space-y-2">

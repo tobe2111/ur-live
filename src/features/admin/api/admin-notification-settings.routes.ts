@@ -9,6 +9,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
+import { swallow } from '@/worker/utils/swallow'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -32,7 +33,7 @@ async function ensureTable(db: D1Database) {
     push_enabled INTEGER NOT NULL DEFAULT 1,
     description TEXT,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`).run().catch(() => {})
+  )`).run().catch(swallow('admin-notification-settings:create-table'))
 
   // 기본 시드 (existing 행 안 덮어쓰고 추가만) — 모든 트리거 망라
   const seeds = [
@@ -90,7 +91,7 @@ async function ensureTable(db: D1Database) {
       `INSERT OR IGNORE INTO notification_channel_settings
        (notification_type, dashboard_enabled, email_enabled, alimtalk_enabled, push_enabled, description)
        VALUES (?, ?, ?, ?, ?, ?)`
-    ).bind(type, dash, email, alim, push, desc).run().catch(() => {})
+    ).bind(type, dash, email, alim, push, desc).run().catch(swallow('admin-notification-settings:upsert'))
   }
 }
 

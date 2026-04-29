@@ -128,7 +128,7 @@ async function notifyAuctionUser(
   // 1) Push (best-effort, 가장 즉시성 높음)
   try {
     const { sendSystemPush } = await import('../../../lib/system-push');
-    sendSystemPush(env, 'user', userId, pushPayload).catch(() => {});
+    sendSystemPush(env, 'user', userId, pushPayload).catch(swallow('auction:push-bid-rejected'));
   } catch { /* module load fail */ }
 
   // 2) Alimtalk (phone 있고 alimtalkText 지정 시 — 도달률 보강용)
@@ -137,7 +137,7 @@ async function notifyAuctionUser(
       const phone = await getUserPhone(env.DB, userId);
       if (phone) {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
-        sendSystemAlimtalk(env, phone, notifyType, alimtalkText).catch(() => {});
+        sendSystemAlimtalk(env, phone, notifyType, alimtalkText).catch(swallow('auction:alimtalk-bid-rejected'));
       }
     } catch { /* phone lookup fail */ }
   }
@@ -264,7 +264,7 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
       title: '경매 입찰 갱신',
       body: `${auction.title}: ${amount.toLocaleString()}원으로 더 높은 입찰자가 나타났어요`,
       url: `/live/${auction.stream_id}`,
-    }).catch(() => {});
+    }).catch(swallow('auction:notify-runner-up'));
   }
 
   // 🛡️ 배치 115: hold 관리
@@ -378,7 +378,7 @@ auctionRoutes.post('/:id/end', requireAuth(), async (c) => {
         url: `/live/${auction.stream_id}`,
       },
       `[유어딜] 경매 낙찰 안내\n${auction.title}\n낙찰가: ${auction.current_price.toLocaleString()}원\n결제를 진행해주세요.`
-    ).catch(() => {});
+    ).catch(swallow('auction:notify-winner'));
   }
 
   return c.json({ success: true, data: auction });
@@ -584,7 +584,7 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
       url: `/auction/${auctionId}`,
     },
     `[유어딜] 경매 차순위 승격\n이전 낙찰자 결제 불이행으로\n${newWinner.amount.toLocaleString()}원에 승격됐어요.\n결제를 진행해주세요.`
-  ).catch(() => {});
+  ).catch(swallow('auction:promote-runner-up-default'));
 
   return c.json({
     success: true,
@@ -762,7 +762,7 @@ auctionRoutes.post('/:id/promote-runner-up', requireAuth(), async (c) => {
       url: `/auction/${auctionId}`,
     },
     `[유어딜] 경매 차순위 승격\n이전 낙찰자 결제 포기로\n${runnerUp.amount.toLocaleString()}원에 승격됐어요.\n결제를 진행해주세요.`
-  ).catch(() => {});
+  ).catch(swallow('auction:promote-runner-up-forfeit'));
 
   return c.json({
     success: true,

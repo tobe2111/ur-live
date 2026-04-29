@@ -20,7 +20,14 @@ function ProductCard({ product }: { product: Product }) {
   const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
 
   return (
-    <div className="cursor-pointer active:scale-[0.98] transition-transform" onClick={() => navigate(`/products/${product.id}`)}>
+    <div
+      className="cursor-pointer active:scale-[0.98] transition-transform"
+      role="button"
+      tabIndex={0}
+      aria-label={`${product.name} 상세 보기`}
+      onClick={() => navigate(`/products/${product.id}`)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/products/${product.id}`) } }}
+    >
       <div className="relative aspect-square overflow-hidden bg-[#1A1A1A] rounded-xl">
         {product.image_url ? (
           <img

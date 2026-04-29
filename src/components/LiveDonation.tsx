@@ -8,6 +8,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { Heart, X, Loader2, Zap, Plus, Gift } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -44,6 +46,10 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
   const [balance, setBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
   const [centerAlert, setCenterAlert] = useState<{ emoji: string; donorName: string; amount: number } | null>(null)
+
+  // 🛡️ 2026-04-29 a11y: ESC 닫기 + Tab focus trap (processing 중엔 닫지 않음)
+  useEscapeKey(() => { if (showSheet && !processing) setShowSheet(false) })
+  const sheetRef = useFocusTrap<HTMLDivElement>(showSheet)
 
   const userId = getUserId()
 
@@ -148,21 +154,30 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
           <div
             className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm"
             onClick={() => !processing && setShowSheet(false)}
+            aria-hidden="true"
           />
 
-          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up max-h-[85vh] overflow-y-auto">
+          <div
+            ref={sheetRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="donation-sheet-title"
+            className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up max-h-[85vh] overflow-y-auto"
+          >
             <div className="p-5 pb-8">
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">딜 후원</h3>
+                  <h3 id="donation-sheet-title" className="text-lg font-bold text-gray-900">딜 후원</h3>
                   <p className="text-xs text-gray-400 mt-0.5">셀러에게 응원을 보내세요!</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => !processing && setShowSheet(false)}
+                  aria-label="닫기"
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100"
                 >
-                  <X className="h-4 w-4 text-gray-600" />
+                  <X className="h-4 w-4 text-gray-600" aria-hidden="true" />
                 </button>
               </div>
 

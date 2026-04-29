@@ -4,6 +4,7 @@
  */
 
 import type { Env } from '../types/env';
+import { swallow } from '../utils/swallow';
 
 export async function handleScheduled(env: Env) {
   const DB = env.DB;
@@ -123,7 +124,7 @@ export async function handleScheduled(env: Env) {
             title: '경매 낙찰 🎉',
             body: `${a.title} ${a.current_price.toLocaleString()}원에 낙찰됐어요. 결제를 진행해주세요.`,
             url: `/live/${a.stream_id}`,
-          }).catch(() => {});
+          }).catch(swallow('scheduled-cleanup:auction-winner-push'));
         } catch { /* ignore */ }
 
         try {
@@ -134,7 +135,7 @@ export async function handleScheduled(env: Env) {
             const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk');
             sendSystemAlimtalk(env, phoneRow.phone, 'auction_won',
               `[유어딜] 경매 낙찰 안내\n${a.title}\n낙찰가: ${a.current_price.toLocaleString()}원\n결제를 진행해주세요.`
-            ).catch(() => {});
+            ).catch(swallow('scheduled-cleanup:auction-won-alimtalk'));
           }
         } catch { /* ignore */ }
       }
