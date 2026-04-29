@@ -51,8 +51,9 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
       if (e.key !== 'Tab') return
       const c = containerRef.current
       if (!c) return
+      // disabled / hidden attr 만 제외 (jsdom 호환 — offsetParent 체크는 jsdom 에서 false negative)
       const focusables = Array.from(c.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-        .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null)
+        .filter(el => !el.hasAttribute('disabled') && !el.hidden)
       if (focusables.length === 0) {
         e.preventDefault()
         return

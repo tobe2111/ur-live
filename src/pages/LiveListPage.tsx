@@ -4,6 +4,7 @@ import { Eye, Clock, Play, Bell, Search, ShoppingCart, Radio } from 'lucide-reac
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
+import { glass } from '@/components/glass/glassTokens'
 
 interface LiveStream {
   id: number
@@ -201,7 +202,7 @@ export default function LiveListPage() {
                           <span className="rounded-full" style={{ width: 5, height: 5, background: '#fff', boxShadow: '0 0 6px #fff' }} />
                           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#fff' }}>LIVE</span>
                         </div>
-                        <div className="rounded-full px-2 py-1 inline-flex items-center gap-1" style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                        <div className="rounded-full px-2 py-1 inline-flex items-center gap-1" style={glass.statsChip}>
                           <Eye className="w-2.5 h-2.5 text-white/85" />
                           <span style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{formatCount(s.viewer_count ?? 0)}</span>
                         </div>
@@ -212,7 +213,7 @@ export default function LiveListPage() {
                         )}
                         <p style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2, color: '#fff' }} className="line-clamp-2">{s.title}</p>
                         {s.current_product && (
-                          <div className="mt-2 rounded-xl px-2.5 py-1.5 flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                          <div className="mt-2 rounded-xl px-2.5 py-1.5 flex items-center gap-2" style={glass.statsChip}>
                             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }} className="truncate flex-1">{s.current_product.name}</span>
                             <span style={{ fontSize: 11, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{(s.current_product.price ?? 0).toLocaleString()}원</span>
                           </div>
@@ -315,7 +316,7 @@ export default function LiveListPage() {
                         </div>
                       </div>
                       <div className="absolute top-2 right-2 rounded-full px-2 py-1"
-                        style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                        style={glass.statsChip}>
                         <span style={{ fontSize: 9, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{formatCount(s.total_views ?? 0)} 뷰</span>
                       </div>
                       <div className="absolute bottom-0 inset-x-0 p-2.5"

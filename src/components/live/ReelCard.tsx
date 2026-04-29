@@ -90,50 +90,9 @@ interface ReelData {
   product: Product | null
 }
 
-function LiveChat({ messages, onChatClick }: { messages: ChatMessage[]; onChatClick: () => void }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
-
-  const recentMessages = messages.slice(-6)
-
-  return (
-    <div
-      ref={scrollRef}
-      className="flex flex-col gap-1 overflow-y-auto max-h-36 cursor-pointer no-scrollbar"
-      onClick={onChatClick}
-    >
-      {recentMessages.map((msg) => {
-        const isSystemMessage = msg.userName === 'System' || msg.role === 'system'
-        const isYouTube = msg.source === 'youtube'
-
-        return (
-          <div key={msg.id} className="flex items-start gap-1 animate-fade-in">
-            {isYouTube && (
-              <svg viewBox="0 0 24 24" fill="#FF0000" className="w-3.5 h-3.5 shrink-0 mt-0.5">
-                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-              </svg>
-            )}
-            {isSystemMessage ? (
-              <p className="text-[11px] leading-[1.3] text-yellow-300 font-semibold" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
-                {msg.message}
-              </p>
-            ) : (
-              <p className="text-[11px] leading-[1.3]" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)' }}>
-                <span className="font-bold text-white/90">{msg.userName}</span>
-                <span className="text-white/70"> {msg.message}</span>
-              </p>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
+// 🛡️ 2026-04-29: LiveChat sub-component → @/components/live/LiveChatStream.tsx 추출 (TD-006)
+//   ReelCard 1447 → 1407줄 (40줄 감소). 외부 import 0건 확인됨.
+import LiveChat from '@/components/live/LiveChatStream'
 
 function ProductListSheet({
   products,
@@ -229,7 +188,8 @@ function ProductListSheet({
   )
 }
 
-export { LiveChat, ProductListSheet }
+// LiveChat 은 LiveChatStream.tsx 로 추출됨 — 외부 사용처 없으므로 re-export 불필요
+export { ProductListSheet }
 export type { Stream, Product, ReelData, YTPlayer, YTPlayerEvent, ApiError }
 
 export default function ReelCard({ 
