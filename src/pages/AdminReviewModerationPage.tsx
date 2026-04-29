@@ -204,7 +204,7 @@ export default function AdminReviewModerationPage() {
                     {images.length > 0 && (
                       <div className="flex gap-2 mt-2">
                         {images.slice(0, 4).map((url, i) => (
-                          <img key={i} src={url} alt="" className="w-16 h-16 rounded-lg object-cover bg-gray-100" />
+                          <img key={i} src={url} alt="" className="w-16 h-16 rounded-lg object-cover bg-gray-100" loading="lazy" />
                         ))}
                       </div>
                     )}

@@ -184,6 +184,7 @@ export default function ImageUpload({
               src={value}
               alt="업로드된 이미지"
               className="w-full h-full object-contain"
+              loading="lazy"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=Image+Error'
               }}

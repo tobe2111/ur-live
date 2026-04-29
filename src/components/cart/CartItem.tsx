@@ -61,9 +61,8 @@ export const CartItemComponent = React.memo(function CartItemComponent({
       {item.image_url ? (
         <img
           src={item.image_url}
-          alt=""
-          className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 shrink-0"
-        />
+          alt={item.product_name}
+          className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 shrink-0" loading="lazy" />
       ) : (
         <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 shrink-0 flex items-center justify-center">
           <span className="text-gray-300 text-[10px]">No img</span>
@@ -77,8 +76,10 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             {item.product_name}
           </h3>
           <button
+            type="button"
             onClick={() => onRemove(item.id)}
             disabled={isUpdating}
+            aria-label={`${item.product_name} 장바구니에서 삭제`}
             className="text-gray-300 hover:text-gray-500 shrink-0"
           >
             <X size={16} />
@@ -110,21 +111,25 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
             <button
+              type="button"
               onClick={() => onUpdateQuantity(item.id, -1)}
               disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
+              aria-label="수량 줄이기"
               className="w-8 h-8 flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-50 transition-colors"
             >
-              <Minus size={14} />
+              <Minus size={14} aria-hidden="true" />
             </button>
-            <span className="w-8 text-center text-[13px] font-semibold text-gray-900 border-x border-gray-200">
+            <span aria-live="polite" aria-label={`수량 ${item.quantity}`} className="w-8 text-center text-[13px] font-semibold text-gray-900 border-x border-gray-200">
               {item.quantity}
             </span>
             <button
+              type="button"
               onClick={() => onUpdateQuantity(item.id, 1)}
               disabled={isUpdating || isOutOfStock || isAtStockLimit}
+              aria-label="수량 늘리기"
               className="w-8 h-8 flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-50 transition-colors"
             >
-              <Plus size={14} />
+              <Plus size={14} aria-hidden="true" />
             </button>
           </div>
 

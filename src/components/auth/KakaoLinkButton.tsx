@@ -132,7 +132,7 @@ export function KakaoLinkButton({ role }: Props) {
     return (
       <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
         {status.user.profile_image ? (
-          <img src={status.user.profile_image} alt="" className="w-10 h-10 rounded-full" />
+          <img src={status.user.profile_image} alt="" className="w-10 h-10 rounded-full" loading="lazy" />
         ) : (
           <div className="w-10 h-10 rounded-full bg-yellow-300 flex items-center justify-center text-lg">💬</div>
         )}

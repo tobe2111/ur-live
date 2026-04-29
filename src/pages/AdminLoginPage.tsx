@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Shield, BarChart2, Settings } from 'lucide-react'
 
 export default function AdminLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
@@ -24,6 +26,16 @@ export default function AdminLoginPage() {
       setRememberMe(true)
     }
   }, [])
+
+  // 🛡️ 2026-04-29: 401 인터셉터가 ?error=session_expired 로 redirect 시 toast 표시
+  useEffect(() => {
+    if (searchParams.get('error') === 'session_expired') {
+      toast.error(t('auth.sessionExpired'))
+      const next = new URLSearchParams(searchParams)
+      next.delete('error')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams, t])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()

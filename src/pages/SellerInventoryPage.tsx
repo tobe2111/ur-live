@@ -320,7 +320,7 @@ export default function SellerInventoryPage() {
               className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 cursor-pointer"
             >
               {p.image_url ? (
-                <img src={p.image_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                <img src={p.image_url} alt="" className="w-10 h-10 rounded-lg object-cover" loading="lazy" />
               ) : (
                 <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
                   <Package className="w-5 h-5 text-gray-300" />

@@ -56,11 +56,11 @@ export default function AgencySchedulePage() {
           icon={<Calendar className="h-5 w-5" />}
           actions={
             <div className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-1">
-              <button onClick={prevMonth} className="rounded-lg p-1.5 hover:bg-gray-100"><ChevronLeft className="h-4 w-4" /></button>
+              <button onClick={prevMonth} aria-label="이전 달" className="rounded-lg p-1.5 hover:bg-gray-100"><ChevronLeft className="h-4 w-4" /></button>
               <span className="min-w-[100px] text-center text-xs font-semibold text-gray-900">
                 {year}년 {month + 1}월
               </span>
-              <button onClick={nextMonth} className="rounded-lg p-1.5 hover:bg-gray-100"><ChevronRight className="h-4 w-4" /></button>
+              <button onClick={nextMonth} aria-label="다음 달" className="rounded-lg p-1.5 hover:bg-gray-100"><ChevronRight className="h-4 w-4" /></button>
             </div>
           }
         />

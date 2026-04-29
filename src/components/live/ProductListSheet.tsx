@@ -1,4 +1,6 @@
 import { ShoppingBag, X } from 'lucide-react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import type { Product, Stream } from './LiveTypes'
 
 export function ProductListSheet({
@@ -18,27 +20,39 @@ export function ProductListSheet({
 }) {
   const safeProducts = products || []
 
+  // 🛡️ 2026-04-29: a11y — ESC 닫기 + Tab focus trap
+  useEscapeKey(onClose)
+  const sheetRef = useFocusTrap<HTMLDivElement>(true)
+
   return (
     <>
       <div
         className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
         onClick={onClose}
+        aria-hidden="true"
       />
 
-      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
+      <div
+        ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-list-sheet-title"
+        className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl"
+      >
         <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/90 backdrop-blur-md border-b border-gray-100">
-          <div className="h-1 w-10 rounded-full bg-gray-300" />
+          <div className="h-1 w-10 rounded-full bg-gray-300" aria-hidden="true" />
           <button
+            type="button"
             onClick={onClose}
             className="absolute right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            aria-label="Close"
+            aria-label="닫기"
           >
-            <X className="h-4 w-4 text-gray-800" />
+            <X className="h-4 w-4 text-gray-800" aria-hidden="true" />
           </button>
         </div>
 
         <div className="px-5 pt-4 pb-3 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-900">라이브 상품 ({safeProducts.length}개)</h3>
+          <h3 id="product-list-sheet-title" className="text-lg font-bold text-gray-900">라이브 상품 ({safeProducts.length}개)</h3>
           <p className="text-sm text-gray-500 mt-1">상품을 선택해서 구매하세요</p>
         </div>
 
@@ -93,6 +107,7 @@ export function ProductListSheet({
                         src={product.image_url || product.image || sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')}
                         alt={product.name}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                         onError={(e) => {
                           const img = e.target as HTMLImageElement
                           const fallback = sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')

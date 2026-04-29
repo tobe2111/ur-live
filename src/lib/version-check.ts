@@ -80,14 +80,20 @@ export function startVersionCheck() {
 
   // MIME 에러 감지: 스크립트가 text/html로 로드됐으면 즉시 캐시 클리어
   // sw.js MIME 에러는 무시 (배포 시 일시적으로 발생 가능)
+  // 🛡️ 2026-04-29: 가드 이중화 — sessionStorage(같은 탭) + localStorage(전체 탭, 1분 윈도우).
+  //   기존 sessionStorage-only: 새 탭 진입마다 1회씩 reload → 영구 캐시 문제 시 사용자
+  //   체험 폭주. localStorage 타임스탬프 가드로 1분 내 반복 reload 차단.
   window.addEventListener('error', (e) => {
     const msg = e.message || ''
     if ((msg.includes('MIME type') || msg.includes('text/html')) && !msg.includes('sw.js')) {
-      const alreadyReloaded = sessionStorage.getItem('mime_reload')
-      if (!alreadyReloaded) {
-        sessionStorage.setItem('mime_reload', '1')
-        forceReload()
-      }
+      if (sessionStorage.getItem('mime_reload')) return
+      try {
+        const lastTs = parseInt(localStorage.getItem('mime_reload_ts') || '0', 10)
+        if (Date.now() - lastTs < 60_000) return // 1분 내 reload 했으면 skip
+        localStorage.setItem('mime_reload_ts', String(Date.now()))
+      } catch { /* localStorage 차단 환경 — sessionStorage 가드만 사용 */ }
+      sessionStorage.setItem('mime_reload', '1')
+      forceReload()
     }
   })
 

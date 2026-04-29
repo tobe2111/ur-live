@@ -532,6 +532,21 @@ sellerOrdersRoutes.post('/products', async (c) => {
       return c.json({ success: false, error: '상품명과 가격은 필수입니다.' }, 400);
     }
 
+    // 🛡️ 2026-04-29 보안 audit CRITICAL: 입력 검증 — 음수/NaN/Infinity/거대값 차단.
+    // 이전: Number.isFinite() / 범위 체크 0 → financial fraud 위험.
+    if (typeof name !== 'string' || name.length === 0 || name.length > 200) {
+      return c.json({ success: false, error: '상품명은 1~200자여야 합니다.' }, 400);
+    }
+    if (description !== undefined && description !== null && (typeof description !== 'string' || description.length > 10000)) {
+      return c.json({ success: false, error: '상품 설명은 10000자 이내여야 합니다.' }, 400);
+    }
+    if (!Number.isFinite(price) || price < 0 || price > 100_000_000) {
+      return c.json({ success: false, error: '가격은 0 ~ 1억 범위여야 합니다.' }, 400);
+    }
+    if (stock !== undefined && stock !== null && (!Number.isFinite(stock) || stock < 0 || stock > 1_000_000)) {
+      return c.json({ success: false, error: '재고는 0 ~ 100만 범위여야 합니다.' }, 400);
+    }
+
     // slug 생성: 이름 기반 + 타임스탬프 suffix (중복 방지)
     const baseSlug = name
       .toLowerCase()
@@ -663,6 +678,30 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       `SELECT id FROM products WHERE id = ? AND seller_id = ?`
     ).bind(productId, sellerId).first();
     if (!existing) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
+
+    // 🛡️ 2026-04-29 보안 audit CRITICAL: 입력 검증 — 음수/NaN/Infinity/거대값/잘못된 status 차단.
+    if (body.name !== undefined && (typeof body.name !== 'string' || body.name.length === 0 || body.name.length > 200)) {
+      return c.json({ success: false, error: '상품명은 1~200자여야 합니다.' }, 400);
+    }
+    if (body.description !== undefined && (typeof body.description !== 'string' || body.description.length > 10000)) {
+      return c.json({ success: false, error: '상품 설명은 10000자 이내여야 합니다.' }, 400);
+    }
+    if (body.price !== undefined && (!Number.isFinite(body.price) || body.price < 0 || body.price > 100_000_000)) {
+      return c.json({ success: false, error: '가격은 0 ~ 1억 범위여야 합니다.' }, 400);
+    }
+    if (body.original_price !== undefined && body.original_price !== null && (!Number.isFinite(body.original_price) || body.original_price < 0 || body.original_price > 100_000_000)) {
+      return c.json({ success: false, error: '정가는 0 ~ 1억 범위여야 합니다.' }, 400);
+    }
+    if (body.stock !== undefined && (!Number.isFinite(body.stock) || body.stock < 0 || body.stock > 1_000_000)) {
+      return c.json({ success: false, error: '재고는 0 ~ 100만 범위여야 합니다.' }, 400);
+    }
+    if (body.live_only_price !== undefined && body.live_only_price !== null && (!Number.isFinite(body.live_only_price) || body.live_only_price < 0 || body.live_only_price > 100_000_000)) {
+      return c.json({ success: false, error: '라이브 전용 가격은 0 ~ 1억 범위여야 합니다.' }, 400);
+    }
+    const ALLOWED_STATUS = new Set(['ACTIVE', 'SOLD_OUT', 'HIDDEN', 'DELETED']);
+    if (body.status !== undefined && !ALLOWED_STATUS.has(body.status)) {
+      return c.json({ success: false, error: '유효하지 않은 상태값입니다.' }, 400);
+    }
 
     const fields: string[] = [];
     const values: unknown[] = [];

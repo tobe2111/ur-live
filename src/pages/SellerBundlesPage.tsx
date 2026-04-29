@@ -183,7 +183,7 @@ export default function SellerBundlesPage() {
                       className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all ${
                         selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
                       }`}>
-                      {p.image_url && <img src={p.image_url} alt={p.name} className="w-8 h-8 rounded object-cover shrink-0" />}
+                      {p.image_url && <img src={p.image_url} alt={p.name} className="w-8 h-8 rounded object-cover shrink-0" loading="lazy" />}
                       <div className="flex-1 min-w-0">
                         <p className="truncate font-medium text-gray-900">{p.name}</p>
                         <p className="text-gray-500">{p.price.toLocaleString()}원</p>

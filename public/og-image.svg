@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020202"/>
+      <stop offset="100%" stop-color="#1A0010"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="rgba(236,72,153,0.25)"/>
+      <stop offset="100%" stop-color="rgba(236,72,153,0)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 배경 -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- LIVE 빨강 칩 -->
+  <g transform="translate(80, 90)">
+    <rect width="120" height="36" rx="18" fill="#EF4444"/>
+    <circle cx="22" cy="18" r="5" fill="#FFFFFF"/>
+    <text x="42" y="24" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-weight="800" font-size="14" letter-spacing="0.06em" fill="#FFFFFF">LIVE</text>
+  </g>
+
+  <!-- 메인 타이포 -->
+  <text x="80" y="280" font-family="Pretendard Variable, system-ui, sans-serif" font-weight="900" font-size="100" letter-spacing="-0.04em" fill="#FFFFFF">UR·DEAL</text>
+
+  <!-- 서브 타이틀 -->
+  <text x="82" y="370" font-family="Pretendard Variable, system-ui, sans-serif" font-weight="700" font-size="40" letter-spacing="-0.02em" fill="url(#brand)">라이브 커머스 + 맛집 식사권</text>
+
+  <!-- 설명 -->
+  <text x="82" y="440" font-family="Pretendard Variable, system-ui, sans-serif" font-weight="500" font-size="24" letter-spacing="-0.01em" fill="#9CA3AF">방송으로 보고 바로 사는, 한국 1위 라이브 커머스</text>
+
+  <!-- 우측 하단 도메인 -->
+  <text x="1120" y="600" font-family="Pretendard Variable, system-ui, sans-serif" font-weight="600" font-size="16" letter-spacing="0.02em" fill="#6B7280" text-anchor="end">live.ur-team.com</text>
+
+  <!-- 좌측 하단 액센트 라인 -->
+  <rect x="80" y="540" width="80" height="4" rx="2" fill="url(#brand)"/>
+</svg>

@@ -195,8 +195,7 @@ export default function SellerShortsPage() {
                     <img
                       src={`https://img.youtube.com/vi/${extractYoutubeId(videoUrl)}/hqdefault.jpg`}
                       alt={t('seller.preview')}
-                      className="w-full h-32 object-cover"
-                    />
+                      className="w-full h-32 object-cover" loading="lazy" />
                   </div>
                 )}
               </div>
@@ -248,10 +247,9 @@ export default function SellerShortsPage() {
                     <img
                       src={`https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg`}
                       alt=""
-                      className="w-full h-full object-cover"
-                    />
+                      className="w-full h-full object-cover" loading="lazy" />
                   ) : s.thumbnail_url ? (
-                    <img src={s.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                    <img src={s.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-purple-200 to-pink-200" />
                   )}

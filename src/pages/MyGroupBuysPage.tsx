@@ -152,7 +152,7 @@ export default function MyGroupBuysPage() {
                       {/* 썸네일 */}
                       <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
                         {img ? (
-                          <img src={img} alt="" className="w-full h-full object-cover" />
+                          <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
                         ) : (
                           <ShoppingBag className="w-6 h-6 text-gray-400" />
                         )}

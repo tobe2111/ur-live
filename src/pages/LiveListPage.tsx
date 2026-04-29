@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Radio, Clock, Play, ArrowLeft, Bell, Search } from 'lucide-react'
+import { Eye, Clock, Play, Bell, Search, ShoppingCart, Radio } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
+import { glass } from '@/components/glass/glassTokens'
 
 interface LiveStream {
   id: number
@@ -68,24 +69,29 @@ export default function LiveListPage() {
   const filteredEnded = filterByCat(endedStreams)
   const totalCount = filteredLive.length + filteredScheduled.length + filteredEnded.length
 
-  const heroStream = filteredLive[0] ?? null
-  const restLive = heroStream ? filteredLive.slice(1) : []
+  // 🛡️ 2026-04-29 v4 Film Strip: 카테고리 chips 제거 결정 → activeCategory 'all' 고정
+  void activeCategory; void setActiveCategory; void categories
+
+  const tabIdx = ['all', 'live', 'scheduled', 'replay'].indexOf(tab)
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'all',       label: '전체' },
+    { key: 'live',      label: '실시간' },
+    { key: 'scheduled', label: '예정' },
+    { key: 'replay',    label: '다시보기' },
+  ]
 
   return (
     <div className="min-h-screen bg-[#020202] text-white pb-24">
       <SEO title="라이브" description="유어딜 라이브 방송과 다시보기" url="/live" />
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur-md border-b border-[#1A1A1A]">
+      {/* 🛡️ 2026-04-29 v4 Film Strip 헤더 — UR·DEAL 로고 + 검색/알림/장바구니 */}
+      <header className="sticky top-0 z-50" style={{ background: 'rgba(2,2,2,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center justify-between px-4 h-[52px]">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-1.5 rounded-full hover:bg-white/10"
-            aria-label="뒤로가기"
-          >
-            <ArrowLeft className="w-5 h-5" />
+          {/* UR·DEAL 로고 (홈으로) */}
+          <button onClick={() => navigate('/')} aria-label="홈으로" className="font-black tracking-tight">
+            <span style={{ fontSize: 18, color: '#EF4444', letterSpacing: '-0.04em' }}>UR·</span>
+            <span style={{ fontSize: 18, color: '#fff', letterSpacing: '-0.04em' }}>DEAL</span>
           </button>
-          <h1 className="text-[16px] font-extrabold">라이브</h1>
           <div className="flex items-center gap-0.5">
             <button
               onClick={() => navigate('/search?scope=live')}
@@ -101,60 +107,59 @@ export default function LiveListPage() {
             >
               <Bell className="w-5 h-5 text-gray-400" />
             </button>
+            <button
+              onClick={() => navigate('/cart')}
+              className="p-1.5 rounded-full hover:bg-white/10"
+              aria-label="장바구니"
+            >
+              <ShoppingCart className="w-5 h-5 text-gray-400" />
+            </button>
           </div>
         </div>
 
-        {/* Status tabs */}
-        <div className="flex gap-1.5 px-4 pb-2.5 overflow-x-auto no-scrollbar">
-          {([
-            { key: 'all',       label: '전체',      count: totalCount },
-            { key: 'live',      label: '실시간',    count: filteredLive.length },
-            { key: 'scheduled', label: '예정',      count: filteredScheduled.length },
-            { key: 'replay',    label: '다시보기',  count: filteredEnded.length },
-          ] as { key: Tab; label: string; count: number }[]).map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-bold transition-all ${
-                tab === t.key
-                  ? 'bg-white text-black'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
-              }`}
-            >
-              {t.label}
-              {t.count > 0 && <span className={`ml-1 ${tab === t.key ? 'opacity-60' : 'text-gray-500'}`}>{t.count}</span>}
-            </button>
-          ))}
+        {/* 큰 "라이브" 제목 + 카운트 */}
+        <div className="px-4 pt-2 flex items-end justify-between">
+          <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em' }}>라이브</h1>
+          <p style={{ fontSize: 11, color: '#6B7280', paddingBottom: 4 }}>
+            <span style={{ color: '#EF4444', fontWeight: 700 }}>● {filteredLive.length}</span>
+            <span style={{ margin: '0 6px', opacity: 0.4 }}>·</span>
+            예정 {filteredScheduled.length}
+          </p>
         </div>
 
-        {/* Category chips */}
-        {categories.length > 0 && (
-          <div className="flex gap-1.5 px-4 pb-2.5 overflow-x-auto no-scrollbar">
-            <button
-              onClick={() => setActiveCategory('all')}
-              className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors border ${
-                activeCategory === 'all'
-                  ? 'bg-pink-500/20 text-pink-400 border-pink-500/40'
-                  : 'bg-transparent text-gray-500 border-white/10 hover:text-gray-300'
-              }`}
-            >
-              # 전체
-            </button>
-            {categories.map(cat => (
+        {/* Underline 탭 + sliding indicator */}
+        <div className="relative mt-3 px-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="flex">
+            {tabs.map((t) => (
               <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors border ${
-                  activeCategory === cat
-                    ? 'bg-pink-500/20 text-pink-400 border-pink-500/40'
-                    : 'bg-transparent text-gray-500 border-white/10 hover:text-gray-300'
-                }`}
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className="relative flex-1 pb-2.5 transition-colors"
+                style={{
+                  fontSize: 13,
+                  fontWeight: tab === t.key ? 800 : 600,
+                  color: tab === t.key ? '#fff' : '#6B7280',
+                  letterSpacing: '-0.01em',
+                }}
+                aria-pressed={tab === t.key}
               >
-                # {cat}
+                {t.label}
               </button>
             ))}
           </div>
-        )}
+          {/* Sliding indicator (white underline) — 4개 탭 25% 폭 */}
+          <div
+            className="absolute bottom-0 transition-all duration-300 pointer-events-none"
+            style={{
+              left: `calc(1rem + ${(tabIdx / tabs.length) * 100}% - ${(tabIdx / tabs.length) * 2}rem)`,
+              width: `calc((100% - 2rem) / ${tabs.length})`,
+              height: 2,
+              padding: '0 18%',
+            }}
+          >
+            <div style={{ width: '100%', height: '100%', background: '#fff', borderRadius: 2 }} />
+          </div>
+        </div>
       </header>
 
       {/* Content */}
@@ -162,72 +167,167 @@ export default function LiveListPage() {
         <div className="flex items-center justify-center py-24">
           <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : totalCount === 0 ? (
+      ) : filteredLive.length + filteredScheduled.length + filteredEnded.length === 0 ? (
         <EmptyState onExplore={() => navigate('/')} />
       ) : (
-        <div className="pt-3">
-          {/* Hero — 가장 인기 있는 실시간 방송 */}
-          {(tab === 'all' || tab === 'live') && heroStream && (
-            <section className="px-4 mb-6">
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-                </span>
-                <h2 className="text-[12px] font-extrabold text-red-400 tracking-wide uppercase">지금 HOT</h2>
+        <div className="pt-4">
+          {/* 지금 방송 중 — 가로 스크롤 풀블리드 4:5 카드 */}
+          {(tab === 'all' || tab === 'live') && filteredLive.length > 0 && (
+            <section className="mb-6">
+              <div className="flex items-center gap-2 px-4 mb-2">
+                <div className="inline-flex items-center gap-1 rounded-full" style={{ padding: '3px 7px 3px 5px', background: 'rgba(239,68,68,0.92)' }}>
+                  <span className="rounded-full" style={{ width: 5, height: 5, background: '#fff', boxShadow: '0 0 6px #fff' }} />
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#fff' }}>LIVE</span>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>지금 방송 중</span>
               </div>
-              <HeroCard stream={heroStream} getThumb={getThumb} onClick={() => navigate(`/live/${heroStream.id}`)} />
-            </section>
-          )}
-
-          {/* Live Now — 나머지 실시간 */}
-          {(tab === 'all' || tab === 'live') && restLive.length > 0 && (
-            <section className="px-4 mb-6">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Radio className="h-3.5 w-3.5 text-red-400" strokeWidth={2.5} />
-                <h2 className="text-[13px] font-extrabold">실시간 방송</h2>
-                <span className="text-[11px] text-red-400 font-bold">{restLive.length}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                {restLive.map(s => (
-                  <StreamCard key={s.id} stream={s} type="live" onClick={() => navigate(`/live/${s.id}`)} getThumb={getThumb} />
+              <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-2">
+                {filteredLive.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => navigate(`/live/${s.id}`)}
+                    className="shrink-0 text-left active:scale-[0.99] transition-transform"
+                    style={{ width: 280 }}
+                    aria-label={`${s.title} 라이브 입장`}
+                  >
+                    <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '4/5', background: '#121212' }}>
+                      {getThumb(s) ? (
+                        <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #1A1A1A, #0A0A0A)' }} />
+                      )}
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.6), transparent 30%, transparent 60%, rgba(0,0,0,0.85))' }} />
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                        <div className="inline-flex items-center gap-1 rounded-full" style={{ padding: '4px 8px 4px 6px', background: 'rgba(239,68,68,0.92)', backdropFilter: 'blur(10px)', boxShadow: '0 2px 8px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.25)' }}>
+                          <span className="rounded-full" style={{ width: 5, height: 5, background: '#fff', boxShadow: '0 0 6px #fff' }} />
+                          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#fff' }}>LIVE</span>
+                        </div>
+                        <div className="rounded-full px-2 py-1 inline-flex items-center gap-1" style={glass.statsChip}>
+                          <Eye className="w-2.5 h-2.5 text-white/85" />
+                          <span style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{formatCount(s.viewer_count ?? 0)}</span>
+                        </div>
+                      </div>
+                      <div className="absolute bottom-3 left-3 right-3">
+                        {s.seller_name && (
+                          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>@{s.seller_name}</p>
+                        )}
+                        <p style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2, color: '#fff' }} className="line-clamp-2">{s.title}</p>
+                        {s.current_product && (
+                          <div className="mt-2 rounded-xl px-2.5 py-1.5 flex items-center gap-2" style={glass.statsChip}>
+                            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }} className="truncate flex-1">{s.current_product.name}</span>
+                            <span style={{ fontSize: 11, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{(s.current_product.price ?? 0).toLocaleString()}원</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </button>
                 ))}
               </div>
             </section>
           )}
 
-          {/* Scheduled */}
+          {/* 방송 예정 — 세로 리스트 + 알림 pill */}
           {(tab === 'all' || tab === 'scheduled') && filteredScheduled.length > 0 && (
             <section className="px-4 mb-6">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Clock className="h-3.5 w-3.5 text-blue-400" strokeWidth={2.5} />
-                <h2 className="text-[13px] font-extrabold">방송 예정</h2>
-                <span className="text-[11px] text-blue-400 font-bold">{filteredScheduled.length}</span>
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="w-3.5 h-3.5 text-blue-400" strokeWidth={2.5} />
+                <span style={{ fontSize: 13, fontWeight: 700 }}>방송 예정</span>
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                {filteredScheduled.map(s => (
-                  <div key={s.id}>
-                    <StreamCard stream={s} type="scheduled" onClick={() => navigate(`/live/${s.id}`)} getThumb={getThumb} />
-                    <div className="mt-1.5">
-                      <BroadcastNotifyButton streamId={s.id} compact />
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                {filteredScheduled.map(s => {
+                  const d = s.scheduled_at ? new Date(s.scheduled_at) : null
+                  const isToday = d && d.toDateString() === new Date().toDateString()
+                  const dateLabel = d ? (isToday ? '오늘' : `${d.getMonth() + 1}/${d.getDate()}`) : ''
+                  const time = d ? d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => navigate(`/live/${s.id}`)}
+                      className="w-full flex items-center gap-3 p-2 rounded-2xl active:scale-[0.99] transition-transform"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                      aria-label={`${s.title} 방송 예정`}
+                    >
+                      <div className="shrink-0 rounded-xl overflow-hidden" style={{ width: 72, height: 72, background: '#1A1A1A' }}>
+                        {getThumb(s) ? (
+                          <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #1A1A1A, #0A0A0A)' }} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 text-left">
+                        {d && (
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="rounded-full px-2 py-0.5 inline-flex items-center gap-1"
+                              style={{ background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(59,130,246,0.30)' }}>
+                              <Clock className="w-2 h-2 text-blue-300" />
+                              <span style={{ fontSize: 9, fontWeight: 700, color: '#93C5FD', letterSpacing: '-0.01em' }}>
+                                {dateLabel} {time}
+                              </span>
+                            </span>
+                          </div>
+                        )}
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#fff' }} className="line-clamp-1">{s.title}</p>
+                        {s.seller_name && (
+                          <p style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>@{s.seller_name}</p>
+                        )}
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                        <BroadcastNotifyButton streamId={s.id} compact />
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </section>
           )}
 
-          {/* Replay */}
+          {/* 다시보기 — 2칸 그리드 + 중앙 play glass + 우상단 뷰 카운트 */}
           {(tab === 'all' || tab === 'replay') && filteredEnded.length > 0 && (
-            <section className="px-4 mb-6">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Play className="h-3.5 w-3.5 text-gray-400" strokeWidth={2.5} fill="currentColor" />
-                <h2 className="text-[13px] font-extrabold">다시보기</h2>
-                <span className="text-[11px] text-gray-500 font-bold">{filteredEnded.length}</span>
+            <section className="px-4 pb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Play className="w-3.5 h-3.5 text-gray-400" strokeWidth={2.5} fill="currentColor" />
+                <span style={{ fontSize: 13, fontWeight: 700 }}>다시보기</span>
               </div>
               <div className="grid grid-cols-2 gap-2.5">
                 {filteredEnded.map(s => (
-                  <StreamCard key={s.id} stream={s} type="ended" onClick={() => navigate(`/live/${s.id}`)} getThumb={getThumb} />
+                  <button
+                    key={s.id}
+                    onClick={() => navigate(`/live/${s.id}`)}
+                    className="text-left active:scale-[0.99] transition-transform"
+                    aria-label={`${s.title} 다시보기`}
+                  >
+                    <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '3/4', background: '#1A1A1A' }}>
+                      {getThumb(s) ? (
+                        <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" style={{ filter: 'brightness(0.8) saturate(0.9)' }} />
+                      ) : (
+                        <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #1A1A1A, #0A0A0A)' }} />
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="rounded-full flex items-center justify-center"
+                          style={{
+                            width: 44, height: 44,
+                            background: 'rgba(255,255,255,0.18)',
+                            backdropFilter: 'blur(24px) saturate(140%)',
+                            WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+                            border: '1px solid rgba(255,255,255,0.30)',
+                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(0,0,0,0.35)',
+                          }}>
+                          <Play className="w-[18px] h-[18px] text-white" fill="currentColor" style={{ marginLeft: 2 }} />
+                        </div>
+                      </div>
+                      <div className="absolute top-2 right-2 rounded-full px-2 py-1"
+                        style={glass.statsChip}>
+                        <span style={{ fontSize: 9, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{formatCount(s.total_views ?? 0)} 뷰</span>
+                      </div>
+                      <div className="absolute bottom-0 inset-x-0 p-2.5"
+                        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }}>
+                        <p style={{ fontSize: 11, fontWeight: 600, color: '#fff' }} className="line-clamp-2">{s.title}</p>
+                        {s.seller_name && (
+                          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>@{s.seller_name}</p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
                 ))}
               </div>
             </section>

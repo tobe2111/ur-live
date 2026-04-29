@@ -20,6 +20,48 @@ interface TokenCache {
 let _firebaseTokenCache: TokenCache | null = null;
 const TOKEN_CACHE_TTL_MS = 55 * 60 * 1000; // 55분 (Firebase 토큰 유효기간 1시간)
 
+// 🛡️ 2026-04-29: 401 시 force refresh 디바운스 — setAuth side-effect 가
+//   다른 useEffect 트리거 시 동일 401 endpoint 가 새 request 로 들어와
+//   `_retry` 가드(request-level) 우회 가능. 시간 기반 가드로 30초 내 재갱신 차단.
+let _lastForceRefreshAt = 0;
+const FORCE_REFRESH_DEBOUNCE_MS = 30 * 1000;
+
+// 🛡️ 2026-04-29: 셀러/어드민/에이전시 refresh inflight 락.
+//   같은 페이지에서 여러 API 가 동시 401 → 각각 인터셉터 진입 → 동시 refresh 호출 →
+//   refresh token rotation 환경에서 첫 번째만 성공, 두 번째부터 stale token 으로 401 → 강제 로그아웃.
+//   inflight Promise 캐시로 동시 요청은 같은 결과 공유.
+type RefreshResult = { accessToken: string; refreshToken?: string } | null;
+const _inflightRefresh: Record<string, Promise<RefreshResult> | undefined> = {};
+
+async function refreshDashboardToken(
+  refreshUrl: string,
+  refreshToken: string,
+  cacheKey: 'seller' | 'admin' | 'agency',
+): Promise<RefreshResult> {
+  if (_inflightRefresh[cacheKey]) {
+    return _inflightRefresh[cacheKey]!;
+  }
+  const p = (async () => {
+    try {
+      const res = await axios.post(refreshUrl, { refreshToken });
+      if (res.data?.success) {
+        return {
+          accessToken: res.data.data.accessToken as string,
+          refreshToken: res.data.data.refreshToken as string | undefined,
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      // 다음 401 사이클이 새 refresh 시도할 수 있도록 즉시 해제
+      delete _inflightRefresh[cacheKey];
+    }
+  })();
+  _inflightRefresh[cacheKey] = p;
+  return p;
+}
+
 async function getCachedFirebaseToken(forceRefresh = false): Promise<string | null> {
   const now = Date.now();
 
@@ -259,21 +301,18 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem(refreshTokenKey);
 
         if (refreshToken) {
-          try {
-            const refreshUrl = isSeller ? '/api/seller/refresh' : '/api/admin/refresh';
-            const refreshRes = await axios.post(refreshUrl, { refreshToken });
-
-            if (refreshRes.data.success) {
-              const { accessToken, refreshToken: newRT } = refreshRes.data.data;
-              localStorage.setItem(tokenKey, accessToken);
-              if (newRT) localStorage.setItem(refreshTokenKey, newRT);
-
-              originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-              return api(originalRequest);
-            }
-          } catch (_) {
-            // Refresh 실패 → 로그아웃
+          // 🛡️ 2026-04-29: inflight 락 — 동시 401 들이 모두 같은 refresh 결과 공유.
+          //   이전 동작: 동시 401 → 동시 refresh 호출 → token rotation 시 race condition.
+          const refreshUrl = isSeller ? '/api/seller/refresh' : '/api/admin/refresh';
+          const cacheKey = isAgency ? 'agency' : isSeller ? 'seller' : 'admin';
+          const refreshed = await refreshDashboardToken(refreshUrl, refreshToken, cacheKey);
+          if (refreshed) {
+            localStorage.setItem(tokenKey, refreshed.accessToken);
+            if (refreshed.refreshToken) localStorage.setItem(refreshTokenKey, refreshed.refreshToken);
+            originalRequest.headers['Authorization'] = `Bearer ${refreshed.accessToken}`;
+            return api(originalRequest);
           }
+          // null 이면 refresh 실패 → 아래 강제 로그아웃 fallthrough
         }
 
         // Refresh 불가 → 강제 로그아웃
@@ -287,13 +326,24 @@ api.interceptors.response.use(
         }
         captureError(new Error(`${roleLabel} 401: Token expired`), { url });
 
+        // 🛡️ 2026-04-29: alert 제거 — 카톡 인앱이 alert 차단 → throw → 흰화면.
+        //   대신 로그인 페이지에서 ?error=session_expired query 감지해 toast 표시.
         const loginUrl = isAgency ? '/agency/login' : isSeller ? '/seller/login' : '/admin/login';
-        alert(`${roleLabel === 'Agency' ? '에이전시' : roleLabel === 'Seller' ? '셀러' : '관리자'} 인증이 만료되었습니다.\n다시 로그인해주세요.`);
-        window.location.href = loginUrl;
+        console.warn(`[Auth] ${roleLabel} 인증 만료 — 로그인 페이지 이동`);
+        window.location.href = `${loginUrl}?error=session_expired`;
         return Promise.reject(error);
       }
 
       // ── Firebase User: Token 강제 갱신 시도 ──────────────────────────
+      // 🛡️ 2026-04-29: 30초 디바운스 — _retry 가드는 request-level 이라 setAuth
+      //   side-effect 로 새 request 가 들어오면 우회 가능. 시간 기반 추가 가드.
+      const sinceLastRefresh = Date.now() - _lastForceRefreshAt;
+      if (sinceLastRefresh < FORCE_REFRESH_DEBOUNCE_MS) {
+        if (import.meta.env.DEV) console.warn('[API] 토큰 갱신 디바운스 — 직전 갱신 후 30초 미경과:', sinceLastRefresh, 'ms');
+        return Promise.reject(error);
+      }
+      _lastForceRefreshAt = Date.now();
+
       try {
         let newToken: string | null = null;
 
@@ -384,12 +434,23 @@ api.interceptors.response.use(
       // 🛡️ 2026-04-28: alert 제거 (카톡 인앱이 alert 차단 → throw → 흰화면).
       //   대신 toast 로 안내 + redirect (콘솔에는 로그).
       console.warn('[Auth] 401 — 자동 로그아웃 후 로그인 페이지 이동');
-      localStorage.setItem('loginReturnUrl', currentPath);
+      // 🛡️ 2026-04-29: login 페이지 자체에선 returnUrl 저장 안 함 (자기참조 차단).
+      //   loginReturnUrl 화이트리스트 — /login·/auth/* 면 무시.
+      const isAuthPath = currentPath.startsWith('/login') || currentPath.startsWith('/seller/login') ||
+                         currentPath.startsWith('/admin/login') || currentPath.startsWith('/agency/login') ||
+                         currentPath.startsWith('/auth/');
+      if (!isAuthPath) {
+        localStorage.setItem('loginReturnUrl', currentPath);
+      }
 
       // 셀러/어드민/에이전시 대시보드 영역만 강제 redirect.
       // 일반 사용자(/, /products 등) 는 *현재 페이지 유지* + 401 reject.
       //   그래야 카톡 인앱에서 비로그인 사용자가 홈 둘러보다 알림톡/위시리스트 등
       //   호출 시 401 받아도 redirect 안 함 (UX 보호).
+      // 🛡️ 2026-04-29: 이미 login 페이지면 redirect 안 함 (자기참조 무한 루프 차단).
+      if (isAuthPath) {
+        return Promise.reject(error);
+      }
       if (currentPath.startsWith('/seller')) {
         window.location.href = '/seller/login';
       } else if (currentPath.startsWith('/admin')) {

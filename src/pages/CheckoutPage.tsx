@@ -697,8 +697,7 @@ export default function CheckoutPage() {
                             <img
                               src={item.image_url}
                               alt={item.product_name}
-                              className="object-cover w-full h-full"
-                            />
+                              className="object-cover w-full h-full" loading="lazy" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
                               <Package className="h-7 w-7 text-gray-400" />

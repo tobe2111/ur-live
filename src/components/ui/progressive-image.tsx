@@ -68,8 +68,7 @@ export function ProgressiveImage({
           className="absolute inset-0 w-full h-full object-cover blur-lg scale-110 transition-opacity duration-300"
           style={{
             opacity: imageSrc ? 0 : 1
-          }}
-        />
+          }} loading="lazy" />
       )}
 
       {/* 실제 이미지 */}

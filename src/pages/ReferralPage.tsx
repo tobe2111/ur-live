@@ -197,7 +197,7 @@ export default function ReferralPage() {
           {product && (
             <div className="flex gap-3 mb-4">
               {product.image_url && (
-                <img src={product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100" />
+                <img src={product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100" loading="lazy" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-bold text-gray-900 line-clamp-2">{product.name}</p>

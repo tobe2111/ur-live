@@ -809,7 +809,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
               {filteredProducts.map((p: Product) => (
                 <button key={p.id} onClick={() => toggleProduct(p.id)}
                   className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all ${selectedProducts.includes(p.id) ? 'border-blue-500 bg-blue-50' : recentProductIds.includes(p.id) ? 'border-gray-300 hover:border-blue-300' : 'border-gray-200 hover:border-gray-300'}`}>
-                  {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />}
+                  {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" loading="lazy" />}
                   <span className="truncate flex-1">{p.name}</span>
                   {selectedProducts.includes(p.id) && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
                 </button>
@@ -872,6 +872,7 @@ function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, 
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
               {thumbnailUrl && (
                 <img src={thumbnailUrl} alt={t('seller.preview')} className="mt-2 w-full max-w-[200px] rounded-lg object-cover"
+                  loading="lazy"
                   onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none' }} />
               )}
             </div>
@@ -1319,7 +1320,7 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium shrink-0 transition-all active:scale-95 ${
                     isCurrent ? 'border-red-500 bg-red-50 text-red-600 shadow-sm' : 'border-gray-200 text-gray-700 hover:border-blue-300'
                   }`}>
-                  {p.image_url && <img src={p.image_url} alt="" className="w-7 h-7 rounded object-cover" />}
+                  {p.image_url && <img src={p.image_url} alt="" className="w-7 h-7 rounded object-cover" loading="lazy" />}
                   <span className="truncate max-w-[90px]">{p.name}</span>
                   {isCurrent && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />}
                 </button>

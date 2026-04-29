@@ -216,8 +216,7 @@ export default function AdminReplayPage() {
                       <img
                         src={`https://img.youtube.com/vi/${videoPreviewId}/mqdefault.jpg`}
                         alt="미리보기"
-                        className="w-full h-full object-cover"
-                      />
+                        className="w-full h-full object-cover" loading="lazy" />
                     </div>
                   )}
                 </div>
@@ -270,7 +269,7 @@ export default function AdminReplayPage() {
                           selected ? 'bg-blue-50' : 'hover:bg-gray-50'
                         }`}
                       >
-                        {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />}
+                        {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" loading="lazy" />}
                         <span className="flex-1 truncate">{p.name}</span>
                         <span className="text-xs text-gray-400 shrink-0">{p.price?.toLocaleString()}원</span>
                         {selected && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
@@ -313,8 +312,7 @@ export default function AdminReplayPage() {
                     <img
                       src={`https://img.youtube.com/vi/${s.youtube_video_id}/mqdefault.jpg`}
                       alt=""
-                      className="w-full h-full object-cover"
-                    />
+                      className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Youtube className="w-10 h-10 text-gray-300" />

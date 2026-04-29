@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { Loader2, X, ShieldCheck } from 'lucide-react'
 
 interface Props {
@@ -30,6 +31,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
   const basePath = role === 'seller' ? '/api/seller' : '/api/agency'
+  useEscapeKey(onCancel)
 
   async function submit() {
     if (!/^\d{4,6}$/.test(pin)) {
@@ -57,7 +59,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onCancel} role="presentation">
       <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

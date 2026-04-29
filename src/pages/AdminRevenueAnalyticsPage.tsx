@@ -278,7 +278,7 @@ export default function AdminRevenueAnalyticsPage() {
                         <td className="py-2.5">
                           <div className="flex items-center gap-3">
                             {p.image_url && (
-                              <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover bg-gray-100" />
+                              <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover bg-gray-100" loading="lazy" />
                             )}
                             <span className="text-gray-900 font-medium truncate max-w-xs">{p.product_name}</span>
                           </div>

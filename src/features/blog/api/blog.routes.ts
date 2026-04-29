@@ -5,8 +5,8 @@
  */
 
 import { Hono } from 'hono'
-import type { Env } from '../../../worker/types/env'
-import { requireAuth, getCurrentUser } from '../../../worker/middleware/auth'
+import type { Env } from '@/worker/types/env'
+import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 
 import { swallow } from '@/worker/utils/swallow';
 const app = new Hono<{ Bindings: Env }>()

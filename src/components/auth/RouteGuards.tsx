@@ -13,6 +13,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { isKorea } from '@/shared/config/region'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 const DEBUG = import.meta.env.DEV
 
@@ -156,11 +157,9 @@ export function PublicRoute({
   if (isUserLoggedIn()) {
     const searchParams = new URLSearchParams(location.search)
     const returnUrl = searchParams.get('returnUrl')
-    // 🛡️ 2026-04-22: open redirect 방어 — 내부 path 만 허용
-    const raw = returnUrl ? decodeURIComponent(returnUrl) : redirectTo
-    const isInternal =
-      typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') && !raw.includes('\n') && !raw.includes('\t')
-    const destination = isInternal ? raw : redirectTo
+    // 🛡️ 2026-04-29: safeInternalPath 헬퍼로 통일 — open redirect 방어 +
+    // /login·/auth/* 자기참조 차단 (모바일 카카오 로그인 무한 루프 방지)
+    const destination = returnUrl ? safeInternalPath(returnUrl, redirectTo) : redirectTo
     if (DEBUG) if (import.meta.env.DEV) console.log('[PublicRoute] ✅ 이미 로그인됨 →', destination)
     return <Navigate to={destination} replace />
   }

@@ -1,14 +1,43 @@
 {
-  "name": "유어딜",
+  "name": "유어딜 — 라이브 커머스 + 맛집 식사권",
   "short_name": "유어딜",
-  "description": "라이브 커머스 + 맛집 식사권 플랫폼",
+  "description": "라이브 방송으로 보고 바로 사는 한국 1위 라이브 커머스. 맛집 식사권부터 패션·뷰티까지 매일 새로운 딜.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#020202",
   "theme_color": "#020202",
   "orientation": "portrait",
+  "lang": "ko-KR",
+  "dir": "ltr",
+  "categories": ["shopping", "lifestyle", "food", "entertainment"],
   "icons": [
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
-  ]
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "라이브 방송",
+      "short_name": "라이브",
+      "description": "지금 진행 중인 라이브 방송 보기",
+      "url": "/live",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "맛집 지도",
+      "short_name": "맛집",
+      "description": "내 주변 맛집 식사권",
+      "url": "/restaurant-map",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "장바구니",
+      "short_name": "장바구니",
+      "description": "장바구니 보기",
+      "url": "/cart",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": []
 }

@@ -603,7 +603,7 @@ export default function RestaurantMapPage() {
               </button>
               <div className="flex gap-3">
                 {selected.image_url ? (
-                  <img src={selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" />
+                  <img src={selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" />
                 ) : (
                   <div className="w-20 h-20 rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
                     <span className="text-2xl">🍽️</span>
@@ -714,7 +714,7 @@ export default function RestaurantMapPage() {
                       }`}
                     >
                       {r.image_url ? (
-                        <img src={r.image_url} alt="" className="w-[72px] h-[72px] rounded-xl object-cover shrink-0" />
+                        <img src={r.image_url} alt="" className="w-[72px] h-[72px] rounded-xl object-cover shrink-0" loading="lazy" />
                       ) : (
                         <div className="w-[72px] h-[72px] rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
                           <span className="text-2xl">🍽️</span>

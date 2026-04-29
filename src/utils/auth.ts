@@ -12,6 +12,7 @@
  */
 
 import { NavigateFunction } from 'react-router-dom'
+import { isSafeInternalPath } from './safe-internal-path'
 
 // Firebase는 dynamic import로만 사용 (초기 번들에서 제외)
 async function getFirebaseAuth() {
@@ -363,21 +364,26 @@ export function getUserProfileImage(): string | null {
  * @param force - 강제로 alert 표시 (기본값: false)
  */
 export function requireLogin(navigate: NavigateFunction, message: string = '로그인이 필요합니다.', force: boolean = false): void {
-  // Save current URL as return destination
+  // 🛡️ 2026-04-29: safeInternalPath 헬퍼로 통일 — auth path / 외부 URL / 위험 경로면
+  //   returnUrl 저장·전달 안 함 (자기참조 무한 루프 방지)
   const currentPath = window.location.pathname + window.location.search
-  localStorage.setItem(FIREBASE_STORAGE_KEYS.LOGIN_RETURN_URL, currentPath)
-  
+  const canUseAsReturnUrl = isSafeInternalPath(currentPath)
+
+  if (canUseAsReturnUrl) {
+    localStorage.setItem(FIREBASE_STORAGE_KEYS.LOGIN_RETURN_URL, currentPath)
+  }
+
   // Show alert ONCE per session to prevent repetitive popups
   const alertShownKey = 'login_alert_shown_' + currentPath
   const alertShown = sessionStorage.getItem(alertShownKey)
-  
+
   if (message && (force || !alertShown)) {
     alert(message)
     sessionStorage.setItem(alertShownKey, 'true')
   }
-  
-  // Navigate to login with returnUrl
-  navigate('/login?returnUrl=' + encodeURIComponent(currentPath))
+
+  // Navigate to login (auth path / 위험 경로면 returnUrl 생략)
+  navigate(canUseAsReturnUrl ? '/login?returnUrl=' + encodeURIComponent(currentPath) : '/login')
 }
 
 /**

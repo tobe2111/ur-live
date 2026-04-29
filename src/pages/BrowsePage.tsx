@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List, Clock } from 'lucide-react'
 import api from '@/lib/api'
-import SEO from '@/components/SEO'
+import SEO, { itemListJsonLd } from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
 
@@ -291,7 +291,19 @@ export default function BrowsePage() {
 
   return (
     <div className="bg-white min-h-screen">
-      <SEO title="쇼핑" description="유어딜 인기 상품, 맛집 바우처, 라이브 특가를 만나보세요" url="/browse" />
+      <SEO
+        title="쇼핑"
+        description="유어딜 인기 상품, 맛집 바우처, 라이브 특가를 만나보세요"
+        url="/browse"
+        jsonLd={products.length > 0 ? itemListJsonLd(
+          products.slice(0, 20).map((p, i) => ({
+            position: i + 1,
+            name: p.name,
+            url: `/products/${p.id}`,
+            image: p.image_url || undefined,
+          }))
+        ) : undefined}
+      />
       {/* 상단 헤더: 검색바 + 아이콘 */}
       <div className="sticky top-0 z-50 bg-white px-4 py-2.5 border-b border-gray-100">
         <div className="flex items-center gap-3">

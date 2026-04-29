@@ -1,16 +1,28 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, BarChart2, Users, TrendingUp } from 'lucide-react'
 
 export default function AgencyLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
+
+  // 🛡️ 2026-04-29: 401 인터셉터가 ?error=session_expired 로 redirect 시 toast 표시
+  useEffect(() => {
+    if (searchParams.get('error') === 'session_expired') {
+      toast.error(t('auth.sessionExpired'))
+      const next = new URLSearchParams(searchParams)
+      next.delete('error')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams, t])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

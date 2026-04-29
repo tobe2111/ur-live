@@ -37,6 +37,16 @@ if (import.meta.env.DEV) {
 // 빌드 버전 자동 감지 & 자동 리로드
 import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck()).catch(() => {})
 
+// 🛡️ 2026-04-29: Web Vitals (LCP/CLS/INP) Sentry 추적 — 프로덕션만, lazy.
+//   sentry init 후 (1초 deferred) PerformanceMonitor 시작 — 초기 LCP 측정 누락 방지.
+if (import.meta.env.PROD) {
+  setTimeout(() => {
+    import('@/lib/performance-monitor').then(({ PerformanceMonitor }) => {
+      PerformanceMonitor.trackPageLoad('app')
+    }).catch(() => {})
+  }, 1000)
+}
+
 // 🚨 2026-04-27 (긴급 롤백): PWA SW 가 OAuth redirect 차단 → 모든 페이지 ERR_FAILED.
 //   "FetchEvent resulted in a network error: a redirected response was used for
 //   a request whose redirect mode is not 'follow'"

@@ -77,7 +77,7 @@ export default function BlogListPage() {
                 <Link key={post.id} to={`/blog/${post.slug}`}
                   className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group">
                   {post.thumbnail_url ? (
-                    <img src={post.thumbnail_url} alt="" className="w-full h-48 object-cover" />
+                    <img src={post.thumbnail_url} alt="" className="w-full h-48 object-cover" loading="lazy" />
                   ) : (
                     <div className="w-full h-48 bg-gradient-to-br from-pink-100 to-orange-100 flex items-center justify-center">
                       <span className="text-4xl">📝</span>

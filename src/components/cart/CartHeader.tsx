@@ -32,8 +32,8 @@ export const CartHeader = React.memo(function CartHeader({
       {/* v4 sticky white header: X left, title center, spacer right */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
         <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
-          <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center">
-            <X size={22} className="text-gray-900" />
+          <button type="button" onClick={handleBack} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
+            <X size={22} className="text-gray-900" aria-hidden="true" />
           </button>
           <h1 className="text-[16px] font-extrabold text-gray-900">
             장바구니{' '}

@@ -148,7 +148,7 @@ export default function AdminSampleRequestsPage() {
                     {/* 상품 이미지 */}
                     <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
                       {item.product_image ? (
-                        <img src={item.product_image} alt="" className="w-full h-full object-cover" />
+                        <img src={item.product_image} alt="" className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Package className="w-6 h-6 text-gray-300" />

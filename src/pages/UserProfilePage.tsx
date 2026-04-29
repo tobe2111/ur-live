@@ -605,21 +605,25 @@ export default function UserProfilePage() {
     }
   }
 
+  // 🛡️ 2026-04-29 v4 Wallet — 4종 페이지 일관성을 위한 LargeTitle 헤더 패턴
   return (
     <div className="bg-[#020202] flex flex-col min-h-screen">
       <SEO title="마이페이지 - 유어딜" description="내 프로필, 주문내역, 쿠폰 등을 관리하세요" url="/user/profile" noindex />
       <h1 className="sr-only">마이페이지</h1>
-      {/* v4 Premium Hero Header */}
-      <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3" style={{ background: '#0A0A0A' }}>
-        <p className="text-[16px] font-extrabold text-white">My</p>
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/notifications')} aria-label="알림" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-          </button>
-          <button onClick={() => navigate('/account/settings')} aria-label="설정" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-          </button>
-        </div>
+
+      {/* v4 Wallet sticky chrome — 알림 + 설정만 우측 */}
+      <div className="sticky top-0 z-50 flex items-center justify-end px-2 py-3 gap-1" style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(84,84,88,0.34)' }}>
+        <button onClick={() => navigate('/notifications')} aria-label="알림" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+        </button>
+        <button onClick={() => navigate('/account/settings')} aria-label="설정" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </button>
+      </div>
+
+      {/* v4 Wallet Large Title */}
+      <div className="px-4 pt-3 pb-1">
+        <h2 style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1 }}>My</h2>
       </div>
 
       {/* v4 Hero Profile — 그라데이션 배경 */}
@@ -628,8 +632,7 @@ export default function UserProfilePage() {
           <div className="relative">
             <img
               src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
-              alt={`${userName} 프로필 이미지`} className="w-16 h-16 rounded-full object-cover" style={{ border: '2px solid rgba(255,255,255,0.15)' }}
-            />
+              alt={`${userName} 프로필 이미지`} className="w-16 h-16 rounded-full object-cover" style={{ border: '2px solid rgba(255,255,255,0.15)' }} loading="lazy" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[17px] font-extrabold text-white" style={{ letterSpacing: '-0.01em' }}>{userName}</p>

@@ -217,9 +217,24 @@ const FAQPage = lazy(() => import('./pages/FAQPage'))
 const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
 
 // 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
+// 🛡️ 2026-04-29: PageLoader — 브랜드 spinner + sr-only "로딩 중" announcement (a11y)
+//   짧은 로딩에 깜빡임 방지: 200ms 안에 끝나면 spinner 안 보임.
 const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+  <div
+    className="flex items-center justify-center min-h-screen"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <div
+      className="w-8 h-8 rounded-full animate-spin"
+      style={{
+        border: '3px solid rgba(255,255,255,0.08)',
+        borderTopColor: '#EC4899',
+        animationDelay: '200ms',
+      }}
+    />
+    <span className="sr-only">페이지 로딩 중…</span>
   </div>
 )
 

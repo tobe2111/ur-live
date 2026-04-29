@@ -141,7 +141,8 @@
     "disconnectFailed": "断开连接失败。",
     "copyFailed": "复制失败。",
     "home": "首页",
-    "uploadComplete": "上传完成"
+    "uploadComplete": "上传完成",
+    "dismiss": "关闭"
   },
   "auth": {
     "email": "邮箱",
@@ -149,6 +150,7 @@
     "loginWithKakao": "Kakao登录",
     "loginWithGoogle": "Google登录",
     "loginWithEmail": "邮箱登录",
+    "sessionExpired": "会话已过期。请重新登录。",
     "tagline": "直播购物新体验",
     "alreadyHaveAccount": "已有账号？",
     "createAccount": "创建账号",
@@ -284,7 +286,8 @@
       "replyPlaceholder": "写回复...",
       "replySubmitted": "回复已提交",
       "replyFailed": "回复提交失败",
-      "writeReply": "写回复"
+      "writeReply": "写回复",
+      "subtitle": "买家评论/回复"
     },
     "coupons": {
       "title": "优惠券管理",
@@ -308,7 +311,8 @@
       "percentOff": "{{value}}%折扣",
       "fixedOff": "{{value}}元折扣",
       "minOrder": "{{amount}}元以上",
-      "usage": "已使用 {{used}}/{{total}}"
+      "usage": "已使用 {{used}}/{{total}}",
+      "subtitle": "优惠券发放和使用记录"
     },
     "workspace": "工作区",
     "totalRevenue": "总收入",
@@ -1547,7 +1551,8 @@
       "targetCount": "目标 {{count}}人",
       "voucherSuffix": "餐券",
       "imageSizeLimit": "只能上传5MB以下的图片",
-      "imageSearchFailed": "图片搜索失败"
+      "imageSearchFailed": "图片搜索失败",
+      "subtitle": "餐券/团购注册"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1712,7 +1717,29 @@
     },
     "public": {
       "liveEnded": "直播已结束。"
-    }
+    },
+    "analyticsSubtitle": "销售、客户、商品绩效分析",
+    "createStreamSubtitle": "创建新的直播",
+    "donationsSubtitle": "赞助接收和结算记录",
+    "groupBuySubtitle": "团购/餐券管理",
+    "inventorySubtitle": "库存管理·条形码扫描·出入库记录",
+    "liveBroadcastSubtitle": "实时直播开始/结束/统计",
+    "onboarding": {
+      "addProduct": "注册首个商品",
+      "bankAccount": "注册结算账户",
+      "completed": "已完成",
+      "firstLive": "首次直播",
+      "firstOrder": "首次接单",
+      "subtitle": "完成以下步骤即可开始销售",
+      "title": "🚀 启动指南"
+    },
+    "profileEditSubtitle": "编辑头像/简介/社交链接",
+    "settlementApprovedEstimate": "审批后预计结算金额",
+    "settlementEstimate": "预计结算金额",
+    "shortsSubtitle": "短视频注册/管理",
+    "streamEditSubtitle": "修改直播信息",
+    "supplySubtitle": "供应商品管理",
+    "youtubeGrowthSubtitle": "YouTube频道增长分析"
   },
   "admin": {
     "login": {
@@ -1792,7 +1819,8 @@
       "agency": "代理管理",
       "cafe24": "Cafe24集成",
       "alimtalk": "品牌消息",
-      "sampleRequests": "样品申请"
+      "sampleRequests": "样品申请",
+      "agencyCreatorApproval": "代理·创作者审批"
     }
   },
   "agency": {
@@ -1929,7 +1957,10 @@
       "notices": "卖家公告",
       "guide": "运营指南",
       "profile": "档案设置"
-    }
+    },
+    "guide": "运营指南",
+    "guideSubtitle": "代理运营核心指南",
+    "guideTitle": "代理指南"
   },
   "nav": {
     "home": "首页",

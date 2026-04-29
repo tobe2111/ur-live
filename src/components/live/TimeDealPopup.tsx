@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Zap, Clock, ShoppingCart, Users, Gift } from 'lucide-react'
+import { Zap, Clock, Users, Gift } from 'lucide-react'
 
 interface TimeDeal {
   id: number; product_id: number; product_name: string

@@ -144,6 +144,20 @@ app.put('/targets', async (c: AgencyCtx) => {
   const { seller_id, month, target_amount } = await c.req.json<{ seller_id: number; month: string; target_amount: number }>()
   if (!seller_id || !month) return c.json({ success: false, error: '셀러와 월을 선택해주세요' }, 400)
 
+  // 🛡️ 2026-04-29 보안 audit CRITICAL: agency_sellers 소유권 검증.
+  // 이전: body 의 seller_id 를 인증된 agency 가 진짜 소속 셀러인지 검증 없이 INSERT
+  // → 다른 에이전시의 seller_id 로 fake target 생성 가능 (DB 오염).
+  const ownership = await c.env.DB.prepare(
+    'SELECT 1 FROM agency_sellers WHERE agency_id = ? AND seller_id = ? LIMIT 1'
+  ).bind(agencyId, seller_id).first()
+  if (!ownership) return c.json({ success: false, error: '소속 셀러가 아닙니다.' }, 403)
+
+  // target_amount 입력 검증
+  const amount = typeof target_amount === 'number' ? target_amount : 0
+  if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000_000) {
+    return c.json({ success: false, error: '목표 금액은 0 ~ 10억 범위여야 합니다.' }, 400)
+  }
+
   try {
     await c.env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS agency_seller_targets (
@@ -158,7 +172,7 @@ app.put('/targets', async (c: AgencyCtx) => {
     INSERT INTO agency_seller_targets (agency_id, seller_id, month, target_amount)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(agency_id, seller_id, month) DO UPDATE SET target_amount = excluded.target_amount
-  `).bind(agencyId, seller_id, month, target_amount || 0).run()
+  `).bind(agencyId, seller_id, month, amount).run()
 
   return c.json({ success: true })
 })
@@ -286,6 +300,14 @@ app.post('/contracts', async (c: AgencyCtx) => {
   const { seller_id, start_date, end_date, terms } = await c.req.json<any>()
   if (!seller_id || !start_date || !end_date) return c.json({ success: false, error: '필수 항목을 입력해주세요' }, 400)
 
+  // 🛡️ 2026-04-29 보안 audit CRITICAL: agency_sellers 소유권 검증.
+  // 이전: body 의 seller_id 가 인증된 agency 의 소속 셀러인지 검증 없이 INSERT
+  // → 다른 에이전시의 seller_id 로 fake 계약 생성 가능.
+  const ownership = await c.env.DB.prepare(
+    'SELECT 1 FROM agency_sellers WHERE agency_id = ? AND seller_id = ? LIMIT 1'
+  ).bind(agencyId, seller_id).first()
+  if (!ownership) return c.json({ success: false, error: '소속 셀러가 아닙니다.' }, 403)
+
   try { await c.env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS agency_contracts (
       id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, seller_id INTEGER NOT NULL,
@@ -313,6 +335,13 @@ app.put('/contracts/:id', async (c: AgencyCtx) => {
 
   const id = c.req.param('id')
   const body = await c.req.json<any>()
+
+  // 🛡️ 2026-04-29 보안 audit: status enum 검증
+  const ALLOWED_STATUS = new Set(['active', 'paused', 'terminated', 'expired'])
+  if (body.status !== undefined && !ALLOWED_STATUS.has(body.status)) {
+    return c.json({ success: false, error: '유효하지 않은 상태값입니다.' }, 400)
+  }
+
   const sets: string[] = []; const vals: any[] = []
   if (body.end_date) { sets.push('end_date = ?'); vals.push(body.end_date) }
   if (body.terms !== undefined) { sets.push('terms = ?'); vals.push(body.terms) }

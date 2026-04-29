@@ -219,7 +219,7 @@ export default function SellerSupplyPage() {
                     {/* Image */}
                     <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
                       {product.image_url
-                        ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                        ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
                         : <Package className="w-8 h-8 text-gray-300" />
                       }
                     </div>
@@ -297,7 +297,7 @@ export default function SellerSupplyPage() {
                     {/* Image */}
                     <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
                       {req.product_image
-                        ? <img src={req.product_image} alt={req.product_name} className="w-full h-full object-cover" />
+                        ? <img src={req.product_image} alt={req.product_name} className="w-full h-full object-cover" loading="lazy" />
                         : <Package className="w-6 h-6 text-gray-300" />
                       }
                     </div>

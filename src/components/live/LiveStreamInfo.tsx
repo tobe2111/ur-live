@@ -43,8 +43,7 @@ export const LiveStreamInfo = React.memo(function LiveStreamInfo({
             <img
               src={streamerAvatar}
               alt={streamerName}
-              className="w-10 h-10 rounded-full object-cover"
-            />
+              className="w-10 h-10 rounded-full object-cover" loading="lazy" />
           ) : (
             <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
               <span className="text-gray-600 font-bold">

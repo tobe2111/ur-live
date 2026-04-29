@@ -213,8 +213,7 @@ export default function LiveNow() {
                 <img
                   src={stream.thumbnail_url || stream.image_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`}
                   alt={stream.title}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400" />
               )}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2 } from 'lucide-react'
+import { ShoppingBag, MessageCircle, X, Send } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import PKLiveBanner from '@/components/live/PKLiveBanner'
 import { getUserIdSync as getUserId } from '@/utils/auth'
@@ -9,7 +9,6 @@ import { useModal } from '@/components/CustomModal'
 import { useLiveStreamWebSocket } from '@/hooks/useLiveStreamWebSocket'
 import { useProductStock } from '@/hooks/useProductStock'
 import type { ChatMessage } from '@/types/live-stream'
-import { toast } from '@/hooks/useToast'
 import { DonationEffect } from '@/components/LiveDonation'
 import { maskUserName } from '@/components/live/LiveUtils'
 import { TeamPointsBadge } from '@/components/live/TeamPointsBadge'
@@ -17,6 +16,7 @@ import LiveDonation from '@/components/LiveDonation'
 import AuctionPanel from '@/components/live/AuctionPanel'
 import TimeDealPopup from '@/components/live/TimeDealPopup'
 import HeartReaction from '@/components/live/HeartReaction'
+import { glass, boutiqueCTA } from '@/components/glass/glassTokens'
 import ScheduledOverlay from '@/components/live/ScheduledOverlay'
 import WishlistButton from '@/components/WishlistButton'
 
@@ -90,146 +90,13 @@ interface ReelData {
   product: Product | null
 }
 
-function LiveChat({ messages, onChatClick }: { messages: ChatMessage[]; onChatClick: () => void }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
+// 🛡️ 2026-04-29: LiveChat sub-component → @/components/live/LiveChatStream.tsx 추출 (TD-006)
+//   ReelCard 1447 → 1407줄 (40줄 감소). 외부 import 0건 확인됨.
+import LiveChat from '@/components/live/LiveChatStream'
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
-
-  const recentMessages = messages.slice(-6)
-
-  return (
-    <div
-      ref={scrollRef}
-      className="flex flex-col gap-1 overflow-y-auto max-h-36 cursor-pointer no-scrollbar"
-      onClick={onChatClick}
-    >
-      {recentMessages.map((msg) => {
-        const isSystemMessage = msg.userName === 'System' || msg.role === 'system'
-        const isYouTube = msg.source === 'youtube'
-
-        return (
-          <div key={msg.id} className="flex items-start gap-1 animate-fade-in">
-            {isYouTube && (
-              <svg viewBox="0 0 24 24" fill="#FF0000" className="w-3.5 h-3.5 shrink-0 mt-0.5">
-                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-              </svg>
-            )}
-            {isSystemMessage ? (
-              <p className="text-[11px] leading-[1.3] text-yellow-300 font-semibold" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
-                {msg.message}
-              </p>
-            ) : (
-              <p className="text-[11px] leading-[1.3]" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)' }}>
-                <span className="font-bold text-white/90">{msg.userName}</span>
-                <span className="text-white/70"> {msg.message}</span>
-              </p>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function ProductListSheet({
-  products,
-  currentProductId,
-  onClose,
-  onSelectProduct,
-  loading: loadingProducts,
-  stream,
-}: {
-  products: Product[]
-  currentProductId: number | null
-  onClose: () => void
-  onSelectProduct: (product: Product) => void
-  loading: boolean
-  stream?: Stream
-}) {
-  const navigate = useNavigate()
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
-      <div className="bg-black/40 absolute inset-0" />
-      <div
-        className="relative bg-[#1A1A1A] rounded-t-2xl max-h-[70vh] overflow-hidden flex flex-col animate-slideUp"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <h3 className="text-white font-bold">상품 목록 ({products.length})</h3>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/10">
-            <X className="w-5 h-5 text-white/70" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {loadingProducts ? (
-            <div className="flex justify-center py-8">
-              <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            </div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">등록된 상품이 없습니다</div>
-          ) : (
-            products.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => onSelectProduct(p)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
-                  currentProductId === p.id
-                    ? 'bg-pink-500/20 border border-pink-500/50'
-                    : 'bg-white/5 hover:bg-white/10'
-                }`}
-              >
-                {(p.image_url || p.image) ? (
-                  <img
-                    src={p.image_url || p.image}
-                    alt={p.name}
-                    className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                    <ShoppingBag className="w-5 h-5 text-gray-500" />
-                  </div>
-                )}
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-white text-sm font-medium truncate">{p.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {(p.original_price || p.originalPrice) > p.price && (
-                      <span className="text-xs text-gray-500 line-through">
-                        {(p.original_price || p.originalPrice).toLocaleString()}원
-                      </span>
-                    )}
-                    <span className="text-sm font-bold text-pink-400">{p.price.toLocaleString()}원</span>
-                  </div>
-                  {currentProductId === p.id && (
-                    <span className="inline-block mt-1 text-[10px] bg-pink-500 text-white px-2 py-0.5 rounded-full font-bold">
-                      현재 소개 중
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigate(`/products/${p.id}`)
-                  }}
-                  className="shrink-0 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-white font-medium transition-colors"
-                >
-                  상세
-                </button>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export { LiveChat, ProductListSheet }
+// 🛡️ 2026-04-29 (TD-006): ProductListSheet → @/components/live/ProductListSheet.tsx 사용
+//   기존 ReelCard 자체 정의 (96줄) 제거. 외부 ProductListSheet 가 더 정교한 디자인.
+import { ProductListSheet } from '@/components/live/ProductListSheet'
 export type { Stream, Product, ReelData, YTPlayer, YTPlayerEvent, ApiError }
 
 export default function ReelCard({ 
@@ -1155,10 +1022,7 @@ export default function ReelCard({
                   className="flex items-center justify-center rounded-full transition-all active:scale-90"
                   style={{
                     width: 40, height: 40,
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    ...glass.actionRail,
                   }}
                   aria-label="상품 목록"
                 >
@@ -1184,10 +1048,7 @@ export default function ReelCard({
                   className="flex items-center justify-center rounded-full transition-all active:scale-90"
                   style={{
                     width: 40, height: 40,
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    ...glass.actionRail,
                   }}
                   aria-label="채팅 열기"
                 >
@@ -1207,10 +1068,7 @@ export default function ReelCard({
                   className="flex items-center justify-center rounded-full transition-all active:scale-90"
                   style={{
                     width: 40, height: 40,
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    ...glass.actionRail,
                   }}
                 />
                 <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>공유</span>
@@ -1329,7 +1187,7 @@ export default function ReelCard({
                       onClick={handleChangeProduct}
                       disabled={changingProduct || isCurrentProduct}
                       className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
-                      style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
+                      style={boutiqueCTA}
                       aria-label={isCurrentProduct ? '소개 중' : '상품 변경'}
                     >
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>
@@ -1345,7 +1203,7 @@ export default function ReelCard({
                       }}
                       disabled={!currentProduct}
                       className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
-                      style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
+                      style={boutiqueCTA}
                       aria-label="바로 구매"
                     >
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>바로구매</span>

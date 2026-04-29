@@ -280,7 +280,7 @@ export default function SellerPublicPage() {
               onClick={() => isOwner && fileInputRef.current?.click()}
             >
               {seller.profile_image ? (
-                <img src={seller.profile_image} alt="" className="w-full h-full object-cover" />
+                <img src={seller.profile_image} alt="" className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
                   <span className={`text-2xl font-bold ${T.text}`}>{(seller.name || '?').charAt(0)}</span>

@@ -6,6 +6,8 @@ import { toast } from '@/hooks/useToast'
 import { Badge } from '@/components/ui/badge'
 import MobileFooter from '@/components/MobileFooter'
 import { CartTab } from '@/components/mypage/CartTab'
+import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
+import { walletTokens } from '@/components/wallet/walletTokens'
 import { OrdersTab, getTrackingUrl } from '@/components/mypage/OrdersTab'
 import {
   ArrowLeft,
@@ -216,65 +218,65 @@ export default function MyOrdersPage() {
   }
 
 
-  return (
-    <div className="min-h-screen bg-white pb-20">
-      <SEO title="주문내역 - 유어딜" description="주문 내역과 배송 현황을 확인하세요" url="/my-orders" noindex />
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
-        <div className="w-full px-4 sm:px-6">
-          <div className="flex h-[52px] items-center justify-between">
-            <button
-              onClick={() => navigate(-1)}
-              aria-label="뒤로 가기"
-              className="text-gray-900"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <h1 className="text-[15px] font-bold text-gray-900">
-              주문내역
-            </h1>
-            <div className="w-16"></div>
-          </div>
-        </div>
-      </header>
+  // 🛡️ 2026-04-29 v4 Wallet — 다크 우선
+  const theme = 'dark' as const
+  const tk = walletTokens[theme]
 
-      {/* Tab Navigation */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="w-full px-4 sm:px-6">
-          <div className="flex space-x-1">
-            <button
-              onClick={() => setActiveTab('cart')}
-              className={`
-                flex-1 py-3 px-4 text-[15px] font-medium transition-all relative
-                ${activeTab === 'cart'
-                  ? 'text-gray-900'
-                  : 'text-gray-400 hover:text-gray-600'
-                }
-              `}
-            >
-              <ShoppingCart className="h-4 w-4 inline mr-2" />
-              장바구니
-              {activeTab === 'cart' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900"></div>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`
-                flex-1 py-3 px-4 text-[15px] font-medium transition-all relative
-                ${activeTab === 'orders'
-                  ? 'text-gray-900'
-                  : 'text-gray-400 hover:text-gray-600'
-                }
-              `}
-            >
-              <Package className="h-4 w-4 inline mr-2" />
-              주문내역
-              {activeTab === 'orders' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900"></div>
-              )}
-            </button>
-          </div>
+  return (
+    <WalletPageWrapper theme={theme}>
+      <SEO title="주문내역 - 유어딜" description="주문 내역과 배송 현황을 확인하세요" url="/my-orders" noindex />
+      {/* 상단 chrome — 뒤로가기 */}
+      <div className="sticky top-0 z-30 px-2 pt-3 pb-2 flex items-center"
+        style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
+        <button
+          onClick={() => navigate(-1)}
+          className="w-9 h-9 flex items-center justify-center rounded-full"
+          style={{ background: tk.fillSoft, color: tk.label }}
+          aria-label="뒤로가기"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+      </div>
+
+      <LargeTitle theme={theme} title="주문내역" />
+
+      {/* Tab Navigation — underline 탭 */}
+      <div className="px-4 mb-4">
+        <div className="flex relative" style={{ borderBottom: `1px solid ${tk.separator}` }}>
+          <button
+            onClick={() => setActiveTab('cart')}
+            className="flex-1 py-3 px-4 transition-colors relative flex items-center justify-center gap-2"
+            style={{
+              fontSize: 15,
+              fontWeight: activeTab === 'cart' ? 800 : 600,
+              color: activeTab === 'cart' ? tk.label : tk.tertiary,
+              letterSpacing: '-0.01em',
+            }}
+            aria-pressed={activeTab === 'cart'}
+          >
+            <ShoppingCart className="h-4 w-4" />
+            장바구니
+            {activeTab === 'cart' && (
+              <div className="absolute bottom-0 left-0 right-0" style={{ height: 2, background: tk.label }} />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('orders')}
+            className="flex-1 py-3 px-4 transition-colors relative flex items-center justify-center gap-2"
+            style={{
+              fontSize: 15,
+              fontWeight: activeTab === 'orders' ? 800 : 600,
+              color: activeTab === 'orders' ? tk.label : tk.tertiary,
+              letterSpacing: '-0.01em',
+            }}
+            aria-pressed={activeTab === 'orders'}
+          >
+            <Package className="h-4 w-4" />
+            주문내역
+            {activeTab === 'orders' && (
+              <div className="absolute bottom-0 left-0 right-0" style={{ height: 2, background: tk.label }} />
+            )}
+          </button>
         </div>
       </div>
 
@@ -697,6 +699,6 @@ export default function MyOrdersPage() {
 
       {/* Mobile Footer */}
       <MobileFooter />
-    </div>
+    </WalletPageWrapper>
   )
 }

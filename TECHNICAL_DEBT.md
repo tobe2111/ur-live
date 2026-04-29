@@ -8,7 +8,95 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
-## 📊 최신 상태 요약 (2026-04-28 종료 시)
+## 📊 최신 상태 요약 (2026-04-29 종료 시)
+
+### 2026-04-29 카카오 모바일 무한 루프 사고 + 전수 강화
+
+| 항목 | 상태 변경 |
+|---|---|
+| **사고** 카카오 인앱 로그인 무한 redirect | ✅ 즉시 hotfix (`d750fad` — index.html sessionStorage 가드) |
+| 자기참조 검증 분산 (4곳 다른 규칙) | ✅ `src/utils/safe-internal-path.ts` 단일 헬퍼 도입 + 36 + 30 단위테스트 |
+| `KakaoCallbackPage` / `KakaoConsentCallbackPage` returnUrl 자기참조 차단 | ✅ safeInternalPath 적용 |
+| 백엔드 `kakao.routes.ts:safeRedirect()` `/auth/`, `/login` 차단 누락 | ✅ 차단 추가 + trailing-slash prefix 처리 보강 + 단위 테스트 30건 |
+| `lib/api.ts` Firebase user 401 force-refresh 디바운스 부재 | ✅ 30초 시간 디바운스 추가 |
+| `lib/api.ts` 셀러/어드민/에이전시 refresh token race condition | ✅ inflight Promise 락 (`_inflightRefresh[cacheKey]`) 추가 |
+| `lib/api.ts` 401 후 login 페이지 자기참조 가능 | ✅ auth path 면 returnUrl 저장·redirect skip |
+| 셀러/어드민/에이전시 토큰 만료 alert (카톡 인앱 흰화면 위험) | ✅ `?error=session_expired` query → `t('auth.sessionExpired')` toast (6언어 i18n) |
+| `version-check.ts` MIME 에러 reload 가드 약함 | ✅ localStorage 1분 윈도우 가드 추가 |
+| `_headers` Cross-Origin-Opener-Policy 누락 | ✅ `same-origin-allow-popups` 추가 |
+| Worker 코드 `await import('@/...')` 5건 (CLAUDE.md 룰 위반) | ✅ 상대경로로 변환 — admin-agency/agency-messages routes |
+| `utils/auth.requireLogin` 검증 분산 | ✅ `safeInternalPath()` 헬퍼 사용 — auth path/외부 URL 거부 |
+| 죽은 코드: `errorHandler.checkAuthError`, `useVersionCheck`, `login-redirect.ts`, `market-price-chart.tsx` | ✅ 4건 삭제 |
+
+### 2026-04-29 후속 — 광역 audit 결과 (3개 영역)
+
+이번 세션 카카오 무한 루프 fix 후 i18n / a11y / API 보안 전수조사 (3개 Agent 병렬). 결과:
+
+#### TD-014 (신규) — i18n 하드코딩 한국어 100+건
+- **Agent 결과**: 462건 검출, 결제 / 인증 / 라이브 / 알림 / 셀러·어드민·에이전시 페이지 광범위
+- **이번 세션 처리**: 0건 (namespace 신설 필요한 광범위 작업 → 별도 PR)
+- **권고 처리 순서**: (1) CheckoutPage / TossPaymentWidget / GiftSendModal — 결제 흐름, (2) SellerPinPrompt / KakaoLinkButton — 인증, (3) NotificationsPage / LivePageV2 / ShortsPage, (4) Admin/Agency 운영자 영역
+- **주의**: B영역 (`t() || '한글'` fallback 패턴) 0건, C영역 (6언어 비대칭) 0건 — 키 인프라는 양호
+
+#### TD-015 (신규) — a11y 30건 (모달 표준화 부재 / icon-only 버튼 / 폼 라벨 미연결)
+- **Agent 결과**: 30건 HIGH/MEDIUM/LOW
+- **이번 세션 처리** ✅: CartItem (X / -/+ 버튼 aria-label + 썸네일 alt), CartHeader (뒤로 가기 aria-label), ProductListSheet (`role="dialog"`, `aria-modal`, ESC + focus trap, 닫기 한국어화)
+- **남은 작업**: LiveDonation / FirstTimeTutorial / BroadcastDiagnostic / SellerPinPrompt / ChatInputModal 모달 표준화. ProductGrid / BrowseProductCard 의 `<div onClick>` → `<a>` 변환. CheckoutPage 배송지 모달 폼 label htmlFor.
+
+#### TD-016 (신규) — API 보안 audit
+**CRITICAL 처리 ✅** (2건):
+- ✅ `seller-orders.routes.ts` POST/PUT /products — `Number.isFinite()` + 범위 검증 (가격 0~1억, 재고 0~100만, 정가, 라이브가격) + name/description 길이 + status enum
+- ✅ `agency-ops.routes.ts` PUT /targets, POST /contracts — `agency_sellers` 소유권 검증 (다른 에이전시 셀러 fake 계약 차단). target_amount Number.isFinite. PUT /contracts/:id status enum.
+
+**CRITICAL 미처리** (1건 — 코드 변경 큼, 별도 PR):
+- 🔴 `seller-transfer.routes.ts:193-249` 셀러 본인 인증 부재. `from_agency` 가 셀러 대신 이전 동의 가능. 셀러 JWT/카카오 세션 검증 + confirm-by-seller endpoint 신설 필요.
+
+**HIGH 미처리** (5건 — 별도 PR 권장):
+- admin login / 2fa rate limit 누락 (account_lockout 만 의존)
+- broadcast-notify `POST /send/:streamId` 인증 약함 (스팸 가능)
+- youtube live `start/end` stream 소유권 추가 검증
+- admin streams 입력 검증 부족 (description 길이 등)
+
+**MEDIUM 미처리** (7건 — 별도 PR):
+- auction.routes.ts 의 `.catch(() => {})` 6+곳 → `swallow()` 헬퍼
+- internal-admin-tools `BOOTSTRAP_TOKEN` 비밀번호 정책 강화
+- moderation `/check` 인증/rate limit 추가
+- signOut 빈 catch 보강
+
+**LOW 미처리** (5건 — 정리 차원):
+- donations 메시지 sanitize 강화 (DOMPurify)
+- CSRF 보호 cookie-only endpoint 정리
+
+### TD-003 (Cloudflare 유령 프로젝트) 진단 — 미해결 사용자 액션
+
+**증상**: PR #286 의 `Workers Builds: ur-live-global` 빌드 매번 failure. `wrangler.toml` 변경 0건이라 PR 책임 아님.
+
+**원인 추정**:
+- `ur-live-global` 이라는 별도 Workers 프로젝트가 GitHub integration 으로 모든 push 마다 빌드 시도
+- `wrangler.toml [env.production] name = "global-marketplace"` 와 이름 미일치 → 빌드 환경 변수/secret 누락 가능성
+- CLAUDE.md "Pages 단일 배포" 정책 (2026-04-22 정리) 의 잔재 — Workers 프로젝트 자체는 삭제 안 됐을 것
+
+**위험도**: 라이브 사이트 (ur-live Pages) 에 영향 없음. PR 머지 차단 안 함. 다만 매 push 마다 false-positive CI 실패 → 신규 사고 알림 노이즈.
+
+**사용자 액션 필요**:
+1. Cloudflare Dashboard → Workers & Pages → `ur-live-global` 확인
+2. 옵션 A: GitHub integration 해제 (해당 Worker 비활성화)
+3. 옵션 B: 프로젝트 자체 삭제 (이미 사용 안 하는 경우)
+4. 옵션 C: 환경 변수/secret 정정해 빌드 통과시키기 (사용 중이면)
+
+**근거**: 2026-04-22 사고 요약 (CLAUDE.md) — "별개 Workers 프로젝트가 Custom Domain 가로채" 사고와 같은 잔재 추정.
+
+**상세 사고 사례**: `CLAUDE.md` 의 "2026-04-29 사고 요약" 참조.
+
+신규 파일:
+- `src/utils/safe-internal-path.ts` — open-redirect/자기참조 검증 단일 헬퍼
+- `src/tests/unit/safe-internal-path.test.ts` — 36 테스트
+
+삭제:
+- `src/hooks/useVersionCheck.ts` — caller 0 (lib/version-check.ts 와 중복)
+- `src/lib/errorHandler.ts:checkAuthError` — caller 0 + returnUrl 화이트리스트 누락
+
+## 📊 이전 상태 요약 (2026-04-28 종료 시)
 
 ### 2026-04-28 마라톤 세션 — TD 추가 정리
 

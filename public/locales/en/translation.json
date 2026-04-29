@@ -153,6 +153,7 @@
     "loginWithKakao": "Login with Kakao",
     "loginWithGoogle": "Login with Google",
     "loginWithEmail": "Login with Email",
+    "sessionExpired": "Your session has expired. Please log in again.",
     "forgotPassword": "Forgot password?",
     "resetPassword": "Reset Password",
     "resetPasswordButton": "Send Reset Link",

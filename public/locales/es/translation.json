@@ -141,7 +141,8 @@
     "disconnectFailed": "Error al desconectar.",
     "copyFailed": "Error al copiar.",
     "home": "Inicio",
-    "uploadComplete": "Carga completa"
+    "uploadComplete": "Carga completa",
+    "dismiss": "Cerrar"
   },
   "seller": {
     "dashboard": "Panel",
@@ -201,7 +202,8 @@
       "replyPlaceholder": "Escribir respuesta...",
       "replySubmitted": "Respuesta enviada",
       "replyFailed": "Error al enviar la respuesta",
-      "writeReply": "Escribir respuesta"
+      "writeReply": "Escribir respuesta",
+      "subtitle": "Reseñas/respuestas"
     },
     "coupons": {
       "title": "Gestión de cupones",
@@ -225,7 +227,8 @@
       "percentOff": "{{value}}% de descuento",
       "fixedOff": "{{value}} KRW de descuento",
       "minOrder": "{{amount}} KRW o más",
-      "usage": "Usado {{used}}/{{total}}"
+      "usage": "Usado {{used}}/{{total}}",
+      "subtitle": "Emisión y uso de cupones"
     },
     "workspace": "Espacio de trabajo",
     "totalRevenue": "Ingresos totales",
@@ -1464,7 +1467,8 @@
       "targetCount": "Objetivo {{count}} personas",
       "voucherSuffix": "Vale de comida",
       "imageSizeLimit": "Solo se pueden subir imágenes menores a 5MB",
-      "imageSearchFailed": "Búsqueda de imagen fallida"
+      "imageSearchFailed": "Búsqueda de imagen fallida",
+      "subtitle": "Registro de vales / compra grupal"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1629,7 +1633,29 @@
     },
     "public": {
       "liveEnded": "La transmisión en vivo ha terminado."
-    }
+    },
+    "analyticsSubtitle": "Análisis de ventas, clientes, productos",
+    "createStreamSubtitle": "Crear nueva transmisión en vivo",
+    "donationsSubtitle": "Recepción de donaciones y liquidaciones",
+    "groupBuySubtitle": "Compra grupal / Vales de comida",
+    "inventorySubtitle": "Inventario · Escaneo · Historial",
+    "liveBroadcastSubtitle": "Inicio/fin/estadísticas en tiempo real",
+    "onboarding": {
+      "addProduct": "Primer producto",
+      "bankAccount": "Cuenta de liquidación",
+      "completed": "Completado",
+      "firstLive": "Primera transmisión",
+      "firstOrder": "Primer pedido",
+      "subtitle": "Completa los pasos para comenzar a vender",
+      "title": "🚀 Guía de inicio"
+    },
+    "profileEditSubtitle": "Editar foto/perfil/redes",
+    "settlementApprovedEstimate": "Liquidación estimada tras aprobación",
+    "settlementEstimate": "Liquidación estimada",
+    "shortsSubtitle": "Registro/gestión de Shorts",
+    "streamEditSubtitle": "Editar info de transmisión",
+    "supplySubtitle": "Gestión de productos de suministro",
+    "youtubeGrowthSubtitle": "Análisis de crecimiento YouTube"
   },
   "admin": {
     "login": {
@@ -1709,7 +1735,8 @@
       "agency": "Agencias",
       "cafe24": "Cafe24",
       "alimtalk": "Mensajes",
-      "sampleRequests": "Muestras"
+      "sampleRequests": "Muestras",
+      "agencyCreatorApproval": "Aprobación Agencia/Creador"
     }
   },
   "agency": {
@@ -1846,7 +1873,10 @@
       "notices": "Avisos",
       "guide": "Guía",
       "profile": "Perfil"
-    }
+    },
+    "guide": "Guía operativa",
+    "guideSubtitle": "Guía esencial de operaciones de agencia",
+    "guideTitle": "Guía de Agencia"
   },
   "nav": {
     "home": "Inicio",
@@ -1877,6 +1907,7 @@
     "loginWithGoogle": "Login with Google",
     "loginWithKakao": "Login with Kakao",
     "logoutSuccess": "Logged out successfully",
+    "sessionExpired": "Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.",
     "name": "Name",
     "noAccount": "Don't have an account?",
     "password": "Password",

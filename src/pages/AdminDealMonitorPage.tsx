@@ -261,7 +261,7 @@ export default function AdminDealMonitorPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {c.user_profile_image ? (
-                          <img src={c.user_profile_image} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                          <img src={c.user_profile_image} alt="" className="w-6 h-6 rounded-full flex-shrink-0" loading="lazy" />
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
                             {(c.user_name || '?').charAt(0)}
@@ -303,7 +303,7 @@ export default function AdminDealMonitorPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {u.user_profile_image ? (
-                          <img src={u.user_profile_image} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                          <img src={u.user_profile_image} alt="" className="w-6 h-6 rounded-full flex-shrink-0" loading="lazy" />
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
                             {(u.user_name || '?').charAt(0)}

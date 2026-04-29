@@ -118,7 +118,7 @@ export default function AgencyProductsPage() {
           <div className="space-y-2">
             {products.map((p: { id: number; name: string; price?: number; stock?: number; image_url?: string; description?: string; original_price?: number; category?: string }) => (
               <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
-                {p.image_url && <img src={p.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
+                {p.image_url && <img src={p.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" />}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
                   <p className="text-xs text-gray-500">{p.price?.toLocaleString()}원 · 재고 {p.stock}개</p>

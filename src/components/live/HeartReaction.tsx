@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Heart } from 'lucide-react'
+import { glass } from '@/components/glass/glassTokens'
 
 export default function HeartReaction() {
   const [hearts, setHearts] = useState<{ id: number; x: number }[]>([])
@@ -38,13 +39,7 @@ export default function HeartReaction() {
       <button
         onClick={addHeart}
         className="flex items-center justify-center rounded-full transition-all active:scale-125"
-        style={{
-          width: 40, height: 40,
-          background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255,255,255,0.15)',
-        }}
+        style={{ width: 40, height: 40, ...glass.actionRail }}
         aria-label="Like"
       >
         {/* 🛡️ 2026-04-29 v4 Boutique 톤: Heart 18x18 + Pink fill (#F472B6) */}
