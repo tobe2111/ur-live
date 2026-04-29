@@ -13,7 +13,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
-import { encryptAtRest } from '../../../worker/utils/data-crypto';
+import { encryptAtRest } from '@/worker/utils/data-crypto';
 
 type Bindings = {
   DB: D1Database;

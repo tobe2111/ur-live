@@ -17,6 +17,7 @@ import LiveDonation from '@/components/LiveDonation'
 import AuctionPanel from '@/components/live/AuctionPanel'
 import TimeDealPopup from '@/components/live/TimeDealPopup'
 import HeartReaction from '@/components/live/HeartReaction'
+import { glass } from '@/components/glass/glassTokens'
 import ScheduledOverlay from '@/components/live/ScheduledOverlay'
 import WishlistButton from '@/components/WishlistButton'
 
@@ -94,102 +95,9 @@ interface ReelData {
 //   ReelCard 1447 → 1407줄 (40줄 감소). 외부 import 0건 확인됨.
 import LiveChat from '@/components/live/LiveChatStream'
 
-function ProductListSheet({
-  products,
-  currentProductId,
-  onClose,
-  onSelectProduct,
-  loading: loadingProducts,
-  stream,
-}: {
-  products: Product[]
-  currentProductId: number | null
-  onClose: () => void
-  onSelectProduct: (product: Product) => void
-  loading: boolean
-  stream?: Stream
-}) {
-  const navigate = useNavigate()
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
-      <div className="bg-black/40 absolute inset-0" />
-      <div
-        className="relative bg-[#1A1A1A] rounded-t-2xl max-h-[70vh] overflow-hidden flex flex-col animate-slideUp"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <h3 className="text-white font-bold">상품 목록 ({products.length})</h3>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/10">
-            <X className="w-5 h-5 text-white/70" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {loadingProducts ? (
-            <div className="flex justify-center py-8">
-              <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            </div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">등록된 상품이 없습니다</div>
-          ) : (
-            products.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => onSelectProduct(p)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
-                  currentProductId === p.id
-                    ? 'bg-pink-500/20 border border-pink-500/50'
-                    : 'bg-white/5 hover:bg-white/10'
-                }`}
-              >
-                {(p.image_url || p.image) ? (
-                  <img
-                    src={p.image_url || p.image}
-                    alt={p.name}
-                    className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                    <ShoppingBag className="w-5 h-5 text-gray-500" />
-                  </div>
-                )}
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-white text-sm font-medium truncate">{p.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {(p.original_price || p.originalPrice) > p.price && (
-                      <span className="text-xs text-gray-500 line-through">
-                        {(p.original_price || p.originalPrice).toLocaleString()}원
-                      </span>
-                    )}
-                    <span className="text-sm font-bold text-pink-400">{p.price.toLocaleString()}원</span>
-                  </div>
-                  {currentProductId === p.id && (
-                    <span className="inline-block mt-1 text-[10px] bg-pink-500 text-white px-2 py-0.5 rounded-full font-bold">
-                      현재 소개 중
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigate(`/products/${p.id}`)
-                  }}
-                  className="shrink-0 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-white font-medium transition-colors"
-                >
-                  상세
-                </button>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// LiveChat 은 LiveChatStream.tsx 로 추출됨 — 외부 사용처 없으므로 re-export 불필요
-export { ProductListSheet }
+// 🛡️ 2026-04-29 (TD-006): ProductListSheet → @/components/live/ProductListSheet.tsx 사용
+//   기존 ReelCard 자체 정의 (96줄) 제거. 외부 ProductListSheet 가 더 정교한 디자인.
+import { ProductListSheet } from '@/components/live/ProductListSheet'
 export type { Stream, Product, ReelData, YTPlayer, YTPlayerEvent, ApiError }
 
 export default function ReelCard({ 
@@ -1115,10 +1023,7 @@ export default function ReelCard({
                   className="flex items-center justify-center rounded-full transition-all active:scale-90"
                   style={{
                     width: 40, height: 40,
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    ...glass.actionRail,
                   }}
                   aria-label="상품 목록"
                 >
@@ -1144,10 +1049,7 @@ export default function ReelCard({
                   className="flex items-center justify-center rounded-full transition-all active:scale-90"
                   style={{
                     width: 40, height: 40,
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    ...glass.actionRail,
                   }}
                   aria-label="채팅 열기"
                 >
@@ -1167,10 +1069,7 @@ export default function ReelCard({
                   className="flex items-center justify-center rounded-full transition-all active:scale-90"
                   style={{
                     width: 40, height: 40,
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    ...glass.actionRail,
                   }}
                 />
                 <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>공유</span>

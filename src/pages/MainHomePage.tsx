@@ -287,12 +287,14 @@ export default function MainHomePage() {
            - 배너 등록되어 있으면: 배너 이미지가 배경, 배너 클릭 시 link_url 이동
            - 배너 없으면: 기존처럼 featured 상품 이미지를 배경으로 fallback */}
       <div className="relative" style={{ height: 300, background: '#000' }}>
-        {/* 배경 이미지 (어드민 배너 우선, fallback featured) */}
+        {/* 배경 이미지 (어드민 배너 우선, fallback featured) — LCP 최적화 */}
         {(heroBanner?.image_url || featured?.image_url) && (
           <img
             src={heroBanner?.image_url || featured?.image_url}
             alt={heroBanner?.title || featured?.name || '배너'}
             className="absolute inset-0 w-full h-full object-cover opacity-55"
+            fetchPriority="high"
+            decoding="async"
           />
         )}
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 30%, rgba(0,0,0,0) 55%, rgba(5,5,5,1) 100%)' }} />

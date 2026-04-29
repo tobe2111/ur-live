@@ -16,7 +16,7 @@ import { cors } from 'hono/cors';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { requireAdmin } from '@/worker/middleware/auth';
 import { validateImageUrl } from '@/worker/utils/validation';
-import { invalidateBannerCache } from '../../../lib/cache-invalidation';
+import { invalidateBannerCache } from '@/lib/cache-invalidation';
 import type { Env } from '@/worker/types/env';
 
 export const adminBannersRoutes = new Hono<{ Bindings: Env }>();

@@ -11,8 +11,8 @@ import { cors } from 'hono/cors';
 import { sign as jwtSign } from 'hono/jwt';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
-import { createSessionCookie } from '../../../worker/utils/session';
-import { encryptAtRest } from '../../../worker/utils/data-crypto';
+import { createSessionCookie } from '@/worker/utils/session';
+import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 
 /**

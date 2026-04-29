@@ -16,7 +16,7 @@ import type {
   Cafe24TokenRow,
   SyncResult,
 } from '../types';
-import { encryptAtRest, decryptAtRest } from '../../../worker/utils/data-crypto';
+import { encryptAtRest, decryptAtRest } from '@/worker/utils/data-crypto';
 
 // ── helpers ────────────────────────────────────────────────────────
 
