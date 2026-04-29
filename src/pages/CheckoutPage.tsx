@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast, getUserFriendlyError } from '@/lib/errorHandler'
@@ -48,6 +49,7 @@ interface ShippingAddress {
 }
 
 export default function CheckoutPage() {
+  const { t } = useTranslation()
   // ✅ Region 기반 Store 선택
   const isKR = isKorea()
   const krUser = useAuthKR(state => state.user)
@@ -393,20 +395,20 @@ export default function CheckoutPage() {
   // 배송지 저장
   const handleSaveNewAddress = async () => {
     if (!userId) {
-      toast.info('로그인이 필요합니다.')
+      toast.info(t('common.loginRequired'))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
     }
 
     if (!newAddress.recipient_name || !newAddress.phone || !newAddress.postal_code || !newAddress.address) {
-      toast.error('모든 필수 항목을 입력해주세요.')
+      toast.error(t('common.requiredFields'))
       return
     }
 
     const phoneClean = newAddress.phone.replace(/[^0-9]/g, '')
     if (phoneClean.length < 10 || phoneClean.length > 11) {
-      toast.error('올바른 전화번호를 입력해주세요.')
+      toast.error(t('common.invalidPhone'))
       return
     }
 
@@ -848,7 +850,7 @@ export default function CheckoutPage() {
                 /* 딜 전액 결제 */
                 <button
                   onClick={async () => {
-                    if (!selectedAddress) { toast.error('배송지를 선택해주세요'); return }
+                    if (!selectedAddress) { toast.error(t('common.addressRequired')); return }
                     setPayingWithDeals(true)
                     try {
                       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
@@ -868,7 +870,7 @@ export default function CheckoutPage() {
                       })
                       if (res.data.success) {
                         if (couponId && couponDiscount > 0) {
-                          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => { toast.error('쿠폰 적용에 실패했습니다') })
+                          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => { toast.error(t('common.couponApplyFailed')) })
                         }
                         navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
                       }
@@ -1162,11 +1164,14 @@ export default function CheckoutPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
-              수령인 이름 <span className="text-red-500">*</span>
+            <label htmlFor="checkout-recipient-name" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              수령인 이름 <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
+              id="checkout-recipient-name"
               type="text"
+              required
+              aria-required="true"
               value={newAddress.recipient_name}
               onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
               className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -1175,11 +1180,14 @@ export default function CheckoutPage() {
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
-              연락처 <span className="text-red-500">*</span>
+            <label htmlFor="checkout-phone" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              연락처 <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
+              id="checkout-phone"
               type="tel"
+              required
+              aria-required="true"
               value={newAddress.phone}
               onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
               className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -1188,19 +1196,23 @@ export default function CheckoutPage() {
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
-              우편번호 <span className="text-red-500">*</span>
+            <label htmlFor="checkout-postal-code" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              우편번호 <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <div className="flex gap-2">
               <input
+                id="checkout-postal-code"
                 type="text"
                 inputMode="numeric"
+                required
+                aria-required="true"
                 value={newAddress.postal_code}
                 readOnly
                 className="flex-1 px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
                 placeholder="우편번호"
               />
               <button
+                type="button"
                 onClick={() => setShowPostcodePopup(true)}
                 className="px-5 py-3 border border-gray-200 rounded-2xl text-[14px] font-semibold text-gray-500 hover:bg-gray-50 transition-all whitespace-nowrap"
               >
@@ -1219,11 +1231,14 @@ export default function CheckoutPage() {
           )}
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
-              주소 <span className="text-red-500">*</span>
+            <label htmlFor="checkout-address" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              주소 <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
+              id="checkout-address"
               type="text"
+              required
+              aria-required="true"
               value={newAddress.address}
               readOnly
               className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
@@ -1232,10 +1247,11 @@ export default function CheckoutPage() {
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label htmlFor="checkout-address-detail" className="block text-[14px] font-semibold text-gray-900 mb-2">
               상세주소
             </label>
             <input
+              id="checkout-address-detail"
               type="text"
               value={newAddress.address_detail}
               onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}

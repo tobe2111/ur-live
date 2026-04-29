@@ -351,8 +351,11 @@ sellerManagementRoutes.get('/:sellerId/products-public', async (c) => {
   try {
     const [products, countRow] = await Promise.all([
       DB.prepare(
+        // 🛡️ 2026-04-29 (TD-005): legacy/canonical 양쪽 안전 — migration 0233 적용 후
+        //   stock_quantity 컬럼 제거되어도 동작 유지.
         `SELECT id, name, description, price, original_price, discount_rate,
-                image_url, stock_quantity, category, seller_id, is_active, created_at
+                image_url, COALESCE(stock_quantity, stock, 0) AS stock_quantity,
+                category, seller_id, is_active, created_at
          FROM products WHERE seller_id = ? AND is_active = 1
          ORDER BY created_at DESC LIMIT ? OFFSET ?`
       ).bind(sellerId, limitNum, offset).all(),

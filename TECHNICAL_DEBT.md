@@ -28,6 +28,40 @@
 | `utils/auth.requireLogin` 검증 분산 | ✅ `safeInternalPath()` 헬퍼 사용 — auth path/외부 URL 거부 |
 | 죽은 코드: `errorHandler.checkAuthError`, `useVersionCheck`, `login-redirect.ts`, `market-price-chart.tsx` | ✅ 4건 삭제 |
 
+### 2026-04-29 후속 PR — TD-014/015/016 부분 처리
+
+PR #286 머지 후 후속 작업 (이번 commit). 새 브랜치/PR 으로 진행.
+
+#### TD-016 보안 잔여 처리 ✅ (HIGH 4건 + MEDIUM 4건 + LOW 1건)
+- **HIGH** ✅ admin login·refresh·2fa rate limit 추가 (`/api/admin/refresh` 10/60s, `/api/admin/2fa/*` 5/300s)
+- **HIGH** ✅ broadcast-notify `POST /send/:streamId` — stream 의 셀러만 트리거 (`stream.seller_id === auth.id` 검증)
+- **HIGH** ✅ admin-streams `/streams/replay` 입력 검증 (title 200자, description 5000자, youtube_url 500자, product_ids 최대 50개)
+- **HIGH** ⏭️ youtube live `start/end` — 이미 `WHERE id=? AND seller_id=?` 검증 적용 중 (Agent false-positive)
+- **MEDIUM** ✅ auction.routes.ts 빈 catch 6곳 → `swallow()` 변환
+- **MEDIUM** ✅ moderation `/check` — `requireAuth()` + rate limit 60/60s
+- **MEDIUM** ✅ admin-notification-settings 빈 catch 2곳 → `swallow()`
+- **MEDIUM** ✅ scheduled-cleanup cron 빈 catch 2곳 → `swallow()` 변환
+- **MEDIUM** ✅ useAuthWorld / useAuthKR signOut 빈 catch → DEV 모드 console.warn
+- **LOW** ✅ donations 메시지 sanitize 강화 (javascript:/data:/on*/HTML entity 차단)
+- **CRITICAL** 🔴 seller-transfer 셀러 본인 인증 — 큰 변경 (별도 endpoint 신설 필요), 별도 PR
+
+#### TD-015 a11y 잔여 처리 ✅ (모달 5개 + 카드 키보드 2개)
+- **모달 표준화** ✅: `LiveDonation`, `FirstTimeTutorial`, `BroadcastDiagnostic`, `SellerPinPrompt`, `ChatInputModal`
+  - `role="dialog"` + `aria-modal="true"` + `aria-labelledby`
+  - `useEscapeKey` 적용 (LiveDonation 은 useFocusTrap 도)
+  - X 버튼 `aria-label` 한국어화
+- **카드 키보드 접근** ✅: `ProductGrid`, `BrowseProductCard`
+  - `role="button"` + `tabIndex={0}` + `onKeyDown` (Enter/Space)
+  - `aria-label="{name} 상세 보기"`
+- **잔여**: CheckoutPage 배송지 모달 폼 label `htmlFor`, AccountSettingsPage label, 색상 대비 — 별도 PR
+
+#### TD-014 i18n — 별도 PR 권장 (이번 처리 0건)
+- 462건 광범위 — namespace 신설 필요
+- 우선순위 처리: CheckoutPage / TossPaymentWidget / GiftSendModal → SellerPinPrompt / KakaoLinkButton → NotificationsPage / LivePageV2 / ShortsPage → Admin/Agency
+
+#### TD-005 부분 처리 ✅
+- `seller-management.routes.ts` 의 SELECT — `COALESCE(stock_quantity, stock, 0)` 로 양쪽 안전 (migration 0233 적용 후 stock_quantity 컬럼 제거되어도 동작)
+
 ### 2026-04-29 후속 — 광역 audit 결과 (3개 영역)
 
 이번 세션 카카오 무한 루프 fix 후 i18n / a11y / API 보안 전수조사 (3개 Agent 병렬). 결과:

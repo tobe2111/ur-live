@@ -112,7 +112,7 @@ import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
-import { requireAdmin } from './middleware/auth';
+import { requireAdmin, requireAuth } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
 import { rateLimit } from './middleware/rate-limit';
 import { hashPassword } from '../lib/password';
@@ -631,7 +631,11 @@ app.use('/api/seller/forgot-password', botProtection());
 app.use('/api/agency/forgot-password', botProtection());
 
 // Feature: Admin auth — rate limited: 5 attempts per 5 min per IP
+// 🛡️ 2026-04-29 보안 audit (TD-016 HIGH): admin refresh / 2FA 도 rate limit.
+//   refresh: brute-force 방어 / 2FA: 6자리 TOTP brute-force 방어 (1M 조합).
 app.use('/api/admin/login', rateLimit({ action: 'admin_login', max: 5, windowSec: 300 }));
+app.use('/api/admin/refresh', rateLimit({ action: 'admin_refresh', max: 10, windowSec: 60 }));
+app.use('/api/admin/2fa/*', rateLimit({ action: 'admin_2fa', max: 5, windowSec: 300 }));
 app.route('/api/admin', adminAuthRoutes);
 
 // -------------------------------------------------------
@@ -747,6 +751,9 @@ app.route('/api/seller/optimal-time', optimalTimeRoutes);
 // 🛡️ 2026-04-27 Phase 3-2: FAQ 봇 (가이드 검색)
 app.route('/api/faq-bot', faqBotRoutes);
 // 🛡️ 2026-04-27 Phase 3-3: 채팅 모더레이션
+// 🛡️ 2026-04-29 보안 audit (TD-016 MEDIUM): rate limit + 인증 — DoS / DB write 폭주 방어
+app.use('/api/moderation/*', requireAuth());
+app.use('/api/moderation/*', rateLimit({ action: 'moderation_check', max: 60, windowSec: 60 }));
 app.route('/api/moderation', moderationRoutes);
 // 🛡️ 2026-04-27 Phase 3-4: 어드민 TikTok 발굴
 app.route('/api/admin/tiktok-discovery', adminTikTokDiscoveryRoutes);

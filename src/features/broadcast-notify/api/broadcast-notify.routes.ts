@@ -122,7 +122,9 @@ broadcastNotifyRoutes.get('/subscribers/:streamId', async (c) => {
   return c.json({ success: true, data: { count: cnt?.cnt || 0 } });
 });
 
-// POST /send/:streamId — 방송 시작 알림 발송 (내부 호출용)
+// POST /send/:streamId — 방송 시작 알림 발송 (해당 stream 의 셀러만 트리거 가능)
+// 🛡️ 2026-04-29 보안 audit (TD-016 HIGH): 인증된 일반 user 가 임의 stream 의 알림
+//   발송 트리거 가능 → 스팸/노이즈/비용 부담. stream.seller_id === auth seller_id 검증.
 broadcastNotifyRoutes.post('/send/:streamId', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
@@ -133,6 +135,13 @@ broadcastNotifyRoutes.post('/send/:streamId', requireAuth(), async (c) => {
   const stream = await DB.prepare('SELECT id, title, seller_id FROM live_streams WHERE id = ?')
     .bind(streamId).first<{ id: number; title: string; seller_id: number }>();
   if (!stream) return c.json({ success: false, error: '방송 없음' }, 404);
+
+  // 호출자가 해당 stream 의 셀러인지 확인
+  const authUser = (c as any).get('user') as { id?: number | string; type?: string } | undefined;
+  const callerSellerId = authUser?.type === 'seller' ? Number(authUser.id) : null;
+  if (!callerSellerId || callerSellerId !== stream.seller_id) {
+    return c.json({ success: false, error: '본인 방송에서만 발송 가능합니다' }, 403);
+  }
 
   const seller = await DB.prepare('SELECT name FROM sellers WHERE id = ?')
     .bind(stream.seller_id).first<{ name: string }>();

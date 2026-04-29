@@ -95,7 +95,14 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
   const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
 
   return (
-    <div className="group cursor-pointer" onClick={handleCardClick}>
+    <div
+      className="group cursor-pointer"
+      role="button"
+      tabIndex={0}
+      aria-label={`${product.name} 상세 보기`}
+      onClick={handleCardClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick() } }}
+    >
       <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-sm">
         {product.image_url ? (
           <img

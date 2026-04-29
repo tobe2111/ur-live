@@ -83,6 +83,10 @@
     "saveFailed": "Failed to save",
     "deleteFailed": "Failed to delete",
     "loginRequired": "Login required",
+    "requiredFields": "Por favor, completa todos los campos obligatorios.",
+    "invalidPhone": "Por favor, introduce un número de teléfono válido.",
+    "addressRequired": "Por favor, selecciona una dirección de envío.",
+    "couponApplyFailed": "Error al aplicar el cupón.",
     "won": "₩",
     "count": "items",
     "person": "people",
@@ -1396,7 +1400,11 @@
       "claimTitle": "¡Has recibido un regalo!",
       "claimAddress": "Ingresa la dirección de entrega",
       "claimSuccess": "¡Reclamado! Pronto se enviará.",
-      "expired": "El regalo ha expirado"
+      "expired": "El regalo ha expirado",
+      "invalidPhone": "Por favor, introduce un número de móvil válido",
+      "messageTooLong": "El mensaje debe tener {{max}} caracteres o menos",
+      "movingToPayment": "Yendo al pago del regalo",
+      "creationFailed": "Error al crear el regalo"
     },
     "consignment": {
       "title": "Consignación MD",

@@ -34,8 +34,11 @@ export default function ChatInputModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end" onClick={onClose} role="presentation">
-      <div className="bg-black/40 absolute inset-0" />
+      <div className="bg-black/40 absolute inset-0" aria-hidden="true" />
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="채팅 입력"
         className="relative bg-[#1A1A1A] border-t border-[#2A2A2A] px-4 py-3 flex items-center gap-2 animate-slideUp"
         onClick={(e) => e.stopPropagation()}
       >
@@ -46,6 +49,7 @@ export default function ChatInputModal({
           onChange={(e) => onMessageChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) onSend() }}
           placeholder={isSeller ? '셀러 메시지를 입력하세요...' : '메시지를 입력하세요...'}
+          aria-label={isSeller ? '셀러 메시지' : '채팅 메시지'}
           maxLength={200}
           className="flex-1 px-4 py-2.5 bg-[#0A0A0A] border border-[#2A2A2A] rounded-full text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-pink-500/50"
         />

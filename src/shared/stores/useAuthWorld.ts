@@ -94,7 +94,7 @@ export const useAuthWorld = create<AuthWorldState>()(
         logout: async () => {
           try {
             const { signOut } = await import('@/lib/firebase-auth');
-            await signOut().catch(() => {});
+            await signOut().catch((e) => { if (import.meta.env.DEV) console.warn('[useAuthWorld] signOut failed:', e) });
           } catch (_) {} // non-critical: best-effort Firebase signOut during logout
 
           const { clearAuthData } = await import('@/utils/auth');

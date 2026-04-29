@@ -83,6 +83,10 @@
     "saveFailed": "保存に失敗しました",
     "deleteFailed": "削除に失敗しました",
     "loginRequired": "ログインが必要です",
+    "requiredFields": "必須項目をすべて入力してください。",
+    "invalidPhone": "正しい電話番号を入力してください。",
+    "addressRequired": "配送先を選択してください。",
+    "couponApplyFailed": "クーポンの適用に失敗しました。",
     "won": "円",
     "count": "個",
     "person": "人",
@@ -1480,7 +1484,11 @@
       "claimTitle": "ギフトが届きました",
       "claimAddress": "受取住所を入力してください",
       "claimSuccess": "受取完了!まもなく発送されます。",
-      "expired": "ギフトの有効期限切れ"
+      "expired": "ギフトの有効期限切れ",
+      "invalidPhone": "正しい携帯番号を入力してください",
+      "messageTooLong": "メッセージは{{max}}文字以内で入力してください",
+      "movingToPayment": "ギフト決済に移動します",
+      "creationFailed": "ギフトの作成に失敗しました"
     },
     "consignment": {
       "title": "MD委託販売",

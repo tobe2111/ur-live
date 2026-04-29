@@ -74,9 +74,16 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
   if (body.message && body.message.length > 500) {
     return c.json({ success: false, error: '메시지는 500자 이내로 작성해주세요.' }, 400);
   }
-  // 🛡️ 메시지 XSS 방어 — <, >, 스크립트 태그 제거 (저장 시점 sanitize)
+  // 🛡️ 메시지 XSS 방어 (강화: 2026-04-29) — <, >, javascript:/data: URL, on* 이벤트 핸들러,
+  //   HTML entity-encoded 변형까지 차단. 저장 시점 sanitize + 프런트는 텍스트 노드로만 렌더.
   if (body.message && typeof body.message === 'string') {
-    body.message = body.message.replace(/[<>]/g, '').slice(0, 500);
+    body.message = body.message
+      .replace(/[<>]/g, '')
+      .replace(/javascript\s*:/gi, '')
+      .replace(/data\s*:/gi, '')
+      .replace(/\bon[a-z]+\s*=/gi, '')   // onclick=, onerror= 등
+      .replace(/&#x?[0-9a-f]+;?/gi, '')   // entity-encoded 차단
+      .slice(0, 500);
   }
 
   const { DB } = c.env;

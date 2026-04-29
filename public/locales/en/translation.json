@@ -83,6 +83,10 @@
     "saveFailed": "Failed to save",
     "deleteFailed": "Failed to delete",
     "loginRequired": "Login required",
+    "requiredFields": "Please fill in all required fields.",
+    "invalidPhone": "Please enter a valid phone number.",
+    "addressRequired": "Please select a delivery address.",
+    "couponApplyFailed": "Failed to apply coupon.",
     "won": "₩",
     "count": "items",
     "person": "people",
@@ -1481,7 +1485,11 @@
       "claimTitle": "You've received a gift!",
       "claimAddress": "Enter delivery address",
       "claimSuccess": "Claimed! Will ship soon.",
-      "expired": "Gift has expired"
+      "expired": "Gift has expired",
+      "invalidPhone": "Please enter a valid mobile number",
+      "messageTooLong": "Message must be {{max}} characters or less",
+      "movingToPayment": "Moving to gift payment",
+      "creationFailed": "Failed to create gift"
     },
     "consignment": {
       "title": "MD Consignment",

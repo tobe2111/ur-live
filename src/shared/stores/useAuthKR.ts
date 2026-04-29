@@ -285,7 +285,7 @@ export const useAuthKR = create<AuthKRState>()(
                 marketing_agreed: agreements?.marketing_agreed === true,
                 age_confirmed: agreements?.age_confirmed === true,
               }),
-            }).catch(() => {});
+            }).catch((e) => { if (import.meta.env.DEV) console.warn('[useAuthKR] agreements update failed:', e) });
 
             safeSetUserType();
             localStorage.setItem('user_name', displayName ?? email.split('@')[0]);

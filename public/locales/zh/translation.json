@@ -83,6 +83,10 @@
     "saveFailed": "保存失败",
     "deleteFailed": "删除失败",
     "loginRequired": "请先登录",
+    "requiredFields": "请填写所有必填项。",
+    "invalidPhone": "请输入有效的电话号码。",
+    "addressRequired": "请选择配送地址。",
+    "couponApplyFailed": "优惠券应用失败。",
     "won": "元",
     "count": "个",
     "person": "人",
@@ -1480,7 +1484,11 @@
       "claimTitle": "您收到一份礼物!",
       "claimAddress": "请输入收货地址",
       "claimSuccess": "已领取!即将发货。",
-      "expired": "礼物已过期"
+      "expired": "礼物已过期",
+      "invalidPhone": "请输入有效的手机号",
+      "messageTooLong": "消息不能超过{{max}}个字符",
+      "movingToPayment": "正在前往礼物支付",
+      "creationFailed": "礼物创建失败"
     },
     "consignment": {
       "title": "MD代销",
