@@ -173,3 +173,72 @@ export function liveEventJsonLd(stream: {
     ...(stream.scheduledAt ? { startDate: stream.scheduledAt } : {}),
   }
 }
+
+/**
+ * 🛡️ 2026-04-29: Breadcrumb JSON-LD — 검색결과 빵부스러기 노출
+ *   사용: <SEO jsonLd={breadcrumbJsonLd([{name:'홈',url:'/'},{name:'상품',url:'/products/1'}])} />
+ */
+export function breadcrumbJsonLd(items: { name: string; url: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      item: it.url.startsWith('http') ? it.url : `${BASE_URL}${it.url}`,
+    })),
+  }
+}
+
+/**
+ * 🛡️ 2026-04-29: FAQ JSON-LD — 자주묻는질문 검색 노출
+ *   사용: <SEO jsonLd={faqJsonLd([{q:'배송기간?',a:'2-3일'}])} />
+ */
+export function faqJsonLd(items: { q: string; a: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map(it => ({
+      '@type': 'Question',
+      name: it.q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: it.a,
+      },
+    })),
+  }
+}
+
+/**
+ * 🛡️ 2026-04-29: ItemList JSON-LD — 상품 리스트/카테고리 페이지
+ *   사용: <SEO jsonLd={itemListJsonLd(products.map((p,i)=>({...p, position:i+1})))} />
+ */
+export function itemListJsonLd(items: { position: number; name: string; url: string; image?: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: items.map(it => ({
+      '@type': 'ListItem',
+      position: it.position,
+      name: it.name,
+      url: it.url.startsWith('http') ? it.url : `${BASE_URL}${it.url}`,
+      ...(it.image ? { image: it.image } : {}),
+    })),
+  }
+}
+
+/**
+ * 🛡️ 2026-04-29: WebSite JSON-LD with SearchAction — Google 검색결과 sitelinks 검색박스
+ */
+export const webSiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: '유어딜',
+  url: BASE_URL,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: `${BASE_URL}/search?q={search_term_string}`,
+    'query-input': 'required name=search_term_string',
+  },
+}
