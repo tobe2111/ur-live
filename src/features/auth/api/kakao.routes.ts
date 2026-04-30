@@ -434,6 +434,11 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       if (user.profile_image) {
         stateUrl.searchParams.set('profileImage', user.profile_image);
       }
+      // 🛡️ 2026-04-30: 신규 사용자 onboarding 트리거 — 환영 모달 + 카테고리 선택
+      const userWithFlag = user as typeof user & { isNewUser?: boolean };
+      if (userWithFlag.isNewUser) {
+        stateUrl.searchParams.set('new', '1');
+      }
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;
       // 302 명시: Set-Cookie 헤더가 일부 브라우저에서 303에 무시되는 문제 회피
