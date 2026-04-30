@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import { toast } from '@/hooks/useToast'
+import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import DashboardNotificationBell from './DashboardNotificationBell'
 
 type SellerType = 'influencer' | 'store_owner' | 'both'
@@ -84,6 +85,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
+
+  // 🛡️ 2026-04-30: 만료 5분 전 자동 refresh + 탭 복귀 시 검증
+  useTokenAutoRefresh('seller')
 
   const sellerName = localStorage.getItem('seller_name') || 'Seller'
   const sellerType = (localStorage.getItem('seller_type') || 'influencer') as SellerType
@@ -332,11 +336,12 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         </main>
       </div>
 
-      {/* 카카오 채널 상담 플로팅 버튼 */}
+      {/* 카카오 채널 상담 플로팅 버튼
+          🛡️ 2026-04-30: 모바일에서 '라이브 시작' FAB 와 겹침 방지 — 모바일은 bottom-24 로 위로 stack */}
       <a
         href="http://pf.kakao.com/_AITdn/chat"
         target="_blank" rel="noopener noreferrer"
-        className="fixed bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
+        className="fixed bottom-24 lg:bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
         title={t('seller.kakaoChat')}
       >
         <MessageCircle className="w-4 h-4" />

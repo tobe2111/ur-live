@@ -250,7 +250,7 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       status: seller.status,
       seller_type: (seller.seller_type as string) || 'influencer',
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7일
+      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 🛡️ 2026-04-30: 7일 → 30일 (모바일 사용자 빈번한 만료 호소 대응)
     };
     
     const token = await sign(payload, JWT_SECRET);
@@ -259,7 +259,7 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     const nowSec = Math.floor(Date.now() / 1000);
     const refreshPayload = {
       ...payload,
-      exp: nowSec + (30 * 24 * 60 * 60) // 30일
+      exp: nowSec + (90 * 24 * 60 * 60) // 🛡️ 2026-04-30: 30일 → 90일 refresh 도 함께 연장
     };
     const refreshToken = await sign(refreshPayload, JWT_SECRET);
 
@@ -490,7 +490,7 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
       status: seller.status,
       seller_type: (seller.seller_type as string) || 'influencer',
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7일
+      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 🛡️ 2026-04-30: 7일 → 30일 (모바일 사용자 빈번한 만료 호소 대응)
     };
     
     const newAccessToken = await sign(newPayload, JWT_SECRET);
@@ -499,7 +499,7 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
     const nowSec2 = Math.floor(Date.now() / 1000);
     const newRefreshPayload = {
       ...newPayload,
-      exp: nowSec2 + (30 * 24 * 60 * 60) // 30일
+      exp: nowSec2 + (90 * 24 * 60 * 60) // 🛡️ 2026-04-30: 30일 → 90일 refresh 연장
     };
     const newRefreshToken = await sign(newRefreshPayload, JWT_SECRET);
 

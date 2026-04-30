@@ -7,6 +7,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
+import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import DashboardNotificationBell from './DashboardNotificationBell'
 
 interface NavItem {
@@ -90,6 +91,10 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // 🛡️ 2026-04-30: admin 세션 만료 5분 전 자동 refresh
+  useTokenAutoRefresh('admin')
+
   // 🛡️ 2026-04-28: 전역 검색 — 실제 input + Enter 키로 분기 navigate.
   const [searchQuery, setSearchQuery] = useState('')
   const handleSearch = (e: React.FormEvent) => {
