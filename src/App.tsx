@@ -434,7 +434,7 @@ function AppContent() {
         '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
       const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
       setStatusBarStyle(isLight ? 'light' : 'dark')
-    }).catch(() => {})
+    }).catch((err) => { if (import.meta.env.DEV) console.warn('[App] setStatusBarStyle failed:', err) })
   }, [location.pathname])
   const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
