@@ -108,8 +108,8 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
   }, [sellerId])
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-50 px-3 pt-safe pb-2">
-      <div className="flex items-center justify-between gap-2">
+    <header className="absolute top-0 left-0 right-0 z-50 px-2 pt-safe pb-1.5">
+      <div className="flex items-center justify-between gap-1.5">
         {/* 좌측: 뒤로가기 (Q7 = 유지) */}
         <a href="/" aria-label="홈으로 돌아가기"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
@@ -119,15 +119,15 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
 
         {/* 중앙: 셀러 pill (Boutique 톤 — gradient avatar + 셀러명) */}
         {sellerName && (
-          <div className="flex items-center gap-2 min-w-0 flex-1 rounded-full pl-1 pr-3 py-1"
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 rounded-full pl-1 pr-2 py-1"
             style={glass.navPill}>
             {sellerAvatar ? (
               <img src={sellerAvatar} alt={`${sellerName} 프로필 이미지`}
                 className="rounded-full object-cover shrink-0"
-                style={{ width: 26, height: 26 }} loading="lazy" />
+                style={{ width: 24, height: 24 }} loading="lazy" />
             ) : (
               <div className="rounded-full flex items-center justify-center shrink-0 text-white"
-                style={{ width: 26, height: 26, background: 'linear-gradient(135deg, #EF4444, #EC4899)', fontSize: 11, fontWeight: 800 }}>
+                style={{ width: 24, height: 24, background: 'linear-gradient(135deg, #EF4444, #EC4899)', fontSize: 11, fontWeight: 800 }}>
                 {sellerName.charAt(0)}
               </div>
             )}
@@ -136,11 +136,12 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
         )}
 
         {/* 우측: 팔로우 흰 pill + LIVE 둥근 칩 + 시청자 glass chip + SNS */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* 🛡️ 2026-04-30: 화면 밖 넘침 방지 — gap/padding 축소 */}
+        <div className="flex items-center gap-1 shrink-0">
           {sellerId && (
             <button onClick={handleFollow}
               aria-label={following ? '팔로우 취소' : '팔로우하기'}
-              className="rounded-full px-3 py-1.5 transition-colors"
+              className="rounded-full px-2.5 py-1.5 transition-colors"
               style={{
                 background: following ? 'rgba(255,255,255,0.18)' : '#fff',
                 color: following ? 'rgba(255,255,255,0.9)' : '#000',
@@ -150,11 +151,11 @@ function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
             </button>
           )}
           <div className="inline-flex items-center gap-1 rounded-full"
-            style={{ padding: '6px 10px 6px 8px', background: 'rgba(239,68,68,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-            <span className="rounded-full" style={{ width: 6, height: 6, background: '#fff', boxShadow: '0 0 6px #fff' }} />
+            style={{ padding: '5px 8px 5px 7px', background: 'rgba(239,68,68,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+            <span className="rounded-full" style={{ width: 5, height: 5, background: '#fff', boxShadow: '0 0 6px #fff' }} />
             <span className="text-white" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em' }}>LIVE</span>
           </div>
-          <div className="inline-flex items-center gap-1 rounded-full px-2.5 py-1"
+          <div className="inline-flex items-center gap-1 rounded-full px-2 py-1"
             style={glass.statsChip}>
             <Eye className="h-3 w-3 text-white/85" />
             <span className="text-white" style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatViewers(viewers)}</span>

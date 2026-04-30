@@ -957,10 +957,23 @@ export default function ReelCard({
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" />
 
       {/* Product overlay */}
+      {/* 🛡️ 2026-04-30: YouTube 제목/컨트롤 상단 노출 차단 overlay
+          — modestbranding=1 / showinfo=0 가 deprecated 라 자동 재생 시
+            영상 상단에 제목/채널이 잠시 보임. 검은 그라데이션으로 가림. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-[6]"
+        aria-hidden="true"
+        style={{
+          height: 80,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0) 100%)',
+        }}
+      />
+
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
         {/* Top bar: 딜 잔액 게이지 (TopNav 아래에 위치) */}
+        {/* 🛡️ 2026-04-30: 좌측 넘침 수정 left-3→left-4 (max-w 추가) */}
         {!isSeller && (
-          <div className="pointer-events-auto absolute top-14 left-3 z-20">
+          <div className="pointer-events-auto absolute top-14 left-4 right-4 z-20" style={{ maxWidth: 'calc(100% - 32px)' }}>
             <TeamPointsBadge streamId={stream.id} />
           </div>
         )}
@@ -1116,6 +1129,7 @@ export default function ReelCard({
           )}
 
           {/* 🛡️ 2026-04-29 v4 Boutique 톤 — 흰 카드 + 라벨 strip + 메인 row + 3분할 액션 row */}
+          {/* 🛡️ 2026-04-30: 사용자 피드백 — 카드 높이 ~16% 축소 (썸네일 72→60, padding/font 조정) */}
           {currentProduct && (() => {
             const originalPrice = (safeProduct.originalPrice || safeProduct.original_price || 0)
             const discountRate = originalPrice > safeProduct.price
@@ -1126,8 +1140,8 @@ export default function ReelCard({
               <div className="rounded-3xl overflow-hidden w-full"
                 style={{ background: 'rgba(255,255,255,0.97)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
                 key={currentProduct?.id || 'default'}>
-                {/* Label strip — NOW · 지금 소개 + 재고 */}
-                <div className="flex items-center justify-between px-4 py-2"
+                {/* Label strip — NOW · 지금 소개 + 재고 (padding 축소) */}
+                <div className="flex items-center justify-between px-3 py-1.5"
                   style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.08), rgba(236,72,153,0.08))' }}>
                   <div className="flex items-center gap-1.5">
                     <span className="rounded-full" style={{ width: 5, height: 5, background: '#EF4444', boxShadow: '0 0 6px #EF4444' }} />
@@ -1137,9 +1151,9 @@ export default function ReelCard({
                     <span style={{ fontSize: 10, color: '#6B7280' }}>재고 {stock}개</span>
                   )}
                 </div>
-                {/* Main row */}
-                <div className="flex items-center gap-3 p-3">
-                  <div className="relative rounded-2xl overflow-hidden shrink-0" style={{ width: 72, height: 72 }}>
+                {/* Main row — 썸네일 60x60, padding 축소 */}
+                <div className="flex items-center gap-2.5 px-3 py-2">
+                  <div className="relative rounded-2xl overflow-hidden shrink-0" style={{ width: 60, height: 60 }}>
                     {(safeProduct.image_url || safeProduct.image) ? (
                       <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || '상품'} loading="lazy" className="w-full h-full object-cover" />
                     ) : (
@@ -1151,30 +1165,30 @@ export default function ReelCard({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p style={{ fontSize: 12, fontWeight: 500, color: '#374151', lineHeight: 1.4 }} className="line-clamp-2">{safeProduct.name}</p>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#374151', lineHeight: 1.35 }} className="line-clamp-2">{safeProduct.name}</p>
                     {originalPrice > safeProduct.price && (
-                      <div className="flex items-baseline gap-1.5 mt-1">
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
                         <span style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()}</span>
                       </div>
                     )}
                     <div className="flex items-baseline gap-1">
-                      {discountRate > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>{discountRate}%</span>}
-                      <span style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{(safeProduct.price || 0).toLocaleString()}</span>
+                      {discountRate > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{discountRate}%</span>}
+                      <span style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>{(safeProduct.price || 0).toLocaleString()}</span>
                       <span style={{ fontSize: 11, color: '#6B7280' }}>원</span>
                     </div>
                   </div>
                 </div>
-                {/* Action row — 3분할 (찜 / 장바구니 / 바로구매) */}
+                {/* Action row — 3분할 (찜 / 장바구니 / 바로구매) — py 축소 */}
                 <div className="grid grid-cols-3" style={{ borderTop: '1px solid #F3F4F6' }}>
                   {/* 찜하기 — WishlistButton 재사용 */}
-                  <div className="py-3 flex items-center justify-center" style={{ borderRight: '1px solid #F3F4F6' }}>
+                  <div className="py-2.5 flex items-center justify-center" style={{ borderRight: '1px solid #F3F4F6' }}>
                     <WishlistButton productId={safeProduct.id} size="sm" />
                   </div>
                   {/* 장바구니 */}
                   <button
                     onClick={handleAddToCart}
                     disabled={!currentProduct || addingToCart}
-                    className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
+                    className="py-2.5 flex flex-col items-center gap-0.5 disabled:opacity-50"
                     style={{ borderRight: '1px solid #F3F4F6' }}
                     aria-label="장바구니에 담기"
                   >
@@ -1186,7 +1200,7 @@ export default function ReelCard({
                     <button
                       onClick={handleChangeProduct}
                       disabled={changingProduct || isCurrentProduct}
-                      className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
+                      className="py-2.5 flex flex-col items-center gap-0.5 disabled:opacity-50"
                       style={boutiqueCTA}
                       aria-label={isCurrentProduct ? '소개 중' : '상품 변경'}
                     >
@@ -1202,7 +1216,7 @@ export default function ReelCard({
                         else showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
                       }}
                       disabled={!currentProduct}
-                      className="py-3 flex flex-col items-center gap-0.5 disabled:opacity-50"
+                      className="py-2.5 flex flex-col items-center gap-0.5 disabled:opacity-50"
                       style={boutiqueCTA}
                       aria-label="바로 구매"
                     >
