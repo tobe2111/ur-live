@@ -350,12 +350,12 @@ cartRoutes.post('/', cartRateLimit, requireAuth(), async (c) => {
       );
     }
   } catch (error: any) {
-    console.error('[Cart] POST /api/cart error:', error);
+    // 🛡️ 2026-04-30: 보안 — err.message 클라이언트 노출 제거 (DB constraint / 내부 SQL 누출 방지)
+    if (import.meta.env.DEV) console.error('[Cart] POST /api/cart error:', error);
     return c.json(
       {
         success: false,
-        error: 'Failed to add item to cart',
-        message: error.message,
+        error: '장바구니 추가에 실패했습니다',
       },
       500
     );

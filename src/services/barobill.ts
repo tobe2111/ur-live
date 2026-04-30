@@ -1,35 +1,49 @@
 /**
  * 바로빌 전자세금계산서 API 연동 서비스
- * 
+ *
  * API 문서: https://dev.barobill.co.kr/docs/guides/바로빌-API-시작하기
- * 
+ *
  * 테스트서버: https://testapi.barobill.co.kr
  * 운영서버: https://api.barobill.co.kr
+ *
+ * 🛡️ 2026-04-30: 보안 강화 — API 키를 hardcoded 에서 환경변수로 이전.
+ *   기존 git history 에 노출된 테스트/프로덕션 키는 별도 회전 필요.
+ *   이 파일은 현재 사용되지 않음 (worker route 미연결). 사용 시작 전
+ *   Cloudflare Pages Variables 에 BAROBILL_TEST_API_KEY / BAROBILL_PROD_API_KEY 등록.
  */
 
-// 환경 설정
+// 환경 설정 (런타임 주입)
 const BAROBILL_CONFIG = {
   // 환경에 따라 자동 선택 (NODE_ENV 또는 직접 지정)
-  ENV: 'test', // 'test' | 'production'
-  
-  // API 키 (환경변수 또는 직접 입력)
-  TEST_API_KEY: '03148F80-9525-4A00-83B4-1AE55DFFA2DF',
-  PROD_API_KEY: 'DFCC6BDD-BF1E-4AA9-B12D-9CBE3DFC8068',
-  
+  ENV: 'test' as 'test' | 'production',
+
   // API 엔드포인트
   TEST_BASE_URL: 'https://testapi.barobill.co.kr',
   PROD_BASE_URL: 'https://api.barobill.co.kr',
 };
 
+// 🛡️ env 에서 주입 — Worker context (`c.env`) 또는 Node `process.env` 양쪽 호환
+function getApiKey(env?: { BAROBILL_TEST_API_KEY?: string; BAROBILL_PROD_API_KEY?: string }): string {
+  const isProd = BAROBILL_CONFIG.ENV === 'production';
+  const fromEnv = isProd ? env?.BAROBILL_PROD_API_KEY : env?.BAROBILL_TEST_API_KEY;
+  if (fromEnv) return fromEnv;
+  // Node fallback (CI/script 호출 시)
+  if (typeof process !== 'undefined' && process.env) {
+    const v = isProd ? process.env.BAROBILL_PROD_API_KEY : process.env.BAROBILL_TEST_API_KEY;
+    if (v) return v;
+  }
+  throw new Error(`바로빌 API 키 미설정 — 환경변수 BAROBILL_${isProd ? 'PROD' : 'TEST'}_API_KEY 필요`);
+}
+
 /**
  * 바로빌 API 기본 설정 가져오기
  */
-function getBarobillConfig() {
+function getBarobillConfig(env?: { BAROBILL_TEST_API_KEY?: string; BAROBILL_PROD_API_KEY?: string }) {
   const isProduction = BAROBILL_CONFIG.ENV === 'production';
-  
+
   return {
     baseUrl: isProduction ? BAROBILL_CONFIG.PROD_BASE_URL : BAROBILL_CONFIG.TEST_BASE_URL,
-    apiKey: isProduction ? BAROBILL_CONFIG.PROD_API_KEY : BAROBILL_CONFIG.TEST_API_KEY,
+    apiKey: getApiKey(env),
     isProduction,
   };
 }
