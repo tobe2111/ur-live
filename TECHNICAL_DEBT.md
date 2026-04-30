@@ -8,6 +8,16 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 📊 2026-04-30 종료 시 상태
+
+### 이번 세션 추가 처리 (PR #295/#296/#297 + Phase 5)
+- ✅ **TD-016 CRITICAL** — seller-transfer 셀러 본인 인증 (agency proxy 차단 410, 신규 `/api/seller/transfers` + `/seller/transfers` 페이지)
+- ✅ **TD-016 LOW** — 카트 UNIQUE NULL race INSERT/UPDATE 재시도 (500 → 정상 누적)
+- ✅ **TD-005** — product_options + products INSERT canonical `stock` 만 사용 (legacy stock_quantity 분기 제거). migration 0233 적용 준비 완료.
+- ✅ **테마 정돈** — /my-orders, /wishlist, /my-vouchers white 복원 (CLAUDE.md 규칙 준수)
+- ✅ **/restaurant-map 풀 리디자인** — 풀스크린 지도 + bottom-sheet 3-snap + 가격 라벨 핀 + LIVE pulse + 핫딜 carousel + 내 주변 GPS + 검색 히스토리 + zoom-aware 클러스터링
+- ⏭️ **TD-014** i18n 462건 — 6언어 정확한 번역 필요, 번역가 review 후 별도 PR
+
 ## 📊 최신 상태 요약 (2026-04-29 종료 시)
 
 ### 2026-04-29 카카오 모바일 무한 루프 사고 + 전수 강화
