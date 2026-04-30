@@ -850,7 +850,12 @@ export default function UserProfilePage() {
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           로그아웃
         </button>
-        <p className="text-[10px] text-white/25 text-center mt-3">YourDeal v2.4 · 2026</p>
+        <p className="text-[10px] text-white/25 text-center mt-3">
+          유어딜 v1.0.0
+          {import.meta.env.VITE_APP_VERSION && (
+            <span className="font-mono ml-1">· {String(import.meta.env.VITE_APP_VERSION).slice(0, 7)}</span>
+          )}
+        </p>
       </div>
     </div>
   )
