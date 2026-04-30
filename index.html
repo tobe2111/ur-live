@@ -131,8 +131,10 @@
     </div>
 
     <script>
-      // 🛡️ 2026-04-28: 인앱 detect → block 표시 + root 숨김 + 자동 redirect 시도.
-      //   JS 가 작동하면 카톡 사용자는 안내 화면 봄. JS 차단 시 root 의 placeholder 만 보임 (root 검정).
+      // 🛡️ 2026-04-28: 인앱 detect → 자동 redirect 1회 시도 (sessionStorage 가드).
+      //   redirect 실패 시 → 풀스크린 block 안 띄우고 그대로 app 진입 (사용자 신고: '굳이 이럴 필요 있을까').
+      //   App 안에 InAppBrowserBanner 가 상단에 작은 안내 배너로 표시됨 — 사용자가 dismiss 가능.
+      //   JS 가 작동하면 redirect 시도, 작동 안 하면 root 의 placeholder 만 보임 (root 검정).
       //   document.write 사용 안 함 → 카톡 인앱 호환성 ↑.
       (function() {
         try {
@@ -152,21 +154,10 @@
             return;
           }
 
-          // block 표시 + root 숨김
-          var block = document.getElementById('ud-inapp-block');
-          var root = document.getElementById('root');
-          if (block) block.className = 'show';
-          if (root) root.style.display = 'none';
+          // 🛡️ 2026-04-30: 풀스크린 block 안 띄움 (사용자 신고). app 정상 렌더 + InAppBrowserBanner 가 dismissible 안내.
 
-          var name = isKakao ? '카카오톡' : isNaver ? '네이버' : isFB ? '페이스북' : isIG ? '인스타그램' : '라인';
-          var title = document.getElementById('ud-title');
-          if (title) title.innerHTML = name + ' 인앱 브라우저에서는<br/>일부 기능이 제한돼요';
-
+          // OS 별 자동 호출 스킴 (1회 시도)
           var url = window.location.href;
-          var urlEl = document.getElementById('ud-url');
-          if (urlEl) urlEl.textContent = url;
-
-          // OS 별 자동 호출 스킴
           var isIOS = /iPhone|iPad|iPod/i.test(ua);
           var isAndroid = /Android/i.test(ua);
           var scheme = '';
@@ -176,39 +167,6 @@
             scheme = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1';
           } else if (isAndroid) {
             scheme = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
-          }
-
-          var openBtn = document.getElementById('ud-open-btn');
-          if (openBtn) {
-            if (scheme) {
-              openBtn.href = scheme;
-            } else {
-              openBtn.style.display = 'none'; // iOS 페북/IG 자동 스킴 없음
-            }
-          }
-
-          var copyBtn = document.getElementById('ud-copy-btn');
-          if (copyBtn) {
-            copyBtn.addEventListener('click', function() {
-              var text = url;
-              var done = function() {
-                copyBtn.textContent = '복사됨 ✓';
-                copyBtn.style.background = '#34c759';
-              };
-              if (navigator.clipboard) {
-                navigator.clipboard.writeText(text).then(done).catch(function() { fallback(); });
-              } else {
-                fallback();
-              }
-              function fallback() {
-                var ta = document.createElement('textarea');
-                ta.value = text;
-                document.body.appendChild(ta);
-                ta.select();
-                try { document.execCommand('copy'); done(); } catch (e) {}
-                document.body.removeChild(ta);
-              }
-            });
           }
 
           // 🛡️ 2026-04-29: sessionStorage 가드 — 무한 redirect 루프 방어.
