@@ -10,6 +10,7 @@ import PushNotificationSetup from './components/PushNotificationSetup'
 import OfflineBanner from './components/OfflineBanner'
 import SecurityReloginBanner from './components/SecurityReloginBanner'
 import InAppBrowserBanner from './components/InAppBrowserBanner'
+import PWAInstallPrompt from './components/PWAInstallPrompt'
 import BottomNav from '@/components/main/BottomNav'
 import SideBanner from '@/components/SideBanner'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -451,6 +452,7 @@ function AppContent() {
           <div className={fullScreen ? 'min-h-dvh' : 'max-w-[430px] mx-auto bg-white min-h-dvh'}>
           <div className="flex-1">
           <InAppBrowserBanner />
+          <PWAInstallPrompt />
           <OfflineBanner />
           <ScrollToTop />
           <PushNotificationSetup />

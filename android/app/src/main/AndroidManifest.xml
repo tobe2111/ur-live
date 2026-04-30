@@ -24,6 +24,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- 🛡️ 2026-04-30: Android App Link — live.ur-team.com 링크 클릭 시 앱으로 직접 진입.
+                 카카오톡/Line/FB 등 인앱 webview 우회 효과.
+                 활성화 조건: /.well-known/assetlinks.json 에 production keystore SHA256 등록.
+                 검증: adb shell pm verify-app-links --re-verify com.urteam.yourdeal -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="live.ur-team.com" />
+            </intent-filter>
+
+            <!-- Custom scheme — OAuth 콜백 / 외부 → 앱 deep link -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="yourdeal" />
+            </intent-filter>
+
         </activity>
 
         <provider

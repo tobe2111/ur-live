@@ -1,0 +1,44 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.com.urteam.yourdeal"],
+        "components": [
+          {
+            "/": "/products/*",
+            "comment": "상품 상세 — 앱이 있으면 앱으로 deep link"
+          },
+          {
+            "/": "/live/*",
+            "comment": "라이브 방송 — 앱으로 deep link"
+          },
+          {
+            "/": "/profile/*",
+            "comment": "셀러 프로필"
+          },
+          {
+            "/": "/restaurant-map",
+            "comment": "맛집 지도"
+          },
+          {
+            "/": "/coupon/*",
+            "comment": "쿠폰 클레임"
+          },
+          {
+            "/": "/checkout",
+            "exclude": true,
+            "comment": "결제 페이지는 web 유지 (Toss popup)"
+          },
+          {
+            "/": "/auth/*",
+            "exclude": true,
+            "comment": "OAuth 콜백은 web 유지"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAMID.com.urteam.yourdeal"]
+  }
+}
