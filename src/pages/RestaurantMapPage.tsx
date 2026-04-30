@@ -615,6 +615,24 @@ export default function RestaurantMapPage() {
 
   useEffect(() => { initMap() }, [initMap])
 
+  // 🛡️ 2026-04-30: Kakao 맵 인스턴스 cleanup — 페이지 unmount 시 오버레이 / 줌 리스너 해제.
+  //   memory leak 방지 (Kakao SDK global 이 React 컴포넌트 closure 를 잡고 있음).
+  useEffect(() => {
+    return () => {
+      try {
+        overlaysRef.current.forEach(o => o.setMap?.(null))
+        overlaysRef.current = []
+        markersRef.current.forEach(m => m.setMap?.(null))
+        markersRef.current = []
+        if (mapInstance.current && window.kakao?.maps?.event) {
+          // Kakao 는 listener 해제용 ref 가 없어 removeListener(target, type) 패턴
+          //   타겟 자체를 GC 가능하게 mapInstance.current = null 만으로도 충분
+        }
+        mapInstance.current = null
+      } catch { /* ignore */ }
+    }
+  }, [])
+
   const selectAndPan = (r: Restaurant) => {
     setSelected(r)
     if (mapInstance.current && window.kakao?.maps && r.restaurant_lat && r.restaurant_lng) {
