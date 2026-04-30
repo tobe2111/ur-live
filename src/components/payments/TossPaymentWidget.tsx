@@ -4,6 +4,8 @@ import { loadTossPayments, type TossPaymentsWidgets } from '@tosspayments/tosspa
 import { generateOrderId } from '@/utils/orderIdGenerator'
 import { getUserEmail, getUserNameSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
+import { isFeatureBlocked } from '@/lib/in-app-warning'
+import InAppFeatureBlockedModal from '@/components/InAppFeatureBlockedModal'
 
 interface TossPaymentWidgetProps {
   userId: string
@@ -42,6 +44,8 @@ export function TossPaymentWidget({
   const [isRendered, setIsRendered] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading')
+  // 🛡️ 2026-04-30: 인앱 webview 결제 실패 시 외부 브라우저 유도 모달
+  const [showPaymentBlocked, setShowPaymentBlocked] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string>('')
   const hasInitialized = useRef(false)
   const widgetsRef = useRef<TossPaymentsWidgets | null>(null)
@@ -203,6 +207,12 @@ export function TossPaymentWidget({
         onPaymentError('주문번호 형식이 올바르지 않습니다. 페이지를 새로고침해주세요.')
         return
       }
+      // 🛡️ 2026-04-30: 인앱 webview 에서 popup 차단 시 외부 브라우저 유도
+      const errMsg = String(errObj?.message || '')
+      if (isFeatureBlocked('popup') && /popup|window\.open|blocked/i.test(errMsg)) {
+        setShowPaymentBlocked(true)
+        return
+      }
       onPaymentError((errObj?.message as string) || t('payment.requestError', { defaultValue: '결제 요청 실패' }))
     }
   }, [widgets, loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t])
@@ -263,6 +273,8 @@ export function TossPaymentWidget({
           </div>
         </div>
       )}
+
+      {showPaymentBlocked && <InAppFeatureBlockedModal feature="popup" onClose={() => setShowPaymentBlocked(false)} />}
     </div>
   )
 }

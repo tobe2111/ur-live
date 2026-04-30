@@ -7,6 +7,8 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Package, AlertTriangle, Plus, Minus, BarChart3, QrCode, Search, ArrowUpDown, Camera, X, ArchiveRestore } from 'lucide-react'
 import JsBarcode from 'jsbarcode'
+import { isFeatureBlocked } from '@/lib/in-app-warning'
+import InAppFeatureBlockedModal from '@/components/InAppFeatureBlockedModal'
 
 interface Product {
   id: number
@@ -50,6 +52,7 @@ export default function SellerInventoryPage() {
   const [reason, setReason] = useState('')
   const [scanInput, setScanInput] = useState('')
   const [showCamera, setShowCamera] = useState(false)
+  const [showCameraBlocked, setShowCameraBlocked] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const scanningRef = useRef(false)
@@ -64,6 +67,11 @@ export default function SellerInventoryPage() {
   }, [])
 
   const startCamera = useCallback(async () => {
+    // 🛡️ 2026-04-30: 인앱 webview detect → 모달 안내 (카메라 권한 silently 차단되는 환경)
+    if (isFeatureBlocked('camera')) {
+      setShowCameraBlocked(true)
+      return
+    }
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
@@ -120,7 +128,13 @@ export default function SellerInventoryPage() {
           }
         }
       }, 100)
-    } catch {
+    } catch (e: unknown) {
+      const err = e as Error
+      // NotAllowedError 가 webview 차단 신호 — 모달 표시
+      if (err.name === 'NotAllowedError' && isFeatureBlocked('camera')) {
+        setShowCameraBlocked(true)
+        return
+      }
       toast.error(t('seller.cameraUnavailable'))
     }
   }, [stopCamera])
@@ -577,6 +591,7 @@ export default function SellerInventoryPage() {
         </div>
       )}
       </div>
+      {showCameraBlocked && <InAppFeatureBlockedModal feature="camera" onClose={() => setShowCameraBlocked(false)} />}
     </SellerLayout>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { detectInAppBrowser } from '@/lib/in-app-browser'
 
 /**
  * PushNotificationSetup
@@ -29,6 +30,13 @@ export default function PushNotificationSetup() {
 
     // Don't re-ask if already subscribed
     if (localStorage.getItem('push_subscribed')) return
+
+    // 🛡️ 2026-04-30: 인앱 webview 에서 푸시 권한 요청 silently 차단 → registration noise.
+    //   사전에 skip — 사용자가 외부 브라우저에서 들어오면 자연스럽게 prompt.
+    if (detectInAppBrowser()) {
+      if (import.meta.env.DEV) console.info('[PushNotification] In-app webview detected — skipping push registration')
+      return
+    }
 
     // Wait 10 seconds before asking (don't interrupt UX)
     const timer = setTimeout(async () => {
