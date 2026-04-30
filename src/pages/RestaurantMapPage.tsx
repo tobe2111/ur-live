@@ -105,8 +105,60 @@ export default function RestaurantMapPage() {
   const activeFilterCount = (region ? 1 : 0) + (category ? 1 : 0)
   // 🛡️ 2026-04-30: bottom-sheet 3-snap (peek=결과만 / mid=절반 / full=거의 풀스크린)
   const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('mid')
+  // 🛡️ 2026-04-30 Phase 5: '내 주변' 모드 (GPS 권한 요청 + 거리순 자동)
+  const [nearMeMode, setNearMeMode] = useState(false)
+  // 🛡️ 2026-04-30 Phase 5: 검색 히스토리 (localStorage)
+  const [searchHistory, setSearchHistory] = useState<string[]>(() =>
+    storage.getJSON<string[]>('restaurant_search_history', [])
+  )
+  const [searchFocused, setSearchFocused] = useState(false)
+  // 🛡️ 2026-04-30 Phase 5: zoom-aware clustering
+  const [mapLevel, setMapLevel] = useState<number>(7)
   const dragStartY = useRef<number | null>(null)
   const dragStartSnap = useRef<'peek' | 'mid' | 'full'>('mid')
+
+  // 🛡️ 2026-04-30 Phase 5: '내 주변' 클릭 — GPS 요청 + 거리순 + 위치로 pan
+  const requestNearMe = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      toast.error('이 기기는 위치 서비스를 지원하지 않습니다.')
+      return
+    }
+    if (userLoc) {
+      // 이미 위치 있음 — 즉시 적용
+      setNearMeMode(true)
+      setSortBy('distance')
+      if (mapInstance.current && window.kakao?.maps) {
+        mapInstance.current.panTo(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
+        mapInstance.current.setLevel(5)
+      }
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLoc(loc)
+        setNearMeMode(true)
+        setSortBy('distance')
+        if (mapInstance.current && window.kakao?.maps) {
+          mapInstance.current.panTo(new window.kakao.maps.LatLng(loc.lat, loc.lng))
+          mapInstance.current.setLevel(5)
+        }
+      },
+      () => toast.error('위치 권한이 필요합니다. 브라우저 설정에서 허용해주세요.'),
+      { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
+    )
+  }, [userLoc])
+
+  // 🛡️ 2026-04-30 Phase 5: 검색어 확정 시 히스토리 저장
+  function pushSearchHistory(query: string) {
+    const q = query.trim()
+    if (!q) return
+    setSearchHistory(prev => {
+      const next = [q, ...prev.filter(x => x !== q)].slice(0, 8)
+      storage.setJSON('restaurant_search_history', next)
+      return next
+    })
+  }
 
   function handleSheetDragStart(clientY: number) {
     dragStartY.current = clientY
@@ -336,6 +388,10 @@ export default function RestaurantMapPage() {
       // 줌 컨트롤
       const zoomControl = new window.kakao.maps.ZoomControl()
       mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT)
+      // 🛡️ 2026-04-30 Phase 5: zoom 변경 리스너 → 클러스터링 재계산
+      window.kakao.maps.event.addListener(mapInstance.current, 'zoom_changed', () => {
+        if (mapInstance.current) setMapLevel(mapInstance.current.getLevel())
+      })
     }
 
     // 기존 마커/오버레이 제거
@@ -344,7 +400,94 @@ export default function RestaurantMapPage() {
     overlaysRef.current.forEach(o => o.setMap(null))
     overlaysRef.current = []
 
+    // 🛡️ 2026-04-30 Phase 5: zoom-aware grid clustering
+    //   level 1-3 (가까이): 클러스터 없음 (개별 핀)
+    //   level 4-5: 0.001° (~100m)
+    //   level 6-7: 0.005° (~500m)
+    //   level 8+ (멀리): 0.02° (~2km)
+    const gridSize = mapLevel <= 3 ? 0 : mapLevel <= 5 ? 0.001 : mapLevel <= 7 ? 0.005 : 0.02
+    const clusters = new Map<string, Restaurant[]>()
+    if (gridSize > 0) {
+      withCoords.forEach(r => {
+        const gx = Math.floor(r.restaurant_lng / gridSize)
+        const gy = Math.floor(r.restaurant_lat / gridSize)
+        const key = `${gx}_${gy}`
+        if (!clusters.has(key)) clusters.set(key, [])
+        clusters.get(key)!.push(r)
+      })
+    }
+
+    // 클러스터 핀 렌더 (2+ 개) — gridSize > 0 일 때만
+    if (gridSize > 0) {
+      clusters.forEach((items) => {
+        if (items.length < 2) return // 1개면 individual 렌더로 떨어짐 (아래)
+        // centroid
+        const sumLat = items.reduce((s, x) => s + x.restaurant_lat, 0)
+        const sumLng = items.reduce((s, x) => s + x.restaurant_lng, 0)
+        const cx = sumLat / items.length
+        const cy = sumLng / items.length
+        const minPrice = Math.min(...items.map(x => x.price || 0))
+        const cPos = new window.kakao.maps.LatLng(cx, cy)
+        const cContent = document.createElement('div')
+        cContent.innerHTML = `
+          <div style="
+            background: linear-gradient(135deg,#ec4899,#f43f5e);
+            color: #fff;
+            border: 3px solid #fff;
+            border-radius: 999px;
+            min-width: 44px;
+            height: 44px;
+            padding: 0 12px;
+            font-size: 13px;
+            font-weight: 800;
+            white-space: nowrap;
+            box-shadow: 0 4px 14px rgba(236,72,153,0.4);
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+          ">
+            <span>${items.length}</span>
+            <span style="font-size:9px;opacity:0.9;font-weight:600;">${minPrice.toLocaleString()}원~</span>
+          </div>
+        `
+        cContent.addEventListener('click', () => {
+          if (mapInstance.current) {
+            mapInstance.current.panTo(cPos)
+            // 줌 인 — 한 단계당 큰 변화이므로 -2 로 한 번에 더 가까이
+            const newLevel = Math.max(1, mapInstance.current.getLevel() - 2)
+            mapInstance.current.setLevel(newLevel)
+          }
+        })
+        const cOverlay = new window.kakao.maps.CustomOverlay({
+          position: cPos,
+          content: cContent,
+          yAnchor: 0.5,
+          xAnchor: 0.5,
+          zIndex: 5,
+          map: mapInstance.current,
+        })
+        overlaysRef.current.push(cOverlay)
+      })
+    }
+
+    // 개별 핀 렌더 — 클러스터 멤버 (2+) 는 skip
+    const clusteredKeys = new Set<string>()
+    if (gridSize > 0) {
+      clusters.forEach((items, key) => {
+        if (items.length >= 2) clusteredKeys.add(key)
+      })
+    }
+
     withCoords.forEach(r => {
+      // 클러스터에 속한 핀이면 skip
+      if (gridSize > 0) {
+        const gx = Math.floor(r.restaurant_lng / gridSize)
+        const gy = Math.floor(r.restaurant_lat / gridSize)
+        if (clusteredKeys.has(`${gx}_${gy}`)) return
+      }
       const pos = new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)
 
       // 🛡️ 2026-04-30 Phase 2: 가격 중심 핀 (이름 → 호버/클릭으로 보임).
@@ -468,7 +611,7 @@ export default function RestaurantMapPage() {
       mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
       mapInstance.current.setLevel(4)
     }
-  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize])
+  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, mapLevel])
 
   useEffect(() => { initMap() }, [initMap])
 
@@ -531,13 +674,43 @@ export default function RestaurantMapPage() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); (e.target as HTMLInputElement).blur() } }}
               placeholder="맛집 이름·지역 검색"
+              aria-label="검색"
               className="w-full pl-10 pr-9 py-2.5 bg-white/95 backdrop-blur-md rounded-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-md"
             />
             {search && (
               <button onClick={() => setSearch('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2">
                 <X className="w-4 h-4 text-gray-400" />
               </button>
+            )}
+            {/* 🛡️ Phase 5: 검색 히스토리 dropdown — focus 시 + 입력값 비어있을 때만 */}
+            {searchFocused && !search && searchHistory.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-10">
+                <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase">최근 검색</span>
+                  <button
+                    onClick={() => { setSearchHistory([]); storage.setJSON('restaurant_search_history', []) }}
+                    className="text-[11px] text-gray-400 hover:text-gray-600"
+                  >
+                    전체 삭제
+                  </button>
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {searchHistory.map((q) => (
+                    <button
+                      key={q}
+                      onMouseDown={(e) => { e.preventDefault(); setSearch(q); pushSearchHistory(q) }}
+                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <Search className="w-3 h-3 text-gray-400 shrink-0" />
+                      <span className="truncate">{q}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -635,6 +808,19 @@ export default function RestaurantMapPage() {
               )}
             </button>
             <div className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto no-scrollbar">
+              {/* 🛡️ Phase 5: '내 주변' 퀵필터 — GPS prompt + 거리순 자동 */}
+              <button
+                onClick={requestNearMe}
+                aria-pressed={nearMeMode}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
+                  nearMeMode
+                    ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
+                    : 'bg-pink-50 text-pink-600 border border-pink-200'
+                }`}
+              >
+                <Navigation className="w-3 h-3" />
+                <span>내 주변</span>
+              </button>
               {[
                 { key: 'all', label: '전체', emoji: '✨' },
                 { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
