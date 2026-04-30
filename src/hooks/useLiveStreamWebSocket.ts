@@ -17,6 +17,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAccessToken } from '@/utils/auth'
+import { detectInAppBrowser } from '@/lib/in-app-browser'
+import { toast } from '@/hooks/useToast'
 import type { ChatMessage, StreamData } from '@/types/live-stream'
 
 export interface DonationEvent {
@@ -239,6 +241,14 @@ export function useLiveStreamWebSocket(
         } else {
           // WebSocket failed after max retries — fall back to polling
           setError(null) // Clear error so UI doesn't show stale message
+          // 🛡️ 2026-04-30: 인앱 webview 사용자에게 외부 브라우저 권장 (1회만)
+          //   3회 reconnect 실패 = 인앱 webview 의 WebSocket 불안정 가능성 높음.
+          if (detectInAppBrowser() && !sessionStorage.getItem('ur_ws_fallback_notice_v1')) {
+            try {
+              sessionStorage.setItem('ur_ws_fallback_notice_v1', '1')
+              toast.info('실시간 채팅이 불안정해요. 외부 브라우저에서 더 안정적으로 시청 가능합니다.')
+            } catch { /* ignore */ }
+          }
           startPolling()
         }
       }

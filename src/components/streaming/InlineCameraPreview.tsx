@@ -8,6 +8,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { VideoIcon, MicOff, Mic, CameraOff, RefreshCw } from 'lucide-react'
+import { isFeatureBlocked } from '@/lib/in-app-warning'
+import InAppFeatureBlockedModal from '@/components/InAppFeatureBlockedModal'
 
 export function InlineCameraPreview() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -17,8 +19,17 @@ export function InlineCameraPreview() {
   const [muted, setMuted] = useState(true)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedCam, setSelectedCam] = useState<string>('')
+  // 🛡️ 2026-04-30: 인앱 webview 차단 안내 모달
+  const [showBlocked, setShowBlocked] = useState(false)
 
   async function start(deviceId?: string) {
+    // 🛡️ 2026-04-30: 카카오/네이버/FB/IG/Line webview 에선 getUserMedia 가 silently 막힘.
+    //   prompt 가 안 뜨거나 NotAllowedError 던짐 → 사용자는 왜 안 되는지 모름.
+    //   미리 detect 해서 외부 브라우저 안내 모달 표시.
+    if (isFeatureBlocked('camera')) {
+      setShowBlocked(true)
+      return
+    }
     setErr(null)
     try {
       const constraints: MediaStreamConstraints = {
@@ -34,6 +45,11 @@ export function InlineCameraPreview() {
       setDevices(all.filter(d => d.kind === 'videoinput'))
     } catch (e: unknown) {
       const err = e as Error
+      // NotAllowedError 가 webview 차단 신호일 가능성 — 모달 표시
+      if (err.name === 'NotAllowedError' && isFeatureBlocked('camera')) {
+        setShowBlocked(true)
+        return
+      }
       setErr(err.message || '카메라 접근 실패')
       setActive(false)
     }
@@ -54,17 +70,20 @@ export function InlineCameraPreview() {
 
   if (!active) {
     return (
-      <button onClick={() => start()}
-        className="w-full bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-blue-300 text-left">
-        <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-          <VideoIcon className="w-5 h-5 text-blue-600" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900">카메라 미리보기 켜기</p>
-          <p className="text-xs text-gray-500">방송 전 내 화면 확인 (로컬 미리보기, 방송에 영향 없음)</p>
-        </div>
-        {err && <span className="text-[10px] text-red-500 shrink-0">{err}</span>}
-      </button>
+      <>
+        <button onClick={() => start()}
+          className="w-full bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-blue-300 text-left">
+          <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+            <VideoIcon className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900">카메라 미리보기 켜기</p>
+            <p className="text-xs text-gray-500">방송 전 내 화면 확인 (로컬 미리보기, 방송에 영향 없음)</p>
+          </div>
+          {err && <span className="text-[10px] text-red-500 shrink-0">{err}</span>}
+        </button>
+        {showBlocked && <InAppFeatureBlockedModal feature="camera" onClose={() => setShowBlocked(false)} />}
+      </>
     )
   }
 
