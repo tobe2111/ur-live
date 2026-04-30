@@ -186,6 +186,25 @@ api.interceptors.request.use(
       return config;
     }
 
+    // ── Guides: /api/guides/:type — type 으로 token 결정 ────────────────
+    // 🛡️ 2026-04-30: GuideViewer 가 명시 헤더로 token 전달하지만, 명시 안 한 caller
+    //   대비. admin 은 모든 type 접근 가능 → admin_token fallback.
+    if (url.startsWith('/api/guides/')) {
+      const m = url.match(/\/api\/guides\/(admin|seller|agency)/);
+      const type = m?.[1] as 'admin' | 'seller' | 'agency' | undefined;
+      const tokenKey = type === 'admin' ? 'admin_token'
+        : type === 'agency' ? 'agency_token'
+        : type === 'seller' ? 'seller_token'
+        : 'admin_token';
+      let token = localStorage.getItem(tokenKey);
+      // admin 은 모든 type 접근 가능 — fallback
+      if (!token) token = localStorage.getItem('admin_token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+        return config;
+      }
+    }
+
     // ── Notifications: 토큰 존재 여부로 분기 ─────────────────────────────
     // 🛡️ 2026-04-28: /api/dashboard-notifications 도 같은 분기 (이전엔 누락 → 알림 401)
     if (url.startsWith('/api/notifications') || url.startsWith('/api/dashboard-notifications')) {
@@ -289,13 +308,25 @@ api.interceptors.response.use(
       // (예: /api/seller/public/:id 공개 프로필, /api/youtube/video-info 등)
       // dashboard 토큰이 없으면 이 블록 건너뛰고 Firebase user refresh 블록으로 fall through.
       // 기존 동작: 유저가 셀러 공개 프로필 보다가 401 → "셀러 인증 만료" → /seller/login (잘못)
-      const _isDashboardUrl = url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/') || url.includes('/api/agency/');
-      const _isDashTokenKey = url.includes('/api/agency/') ? 'agency_token' : (url.includes('/api/seller/') || url.includes('/api/youtube/')) ? 'seller_token' : 'admin_token';
+      // 🛡️ 2026-04-30: /api/guides/* 도 dashboard 흐름 — :type 으로 token 결정.
+      const _isDashboardUrl = url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/') || url.includes('/api/agency/') || url.includes('/api/guides/');
+      // /api/guides/admin → admin / /api/guides/seller → seller (또는 admin) / /api/guides/agency → agency (또는 admin)
+      let _guideType: 'admin' | 'seller' | 'agency' | null = null;
+      if (url.includes('/api/guides/')) {
+        const m = url.match(/\/api\/guides\/(admin|seller|agency)/);
+        _guideType = (m?.[1] as 'admin' | 'seller' | 'agency' | undefined) || null;
+      }
+      const _isDashTokenKey = _guideType === 'admin' ? 'admin_token'
+        : _guideType === 'agency' ? 'agency_token'
+        : _guideType === 'seller' ? 'seller_token'
+        : url.includes('/api/agency/') ? 'agency_token'
+        : (url.includes('/api/seller/') || url.includes('/api/youtube/')) ? 'seller_token'
+        : 'admin_token';
       const _hasDashboardToken = _isDashboardUrl && !!localStorage.getItem(_isDashTokenKey);
 
       if (_isDashboardUrl && _hasDashboardToken) {
-        const isSeller = url.includes('/api/seller/') || url.includes('/api/youtube/');
-        const isAgency = url.includes('/api/agency/');
+        const isSeller = _guideType === 'seller' || (!_guideType && (url.includes('/api/seller/') || url.includes('/api/youtube/')));
+        const isAgency = _guideType === 'agency' || (!_guideType && url.includes('/api/agency/'));
         const tokenKey = isAgency ? 'agency_token' : isSeller ? 'seller_token' : 'admin_token';
         const refreshTokenKey = isAgency ? 'agency_refresh_token' : isSeller ? 'seller_refresh_token' : 'admin_refresh_token';
         const refreshToken = localStorage.getItem(refreshTokenKey);
