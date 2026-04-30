@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { detectInAppBrowser } from '@/lib/in-app-browser'
+import { isPWAStandalone, isFeatureBlockedSync } from '@/lib/in-app-warning'
 
 /**
  * PushNotificationSetup
@@ -31,10 +31,11 @@ export default function PushNotificationSetup() {
     // Don't re-ask if already subscribed
     if (localStorage.getItem('push_subscribed')) return
 
-    // 🛡️ 2026-04-30: 인앱 webview 에서 푸시 권한 요청 silently 차단 → registration noise.
-    //   사전에 skip — 사용자가 외부 브라우저에서 들어오면 자연스럽게 prompt.
-    if (detectInAppBrowser()) {
-      if (import.meta.env.DEV) console.info('[PushNotification] In-app webview detected — skipping push registration')
+    // 🛡️ 2026-04-30 v2: PWA standalone 이면 풀 기능 → 진행. 아니면 인앱 매트릭스 체크.
+    //   notification 은 시도 전 detect 가 자연스러움 (권한 prompt 가 silently 막히면
+    //   사용자에게 어떤 알림도 안 가서 oblivious — 사전 skip 이 정확).
+    if (!isPWAStandalone() && isFeatureBlockedSync('notification')) {
+      if (import.meta.env.DEV) console.info('[PushNotification] In-app webview blocked — skipping registration')
       return
     }
 

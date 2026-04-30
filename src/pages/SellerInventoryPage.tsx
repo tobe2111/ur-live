@@ -67,11 +67,8 @@ export default function SellerInventoryPage() {
   }, [])
 
   const startCamera = useCallback(async () => {
-    // 🛡️ 2026-04-30: 인앱 webview detect → 모달 안내 (카메라 권한 silently 차단되는 환경)
-    if (isFeatureBlocked('camera')) {
-      setShowCameraBlocked(true)
-      return
-    }
+    // 🛡️ 2026-04-30 v2: try-first — 일단 호출, 실패 시 인앱 detect 후 분류.
+    //   PWA / 라인 Android 등 "일부 가능" 환경에서 false positive 차단 회피.
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
@@ -130,10 +127,14 @@ export default function SellerInventoryPage() {
       }, 100)
     } catch (e: unknown) {
       const err = e as Error
-      // NotAllowedError 가 webview 차단 신호 — 모달 표시
-      if (err.name === 'NotAllowedError' && isFeatureBlocked('camera')) {
-        setShowCameraBlocked(true)
-        return
+      // 권한 거부 / 미지원 → 인앱 webview 가능성 체크
+      const denied = err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'NotSupportedError'
+      if (denied) {
+        const blocked = await isFeatureBlocked('camera', { permissionState: 'denied' })
+        if (blocked) {
+          setShowCameraBlocked(true)
+          return
+        }
       }
       toast.error(t('seller.cameraUnavailable'))
     }
