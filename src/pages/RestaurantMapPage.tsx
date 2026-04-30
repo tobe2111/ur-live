@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, MapPin, Search, Ticket, Phone, X, Navigation, ArrowUpDown, Heart, Radio } from 'lucide-react'
+import { ArrowLeft, MapPin, Search, Ticket, Phone, X, Navigation, ArrowUpDown, Heart, Radio, SlidersHorizontal } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -100,6 +100,9 @@ export default function RestaurantMapPage() {
   const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [liveSellerIds, setLiveSellerIds] = useState<Set<number>>(new Set())
+  // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  const activeFilterCount = (region ? 1 : 0) + (category ? 1 : 0)
 
   const kr = isKorea()
 
@@ -464,73 +467,49 @@ export default function RestaurantMapPage() {
           </div>
         </div>
 
-        {/* 🛡️ 2026-04-28: 공구권 카테고리 칩 (식사/뷰티/헬스) — MVP */}
-        <div className="flex gap-2 px-4 pt-1 pb-2 overflow-x-auto no-scrollbar">
-          {[
-            { key: 'all', label: '전체', emoji: '✨' },
-            { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
-            { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
-            { key: 'health_voucher', label: '헬스', emoji: '💪' },
-            { key: 'pet_voucher', label: '반려', emoji: '🐶' },
-            { key: 'stay_voucher', label: '숙박', emoji: '🏨' },
-            { key: 'activity_voucher', label: '액티비티', emoji: '🎯' },
-          ].map(t => (
-            <button
-              key={t.key}
-              onClick={() => setVoucherType(t.key as typeof voucherType)}
-              className={`flex items-center gap-1 px-3.5 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
-                voucherType === t.key
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-400'
-              }`}
-            >
-              <span>{t.emoji}</span>
-              <span>{t.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* 지역 필터 칩 */}
-        <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
-          {REGIONS.map(r => (
-            <button
-              key={r.key}
-              onClick={() => {
-                setRegion(r.key)
-                setMapView(true)
-                if (mapInstance.current && window.kakao?.maps) {
-                  mapInstance.current.panTo(new window.kakao.maps.LatLng(r.lat, r.lng))
-                  mapInstance.current.setLevel(r.level)
-                }
-              }}
-              className={`flex items-center gap-1 px-3.5 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
-                region === r.key
-                  ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-pink-300'
-              }`}
-            >
-              <span>{r.emoji}</span>
-              <span>{r.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* 카테고리 필터 칩 */}
-        <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto no-scrollbar">
-          {CATEGORIES.map(c => (
-            <button
-              key={c.key || 'all'}
-              onClick={() => setCategory(c.key)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
-                category === c.key
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-50 text-gray-600 border border-gray-200'
-              }`}
-            >
-              <span>{c.emoji}</span>
-              <span>{c.label}</span>
-            </button>
-          ))}
+        {/* 🛡️ 2026-04-30 UX: 1줄 통합 — 공구권 타입 (주축) + 더보기 필터 버튼 (지역/카테고리 시트) */}
+        <div className="flex items-center gap-2 px-4 pt-1 pb-3">
+          <button
+            onClick={() => setFilterSheetOpen(true)}
+            aria-label="지역·카테고리 필터 열기"
+            className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
+              activeFilterCount > 0
+                ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
+                : 'bg-white text-gray-700 border border-gray-200'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>필터</span>
+            {activeFilterCount > 0 && (
+              <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white/25 text-[10px] font-bold">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto no-scrollbar">
+            {[
+              { key: 'all', label: '전체', emoji: '✨' },
+              { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
+              { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
+              { key: 'health_voucher', label: '헬스', emoji: '💪' },
+              { key: 'pet_voucher', label: '반려', emoji: '🐶' },
+              { key: 'stay_voucher', label: '숙박', emoji: '🏨' },
+              { key: 'activity_voucher', label: '액티비티', emoji: '🎯' },
+            ].map(t => (
+              <button
+                key={t.key}
+                onClick={() => setVoucherType(t.key as typeof voucherType)}
+                className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
+                  voucherType === t.key
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-white text-gray-600 border border-gray-200'
+                }`}
+              >
+                <span>{t.emoji}</span>
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* 정렬 + 카운트 + 즐겨찾기 토글 */}
@@ -572,13 +551,15 @@ export default function RestaurantMapPage() {
 
       {/* ═══ 지도 (위 50vh) + 목록 (아래) 동시 표시 ═══
           🛡️ 2026-04-28: 토글 → 동시 표시 패턴 (카카오맵/네이버맵 스타일).
-            지도와 목록을 같이 보면서, 목록 부분 자유 스크롤 가능. */}
+            지도와 목록을 같이 보면서, 목록 부분 자유 스크롤 가능.
+          🛡️ 2026-04-30 CLS: mapRef 컨테이너를 항상 렌더링 → SDK load 시
+            placeholder swap 없이 inset-0 에 카카오맵이 그려짐. layout shift 0. */}
       <div className="relative shrink-0" style={{ height: '50vh', minHeight: 280 }}>
-        {/* 카카오맵 */}
-        {sdkLoaded && window.kakao?.maps ? (
-          <div ref={mapRef} className="absolute inset-0" />
-        ) : (
-          <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center">
+        {/* 카카오맵 — 항상 렌더 (CLS 0). SDK 로드되면 그 안에 그려짐. */}
+        <div ref={mapRef} className="absolute inset-0 bg-gray-100" />
+        {/* 로딩/에러 placeholder — 지도 위에 오버레이 (SDK 로드 후 자동 사라짐) */}
+        {!(sdkLoaded && window.kakao?.maps) && (
+          <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center pointer-events-none">
             <MapPin className="w-12 h-12 text-gray-300 mb-3" />
             {sdkError ? (
               <>
@@ -690,8 +671,19 @@ export default function RestaurantMapPage() {
             </div>
 
             {loading ? (
-              <div className="flex justify-center py-16">
-                <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+              /* 🛡️ 2026-04-30 CLS: 단일 스피너 → 카드 skeleton 으로 교체.
+                 실제 결과 카드와 같은 높이 (90px) 를 유지해 layout shift 0 */
+              <div className="space-y-3 pb-8" aria-hidden="true">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex gap-3 p-3.5 rounded-2xl bg-white border border-gray-100">
+                    <div className="w-[72px] h-[72px] rounded-xl bg-gray-100 animate-pulse shrink-0" />
+                    <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+                      <div className="h-3.5 w-2/3 rounded bg-gray-100 animate-pulse" />
+                      <div className="h-3 w-4/5 rounded bg-gray-100 animate-pulse" />
+                      <div className="h-4 w-1/3 rounded bg-gray-100 animate-pulse mt-1" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-16">
@@ -767,6 +759,113 @@ export default function RestaurantMapPage() {
           onClose={() => setSuggestionFor(null)}
         />
       )}
+
+      {/* 🛡️ 2026-04-30: 필터 시트 — 지역 + 카테고리 (한 화면) */}
+      {filterSheetOpen && (
+        <FilterSheet
+          region={region}
+          category={category}
+          onApply={(r, c) => {
+            setRegion(r)
+            setCategory(c)
+            setMapView(true)
+            const target = REGIONS.find(x => x.key === r) || REGIONS[0]
+            if (mapInstance.current && window.kakao?.maps) {
+              mapInstance.current.panTo(new window.kakao.maps.LatLng(target.lat, target.lng))
+              mapInstance.current.setLevel(target.level)
+            }
+            setFilterSheetOpen(false)
+          }}
+          onClose={() => setFilterSheetOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── 지역 + 카테고리 필터 시트 (mobile bottom sheet)
+function FilterSheet({
+  region: initialRegion, category: initialCategory, onApply, onClose,
+}: {
+  region: string; category: string;
+  onApply: (region: string, category: string) => void;
+  onClose: () => void;
+}) {
+  useEscapeKey(onClose)
+  const [r, setR] = useState(initialRegion)
+  const [c, setC] = useState(initialCategory)
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end" onClick={onClose} role="presentation">
+      <div
+        className="bg-white rounded-t-3xl w-full max-h-[80vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="필터 설정"
+      >
+        <div className="sticky top-0 bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-base font-bold text-gray-900">필터</h3>
+          <button
+            onClick={() => { setR(''); setC('') }}
+            className="text-xs font-semibold text-gray-500"
+            aria-label="필터 초기화"
+          >
+            초기화
+          </button>
+        </div>
+
+        <div className="p-5 space-y-6">
+          <section>
+            <p className="text-xs font-bold text-gray-500 uppercase mb-3">지역</p>
+            <div className="grid grid-cols-3 gap-2">
+              {REGIONS.map(reg => (
+                <button
+                  key={reg.key}
+                  onClick={() => setR(reg.key)}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                    r === reg.key
+                      ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
+                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                  }`}
+                >
+                  <span>{reg.emoji}</span>
+                  <span>{reg.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <p className="text-xs font-bold text-gray-500 uppercase mb-3">카테고리</p>
+            <div className="grid grid-cols-3 gap-2">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat.key || 'all'}
+                  onClick={() => setC(cat.key)}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                    c === cat.key
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                  }`}
+                >
+                  <span>{cat.emoji}</span>
+                  <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="sticky bottom-0 bg-white px-5 py-4 border-t border-gray-100" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <button
+            onClick={() => onApply(r, c)}
+            className="w-full py-3.5 bg-pink-500 text-white text-sm font-bold rounded-2xl active:scale-[0.98] transition-transform"
+          >
+            적용
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
