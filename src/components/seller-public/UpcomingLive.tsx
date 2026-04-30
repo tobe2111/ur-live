@@ -65,6 +65,8 @@ export function UpcomingLive({ streams }: UpcomingLiveProps) {
               <img
                 src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
                 alt={stream.title}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {
                   e.currentTarget.src = `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`

@@ -108,7 +108,7 @@ export default function SearchPage() {
 
   return (
     <div className="bg-white pb-20 min-h-screen">
-      <SEO title={query ? `${query} 검색결과 - 유어딜` : '검색 - 유어딜'} description="유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요." url="/search" />
+      <SEO title={query ? `${query} 검색결과 - 유어딜` : '검색 - 유어딜'} description="유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요." url="/search" noindex />
       {/* Header */}
       <SearchHeader
         query={query}

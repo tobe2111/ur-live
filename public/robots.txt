@@ -4,11 +4,24 @@ Disallow: /admin
 Disallow: /admin/*
 Disallow: /seller/login
 Disallow: /seller/register
+Disallow: /agency/login
+Disallow: /agency/register
 Disallow: /api/
+Disallow: /auth/
 Disallow: /checkout
+Disallow: /cart
 Disallow: /payment/
+Disallow: /points/charge
 Disallow: /account/
+Disallow: /mypage/
+Disallow: /user/profile
+Disallow: /my-orders
+Disallow: /my-coupons
+Disallow: /my-vouchers
+Disallow: /wishlist
+Disallow: /notifications
 Disallow: /embed/
 Disallow: /debug/
+Disallow: /search
 
 Sitemap: https://live.ur-team.com/sitemap.xml

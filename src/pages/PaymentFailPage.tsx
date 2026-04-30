@@ -80,7 +80,7 @@ export default function PaymentFailPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
-      <SEO title="결제 실패 - 유어딜" description="결제가 정상적으로 처리되지 않았습니다" url="/payment/fail" />
+      <SEO title="결제 실패 - 유어딜" description="결제가 정상적으로 처리되지 않았습니다" url="/payment/fail" noindex />
       <div className="max-w-2xl w-full">
         <div className="bg-white rounded-2xl p-8 shadow-lg border border-[#e5e5e7]">
           {/* 실패 아이콘 */}

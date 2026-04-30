@@ -126,7 +126,7 @@ export default function PointsChargePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SEO title="딜 충전 - 유어딜" description="딜 포인트를 충전하세요" url="/points/charge" />
+      <SEO title="딜 충전 - 유어딜" description="딜 포인트를 충전하세요" url="/points/charge" noindex />
 
       {/* 헤더 */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">

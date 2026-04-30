@@ -48,6 +48,8 @@ export function ProductGrid({ products }: ProductGridProps) {
               <img
                 src={product.image_url || 'https://via.placeholder.com/400?text=No+Image'}
                 alt={product.name}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
                 onError={(e) => {
                   e.currentTarget.src = 'https://via.placeholder.com/400?text=No+Image'

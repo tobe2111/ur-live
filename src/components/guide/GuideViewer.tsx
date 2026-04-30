@@ -23,7 +23,11 @@ interface GuideSection {
 
 interface Props {
   guideType: 'admin' | 'seller' | 'agency'
-  token: string
+  /**
+   * @deprecated 2026-04-30: api interceptor 가 path :type 으로 자동 token 결정.
+   *   하위 호환을 위해 prop 은 유지하되 무시됨.
+   */
+  token?: string
   editable?: boolean
 }
 
@@ -131,7 +135,7 @@ function applyInline(s: string): string {
   return r
 }
 
-export default function GuideViewer({ guideType, token, editable = false }: Props) {
+export default function GuideViewer({ guideType, editable = false }: Props) {
   const [sections, setSections] = useState<GuideSection[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -147,9 +151,9 @@ export default function GuideViewer({ guideType, token, editable = false }: Prop
   async function load() {
     setLoading(true)
     try {
-      const res = await api.get(`/api/guides/${guideType}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      // 🛡️ 2026-04-30: api interceptor 가 path 의 :type 으로 자동 token 결정.
+      //   명시 헤더 제거 — interceptor 401 흐름과 일관성 유지.
+      const res = await api.get(`/api/guides/${guideType}`)
       if (res.data?.success) {
         setSections(res.data.data || [])
         if (res.data.data?.length > 0 && !expanded) {
@@ -176,9 +180,7 @@ export default function GuideViewer({ guideType, token, editable = false }: Prop
   async function saveSection(sectionKey: string) {
     setSaving(true)
     try {
-      await api.patch(`/api/guides/${guideType}/${sectionKey}`, editForm, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      await api.patch(`/api/guides/${guideType}/${sectionKey}`, editForm)
       toast.success('저장되었습니다')
       setEditingKey(null)
       setEditForm({})
@@ -193,9 +195,7 @@ export default function GuideViewer({ guideType, token, editable = false }: Prop
   async function deleteSection(sectionKey: string) {
     if (!confirm('이 섹션을 삭제하시겠습니까?')) return
     try {
-      await api.delete(`/api/guides/${guideType}/${sectionKey}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      await api.delete(`/api/guides/${guideType}/${sectionKey}`)
       toast.success('삭제되었습니다')
       load()
     } catch {
