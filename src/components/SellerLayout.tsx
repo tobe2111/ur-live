@@ -347,17 +347,20 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         <MessageCircle className="w-4 h-4" />
       </a>
 
-      {/* Mobile quick-action FAB */}
-      <div className="lg:hidden fixed bottom-6 right-4 z-40">
-        <button
-          onClick={() => navigate('/seller/live-broadcast')}
-          className="flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-lg active:scale-95 transition-transform"
-          style={{ background: 'linear-gradient(90deg, #FF0033, #EC4899)', boxShadow: '0 8px 24px rgba(255,0,51,0.3)' }}
-        >
-          <Radio className="w-4 h-4" />
-          라이브 시작
-        </button>
-      </div>
+      {/* Mobile quick-action FAB
+          🛡️ 2026-04-30: 이미 라이브 방송 페이지면 숨김 (현 페이지 navigate = no-op 인 것 처럼 보였던 사용자 신고) */}
+      {!location.pathname.startsWith('/seller/live') && (
+        <div className="lg:hidden fixed bottom-6 right-4 z-40">
+          <button
+            onClick={() => navigate('/seller/live-broadcast')}
+            className="flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-lg active:scale-95 transition-transform"
+            style={{ background: 'linear-gradient(90deg, #FF0033, #EC4899)', boxShadow: '0 8px 24px rgba(255,0,51,0.3)' }}
+          >
+            <Radio className="w-4 h-4" />
+            라이브 시작
+          </button>
+        </div>
+      )}
     </div>
   )
 }
