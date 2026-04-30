@@ -245,17 +245,17 @@ export default function SellerMealVoucherNewPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.addressLabel')}</label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 min-w-0">
                   <input
                     value={form.restaurant_address}
                     onChange={e => update('restaurant_address', e.target.value)}
                     placeholder={t('seller.mealVoucher.addressPlaceholder')}
-                    className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                    className="flex-1 min-w-0 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => openKakaoAddress()}
-                    className="px-3 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium shrink-0 active:scale-95"
+                    className="shrink-0 whitespace-nowrap px-3 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium active:scale-95"
                   >
                     {t('seller.mealVoucher.postalCode')}
                   </button>
