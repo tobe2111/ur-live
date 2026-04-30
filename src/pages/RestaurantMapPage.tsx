@@ -282,6 +282,18 @@ export default function RestaurantMapPage() {
     return items
   }, [restaurants, region, search, category, sortBy, userLoc, showFavoritesOnly, favorites])
 
+  // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
+  const heroDeals = useMemo(() => {
+    return [...filtered]
+      .filter(r => r.original_price > r.price)
+      .sort((a, b) => {
+        const dA = 1 - a.price / a.original_price
+        const dB = 1 - b.price / b.original_price
+        return dB - dA
+      })
+      .slice(0, 5)
+  }, [filtered])
+
   // 🛡️ 2026-04-28: 동일 좌표 식사권 그룹화 (핀 겹침 방지).
   //   같은 매장에 식사권 여러 개 등록 시 핀 1개 + 개수 배지.
   //   그룹 대표 = 첫 번째 (정렬 순서 따름).
@@ -335,53 +347,62 @@ export default function RestaurantMapPage() {
     withCoords.forEach(r => {
       const pos = new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)
 
-      // 커스텀 오버레이 (마커 대신)
-      const discountText = r.original_price > r.price
-        ? `-${Math.round((1 - r.price / r.original_price) * 100)}%`
-        : ''
+      // 🛡️ 2026-04-30 Phase 2: 가격 중심 핀 (이름 → 호버/클릭으로 보임).
+      //   사용자 제안: 핀 보고 바로 가격 비교 가능해야 함.
+      const hasDiscount = r.original_price > r.price
+      const discountPct = hasDiscount ? Math.round((1 - r.price / r.original_price) * 100) : 0
+      const priceText = `${(r.price ?? 0).toLocaleString()}원`
+      const safePrice = escapeHtml(priceText)
 
-      // XSS 방지: restaurant_name/discountText 등 외부 데이터는 이스케이프 후 삽입
-      const safeName = escapeHtml(r.restaurant_name || '')
-      const safeDiscount = escapeHtml(discountText)
-      // 🛡️ 2026-04-28 Tier 2: 셀러 라이브 중이면 LIVE 배지 / 즐겨찾기면 ❤️
       const isLive = r.seller_id ? liveSellerIds.has(r.seller_id) : false
       const isFav = favorites.includes(r.id)
-      const liveBadge = isLive ? `<span style="display:inline-flex;align-items:center;gap:2px;margin-left:4px;background:#ef4444;color:#fff;border-radius:4px;padding:0 4px;font-size:9px;font-weight:800;"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#fff;animation:pulse 1s infinite;"></span>LIVE</span>` : ''
-      const favBadge = isFav ? `<span style="margin-left:3px;color:#ef4444;">❤</span>` : ''
-      // 동일 좌표 그룹 사이즈 — 2개 이상이면 +N 배지
+      const isSelected = selected?.id === r.id
+
       const groupKey = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
       const groupSize = coordGroupSize.get(groupKey) || 1
-      const groupBadge = groupSize > 1 ? `<span style="margin-left:3px;background:#3b82f6;color:#fff;border-radius:4px;padding:0 4px;font-size:9px;font-weight:800;">+${groupSize - 1}</span>` : ''
+      const groupBadge = groupSize > 1
+        ? `<span style="margin-left:4px;background:rgba(59,130,246,0.9);color:#fff;border-radius:6px;padding:1px 5px;font-size:9px;font-weight:800;">+${groupSize - 1}</span>` : ''
+      const liveDot = isLive
+        ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ef4444;margin-right:4px;animation:live-pulse 1.2s infinite;"></span>` : ''
+      const discountBadge = hasDiscount
+        ? `<span style="margin-right:4px;background:#ef4444;color:#fff;border-radius:5px;padding:1px 5px;font-size:10px;font-weight:800;">-${discountPct}%</span>` : ''
+      const favHeart = isFav ? `<span style="margin-left:3px;color:#ef4444;font-size:11px;">❤</span>` : ''
+
+      // 색상: 선택됨 > LIVE > 일반
+      const bg = isSelected ? '#ec4899' : isLive ? '#fef2f2' : '#ffffff'
+      const fg = isSelected ? '#ffffff' : '#111827'
+      const borderColor = isSelected ? '#ec4899' : isLive ? '#ef4444' : '#e5e7eb'
 
       const content = document.createElement('div')
       content.innerHTML = `
         <div style="
-          background: ${selected?.id === r.id ? '#ec4899' : '#fff'};
-          color: ${selected?.id === r.id ? '#fff' : '#111'};
-          border: 2px solid ${isLive ? '#ef4444' : (selected?.id === r.id ? '#ec4899' : '#e5e7eb')};
-          border-radius: 12px;
-          padding: 4px 10px;
-          font-size: 11px;
-          font-weight: 700;
+          background: ${bg};
+          color: ${fg};
+          border: 2px solid ${borderColor};
+          border-radius: 999px;
+          padding: 5px 11px;
+          font-size: 12px;
+          font-weight: 800;
           white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          box-shadow: 0 4px 10px rgba(0,0,0,0.15);
           cursor: pointer;
-          transform: translateY(-50%);
+          transform: translateY(-50%) scale(${isSelected ? 1.1 : 1});
+          transition: transform 0.15s;
           position: relative;
+          display: inline-flex;
+          align-items: center;
         ">
-          ${safeName}${favBadge}${groupBadge}
-          ${safeDiscount ? `<span style="color:${selected?.id === r.id ? '#fef08a' : '#ef4444'};margin-left:4px;">${safeDiscount}</span>` : ''}
-          ${liveBadge}
+          ${liveDot}${discountBadge}${safePrice}${favHeart}${groupBadge}
           <div style="
             position: absolute;
-            bottom: -6px;
+            bottom: -5px;
             left: 50%;
             transform: translateX(-50%);
             width: 0;
             height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 6px solid ${isLive ? '#ef4444' : (selected?.id === r.id ? '#ec4899' : '#e5e7eb')};
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid ${borderColor};
           "></div>
         </div>
       `
@@ -754,6 +775,57 @@ export default function RestaurantMapPage() {
                 >
                   <Ticket className="w-4 h-4" /> 바우처 구매
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 (선택 카드 없을 때만) */}
+          {!loading && !selected && heroDeals.length > 0 && (
+            <div className="mb-3 -mx-3 px-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                  <span className="text-amber-500">⚡</span> 오늘의 핫딜
+                </p>
+                <span className="text-[10px] text-gray-400">{heroDeals.length}곳</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {heroDeals.map(r => {
+                  const discount = Math.round((1 - r.price / r.original_price) * 100)
+                  return (
+                    <button
+                      key={`hero-${r.id}`}
+                      onClick={() => selectAndPan(r)}
+                      className="shrink-0 w-[140px] rounded-2xl bg-white border border-gray-100 overflow-hidden text-left active:scale-[0.97] transition-transform"
+                    >
+                      <div className="relative aspect-square bg-pink-50">
+                        {r.image_url ? (
+                          <img src={r.image_url} alt="" loading="lazy" decoding="async"
+                            className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center"><span className="text-3xl">🍽️</span></div>
+                        )}
+                        <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded">
+                          -{discount}%
+                        </span>
+                        {r.seller_id && liveSellerIds.has(r.seller_id) && (
+                          <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center gap-0.5">
+                            <Radio className="w-2.5 h-2.5 animate-pulse" /> LIVE
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[11px] font-bold text-gray-900 truncate">{r.restaurant_name}</p>
+                        <p className="text-[10px] text-gray-400 truncate flex items-center gap-0.5">
+                          <MapPin className="w-2.5 h-2.5 shrink-0" />
+                          {userLoc && r.restaurant_lat && r.restaurant_lng
+                            ? `${distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng).toFixed(1)}km`
+                            : (r.restaurant_address || '주소 미등록')}
+                        </p>
+                        <p className="text-[12px] font-extrabold text-gray-900 mt-1">{r.price?.toLocaleString()}원</p>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
