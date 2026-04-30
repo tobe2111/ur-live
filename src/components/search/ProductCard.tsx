@@ -50,6 +50,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-100">

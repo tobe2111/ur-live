@@ -110,7 +110,7 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
           <img
             src={product.image_url}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" decoding="async" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
             <span className="text-gray-400 text-xs">No Image</span>

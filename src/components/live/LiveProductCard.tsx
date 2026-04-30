@@ -43,7 +43,7 @@ export const LiveProductCard = React.memo(function LiveProductCard({
         <img
           src={product.image}
           alt={product.name}
-          className="w-full h-full object-cover" loading="lazy" />
+          className="w-full h-full object-cover" loading="lazy" decoding="async" />
         
         {/* 할인 배지 */}
         {discountRate > 0 && (
