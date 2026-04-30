@@ -71,7 +71,10 @@ export async function checkPermission(name: 'camera' | 'microphone' | 'notificat
 }
 
 // ── 3. UA 기반 차단 매트릭스 (마지막 fallback) ────────────────────────
-/** 인앱 webview 별 기능 차단 가능성 매트릭스 */
+/** 인앱 webview 별 기능 차단 가능성 매트릭스 (현실 기준).
+ *  주의: Chrome / Safari / Samsung Internet / Whale (PC) / Edge / Firefox 는
+ *  PATTERNS 에 매칭 안 되므로 detectInAppBrowser() 가 null 반환 → 이 함수 호출 안 됨.
+ *  여기 도달하는 사용자는 이미 인앱 webview 사용자만. */
 function uaBlockMatrix(inApp: InAppBrowserName, feature: RestrictedFeature): boolean {
   const ios = isIOS()
   const android = isAndroid()
@@ -85,7 +88,8 @@ function uaBlockMatrix(inApp: InAppBrowserName, feature: RestrictedFeature): boo
       return feature === 'notification' || feature === 'popup'
     case 'facebook':
     case 'instagram':
-      // FB/IG: 모든 OS 카메라/푸시/popup 차단
+    case 'threads':
+      // FB/IG/Threads (모두 Meta): 모든 OS 카메라/푸시/popup 차단
       return feature === 'camera' || feature === 'notification' || feature === 'popup'
     case 'line':
       // 라인: 카메라/popup 부분 가능. 푸시만 차단.
@@ -93,10 +97,19 @@ function uaBlockMatrix(inApp: InAppBrowserName, feature: RestrictedFeature): boo
     case 'wechat':
       // 위챗: 모든 기능 차단 (가장 엄격)
       return true
+    case 'google':
+      // Google Search App (GSA): 카메라/popup 차단. 푸시 차단. WS 가능.
+      return feature === 'camera' || feature === 'popup' || feature === 'notification'
+    case 'tiktok':
+      // TikTok: 카메라/popup 차단 (자체 카메라 우선). 푸시 차단.
+      return feature === 'camera' || feature === 'popup' || feature === 'notification'
+    case 'twitter':
+      // Twitter/X: 카메라 차단, popup 부분, 푸시 차단.
+      return feature === 'camera' || feature === 'notification' || feature === 'popup'
     case 'kakaostory':
     case 'daum':
     case 'zalo':
-      // 보수적으로 차단 가정
+      // 보수적으로 차단 가정 (WebSocket 만 허용)
       return feature !== 'websocket'
     default:
       return false

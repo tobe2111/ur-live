@@ -10,8 +10,13 @@
  *   - 상단에 "외부 브라우저로 열기" 안내 배너 표시 (사용자 선택)
  */
 
+// 🛡️ 2026-04-30 v3: Google app / TikTok / Twitter 추가.
+//   주의: 일반 Chrome / Safari / Samsung Internet / Whale (PC) / Edge / Firefox 는
+//   여기 매칭되지 않음 → null 반환 → 모든 기능 정상 사용.
+//   Chrome Custom Tabs 도 풀 Chrome 이므로 detect 안 됨 (정상).
 const PATTERNS: Array<{ name: InAppBrowserName; regex: RegExp }> = [
   { name: 'kakao', regex: /kakaotalk/i },
+  // 네이버앱 인앱 (iOS/Android). Whale 의 모바일 인앱 UA 포함. PC Whale 은 매칭 X.
   { name: 'naver', regex: /naver\(inapp|whale\/.+mobile/i },
   { name: 'facebook', regex: /fb_iab|fbav|fban/i },
   { name: 'instagram', regex: /instagram/i },
@@ -20,11 +25,20 @@ const PATTERNS: Array<{ name: InAppBrowserName; regex: RegExp }> = [
   { name: 'zalo', regex: /zalo/i },
   { name: 'kakaostory', regex: /kakaostory/i },
   { name: 'daum', regex: /daumapps/i },
+  // Google Search App (iOS/Android) — 검색 → 외부 링크 클릭 시 인앱 진입
+  { name: 'google', regex: /\bGSA\/|GoogleApp\//i },
+  // TikTok — Bytedance webview (한국 점유율 ↑)
+  { name: 'tiktok', regex: /Bytedance|musical_ly|TikTok/i },
+  // Twitter / X
+  { name: 'twitter', regex: /\bTwitter|TwitterAndroid|TwitteriPhone/i },
+  // Threads (Meta) — barcelona 코드네임
+  { name: 'threads', regex: /BarcelonaApp/i },
 ]
 
 export type InAppBrowserName =
   | 'kakao' | 'naver' | 'facebook' | 'instagram'
   | 'line' | 'wechat' | 'zalo' | 'kakaostory' | 'daum'
+  | 'google' | 'tiktok' | 'twitter' | 'threads'
 
 export const IN_APP_LABELS: Record<InAppBrowserName, string> = {
   kakao: '카카오톡',
@@ -36,6 +50,10 @@ export const IN_APP_LABELS: Record<InAppBrowserName, string> = {
   zalo: '잘로',
   kakaostory: '카카오스토리',
   daum: '다음',
+  google: '구글 앱',
+  tiktok: '틱톡',
+  twitter: 'Twitter',
+  threads: 'Threads',
 }
 
 export function detectInAppBrowser(): InAppBrowserName | null {
