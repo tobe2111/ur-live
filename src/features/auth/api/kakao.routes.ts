@@ -44,7 +44,7 @@ async function issueLinkedRoleTokens(
           type: 'seller',
           seller_type: seller.seller_type || 'influencer',
           iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+          exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 🛡️ 2026-04-30: 7일 → 30일
         }
         out.seller_token = await jwtSign(payload, jwtSecret)
       }
@@ -66,7 +66,7 @@ async function issueLinkedRoleTokens(
           contact_name: agency.contact_name,
           type: 'agency',
           iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+          exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 🛡️ 2026-04-30: 7일 → 30일
         }
         out.agency_token = await jwtSign(payload, jwtSecret)
       }

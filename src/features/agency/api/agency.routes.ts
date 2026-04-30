@@ -149,7 +149,7 @@ async function signAgencyToken(
       type: 'agency',
       member_role: options?.memberRole,        // 'owner' | 'manager' | 'agent' | 'analyst'
       member_id: options?.memberId,            // agency_members.id
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, // 🛡️ 2026-04-30: 7일 → 30일
     },
     secret
   )
