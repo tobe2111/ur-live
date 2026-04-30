@@ -12,8 +12,11 @@ import { toast } from '@/hooks/useToast';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 // ─── 앱 버전 섹션 ──────────────────────────────────────────────
-
-const LOCAL_APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
+// 🛡️ 2026-04-30: 버전 표기 정리.
+//   이전: VITE_APP_VERSION 에 github.sha (40자) 가 들어와 "e9b6faa081e80024..." 노출
+//   수정: 사용자 친화 버전 (package.json) + 짧은 빌드 hash (7자) 분리
+const APP_VERSION = '1.0.0' // package.json version 동기 (manual)
+const BUILD_HASH = (import.meta.env.VITE_APP_VERSION || '').slice(0, 7)
 
 function AppVersionSection() {
   const [serverVersion, setServerVersion] = useState<string | null>(null);
@@ -58,33 +61,41 @@ function AppVersionSection() {
   const hasUpdate = !loading && serverVersion && localBuildVersion && serverVersion !== localBuildVersion;
 
   return (
-    <div className="mb-6">
-      <h3 className="text-sm font-semibold text-gray-500 mb-3 px-2">앱 정보</h3>
-      <div className="bg-[#121212] border border-[#2A2A2A] rounded-xl divide-y divide-[#2A2A2A]">
-        <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-sm text-gray-400">현재 버전</span>
-          <span className="text-sm font-medium text-white">{LOCAL_APP_VERSION}</span>
+    <div className="mb-2">
+      <p className="text-[12px] font-bold text-white mb-2 px-1">앱 정보</p>
+      <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <span className="text-[13px] text-white/75">현재 버전</span>
+          <span className="text-[12px] font-medium text-white">v{APP_VERSION}</span>
         </div>
-        <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-sm text-gray-400">최신 빌드 확인</span>
+        {BUILD_HASH && (
+          <div className="flex items-center justify-between px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <span className="text-[13px] text-white/75">빌드</span>
+            <span className="text-[11px] font-mono text-white/55">{BUILD_HASH}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <span className="text-[13px] text-white/75">최신 빌드 확인</span>
           {loading ? (
-            <span className="flex items-center gap-1.5 text-sm text-gray-500">
+            <span className="flex items-center gap-1.5 text-[12px] text-white/45">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> 확인 중
             </span>
           ) : !serverVersion ? (
             <button
+              type="button"
               onClick={handleCheck}
-              className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
+              className="flex items-center gap-1 text-[12px] text-white/55 hover:text-white transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
               다시 시도
             </button>
           ) : isLatest ? (
-            <span className="flex items-center gap-1.5 text-sm text-emerald-400 font-medium">
+            <span className="flex items-center gap-1.5 text-[12px] text-emerald-400 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5" /> 최신 버전
             </span>
           ) : hasUpdate ? (
             <button
+              type="button"
               onClick={handleUpdate}
               className="flex items-center gap-1 px-3 py-1 rounded-full bg-pink-500 text-white text-xs font-bold hover:bg-pink-600 transition-colors"
             >
@@ -92,8 +103,9 @@ function AppVersionSection() {
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleCheck}
-              className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
+              className="flex items-center gap-1 text-[12px] text-white/55 hover:text-white transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
               확인
@@ -167,44 +179,45 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020202]">
+    <div className="min-h-screen bg-[#020202] pb-7">
       <SEO
         title="계정 설정"
         description="프로필, 알림, 결제 수단 등 계정 설정을 관리하세요."
         url="/account/settings"
         noindex
       />
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
-        <div className="flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} className="text-white">
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <h1 className="text-white font-bold text-[15px]">계정 설정</h1>
-          <div className="w-6" />
-        </div>
+      {/* 🛡️ 2026-04-30 v4 Wallet sticky chrome */}
+      <div className="sticky top-0 z-50 flex items-center px-2 py-3 gap-1" style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(84,84,88,0.34)' }}>
+        <button type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+          <ChevronLeft className="w-4 h-4 text-white" aria-hidden="true" />
+        </button>
       </div>
 
-      <main className="px-4 py-6 pb-32">
-        {/* 프로필 */}
-        <div className="bg-[#121212] border border-[#2A2A2A] rounded-2xl p-6 mb-6">
+      {/* v4 Large Title */}
+      <div className="px-4 pt-3 pb-1">
+        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1 }}>설정</h1>
+      </div>
+
+      <main className="px-4 pt-3">
+        {/* 프로필 카드 (v4 그라데이션 톤) */}
+        <div className="rounded-2xl p-5 mb-5 relative" style={{ background: 'radial-gradient(ellipse at top, rgba(236,72,153,0.18), transparent 70%), rgba(255,255,255,0.04)' }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-white">내 프로필</h2>
-            <button onClick={openEdit} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg transition-colors text-sm font-medium text-gray-300 hover:bg-[#2A2A2A]">
-              <Edit className="w-4 h-4" />수정
+            <h2 className="text-[15px] font-bold text-white">내 프로필</h2>
+            <button type="button" onClick={openEdit} aria-label="프로필 수정" className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.08] text-[11px] font-semibold text-white/80 hover:bg-white/[0.12] transition-colors">
+              <Edit className="w-3 h-3" aria-hidden="true" />수정
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[
-              { icon: <User className="w-5 h-5 text-pink-400" />, label: '이름', value: user.name },
-              { icon: <Mail className="w-5 h-5 text-pink-400" />, label: '이메일', value: user.email },
-              { icon: <Phone className="w-5 h-5 text-pink-400" />, label: '전화번호', value: user.phone || '미등록' },
+              { icon: <User className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: '이름', value: user.name },
+              { icon: <Mail className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: '이메일', value: user.email },
+              { icon: <Phone className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: '전화번호', value: user.phone || '미등록' },
             ].map(({ icon, label, value }) => (
-              <div key={label} className="flex items-center space-x-3 bg-[#1A1A1A] rounded-xl p-3">
+              <div key={label} className="flex items-center gap-3 bg-white/[0.04] rounded-xl px-3 py-2.5">
                 {icon}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500">{label}</p>
-                  <p className="font-medium text-white truncate">{value}</p>
+                  <p className="text-[10px] text-white/45">{label}</p>
+                  <p className="text-[13px] font-medium text-white truncate">{value}</p>
                 </div>
               </div>
             ))}
@@ -212,46 +225,51 @@ export default function AccountSettingsPage() {
         </div>
 
         <Section title="알림">
-          <ToggleItem icon={<Bell className="w-5 h-5" />} label="푸시 알림" value={notif.push} onChange={() => toggleNotif('push')} />
-          <ToggleItem icon={<Mail className="w-5 h-5" />} label="이메일 알림" value={notif.email} onChange={() => toggleNotif('email')} />
+          <ToggleItem icon={<Bell className="w-4 h-4" aria-hidden="true" />} label="푸시 알림" value={notif.push} onChange={() => toggleNotif('push')} />
+          <ToggleItem icon={<Mail className="w-4 h-4" aria-hidden="true" />} label="이메일 알림" value={notif.email} onChange={() => toggleNotif('email')} />
         </Section>
 
         <Section title="결제 및 배송">
-          <Link to="/mypage/addresses" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
-            <div className="flex items-center space-x-3"><MapPin className="w-5 h-5 text-gray-400" /><span className="text-gray-300">배송지 관리</span></div>
-            <ChevronRight className="w-5 h-5 text-gray-500" />
+          <Link to="/mypage/addresses" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
+            <MapPin className="w-4 h-4 text-white/55" aria-hidden="true" />
+            <span className="flex-1 text-[13px] text-white">배송지 관리</span>
+            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
-          <Item icon={<CreditCard className="w-5 h-5" />} label="결제 수단 관리" onClick={() => toast.info('준비 중인 기능입니다.')} badge="준비중" />
+          <Item icon={<CreditCard className="w-4 h-4" aria-hidden="true" />} label="결제 수단 관리" onClick={() => toast.info('준비 중인 기능입니다.')} badge="준비중" />
         </Section>
 
         <Section title="기타">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center space-x-3"><Globe className="w-5 h-5 text-gray-400" /><span className="text-gray-300">언어 설정</span></div>
-            <span className="text-sm text-gray-500">한국어</span>
+          <div className="flex items-center gap-3 px-3.5 py-3">
+            <Globe className="w-4 h-4 text-white/55" aria-hidden="true" />
+            <span className="flex-1 text-[13px] text-white">언어 설정</span>
+            <span className="text-[12px] text-white/45">한국어</span>
           </div>
-          <Link to="/faq" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
-            <div className="flex items-center space-x-3"><HelpCircle className="w-5 h-5 text-gray-400" /><span className="text-gray-300">고객센터</span></div>
-            <ChevronRight className="w-5 h-5 text-gray-500" />
+          <Link to="/faq" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <HelpCircle className="w-4 h-4 text-white/55" aria-hidden="true" />
+            <span className="flex-1 text-[13px] text-white">고객센터</span>
+            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
         </Section>
 
         <Section title="약관 및 정책">
-          <Link to="/privacy" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
-            <span className="text-gray-300">개인정보 처리방침</span><ChevronRight className="w-5 h-5 text-gray-500" />
+          <Link to="/privacy" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
+            <span className="flex-1 text-[13px] text-white">개인정보 처리방침</span>
+            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
-          <Link to="/terms" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
-            <span className="text-gray-300">이용약관</span><ChevronRight className="w-5 h-5 text-gray-500" />
+          <Link to="/terms" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <span className="flex-1 text-[13px] text-white">이용약관</span>
+            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
-          <Link to="/refund" className="flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors">
-            <span className="text-gray-300">배송 및 환불 정책</span><ChevronRight className="w-5 h-5 text-gray-500" />
+          <Link to="/refund" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <span className="flex-1 text-[13px] text-white">배송 및 환불 정책</span>
+            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
         </Section>
 
         <AppVersionSection />
 
-
-        <div className="mt-16 pt-8 border-t border-[#1A1A1A] text-center">
-          <Link to="/account/delete-warning" className="text-xs text-gray-500 hover:text-gray-400 underline">회원 탈퇴</Link>
+        <div className="mt-8 text-center">
+          <Link to="/account/delete-warning" className="text-[11px] text-white/30 hover:text-white/55 underline">회원 탈퇴</Link>
         </div>
       </main>
 
@@ -303,34 +321,36 @@ export default function AccountSettingsPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mb-6">
-      <h3 className="text-sm font-semibold text-gray-500 mb-3 px-2">{title}</h3>
-      <div className="bg-[#121212] border border-[#2A2A2A] rounded-xl overflow-hidden divide-y divide-[#1A1A1A]">{children}</div>
+    <div className="mb-5">
+      <p className="text-[12px] font-bold text-white mb-2 px-1">{title}</p>
+      <div className="rounded-2xl overflow-hidden bg-white/[0.04]">{children}</div>
     </div>
   );
 }
 
 function Item({ icon, label, onClick, badge }: { icon: React.ReactNode; label: string; onClick: () => void; badge?: string }) {
   return (
-    <button onClick={onClick} className="w-full flex items-center justify-between p-4 hover:bg-[#1A1A1A] transition-colors text-left">
-      <div className="flex items-center space-x-3">
-        <span className="text-gray-400">{icon}</span>
-        <span className="text-gray-300">{label}</span>
-        {badge && <span className="text-xs bg-[#1A1A1A] text-gray-500 px-2 py-0.5 rounded-full">{badge}</span>}
-      </div>
-      <ChevronRight className="w-5 h-5 text-gray-500 flex-shrink-0" />
+    <button type="button" onClick={onClick} className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors text-left" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <span className="text-white/55">{icon}</span>
+      <span className="flex-1 text-[13px] text-white">{label}</span>
+      {badge && <span className="text-[10px] bg-white/[0.08] text-white/55 px-2 py-0.5 rounded-full">{badge}</span>}
+      <ChevronRight className="w-3.5 h-3.5 text-white/30 flex-shrink-0" aria-hidden="true" />
     </button>
   );
 }
 
 function ToggleItem({ icon, label, value, onChange }: { icon: React.ReactNode; label: string; value: boolean; onChange: () => void }) {
   return (
-    <div className="flex items-center justify-between p-4">
-      <div className="flex items-center space-x-3">
-        <span className="text-gray-400">{icon}</span>
-        <span className="text-gray-300">{label}</span>
-      </div>
-      <button onClick={onChange} className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-pink-500' : 'bg-gray-600'}`}>
+    <div className="flex items-center gap-3 px-3.5 py-3" style={{ borderTop: 'var(--toggle-border, none)' }}>
+      <span className="text-white/55">{icon}</span>
+      <span className="flex-1 text-[13px] text-white">{label}</span>
+      <button
+        type="button"
+        onClick={onChange}
+        aria-label={`${label} ${value ? '끄기' : '켜기'}`}
+        aria-pressed={value}
+        className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-pink-500' : 'bg-white/[0.15]'}`}
+      >
         <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
       </button>
     </div>
