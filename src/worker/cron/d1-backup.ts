@@ -60,10 +60,12 @@ async function dumpDatabase(DB: D1Database): Promise<string> {
       }
 
       // 데이터 dump (큰 테이블은 batch)
+      // 🛡️ 2026-04-30: ORDER BY rowid 추가 — 안정 페이징 (CLAUDE.md 규칙)
+      //   SQLite 의 rowid 는 모든 테이블 자동 보유, INSERT 순서 ≈ 보장
       const BATCH_SIZE = 500;
       let offset = 0;
       while (true) {
-        const rows = await DB.prepare(`SELECT * FROM ${table} LIMIT ${BATCH_SIZE} OFFSET ${offset}`).all();
+        const rows = await DB.prepare(`SELECT * FROM ${table} ORDER BY rowid LIMIT ${BATCH_SIZE} OFFSET ${offset}`).all();
         const results = rows.results || [];
         if (results.length === 0) break;
 

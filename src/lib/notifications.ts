@@ -89,7 +89,8 @@ export async function notifyFollowers(DB: D1Database, sellerId: number, type: st
 // ─── 에이전시 알림 ───────────────────────────────────────────────
 export async function notifyAgencyForSeller(DB: D1Database, sellerId: number, type: string, title: string, message?: string, link?: string) {
   try {
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS agency_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run().catch(() => {})
+    // ⚠️ ensureTable best-effort — 이미 있으면 no-op, 권한/race fail 시 INSERT 가 throw 하므로 throw 함수 전체 catch 에 잡힘
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS agency_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run().catch((err) => { if (import.meta.env.DEV) console.warn('[notifications] ensureTable agency_notifications failed:', err) })
     const agency = await DB.prepare('SELECT agency_id FROM agency_sellers WHERE seller_id = ?').bind(sellerId).first<{ agency_id: number }>()
     if (!agency) return
     await DB.prepare('INSERT INTO agency_notifications (agency_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)')
