@@ -105,8 +105,8 @@ export function rateLimiter(config: RateLimitConfig) {
       return next();
     }
 
-    // IP 주소 추출
-    const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+    // 🛡️ 2026-04-30: CF-Connecting-IP 만 신뢰 (X-Forwarded-For 는 클라이언트 위조 가능)
+    const ip = c.req.header('cf-connecting-ip') || 'unknown';
     
     // KV 키 생성
     const keyPrefix = config.keyPrefix || 'rate_limit';
