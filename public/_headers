@@ -63,3 +63,14 @@
 
 /*.webmanifest
   Content-Type: application/manifest+json; charset=utf-8
+
+# 🛡️ 2026-04-30: Universal Link / App Link 파일 (Apple/Google 검증)
+#   apple-app-site-association: 확장자 없음, application/json 필수
+#   assetlinks.json: 동일
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: public, max-age=86400
+
+/.well-known/assetlinks.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=86400
