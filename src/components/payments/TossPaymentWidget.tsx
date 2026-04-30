@@ -207,11 +207,18 @@ export function TossPaymentWidget({
         onPaymentError('주문번호 형식이 올바르지 않습니다. 페이지를 새로고침해주세요.')
         return
       }
-      // 🛡️ 2026-04-30: 인앱 webview 에서 popup 차단 시 외부 브라우저 유도
+      // 🛡️ 2026-04-30 v2: 인앱 webview 에서 popup 차단 시 외부 브라우저 유도.
+      //   try-first 패턴 — 에러 발생 후에 분류 (사전 차단 X).
+      //   POPUP_BLOCKED / window.open / blocked 메시지 조합 매칭.
       const errMsg = String(errObj?.message || '')
-      if (isFeatureBlocked('popup') && /popup|window\.open|blocked/i.test(errMsg)) {
-        setShowPaymentBlocked(true)
-        return
+      const errCode = String(errObj?.code || '')
+      const isPopupErr = /popup|window\.open|blocked|차단/i.test(errMsg) || errCode === 'POPUP_BLOCKED'
+      if (isPopupErr) {
+        const blocked = await isFeatureBlocked('popup')
+        if (blocked) {
+          setShowPaymentBlocked(true)
+          return
+        }
       }
       onPaymentError((errObj?.message as string) || t('payment.requestError', { defaultValue: '결제 요청 실패' }))
     }

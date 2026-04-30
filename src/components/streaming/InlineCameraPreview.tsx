@@ -23,13 +23,8 @@ export function InlineCameraPreview() {
   const [showBlocked, setShowBlocked] = useState(false)
 
   async function start(deviceId?: string) {
-    // 🛡️ 2026-04-30: 카카오/네이버/FB/IG/Line webview 에선 getUserMedia 가 silently 막힘.
-    //   prompt 가 안 뜨거나 NotAllowedError 던짐 → 사용자는 왜 안 되는지 모름.
-    //   미리 detect 해서 외부 브라우저 안내 모달 표시.
-    if (isFeatureBlocked('camera')) {
-      setShowBlocked(true)
-      return
-    }
+    // 🛡️ 2026-04-30 v2: try-first 패턴 — 일단 시도하고 실패 시 분류.
+    //   PWA standalone / 라인 Android 처럼 "일부 가능" 환경에서 false positive 차단 회피.
     setErr(null)
     try {
       const constraints: MediaStreamConstraints = {
@@ -45,12 +40,19 @@ export function InlineCameraPreview() {
       setDevices(all.filter(d => d.kind === 'videoinput'))
     } catch (e: unknown) {
       const err = e as Error
-      // NotAllowedError 가 webview 차단 신호일 가능성 — 모달 표시
-      if (err.name === 'NotAllowedError' && isFeatureBlocked('camera')) {
-        setShowBlocked(true)
-        return
+      // 권한 거부 / 미디어 장치 없음 → 인앱 webview 가능성 체크 후 분류
+      const denied = err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'NotSupportedError'
+      if (denied) {
+        const blocked = await isFeatureBlocked('camera', { permissionState: 'denied' })
+        if (blocked) {
+          setShowBlocked(true) // 인앱 detect → 외부 브라우저 안내
+          return
+        }
+        // 일반 브라우저인데 사용자가 권한 거부한 케이스
+        setErr('카메라 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.')
+      } else {
+        setErr(err.message || '카메라 접근 실패')
       }
-      setErr(err.message || '카메라 접근 실패')
       setActive(false)
     }
   }
