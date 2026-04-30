@@ -110,6 +110,8 @@ const api = axios.create({
 });
 
 // ─── 공개 API 경로 ───────────────────────────────────────────────────────────
+// 🛡️ 2026-04-30: 누락된 공개 endpoint 추가 (사용자 신고 — 비로그인 시 예정/다시보기 안 보임).
+//   server-side 는 모두 공개이지만 client 가 인증 토큰 시도 시 401 예외 처리에서 redirect 가능.
 const PUBLIC_API_PATHS = [
   '/api/streams',
   '/api/streams/',
@@ -133,6 +135,15 @@ const PUBLIC_API_PATHS = [
   '/api/agency/register',
   '/api/debug',
   '/api/search',
+  // 🛡️ 2026-04-30 추가 — server edge cache 와 매칭되는 public read-only endpoints
+  '/api/home/bundle',     // 메인페이지 통합 (live + scheduled + ended + 상품)
+  '/api/shorts',          // 쇼츠 피드
+  '/api/reviews/product/', // 상품 리뷰 목록
+  '/api/restaurants',     // 식당 목록
+  '/api/group-buy/products', // 공동구매 상품
+  '/api/sections',        // 홈 섹션
+  '/api/seller-tiers',    // 셀러 등급
+  '/api/blog/public/',    // 블로그 공개 글
 ];
 
 const SELLER_PUBLIC_API_PATTERNS = [
