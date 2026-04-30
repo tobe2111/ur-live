@@ -161,18 +161,34 @@ export default function RestaurantMapPage() {
     })
   }
 
+  // 🛡️ 2026-04-30 v2: 실시간 드래그 따라가기 + snap (사용자 신고 — 스크롤 조절 불편)
+  const [dragDeltaY, setDragDeltaY] = useState(0) // 드래그 중 손가락 위치 (px)
   function handleSheetDragStart(clientY: number) {
     dragStartY.current = clientY
     dragStartSnap.current = sheetSnap
+    setDragDeltaY(0)
+  }
+  function handleSheetDragMove(clientY: number) {
+    if (dragStartY.current == null) return
+    setDragDeltaY(clientY - dragStartY.current)
   }
   function handleSheetDragEnd(clientY: number) {
     if (dragStartY.current == null) return
-    const dy = clientY - dragStartY.current // 양수 = 아래로 드래그 = 시트 작아짐
+    const dy = clientY - dragStartY.current
     dragStartY.current = null
+    setDragDeltaY(0)
     const order: Array<'peek' | 'mid' | 'full'> = ['peek', 'mid', 'full']
     const idx = order.indexOf(dragStartSnap.current)
-    if (Math.abs(dy) < 30) return // tap
-    const next = dy > 0 ? order[Math.max(0, idx - 1)] : order[Math.min(2, idx + 1)]
+    // 50px 이상 드래그 시 한 단계 이동, 150px 이상이면 두 단계 점프
+    if (Math.abs(dy) < 30) return
+    let next: typeof sheetSnap
+    if (dy > 0) {
+      // 아래로 드래그 → 시트 작아짐
+      next = Math.abs(dy) > 150 ? order[0] : order[Math.max(0, idx - 1)]
+    } else {
+      // 위로 드래그 → 시트 커짐
+      next = Math.abs(dy) > 150 ? order[2] : order[Math.min(2, idx + 1)]
+    }
     setSheetSnap(next)
   }
 
@@ -187,10 +203,15 @@ export default function RestaurantMapPage() {
     })
   }, [])
 
-  // 라이브 셀러 폴링 (30초) — 식사권 셀러가 라이브 중이면 핀에 LIVE 배지
+  // 라이브 셀러 폴링 — 식사권 셀러가 라이브 중이면 핀에 LIVE 배지
+  // 🛡️ 2026-04-30 UX: 30초 → 90초로 완화 + 탭 숨김 시 일시 정지 (배터리·네트워크 절약).
+  //   "자동으로 새로고침되며 긴 로딩" 사용자 신고 대응.
   useEffect(() => {
     let cancelled = false
+    let id: ReturnType<typeof setInterval> | null = null
+
     const fetchLive = async () => {
+      if (document.visibilityState !== 'visible') return // 백그라운드면 skip
       try {
         const res = await api.get('/api/streams', { params: { status: 'live', limit: 50 } })
         if (cancelled) return
@@ -200,9 +221,30 @@ export default function RestaurantMapPage() {
         }
       } catch { /* silent */ }
     }
+
+    const startPolling = () => {
+      if (id) clearInterval(id)
+      id = setInterval(fetchLive, 90_000)
+    }
+
     fetchLive()
-    const id = setInterval(fetchLive, 30000)
-    return () => { cancelled = true; clearInterval(id) }
+    startPolling()
+    // 탭 복귀 시 즉시 1회 fetch + 폴링 재시작
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLive()
+        startPolling()
+      } else if (id) {
+        clearInterval(id)
+        id = null
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      cancelled = true
+      if (id) clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   // 사용자 위치 자동 감지 (1회) — 거리순 정렬용
@@ -491,63 +533,62 @@ export default function RestaurantMapPage() {
       }
       const pos = new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)
 
-      // 🛡️ 2026-04-30 Phase 2: 가격 중심 핀 (이름 → 호버/클릭으로 보임).
-      //   사용자 제안: 핀 보고 바로 가격 비교 가능해야 함.
+      // 🛡️ 2026-04-30 v2: 가격 라벨 → 카테고리 이모지 동그란 핀 (사용자 신고 — 가격 라벨이 시각적으로 부담)
+      //   기본 핀: 음식/뷰티/헬스 등 카테고리 emoji + 작은 동그라미. 선택 시 큰 카드로 가격 표시.
+      //   할인/LIVE/즐겨찾기 등은 작은 dot/badge 로만 표시.
       const hasDiscount = r.original_price > r.price
-      const discountPct = hasDiscount ? Math.round((1 - r.price / r.original_price) * 100) : 0
-      const priceText = `${formatNumber(r.price ?? 0)}원`
-      const safePrice = escapeHtml(priceText)
-
       const isLive = r.seller_id ? liveSellerIds.has(r.seller_id) : false
       const isFav = favorites.includes(r.id)
       const isSelected = selected?.id === r.id
 
+      // 카테고리 → 이모지 매핑 (간단)
+      const cat = (r.category || '').toLowerCase()
+      const emoji = cat.includes('beauty') ? '💇'
+        : cat.includes('health') ? '💪'
+        : cat.includes('pet') ? '🐶'
+        : cat.includes('stay') ? '🏨'
+        : cat.includes('activity') ? '🎯'
+        : '🍽️' // default: 식사
+
       const groupKey = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
       const groupSize = coordGroupSize.get(groupKey) || 1
-      const groupBadge = groupSize > 1
-        ? `<span style="margin-left:4px;background:rgba(59,130,246,0.9);color:#fff;border-radius:6px;padding:1px 5px;font-size:9px;font-weight:800;">+${groupSize - 1}</span>` : ''
-      const liveDot = isLive
-        ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ef4444;margin-right:4px;animation:live-pulse 1.2s infinite;"></span>` : ''
-      const discountBadge = hasDiscount
-        ? `<span style="margin-right:4px;background:#ef4444;color:#fff;border-radius:5px;padding:1px 5px;font-size:10px;font-weight:800;">-${discountPct}%</span>` : ''
-      const favHeart = isFav ? `<span style="margin-left:3px;color:#ef4444;font-size:11px;">❤</span>` : ''
+      // 동그라미 핀 우상단에 작은 배지 (LIVE > 할인 > 즐겨찾기 > 그룹 +N 우선순위)
+      const cornerBadge = isLive
+        ? `<span style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
+        : hasDiscount
+        ? `<span style="position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
+        : isFav
+        ? `<span style="position:absolute;top:-3px;right:-3px;color:#ef4444;font-size:11px;line-height:1;">❤</span>`
+        : groupSize > 1
+        ? `<span style="position:absolute;top:-4px;right:-6px;background:#3b82f6;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
+        : ''
 
       // 색상: 선택됨 > LIVE > 일반
-      const bg = isSelected ? '#ec4899' : isLive ? '#fef2f2' : '#ffffff'
-      const fg = isSelected ? '#ffffff' : '#111827'
+      const bg = isSelected ? '#ec4899' : isLive ? '#fff5f5' : '#ffffff'
       const borderColor = isSelected ? '#ec4899' : isLive ? '#ef4444' : '#e5e7eb'
+      const size = isSelected ? 36 : 32
 
       const content = document.createElement('div')
       content.innerHTML = `
         <div style="
           background: ${bg};
-          color: ${fg};
           border: 2px solid ${borderColor};
-          border-radius: 999px;
-          padding: 5px 11px;
-          font-size: 12px;
-          font-weight: 800;
-          white-space: nowrap;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+          border-radius: 50%;
+          width: ${size}px;
+          height: ${size}px;
+          font-size: ${isSelected ? 18 : 16}px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.18);
           cursor: pointer;
-          transform: translateY(-50%) scale(${isSelected ? 1.1 : 1});
-          transition: transform 0.15s;
+          transform: translate(-50%, -50%) scale(${isSelected ? 1.05 : 1});
+          transition: transform 0.15s, background 0.15s;
           position: relative;
-          display: inline-flex;
+          display: flex;
           align-items: center;
+          justify-content: center;
+          line-height: 1;
         ">
-          ${liveDot}${discountBadge}${safePrice}${favHeart}${groupBadge}
-          <div style="
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid ${borderColor};
-          "></div>
+          <span style="filter:${isSelected ? 'brightness(0) invert(1)' : 'none'};">${emoji}</span>
+          ${cornerBadge}
         </div>
       `
       content.addEventListener('click', () => {
@@ -558,7 +599,8 @@ export default function RestaurantMapPage() {
       const overlay = new window.kakao.maps.CustomOverlay({
         position: pos,
         content,
-        yAnchor: 1.3,
+        yAnchor: 0.5,
+        xAnchor: 0.5,
         map: mapInstance.current,
       })
       overlaysRef.current.push(overlay)
@@ -645,12 +687,14 @@ export default function RestaurantMapPage() {
 
   // 🛡️ 2026-04-30 v3 bottom-sheet: 시트 snap 별 transform 값
   //   peek = 12vh 만 보임 (결과 카운트 + 첫 카드 일부)
-  //   mid  = 50vh
-  //   full = 90vh 거의 풀스크린
+  //   peek = 28vh (필터 + 첫 결과 한 줄 보임)
+  //   mid  = 60vh
+  //   full = 92vh (거의 풀스크린)
+  // 🛡️ 2026-04-30 v2: peek 18vh → 28vh — 결과 카드 안 보이던 문제 (사용자 신고).
   const sheetTopByState: Record<typeof sheetSnap, string> = {
-    peek: 'calc(100vh - 18vh)',
-    mid: 'calc(100vh - 55vh)',
-    full: 'calc(100vh - 90vh)',
+    peek: 'calc(100vh - 28vh)',
+    mid: 'calc(100vh - 60vh)',
+    full: 'calc(100vh - 92vh)',
   }
 
   return (
@@ -779,24 +823,29 @@ export default function RestaurantMapPage() {
         </div>
       )}
 
-      {/* ═══ Bottom Sheet (드래그 가능, 3-snap) ═══ */}
+      {/* ═══ Bottom Sheet (드래그 가능, 3-snap) ═══
+          🛡️ 2026-04-30 v2: 실시간 드래그 팔로잉 — translateY 로 손가락 따라가기.
+          dragDeltaY 가 양수면 아래로 (시트 축소), 음수면 위로 (시트 확장). */}
       <div
         className="absolute left-0 right-0 bottom-0 z-30 bg-white rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col"
         style={{
           top: sheetTopByState[sheetSnap],
-          transition: dragStartY.current == null ? 'top 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
+          transform: dragStartY.current != null ? `translateY(${Math.max(-200, Math.min(400, dragDeltaY))}px)` : 'none',
+          transition: dragStartY.current == null ? 'top 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
         }}
         role="dialog"
         aria-label="맛집 목록"
       >
-        {/* Drag handle (탭 / 드래그) */}
+        {/* Drag handle — 실시간 추적 + snap */}
         <div
-          className="flex justify-center py-2.5 cursor-grab active:cursor-grabbing select-none touch-none"
+          className="flex justify-center py-3 cursor-grab active:cursor-grabbing select-none touch-none"
           onTouchStart={(e) => handleSheetDragStart(e.touches[0].clientY)}
+          onTouchMove={(e) => handleSheetDragMove(e.touches[0].clientY)}
           onTouchEnd={(e) => handleSheetDragEnd(e.changedTouches[0].clientY)}
           onMouseDown={(e) => handleSheetDragStart(e.clientY)}
+          onMouseMove={(e) => { if (dragStartY.current != null) handleSheetDragMove(e.clientY) }}
           onMouseUp={(e) => handleSheetDragEnd(e.clientY)}
-          onClick={() => setSheetSnap(s => s === 'peek' ? 'mid' : s === 'mid' ? 'full' : 'peek')}
+          onMouseLeave={(e) => { if (dragStartY.current != null) handleSheetDragEnd(e.clientY) }}
           role="slider"
           aria-label="시트 크기 조절"
           aria-valuemin={0}
