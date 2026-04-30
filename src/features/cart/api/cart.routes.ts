@@ -286,26 +286,69 @@ cartRoutes.post('/', cartRateLimit, requireAuth(), async (c) => {
     }
 
     // ── 새 아이템 추가 ────────────────────────────────────────────────────────
-    const result = await db
-      .prepare(
-        `INSERT INTO cart_items (user_id, product_id, quantity, price_snapshot, option_id, live_stream_id)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      )
-      .bind(userId, product_id, quantity, snapshot, option_id, live_stream_id)
-      .run();
+    // 🛡️ 2026-04-30 TD-016 LOW: UNIQUE 인덱스 (user_id, product_id, COALESCE(option_id,-1))
+    //   하에서 두 동시 요청이 같이 UPDATE miss → INSERT race 시 두 번째가
+    //   SQLITE_CONSTRAINT 실패 → 500 으로 사용자에게 노출됨. 충돌 시 UPDATE 재시도.
+    try {
+      const result = await db
+        .prepare(
+          `INSERT INTO cart_items (user_id, product_id, quantity, price_snapshot, option_id, live_stream_id)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        )
+        .bind(userId, product_id, quantity, snapshot, option_id, live_stream_id)
+        .run();
 
-    return c.json(
-      createdResponse(
-        {
-          id: result.meta.last_row_id,
-          product_id,
-          quantity,
-          price_snapshot: snapshot,
-        },
-        'Item added to cart'
-      ),
-      201
-    );
+      return c.json(
+        createdResponse(
+          {
+            id: result.meta.last_row_id,
+            product_id,
+            quantity,
+            price_snapshot: snapshot,
+          },
+          'Item added to cart'
+        ),
+        201
+      );
+    } catch (insertErr: any) {
+      const isUniqueViolation = /UNIQUE|constraint/i.test(insertErr?.message || '');
+      if (!isUniqueViolation) throw insertErr;
+
+      // 다른 요청이 먼저 INSERT 했음 — UPDATE 로 수량 누적
+      await db
+        .prepare(
+          `UPDATE cart_items
+           SET quantity = quantity + ?, price_snapshot = ?
+           WHERE user_id = ?
+             AND product_id = ?
+             AND (option_id = ? OR (option_id IS NULL AND ? IS NULL))`
+        )
+        .bind(quantity, snapshot, userId, product_id, option_id, option_id)
+        .run();
+
+      const updated = await db
+        .prepare(
+          `SELECT id, quantity FROM cart_items
+           WHERE user_id = ?
+             AND product_id = ?
+             AND (option_id = ? OR (option_id IS NULL AND ? IS NULL))
+           LIMIT 1`
+        )
+        .bind(userId, product_id, option_id, option_id)
+        .first<{ id: number; quantity: number }>();
+
+      return c.json(
+        successResponse(
+          {
+            id: updated?.id,
+            product_id,
+            quantity: updated?.quantity ?? quantity,
+            price_snapshot: snapshot,
+          },
+          'Cart item merged (race)'
+        )
+      );
+    }
   } catch (error: any) {
     console.error('[Cart] POST /api/cart error:', error);
     return c.json(

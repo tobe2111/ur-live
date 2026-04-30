@@ -547,51 +547,32 @@ sellerOrdersRoutes.post('/products', async (c) => {
       return c.json({ success: false, error: '재고는 0 ~ 100만 범위여야 합니다.' }, 400);
     }
 
-    // slug 생성: 이름 기반 + 타임스탬프 suffix (중복 방지)
-    const baseSlug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9가-힣]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .substring(0, 60) || 'product';
-    const slug = `${baseSlug}-${Date.now()}`;
-
     const db = c.env.DB;
 
-    // 스키마 버전에 따른 INSERT (신규 → 중간 → 최소 순으로 fallback)
+    // 🛡️ 2026-04-30 TD-005: canonical 'stock' 만 INSERT (legacy stock_quantity 분기 제거).
+    //   migration 0233 적용 후 stock_quantity 컬럼 drop 되어도 동작 유지.
+    //   기존엔 신규(slug+stock_quantity) → 프로덕션(stock) → 최소 3-tier fallback 이었지만
+    //   실제 production 은 0001 base 라 첫 시도는 항상 실패해 wasteful.
     let result: D1Result;
     try {
-      // 신규 스키마: slug, stock_quantity, thumbnail_url 존재
       result = await db.prepare(`
         INSERT INTO products
-          (seller_id, name, slug, description, price, stock_quantity, thumbnail_url, image_url, category, product_type, status, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', 1, datetime('now'), datetime('now'))
+          (seller_id, name, description, price, stock, image_url, category, product_type, status, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', 1, datetime('now'), datetime('now'))
       `).bind(
-        sellerId, name, slug, description || null, price,
-        stock ?? 0, image_url || null, image_url || null, category || null
+        sellerId, name, description || null, price,
+        stock ?? 0, image_url || null, category || null
       ).run();
     } catch {
-      try {
-        // 프로덕션 스키마: stock, image_url, status 존재 (slug, stock_quantity 없음)
-        result = await db.prepare(`
-          INSERT INTO products
-            (seller_id, name, description, price, stock, image_url, category, product_type, status, is_active, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', 1, datetime('now'), datetime('now'))
-        `).bind(
-          sellerId, name, description || null, price,
-          stock ?? 0, image_url || null, category || null
-        ).run();
-      } catch {
-        // 최소 스키마: status 없는 경우
-        result = await db.prepare(`
-          INSERT INTO products
-            (seller_id, name, description, price, stock, image_url, category, product_type, is_active, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 1, datetime('now'), datetime('now'))
-        `).bind(
-          sellerId, name, description || null, price,
-          stock ?? 0, image_url || null, category || null
-        ).run();
-      }
+      // 최소 스키마 fallback: status 컬럼 없는 매우 옛 버전
+      result = await db.prepare(`
+        INSERT INTO products
+          (seller_id, name, description, price, stock, image_url, category, product_type, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 1, datetime('now'), datetime('now'))
+      `).bind(
+        sellerId, name, description || null, price,
+        stock ?? 0, image_url || null, category || null
+      ).run();
     }
 
     if (!result.success) throw new Error('Failed to create product');

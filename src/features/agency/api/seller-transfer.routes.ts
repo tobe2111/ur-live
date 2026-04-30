@@ -4,19 +4,23 @@
  * 마운트: /api/agency/transfers
  *
  * 흐름:
- *   1) POST /         — A 가 신청 (from_agency 자기 자신, to_agency_id + seller_id 지정)
- *   2) POST /:id/respond  — B 가 수락/거절 (인증 = to_agency 토큰)
- *   3) POST /:id/seller-approve — 셀러가 최종 동의/거부
- *   4) 모두 동의 → agency_sellers 매핑 변경
+ *   1) POST /         — A 가 신청 (from_agency 본인)
+ *   2) POST /:id/respond  — B (to_agency) 가 수락/거절
+ *   3) 셀러 본인이 /api/seller/transfers/:id/respond 로 직접 동의/거부
+ *      → 매핑 변경 (sellerTransferRespondRoutes)
  *
  * 권한:
  *   - POST / : from_agency = 본인
  *   - POST /:id/respond : to_agency = 본인
- *   - POST /:id/seller-approve : seller = 본인 (별도 셀러 토큰 필요 — 이번 PR 단순화: from_agency 가 셀러 동의 대행)
+ *   - 셀러 동의는 셀러 본인 토큰만 (별도 라우터)
+ *
+ * 🛡️ 2026-04-30 TD-016 CRITICAL 보안 사고 방지:
+ *   기존 /:id/seller-approve 는 from_agency 가 셀러 동의를 대행하는
+ *   위험 endpoint. agency 가 셀러 행세 가능 → 셀러 동의 없이 다른 에이전시로
+ *   강제 이전 가능했음. 410 Gone 으로 차단. 셀러 본인은 /api/seller/transfers
+ *   에서 직접 응답해야 함.
  *
  * Cooldown: 셀러 이전 후 30일 내 재이전 차단.
- *
- * 마이그레이션 0229 미적용 시 graceful skip.
  */
 
 import { Hono, type Next } from 'hono';
@@ -25,6 +29,7 @@ import { parseSessionCookie } from '@/worker/utils/session';
 import type { Env } from '@/worker/types/env';
 
 import { swallow } from '@/worker/utils/swallow';
+import { createDashboardNotification } from '../../notifications/api/dashboard-notifications.routes';
 type AgencyCtx = {
   Bindings: Env;
   Variables: { agency: { id: number; email?: string } };
@@ -169,7 +174,9 @@ app.post('/:id/respond', async (c) => {
 
   const t = await c.env.DB.prepare(
     `SELECT * FROM seller_transfer_requests WHERE id = ?`
-  ).bind(id).first<{ id: number; to_agency_id: number; status: string }>().catch(() => null);
+  ).bind(id).first<{
+    id: number; seller_id: number; from_agency_id: number; to_agency_id: number; status: string;
+  }>().catch(() => null);
 
   if (!t) return c.json({ success: false, error: 'not found' }, 404);
   if (Number(t.to_agency_id) !== Number(agency.id)) {
@@ -186,67 +193,29 @@ app.post('/:id/respond', async (c) => {
     WHERE id = ?
   `).bind(newStatus, body.response, body.response === 'reject' ? (body.reason || '') : null, id).run();
 
+  // 🛡️ 2026-04-30 TD-016: 셀러 본인이 직접 동의해야 하므로, B 가 수락한 시점에
+  //   셀러에게 알림 발송 — /seller/transfers 로 들어가 본인 응답하도록 유도.
+  if (newStatus === 'accepted_by_to') {
+    createDashboardNotification(
+      c.env.DB, 'seller', String(t.seller_id),
+      'seller_transfer_pending_approval',
+      '🔄 에이전시 이전 요청 — 동의 필요',
+      '다른 에이전시 소속으로 이전 요청이 들어왔습니다. 본인 동의가 필요합니다.',
+      '/seller/transfers',
+    ).catch(swallow('agency:api:seller-transfer:notify-seller'));
+  }
+
   return c.json({ success: true, data: { status: newStatus } });
 });
 
-// POST /:id/seller-approve — 셀러 최종 동의 (간이: from_agency 가 대행, 별도 셀러 인증은 추후)
+// 🛡️ 2026-04-30 TD-016 CRITICAL: 기존 from_agency 가 셀러 동의 대행하던 endpoint 차단.
+//   셀러 본인은 /api/seller/transfers/:id/respond 에서 직접 응답해야 함.
 app.post('/:id/seller-approve', async (c) => {
-  const agency = c.get('agency');
-  const id = Number(c.req.param('id'));
-  const body = await c.req.json<{ approved: boolean; reason?: string }>().catch(() => ({} as any));
-
-  const t = await c.env.DB.prepare(
-    `SELECT * FROM seller_transfer_requests WHERE id = ?`
-  ).bind(id).first<{
-    id: number; seller_id: number; from_agency_id: number; to_agency_id: number; status: string;
-  }>().catch(() => null);
-
-  if (!t) return c.json({ success: false, error: 'not found' }, 404);
-  if (Number(t.from_agency_id) !== Number(agency.id)) {
-    return c.json({ success: false, error: 'only from_agency can submit seller approval' }, 403);
-  }
-  if (t.status !== 'accepted_by_to') {
-    return c.json({ success: false, error: 'B 의 수락 후에만 가능합니다.' }, 409);
-  }
-
-  if (!body.approved) {
-    await c.env.DB.prepare(`
-      UPDATE seller_transfer_requests
-      SET status = 'rejected', seller_response = 'reject',
-          seller_response_at = datetime('now'),
-          rejection_reason = ?
-      WHERE id = ?
-    `).bind(body.reason || '셀러 거부', id).run();
-    return c.json({ success: true, data: { status: 'rejected' } });
-  }
-
-  // 모두 동의 → 매핑 변경 (트랜잭션 대신 batch)
-  await c.env.DB.batch([
-    c.env.DB.prepare(
-      `DELETE FROM agency_sellers WHERE agency_id = ? AND seller_id = ?`
-    ).bind(t.from_agency_id, t.seller_id),
-    c.env.DB.prepare(
-      `INSERT OR IGNORE INTO agency_sellers (agency_id, seller_id) VALUES (?, ?)`
-    ).bind(t.to_agency_id, t.seller_id),
-    c.env.DB.prepare(`
-      UPDATE seller_transfer_requests
-      SET status = 'completed', seller_response = 'approve',
-          seller_response_at = datetime('now'),
-          completed_at = datetime('now')
-      WHERE id = ?
-    `).bind(id),
-  ]);
-
-  // 양 에이전시 알림
-  await c.env.DB.prepare(`
-    INSERT INTO agency_notifications (agency_id, type, title, message)
-    VALUES (?, 'seller_transferred_out', ?, ?), (?, 'seller_transferred_in', ?, ?)
-  `).bind(
-    t.from_agency_id, `셀러 이전 완료`, `셀러 #${t.seller_id} 가 다른 에이전시로 이전됐습니다.`,
-    t.to_agency_id, `셀러 영입 완료`, `셀러 #${t.seller_id} 가 본 에이전시에 합류했습니다.`,
-  ).run().catch(swallow('agency:api:seller-transfer'));
-
-  return c.json({ success: true, data: { status: 'completed' } });
+  return c.json({
+    success: false,
+    error: '보안 강화: 셀러 본인이 직접 /seller/transfers 에서 동의해야 합니다. 셀러에게 안내해 주세요.',
+    code: 'DEPRECATED_AGENCY_PROXY',
+  }, 410);
 });
 
 // POST /:id/cancel — from_agency 가 신청 취소 (응답 전만)

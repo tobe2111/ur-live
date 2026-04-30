@@ -90,6 +90,7 @@ import { agencySelfEventsRoutes } from '../features/agency/api/agency-self-event
 import { promoteBoostsAgencyRoutes, promoteBoostsSellerRoutes } from '../features/agency/api/promote-boosts.routes';
 import { liveNotifyFollowersRoutes } from '../features/seller/api/live-notify-followers.routes';
 import { sellerTransferRoutes } from '../features/agency/api/seller-transfer.routes';
+import { sellerTransferRespondRoutes } from '../features/seller/api/seller-transfer-respond.routes';
 import {
   adminAdvertiserRoutes,
   adminCastingRoutes,
@@ -778,6 +779,8 @@ app.route('/api/seller/promote-boosts', promoteBoostsSellerRoutes);
 app.route('/api/seller/live-notify', liveNotifyFollowersRoutes);
 // 🛡️ 2026-04-27 Phase 3-5: 셀러 이전 (Network 마켓플레이스)
 app.route('/api/agency/transfers', sellerTransferRoutes);
+// 🛡️ 2026-04-30 TD-016 CRITICAL: 셀러 본인이 직접 동의/거부 (agency 대행 금지)
+app.route('/api/seller/transfers', sellerTransferRespondRoutes);
 // 🛡️ 2026-04-27 Phase 3-6: 캐스팅 마켓플레이스
 app.route('/api/admin/advertisers', adminAdvertiserRoutes);
 app.route('/api/admin/castings', adminCastingRoutes);
