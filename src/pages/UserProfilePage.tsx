@@ -106,6 +106,130 @@ function ChatNameSetting() {
   )
 }
 
+// 🛡️ 2026-04-30 v4 시안 매칭: 쿠폰 / 바우처 카운트 2분할 카드
+function CouponVoucherStats() {
+  const navigate = useNavigate()
+  const [couponCount, setCouponCount] = useState<number | null>(null)
+  const [voucherCount, setVoucherCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    import('@/lib/api').then(({ default: api }) => {
+      api.get('/api/coupons/my')
+        .then(r => {
+          if (r.data?.success) {
+            const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
+            setCouponCount(list.length)
+          }
+        }).catch(() => setCouponCount(0))
+      api.get('/api/vouchers/my')
+        .then(r => {
+          if (r.data?.success) {
+            const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
+            setVoucherCount(list.length)
+          }
+        }).catch(() => setVoucherCount(0))
+    })
+  }, [])
+
+  return (
+    <div className="px-4 pt-2">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => navigate('/my-coupons')}
+          className="rounded-2xl px-4 py-3.5 bg-white/[0.04] active:bg-white/[0.08] transition-colors text-left"
+        >
+          <p className="text-[10px] text-white/55">쿠폰</p>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className="text-[20px] font-extrabold text-white" style={{ letterSpacing: '-0.02em' }}>
+              {couponCount ?? '-'}
+            </span>
+            <span className="text-[11px] text-white/55">장</span>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/my-vouchers')}
+          className="rounded-2xl px-4 py-3.5 bg-white/[0.04] active:bg-white/[0.08] transition-colors text-left"
+        >
+          <p className="text-[10px] text-white/55">바우처</p>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className="text-[20px] font-extrabold text-white" style={{ letterSpacing: '-0.02em' }}>
+              {voucherCount ?? '-'}
+            </span>
+            <span className="text-[11px] text-white/55">장</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// 🛡️ 2026-04-30 v4 시안 매칭: 쇼핑 InsetGroup (찜 / 바우처 / 쿠폰함 / 주문)
+function ShoppingGroup() {
+  const navigate = useNavigate()
+  const [wishCount, setWishCount] = useState<number | null>(null)
+  const [couponCount, setCouponCount] = useState<number | null>(null)
+  const [voucherCount, setVoucherCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    import('@/lib/api').then(({ default: api }) => {
+      api.get('/api/wishlists').then(r => {
+        if (r.data?.success) {
+          const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
+          setWishCount(list.length)
+        }
+      }).catch(() => setWishCount(0))
+      api.get('/api/coupons/my').then(r => {
+        if (r.data?.success) {
+          const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
+          setCouponCount(list.length)
+        }
+      }).catch(() => setCouponCount(0))
+      api.get('/api/vouchers/my').then(r => {
+        if (r.data?.success) {
+          const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
+          setVoucherCount(list.length)
+        }
+      }).catch(() => setVoucherCount(0))
+    })
+  }, [])
+
+  const items = [
+    { icon: '❤️', label: '찜한 상품', count: wishCount, path: '/wishlist' },
+    { icon: '🎟️', label: '내 바우처', sub: '식사권·이용권', count: voucherCount, path: '/my-vouchers' },
+    { icon: '🎫', label: '쿠폰함', count: couponCount, path: '/my-coupons' },
+    { icon: '📦', label: '주문 내역', sub: '최근 3개월', path: '/my-orders' },
+  ]
+
+  return (
+    <div className="px-4 pt-5">
+      <p className="text-[12px] font-bold text-white mb-2">쇼핑</p>
+      <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
+        {items.map((item, i) => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={() => navigate(item.path)}
+            className="w-full flex items-center gap-3 px-3.5 py-3.5 text-left active:bg-white/[0.06]"
+            style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+          >
+            <span className="text-lg" aria-hidden="true">{item.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] text-white font-medium">{item.label}</p>
+              {item.sub && <p className="text-[10px] text-white/45 mt-0.5">{item.sub}</p>}
+            </div>
+            {item.count !== undefined && item.count !== null && (
+              <span className="text-[12px] text-white/55 font-semibold">{item.count}</span>
+            )}
+            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function OrderStatusBar() {
   const navigate = useNavigate()
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -605,19 +729,19 @@ export default function UserProfilePage() {
     }
   }
 
-  // 🛡️ 2026-04-29 v4 Wallet — 4종 페이지 일관성을 위한 LargeTitle 헤더 패턴
+  // 🛡️ 2026-04-30 v4 Wallet 디자인 시안 매칭 — InsetGroup 형태로 정돈, 모든 기능 보존
   return (
-    <div className="bg-[#020202] flex flex-col min-h-screen">
+    <div className="bg-[#020202] flex flex-col min-h-screen pb-7">
       <SEO title="마이페이지 - 유어딜" description="내 프로필, 주문내역, 쿠폰 등을 관리하세요" url="/user/profile" noindex />
       <h1 className="sr-only">마이페이지</h1>
 
-      {/* v4 Wallet sticky chrome — 알림 + 설정만 우측 */}
+      {/* v4 Wallet sticky chrome — 알림 + 설정 (한 손 도달 영역 우측) */}
       <div className="sticky top-0 z-50 flex items-center justify-end px-2 py-3 gap-1" style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(84,84,88,0.34)' }}>
         <button onClick={() => navigate('/notifications')} aria-label="알림" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
         </button>
         <button onClick={() => navigate('/account/settings')} aria-label="설정" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
         </button>
       </div>
 
@@ -626,64 +750,76 @@ export default function UserProfilePage() {
         <h2 style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1 }}>My</h2>
       </div>
 
-      {/* v4 Hero Profile — 그라데이션 배경 */}
-      <div className="px-4 pt-2 pb-6 relative" style={{ background: 'radial-gradient(ellipse at top, rgba(236,72,153,0.25), transparent 60%), #0A0A0A' }}>
+      {/* v4 Hero Profile — 그라데이션 배경 + 이메일 + 편집 */}
+      <div className="px-4 pt-2 pb-5 relative" style={{ background: 'radial-gradient(ellipse at top, rgba(236,72,153,0.25), transparent 60%), #0A0A0A' }}>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <img
-              src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
-              alt={`${userName} 프로필 이미지`} className="w-16 h-16 rounded-full object-cover" style={{ border: '2px solid rgba(255,255,255,0.15)' }} loading="lazy" />
-          </div>
+          <img
+            src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
+            alt={`${userName} 프로필 이미지`}
+            loading="lazy"
+            decoding="async"
+            className="w-16 h-16 rounded-full object-cover"
+            style={{ border: '2px solid rgba(255,255,255,0.15)' }}
+          />
           <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-extrabold text-white" style={{ letterSpacing: '-0.01em' }}>{userName}</p>
-            <p className="text-[11px] text-white/50 mt-0.5">{localStorage.getItem('user_email') || ''}</p>
+            <p className="text-[17px] font-extrabold text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</p>
+            <p className="text-[11px] text-white/50 mt-0.5 truncate">{localStorage.getItem('user_email') || ''}</p>
             <button onClick={() => navigate('/account/settings')} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-white/[0.08] text-[10px] text-white/75 font-semibold">
-              프로필 편집 <ChevronRight className="w-2.5 h-2.5" />
+              프로필 편집 <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* v4 3-스탯 칩 (딜포인트 통합) */}
+      {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
 
-      {/* 셀러 전환 */}
-      <SellerSwitchCard />
-
-      {/* 채팅 이름 설정 */}
-      <ChatNameSetting />
+      {/* v4 쿠폰 / 바우처 카운트 2분할 */}
+      <CouponVoucherStats />
 
       {/* v4 주문 현황 */}
       <OrderStatusBar />
 
-      {/* v4 바로가기 그리드 */}
-      <div className="px-4 pt-4">
-        <div className="grid grid-cols-4 gap-2">
+      {/* v4 쇼핑 InsetGroup — 시안 매칭 (4개) */}
+      <ShoppingGroup />
+
+      {/* v4 활동 InsetGroup — 셀러 전환 / 채팅 이름 */}
+      <SellerSwitchCard />
+      <ChatNameSetting />
+
+      {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
+      <div className="px-4 pt-5">
+        <p className="text-[12px] font-bold text-white mb-2">더보기</p>
+        <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
           {[
-            { icon: '❤️', label: '찜', path: '/wishlist', tint: '#EC4899' },
-            { icon: '🎫', label: '쿠폰', path: '/my-coupons', tint: '#F59E0B' },
-            { icon: '🎟️', label: '바우처', path: '/my-vouchers', tint: '#A78BFA' },
-            { icon: '📦', label: '주문내역', path: '/my-orders', tint: '#60A5FA' },
-            { icon: '📍', label: '배송지', path: '/mypage/addresses', tint: '#FBBF24' },
-            { icon: '📝', label: '리뷰', path: '/my-reviews', tint: '#34D399' },
-            { icon: '👥', label: '친구초대', path: '/referral', tint: '#F472B6' },
-            { icon: '⚙️', label: '설정', path: '/account/settings', tint: '#94A3B8' },
-          ].map(m => (
-            <button key={m.label} onClick={() => navigate(m.path)} className="rounded-xl py-4 flex flex-col items-center gap-1.5 bg-white/[0.04] active:bg-white/[0.08] transition-colors">
-              <span className="text-lg">{m.icon}</span>
-              <span className="text-[10px] text-white font-medium">{m.label}</span>
+            { icon: '📍', label: '배송지 관리', path: '/mypage/addresses' },
+            { icon: '📝', label: '내 리뷰', path: '/my-reviews' },
+            { icon: '👥', label: '친구 초대', path: '/referral' },
+          ].map((item, i) => (
+            <button
+              key={item.label}
+              onClick={() => navigate(item.path)}
+              className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.06]"
+              style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+            >
+              <span className="text-base" aria-hidden="true">{item.icon}</span>
+              <span className="flex-1 text-[13px] text-white">{item.label}</span>
+              <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
             </button>
           ))}
         </div>
       </div>
 
-      {/* v4 도움말 섹션 */}
-      <div className="px-4 pt-6">
-        <p className="text-[12px] font-bold text-white mb-3">도움말</p>
+      {/* v4 광고 리워드 카드 */}
+      <RewardAdCard />
+
+      {/* v4 도움말 InsetGroup */}
+      <div className="px-4 pt-5">
+        <p className="text-[12px] font-bold text-white mb-2">도움말</p>
         <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
           {[
-            { label: '고객센터', sub: '0507-0177-0432', path: '', action: () => window.open('tel:0507-0177-0432') },
-            { label: '자주 묻는 질문', sub: 'FAQ', path: '/faq' },
+            { label: '고객센터', sub: '0507-0177-0432', action: () => window.open('tel:0507-0177-0432') },
+            { label: '자주 묻는 질문', path: '/faq' },
             { label: '이용약관', path: '/terms' },
             { label: '개인정보 처리방침', path: '/privacy' },
             { label: '배송 정책', path: '/shipping-policy' },
@@ -691,33 +827,31 @@ export default function UserProfilePage() {
             <button
               key={item.label}
               onClick={() => (item as any).action ? (item as any).action() : item.path && navigate(item.path)}
-              className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
+              className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.06]"
               style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
             >
               <div className="flex-1">
-                <p className="text-[12px] text-white">{item.label}</p>
+                <p className="text-[13px] text-white">{item.label}</p>
                 {item.sub && <p className="text-[10px] text-white/45 mt-0.5">{item.sub}</p>}
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-white/30" />
+              <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
             </button>
           ))}
         </div>
       </div>
 
-      {/* v4 로그아웃 */}
+      {/* v4 로그아웃 + 버전 */}
       <div className="px-4 py-6">
         <button
+          type="button"
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/[0.04] text-[13px] font-semibold text-white/75 active:bg-white/[0.08] transition-colors"
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           로그아웃
         </button>
         <p className="text-[10px] text-white/25 text-center mt-3">YourDeal v2.4 · 2026</p>
       </div>
-
-      {/* v4: Footer는 로그아웃 아래 버전 정보로 대체됨 */}
-      
     </div>
   )
 }
