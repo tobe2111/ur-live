@@ -863,6 +863,9 @@ export default function ReelCard({
           src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
           alt=""
           className="absolute inset-0 h-full w-full object-cover -z-10"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           onError={(e) => {
             // maxresdefault 실패 시 hqdefault로 폴백
             const img = e.currentTarget
@@ -1143,7 +1146,7 @@ export default function ReelCard({
                 <div className="flex items-center gap-2.5 px-3 py-2">
                   <div className="relative rounded-2xl overflow-hidden shrink-0" style={{ width: 60, height: 60 }}>
                     {(safeProduct.image_url || safeProduct.image) ? (
-                      <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || '상품'} loading="lazy" className="w-full h-full object-cover" />
+                      <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || '상품'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-gray-200" />
                     )}

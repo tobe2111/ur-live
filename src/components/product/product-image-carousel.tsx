@@ -39,6 +39,8 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
                 alt={`Product image ${index + 1}`}
                 className="w-full h-full object-cover"
                 loading={index === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                fetchPriority={index === 0 ? 'high' : 'auto'}
               />
             </div>
           ))}
