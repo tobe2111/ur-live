@@ -181,7 +181,7 @@ export class KakaoAuthService {
   /**
    * DB에 사용자 저장 또는 업데이트 (Upsert)
    */
-  async upsertUser(kakaoUser: KakaoUser): Promise<User> {
+  async upsertUser(kakaoUser: KakaoUser): Promise<User & { isNewUser?: boolean }> {
     try {
       // 기존 사용자 확인
       const existingUser = await this.db.prepare(`
@@ -191,7 +191,9 @@ export class KakaoAuthService {
       `).bind(kakaoUser.kakaoId).first<User>();
       
       let userId: number;
-      
+      // 🛡️ 2026-04-30: 신규 사용자 detect — onboarding flow trigger 용
+      const isNewUser = !existingUser;
+
       if (existingUser) {
         // 기존 사용자 업데이트
         userId = existingUser.id;
@@ -244,8 +246,8 @@ export class KakaoAuthService {
       if (!user) {
         throw new Error('Failed to retrieve user after upsert');
       }
-      
-      return user;
+
+      return { ...user, isNewUser };
       
     } catch (error) {
       console.error('[KakaoAuthService] DB error:', error);

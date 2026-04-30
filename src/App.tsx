@@ -11,6 +11,7 @@ import OfflineBanner from './components/OfflineBanner'
 import SecurityReloginBanner from './components/SecurityReloginBanner'
 import InAppBrowserBanner from './components/InAppBrowserBanner'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
+import OnboardingTrigger from './components/onboarding/OnboardingTrigger'
 import BottomNav from '@/components/main/BottomNav'
 import SideBanner from '@/components/SideBanner'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -453,6 +454,7 @@ function AppContent() {
           <div className="flex-1">
           <InAppBrowserBanner />
           <PWAInstallPrompt />
+          <OnboardingTrigger />
           <OfflineBanner />
           <ScrollToTop />
           <PushNotificationSetup />
