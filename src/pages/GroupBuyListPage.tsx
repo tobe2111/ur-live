@@ -436,7 +436,7 @@ export default function GroupBuyListPage() {
                             src={p.image_url}
                             alt={p.name}
                             className="w-full h-full object-cover"
-                            loading="lazy"
+                            loading="lazy" decoding="async"
                           />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />

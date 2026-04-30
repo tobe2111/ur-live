@@ -434,7 +434,7 @@ interface SellerStatus {
   business_name?: string
 }
 
-function SellerSwitchCard() {
+function SellerSwitchInline() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<SellerStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -459,9 +459,6 @@ function SellerSwitchCard() {
       const res = await api.post('/api/seller/switch-to-seller')
       if (res.data.success) {
         const { accessToken, refreshToken, seller } = res.data.data
-
-        // 듀얼 세션: 셀러 토큰만 추가 (유저 세션은 유지)
-        // user_type은 'user'로 유지 — 메인페이지에서 쇼핑/공구 계속 가능
         localStorage.setItem('seller_token', accessToken)
         localStorage.setItem('seller_refresh_token', refreshToken)
         localStorage.setItem('seller_id', String(seller.id))
@@ -469,106 +466,58 @@ function SellerSwitchCard() {
         localStorage.setItem('seller_email', seller.email)
         localStorage.setItem('seller_username', seller.username)
         localStorage.setItem('seller_type', seller.seller_type)
-
         toast.success('셀러 대시보드로 이동합니다!')
         navigate('/seller')
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.error || '셀러 전환에 실패했습니다'
-      toast.error(msg)
+      toast.error(err?.response?.data?.error || '셀러 전환에 실패했습니다')
     } finally {
       setSwitching(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="px-5 py-1.5">
-        <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A] animate-pulse">
-          <div className="h-4 bg-gray-700 rounded w-1/3" />
-        </div>
-      </div>
-    )
-  }
+  if (loading) return null
 
   if (status?.has_seller && status.status === 'pending') {
     return (
-      <div className="px-5 py-1.5">
-        <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-yellow-500/10">
-              <Store className="w-5 h-5 text-yellow-400" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-white">셀러 전환 심사 중</p>
-              <p className="text-[11px] text-yellow-400 mt-0.5">{status.business_name} — 관리자 승인 대기 중</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 bg-yellow-500/15 text-[10px] text-yellow-300 font-semibold border border-yellow-500/30">
+        <Store className="w-2.5 h-2.5" aria-hidden="true" /> 심사 중
+      </span>
     )
   }
 
   if (status?.has_seller && (status.status === 'rejected' || status.status === 'suspended')) {
     return (
-      <div className="px-5 py-1.5">
-        <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10">
-              <Store className="w-5 h-5 text-red-400" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-white">
-                {status.status === 'rejected' ? '셀러 신청이 반려되었습니다' : '셀러 계정이 정지되었습니다'}
-              </p>
-              <p className="text-[11px] text-red-400 mt-0.5">관리자에게 문의해주세요</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 bg-red-500/15 text-[10px] text-red-300 font-semibold border border-red-500/30">
+        <Store className="w-2.5 h-2.5" aria-hidden="true" />
+        {status.status === 'rejected' ? '반려' : '정지'}
+      </span>
     )
   }
 
   if (status?.has_seller && (status.status === 'approved' || status.status === 'active')) {
     return (
-      <div className="px-5 py-1.5">
-        <button
-          onClick={handleSwitch}
-          disabled={switching}
-          className="w-full bg-gradient-to-r from-pink-500/10 to-purple-600/10 border border-pink-500/30 rounded-2xl px-5 py-4 flex items-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
-        >
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-pink-500/20">
-            <Store className="w-5 h-5 text-pink-400" />
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-bold text-white">
-              {switching ? '전환 중...' : '셀러 대시보드로 전환'}
-            </p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{status.business_name}</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-500" />
-        </button>
-      </div>
+      <button
+        onClick={handleSwitch}
+        disabled={switching}
+        aria-label="셀러 대시보드로 전환"
+        className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-pink-500/15 border border-pink-500/40 text-[10px] text-pink-300 font-semibold active:scale-95 transition-all disabled:opacity-50"
+      >
+        <Store className="w-2.5 h-2.5" aria-hidden="true" />
+        {switching ? '전환 중...' : '셀러 모드'}
+      </button>
     )
   }
 
   return (
     <>
-      <div className="px-5 py-1.5">
-        <button
-          onClick={() => setShowModal(true)}
-          className="w-full bg-[#121212] border border-[#2A2A2A] rounded-2xl px-5 py-4 flex items-center gap-3 active:scale-[0.98] transition-all"
-        >
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500/10">
-            <Store className="w-5 h-5 text-purple-400" />
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-bold text-white">셀러로 활동하기</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">같은 계정으로 판매자 활동을 시작하세요</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-500" />
-        </button>
-      </div>
+      <button
+        onClick={() => setShowModal(true)}
+        aria-label="셀러로 활동하기"
+        className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-white/[0.08] border border-white/[0.12] text-[10px] text-white/85 font-semibold active:scale-95 transition-all"
+      >
+        <Store className="w-2.5 h-2.5" aria-hidden="true" /> 셀러로 활동하기
+      </button>
       {showModal && (
         <SellerApplyModal
           onClose={() => setShowModal(false)}
@@ -735,19 +684,22 @@ export default function UserProfilePage() {
         <h2 style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1 }}>My</h2>
       </div>
 
-      {/* v4 Hero Profile — 그라데이션 배경 + 이메일 + 편집 */}
-      <div className="px-4 pt-2 pb-5 relative" style={{ background: 'radial-gradient(ellipse at top, rgba(236,72,153,0.25), transparent 60%), #0A0A0A' }}>
+      {/* v4 Hero Profile — 단색 배경 + 이름 옆 셀러 버튼 + 편집 */}
+      <div className="px-4 pt-2 pb-5">
         <div className="flex items-center gap-3">
           <img
             src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
             alt={`${userName} 프로필 이미지`}
             loading="lazy"
             decoding="async"
-            className="w-16 h-16 rounded-full object-cover"
+            className="w-16 h-16 rounded-full object-cover flex-shrink-0"
             style={{ border: '2px solid rgba(255,255,255,0.15)' }}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-extrabold text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[17px] font-extrabold text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</p>
+              <SellerSwitchInline />
+            </div>
             <p className="text-[11px] text-white/50 mt-0.5 truncate">{localStorage.getItem('user_email') || ''}</p>
             <button onClick={() => navigate('/account/settings')} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-white/[0.08] text-[10px] text-white/75 font-semibold">
               프로필 편집 <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
@@ -768,8 +720,7 @@ export default function UserProfilePage() {
       {/* v4 쇼핑 InsetGroup — 시안 매칭 (4개) */}
       <ShoppingGroup counts={counts} />
 
-      {/* v4 활동 InsetGroup — 셀러 전환 / 채팅 이름 */}
-      <SellerSwitchCard />
+      {/* v4 활동 InsetGroup — 채팅 이름 (셀러 전환은 상단 이름 옆으로 이동) */}
       <ChatNameSetting />
 
       {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}

@@ -218,8 +218,9 @@ export default function MyOrdersPage() {
   }
 
 
-  // 🛡️ 2026-04-29 v4 Wallet — 다크 우선
-  const theme = 'dark' as const
+  // 🛡️ 2026-04-30: CLAUDE.md 규칙 — /my-orders 는 화이트 테마 (쇼핑/결제 플로우)
+  // 이전엔 dark Wallet wrapper 였는데 내부 CartTab/OrdersTab 는 모두 화이트라 시각적 충돌.
+  const theme = 'light' as const
   const tk = walletTokens[theme]
 
   return (

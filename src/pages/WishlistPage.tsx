@@ -109,8 +109,8 @@ const WishlistPage: React.FC = () => {
     }
   }
 
-  // 🛡️ 2026-04-29 v4 Wallet — 다크 우선
-  const theme = 'dark' as const
+  // 🛡️ 2026-04-30: CLAUDE.md 규칙 — /wishlist 는 화이트 테마 (쇼핑/결제 플로우)
+  const theme = 'light' as const
   const tk = walletTokens[theme]
 
   if (loading) {
@@ -187,11 +187,11 @@ const WishlistPage: React.FC = () => {
                   <img
                     src={item.image_url || '/placeholder.png'}
                     alt={item.product_name}
-                    loading="lazy"
+                    loading="lazy" decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
-                      target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%231C1C1E" width="200" height="200"/%3E%3Ctext fill="%2348484A" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
+                      target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23F2F2F7" width="200" height="200"/%3E%3Ctext fill="%23C7C7CC" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
                     }}
                   />
 

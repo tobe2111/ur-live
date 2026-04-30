@@ -250,24 +250,31 @@ export default function SellerPublicPage() {
         {/* 커버 이미지 */}
         <div className={`h-44 bg-gradient-to-br ${T.cover}`} />
 
-        {/* 상단 네비 */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-safe pb-2 z-10">
-          <button onClick={() => navigate(-1)} className="p-2 bg-black/20 rounded-full backdrop-blur-sm">
-            <ArrowLeft className="w-5 h-5 text-white" />
+        {/* 상단 네비 — 🛡️ 2026-04-30 v4 glass pill 톤 통일 */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-safe pb-2 z-10">
+          <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.08] backdrop-blur-md">
+            <ArrowLeft className="w-4 h-4 text-white" aria-hidden="true" />
           </button>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <button
+              type="button"
               onClick={() => setIsDark(!isDark)}
-              className="p-2 bg-black/20 rounded-full backdrop-blur-sm"
+              aria-label={isDark ? '라이트 모드' : '다크 모드'}
+              className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.08] backdrop-blur-md"
             >
-              {isDark ? <Sun className="w-5 h-5 text-white" /> : <Moon className="w-5 h-5 text-white" />}
+              {isDark ? <Sun className="w-4 h-4 text-white" aria-hidden="true" /> : <Moon className="w-4 h-4 text-white" aria-hidden="true" />}
             </button>
-            <button onClick={() => {
-              const url = window.location.href
-              if (navigator.share) navigator.share({ title: seller.name, url })
-              else { navigator.clipboard?.writeText(url); toast.success(t('seller.linkCopiedToast')) }
-            }} className="p-2 bg-black/20 rounded-full backdrop-blur-sm">
-              <Share2 className="w-5 h-5 text-white" />
+            <button
+              type="button"
+              onClick={() => {
+                const url = window.location.href
+                if (navigator.share) navigator.share({ title: seller.name, url })
+                else { navigator.clipboard?.writeText(url); toast.success(t('seller.linkCopiedToast')) }
+              }}
+              aria-label="공유"
+              className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.08] backdrop-blur-md"
+            >
+              <Share2 className="w-4 h-4 text-white" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -280,7 +287,7 @@ export default function SellerPublicPage() {
               onClick={() => isOwner && fileInputRef.current?.click()}
             >
               {seller.profile_image ? (
-                <img src={seller.profile_image} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <img src={seller.profile_image} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
                   <span className={`text-2xl font-bold ${T.text}`}>{(seller.name || '?').charAt(0)}</span>
@@ -351,24 +358,23 @@ export default function SellerPublicPage() {
           </div>
         )}
 
-        {/* 통계 */}
-        <div className="flex items-center gap-6 mt-4 py-3 border-y border-[#1A1A1A]">
-          <div className="text-center flex-1">
-            <p className="text-xs text-gray-500">{t('seller.tabProducts')}</p>
-            <p className={`text-sm font-bold ${T.text}`}>{products.length}</p>
+        {/* 통계 — 🛡️ 2026-04-30 v4 톤 */}
+        <div className="grid grid-cols-3 gap-2 mt-4 mb-2">
+          <div className="rounded-2xl px-3 py-2.5 bg-white/[0.04]">
+            <p className="text-[10px] text-white/55">{t('seller.tabProducts')}</p>
+            <p className={`text-[15px] font-extrabold ${T.text} mt-0.5`} style={{ letterSpacing: '-0.02em' }}>{products.length}</p>
           </div>
-          <div className="text-center flex-1">
-            <p className="text-xs text-gray-500">{t('seller.tabLive')}</p>
-            <p className={`text-sm font-bold ${T.text}`}>{streams.length}</p>
+          <div className="rounded-2xl px-3 py-2.5 bg-white/[0.04]">
+            <p className="text-[10px] text-white/55">{t('seller.tabLive')}</p>
+            <p className={`text-[15px] font-extrabold ${T.text} mt-0.5`} style={{ letterSpacing: '-0.02em' }}>{streams.length}</p>
           </div>
-          <div className="text-center flex-1">
-            <p className="text-xs text-gray-500">{t('seller.rating')}</p>
-            <p className={`text-sm font-bold ${T.text} flex items-center justify-center gap-0.5`}>
-              {/* 🛡️ 2026-04-22: 5.0 하드코딩 → 실제 평점 (없으면 '신규' 표시) */}
-              <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+          <div className="rounded-2xl px-3 py-2.5 bg-white/[0.04]">
+            <p className="text-[10px] text-white/55">{t('seller.rating')}</p>
+            <p className={`text-[15px] font-extrabold ${T.text} mt-0.5 flex items-center gap-0.5`} style={{ letterSpacing: '-0.02em' }}>
+              <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" aria-hidden="true" />
               {(seller as any)?.average_rating != null
                 ? Number((seller as any).average_rating).toFixed(1)
-                : <span className="text-gray-500 text-xs">{t('common.new')}</span>}
+                : <span className="text-white/45 text-[11px] font-semibold">{t('common.new')}</span>}
             </p>
           </div>
         </div>
@@ -377,28 +383,33 @@ export default function SellerPublicPage() {
         <FollowButton sellerId={sellerId!} />
         <div className="flex gap-2 mt-2">
           {seller.kakao_chat_link && (
-            <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-[#2A2A2A] rounded-xl text-sm font-medium text-gray-300">
-              <MessageCircle className="w-4 h-4" /> {t('seller.oneOnOneInquiry')}
+            <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-white/[0.04] active:bg-white/[0.08] transition-colors text-[12px] font-medium text-white">
+              <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.oneOnOneInquiry')}
             </a>
           )}
           <button
+            type="button"
             onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info(t('seller.noLiveNow'))}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-[#2A2A2A] rounded-xl text-sm font-medium text-gray-300"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-white/[0.04] active:bg-white/[0.08] transition-colors text-[12px] font-medium text-white"
           >
-            <Heart className="w-4 h-4" /> {t('seller.donateButton')}
+            <Heart className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.donateButton')}
           </button>
         </div>
       </div>
 
-      {/* 탭 */}
-      <div className={`sticky top-0 z-20 ${T.bg} border-b ${T.border}`}>
+      {/* 탭 — 🛡️ 2026-04-30 v4 sticky chrome 톤 */}
+      <div
+        className="sticky top-0 z-20"
+        style={isDark ? { background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(84,84,88,0.34)' } : { background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(0,0,0,0.06)' }}
+      >
         <div className="flex">
           {TABS.map(t => (
             <button
               key={t.key}
+              type="button"
               onClick={() => setTab(t.key)}
-              className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
-                tab === t.key ? `border-current ${T.text}` : `border-transparent ${T.textMuted}`
+              className={`flex-1 py-3 text-[13px] font-semibold border-b-2 transition-colors ${
+                tab === t.key ? `border-pink-500 ${T.text}` : `border-transparent ${T.textMuted}`
               }`}
             >
               {t.label}
@@ -427,7 +438,7 @@ export default function SellerPublicPage() {
                     return (
                       <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-44 text-left active:scale-[0.97]">
                         <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1A1A1A]">
-                          {p.image_url && <img src={p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />}
+                          {p.image_url && <img src={p.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                           {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">-{disc}%</span>}
                           {isAchieved && <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{t('seller.publicPage.achieved')}</span>}
                         </div>
@@ -531,7 +542,7 @@ export default function SellerPublicPage() {
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-[#121212] rounded-xl text-left active:scale-[0.98]">
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-200 shrink-0">
-                      {p.image_url && <img src={p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />}
+                      {p.image_url && <img src={p.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-bold ${T.text} line-clamp-1`}>{p.name}</p>
@@ -812,7 +823,7 @@ function StreamCard({ stream, onClick }: { stream: LiveStream; onClick: () => vo
   return (
     <button onClick={onClick} className="text-left active:scale-[0.98] transition-transform">
       <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#1A1A1A]">
-        {thumb ? <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />}
+        {thumb ? <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />}
         {isLive ? (
           <span className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
             <span className="h-1.5 w-1.5 bg-[#020202] rounded-full animate-pulse" />LIVE

@@ -113,8 +113,8 @@ export default function MyVouchersPage() {
 
   const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
 
-  // 🛡️ 2026-04-29 v4 Wallet — 다크 우선 (라이트 prop 으로 변환 가능)
-  const theme = 'dark' as const
+  // 🛡️ 2026-04-30: CLAUDE.md 규칙 — /my-vouchers 는 화이트 테마 (쇼핑/결제 플로우)
+  const theme = 'light' as const
   const tk = walletTokens[theme]
 
   // 상태별 그룹핑
