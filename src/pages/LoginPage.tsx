@@ -128,9 +128,11 @@ export default function LoginPage() {
       }
 
       // 서버가 client_id를 포함해 Kakao authorize로 리다이렉트 (CSRF state 쿠키 포함)
-      const currentReturnUrl = searchParams.get('returnUrl')
+      // 🛡️ 2026-04-30: returnUrl 외부 입력 → safeInternalPath 통과 (open redirect / 자기참조 루프 방지)
+      const rawReturnUrl = searchParams.get('returnUrl')
         || sessionStorage.getItem('returnUrl')
         || '/'
+      const currentReturnUrl = safeInternalPath(rawReturnUrl, '/')
       const params = new URLSearchParams({ redirect: currentReturnUrl })
       window.location.href = `/auth/kakao/start?${params.toString()}`
 
@@ -185,7 +187,8 @@ export default function LoginPage() {
           }
         }
 
-        const savedReturnUrl = sessionStorage.getItem('returnUrl') || '/'
+        // 🛡️ 2026-04-30: sessionStorage returnUrl 도 외부 입력으로 간주 → safeInternalPath 통과
+        const savedReturnUrl = safeInternalPath(sessionStorage.getItem('returnUrl'), '/')
         sessionStorage.removeItem('returnUrl')
         navigate(savedReturnUrl, { replace: true })
       } else {
