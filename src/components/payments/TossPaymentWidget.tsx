@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { loadTossPayments, type TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 import { getUserEmail, getUserNameSync } from '@/utils/auth'
+import { formatNumber } from '@/utils/format'
 
 interface TossPaymentWidgetProps {
   userId: string
@@ -233,7 +234,7 @@ export function TossPaymentWidget({
           </span>
         )}
         {loadingState === 'error' && '결제 시스템 오류 (새로고침 필요)'}
-        {loadingState === 'ready' && !isProcessing && `${totalAmount.toLocaleString()}원 결제하기`}
+        {loadingState === 'ready' && !isProcessing && `${formatNumber(totalAmount)}원 결제하기`}
         {loadingState === 'ready' && isProcessing && (
           <span className="flex items-center justify-center gap-2">
             <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>

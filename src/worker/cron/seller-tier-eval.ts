@@ -118,7 +118,7 @@ export async function handleSellerTierEval(env: Env): Promise<void> {
         `).bind(
           String(s.id),
           `${direction} 등급 변경: ${tierKor[oldTier]} → ${tierKor[newTier]}`,
-          `전월 매출 ${monthlyRevenue.toLocaleString()}원, 라이브 ${liveCount}회 기준 등급이 갱신됐어요.`,
+          `전월 매출 ${Number(monthlyRevenue ?? 0).toLocaleString('ko-KR')}원, 라이브 ${liveCount}회 기준 등급이 갱신됐어요.`,
         ).run().catch(swallow('worker:cron:seller-tier-eval'));
 
         changed++;

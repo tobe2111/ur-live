@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Trophy, Users } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 export default function AgencyRankingPage() {
   const { t } = useTranslation()
@@ -68,7 +69,7 @@ export default function AgencyRankingPage() {
                 </div>
                 <div className="grid grid-cols-4 gap-4 text-center shrink-0">
                   <div>
-                    <p className="text-sm font-bold text-gray-900">{(s.total_revenue || 0).toLocaleString()}원</p>
+                    <p className="text-sm font-bold text-gray-900">{formatNumber(s.total_revenue || 0)}원</p>
                     <p className="text-[10px] text-gray-400">매출</p>
                   </div>
                   <div>

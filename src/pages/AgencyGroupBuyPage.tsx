@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface GroupBuy {
   id: number
@@ -154,7 +155,7 @@ function generateContract(groupBuy: GroupBuy) {
         <tr><td>확정 가격</td><td>${groupBuy.confirmed_price?.toLocaleString()}원</td></tr>
         <tr><td>할인율</td><td>${groupBuy.confirmed_discount_percent}%</td></tr>
         <tr><td>참여 인원</td><td>${groupBuy.participant_count}명</td></tr>
-        <tr><td>총 거래액</td><td>${(groupBuy.total_deposit_deals || 0).toLocaleString()}딜</td></tr>
+        <tr><td>총 거래액</td><td>${formatNumber(groupBuy.total_deposit_deals || 0)}딜</td></tr>
       </table>
       <p style="margin-top:40px">양 당사자는 위 내용에 동의합니다.</p>
       <div style="display:flex;justify-content:space-between;margin-top:60px">
@@ -265,7 +266,7 @@ export default function AgencyGroupBuyPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <StatCard label="진행중 공구 수" value={String(stats.active)} icon={ShoppingBag} color="bg-blue-600" />
-        <StatCard label="총 참여자 수" value={stats.total_participants.toLocaleString()} icon={Users} color="bg-emerald-500" sub="명" />
+        <StatCard label="총 참여자 수" value={formatNumber(stats.total_participants)} icon={Users} color="bg-emerald-500" sub="명" />
         <StatCard label="협상 중" value={String(stats.negotiating)} icon={Handshake} color="bg-amber-500" />
         <StatCard label="확정된 딜" value={String(stats.confirmed)} icon={CheckCircle} color="bg-green-600" />
       </div>
@@ -312,7 +313,7 @@ export default function AgencyGroupBuyPage() {
                     <span className="font-semibold">{g.participant_count}</span>
                     <span className="text-gray-400"> / {g.target_participants}</span>
                   </td>
-                  <td className="px-4 py-3 font-semibold text-gray-900">{(g.total_deposit_deals || 0).toLocaleString()} 딜</td>
+                  <td className="px-4 py-3 font-semibold text-gray-900">{formatNumber(g.total_deposit_deals || 0)} 딜</td>
                   <td className="px-4 py-3">{statusBadge(g.status)}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {g.expires_at

@@ -25,6 +25,7 @@ import { ReturnPolicySection } from '@/components/product/ReturnPolicySection'
 import { Separator } from '@/components/ui/separator'
 import { ProductDetailSkeleton } from '@/components/ui/skeleton'
 import { ProgressiveImage } from '@/components/ui/progressive-image'
+import { formatNumber } from '@/utils/format'
 
 // Lazy load heavy components
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
@@ -439,7 +440,7 @@ export default function ProductDetailPage() {
   function handleShare() {
     if (!product) return
 
-    const shareText = `${product.name} - ${displayPrice.toLocaleString()}원`
+    const shareText = `${product.name} - ${formatNumber(displayPrice)}원`
     const shareUrl = window.location.href
 
     if (navigator.share) {
@@ -649,7 +650,7 @@ export default function ProductDetailPage() {
                   <span className="text-[12px] text-gray-900">{opt.option_value}</span>
                   {opt.price_adjustment !== 0 && (
                     <span className="text-[11px] text-red-500 font-bold">
-                      {(opt.price_adjustment || 0) > 0 ? '+' : ''}{(opt.price_adjustment || 0).toLocaleString()}원
+                      {(opt.price_adjustment || 0) > 0 ? '+' : ''}{formatNumber(opt.price_adjustment || 0)}원
                     </span>
                   )}
                 </button>
@@ -663,7 +664,7 @@ export default function ProductDetailPage() {
           )}
           <div className="flex items-center gap-2 mt-3">
             <span className="text-[11px] text-gray-400">포인트 적립</span>
-            <span className="text-[11px] font-bold text-pink-500">최대 {Math.round(displayPrice * 0.03).toLocaleString()}딜</span>
+            <span className="text-[11px] font-bold text-pink-500">최대 {Math.round(displayPrice * 0.03)}딜</span>
           </div>
           {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
           <div className="mt-1 text-[10.5px] text-gray-400">부가세 포함 (VAT 10%)</div>
@@ -687,7 +688,7 @@ export default function ProductDetailPage() {
           )}
           <KakaoShareButton
             title={product.name}
-            description={`${displayPrice.toLocaleString()}원 ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
+            description={`${formatNumber(displayPrice)}원 ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
             imageUrl={product.image_url || undefined}
             link={`/products/${product.id}`}
             buttonText="상품 보러가기"
@@ -718,7 +719,7 @@ export default function ProductDetailPage() {
         <section className="px-5 py-6">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[13px] font-bold text-gray-900">
-              리뷰 <span className="text-gray-400 font-normal">({(reviewSummary?.total_count || 0).toLocaleString()})</span>
+              리뷰 <span className="text-gray-400 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
             </p>
             <button className="flex items-center gap-0.5 text-[11px] text-gray-400">
               전체보기 <ChevronRight className="w-2.5 h-2.5" />

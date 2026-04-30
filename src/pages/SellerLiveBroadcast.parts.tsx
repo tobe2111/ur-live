@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { CheckCircle2, Copy, Eye, MessageSquare, ShoppingBag, DollarSign } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
 
 interface ToolPreset {
   label: string; resolution: string; fps: number
@@ -71,7 +72,7 @@ export function RecommendedPresetBlock({ tool }: { tool: string }) {
           </div>
           <div className="grid grid-cols-2 gap-2 text-[11px]">
             <PresetRow label={t('seller.liveBroadcast.presetResolution')} value={`${p.resolution} @ ${p.fps}fps`} />
-            <PresetRow label={t('seller.liveBroadcast.presetVideoBitrate')} value={`${p.video_bitrate_kbps.toLocaleString()} kbps`} />
+            <PresetRow label={t('seller.liveBroadcast.presetVideoBitrate')} value={`${formatNumber(p.video_bitrate_kbps)} kbps`} />
             <PresetRow label={t('seller.liveBroadcast.presetAudioBitrate')} value={`${p.audio_bitrate_kbps} kbps`} />
             <PresetRow label={t('seller.liveBroadcast.presetKeyframe')} value={`${p.keyframe_interval_sec}s`} />
           </div>
@@ -149,10 +150,10 @@ export function LiveStatsBar({ streamId }: { streamId: number }) {
 
   const ordersUnit = t('seller.liveBroadcast.ordersUnit')
   const items = [
-    { icon: Eye, value: stats.viewer_count.toLocaleString() },
-    { icon: MessageSquare, value: stats.chat_count.toLocaleString() },
+    { icon: Eye, value: formatNumber(stats.viewer_count) },
+    { icon: MessageSquare, value: formatNumber(stats.chat_count) },
     { icon: ShoppingBag, value: `${stats.order_count}${ordersUnit}` },
-    { icon: DollarSign, value: `₩${stats.revenue.toLocaleString()}` },
+    { icon: DollarSign, value: `₩${formatNumber(stats.revenue)}` },
   ]
 
   return (

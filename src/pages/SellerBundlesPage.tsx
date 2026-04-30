@@ -7,6 +7,7 @@ import { isSellerAuthenticated, getSellerToken } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
 import { Package, Plus, Trash2, Loader2, Pencil, ToggleLeft, ToggleRight, X, CheckCircle2 } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface BundleItem { product_id: number; quantity: number }
 interface Bundle {
@@ -186,7 +187,7 @@ export default function SellerBundlesPage() {
                       {p.image_url && <img src={p.image_url} alt={p.name} className="w-8 h-8 rounded object-cover shrink-0" loading="lazy" />}
                       <div className="flex-1 min-w-0">
                         <p className="truncate font-medium text-gray-900">{p.name}</p>
-                        <p className="text-gray-500">{p.price.toLocaleString()}원</p>
+                        <p className="text-gray-500">{formatNumber(p.price)}원</p>
                       </div>
                       {selected && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
                     </button>
@@ -199,12 +200,12 @@ export default function SellerBundlesPage() {
             {form.items.length >= 2 && (
               <div className="bg-blue-50 rounded-lg p-3 flex items-center justify-between">
                 <div className="text-xs text-gray-600">
-                  <span className="line-through">{selectedTotal.toLocaleString()}원</span>
+                  <span className="line-through">{formatNumber(selectedTotal)}원</span>
                   <span className="mx-1.5">→</span>
-                  <span className="text-lg font-bold text-blue-700">{discountedTotal.toLocaleString()}원</span>
+                  <span className="text-lg font-bold text-blue-700">{formatNumber(discountedTotal)}원</span>
                 </div>
                 <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                  {form.discount_type === 'percent' ? `${form.discount_value}% OFF` : `${form.discount_value.toLocaleString()}원 할인`}
+                  {form.discount_type === 'percent' ? `${form.discount_value}% OFF` : `${formatNumber(form.discount_value)}원 할인`}
                 </span>
               </div>
             )}
@@ -237,7 +238,7 @@ export default function SellerBundlesPage() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-500">
-                    {b.item_count}개 상품 · {b.discount_type === 'percent' ? `${b.discount_value}% 할인` : `${b.discount_value.toLocaleString()}원 할인`}
+                    {b.item_count}개 상품 · {b.discount_type === 'percent' ? `${b.discount_value}% 할인` : `${formatNumber(b.discount_value)}원 할인`}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5">

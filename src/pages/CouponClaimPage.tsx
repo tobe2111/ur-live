@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Gift, CheckCircle, XCircle, Loader2, ShoppingBag } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 function ConfettiCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -169,7 +170,7 @@ export default function CouponClaimPage() {
               <p className="text-xs text-pink-500 font-medium mb-1">COUPON</p>
               <p className="text-[15px] font-bold text-gray-900 mb-3">{coupon.name}</p>
               <p className="text-4xl font-black text-pink-500">
-                {coupon.type === 'percent' ? `${coupon.value}%` : `${coupon.value.toLocaleString()}원`}
+                {coupon.type === 'percent' ? `${coupon.value}%` : `${formatNumber(coupon.value)}원`}
               </p>
               <p className="text-lg font-bold text-gray-700 -mt-1">할인</p>
               <div className="mt-4 pt-4 border-t border-dashed border-pink-200">

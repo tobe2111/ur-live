@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Package, MapPin, Truck, ChevronRight, Check, MessageCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import type { Order } from '@/types/order'
+import { formatNumber } from '@/utils/format'
 
 interface OrdersTabProps {
   orders: Order[]
@@ -271,7 +272,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                       </p>
                       <p className="text-[12px] text-gray-500 mt-0.5">
                         {item.option_value && <span>{item.option_value} · </span>}
-                        {item.quantity}개 · {(item.price_snapshot * item.quantity).toLocaleString()}원
+                        {item.quantity}개 · {formatNumber(item.price_snapshot * item.quantity)}원
                       </p>
                     </div>
                   ))}
@@ -325,7 +326,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                   <div>
                     <p className="text-[11px] text-gray-500 mb-0.5">결제금액</p>
                     <p className="text-[17px] font-extrabold text-gray-900">
-                      {(order.total_amount ?? order.amount ?? 0).toLocaleString()}
+                      {formatNumber(order.total_amount ?? order.amount ?? 0)}
                       <span className="text-[13px] font-semibold text-gray-600 ml-0.5">원</span>
                     </p>
                   </div>

@@ -7,6 +7,7 @@ import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SharePrompt from '@/components/SharePrompt'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
+import { formatNumber } from '@/utils/format'
 // 🛡️ 2026-04-22: HeroBanner 통합 — 어드민 등록 배너가 메인페이지에 표시되도록 연결
 // 이전: HeroBanner 컴포넌트 존재하지만 MainHomePage 에 import 안 됨 → 어드민 배너 등록해도 메인에 안 뜸
 // 🛡️ 2026-04-22: HeroBanner 별도 섹션 제거. 어드민 배너를 Region Hero 의 배경 이미지로 사용 (풀스크린).
@@ -326,8 +327,8 @@ export default function MainHomePage() {
           {featured && (
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-[12px] font-extrabold text-red-400">{featuredDisc}%</span>
-              <span className="text-[18px] font-black text-white">{featured.price.toLocaleString()}원</span>
-              {featured.original_price && <span className="text-[10px] text-white/55 line-through">{featured.original_price.toLocaleString()}</span>}
+              <span className="text-[18px] font-black text-white">{formatNumber(featured.price)}원</span>
+              {featured.original_price && <span className="text-[10px] text-white/55 line-through">{formatNumber(featured.original_price)}</span>}
             </div>
           )}
         </div>
@@ -434,7 +435,7 @@ export default function MainHomePage() {
                   <p className="text-[12px] text-white font-bold leading-tight line-clamp-2">{m.name}</p>
                   <div className="flex items-baseline gap-1 mt-1">
                     {d > 0 && <span className="text-[11px] font-extrabold text-red-400">{d}%</span>}
-                    <span className="text-[12px] font-extrabold text-white">{m.price.toLocaleString()}원</span>
+                    <span className="text-[12px] font-extrabold text-white">{formatNumber(m.price)}원</span>
                   </div>
                   {current > 0 && (
                     <p className="text-[10px] mt-1.5 text-gray-400">
@@ -486,7 +487,7 @@ export default function MainHomePage() {
                   </div>
                   {s.current_product && (
                     <div className="flex items-baseline gap-1 mt-2 px-0.5">
-                      <span className="text-[13px] font-extrabold text-red-400">{s.current_product.price.toLocaleString()}원</span>
+                      <span className="text-[13px] font-extrabold text-red-400">{formatNumber(s.current_product.price)}원</span>
                     </div>
                   )}
                 </button>
@@ -601,7 +602,7 @@ export default function MainHomePage() {
                     </div>
                     <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
                     <p className="text-[12px] font-extrabold text-white mt-1">
-                      {d > 0 && <span className="text-red-400 mr-1">{d}%</span>}{p.price.toLocaleString()}원
+                      {d > 0 && <span className="text-red-400 mr-1">{d}%</span>}{formatNumber(p.price)}원
                     </p>
                   </button>
                 )
@@ -625,14 +626,14 @@ export default function MainHomePage() {
                     </div>
                     <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
                     {p.original_price && p.original_price > p.price && (
-                      <p className="text-[10px] text-gray-500 line-through mt-0.5">{p.original_price.toLocaleString()}원</p>
+                      <p className="text-[10px] text-gray-500 line-through mt-0.5">{formatNumber(p.original_price)}원</p>
                     )}
                     <div className="flex items-baseline gap-1 mt-0.5">
                       {d > 0 && <span className="text-[12px] font-extrabold text-red-500">{d}%</span>}
-                      <span className="text-[12px] font-extrabold text-white">{p.price.toLocaleString()}원</span>
+                      <span className="text-[12px] font-extrabold text-white">{formatNumber(p.price)}원</span>
                     </div>
                     {(p.avg_rating || p.sold_count) && (
-                      <p className="text-[10px] text-gray-500 mt-0.5">★ {(p.avg_rating || 4.5).toFixed(1)} · {(p.sold_count || 0).toLocaleString()} 구매</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">★ {(p.avg_rating || 4.5).toFixed(1)} · {formatNumber(p.sold_count || 0)} 구매</p>
                     )}
                   </button>
                 )

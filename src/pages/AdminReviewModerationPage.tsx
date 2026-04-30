@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Star, Eye, EyeOff, Trash2, MessageSquare, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Review {
   id: number
@@ -125,7 +126,7 @@ export default function AdminReviewModerationPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500 mb-1">전체 리뷰</p>
-            <p className="text-xl font-bold text-gray-900">{stats.total.toLocaleString()}</p>
+            <p className="text-xl font-bold text-gray-900">{formatNumber(stats.total)}</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500 mb-1">평균 평점</p>

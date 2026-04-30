@@ -11,7 +11,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
-
 const sellerDonationsRoutes = new Hono<{ Bindings: Env }>();
 
 sellerDonationsRoutes.use('*', cors({
@@ -175,7 +174,7 @@ sellerDonationsRoutes.post('/donations/settlements', async (c) => {
         settlement_amount: settlementAmount,
         donation_count: eligible.length,
       },
-      message: `${settlementAmount.toLocaleString()}원 정산 신청이 완료되었습니다.`,
+      message: `${Number(settlementAmount ?? 0).toLocaleString('ko-KR')}원 정산 신청이 완료되었습니다.`,
     });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);

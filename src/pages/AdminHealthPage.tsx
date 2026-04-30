@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { Activity, RefreshCw } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Metrics {
   active_streams: number | null
@@ -30,7 +31,7 @@ function severityClasses(sev: Severity): string {
 
 function fmt(n: number | null | undefined): string {
   if (n === null || n === undefined) return '—'
-  return n.toLocaleString()
+  return formatNumber(n)
 }
 
 function MetricCard({

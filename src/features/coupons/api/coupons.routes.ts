@@ -4,7 +4,6 @@ import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/a
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
-
 const couponRoutes = new Hono<{ Bindings: Env }>()
 couponRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
 
@@ -25,7 +24,7 @@ couponRoutes.post('/apply', rateLimit({ action: 'coupon_apply', max: 10, windowS
   if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 404)
   if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) return c.json({ success: false, error: '만료된 쿠폰입니다' }, 400)
   if (coupon.total_count > 0 && coupon.used_count >= coupon.total_count) return c.json({ success: false, error: '쿠폰이 모두 소진되었습니다' }, 400)
-  if (order_amount < coupon.min_order_amount) return c.json({ success: false, error: `최소 주문금액 ${coupon.min_order_amount.toLocaleString()}원 이상` }, 400)
+  if (order_amount < coupon.min_order_amount) return c.json({ success: false, error: `최소 주문금액 ${Number(coupon.min_order_amount ?? 0).toLocaleString('ko-KR')}원 이상` }, 400)
 
   const used = await DB.prepare("SELECT id FROM coupon_uses WHERE coupon_id = ? AND user_id = ?").bind(coupon.id, String(user.id)).first()
   if (used) return c.json({ success: false, error: '이미 사용한 쿠폰입니다' }, 400)

@@ -21,6 +21,7 @@ import {
 } from '@/lib/obs-websocket'
 import { downloadOBSProfile } from '@/lib/obs-profile'
 import { RtmpBlock, RecommendedPresetBlock } from './SellerLiveBroadcast.parts'
+import { formatNumber } from '@/utils/format'
 
 interface LiveStreamLite {
   id: number
@@ -282,7 +283,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
             return (
               <div className="bg-white/60 rounded-md px-2 py-1.5 text-center">
                 <p className="text-blue-600">비트레이트</p>
-                <p className="font-bold text-gray-900">{kbps.toLocaleString()} kbps</p>
+                <p className="font-bold text-gray-900">{formatNumber(kbps)} kbps</p>
               </div>
             )
           })()}

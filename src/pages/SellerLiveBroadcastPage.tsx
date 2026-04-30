@@ -74,6 +74,7 @@ interface LiveStream {
 type WizardStep = 'info' | 'setup' | 'live'
 // 송출 도구 (streaming tool): 셀러가 영상을 어떻게 push 할지 — type StreamMethod 는 ./SellerLiveBroadcast.storage 로 이전
 import type { StreamMethod, BroadcastTemplate } from './SellerLiveBroadcast.storage'
+import { formatNumber } from '@/utils/format'
 import {
   getLastUsedMethod,
   rememberMethod,
@@ -1171,7 +1172,7 @@ function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLivePr
         if (currentP && imgEl && nameEl && priceEl) {
           imgEl.style.background = currentP.image_url ? `url(${currentP.image_url}) center/cover` : '#27272a'
           nameEl.textContent = currentP.name
-          priceEl.textContent = `₩${currentP.price.toLocaleString()}`
+          priceEl.textContent = `₩${formatNumber(currentP.price)}`
         }
 
         // 상품 전환 리스트

@@ -18,6 +18,7 @@ import {
   Pie,
   Cell,
 } from 'recharts'
+import { formatNumber } from '@/utils/format'
 
 interface RevenueDataPoint {
   date: string
@@ -32,7 +33,7 @@ interface CategoryData {
 }
 
 function fmt(n: number | null | undefined): string {
-  return (n ?? 0).toLocaleString()
+  return formatNumber(n ?? 0)
 }
 
 export function RevenueBarChart({ chartData }: { chartData: RevenueDataPoint[] }) {

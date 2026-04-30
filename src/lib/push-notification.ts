@@ -12,7 +12,6 @@
  */
 
 import { encryptAtRest, decryptAtRest } from '../worker/utils/data-crypto'
-
 interface PushSubscription {
   endpoint: string
   keys: {
@@ -347,7 +346,7 @@ export async function sendOrderNotification(
 ): Promise<void> {
   await notifyUser(DB, sellerId, 'seller', {
     title: '새 주문이 접수되었습니다!',
-    body: `주문번호: ${orderNumber}, 금액: ${totalAmount.toLocaleString()}원`,
+    body: `주문번호: ${orderNumber}, 금액: ${Number(totalAmount ?? 0).toLocaleString('ko-KR')}원`,
     icon: '/static/icon-order.png',
     badge: '/static/badge-order.png',
     data: {
@@ -433,7 +432,7 @@ export async function sendSettlementNotification(
 ): Promise<void> {
   await notifyUser(DB, sellerId, 'seller', {
     title: '정산이 완료되었습니다',
-    body: `${period} 정산금액: ${settlementAmount.toLocaleString()}원`,
+    body: `${period} 정산금액: ${Number(settlementAmount ?? 0).toLocaleString('ko-KR')}원`,
     icon: '/static/icon-settlement.png',
     badge: '/static/badge-settlement.png',
     data: {

@@ -5,6 +5,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Target, Check, Users } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 export default function AgencyTargetsPage() {
   const { t } = useTranslation()
@@ -79,8 +80,8 @@ export default function AgencyTargetsPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
-                    <span>현재 매출: <b className="text-gray-900">{Number(t.current_amount).toLocaleString()}원</b></span>
-                    {t.target_amount > 0 && <span>목표: <b className="text-gray-900">{Number(t.target_amount).toLocaleString()}원</b></span>}
+                    <span>현재 매출: <b className="text-gray-900">{formatNumber(t.current_amount)}원</b></span>
+                    {t.target_amount > 0 && <span>목표: <b className="text-gray-900">{formatNumber(t.target_amount)}원</b></span>}
                   </div>
                   {t.target_amount > 0 && (
                     <div className="w-full bg-gray-100 rounded-full h-2">

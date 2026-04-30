@@ -8,6 +8,7 @@ import { isKorea } from '@/shared/config/region'
 import { storage } from '@/shared/utils/storage'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { escapeHtml } from '@/shared/utils/html'
+import { formatNumber } from '@/utils/format'
 
 interface Restaurant {
   id: number; name: string; restaurant_name: string; restaurant_address: string
@@ -450,7 +451,7 @@ export default function RestaurantMapPage() {
             gap: 4px;
           ">
             <span>${items.length}</span>
-            <span style="font-size:9px;opacity:0.9;font-weight:600;">${minPrice.toLocaleString()}원~</span>
+            <span style="font-size:9px;opacity:0.9;font-weight:600;">${formatNumber(minPrice)}원~</span>
           </div>
         `
         cContent.addEventListener('click', () => {
@@ -494,7 +495,7 @@ export default function RestaurantMapPage() {
       //   사용자 제안: 핀 보고 바로 가격 비교 가능해야 함.
       const hasDiscount = r.original_price > r.price
       const discountPct = hasDiscount ? Math.round((1 - r.price / r.original_price) * 100) : 0
-      const priceText = `${(r.price ?? 0).toLocaleString()}원`
+      const priceText = `${formatNumber(r.price ?? 0)}원`
       const safePrice = escapeHtml(priceText)
 
       const isLive = r.seller_id ? liveSellerIds.has(r.seller_id) : false
@@ -939,7 +940,7 @@ export default function RestaurantMapPage() {
                     <span className="text-lg font-extrabold text-gray-900">{selected.price?.toLocaleString()}원</span>
                     {selected.original_price > selected.price && (
                       <>
-                        <span className="text-xs text-gray-400 line-through">{selected.original_price.toLocaleString()}원</span>
+                        <span className="text-xs text-gray-400 line-through">{formatNumber(selected.original_price)}원</span>
                         <span className="text-xs bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-md">
                           -{Math.round((1 - selected.price / selected.original_price) * 100)}%
                         </span>
@@ -1098,7 +1099,7 @@ export default function RestaurantMapPage() {
                         <div className="flex items-baseline gap-1.5 mt-1.5">
                           <span className="text-base font-extrabold text-gray-900">{r.price?.toLocaleString()}원</span>
                           {r.original_price > r.price && (
-                            <span className="text-xs text-gray-400 line-through">{r.original_price.toLocaleString()}원</span>
+                            <span className="text-xs text-gray-400 line-through">{formatNumber(r.original_price)}원</span>
                           )}
                         </div>
                       </div>

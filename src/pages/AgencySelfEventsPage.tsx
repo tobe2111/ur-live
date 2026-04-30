@@ -4,6 +4,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Trophy, Plus, X, TrendingUp, Users, Eye } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface SelfEvent {
   id: number
@@ -210,7 +211,7 @@ export default function AgencySelfEventsPage() {
                           <Icon className="w-3 h-3" /> 목표
                         </div>
                         <div className="font-bold text-gray-900">
-                          {e.target_value.toLocaleString()}{meta.suffix}
+                          {formatNumber(e.target_value)}{meta.suffix}
                         </div>
                       </div>
                       <div className="bg-purple-50 rounded p-2">
@@ -223,7 +224,7 @@ export default function AgencySelfEventsPage() {
                       </div>
                     </div>
                     <div className="mt-2 text-[11px] text-gray-500">
-                      🎁 보상: <strong className="text-purple-700">{e.reward_deal.toLocaleString()}딜</strong>
+                      🎁 보상: <strong className="text-purple-700">{formatNumber(e.reward_deal)}딜</strong>
                     </div>
                     {e.status === 'active' && (
                       <button onClick={() => cancelEvent(e.id)}

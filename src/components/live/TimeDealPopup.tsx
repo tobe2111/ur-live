@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Zap, Clock, Users, Gift } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface TimeDeal {
   id: number; product_id: number; product_name: string
@@ -149,8 +150,8 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
           <p className="text-sm font-semibold line-clamp-1 mb-1">{deal.product_name}</p>
 
           <div className="flex items-end gap-2 mb-2">
-            <span className="text-[10px] line-through text-white/60">{deal.original_price.toLocaleString()}원</span>
-            <span className="text-xl font-bold">{(isGroupBuy ? effectivePrice : deal.deal_price).toLocaleString()}원</span>
+            <span className="text-[10px] line-through text-white/60">{formatNumber(deal.original_price)}원</span>
+            <span className="text-xl font-bold">{formatNumber(isGroupBuy ? effectivePrice : deal.deal_price)}원</span>
             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isGroupBuy ? 'bg-white text-pink-600' : 'bg-yellow-400 text-red-700'}`}>
               -{isGroupBuy ? effectiveDiscount : deal.discount_percent}%
             </span>

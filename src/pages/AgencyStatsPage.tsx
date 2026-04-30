@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { TrendingUp, ShoppingBag, Play, Users, ArrowUpDown, Trophy, DollarSign } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Seller {
   id: number
@@ -173,10 +174,10 @@ export default function AgencyStatsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: '총 매출', value: `${(totals.revenue / 10000).toFixed(0)}만원`, icon: TrendingUp, color: 'bg-blue-600' },
-          { label: '수수료 수익', value: `${Math.round(totals.revenue * commissionRate / 100).toLocaleString()}원`, icon: DollarSign, color: 'bg-indigo-600' },
+          { label: '수수료 수익', value: `${Math.round(totals.revenue * commissionRate / 100)}원`, icon: DollarSign, color: 'bg-indigo-600' },
           { label: '총 주문', value: `${totals.orders}건`, icon: ShoppingBag, color: 'bg-emerald-500' },
           { label: '총 라이브', value: `${totals.streams}회`, icon: Play, color: 'bg-rose-500' },
-          { label: '총 시청자', value: `${totals.viewers.toLocaleString()}명`, icon: Users, color: 'bg-violet-500' },
+          { label: '총 시청자', value: `${formatNumber(totals.viewers)}명`, icon: Users, color: 'bg-violet-500' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-start justify-between">
@@ -271,7 +272,7 @@ export default function AgencyStatsPage() {
                     <td className="px-4 py-3 text-gray-700">{s.orders?.order_count ?? 0}건</td>
                     <td className="px-4 py-3">
                       <span className="font-semibold text-indigo-600">
-                        {commission.toLocaleString()}원
+                        {formatNumber(commission)}원
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-700">
@@ -279,7 +280,7 @@ export default function AgencyStatsPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-700">{s.streams?.stream_count ?? 0}회</td>
                     <td className="px-4 py-3 text-gray-700">
-                      {(s.streams?.total_viewers ?? 0).toLocaleString()}명
+                      {formatNumber(s.streams?.total_viewers ?? 0)}명
                     </td>
                   </tr>
                   )

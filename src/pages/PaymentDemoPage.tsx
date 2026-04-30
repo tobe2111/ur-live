@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
+import { formatNumber } from '@/utils/format'
 
 // 공식 샌드박스 키 (테스트용)
 // 실제 운영 시에는 MID urteamizy1의 클라이언트 키로 변경 필요
@@ -180,7 +181,7 @@ export default function PaymentDemoPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
           <span>결제 금액:</span>
           <strong style={{ color: '#0066ff', fontSize: '20px' }}>
-            {amount.value.toLocaleString()}원
+            {formatNumber(amount.value)}원
           </strong>
         </div>
         
@@ -252,7 +253,7 @@ export default function PaymentDemoPage() {
         <div>Client Key: {clientKey}</div>
         <div>SDK Loaded: {widgets ? '✅ Yes' : '❌ No'}</div>
         <div>UI Ready: {ready ? '✅ Yes' : '❌ No'}</div>
-        <div>Amount: {amount.value.toLocaleString()}원</div>
+        <div>Amount: {formatNumber(amount.value)}원</div>
       </div>
 
       {/* 테스트 카드 정보 */}

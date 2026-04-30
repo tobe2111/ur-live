@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Check, AlertCircle } from 'lucide-react'
 import api from '@/lib/api'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import { formatNumber } from '@/utils/format'
 
 interface ProductOption {
   id: number
@@ -194,7 +195,7 @@ export default function OptionSelectModal({
                           
                           {option.price_adjustment !== 0 && (
                             <span className="text-[10px] text-gray-500 mt-1">
-                              {(option.price_adjustment || 0) > 0 ? '+' : ''}{(option.price_adjustment || 0).toLocaleString()}원
+                              {(option.price_adjustment || 0) > 0 ? '+' : ''}{formatNumber(option.price_adjustment || 0)}원
                             </span>
                           )}
                           

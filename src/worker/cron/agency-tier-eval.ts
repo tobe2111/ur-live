@@ -116,7 +116,7 @@ export async function handleAgencyTierEval(env: Env): Promise<{
       `).bind(
         agency.id,
         `${direction} ${newTier.toUpperCase()} 등급으로 변경`,
-        `전월 매출 ${lastMonthRevenue.toLocaleString()}원 / 가입 ${ageDays}일 기준`,
+        `전월 매출 ${Number(lastMonthRevenue ?? 0).toLocaleString('ko-KR')}원 / 가입 ${ageDays}일 기준`,
       ).run().catch(swallow('worker:cron:agency-tier-eval'))
 
       changed++

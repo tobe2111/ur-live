@@ -4,6 +4,7 @@
  * - 글로벌: USD ($), JPY (¥), CNY (¥)
  */
 import { isKorea } from '@/shared/config/region'
+import { formatNumber } from '@/utils/format'
 
 type CurrencyCode = 'KRW' | 'USD' | 'JPY' | 'CNY' | 'EUR'
 
@@ -34,21 +35,21 @@ export function getCurrency(): CurrencyCode {
 
 export function formatPrice(krwAmount: number, currency?: CurrencyCode): string {
   const cur = currency || getCurrency()
-  if (cur === 'KRW') return `${krwAmount.toLocaleString()}원`
+  if (cur === 'KRW') return `${formatNumber(krwAmount)}원`
 
   const converted = krwAmount * RATES[cur]
   const symbol = SYMBOLS[cur]
 
-  if (cur === 'JPY') return `${symbol}${Math.round(converted).toLocaleString()}`
+  if (cur === 'JPY') return `${symbol}${Math.round(converted)}`
   return `${symbol}${converted.toFixed(2)}`
 }
 
 export function formatPriceWithOriginal(krwAmount: number): string {
   const cur = getCurrency()
-  if (cur === 'KRW') return `${krwAmount.toLocaleString()}원`
+  if (cur === 'KRW') return `${formatNumber(krwAmount)}원`
 
   const converted = krwAmount * RATES[cur]
   const symbol = SYMBOLS[cur]
-  const formatted = cur === 'JPY' ? `${symbol}${Math.round(converted).toLocaleString()}` : `${symbol}${converted.toFixed(2)}`
-  return `${formatted} (${krwAmount.toLocaleString()}원)`
+  const formatted = cur === 'JPY' ? `${symbol}${Math.round(converted)}` : `${symbol}${converted.toFixed(2)}`
+  return `${formatted} (${formatNumber(krwAmount)}원)`
 }

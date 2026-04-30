@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { formatKST } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
 import {
   Package, Truck, CheckCircle2, XCircle, Loader2, Eye,
   Calendar, User, Search, Filter, Download, ChevronLeft,
@@ -280,7 +281,7 @@ export default function AdminOrdersPage() {
           { label: '배송 중', value: orderStats.shipped, color: 'text-purple-600' },
           { label: '배송 완료', value: orderStats.delivered, color: 'text-emerald-600' },
           { label: '취소', value: orderStats.cancelled, color: 'text-red-600' },
-          { label: '총 매출', value: `₩${orderStats.totalAmount.toLocaleString()}`, color: 'text-blue-600' },
+          { label: '총 매출', value: `₩${formatNumber(orderStats.totalAmount)}`, color: 'text-blue-600' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
@@ -358,7 +359,7 @@ export default function AdminOrdersPage() {
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${ps.bg} ${ps.color}`}>{ps.label}</span>
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">₩{order.total_amount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">₩{formatNumber(order.total_amount)}</td>
                     <td className="px-4 py-3">
                       <button onClick={() => viewOrderDetail(order.order_number)} className="p-1.5 rounded-lg hover:bg-gray-100">
                         <Eye className="w-4 h-4 text-gray-400" />
@@ -451,7 +452,7 @@ export default function AdminOrdersPage() {
                           <p className="text-sm font-medium text-gray-900">{item.product_name}</p>
                           <p className="text-xs text-gray-400">수량 {item.quantity}개</p>
                         </div>
-                        <p className="text-sm font-semibold text-gray-900">₩{(item.price * item.quantity).toLocaleString()}</p>
+                        <p className="text-sm font-semibold text-gray-900">₩{formatNumber(item.price * item.quantity)}</p>
                       </div>
                     ))}
                   </div>
@@ -459,7 +460,7 @@ export default function AdminOrdersPage() {
               )}
               <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl">
                 <span className="text-sm font-medium text-gray-700">총 결제 금액</span>
-                <span className="text-lg font-bold text-blue-600">₩{selectedOrder.total_amount.toLocaleString()}</span>
+                <span className="text-lg font-bold text-blue-600">₩{formatNumber(selectedOrder.total_amount)}</span>
               </div>
 
               {/* 주문 상태 변경 */}

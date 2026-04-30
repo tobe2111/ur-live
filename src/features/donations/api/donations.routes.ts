@@ -270,7 +270,7 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
       credit_amount: pending.credit_amount,
       commission_amount: pending.commission_amount,
     },
-    message: `${pending.amount.toLocaleString()}원 후원이 완료되었습니다!`,
+    message: `${Number(pending.amount ?? 0).toLocaleString('ko-KR')}원 후원이 완료되었습니다!`,
   });
 });
 

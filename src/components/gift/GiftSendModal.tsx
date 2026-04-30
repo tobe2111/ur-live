@@ -18,6 +18,7 @@ import { toast } from '@/hooks/useToast'
 import { X, Gift, Sparkles, Loader2 } from 'lucide-react'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import { formatNumber } from '@/utils/format'
 
 interface Props {
   open: boolean
@@ -118,7 +119,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
             )}
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-900 text-sm truncate">{productName}</p>
-              <p className="text-pink-500 font-bold text-sm mt-0.5">{productPrice.toLocaleString()}원</p>
+              <p className="text-pink-500 font-bold text-sm mt-0.5">{formatNumber(productPrice)}원</p>
             </div>
           </div>
 
@@ -179,7 +180,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
             className="w-full py-4 bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600 transition-colors disabled:opacity-50"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
-            {productPrice.toLocaleString()}원 결제하고 선물하기
+            {formatNumber(productPrice)}원 결제하고 선물하기
           </button>
         </form>
       </div>

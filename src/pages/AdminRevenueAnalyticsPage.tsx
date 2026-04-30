@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { TrendingUp, DollarSign, ShoppingCart, BarChart2, Loader2 } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 // Recharts lazy load (377KB → 차트 영역만 지연 로드)
 const RevenueBarChart = lazy(() => import('@/components/charts/AdminRevenueCharts').then(m => ({ default: m.RevenueBarChart })))
@@ -65,7 +66,7 @@ const PERIOD_OPTIONS: { value: Period; label: string }[] = [
 const PIE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1']
 
 function fmt(n: number | null | undefined): string {
-  return (n ?? 0).toLocaleString()
+  return formatNumber(n ?? 0)
 }
 
 export default function AdminRevenueAnalyticsPage() {

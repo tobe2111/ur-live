@@ -15,7 +15,6 @@ import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
-
 // 테이블 ensure (agency.routes.ts 와 동일 — 모듈 분리 후속 정리 대상)
 let _agencyTablesEnsured = false
 async function ensureAgencyTables(DB: D1Database) {
@@ -200,7 +199,7 @@ app.post('/settlements/request', async (c) => {
     // 어드민 알림
     try {
       const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
-      createDashboardNotification(c.env.DB, 'admin', null, 'agency_settlement', '에이전시 정산 신청', `${agency.name}: ${commissionAmount.toLocaleString()}원 (${eligibleOrders.length}건)`, '/admin/settlements').catch(swallow('agency:api:agency'))
+      createDashboardNotification(c.env.DB, 'admin', null, 'agency_settlement', '에이전시 정산 신청', `${agency.name}: ${Number(commissionAmount ?? 0).toLocaleString('ko-KR')}원 (${eligibleOrders.length}건)`, '/admin/settlements').catch(swallow('agency:api:agency'))
     } catch {}
 
     return c.json({

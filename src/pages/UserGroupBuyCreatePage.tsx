@@ -5,6 +5,7 @@ import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 interface SelectedRestaurant {
   name: string
@@ -259,7 +260,7 @@ export default function UserGroupBuyCreatePage() {
                 <p className="text-[13px] text-gray-600">
                   목표 달성 시 총{' '}
                   <span className="font-bold text-pink-500">
-                    {totalRaised.toLocaleString()}딜
+                    {formatNumber(totalRaised)}딜
                   </span>{' '}
                   모금
                 </p>
@@ -294,13 +295,13 @@ export default function UserGroupBuyCreatePage() {
                 <div>
                   <p className="text-[11px] text-gray-500">희망 가격</p>
                   <p className="text-[14px] font-bold text-gray-900">
-                    {Number(proposedPrice).toLocaleString()}원
+                    {formatNumber(proposedPrice)}원
                   </p>
                 </div>
                 <div>
                   <p className="text-[11px] text-gray-500">예치금</p>
                   <p className="text-[14px] font-bold text-gray-900">
-                    {deposit.toLocaleString()}딜
+                    {formatNumber(deposit)}딜
                   </p>
                 </div>
                 <div>
@@ -317,7 +318,7 @@ export default function UserGroupBuyCreatePage() {
               <span className="text-[13px] text-gray-600">내 딜 잔액</span>
               <span className="text-[14px] font-bold text-pink-500">
                 {balance !== null
-                  ? `${balance.toLocaleString()}딜`
+                  ? `${formatNumber(balance)}딜`
                   : '로딩중...'}
               </span>
             </div>
@@ -326,7 +327,7 @@ export default function UserGroupBuyCreatePage() {
             <div className="mt-3 flex gap-2 bg-gray-50 rounded-xl p-3">
               <AlertCircle className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
               <p className="text-[12px] text-gray-500 leading-relaxed">
-                참여 시 <span className="font-semibold text-gray-700">{deposit.toLocaleString()}딜</span>이
+                참여 시 <span className="font-semibold text-gray-700">{formatNumber(deposit)}딜</span>이
                 예치됩니다. 미달성 시 전액 환불됩니다.
               </p>
             </div>

@@ -10,7 +10,6 @@
  */
 
 import { sendAlimtalk } from './aligo'
-
 interface Env {
   DB: D1Database
   ALIGO_API_KEY: string
@@ -164,7 +163,7 @@ export async function sendOrderConfirmation(env: Env, orderId: number) {
 
     // 상품 목록 생성
     const productList = products.map(p => 
-      `${p.name} ${p.quantity}개 (${p.price.toLocaleString()}원)`
+      `${p.name} ${p.quantity}개 (${Number(p.price ?? 0).toLocaleString('ko-KR')}원)`
     ).join('\n')
 
     // 메시지 생성
@@ -176,7 +175,7 @@ export async function sendOrderConfirmation(env: Env, orderId: number) {
 주문 상품:
 ${productList}
 
-총 결제금액: ${order.total_amount.toLocaleString()}원
+총 결제금액: ${Number(order.total_amount ?? 0).toLocaleString('ko-KR')}원
 
 배송지: ${order.shipping_address}
 수령인: ${order.shipping_name}

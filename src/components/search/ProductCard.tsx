@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Heart } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Product {
   id: number
@@ -95,7 +96,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
         {/* Original price (strikethrough) */}
         {product.price > discountedPrice && (
           <p className="text-[11px] text-gray-400 line-through">
-            {product.price.toLocaleString()}원
+            {formatNumber(product.price)}원
           </p>
         )}
 
@@ -105,7 +106,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
             <span className="text-[14px] font-extrabold text-red-500">{discount}%</span>
           )}
           <span className="text-[14px] font-extrabold text-gray-900">
-            {discountedPrice.toLocaleString()}원
+            {formatNumber(discountedPrice)}원
           </span>
         </div>
 

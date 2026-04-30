@@ -5,6 +5,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Award, Plus, Trash2, Eye, X, BarChart3 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 type Metric = 'sales' | 'rating' | 'streams' | 'orders' | 'viewers'
 
@@ -208,7 +209,7 @@ export default function AgencyIncentivesPage() {
                         )}
                       </div>
                       <p className="text-xs text-gray-500">
-                        {METRIC_LABEL[r.metric as Metric]} <strong className="text-gray-700">{r.threshold.toLocaleString()}</strong> 이상
+                        {METRIC_LABEL[r.metric as Metric]} <strong className="text-gray-700">{formatNumber(r.threshold)}</strong> 이상
                         →  보너스 <strong className="text-emerald-600">+{r.bonus_rate}%</strong>
                       </p>
                     </div>
@@ -258,9 +259,9 @@ export default function AgencyIncentivesPage() {
                         <td className="px-4 py-2 text-gray-700">{p.month}</td>
                         <td className="px-4 py-2 font-bold text-gray-900">{p.seller_name || `#${p.seller_id}`}</td>
                         <td className="px-4 py-2 text-gray-500">{p.rule_name || '-'}</td>
-                        <td className="px-4 py-2 text-right text-gray-700">{p.base_commission.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right text-emerald-600 font-bold">+{p.bonus_commission.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right font-bold text-gray-900">{p.total.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right text-gray-700">{formatNumber(p.base_commission)}</td>
+                        <td className="px-4 py-2 text-right text-emerald-600 font-bold">+{formatNumber(p.bonus_commission)}</td>
+                        <td className="px-4 py-2 text-right font-bold text-gray-900">{formatNumber(p.total)}</td>
                         <td className="px-4 py-2 text-center">
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                             p.status === 'paid' ? 'bg-green-100 text-green-700' :
@@ -300,11 +301,11 @@ export default function AgencyIncentivesPage() {
                   </div>
                   <div className="bg-gray-50 rounded-xl p-4">
                     <p className="text-xs text-gray-600 font-bold uppercase">기본 수수료 합계</p>
-                    <p className="text-2xl font-extrabold text-gray-900">{preview.total_base.toLocaleString()}원</p>
+                    <p className="text-2xl font-extrabold text-gray-900">{formatNumber(preview.total_base)}원</p>
                   </div>
                   <div className="bg-emerald-50 rounded-xl p-4">
                     <p className="text-xs text-emerald-700 font-bold uppercase">보너스 합계</p>
-                    <p className="text-2xl font-extrabold text-emerald-600">+{preview.total_bonus.toLocaleString()}원</p>
+                    <p className="text-2xl font-extrabold text-emerald-600">+{formatNumber(preview.total_bonus)}원</p>
                   </div>
                 </div>
                 <div className="text-xs text-gray-500">

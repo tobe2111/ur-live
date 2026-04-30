@@ -11,6 +11,7 @@ import {
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
+import { formatNumber } from '@/utils/format'
 
 interface DbPackage {
   id: number
@@ -184,7 +185,7 @@ export default function SellerAlimtalkPage() {
     <div className="flex items-center gap-2">
       <span className="text-xs text-gray-400">{t('seller.remainingCredits')}</span>
       <span className={`text-sm font-bold ${balance > 0 ? 'text-blue-600' : 'text-red-500'}`}>
-        {balance.toLocaleString()}{t('seller.creditsUnit')}
+        {formatNumber(balance)}{t('seller.creditsUnit')}
       </span>
       <button
         onClick={() => setChargeModal(true)}
@@ -206,7 +207,7 @@ export default function SellerAlimtalkPage() {
           <div className="relative">
             <p className="text-xs font-medium text-blue-100">{t('seller.brandMessageCredits')}</p>
             <p className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
-              {balance.toLocaleString()}
+              {formatNumber(balance)}
               <span className="ml-1 text-lg font-normal">{t('seller.creditsUnit')}</span>
             </p>
             <p className="mt-2 text-xs text-blue-100/90">{t('seller.brandMessageDesc')}</p>
@@ -279,10 +280,10 @@ export default function SellerAlimtalkPage() {
                     </div>
                     <div className="text-right">
                       <p className={`text-sm font-semibold ${tx.amount > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
-                        {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()}{t('seller.creditsUnit')}
+                        {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}{t('seller.creditsUnit')}
                       </p>
                       {tx.price_paid && (
-                        <p className="text-xs text-gray-400">{tx.price_paid.toLocaleString()}{t('common.won')}</p>
+                        <p className="text-xs text-gray-400">{formatNumber(tx.price_paid)}{t('common.won')}</p>
                       )}
                     </div>
                   </div>
@@ -354,7 +355,7 @@ export default function SellerAlimtalkPage() {
                       </div>
                     </div>
                     <p className={`text-sm font-bold ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
-                      {pkg.price.toLocaleString()}{t('common.won')}
+                      {formatNumber(pkg.price)}{t('common.won')}
                     </p>
                   </button>
                 )
@@ -374,7 +375,7 @@ export default function SellerAlimtalkPage() {
                     className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                   >
                     {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                    {selectedPkg ? t('seller.payAmount', { amount: selectedPkg.price.toLocaleString() }) : t('seller.selectPackage')}
+                    {selectedPkg ? t('seller.payAmount', { amount: formatNumber(selectedPkg.price) }) : t('seller.selectPackage')}
                   </button>
                 </div>
               )

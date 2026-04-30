@@ -13,6 +13,7 @@ import { Footer } from '@/components/my-page/footer'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ArrowLeft, Store, ChevronRight, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 /**
  * 🧹 완전히 단순화된 UserProfilePage
@@ -52,7 +53,7 @@ function TeamPointsCard() {
           <div>
             <p className="text-[11px] text-gray-500 font-medium">내 딜 잔액</p>
             <p className="text-lg font-bold text-white">
-              {loading ? <span className="inline-block w-16 h-5 bg-gray-700 rounded animate-pulse" /> : `${balance.toLocaleString()}딜`}
+              {loading ? <span className="inline-block w-16 h-5 bg-gray-700 rounded animate-pulse" /> : `${formatNumber(balance)}딜`}
             </p>
           </div>
         </div>

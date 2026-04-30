@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { Gavel, Zap, Users } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 interface Product {
   id: number
@@ -210,7 +211,7 @@ export default function AuctionTimeDealControls({ streamId, products }: { stream
             <select value={dealForm.product_id} onChange={e => setDealForm({ ...dealForm, product_id: Number(e.target.value) })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900">
               <option value={0}>{t('seller.liveBroadcast.selectProduct')}</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price.toLocaleString()}원)</option>)}
+              {products.map(p => <option key={p.id} value={p.id}>{p.name} ({formatNumber(p.price)}원)</option>)}
             </select>
             <div className="grid grid-cols-2 gap-2">
               <input type="number" value={dealForm.discount_percent} onChange={e => setDealForm({ ...dealForm, discount_percent: Number(e.target.value) })}
@@ -241,7 +242,7 @@ export default function AuctionTimeDealControls({ streamId, products }: { stream
             <select value={groupBuyForm.product_id} onChange={e => setGroupBuyForm({ ...groupBuyForm, product_id: Number(e.target.value) })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900">
               <option value={0}>{t('seller.liveBroadcast.selectProduct')}</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price.toLocaleString()}원)</option>)}
+              {products.map(p => <option key={p.id} value={p.id}>{p.name} ({formatNumber(p.price)}원)</option>)}
             </select>
             <div className="grid grid-cols-2 gap-2">
               <div>

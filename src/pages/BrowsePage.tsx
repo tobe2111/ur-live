@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import SEO, { itemListJsonLd } from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 interface RecentProduct {
   id: number
@@ -52,7 +53,7 @@ function RecentlyViewedSection() {
             </div>
             <p className="text-[11px] text-gray-600 mt-1.5 truncate">{p.name}</p>
             {p.price != null && (
-              <p className="text-[12px] font-bold text-gray-900">{p.price.toLocaleString()}원</p>
+              <p className="text-[12px] font-bold text-gray-900">{formatNumber(p.price)}원</p>
             )}
           </button>
         ))}
@@ -217,7 +218,7 @@ export default function BrowsePage() {
       const infoWindow = new window.kakao.maps.InfoWindow({
         content: `<div style="padding:8px 12px;min-width:150px">
           <div style="font-weight:700;font-size:13px;color:#111">${p.restaurant_name || p.name}</div>
-          <div style="font-size:12px;color:#ef4444;font-weight:700;margin-top:4px">${(p.price || 0).toLocaleString()}원</div>
+          <div style="font-size:12px;color:#ef4444;font-weight:700;margin-top:4px">${formatNumber(p.price || 0)}원</div>
           <a href="/products/${p.id}" style="display:inline-block;margin-top:6px;padding:4px 10px;background:#111;color:#fff;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none">상세보기</a>
         </div>`
       })

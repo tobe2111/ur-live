@@ -97,6 +97,7 @@ import LiveChat from '@/components/live/LiveChatStream'
 // 🛡️ 2026-04-29 (TD-006): ProductListSheet → @/components/live/ProductListSheet.tsx 사용
 //   기존 ReelCard 자체 정의 (96줄) 제거. 외부 ProductListSheet 가 더 정교한 디자인.
 import { ProductListSheet } from '@/components/live/ProductListSheet'
+import { formatNumber } from '@/utils/format'
 export type { Stream, Product, ReelData, YTPlayer, YTPlayerEvent, ApiError }
 
 export default function ReelCard({ 
@@ -250,8 +251,8 @@ export default function ReelCard({
       const detail = (e as CustomEvent).detail
       if (!detail) return
       const msg = detail.message
-        ? `🎉 ${detail.donorName}님이 ${detail.amount.toLocaleString()}딜 후원! "${detail.message}"`
-        : `🎉 ${detail.donorName}님이 ${detail.amount.toLocaleString()}딜 후원!`
+        ? `🎉 ${detail.donorName}님이 ${formatNumber(detail.amount)}딜 후원! "${detail.message}"`
+        : `🎉 ${detail.donorName}님이 ${formatNumber(detail.amount)}딜 후원!`
       addLocalMessage({
         id: `donation-alert-${Date.now()}`,
         userId: 0,
@@ -1107,7 +1108,7 @@ export default function ReelCard({
                       />
                       <div className="text-left min-w-0">
                         <p className="text-[11px] text-white font-medium truncate">{p.name}</p>
-                        <p className="text-[12px] font-bold text-red-400">₩{(p.price || 0).toLocaleString()}</p>
+                        <p className="text-[12px] font-bold text-red-400">₩{formatNumber(p.price || 0)}</p>
                       </div>
                       {isHighlighted && (
                         <span className="shrink-0 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
@@ -1159,12 +1160,12 @@ export default function ReelCard({
                     <p style={{ fontSize: 12, fontWeight: 500, color: '#374151', lineHeight: 1.35 }} className="line-clamp-2">{safeProduct.name}</p>
                     {originalPrice > safeProduct.price && (
                       <div className="flex items-baseline gap-1.5 mt-0.5">
-                        <span style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()}</span>
+                        <span style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>{formatNumber(originalPrice)}</span>
                       </div>
                     )}
                     <div className="flex items-baseline gap-1">
                       {discountRate > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{discountRate}%</span>}
-                      <span style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>{(safeProduct.price || 0).toLocaleString()}</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>{formatNumber(safeProduct.price || 0)}</span>
                       <span style={{ fontSize: 11, color: '#6B7280' }}>원</span>
                     </div>
                   </div>

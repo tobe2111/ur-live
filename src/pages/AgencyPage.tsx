@@ -8,6 +8,7 @@ import { LayoutDashboard } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
+import { formatNumber } from '@/utils/format'
 import {
   Users, ShoppingBag, DollarSign, Play,
   TrendingUp, ArrowUpRight, CheckCircle, XCircle, Clock, Download, Bell,
@@ -213,7 +214,7 @@ function RevenueTrendChart() {
         const heightPct = b.revenue > 0 ? (b.revenue / (maxVal * 1.1)) * 100 : 0
         // 라이브/공구/제휴 세분화 데이터는 아직 없으므로 단일 바 (그라디언트) 표시
         return (
-          <div key={b.key} className="flex-1 flex flex-col items-center gap-1" title={`${b.key}: ${b.revenue.toLocaleString()}${t('common.won')} / ${b.orders}${t('agency.unitCase')}`}>
+          <div key={b.key} className="flex-1 flex flex-col items-center gap-1" title={`${b.key}: ${formatNumber(b.revenue)}${t('common.won')} / ${b.orders}${t('agency.unitCase')}`}>
             <div className="w-full relative" style={{ height: `${Math.max(heightPct, 2)}%` }}>
               <div
                 className="absolute bottom-0 w-full rounded-t-md"
@@ -550,7 +551,7 @@ export default function AgencyPage() {
               </div>
             ) : (
               <p className="text-[16px] sm:text-[20px] font-extrabold text-gray-900 truncate">
-                {currentRev.toLocaleString()}{t('common.won')} / {monthlyGoal.toLocaleString()}{t('common.won')}
+                {formatNumber(currentRev)}{t('common.won')} / {formatNumber(monthlyGoal)}{t('common.won')}
               </p>
             )}
           </div>
@@ -568,7 +569,7 @@ export default function AgencyPage() {
           />
         </div>
         <p className="text-[10px] text-gray-500 mt-1.5">
-          {t('seller.daysLeft', { days: daysLeft })} · {t('seller.goalRemaining', { amount: Math.max(0, monthlyGoal - currentRev).toLocaleString() })}
+          {t('seller.daysLeft', { days: daysLeft })} · {t('seller.goalRemaining', { amount: Math.max(0, monthlyGoal - currentRev) })}
         </p>
       </div>
 
@@ -720,7 +721,7 @@ export default function AgencyPage() {
           <div>
             <p className="text-sm opacity-80">{t('agency.commissionTitle')}</p>
             <p className="text-2xl font-extrabold mt-1">
-              {commission.toLocaleString()}{t('common.won')}
+              {formatNumber(commission)}{t('common.won')}
             </p>
             <p className="text-xs opacity-60 mt-1">{t('agency.commissionDesc', { rate: commissionRate })}</p>
           </div>
@@ -749,7 +750,7 @@ export default function AgencyPage() {
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[12px] font-semibold text-gray-700">{t('agency.orderComplete')}</span>
                 <span className="text-[12px] font-extrabold text-gray-900">
-                  {totalOrdersAgg.toLocaleString()}{t('agency.unitCase')}
+                  {formatNumber(totalOrdersAgg)}{t('agency.unitCase')}
                 </span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-gray-100">
@@ -909,7 +910,7 @@ export default function AgencyPage() {
                 <div key={o.id} className="flex items-center justify-between px-5 py-3">
                   <div className="min-w-0">
                     <p className="text-xs font-mono text-gray-500">{o.order_number}</p>
-                    <p className="text-sm font-medium text-gray-900">{(o.total_amount).toLocaleString()}{t('common.won')}</p>
+                    <p className="text-sm font-medium text-gray-900">{formatNumber(o.total_amount)}{t('common.won')}</p>
                     <p className="text-xs text-gray-400">{o.seller_business_name}</p>
                   </div>
                   <div className="ml-3 flex-shrink-0">

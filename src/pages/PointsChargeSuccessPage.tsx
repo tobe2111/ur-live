@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Zap, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { formatNumber } from '@/utils/format'
 
 export default function PointsChargeSuccessPage() {
   const navigate = useNavigate()
@@ -88,8 +89,8 @@ export default function PointsChargeSuccessPage() {
             <Zap className="w-5 h-5 text-pink-500" />
             <span className="text-sm text-gray-600">충전된 딜</span>
           </div>
-          <p className="text-3xl font-bold text-pink-600">+{result?.points_added.toLocaleString()}딜</p>
-          <p className="text-sm text-gray-500 mt-2">현재 잔액: {result?.balance.toLocaleString()}딜</p>
+          <p className="text-3xl font-bold text-pink-600">+{formatNumber(result?.points_added)}딜</p>
+          <p className="text-sm text-gray-500 mt-2">현재 잔액: {formatNumber(result?.balance)}딜</p>
         </div>
         <div className="flex gap-3">
           <button

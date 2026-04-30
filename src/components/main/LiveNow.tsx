@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import api from '@/lib/api'
+import { formatNumber } from '@/utils/format'
 
 interface LiveStream {
   id: number
@@ -247,7 +248,7 @@ export default function LiveNow() {
                 </p>
                 {stream.current_product && (
                   <p className="text-sm font-extrabold text-white mt-1">
-                    ₩{stream.current_product.price.toLocaleString()}
+                    ₩{formatNumber(stream.current_product.price)}
                   </p>
                 )}
               </div>

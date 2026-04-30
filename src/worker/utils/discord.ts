@@ -118,7 +118,7 @@ export async function alertPaymentFailure(
       },
       {
         name: 'Amount',
-        value: `${amount.toLocaleString()}원`,
+        value: `${Number(amount ?? 0).toLocaleString('ko-KR')}원`,
         inline: true,
       },
       {

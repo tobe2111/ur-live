@@ -14,7 +14,6 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { KOREAN_NAMES, REVIEW_TEMPLATES } from './review-templates';
-
 export const adminReviewGeneratorRoutes = new Hono<{ Bindings: Env }>();
 
 function safeAdminError(err: unknown, env: Env): string {
@@ -82,7 +81,7 @@ adminReviewGeneratorRoutes.post('/reviews/generate', cors(), async (c) => {
 
 상품 정보:
 - 상품명: ${product_name || '상품'}
-- 가격: ${product_price ? product_price.toLocaleString() + '원' : '미정'}
+- 가격: ${product_price ? Number(product_price ?? 0).toLocaleString('ko-KR') + '원' : '미정'}
 - 카테고리: ${product_category || '일반'}
 ${options?.length ? '- 옵션: ' + options.join(', ') : ''}
 

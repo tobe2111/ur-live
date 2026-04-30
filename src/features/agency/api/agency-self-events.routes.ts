@@ -165,7 +165,7 @@ app.post('/', requireAgencyPermission('campaign'), async (c) => {
     FROM agency_sellers WHERE agency_id = ?
   `).bind(
     `🎯 새 이벤트: ${body.title}`,
-    `${body.metric === 'revenue' ? '매출' : body.metric === 'live_count' ? '라이브 횟수' : '피크 시청자'} ${body.target_value.toLocaleString()} 달성 시 ${(body.reward_deal || 0).toLocaleString()}딜 지급. 참여하시려면 에이전시에 문의.`,
+    `${body.metric === 'revenue' ? '매출' : body.metric === 'live_count' ? '라이브 횟수' : '피크 시청자'} ${Number(body.target_value ?? 0).toLocaleString('ko-KR')} 달성 시 ${Number(body.reward_deal ?? 0).toLocaleString('ko-KR')}딜 지급. 참여하시려면 에이전시에 문의.`,
     `/seller`,
     agency.id,
   ).run().catch(swallow('agency:api:agency-self-events'));

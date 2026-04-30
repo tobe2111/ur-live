@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Gavel, Crown, Timer } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface AuctionData {
   id: number; title: string; start_price: number; current_price: number
@@ -86,7 +87,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
     try {
       const res = await api.post(`/api/auction/${auction.id}/bid`, { amount: bidAmount })
       if (res.data.success) {
-        toast.success(`${bidAmount.toLocaleString()}원 입찰 성공!`)
+        toast.success(`${formatNumber(bidAmount)}원 입찰 성공!`)
         setBidAmount(bidAmount + auction.min_increment)
       } else {
         toast.error(res.data.error)
@@ -122,7 +123,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
         <div className="flex items-end justify-between">
           <div>
             <p className="text-[10px] text-white/70">현재 최고가</p>
-            <p className="text-2xl font-bold">{auction.current_price.toLocaleString()}원</p>
+            <p className="text-2xl font-bold">{formatNumber(auction.current_price)}원</p>
           </div>
           <div className="text-right">
             <p className="text-[10px] text-white/70">입찰 {auction.bid_count}회</p>
@@ -145,7 +146,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
                 {i === 0 ? '👑' : i === 1 ? '💎' : '⭐'}
                 {b.user_name}
               </span>
-              <span className="font-mono">{b.amount.toLocaleString()}원</span>
+              <span className="font-mono">{formatNumber(b.amount)}원</span>
             </div>
           ))}
         </div>
@@ -174,7 +175,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
 
       {/* 최소 입찰 안내 */}
       <p className="text-[10px] text-white/60 mt-2 text-center">
-        최소 입찰: {(auction.current_price + auction.min_increment).toLocaleString()}원 (+{auction.min_increment.toLocaleString()}원)
+        최소 입찰: {formatNumber(auction.current_price + auction.min_increment)}원 (+{formatNumber(auction.min_increment)}원)
       </p>
     </div>
   )

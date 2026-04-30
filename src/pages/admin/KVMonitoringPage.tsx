@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { RefreshCw, Activity, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react'
 import { formatKST } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
 
 interface KVUsageData {
   timestamp: string
@@ -117,10 +118,10 @@ export default function KVMonitoringPage() {
               
               <div className="mb-4">
                 <div className="text-3xl font-bold text-gray-900">
-                  {data.reads.toLocaleString()}
+                  {formatNumber(data.reads)}
                 </div>
                 <div className="text-sm text-gray-600 mt-1">
-                  / {data.readLimit.toLocaleString()} reads/day
+                  / {formatNumber(data.readLimit)} reads/day
                 </div>
               </div>
               
@@ -151,10 +152,10 @@ export default function KVMonitoringPage() {
               
               <div className="mb-4">
                 <div className="text-3xl font-bold text-gray-900">
-                  {data.writes.toLocaleString()}
+                  {formatNumber(data.writes)}
                 </div>
                 <div className="text-sm text-gray-600 mt-1">
-                  / {data.writeLimit.toLocaleString()} writes/day
+                  / {formatNumber(data.writeLimit)} writes/day
                 </div>
               </div>
               

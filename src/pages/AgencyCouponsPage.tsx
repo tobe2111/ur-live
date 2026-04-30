@@ -6,6 +6,7 @@ import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/co
 import { Ticket, Plus, X, BarChart3, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
+import { formatNumber } from '@/utils/format'
 
 interface Distribution {
   parent_coupon_id: number
@@ -148,7 +149,7 @@ export default function AgencyCouponsPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <p className="text-sm font-bold text-gray-900 truncate">{d.coupon_name}</p>
                         <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">
-                          {d.type === 'percent' ? `${d.value}%` : `${d.value.toLocaleString()}원`}
+                          {d.type === 'percent' ? `${d.value}%` : `${formatNumber(d.value)}원`}
                         </span>
                       </div>
                       <p className="text-[10px] text-gray-400 font-mono">{d.parent_code}</p>

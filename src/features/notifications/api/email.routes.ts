@@ -6,7 +6,6 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
-
 export const emailRoutes = new Hono<{ Bindings: Env }>()
 
 interface EmailParams {
@@ -55,7 +54,7 @@ emailRoutes.post('/order-confirmation', async (c) => {
       <h2 style="color:#1d1d1f">Order Confirmed! 🎉</h2>
       <p>Thank you for your order.</p>
       <p><strong>Order #:</strong> ${order_number}</p>
-      <p><strong>Total:</strong> ${Number(total_amount).toLocaleString()} KRW</p>
+      <p><strong>Total:</strong> ${Number(total_amount ?? 0).toLocaleString('ko-KR')} KRW</p>
       <hr style="border:1px solid #eee;margin:20px 0">
       <a href="https://live.ur-team.com/my-orders" style="display:inline-block;padding:12px 24px;background:#007aff;color:white;text-decoration:none;border-radius:8px">View Order</a>
     </div>

@@ -129,7 +129,7 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
     VALUES (?, 'charge', ?, ?, ?, 0, ?, ?)
   `).bind(
     userId, amount, 0, pkg.points, // 충전은 수수료 0 (1:1)
-    `딜 ${pkg.points.toLocaleString()}개 충전`, orderId
+    `딜 ${Number(pkg.points ?? 0).toLocaleString('ko-KR')}개 충전`, orderId
   ).run();
 
   return c.json({
@@ -139,7 +139,7 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
       amount,
       points: pkg.points,
       commission: 0, // 충전은 수수료 없음
-      orderName: `딜 ${pkg.points.toLocaleString()}개 충전`,
+      orderName: `딜 ${Number(pkg.points ?? 0).toLocaleString('ko-KR')}개 충전`,
       clientKey: c.env.TOSS_CLIENT_KEY,
     },
   });
@@ -254,7 +254,7 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
   createDashboardNotification(
     DB, 'admin', null, 'deal_charged',
     '딜 충전',
-    `${amount.toLocaleString()}원 → ${pointsToAdd.toLocaleString()}딜 충전`,
+    `${Number(amount ?? 0).toLocaleString('ko-KR')}원 → ${Number(pointsToAdd ?? 0).toLocaleString('ko-KR')}딜 충전`,
     '/admin/deals'
   ).catch(swallow('points:api:points'));
 
@@ -264,7 +264,7 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
       points_added: pointsToAdd,
       balance: updated?.balance ?? pointsToAdd,
     },
-    message: `${pointsToAdd.toLocaleString()}딜이 충전되었습니다!`,
+    message: `${Number(pointsToAdd ?? 0).toLocaleString('ko-KR')}딜이 충전되었습니다!`,
   });
 });
 
@@ -403,7 +403,7 @@ async function executeDonate(
         balance: newBalance,
         seller_name: stream.seller_name,
       },
-      message: `${amount.toLocaleString()}딜을 후원했습니다!`,
+      message: `${Number(amount ?? 0).toLocaleString('ko-KR')}딜을 후원했습니다!`,
     },
   };
 }
@@ -741,7 +741,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       }
     }
 
-    createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${authoritativeTotal.toLocaleString()}딜 상품 결제`, '/admin/orders').catch(swallow('points:api:points'));
+    createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${Number(authoritativeTotal ?? 0).toLocaleString('ko-KR')}딜 상품 결제`, '/admin/orders').catch(swallow('points:api:points'));
 
     return c.json({
       success: true,
@@ -751,7 +751,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
         balance: newBalance,
         payment_method: 'deal_points',
       },
-      message: `${authoritativeTotal.toLocaleString()}딜로 결제가 완료되었습니다!`,
+      message: `${Number(authoritativeTotal ?? 0).toLocaleString('ko-KR')}딜로 결제가 완료되었습니다!`,
     });
   } catch (err) {
     console.error('[points/pay] Error:', err);

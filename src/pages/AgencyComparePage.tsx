@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { BarChart2 } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 export default function AgencyComparePage() {
   const { t } = useTranslation()
@@ -60,7 +61,7 @@ export default function AgencyComparePage() {
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-yellow-400 text-white' : i === 1 ? 'bg-gray-300 text-white' : i === 2 ? 'bg-orange-400 text-white' : 'bg-gray-100 text-gray-500'}`}>{i + 1}</span>
                     <span className="text-sm font-bold text-gray-900">{s.name}</span>
                   </div>
-                  <span className="text-sm font-bold text-blue-600">{Number(s.revenue).toLocaleString()}원</span>
+                  <span className="text-sm font-bold text-blue-600">{formatNumber(s.revenue)}원</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-3 mb-2">
                   <div className="bg-blue-500 h-3 rounded-full transition-all" style={{ width: `${(s.revenue / maxRevenue) * 100}%` }} />

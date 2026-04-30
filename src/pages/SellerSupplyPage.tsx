@@ -17,6 +17,7 @@ import {
   ShoppingBag, Tag, Plus
 } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
 
 interface SupplyProduct {
   id: number
@@ -232,10 +233,10 @@ export default function SellerSupplyPage() {
                       )}
                       <div className="flex items-center gap-3 mt-2">
                         <span className="flex items-center gap-1 text-xs text-gray-600">
-                          <Tag className="w-3 h-3" /> {t('seller.retailPrice')} <strong>{product.retail_price.toLocaleString()}{t('common.won')}</strong>
+                          <Tag className="w-3 h-3" /> {t('seller.retailPrice')} <strong>{formatNumber(product.retail_price)}{t('common.won')}</strong>
                         </span>
                         <span className="flex items-center gap-1 text-xs text-purple-600 font-medium">
-                          {t('seller.supplyPrice')} <strong>{product.supply_price.toLocaleString()}{t('common.won')}</strong>
+                          {t('seller.supplyPrice')} <strong>{formatNumber(product.supply_price)}{t('common.won')}</strong>
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{t('seller.stockCount', { count: product.stock })}</p>
@@ -353,11 +354,11 @@ export default function SellerSupplyPage() {
             <div className="bg-purple-50 rounded-lg p-3 mb-4 space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500">{t('seller.retailPriceLabel')}</span>
-                <span className="font-medium">{requestModal.retail_price.toLocaleString()}{t('common.won')}</span>
+                <span className="font-medium">{formatNumber(requestModal.retail_price)}{t('common.won')}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-purple-700 font-medium">{t('seller.supplyPriceLabel')}</span>
-                <span className="text-purple-700 font-semibold">{requestModal.supply_price.toLocaleString()}{t('common.won')}</span>
+                <span className="text-purple-700 font-semibold">{formatNumber(requestModal.supply_price)}{t('common.won')}</span>
               </div>
             </div>
 

@@ -46,7 +46,7 @@ function buildReportHTML(opts: {
         ${stat('💰 매출', `${(opts.revenue / 10_000).toFixed(0)}만원`)}
         ${stat('📦 주문', `${opts.orderCount}건`)}
         ${stat('🎥 라이브', `${opts.liveCount}회`)}
-        ${stat('👥 시청자', `${opts.totalViewers.toLocaleString()}명`)}
+        ${stat('👥 시청자', `${Number(opts.totalViewers ?? 0).toLocaleString('ko-KR')}명`)}
         ${stat('⭐ 새 리뷰', `${opts.newReviews}건`)}
         ${stat('★ 평균 별점', opts.avgRating.toFixed(1))}
       </div>

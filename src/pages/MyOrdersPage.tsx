@@ -23,6 +23,7 @@ import type { Order, OrderItem } from '@/types/order'
 import type { CartItem } from '@/types/cart'
 import { formatKST } from '@/utils/date'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { formatNumber } from '@/utils/format'
 
 type TabType = 'cart' | 'orders'
 
@@ -411,7 +412,7 @@ export default function MyOrdersPage() {
                           </p>
                           <p className="text-[14px] font-semibold text-gray-900">
                             {/* ✅ BUG #7 FIX: price_snapshot is optional; guard against undefined→NaN */}
-                            {((item.price_snapshot ?? 0) * item.quantity).toLocaleString()}원
+                            {formatNumber((item.price_snapshot ?? 0) * item.quantity)}원
                           </p>
                         </div>
                       </div>
@@ -504,7 +505,7 @@ export default function MyOrdersPage() {
                     <span className="text-gray-500">상품 금액</span>
                     <span className="font-medium text-gray-900">
                       {/* ✅ items가 배열이 아닌 값(object 등)으로 올 경우 .reduce is not a function 방어 */}
-                    {(Array.isArray(selectedOrder.items) ? selectedOrder.items : []).reduce((sum, item) => sum + (item.price_snapshot ?? 0) * item.quantity, 0).toLocaleString()}원
+                    {(Array.isArray(selectedOrder.items) ? selectedOrder.items : []).reduce((sum, item) => sum + (item.price_snapshot ?? 0) * item.quantity, 0)}원
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -515,7 +516,7 @@ export default function MyOrdersPage() {
                     <span className="text-gray-900 font-semibold">총 결제금액</span>
                     <span className="text-[19px] font-bold text-blue-600">
                       {/* ✅ BUG #7 FIX: total_amount is optional in Order type; nullish fallback prevents TypeError */}
-                      {(selectedOrder.total_amount ?? selectedOrder.amount ?? 0).toLocaleString()}원
+                      {formatNumber(selectedOrder.total_amount ?? selectedOrder.amount ?? 0)}원
                     </span>
                   </div>
                   <div className="flex justify-between">

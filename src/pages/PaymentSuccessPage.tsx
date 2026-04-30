@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { CheckCircle, Package, AlertCircle } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 import { addBreadcrumb, captureError } from '@/lib/sentry'
+import { formatNumber } from '@/utils/format'
 
 export default function PaymentSuccessPage() {
   
@@ -257,7 +258,7 @@ export default function PaymentSuccessPage() {
                   <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7]">
                     <span className="text-sm sm:text-base lg:text-lg font-medium text-[#1d1d1f]">결제 금액</span>
                     <span className="text-lg sm:text-xl lg:text-2xl font-bold text-[#007aff]">
-                      {parseInt(amount || '0').toLocaleString()}원
+                      {parseInt(amount || '0')}원
                     </span>
                   </div>
                 </div>
