@@ -106,30 +106,38 @@ function ChatNameSetting() {
   )
 }
 
-// 🛡️ 2026-04-30 v4 시안 매칭: 쿠폰 / 바우처 카운트 2분할 카드
-function CouponVoucherStats() {
-  const navigate = useNavigate()
-  const [couponCount, setCouponCount] = useState<number | null>(null)
-  const [voucherCount, setVoucherCount] = useState<number | null>(null)
+// 🛡️ 2026-04-30: 카운트 fetch 통합 — CouponVoucherStats 와 ShoppingGroup 이
+//   각자 호출하던 /api/coupons/my, /api/vouchers/my 를 부모에서 1회만 호출.
+interface MyCounts {
+  wish: number | null
+  coupon: number | null
+  voucher: number | null
+}
+
+function useMyCounts(): MyCounts {
+  const [counts, setCounts] = useState<MyCounts>({ wish: null, coupon: null, voucher: null })
 
   useEffect(() => {
     import('@/lib/api').then(({ default: api }) => {
-      api.get('/api/coupons/my')
-        .then(r => {
-          if (r.data?.success) {
-            const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
-            setCouponCount(list.length)
-          }
-        }).catch(() => setCouponCount(0))
-      api.get('/api/vouchers/my')
-        .then(r => {
-          if (r.data?.success) {
-            const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
-            setVoucherCount(list.length)
-          }
-        }).catch(() => setVoucherCount(0))
+      const extract = (r: { data?: { success?: boolean; data?: unknown } }) => {
+        if (!r.data?.success) return 0
+        const d = r.data.data as unknown
+        if (Array.isArray(d)) return d.length
+        const items = (d as { items?: unknown[] })?.items
+        return Array.isArray(items) ? items.length : 0
+      }
+      api.get('/api/wishlists').then(r => setCounts(c => ({ ...c, wish: extract(r) }))).catch(() => setCounts(c => ({ ...c, wish: 0 })))
+      api.get('/api/coupons/my').then(r => setCounts(c => ({ ...c, coupon: extract(r) }))).catch(() => setCounts(c => ({ ...c, coupon: 0 })))
+      api.get('/api/vouchers/my').then(r => setCounts(c => ({ ...c, voucher: extract(r) }))).catch(() => setCounts(c => ({ ...c, voucher: 0 })))
     })
   }, [])
+
+  return counts
+}
+
+// 🛡️ 2026-04-30 v4 시안 매칭: 쿠폰 / 바우처 카운트 2분할 카드
+function CouponVoucherStats({ counts }: { counts: MyCounts }) {
+  const navigate = useNavigate()
 
   return (
     <div className="px-4 pt-2">
@@ -142,7 +150,7 @@ function CouponVoucherStats() {
           <p className="text-[10px] text-white/55">쿠폰</p>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-[20px] font-extrabold text-white" style={{ letterSpacing: '-0.02em' }}>
-              {couponCount ?? '-'}
+              {counts.coupon ?? '-'}
             </span>
             <span className="text-[11px] text-white/55">장</span>
           </div>
@@ -155,7 +163,7 @@ function CouponVoucherStats() {
           <p className="text-[10px] text-white/55">바우처</p>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-[20px] font-extrabold text-white" style={{ letterSpacing: '-0.02em' }}>
-              {voucherCount ?? '-'}
+              {counts.voucher ?? '-'}
             </span>
             <span className="text-[11px] text-white/55">장</span>
           </div>
@@ -166,39 +174,13 @@ function CouponVoucherStats() {
 }
 
 // 🛡️ 2026-04-30 v4 시안 매칭: 쇼핑 InsetGroup (찜 / 바우처 / 쿠폰함 / 주문)
-function ShoppingGroup() {
+function ShoppingGroup({ counts }: { counts: MyCounts }) {
   const navigate = useNavigate()
-  const [wishCount, setWishCount] = useState<number | null>(null)
-  const [couponCount, setCouponCount] = useState<number | null>(null)
-  const [voucherCount, setVoucherCount] = useState<number | null>(null)
-
-  useEffect(() => {
-    import('@/lib/api').then(({ default: api }) => {
-      api.get('/api/wishlists').then(r => {
-        if (r.data?.success) {
-          const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
-          setWishCount(list.length)
-        }
-      }).catch(() => setWishCount(0))
-      api.get('/api/coupons/my').then(r => {
-        if (r.data?.success) {
-          const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
-          setCouponCount(list.length)
-        }
-      }).catch(() => setCouponCount(0))
-      api.get('/api/vouchers/my').then(r => {
-        if (r.data?.success) {
-          const list = Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || [])
-          setVoucherCount(list.length)
-        }
-      }).catch(() => setVoucherCount(0))
-    })
-  }, [])
 
   const items = [
-    { icon: '❤️', label: '찜한 상품', count: wishCount, path: '/wishlist' },
-    { icon: '🎟️', label: '내 바우처', sub: '식사권·이용권', count: voucherCount, path: '/my-vouchers' },
-    { icon: '🎫', label: '쿠폰함', count: couponCount, path: '/my-coupons' },
+    { icon: '❤️', label: '찜한 상품', count: counts.wish, path: '/wishlist' },
+    { icon: '🎟️', label: '내 바우처', sub: '식사권·이용권', count: counts.voucher, path: '/my-vouchers' },
+    { icon: '🎫', label: '쿠폰함', count: counts.coupon, path: '/my-coupons' },
     { icon: '📦', label: '주문 내역', sub: '최근 3개월', path: '/my-orders' },
   ]
 
@@ -600,6 +582,9 @@ function SellerSwitchCard() {
 export default function UserProfilePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  // 🛡️ 2026-04-30: 카운트 통합 fetch — 자식 컴포넌트 (CouponVoucherStats / ShoppingGroup) 가
+  //   각자 호출하던 wishlist / coupon / voucher endpoint 를 1회만 호출.
+  const counts = useMyCounts()
   
   // ✅ Zustand 스토어 사용 (지역별)
   const authStore = isKorea() ? useAuthKR : useAuthWorld
@@ -775,13 +760,13 @@ export default function UserProfilePage() {
       <TeamPointsCard />
 
       {/* v4 쿠폰 / 바우처 카운트 2분할 */}
-      <CouponVoucherStats />
+      <CouponVoucherStats counts={counts} />
 
       {/* v4 주문 현황 */}
       <OrderStatusBar />
 
       {/* v4 쇼핑 InsetGroup — 시안 매칭 (4개) */}
-      <ShoppingGroup />
+      <ShoppingGroup counts={counts} />
 
       {/* v4 활동 InsetGroup — 셀러 전환 / 채팅 이름 */}
       <SellerSwitchCard />
