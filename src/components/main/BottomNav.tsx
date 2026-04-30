@@ -100,6 +100,8 @@ export default function BottomNav() {
             className={`h-6 w-6 rounded-full object-cover transition-all ${
               active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#020202]' : 'opacity-60'
             }`}
+            loading="lazy"
+            decoding="async"
             onError={() => setProfileImage(null)}
           />
         ) : (

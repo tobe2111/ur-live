@@ -35,6 +35,7 @@ function ProductCard({ product }: { product: Product }) {
             alt={product.name}
             className="w-full h-full object-cover"
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">

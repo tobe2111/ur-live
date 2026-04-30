@@ -64,6 +64,34 @@ export class PerformanceMonitor {
 
     fidObserver.observe({ entryTypes: ['first-input'] })
 
+    // 🛡️ 2026-04-30: INP (Interaction to Next Paint) 추적 — Google 2024+ 권장 (FID 대체).
+    // 모든 사용자 interaction 의 응답 지연 측정. p98 가 200ms 이하 권장.
+    try {
+      let inpMax = 0
+      const inpObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const event = entry as PerformanceEventTiming
+          // duration = (paint - input) — 사용자 입력 후 다음 paint 까지
+          const inp = event.duration
+          if (inp > inpMax) inpMax = inp
+        }
+        Sentry.addBreadcrumb({
+          category: 'performance',
+          message: `INP (max so far): ${Math.round(inpMax)}ms`,
+          data: { page: pageName },
+          level: 'info',
+        })
+        // 200ms 초과 시 경고 (Google "Poor")
+        if (inpMax > 200) {
+          Sentry.captureMessage(
+            `Slow INP on ${pageName}: ${Math.round(inpMax)}ms`,
+            'warning'
+          )
+        }
+      })
+      inpObserver.observe({ type: 'event', buffered: true, durationThreshold: 40 } as PerformanceObserverInit)
+    } catch { /* 일부 구형 브라우저 미지원 — silent skip */ }
+
     // CLS (Cumulative Layout Shift) 추적
     let clsValue = 0
     const clsObserver = new PerformanceObserver((list) => {

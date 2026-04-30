@@ -863,6 +863,9 @@ export default function ReelCard({
           src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
           alt=""
           className="absolute inset-0 h-full w-full object-cover -z-10"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           onError={(e) => {
             // maxresdefault 실패 시 hqdefault로 폴백
             const img = e.currentTarget
@@ -957,18 +960,6 @@ export default function ReelCard({
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" />
 
       {/* Product overlay */}
-      {/* 🛡️ 2026-04-30: YouTube 제목/컨트롤 상단 노출 차단 overlay
-          — modestbranding=1 / showinfo=0 가 deprecated 라 자동 재생 시
-            영상 상단에 제목/채널이 잠시 보임. 검은 그라데이션으로 가림. */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-[6]"
-        aria-hidden="true"
-        style={{
-          height: 80,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0) 100%)',
-        }}
-      />
-
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
         {/* Top bar: 딜 잔액 게이지 (TopNav 아래에 위치) */}
         {/* 🛡️ 2026-04-30: 좌측 넘침 수정 left-3→left-4 (max-w 추가) */}
@@ -1155,7 +1146,7 @@ export default function ReelCard({
                 <div className="flex items-center gap-2.5 px-3 py-2">
                   <div className="relative rounded-2xl overflow-hidden shrink-0" style={{ width: 60, height: 60 }}>
                     {(safeProduct.image_url || safeProduct.image) ? (
-                      <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || '상품'} loading="lazy" className="w-full h-full object-cover" />
+                      <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || '상품'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-gray-200" />
                     )}
