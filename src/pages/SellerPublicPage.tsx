@@ -46,9 +46,11 @@ export default function SellerPublicPage() {
   const [tab, setTab] = useState<Tab>('home')
 
   // 셀러 본인인지 확인 (편집 버튼 표시용) — seller 로드 후 id 비교
+  // 🛡️ 2026-04-30: 듀얼 세션 (user_type='user' + seller_token 동시 보유) 도 owner 인정.
+  //   기존 user_type==='seller' 단독 체크는 dual-mode (CLAUDE.md 정책) 사용자를 owner 로 인식 못 함.
   const storedSellerId = localStorage.getItem('seller_id')
-  const userType = localStorage.getItem('user_type')
-  const isOwner = userType === 'seller' && !!seller && String(seller.id) === storedSellerId
+  const sellerToken = localStorage.getItem('seller_token')
+  const isOwner = !!sellerToken && !!seller && String(seller.id) === storedSellerId
 
   // ── 인라인 편집 상태 ──
   const [editingField, setEditingField] = useState<string | null>(null)
@@ -325,14 +327,14 @@ export default function SellerPublicPage() {
           ) : (
             <h1 className={`text-xl font-extrabold ${T.text} group`} onClick={() => startEdit('name')}>
               {seller.name || t('seller.publicPage.noName')}
-              {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />}
+              {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1.5 opacity-60 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity" />}
             </h1>
           )}
         </div>
         {seller.business_name && (
           <div className="flex items-center gap-1 mt-0.5">
-            <MapPin className="w-3 h-3 text-gray-400" />
-            <span className="text-xs text-gray-500">{seller.business_name}</span>
+            <MapPin className={`w-3 h-3 ${T.textMuted}`} />
+            <span className={`text-xs ${T.textMuted}`}>{seller.business_name}</span>
           </div>
         )}
         {editingField === 'bio' ? (
@@ -342,59 +344,73 @@ export default function SellerPublicPage() {
               value={editBio}
               onChange={e => setEditBio(e.target.value)}
               rows={3}
-              className="w-full text-sm text-gray-400 bg-[#121212] border border-pink-500 rounded-lg p-2 focus:outline-none focus:border-pink-500 resize-none"
+              className={`w-full text-sm ${T.input} border border-pink-500 rounded-lg p-2 focus:outline-none focus:border-pink-500 resize-none`}
             />
             <div className="flex gap-2 mt-1">
               <button onClick={() => saveEdit('bio', editBio)} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">{t('common.save')}</button>
-              <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">{t('common.cancel')}</button>
+              <button onClick={() => setEditingField(null)} className={`px-3 py-1 ${T.cardAlt} ${T.textMuted} text-xs rounded-lg`}>{t('common.cancel')}</button>
             </div>
           </div>
         ) : (
           <div className="group mt-2" onClick={() => startEdit('bio')}>
-            <p className="text-sm text-gray-400 leading-relaxed line-clamp-2">
+            <p className={`text-sm ${T.textSub} leading-relaxed line-clamp-2`}>
               {seller.bio || (isOwner ? t('seller.publicPage.enterBio') : '')}
             </p>
-            {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline opacity-0 group-hover:opacity-100 transition-opacity" />}
+            {isOwner && <Pencil className={`w-3 h-3 ${T.textMuted} inline opacity-60 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity`} />}
           </div>
         )}
 
-        {/* 통계 — 🛡️ 2026-04-30 v4 톤 */}
+        {/* 통계 — 🛡️ 2026-04-30 v4 톤 (테마 토큰 반영) */}
         <div className="grid grid-cols-3 gap-2 mt-4 mb-2">
-          <div className="rounded-2xl px-3 py-2.5 bg-white/[0.04]">
-            <p className="text-[10px] text-white/55">{t('seller.tabProducts')}</p>
+          <div className={`rounded-2xl px-3 py-2.5 ${isDark ? 'bg-white/[0.04]' : 'bg-gray-100'}`}>
+            <p className={`text-[10px] ${T.textMuted}`}>{t('seller.tabProducts')}</p>
             <p className={`text-[15px] font-extrabold ${T.text} mt-0.5`} style={{ letterSpacing: '-0.02em' }}>{products.length}</p>
           </div>
-          <div className="rounded-2xl px-3 py-2.5 bg-white/[0.04]">
-            <p className="text-[10px] text-white/55">{t('seller.tabLive')}</p>
+          <div className={`rounded-2xl px-3 py-2.5 ${isDark ? 'bg-white/[0.04]' : 'bg-gray-100'}`}>
+            <p className={`text-[10px] ${T.textMuted}`}>{t('seller.tabLive')}</p>
             <p className={`text-[15px] font-extrabold ${T.text} mt-0.5`} style={{ letterSpacing: '-0.02em' }}>{streams.length}</p>
           </div>
-          <div className="rounded-2xl px-3 py-2.5 bg-white/[0.04]">
-            <p className="text-[10px] text-white/55">{t('seller.rating')}</p>
+          <div className={`rounded-2xl px-3 py-2.5 ${isDark ? 'bg-white/[0.04]' : 'bg-gray-100'}`}>
+            <p className={`text-[10px] ${T.textMuted}`}>{t('seller.rating')}</p>
             <p className={`text-[15px] font-extrabold ${T.text} mt-0.5 flex items-center gap-0.5`} style={{ letterSpacing: '-0.02em' }}>
               <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" aria-hidden="true" />
               {(seller as any)?.average_rating != null
                 ? Number((seller as any).average_rating).toFixed(1)
-                : <span className="text-white/45 text-[11px] font-semibold">{t('common.new')}</span>}
+                : <span className={`${T.textMuted} text-[11px] font-semibold`}>{t('common.new')}</span>}
             </p>
           </div>
         </div>
 
-        {/* 팔로우 + CTA */}
-        <FollowButton sellerId={sellerId!} />
-        <div className="flex gap-2 mt-2">
-          {seller.kakao_chat_link && (
-            <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-white/[0.04] active:bg-white/[0.08] transition-colors text-[12px] font-medium text-white">
-              <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.oneOnOneInquiry')}
-            </a>
-          )}
+        {/* 🛡️ 2026-04-30: 본인이면 명시적 '프로필 수정' 버튼 (인라인 편집 외 진입점)
+            아니면 팔로우 + 1:1 + 후원 CTA */}
+        {isOwner ? (
           <button
             type="button"
-            onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info(t('seller.noLiveNow'))}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-white/[0.04] active:bg-white/[0.08] transition-colors text-[12px] font-medium text-white"
+            onClick={() => navigate('/seller/profile')}
+            className={`w-full mt-2 py-3 rounded-2xl ${isDark ? 'bg-white/[0.08] text-white' : 'bg-gray-100 text-gray-900'} active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2`}
           >
-            <Heart className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.donateButton')}
+            <Pencil className="w-4 h-4" aria-hidden="true" />
+            {t('seller.publicPage.editProfile', { defaultValue: '프로필 수정' })}
           </button>
-        </div>
+        ) : (
+          <>
+            <FollowButton sellerId={sellerId!} />
+            <div className="flex gap-2 mt-2">
+              {seller.kakao_chat_link && (
+                <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl ${isDark ? 'bg-white/[0.04] active:bg-white/[0.08] text-white' : 'bg-gray-100 active:bg-gray-200 text-gray-900'} transition-colors text-[12px] font-medium`}>
+                  <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.oneOnOneInquiry')}
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info(t('seller.noLiveNow'))}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl ${isDark ? 'bg-white/[0.04] active:bg-white/[0.08] text-white' : 'bg-gray-100 active:bg-gray-200 text-gray-900'} transition-colors text-[12px] font-medium`}
+              >
+                <Heart className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.donateButton')}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* 탭 — 🛡️ 2026-04-30 v4 sticky chrome 톤 */}
@@ -446,9 +462,9 @@ export default function SellerPublicPage() {
                           <p className={`text-[12px] font-medium ${T.text} line-clamp-1`}>{p.name}</p>
                           {p.restaurant_name && <p className="text-[10px] text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-2.5 h-2.5" />{p.restaurant_name}</p>}
                           <div className="flex items-baseline gap-1.5 mt-0.5">
-                            <span className="text-[13px] font-extrabold text-red-500">{(p.price || 0).toLocaleString()}원</span>
+                            <span className="text-[13px] font-extrabold text-red-500">{Number(p.price || 0).toLocaleString()}원</span>
                             {p.original_price && p.original_price > p.price && (
-                              <span className="text-[10px] text-gray-500 line-through">{(p.original_price || 0).toLocaleString()}</span>
+                              <span className="text-[10px] text-gray-500 line-through">{Number(p.original_price || 0).toLocaleString()}</span>
                             )}
                           </div>
                           {(p.group_buy_target ?? 0) > 0 && (
@@ -550,8 +566,8 @@ export default function SellerPublicPage() {
                       {p.restaurant_address && <p className="text-[10px] text-gray-400 mt-0.5">{p.restaurant_address}</p>}
                       <div className="flex items-baseline gap-1.5 mt-1.5">
                         {disc > 0 && <span className="text-sm font-extrabold text-red-500">{disc}%</span>}
-                        <span className={`text-sm font-extrabold ${T.text}`}>{(p.price || 0).toLocaleString()}원</span>
-                        {p.original_price && <span className="text-xs text-gray-400 line-through">{(p.original_price || 0).toLocaleString()}원</span>}
+                        <span className={`text-sm font-extrabold ${T.text}`}>{Number(p.price || 0).toLocaleString()}원</span>
+                        {p.original_price && <span className="text-xs text-gray-400 line-through">{Number(p.original_price || 0).toLocaleString()}원</span>}
                       </div>
                       {(p.group_buy_target ?? 0) > 0 && (
                         <div className="mt-1.5">
@@ -646,7 +662,7 @@ export default function SellerPublicPage() {
               ) : (
                 <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap group" onClick={() => { if (isOwner) { setEditBio(seller.bio || ''); setEditingField('bio-info') } }}>
                   {seller.bio || (isOwner ? t('seller.publicPage.enterBioTap') : t('seller.publicPage.noBio'))}
-                  {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1 opacity-0 group-hover:opacity-100" />}
+                  {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1 opacity-60 lg:opacity-0 lg:group-hover:opacity-100" />}
                 </p>
               )}
 
@@ -663,7 +679,7 @@ export default function SellerPublicPage() {
                 ) : seller.sns_instagram ? (
                   <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('instagram')}>
                     <a href={seller.sns_instagram} target="_blank" rel="noopener" onClick={e => isOwner && e.preventDefault()} className="text-sm text-pink-500">Instagram →</a>
-                    {isOwner && <Pencil className="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100" />}
+                    {isOwner && <Pencil className="w-3 h-3 text-gray-300 opacity-60 lg:opacity-0 lg:group-hover:opacity-100" />}
                   </div>
                 ) : isOwner ? (
                   <button onClick={() => startEdit('instagram')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> {t('seller.publicPage.addInstagram')}</button>
@@ -680,7 +696,7 @@ export default function SellerPublicPage() {
                 ) : seller.sns_youtube ? (
                   <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('youtube')}>
                     <a href={seller.sns_youtube} target="_blank" rel="noopener" onClick={e => isOwner && e.preventDefault()} className="text-sm text-red-500">YouTube →</a>
-                    {isOwner && <Pencil className="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100" />}
+                    {isOwner && <Pencil className="w-3 h-3 text-gray-300 opacity-60 lg:opacity-0 lg:group-hover:opacity-100" />}
                   </div>
                 ) : isOwner ? (
                   <button onClick={() => startEdit('youtube')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> {t('seller.publicPage.addYoutube')}</button>
@@ -833,13 +849,13 @@ function StreamCard({ stream, onClick }: { stream: LiveStream; onClick: () => vo
         ) : null}
         {isLive && stream.viewer_count !== undefined && (
           <span className="absolute bottom-2 left-2 text-white text-[10px] flex items-center gap-0.5 drop-shadow-lg">
-            <Eye className="w-3 h-3" /> {(stream.viewer_count || 0).toLocaleString()}
+            <Eye className="w-3 h-3" /> {Number(stream.viewer_count || 0).toLocaleString()}
           </span>
         )}
       </div>
       <p className="text-[11px] text-gray-800 mt-1.5 line-clamp-2 font-medium">{stream.title}</p>
       <p className="text-[10px] text-gray-400 mt-0.5">
-        {stream.viewer_count !== undefined ? `👁 ${(stream.viewer_count || 0).toLocaleString()}` : ''}
+        {stream.viewer_count !== undefined ? `👁 ${Number(stream.viewer_count || 0).toLocaleString()}` : ''}
         {stream.created_at ? ` · ${new Date(stream.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}` : ''}
       </p>
     </button>
