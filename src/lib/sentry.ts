@@ -64,10 +64,22 @@ export function initSentry() {
 
       // 에러 핸들링
       beforeBreadcrumb(breadcrumb, hint) {
-        // 민감한 정보 마스킹
+        // 🛡️ 2026-04-30: PII / 시크릿 마스킹 강화
         if (breadcrumb.category === 'console' && breadcrumb.message) {
-          breadcrumb.message = breadcrumb.message.replace(/token=[^&]*/g, 'token=***')
-          breadcrumb.message = breadcrumb.message.replace(/password=[^&]*/g, 'password=***')
+          let m = breadcrumb.message
+          // 토큰류 (JWT 3-part / hex secret)
+          m = m.replace(/token=[^&\s,]*/gi, 'token=***')
+          m = m.replace(/password=[^&\s,]*/gi, 'password=***')
+          m = m.replace(/secret=[^&\s,]*/gi, 'secret=***')
+          m = m.replace(/api[_-]?key=[^&\s,]*/gi, 'api_key=***')
+          m = m.replace(/authorization:\s*bearer\s+[^\s,]+/gi, 'Authorization: Bearer ***')
+          // JWT (eyJ로 시작하는 base64url 3파트)
+          m = m.replace(/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, 'eyJ***')
+          // 한국 전화번호
+          m = m.replace(/\b01[016789]-?\d{3,4}-?\d{4}\b/g, '010-****-****')
+          // 이메일 (도메인은 유지, 로컬파트 마스킹)
+          m = m.replace(/\b([A-Za-z0-9._-]{1,2})[A-Za-z0-9._-]*@/g, '$1***@')
+          breadcrumb.message = m
         }
         return breadcrumb
       },

@@ -15,7 +15,11 @@ export interface RateLimitOptions {
 }
 
 function defaultKey(c: Context, action: string): string {
-  const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
+  // 🛡️ 2026-04-30 보안: CF-Connecting-IP 만 신뢰. X-Forwarded-For 는 클라이언트
+  //   위조 가능 (각 요청마다 다른 값 보내면 rate limit 우회 가능). Cloudflare Worker
+  //   환경에선 CF edge 가 CF-Connecting-IP 를 항상 세팅하므로 fallback 불필요.
+  //   non-CF 환경 (로컬 dev) 에선 'unknown' 으로 통일 → 모든 dev 요청이 단일 버킷 공유.
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown';
   return `${action}:${ip}`;
 }
 
