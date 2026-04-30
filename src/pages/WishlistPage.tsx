@@ -187,7 +187,7 @@ const WishlistPage: React.FC = () => {
                   <img
                     src={item.image_url || '/placeholder.png'}
                     alt={item.product_name}
-                    loading="lazy"
+                    loading="lazy" decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement

@@ -128,7 +128,7 @@ export default function IntroducePage() {
             <button key={s.id} onClick={() => s.id && navigate(`/live/${s.id}`)} className="block rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow">
               <div className="aspect-[4/5] relative bg-gradient-to-br from-gray-800 to-gray-900">
                 {(s.thumbnail_url || s.youtube_video_id) && (
-                  <img src={s.thumbnail_url || `https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg`} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                  <img src={s.thumbnail_url || `https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg`} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
                 )}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.5), transparent 30%, rgba(0,0,0,0.9))' }} />
                 {s.viewer_count != null && (

@@ -289,7 +289,7 @@ export default function ShortsPage() {
                 >
                   <div className="w-7 h-7 rounded-full overflow-hidden bg-white/20 flex items-center justify-center shrink-0">
                     {item.seller_avatar ? (
-                      <img src={item.seller_avatar} alt={`${item.seller_name || '셀러'} 프로필 이미지`} className="w-full h-full object-cover" loading="lazy" />
+                      <img src={item.seller_avatar} alt={`${item.seller_name || '셀러'} 프로필 이미지`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       <span className="text-[10px] font-bold text-white">{(item.seller_name || '?').charAt(0)}</span>
                     )}
@@ -329,7 +329,7 @@ export default function ShortsPage() {
                         <img
                           src={`https://img.youtube.com/vi/${thumb.youtube_video_id}/default.jpg`}
                           alt=""
-                          className="w-full h-full object-cover" loading="lazy" />
+                          className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       ) : (
                         <div className="w-full h-full bg-white/10" />
                       )}
@@ -444,7 +444,7 @@ export default function ShortsPage() {
                         style={{ width: 72, height: 72 }}
                         onClick={() => navigate(`/products/${item.product_id}`)}>
                         {item.product_image ? (
-                          <img src={item.product_image} alt={item.product_name} loading="lazy" className="w-full h-full object-cover" />
+                          <img src={item.product_image} alt={item.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                             <ShoppingCart className="w-6 h-6 text-gray-300" />
