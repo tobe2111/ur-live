@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, Eye, MessageSquare, ShoppingBag, DollarSign } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface LiveStreamLite {
   id: number
@@ -138,12 +139,12 @@ export function RecapModal({ stream, stats, onClose }: {
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-blue-50 rounded-xl p-3 text-center">
             <Eye className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-blue-700">{stats.viewers.toLocaleString()}</p>
+            <p className="text-lg font-bold text-blue-700">{formatNumber(stats.viewers)}</p>
             <p className="text-[10px] text-blue-600">{t('seller.liveBroadcast.statsViewers')}</p>
           </div>
           <div className="bg-purple-50 rounded-xl p-3 text-center">
             <MessageSquare className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-purple-700">{stats.chat.toLocaleString()}</p>
+            <p className="text-lg font-bold text-purple-700">{formatNumber(stats.chat)}</p>
             <p className="text-[10px] text-purple-600">{t('seller.liveBroadcast.statsChat')}</p>
           </div>
           <div className="bg-amber-50 rounded-xl p-3 text-center">
@@ -153,7 +154,7 @@ export function RecapModal({ stream, stats, onClose }: {
           </div>
           <div className="bg-green-50 rounded-xl p-3 text-center">
             <DollarSign className="w-4 h-4 text-green-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-green-700">₩{stats.revenue.toLocaleString()}</p>
+            <p className="text-lg font-bold text-green-700">₩{formatNumber(stats.revenue)}</p>
             <p className="text-[10px] text-green-600">{t('seller.liveBroadcast.statsRevenue')}</p>
           </div>
         </div>

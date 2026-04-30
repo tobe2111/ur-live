@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Calculator, ChevronDown, ChevronUp } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 /**
  * 에이전시 PL (Profit & Loss) 시뮬레이터 — Phase 2-2
@@ -156,7 +157,7 @@ function ResultRow(props: { label: string; value: number; unit: string; highligh
     <div className="flex items-center justify-between py-1 text-xs">
       <span className="text-gray-600">{props.label}</span>
       <span className={colorClass}>
-        {props.value.toLocaleString()} <span className="text-[10px] text-gray-500">{props.unit}</span>
+        {formatNumber(props.value)} <span className="text-[10px] text-gray-500">{props.unit}</span>
       </span>
     </div>
   )

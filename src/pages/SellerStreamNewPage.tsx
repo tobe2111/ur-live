@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Play } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 export default function SellerStreamNewPage() {
   const { t } = useTranslation()
@@ -182,7 +183,7 @@ export default function SellerStreamNewPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
-                    <p className="text-xs text-gray-400">{p.price.toLocaleString()}{t('common.won')}</p>
+                    <p className="text-xs text-gray-400">{formatNumber(p.price)}{t('common.won')}</p>
                   </div>
                 </label>
               ))}

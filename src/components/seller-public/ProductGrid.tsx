@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { formatNumber } from '@/utils/format'
 
 interface Product {
   id: number
@@ -88,13 +89,13 @@ export function ProductGrid({ products }: ProductGridProps) {
                   </span>
                 )}
                 <span className="text-sm font-bold text-gray-900">
-                  {product.price.toLocaleString()}원
+                  {formatNumber(product.price)}원
                 </span>
               </div>
 
               {product.original_price > product.price && (
                 <p className="text-xs text-gray-400 line-through">
-                  {product.original_price.toLocaleString()}원
+                  {formatNumber(product.original_price)}원
                 </p>
               )}
             </div>

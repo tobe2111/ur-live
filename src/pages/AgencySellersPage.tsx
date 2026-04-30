@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Search, TrendingUp, ShoppingBag, Play, UserPlus, Copy, Link, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Seller {
   id: number
@@ -218,7 +219,7 @@ export default function AgencySellersPage() {
                     <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                       <div className="text-right">
                         <p className="text-xs font-semibold text-gray-900">{(s.total_revenue / 10000).toFixed(0)}만원</p>
-                        <p className="text-xs text-indigo-500 font-medium">수수료 {Math.round(s.total_revenue * (s.commission_rate || 2) / 100).toLocaleString()}원</p>
+                        <p className="text-xs text-indigo-500 font-medium">수수료 {Math.round(s.total_revenue * (s.commission_rate || 2) / 100)}원</p>
                         <p className="text-xs text-gray-400">{s.total_orders}건</p>
                       </div>
                       <StatusBadge status={s.status} />
@@ -305,7 +306,7 @@ export default function AgencySellersPage() {
                   <div className="space-y-1 text-xs text-gray-500">
                     <div className="flex justify-between">
                       <span>총 시청자</span>
-                      <span className="font-medium text-gray-700">{(sellerStats.streams?.total_viewers ?? 0).toLocaleString()}명</span>
+                      <span className="font-medium text-gray-700">{formatNumber(sellerStats.streams?.total_viewers ?? 0)}명</span>
                     </div>
                     <div className="flex justify-between">
                       <span>가입일</span>

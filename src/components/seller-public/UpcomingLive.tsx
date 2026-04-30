@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Eye, ChevronRight } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface LiveStream {
   id: number
@@ -92,7 +93,7 @@ export function UpcomingLive({ streams }: UpcomingLiveProps) {
                 <div className="absolute bottom-2 left-2">
                   <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-black/70 text-white rounded backdrop-blur-sm">
                     <Eye className="w-3 h-3" />
-                    {stream.viewer_count.toLocaleString()}
+                    {formatNumber(stream.viewer_count)}
                   </span>
                 </div>
               )}

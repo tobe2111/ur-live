@@ -13,6 +13,7 @@ import {
 import { downloadAdminTemplate } from '@/utils/product-template'
 import BulkUploadModal from '@/components/BulkUploadModal'
 import { formatKSTDate } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
 
 interface Product {
   id: number
@@ -363,9 +364,9 @@ export default function AdminProductsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-gray-900">{product.price.toLocaleString()}원</p>
+                        <p className="text-sm font-medium text-gray-900">{formatNumber(product.price)}원</p>
                         {product.is_supply_product && product.supply_price != null && product.supply_price > 0 && (
-                          <p className="text-xs text-purple-600 mt-0.5">공급가 {product.supply_price.toLocaleString()}원</p>
+                          <p className="text-xs text-purple-600 mt-0.5">공급가 {formatNumber(product.supply_price)}원</p>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -504,10 +505,10 @@ export default function AdminProductsPage() {
           {supplySummary && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: '총 주문 수', value: `${supplySummary.total_orders.toLocaleString()}건`, color: 'text-blue-700' },
-                { label: '총 판매 수량', value: `${supplySummary.total_qty.toLocaleString()}개`, color: 'text-gray-700' },
-                { label: '셀러 총 매출', value: `${supplySummary.total_revenue.toLocaleString()}원`, color: 'text-gray-700' },
-                { label: '어드민 공급 수익', value: `${supplySummary.total_supply_cost.toLocaleString()}원`, color: 'text-purple-700' },
+                { label: '총 주문 수', value: `${formatNumber(supplySummary.total_orders)}건`, color: 'text-blue-700' },
+                { label: '총 판매 수량', value: `${formatNumber(supplySummary.total_qty)}개`, color: 'text-gray-700' },
+                { label: '셀러 총 매출', value: `${formatNumber(supplySummary.total_revenue)}원`, color: 'text-gray-700' },
+                { label: '어드민 공급 수익', value: `${formatNumber(supplySummary.total_supply_cost)}원`, color: 'text-purple-700' },
               ].map(c => (
                 <div key={c.label} className="bg-white rounded-xl shadow-sm p-4">
                   <p className="text-xs text-gray-400 mb-1">{c.label}</p>
@@ -545,13 +546,13 @@ export default function AdminProductsPage() {
                         <td className="px-4 py-3">
                           <p className="text-xs font-medium text-gray-900">{row.business_name || row.seller_name}</p>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-700 text-right">{row.seller_price.toLocaleString()}원</td>
-                        <td className="px-4 py-3 text-xs text-purple-600 font-medium text-right">{row.supply_price.toLocaleString()}원</td>
+                        <td className="px-4 py-3 text-xs text-gray-700 text-right">{formatNumber(row.seller_price)}원</td>
+                        <td className="px-4 py-3 text-xs text-purple-600 font-medium text-right">{formatNumber(row.supply_price)}원</td>
                         <td className="px-4 py-3 text-xs text-gray-700 text-center">{row.order_count}건</td>
                         <td className="px-4 py-3 text-xs text-gray-700 text-center">{row.total_qty}개</td>
-                        <td className="px-4 py-3 text-xs text-gray-900 font-medium text-right">{row.total_revenue.toLocaleString()}원</td>
-                        <td className="px-4 py-3 text-xs text-purple-700 font-semibold text-right">{row.total_supply_cost.toLocaleString()}원</td>
-                        <td className="px-4 py-3 text-xs text-emerald-600 text-right">{row.seller_margin.toLocaleString()}원</td>
+                        <td className="px-4 py-3 text-xs text-gray-900 font-medium text-right">{formatNumber(row.total_revenue)}원</td>
+                        <td className="px-4 py-3 text-xs text-purple-700 font-semibold text-right">{formatNumber(row.total_supply_cost)}원</td>
+                        <td className="px-4 py-3 text-xs text-emerald-600 text-right">{formatNumber(row.seller_margin)}원</td>
                       </tr>
                     ))}
                   </tbody>

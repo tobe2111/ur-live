@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ShoppingBag, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
+import { formatNumber } from '@/utils/format'
 
 interface Product {
   id: number
@@ -63,12 +64,12 @@ function ProductCard({ product }: { product: Product }) {
             <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
           )}
           <span className="text-[13px] font-extrabold text-white">
-            {product.price.toLocaleString()}원
+            {formatNumber(product.price)}원
           </span>
         </div>
         {product.original_price && product.original_price > product.price && (
           <span className="text-[11px] text-gray-400 line-through">
-            {product.original_price.toLocaleString()}원
+            {formatNumber(product.original_price)}원
           </span>
         )}
       </div>

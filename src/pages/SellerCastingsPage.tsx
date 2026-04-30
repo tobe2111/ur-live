@@ -4,6 +4,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Megaphone, Check, X, Calendar, DollarSign } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Casting {
   id: number
@@ -132,7 +133,7 @@ function CastingCard(props: { c: Casting; onRespond?: (response: 'accept' | 'rej
           <div className="text-[10px] text-gray-500 flex items-center gap-1">
             <DollarSign className="w-3 h-3" /> 제안 비용
           </div>
-          <div className="text-sm font-bold text-gray-900 mt-0.5">{c.proposed_fee.toLocaleString()}원</div>
+          <div className="text-sm font-bold text-gray-900 mt-0.5">{formatNumber(c.proposed_fee)}원</div>
         </div>
         {c.proposed_live_date && (
           <div className="bg-gray-50 rounded-lg p-2">

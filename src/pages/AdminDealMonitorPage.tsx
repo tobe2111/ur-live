@@ -6,6 +6,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Gift, TrendingUp, Users, Zap, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatKST } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
 
 interface DealStats {
   totals: {
@@ -56,7 +57,7 @@ interface UserSummary {
 type Tab = 'charges' | 'users'
 
 function fmt(n: number | null | undefined): string {
-  return (n ?? 0).toLocaleString()
+  return formatNumber(n ?? 0)
 }
 
 export default function AdminDealMonitorPage() {

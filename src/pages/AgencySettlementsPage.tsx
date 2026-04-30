@@ -8,6 +8,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { DollarSign, CheckCircle, Clock, Loader2, ArrowRight, Banknote } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 export default function AgencySettlementsPage() {
   const { t } = useTranslation()
@@ -32,12 +33,12 @@ export default function AgencySettlementsPage() {
 
   async function requestPayout() {
     if (confirmedCount === 0) { toast.error('정산 가능한 주문이 없습니다'); return }
-    if (!confirm(`${payableAmount.toLocaleString()}원 정산을 신청하시겠습니까?`)) return
+    if (!confirm(`${formatNumber(payableAmount)}원 정산을 신청하시겠습니까?`)) return
     setRequesting(true)
     try {
       const res = await api.post('/api/agency/settlements/request')
       if (res.data.success) {
-        toast.success(`정산 신청 완료! ${res.data.data.commission_amount.toLocaleString()}원`)
+        toast.success(`정산 신청 완료! ${formatNumber(res.data.data.commission_amount)}원`)
         load()
       } else {
         toast.error(res.data.error || '정산 신청 실패')
@@ -72,7 +73,7 @@ export default function AgencySettlementsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm opacity-80">정산 가능 금액</p>
-              <p className="text-3xl font-extrabold mt-1">{payableAmount.toLocaleString()}원</p>
+              <p className="text-3xl font-extrabold mt-1">{formatNumber(payableAmount)}원</p>
               <p className="text-xs opacity-70 mt-2">확정 주문 {confirmedCount}건 · 수수료율 {summary.agency_commission_rate || 2}%</p>
             </div>
             <button
@@ -226,9 +227,9 @@ function SettlementInvoicesSection() {
                 <tr key={inv.id} className="hover:bg-gray-50">
                   <td className="px-3 py-2 text-gray-700 font-medium">{inv.month}</td>
                   <td className="px-3 py-2 text-xs font-mono text-gray-500">{inv.invoice_number}</td>
-                  <td className="px-3 py-2 text-right text-gray-700">{inv.total_amount.toLocaleString()}원</td>
-                  <td className="px-3 py-2 text-right text-gray-700">{inv.commission_amount.toLocaleString()}원</td>
-                  <td className="px-3 py-2 text-right font-bold text-emerald-600">{inv.net_amount.toLocaleString()}원</td>
+                  <td className="px-3 py-2 text-right text-gray-700">{formatNumber(inv.total_amount)}원</td>
+                  <td className="px-3 py-2 text-right text-gray-700">{formatNumber(inv.commission_amount)}원</td>
+                  <td className="px-3 py-2 text-right font-bold text-emerald-600">{formatNumber(inv.net_amount)}원</td>
                   <td className="px-3 py-2 text-center">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                       inv.status === 'paid' ? 'bg-green-100 text-green-700' :

@@ -19,7 +19,6 @@
 
 import type { Env } from '../types/env';
 import { swallow } from '../utils/swallow';
-
 interface AgencyRow {
   id: number;
   name: string;
@@ -108,7 +107,7 @@ export async function handleAgencyAutoSettle(env: Env): Promise<{ processed: num
         VALUES (?, 'auto_settlement', '자동 정산 처리됨', ?, '/agency/settlements', datetime('now'))
       `).bind(
         agency.id,
-        `${eligible.length}건 / 수수료 ${commissionAmount.toLocaleString()}원 (세금 ${taxAmount.toLocaleString()}원 차감, 실수령 ${netAmount.toLocaleString()}원)`
+        `${eligible.length}건 / 수수료 ${Number(commissionAmount ?? 0).toLocaleString('ko-KR')}원 (세금 ${Number(taxAmount ?? 0).toLocaleString('ko-KR')}원 차감, 실수령 ${Number(netAmount ?? 0).toLocaleString('ko-KR')}원)`
       ).run().catch(swallow('cron:agency-auto-settle:notify'));
 
       settled++;

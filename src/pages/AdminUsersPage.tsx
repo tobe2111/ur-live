@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatKST } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
 import {
   Users, Search, ChevronDown, ChevronUp,
   Loader2, ChevronLeft, ChevronRight
@@ -119,7 +120,7 @@ export default function AdminUsersPage() {
         {/* 🛡️ 2026-04-22 배치 135: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('admin.pages.users')}
-          subtitle={!loading ? `총 ${totalCount.toLocaleString()}명` : '불러오는 중...'}
+          subtitle={!loading ? `총 ${formatNumber(totalCount)}명` : '불러오는 중...'}
           icon={<Users className="h-5 w-5" />}
         />
 
@@ -211,15 +212,15 @@ export default function AdminUsersPage() {
                                 <div className="flex gap-8">
                                   <div>
                                     <span className="text-gray-500">주문 수:</span>{' '}
-                                    <span className="font-semibold text-gray-900">{detail.order_count.toLocaleString()}건</span>
+                                    <span className="font-semibold text-gray-900">{formatNumber(detail.order_count)}건</span>
                                   </div>
                                   <div>
                                     <span className="text-gray-500">총 결제액:</span>{' '}
-                                    <span className="font-semibold text-gray-900">{detail.total_spent.toLocaleString()}원</span>
+                                    <span className="font-semibold text-gray-900">{formatNumber(detail.total_spent)}원</span>
                                   </div>
                                   <div>
                                     <span className="text-gray-500">리뷰 수:</span>{' '}
-                                    <span className="font-semibold text-gray-900">{detail.review_count.toLocaleString()}건</span>
+                                    <span className="font-semibold text-gray-900">{formatNumber(detail.review_count)}건</span>
                                   </div>
                                 </div>
 
@@ -278,7 +279,7 @@ export default function AdminUsersPage() {
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
             <p className="text-xs text-gray-500">
-              {((page - 1) * LIMIT + 1).toLocaleString()} - {Math.min(page * LIMIT, totalCount).toLocaleString()} / {totalCount.toLocaleString()}명
+              {formatNumber((page - 1) * LIMIT + 1)} - {Math.min(page * LIMIT, totalCount)} / {formatNumber(totalCount)}명
             </p>
             <div className="flex items-center gap-1">
               <button

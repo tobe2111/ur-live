@@ -4,6 +4,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { AlertTriangle, TrendingDown, UserX, Clock, Building2, ExternalLink } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface OpsInsightSummary {
   inactive_agencies: number
@@ -115,7 +116,7 @@ export default function AdminOpsInsightsPage() {
                   {data.stuck_pending_orders.map(o => (
                     <tr key={o.id} className="border-t border-gray-100">
                       <td className="py-2 px-3 text-sm font-mono">{o.order_number}</td>
-                      <td className="py-2 px-3 text-sm text-right">{o.total_amount.toLocaleString()}원</td>
+                      <td className="py-2 px-3 text-sm text-right">{formatNumber(o.total_amount)}원</td>
                       <td className="py-2 px-3 text-xs text-gray-600">{o.created_at?.slice(0, 16)}</td>
                     </tr>
                   ))}

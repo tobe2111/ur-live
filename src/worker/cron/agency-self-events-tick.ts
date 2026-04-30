@@ -133,7 +133,7 @@ export async function handleAgencySelfEventsTick(env: Env): Promise<void> {
             `).bind(
               String(p.seller_id),
               `🏆 챌린지 달성!`,
-              `목표 달성 보상 ${ev.reward_deal.toLocaleString()}딜이 지급되었습니다.`,
+              `목표 달성 보상 ${Number(ev.reward_deal ?? 0).toLocaleString('ko-KR')}딜이 지급되었습니다.`,
             ).run().catch(swallow('worker:cron:agency-self-events-tick'));
 
             achieved++;

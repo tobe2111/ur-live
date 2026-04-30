@@ -7,6 +7,7 @@ import SupporterRanking from '@/components/live/SupporterRanking'
 import { toast } from '@/hooks/useToast'
 import { nativeShare } from '@/lib/native'
 import SEO from '@/components/SEO'
+import { formatNumber } from '@/utils/format'
 
 interface Seller {
   id: number; name: string; username?: string; slug?: string; business_name?: string; profile_image?: string; bio?: string
@@ -462,9 +463,9 @@ export default function SellerPublicPage() {
                           <p className={`text-[12px] font-medium ${T.text} line-clamp-1`}>{p.name}</p>
                           {p.restaurant_name && <p className="text-[10px] text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-2.5 h-2.5" />{p.restaurant_name}</p>}
                           <div className="flex items-baseline gap-1.5 mt-0.5">
-                            <span className="text-[13px] font-extrabold text-red-500">{Number(p.price || 0).toLocaleString()}원</span>
+                            <span className="text-[13px] font-extrabold text-red-500">{formatNumber(p.price || 0)}원</span>
                             {p.original_price && p.original_price > p.price && (
-                              <span className="text-[10px] text-gray-500 line-through">{Number(p.original_price || 0).toLocaleString()}</span>
+                              <span className="text-[10px] text-gray-500 line-through">{formatNumber(p.original_price || 0)}</span>
                             )}
                           </div>
                           {(p.group_buy_target ?? 0) > 0 && (
@@ -566,8 +567,8 @@ export default function SellerPublicPage() {
                       {p.restaurant_address && <p className="text-[10px] text-gray-400 mt-0.5">{p.restaurant_address}</p>}
                       <div className="flex items-baseline gap-1.5 mt-1.5">
                         {disc > 0 && <span className="text-sm font-extrabold text-red-500">{disc}%</span>}
-                        <span className={`text-sm font-extrabold ${T.text}`}>{Number(p.price || 0).toLocaleString()}원</span>
-                        {p.original_price && <span className="text-xs text-gray-400 line-through">{Number(p.original_price || 0).toLocaleString()}원</span>}
+                        <span className={`text-sm font-extrabold ${T.text}`}>{formatNumber(p.price || 0)}원</span>
+                        {p.original_price && <span className="text-xs text-gray-400 line-through">{formatNumber(p.original_price || 0)}원</span>}
                       </div>
                       {(p.group_buy_target ?? 0) > 0 && (
                         <div className="mt-1.5">
@@ -849,13 +850,13 @@ function StreamCard({ stream, onClick }: { stream: LiveStream; onClick: () => vo
         ) : null}
         {isLive && stream.viewer_count !== undefined && (
           <span className="absolute bottom-2 left-2 text-white text-[10px] flex items-center gap-0.5 drop-shadow-lg">
-            <Eye className="w-3 h-3" /> {Number(stream.viewer_count || 0).toLocaleString()}
+            <Eye className="w-3 h-3" /> {formatNumber(stream.viewer_count || 0)}
           </span>
         )}
       </div>
       <p className="text-[11px] text-gray-800 mt-1.5 line-clamp-2 font-medium">{stream.title}</p>
       <p className="text-[10px] text-gray-400 mt-0.5">
-        {stream.viewer_count !== undefined ? `👁 ${Number(stream.viewer_count || 0).toLocaleString()}` : ''}
+        {stream.viewer_count !== undefined ? `👁 ${formatNumber(stream.viewer_count || 0)}` : ''}
         {stream.created_at ? ` · ${new Date(stream.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}` : ''}
       </p>
     </button>

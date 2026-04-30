@@ -6,6 +6,7 @@ import { ArrowLeft, Zap, Loader2, Info, Check } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
+import { formatNumber } from '@/utils/format'
 
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
 
@@ -154,7 +155,7 @@ export default function PointsChargePage() {
               <span className="text-[12px] font-semibold opacity-90">내 딜 잔액</span>
             </div>
             <p className="text-[32px] font-extrabold leading-none tracking-tight">
-              {balance.toLocaleString()}
+              {formatNumber(balance)}
               <span className="text-[16px] font-bold ml-1">딜</span>
             </p>
             <p className="text-[11px] font-medium opacity-80 mt-2">1원 = 1딜 · 수수료 없음</p>
@@ -194,11 +195,11 @@ export default function PointsChargePage() {
                         </span>
                       )}
                       <p className={`text-[18px] font-extrabold ${isSelected ? 'text-pink-600' : 'text-gray-900'}`}>
-                        {opt.amount.toLocaleString()}
+                        {formatNumber(opt.amount)}
                         <span className="text-[12px] font-bold ml-0.5">원</span>
                       </p>
                       <p className="text-[11px] font-semibold text-gray-500 mt-1">
-                        {opt.points.toLocaleString()}딜
+                        {formatNumber(opt.points)}딜
                       </p>
                     </button>
                   )
@@ -211,19 +212,19 @@ export default function PointsChargePage() {
               <section className="bg-white rounded-2xl border border-gray-100 p-4">
                 <div className="flex items-center justify-between text-[13px]">
                   <span className="text-gray-500">현재 잔액</span>
-                  <span className="font-semibold text-gray-900">{balance.toLocaleString()}딜</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(balance)}딜</span>
                 </div>
                 <div className="flex items-center justify-between text-[13px] mt-2">
                   <span className="text-gray-500">충전 딜</span>
                   <span className="font-semibold text-pink-600">
-                    +{pointsPreview.toLocaleString()}딜
-                    {bonusPoints > 0 && <span className="text-amber-600 ml-1">(+{bonusPoints.toLocaleString()}딜 보너스)</span>}
+                    +{formatNumber(pointsPreview)}딜
+                    {bonusPoints > 0 && <span className="text-amber-600 ml-1">(+{formatNumber(bonusPoints)}딜 보너스)</span>}
                   </span>
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
                   <span className="text-[13px] font-bold text-gray-900">충전 후 잔액</span>
                   <span className="text-[18px] font-extrabold text-gray-900">
-                    {(balance + pointsPreview + bonusPoints).toLocaleString()}
+                    {formatNumber(balance + pointsPreview + bonusPoints)}
                     <span className="text-[13px] font-bold ml-0.5">딜</span>
                   </span>
                 </div>
@@ -251,11 +252,11 @@ export default function PointsChargePage() {
                 <span className="text-[12px] text-gray-500">충전 내역</span>
                 <div className="text-right">
                   <p className="text-[16px] font-extrabold text-gray-900">
-                    {selected?.amount.toLocaleString()}
+                    {formatNumber(selected?.amount)}
                     <span className="text-[12px] font-bold ml-0.5">원</span>
                   </p>
                   <p className="text-[11px] font-semibold text-pink-600">
-                    → {selected?.points.toLocaleString()}딜
+                    → {formatNumber(selected?.points)}딜
                   </p>
                 </div>
               </div>
@@ -293,7 +294,7 @@ export default function PointsChargePage() {
                 {processing ? (
                   <Loader2 className="w-5 h-5 animate-spin mx-auto" />
                 ) : (
-                  `${selected?.amount.toLocaleString()}원 결제`
+                  `${formatNumber(selected?.amount)}원 결제`
                 )}
               </button>
             </div>
@@ -309,7 +310,7 @@ export default function PointsChargePage() {
                   결제 준비 중…
                 </span>
               ) : (
-                `${(pointsPreview + bonusPoints).toLocaleString()}딜 충전하기`
+                `${formatNumber(pointsPreview + bonusPoints)}딜 충전하기`
               )}
             </button>
           )}

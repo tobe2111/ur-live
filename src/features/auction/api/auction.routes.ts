@@ -222,7 +222,7 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
   }
 
   if (amount < auction.current_price + auction.min_increment) {
-    return c.json({ success: false, error: `최소 ${(auction.current_price + auction.min_increment).toLocaleString()}원 이상 입찰해주세요` }, 400);
+    return c.json({ success: false, error: `최소 ${Number(auction.current_price + auction.min_increment).toLocaleString('ko-KR')}원 이상 입찰해주세요` }, 400);
   }
 
   // 🛡️ 배치 115: 지불 능력 검증 — 가용 balance >= amount
@@ -239,7 +239,7 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
   if (available < additionalRequired) {
     return c.json({
       success: false,
-      error: `딜 포인트가 부족합니다. 필요: ${amount.toLocaleString()}딜, 가용: ${(available + existingHoldAmount).toLocaleString()}딜`
+      error: `딜 포인트가 부족합니다. 필요: ${Number(amount ?? 0).toLocaleString('ko-KR')}딜, 가용: ${Number(available + existingHoldAmount).toLocaleString('ko-KR')}딜`
     }, 400);
   }
 
@@ -262,7 +262,7 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
   if (previousWinnerId && previousWinnerId !== userIdStr) {
     notifyAuctionUser(c.env, previousWinnerId, 'auction_outbid', {
       title: '경매 입찰 갱신',
-      body: `${auction.title}: ${amount.toLocaleString()}원으로 더 높은 입찰자가 나타났어요`,
+      body: `${auction.title}: ${Number(amount ?? 0).toLocaleString('ko-KR')}원으로 더 높은 입찰자가 나타났어요`,
       url: `/live/${auction.stream_id}`,
     }).catch(swallow('auction:notify-runner-up'));
   }
@@ -374,10 +374,10 @@ auctionRoutes.post('/:id/end', requireAuth(), async (c) => {
     notifyAuctionUser(c.env, auction.winner_user_id, 'auction_won',
       {
         title: '경매 낙찰 🎉',
-        body: `${auction.title} ${auction.current_price.toLocaleString()}원에 낙찰됐어요. 결제를 진행해주세요.`,
+        body: `${auction.title} ${Number(auction.current_price ?? 0).toLocaleString('ko-KR')}원에 낙찰됐어요. 결제를 진행해주세요.`,
         url: `/live/${auction.stream_id}`,
       },
-      `[유어딜] 경매 낙찰 안내\n${auction.title}\n낙찰가: ${auction.current_price.toLocaleString()}원\n결제를 진행해주세요.`
+      `[유어딜] 경매 낙찰 안내\n${auction.title}\n낙찰가: ${Number(auction.current_price ?? 0).toLocaleString('ko-KR')}원\n결제를 진행해주세요.`
     ).catch(swallow('auction:notify-winner'));
   }
 
@@ -580,10 +580,10 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
   notifyAuctionUser(c.env, newWinner.user_id, 'auction_promoted',
     {
       title: '경매 차순위 승격 🎉',
-      body: `이전 낙찰자 결제 불이행으로 ${newWinner.amount.toLocaleString()}원에 승격됐어요. 결제 진행해주세요.`,
+      body: `이전 낙찰자 결제 불이행으로 ${Number(newWinner.amount ?? 0).toLocaleString('ko-KR')}원에 승격됐어요. 결제 진행해주세요.`,
       url: `/auction/${auctionId}`,
     },
-    `[유어딜] 경매 차순위 승격\n이전 낙찰자 결제 불이행으로\n${newWinner.amount.toLocaleString()}원에 승격됐어요.\n결제를 진행해주세요.`
+    `[유어딜] 경매 차순위 승격\n이전 낙찰자 결제 불이행으로\n${Number(newWinner.amount ?? 0).toLocaleString('ko-KR')}원에 승격됐어요.\n결제를 진행해주세요.`
   ).catch(swallow('auction:promote-runner-up-default'));
 
   return c.json({
@@ -740,7 +740,7 @@ auctionRoutes.post('/:id/promote-runner-up', requireAuth(), async (c) => {
       success: true,
       data: {
         promoted: false,
-        reason: `차순위 입찰자(${runnerUp.user_name})도 잔액 부족 (${available.toLocaleString()}딜 < ${runnerUp.amount.toLocaleString()}딜)`,
+        reason: `차순위 입찰자(${runnerUp.user_name})도 잔액 부족 (${Number(available ?? 0).toLocaleString('ko-KR')}딜 < ${Number(runnerUp.amount ?? 0).toLocaleString('ko-KR')}딜)`,
       },
     });
   }
@@ -758,10 +758,10 @@ auctionRoutes.post('/:id/promote-runner-up', requireAuth(), async (c) => {
   notifyAuctionUser(c.env, runnerUp.user_id, 'auction_promoted',
     {
       title: '경매 차순위 승격 🎉',
-      body: `이전 낙찰자 포기로 ${runnerUp.amount.toLocaleString()}원에 승격됐어요. 결제 진행해주세요.`,
+      body: `이전 낙찰자 포기로 ${Number(runnerUp.amount ?? 0).toLocaleString('ko-KR')}원에 승격됐어요. 결제 진행해주세요.`,
       url: `/auction/${auctionId}`,
     },
-    `[유어딜] 경매 차순위 승격\n이전 낙찰자 결제 포기로\n${runnerUp.amount.toLocaleString()}원에 승격됐어요.\n결제를 진행해주세요.`
+    `[유어딜] 경매 차순위 승격\n이전 낙찰자 결제 포기로\n${Number(runnerUp.amount ?? 0).toLocaleString('ko-KR')}원에 승격됐어요.\n결제를 진행해주세요.`
   ).catch(swallow('auction:promote-runner-up-forfeit'));
 
   return c.json({

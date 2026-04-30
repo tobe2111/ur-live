@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Bookmark } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 interface Product {
   id: number
@@ -146,11 +147,11 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
         </p>
         <div className="mt-1.5 flex items-center gap-2">
           <p className="text-sm font-bold text-foreground">
-            ₩{product.price.toLocaleString()}
+            ₩{formatNumber(product.price)}
           </p>
           {product.original_price && product.original_price > product.price && (
             <p className="text-xs text-gray-400 line-through">
-              ₩{product.original_price.toLocaleString()}
+              ₩{formatNumber(product.original_price)}
             </p>
           )}
         </div>

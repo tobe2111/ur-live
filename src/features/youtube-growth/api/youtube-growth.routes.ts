@@ -111,7 +111,7 @@ youtubeGrowthRoutes.post('/request', requireAuth(), async (c) => {
       orderId,
       amount: pkg.price,
       subscribers: pkg.subscribers,
-      orderName: `YouTube 구독자 ${pkg.subscribers.toLocaleString()}명 늘리기`,
+      orderName: `YouTube 구독자 ${Number(pkg.subscribers ?? 0).toLocaleString('ko-KR')}명 늘리기`,
       clientKey: c.env.TOSS_CLIENT_KEY,
     },
   });
@@ -174,7 +174,7 @@ youtubeGrowthRoutes.post('/confirm', requireAuth(), async (c) => {
   createDashboardNotification(
     DB, 'admin', null, 'youtube_growth_request',
     'YouTube 구독자 늘리기 결제 완료',
-    `${pending.target_subscribers.toLocaleString()}명 / ${amount.toLocaleString()}원`,
+    `${Number(pending.target_subscribers ?? 0).toLocaleString('ko-KR')}명 / ${Number(amount ?? 0).toLocaleString('ko-KR')}원`,
     '/admin/youtube-growth'
   ).catch(swallow('youtube-growth:api:youtube-growth'));
 
@@ -184,7 +184,7 @@ youtubeGrowthRoutes.post('/confirm', requireAuth(), async (c) => {
       subscribers: pending.target_subscribers,
       amount: pending.price,
     },
-    message: `YouTube 구독자 ${pending.target_subscribers.toLocaleString()}명 늘리기가 신청되었습니다.`,
+    message: `YouTube 구독자 ${Number(pending.target_subscribers ?? 0).toLocaleString('ko-KR')}명 늘리기가 신청되었습니다.`,
   });
 });
 

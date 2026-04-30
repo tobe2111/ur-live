@@ -19,7 +19,6 @@
 
 import type { Env } from '../types/env'
 import { swallow } from '../utils/swallow'
-
 interface BackupEnvLike extends Env {
   BACKUP_BUCKET?: any  // R2Bucket — 옵션
 }
@@ -167,7 +166,7 @@ export async function handleAgencyMonthlyInvoices(env: BackupEnvLike): Promise<{
         VALUES (?, 'invoice_issued', '월 정산 명세서 발행', ?, '/agency/settlements', datetime('now'))
       `).bind(
         agency.id,
-        `${monthStr} 정산: 매출 ${amount.toLocaleString()}원, 수수료 ${commission.toLocaleString()}원 (세금 ${tax.toLocaleString()}원, 실수령 ${net.toLocaleString()}원)`
+        `${monthStr} 정산: 매출 ${Number(amount ?? 0).toLocaleString('ko-KR')}원, 수수료 ${Number(commission ?? 0).toLocaleString('ko-KR')}원 (세금 ${Number(tax ?? 0).toLocaleString('ko-KR')}원, 실수령 ${Number(net ?? 0).toLocaleString('ko-KR')}원)`
       ).run().catch(swallow('cron:invoice-notify'))
 
       generated++
@@ -194,7 +193,7 @@ interface RenderArgs {
 }
 
 function renderInvoiceHTML(a: RenderArgs): string {
-  const formatNum = (n: number) => n.toLocaleString('ko-KR')
+  const formatNum = (n: number) => Number(n ?? 0).toLocaleString('ko-KR')
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>

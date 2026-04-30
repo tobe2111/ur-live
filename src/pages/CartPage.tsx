@@ -12,6 +12,7 @@ import { AlertCircle, CheckCircle, X, Info, ShoppingCart, ChevronRight, Store } 
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
+import { formatNumber } from '@/utils/format'
 
 /** 로그인 여부를 localStorage로 동기 확인 (Firebase user 기준) */
 function isUserLoggedIn(): boolean {
@@ -502,7 +503,7 @@ function CartPageContent() {
                   {freeShipThreshold > 0 && remaining > 0 && (
                     <div className="mx-4 mt-3 px-3 py-2.5 bg-[#FDF2F8] rounded-lg">
                       <p className="text-[12px] text-pink-600 font-medium mb-1.5">
-                        {remaining.toLocaleString()}원 더 담으면 무료배송!
+                        {formatNumber(remaining)}원 더 담으면 무료배송!
                       </p>
                       <div className="w-full h-1.5 bg-pink-100 rounded-full overflow-hidden">
                         <div
@@ -546,7 +547,7 @@ function CartPageContent() {
                     <span className="font-medium text-gray-700">
                       {freeShipThreshold > 0 && group.subtotal >= freeShipThreshold
                         ? <span className="text-pink-500">무료</span>
-                        : `${group.shipping_fee.toLocaleString()}원`}
+                        : `${formatNumber(group.shipping_fee)}원`}
                     </span>
                   </div>
                 </div>
@@ -572,7 +573,7 @@ function CartPageContent() {
                 disabled={selectedIds.size === 0 || updating}
                 className="w-full py-3.5 bg-gray-900 text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all"
               >
-                {selectedIds.size === 0 ? '상품을 선택해주세요' : `${total.toLocaleString()}원 주문하기`}
+                {selectedIds.size === 0 ? '상품을 선택해주세요' : `${formatNumber(total)}원 주문하기`}
               </button>
             </div>
           </div>

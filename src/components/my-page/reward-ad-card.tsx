@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Play } from 'lucide-react'
 import api from '@/lib/api'
 import { Capacitor } from '@capacitor/core'
+import { formatNumber } from '@/utils/format'
 
 interface AdRewardStatus {
   todayCount: number
@@ -180,7 +181,7 @@ export function RewardAdCard() {
         {rewarded && (
           <div className="mt-2 text-center animate-fade-in">
             <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">
-              +{rewarded}딜 적립 완료! (잔액: {(newBalance ?? 0).toLocaleString()}딜)
+              +{rewarded}딜 적립 완료! (잔액: {formatNumber(newBalance ?? 0)}딜)
             </span>
           </div>
         )}

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
+import { formatNumber } from '@/utils/format'
 import {
   Package,
   Truck,
@@ -355,7 +356,7 @@ export default function SellerOrdersPage() {
   }
 
   function formatPrice(price: number) {
-    return price.toLocaleString('ko-KR')
+    return formatNumber(price)
   }
 
   function viewOrderDetail(order: Order) {

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Minus, Plus, X } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface CartItem {
   id: number
@@ -32,7 +33,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
   onOpenOption,
   isUpdating = false
 }: CartItemProps) {
-  const fmt = (n: number) => n.toLocaleString()
+  const fmt = (n: number) => formatNumber(n)
 
   const stock = item.product_stock
   const isOutOfStock = stock !== undefined && stock === 0

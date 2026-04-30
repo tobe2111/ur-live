@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { RotateCcw } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 export default function AgencyReturnsPage() {
   const { t } = useTranslation()
@@ -70,7 +71,7 @@ export default function AgencyReturnsPage() {
                       <td className="px-4 py-3 font-mono text-xs">{r.order_number}</td>
                       <td className="px-4 py-3">{r.seller_name}</td>
                       <td className="px-4 py-3 text-xs text-gray-600 max-w-[200px] truncate">{r.reason}</td>
-                      <td className="px-4 py-3 text-right font-bold">{(r.refund_amount || 0).toLocaleString()}원</td>
+                      <td className="px-4 py-3 text-right font-bold">{formatNumber(r.refund_amount || 0)}원</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span>
                       </td>

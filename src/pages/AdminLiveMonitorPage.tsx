@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Radio, Eye, Clock, StopCircle, RefreshCw, ExternalLink } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface LiveStream {
   id: number
@@ -157,7 +158,7 @@ export default function AdminLiveMonitorPage() {
                       <div className="mt-2 px-2 py-1.5 bg-gray-50 rounded-lg">
                         <p className="text-xs text-gray-700 truncate">{stream.current_product_name}</p>
                         {stream.current_product_price && (
-                          <p className="text-xs font-bold text-red-500">{stream.current_product_price.toLocaleString()}원</p>
+                          <p className="text-xs font-bold text-red-500">{formatNumber(stream.current_product_price)}원</p>
                         )}
                       </div>
                     )}

@@ -4,6 +4,7 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, Copy, TrendingUp, Users, Gift, Loader2, Share2, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 export default function AffiliatePage() {
   const navigate = useNavigate()
@@ -48,7 +49,7 @@ export default function AffiliatePage() {
               <Gift className="w-5 h-5" />
               <span className="text-sm font-bold opacity-90">추천하고 딜 포인트 받기</span>
             </div>
-            <p className="text-3xl font-extrabold mb-1">{Number(data.total_earned).toLocaleString()}<span className="text-lg ml-1">딜</span></p>
+            <p className="text-3xl font-extrabold mb-1">{formatNumber(data.total_earned)}<span className="text-lg ml-1">딜</span></p>
             <p className="text-xs opacity-70">총 누적 수익</p>
 
             <div className="grid grid-cols-2 gap-3 mt-4">
@@ -57,7 +58,7 @@ export default function AffiliatePage() {
                 <p className="text-[10px] opacity-70">추천 건수</p>
               </div>
               <div className="bg-white/15 rounded-xl px-3 py-2.5 text-center">
-                <p className="text-lg font-bold">{Number(data.monthly_earned || 0).toLocaleString()}</p>
+                <p className="text-lg font-bold">{formatNumber(data.monthly_earned || 0)}</p>
                 <p className="text-[10px] opacity-70">이번 달 수익</p>
               </div>
             </div>
@@ -139,8 +140,8 @@ export default function AffiliatePage() {
                       <p className="text-xs text-gray-400 mt-0.5">{new Date(r.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
                     <div className="text-right ml-3">
-                      <p className="text-sm font-bold text-green-600">+{Number(r.commission).toLocaleString()}딜</p>
-                      <p className="text-[10px] text-gray-400">{Number(r.order_amount).toLocaleString()}원 구매</p>
+                      <p className="text-sm font-bold text-green-600">+{formatNumber(r.commission)}딜</p>
+                      <p className="text-[10px] text-gray-400">{formatNumber(r.order_amount)}원 구매</p>
                     </div>
                   </div>
                 ))}

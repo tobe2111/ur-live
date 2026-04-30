@@ -15,6 +15,7 @@ import {
   Legend,
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
+import { formatNumber } from '@/utils/format'
 
 interface RevenueDataPoint {
   date: string
@@ -44,7 +45,7 @@ export default function SellerAnalyticsChart({ data }: SellerAnalyticsChartProps
         />
         <Tooltip
           formatter={(value, name) => {
-            if (name === 'revenue') return [`${Number(value ?? 0).toLocaleString()}${t('common.won')}`, t('seller.revenueLabel')]
+            if (name === 'revenue') return [`${formatNumber(value ?? 0)}${t('common.won')}`, t('seller.revenueLabel')]
             return [`${value}${t('seller.ordersUnit')}`, t('seller.totalOrdersLabel')]
           }}
           labelFormatter={(label) => String(label)}

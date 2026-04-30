@@ -5,6 +5,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Ticket, Plus, Trash2, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 export default function SellerCouponsPage() {
   const { t } = useTranslation()
@@ -103,8 +104,8 @@ export default function SellerCouponsPage() {
                   <div>
                     <p className="text-sm font-bold text-gray-900">{c.name} <span className="text-xs font-mono text-gray-500">({c.code})</span></p>
                     <p className="text-xs text-gray-500">
-                      {c.type === 'percent' ? t('seller.coupons.percentOff', { value: c.value }) : t('seller.coupons.fixedOff', { value: Number(c.value).toLocaleString() })}
-                      {c.min_order_amount > 0 && ` · ${t('seller.coupons.minOrder', { amount: Number(c.min_order_amount).toLocaleString() })}`}
+                      {c.type === 'percent' ? t('seller.coupons.percentOff', { value: c.value }) : t('seller.coupons.fixedOff', { value: formatNumber(c.value) })}
+                      {c.min_order_amount > 0 && ` · ${t('seller.coupons.minOrder', { amount: formatNumber(c.min_order_amount) })}`}
                       {` · ${t('seller.coupons.usage', { used: c.used_count, total: c.total_count })}`}
                     </p>
                   </div>

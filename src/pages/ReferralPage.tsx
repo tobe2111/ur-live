@@ -5,6 +5,7 @@ import { ArrowLeft, Users, Clock, Gift, CheckCircle, ShoppingBag } from 'lucide-
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import KakaoShareButton from '@/components/KakaoShareButton'
+import { formatNumber } from '@/utils/format'
 
 interface Tier { count: number; discount: number }
 interface Member { user_name: string; joined_at: string }
@@ -204,11 +205,11 @@ export default function ReferralPage() {
                 <div className="mt-1.5 flex items-baseline gap-2">
                   {currentDiscount > 0 ? (
                     <>
-                      <span className="text-lg font-bold text-pink-500">{discountedPrice.toLocaleString()}원</span>
-                      <span className="text-xs text-gray-400 line-through">{product.price.toLocaleString()}원</span>
+                      <span className="text-lg font-bold text-pink-500">{formatNumber(discountedPrice)}원</span>
+                      <span className="text-xs text-gray-400 line-through">{formatNumber(product.price)}원</span>
                     </>
                   ) : (
-                    <span className="text-lg font-bold text-gray-900">{product.price.toLocaleString()}원</span>
+                    <span className="text-lg font-bold text-gray-900">{formatNumber(product.price)}원</span>
                   )}
                 </div>
               </div>
@@ -364,7 +365,7 @@ export default function ReferralPage() {
             >
               <ShoppingBag className="w-4 h-4" />
               {product
-                ? `${discountedPrice.toLocaleString()}원에 결제하기 (${currentDiscount}% 할인)`
+                ? `${formatNumber(discountedPrice)}원에 결제하기 (${currentDiscount}% 할인)`
                 : '결제하기'}
             </button>
           ) : isExpired ? (

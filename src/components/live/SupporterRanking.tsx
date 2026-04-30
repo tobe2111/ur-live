@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { Crown, Diamond, Star, Heart, Users } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Supporter {
   donor_user_id: string; donor_name: string
@@ -74,7 +75,7 @@ export default function SupporterRanking({ sellerId, compact = false }: Props) {
           </div>
         </div>
         <p className="text-xs text-gray-500 mt-0.5">
-          총 {stats.total_donations.toLocaleString()}딜 후원
+          총 {formatNumber(stats.total_donations)}딜 후원
         </p>
       </div>
 
@@ -107,7 +108,7 @@ export default function SupporterRanking({ sellerId, compact = false }: Props) {
 
                 {/* 총액 */}
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-pink-500">{s.total_amount.toLocaleString()}</p>
+                  <p className="text-sm font-bold text-pink-500">{formatNumber(s.total_amount)}</p>
                   <p className="text-[10px] text-gray-400">딜</p>
                 </div>
               </div>

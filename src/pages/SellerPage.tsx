@@ -14,6 +14,7 @@ import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } f
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerOnboardingWidget from '@/components/seller/SellerOnboardingWidget'
+import { formatNumber } from '@/utils/format'
 
 // recharts lazy load (377KB → 대시보드 진입 시 차트 영역만 지연 로드)
 const LazyChart = lazy(() => import('recharts').then(m => ({
@@ -599,7 +600,7 @@ export default function SellerPage() {
                   </div>
                 ) : (
                   <p className="text-[16px] sm:text-[20px] font-extrabold text-gray-900 truncate">
-                    {(stats.totalRevenue || 0).toLocaleString()}{t('common.won')} / {monthlyGoal.toLocaleString()}{t('common.won')}
+                    {formatNumber(stats.totalRevenue || 0)}{t('common.won')} / {formatNumber(monthlyGoal)}{t('common.won')}
                   </p>
                 )}
               </div>
@@ -617,7 +618,7 @@ export default function SellerPage() {
               />
             </div>
             <p className="text-[10px] text-gray-500 mt-1.5">
-              {t('seller.daysLeft', { days: daysLeft })} · {t('seller.goalRemaining', { amount: Math.max(0, monthlyGoal - (stats.totalRevenue || 0)).toLocaleString() })}
+              {t('seller.daysLeft', { days: daysLeft })} · {t('seller.goalRemaining', { amount: Math.max(0, monthlyGoal - (stats.totalRevenue || 0)) })}
             </p>
           </div>
 
@@ -631,13 +632,13 @@ export default function SellerPage() {
                 influencerOnly: false, delta: revenueDelta, showDelta: dailyStats.length >= 2,
               },
               {
-                label: t('seller.totalOrders'), value: `${(stats.totalOrders || 0).toLocaleString()}`,
+                label: t('seller.totalOrders'), value: `${formatNumber(stats.totalOrders || 0)}`,
                 sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
                 icon: <ShoppingBag className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50',
                 influencerOnly: false, delta: ordersDelta, showDelta: dailyStats.length >= 2,
               },
               {
-                label: t('seller.pendingOrders'), value: `${(stats.pendingOrders || 0).toLocaleString()}`,
+                label: t('seller.pendingOrders'), value: `${formatNumber(stats.pendingOrders || 0)}`,
                 sub: t('seller.needsAction'),
                 icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50',
                 influencerOnly: false, delta: pendingDelta, showDelta: pendingDelta !== 0,
@@ -854,7 +855,7 @@ export default function SellerPage() {
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-[12px] font-semibold text-gray-700">{t('seller.broadcastViewers')}</span>
                               <span className="text-[12px] font-extrabold text-gray-900">
-                                {viewerCount.toLocaleString()}<span className="text-[10px] text-gray-500 ml-1">(100%)</span>
+                                {formatNumber(viewerCount)}<span className="text-[10px] text-gray-500 ml-1">(100%)</span>
                               </span>
                             </div>
                             <div className="w-full h-1.5 rounded-full bg-gray-100">
@@ -866,7 +867,7 @@ export default function SellerPage() {
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-[12px] font-semibold text-gray-700">{t('seller.ordersCompleted')}</span>
                             <span className="text-[12px] font-extrabold text-gray-900">
-                              {orderCount.toLocaleString()}
+                              {formatNumber(orderCount)}
                               {hasViewerData && (
                                 <span className="text-[10px] text-gray-500 ml-1">({orderPct}%)</span>
                               )}

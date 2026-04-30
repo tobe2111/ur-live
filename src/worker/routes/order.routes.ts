@@ -19,7 +19,6 @@ import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
-
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
 
@@ -626,7 +625,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
       if (cancelAmount > remaining) {
         return c.json({
           success: false,
-          error: `취소 가능 금액을 초과합니다 (최대 ${remaining.toLocaleString()}원)`,
+          error: `취소 가능 금액을 초과합니다 (최대 ${Number(remaining ?? 0).toLocaleString('ko-KR')}원)`,
         }, 400);
       }
     }

@@ -4,6 +4,7 @@ import { ArrowLeft, Ticket, AlertCircle } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
+import { formatNumber } from '@/utils/format'
 
 interface Coupon {
   id: number
@@ -56,7 +57,7 @@ export default function MyCouponsPage() {
     if (c.type === 'percent') {
       return `${c.value}%`
     }
-    return `${c.value.toLocaleString()}원`
+    return `${formatNumber(c.value)}원`
   }
 
   function formatExpiry(expires_at: string | null) {
@@ -135,7 +136,7 @@ export default function MyCouponsPage() {
                         {formatDiscount(c)}
                       </p>
                       {c.type === 'percent' && c.max_discount && (
-                        <p className="text-[9px] opacity-80 mt-0.5">최대 {c.max_discount.toLocaleString()}원</p>
+                        <p className="text-[9px] opacity-80 mt-0.5">최대 {formatNumber(c.max_discount)}원</p>
                       )}
                     </div>
                     {/* Notched divider */}
@@ -151,7 +152,7 @@ export default function MyCouponsPage() {
                       <div className="mt-1.5 space-y-0.5">
                         {c.min_order_amount > 0 && (
                           <p className="text-[11px] text-gray-500">
-                            {c.min_order_amount.toLocaleString()}원 이상 결제 시
+                            {formatNumber(c.min_order_amount)}원 이상 결제 시
                           </p>
                         )}
                         <p className={`text-[11px] font-semibold ${isUrgent ? 'text-red-500' : 'text-gray-500'}`}>

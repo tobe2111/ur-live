@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Order {
   id: number
@@ -93,7 +94,7 @@ export default function AgencyOrdersPage() {
               <option key={s.id} value={s.id}>{s.business_name || s.name}</option>
             ))}
           </select>
-          <span className="text-sm text-gray-500 ml-auto">총 {total.toLocaleString()}건</span>
+          <span className="text-sm text-gray-500 ml-auto">총 {formatNumber(total)}건</span>
         </div>
 
         {/* Table */}
@@ -116,7 +117,7 @@ export default function AgencyOrdersPage() {
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">{o.order_number}</td>
                   <td className="px-4 py-3 text-gray-700">{o.seller_business_name || '-'}</td>
                   <td className="px-4 py-3 text-gray-700">{o.shipping_name || '-'}</td>
-                  <td className="px-4 py-3 font-semibold text-gray-900">{o.total_amount.toLocaleString()}원</td>
+                  <td className="px-4 py-3 font-semibold text-gray-900">{formatNumber(o.total_amount)}원</td>
                   <td className="px-4 py-3"><PayBadge status={o.payment_status} /></td>
                   <td className="px-4 py-3 text-gray-500">
                     {new Date(o.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}

@@ -1,5 +1,6 @@
 import React from 'react'
 import { ShoppingBag, Star } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Product {
   id: number
@@ -27,7 +28,7 @@ export const LiveProductCard = React.memo(function LiveProductCard({
   className = ''
 }: LiveProductCardProps) {
   const formatPrice = (price: number) => {
-    return price.toLocaleString('ko-KR')
+    return formatNumber(price)
   }
 
   const discountRate = product.originalPrice
@@ -79,7 +80,7 @@ export const LiveProductCard = React.memo(function LiveProductCard({
             )}
             {product.sold && (
               <div>
-                {product.sold.toLocaleString()}개 판매
+                {formatNumber(product.sold)}개 판매
               </div>
             )}
           </div>

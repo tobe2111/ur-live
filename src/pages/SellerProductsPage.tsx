@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { downloadSellerTemplate } from '@/utils/product-template'
 import BulkUploadModal from '@/components/BulkUploadModal'
+import { formatNumber } from '@/utils/format'
 
 interface Product {
   id: number
@@ -148,7 +149,7 @@ export default function SellerProductsPage() {
   }
 
   function formatPrice(price: number) {
-    return price.toLocaleString('ko-KR')
+    return formatNumber(price)
   }
 
   return (

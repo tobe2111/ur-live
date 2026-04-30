@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { ShoppingBag } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { formatNumber } from '@/utils/format'
 
 interface EmbedStream {
   id: number
@@ -91,7 +92,7 @@ export default function EmbedLivePage() {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-gray-900 truncate">{stream.current_product.name}</p>
               <p className="text-sm font-bold text-red-500 mt-0.5">
-                {stream.current_product.price.toLocaleString()}원
+                {formatNumber(stream.current_product.price)}원
               </p>
             </div>
             <div className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-black">

@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
 import { glass } from '@/components/glass/glassTokens'
+import { formatNumber } from '@/utils/format'
 
 interface LiveStream {
   id: number
@@ -215,7 +216,7 @@ export default function LiveListPage() {
                         {s.current_product && (
                           <div className="mt-2 rounded-xl px-2.5 py-1.5 flex items-center gap-2" style={glass.statsChip}>
                             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }} className="truncate flex-1">{s.current_product.name}</span>
-                            <span style={{ fontSize: 11, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{(s.current_product.price ?? 0).toLocaleString()}원</span>
+                            <span style={{ fontSize: 11, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{formatNumber(s.current_product.price ?? 0)}원</span>
                           </div>
                         )}
                       </div>
@@ -371,7 +372,7 @@ function HeroCard({ stream, getThumb, onClick }: {
         <div className="absolute top-3 right-3 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
           <Eye className="h-3 w-3 text-white" />
           <span className="text-[11px] text-white font-bold">
-            {stream.viewer_count.toLocaleString()}
+            {formatNumber(stream.viewer_count)}
           </span>
         </div>
       )}
@@ -391,7 +392,7 @@ function HeroCard({ stream, getThumb, onClick }: {
               {stream.current_product.name}
             </span>
             <span className="text-[11px] font-extrabold text-pink-300">
-              {stream.current_product.price.toLocaleString()}원
+              {formatNumber(stream.current_product.price)}원
             </span>
           </div>
         )}
@@ -516,7 +517,7 @@ function EmptyState({ onExplore }: { onExplore: () => void }) {
 function formatCount(n: number): string {
   if (n >= 10000) return `${(n / 10000).toFixed(1)}만`
   if (n >= 1000) return `${(n / 1000).toFixed(1)}천`
-  return n.toLocaleString()
+  return formatNumber(n)
 }
 
 function relativeTime(date: Date): string {

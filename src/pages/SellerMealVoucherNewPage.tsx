@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { formatNumber } from '@/utils/format'
 
 export default function SellerMealVoucherNewPage() {
   const { t } = useTranslation()
@@ -518,8 +519,8 @@ export default function SellerMealVoucherNewPage() {
             <p className="text-sm font-bold text-pink-700 mb-2">📋 {t('seller.mealVoucher.preview')}</p>
             <p className="text-xs text-pink-600">
               {form.name || t('seller.mealVoucher.namePlaceholder')} · {form.restaurant_name || t('seller.mealVoucher.restaurantPlaceholder')} ·
-              {form.price ? ` ${form.price.toLocaleString()}${t('common.won')}` : ` ${t('seller.mealVoucher.priceUndecided')}`}
-              {form.original_price > form.price && ` (${t('seller.mealVoucher.originalPriceShort')} ${form.original_price.toLocaleString()}${t('common.won')}, ${Math.round((1 - form.price / form.original_price) * 100)}% ${t('seller.mealVoucher.discount')})`}
+              {form.price ? ` ${formatNumber(form.price)}${t('common.won')}` : ` ${t('seller.mealVoucher.priceUndecided')}`}
+              {form.original_price > form.price && ` (${t('seller.mealVoucher.originalPriceShort')} ${formatNumber(form.original_price)}${t('common.won')}, ${Math.round((1 - form.price / form.original_price) * 100)}% ${t('seller.mealVoucher.discount')})`}
               {form.group_buy_target > 0 && ` · ${t('seller.mealVoucher.targetCount', { count: form.group_buy_target })}`}
             </p>
           </div>

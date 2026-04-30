@@ -11,7 +11,6 @@
 import type { Env } from '../types/env';
 import { sendDiscordAlert } from '../utils/discord-alert';
 import { ensureUserPointsTable } from '../utils/ensure-tables';
-
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
 
@@ -193,7 +192,7 @@ export async function handleExpiredVoucherRefunds(env: Env) {
             VALUES (?, 'user', 'refund', '바우처 만료 환불', ?, datetime('now'), 0)
           `).bind(
             voucher.user_id,
-            `바우처가 만료되어 ${Number(voucher.price).toLocaleString()}딜 포인트가 환불되었습니다 (${voucher.product_name})`
+            `바우처가 만료되어 ${Number(voucher.price ?? 0).toLocaleString('ko-KR')}딜 포인트가 환불되었습니다 (${voucher.product_name})`
           ).run();
         } catch (e) {
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement notifications insert]', e);

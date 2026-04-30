@@ -14,7 +14,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS, TOSS_PAYMENT_URL } from '@/shared/constants';
-
 const alimtalkRoutes = new Hono<{ Bindings: Env }>();
 
 alimtalkRoutes.use('*', cors({
@@ -223,7 +222,7 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
   return c.json({
     success: true,
     data: { credits_added: resolvedPkg.credits, description: `브랜드메시지 ${resolvedPkg.label} 충전` },
-    message: `${resolvedPkg.credits.toLocaleString()}건이 충전되었습니다.`,
+    message: `${Number(resolvedPkg.credits ?? 0).toLocaleString('ko-KR')}건이 충전되었습니다.`,
   });
 });
 

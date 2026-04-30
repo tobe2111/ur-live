@@ -1,4 +1,5 @@
 import React from 'react'
+import { formatNumber } from '@/utils/format'
 
 interface CartSummaryProps {
   totalItems: number
@@ -13,7 +14,7 @@ export const CartSummary = React.memo(function CartSummary({
   shippingFee,
   total
 }: CartSummaryProps) {
-  const fmt = (n: number) => n.toLocaleString()
+  const fmt = (n: number) => formatNumber(n)
 
   return (
     <div>

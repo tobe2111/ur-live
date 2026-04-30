@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Ticket, Copy, Send, X } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { formatNumber } from '@/utils/format'
 
 interface Coupon {
   id: number; code: string; name: string; type: string; value: number
@@ -233,9 +234,9 @@ export default function AdminCouponsPage() {
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600">
                 <strong>{form.name || '쿠폰명'}</strong> —
-                {form.type === 'fixed' ? `${form.value.toLocaleString()}원 할인` : `${form.value}% 할인`}
-                {form.min_order_amount > 0 && ` (${form.min_order_amount.toLocaleString()}원 이상)`}
-                {form.max_discount > 0 && ` (최대 ${form.max_discount.toLocaleString()}원)`}
+                {form.type === 'fixed' ? `${formatNumber(form.value)}원 할인` : `${form.value}% 할인`}
+                {form.min_order_amount > 0 && ` (${formatNumber(form.min_order_amount)}원 이상)`}
+                {form.max_discount > 0 && ` (최대 ${formatNumber(form.max_discount)}원)`}
               </p>
             </div>
 
@@ -299,10 +300,10 @@ export default function AdminCouponsPage() {
                         <td className="px-4 py-3 text-gray-900">{c.name}</td>
                         <td className="px-4 py-3">
                           <span className="text-blue-600 font-medium">
-                            {c.type === 'fixed' ? `${c.value.toLocaleString()}원` : `${c.value}%`}
+                            {c.type === 'fixed' ? `${formatNumber(c.value)}원` : `${c.value}%`}
                           </span>
                           {c.min_order_amount > 0 && (
-                            <span className="text-gray-400 text-xs ml-1">({c.min_order_amount.toLocaleString()}원↑)</span>
+                            <span className="text-gray-400 text-xs ml-1">({formatNumber(c.min_order_amount)}원↑)</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-gray-600">

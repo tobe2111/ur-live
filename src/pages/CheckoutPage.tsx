@@ -37,6 +37,7 @@ declare global {
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
 
 import { CartItem } from '@/types/cart'
+import { formatNumber } from '@/utils/format'
 
 interface ShippingAddress {
   id: number
@@ -719,7 +720,7 @@ export default function CheckoutPage() {
                           )}
                           <div className="flex items-center gap-1.5">
                             <span className="text-[15px] font-bold text-gray-900">
-                              {((item.price_snapshot ?? 0) * item.quantity).toLocaleString()}원
+                              {formatNumber((item.price_snapshot ?? 0) * item.quantity)}원
                             </span>
                           </div>
                         </div>
@@ -732,12 +733,12 @@ export default function CheckoutPage() {
                       <span className="font-semibold text-gray-900">
                         {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
                           ? <span className="text-blue-600 font-medium">무료</span>
-                          : `${group.shipping_fee.toLocaleString()}원`}
+                          : `${formatNumber(group.shipping_fee)}원`}
                       </span>
                     </div>
                     {group.free_shipping_threshold > 0 && group.subtotal < group.free_shipping_threshold && (
                       <p className="text-[12px] text-gray-500 mt-1">
-                        {(group.free_shipping_threshold - group.subtotal).toLocaleString()}원 추가 시 무료배송
+                        {formatNumber(group.free_shipping_threshold - group.subtotal)}원 추가 시 무료배송
                       </p>
                     )}
                   </div>
@@ -764,7 +765,7 @@ export default function CheckoutPage() {
                       if (res.data.success) {
                         setCouponDiscount(res.data.data.discount)
                         setCouponId(res.data.data.coupon_id)
-                        toast.success(`${res.data.data.name}: ${res.data.data.discount.toLocaleString()}원 할인`)
+                        toast.success(`${res.data.data.name}: ${formatNumber(res.data.data.discount)}원 할인`)
                       } else {
                         toast.error(res.data.error)
                       }
@@ -778,7 +779,7 @@ export default function CheckoutPage() {
               {couponDiscount > 0 && (
                 <div className="flex items-center justify-between mt-2 p-2 bg-green-50 rounded-lg border border-green-200">
                   <span className="text-sm text-green-700 font-medium">✓ 쿠폰 할인 적용됨</span>
-                  <span className="text-sm font-bold text-green-700">-{couponDiscount.toLocaleString()}원</span>
+                  <span className="text-sm font-bold text-green-700">-{formatNumber(couponDiscount)}원</span>
                 </div>
               )}
             </section>
@@ -808,7 +809,7 @@ export default function CheckoutPage() {
               <div className="bg-white border-t border-gray-100 px-5 py-5 mb-2">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-[15px] font-bold text-gray-900">딜 포인트</h3>
-                  <span className="text-[13px] text-gray-500">보유 <span className="font-bold text-pink-500">{dealBalance.toLocaleString()}</span>딜</span>
+                  <span className="text-[13px] text-gray-500">보유 <span className="font-bold text-pink-500">{formatNumber(dealBalance)}</span>딜</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -832,15 +833,15 @@ export default function CheckoutPage() {
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="flex items-center justify-between text-[13px]">
                       <span className="text-gray-500">상품 금액</span>
-                      <span className="text-gray-700">{totalBeforeDeal.toLocaleString()}원</span>
+                      <span className="text-gray-700">{formatNumber(totalBeforeDeal)}원</span>
                     </div>
                     <div className="flex items-center justify-between text-[13px] mt-1">
                       <span className="text-pink-500 font-medium">딜 포인트 차감</span>
-                      <span className="text-pink-500 font-bold">-{dealToUse.toLocaleString()}딜</span>
+                      <span className="text-pink-500 font-bold">-{formatNumber(dealToUse)}딜</span>
                     </div>
                     <div className="border-t border-gray-200 mt-2 pt-2 flex items-center justify-between">
                       <span className="text-[13px] font-bold text-gray-900">카드 결제 금액</span>
-                      <span className="text-[15px] font-bold text-gray-900">{Math.max(0, totalAmount).toLocaleString()}원</span>
+                      <span className="text-[15px] font-bold text-gray-900">{Math.max(0, totalAmount)}원</span>
                     </div>
                   </div>
                 )}
@@ -881,7 +882,7 @@ export default function CheckoutPage() {
                   disabled={payingWithDeals || !selectedAddress}
                   className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white text-base font-bold disabled:opacity-40"
                 >
-                  {payingWithDeals ? '처리 중...' : `${totalAmount.toLocaleString()}딜로 결제`}
+                  {payingWithDeals ? '처리 중...' : `${formatNumber(totalAmount)}딜로 결제`}
                 </button>
               ) : isKorea() ? (
                 /* 한국: Toss Payments */
@@ -943,7 +944,7 @@ export default function CheckoutPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-[14px] text-gray-400">상품금액</span>
                     <span className="text-[14px] text-gray-900">
-                      {subtotal.toLocaleString()}원
+                      {formatNumber(subtotal)}원
                     </span>
                   </div>
 
@@ -953,7 +954,7 @@ export default function CheckoutPage() {
                       {totalShippingFee === 0 ? (
                         <span className="font-medium text-blue-600">무료</span>
                       ) : (
-                        `${totalShippingFee.toLocaleString()}원`
+                        `${formatNumber(totalShippingFee)}원`
                       )}
                     </span>
                   </div>
@@ -962,21 +963,21 @@ export default function CheckoutPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-[14px] text-gray-400">쿠폰 할인</span>
                       <span className="text-[14px] font-medium text-red-500">
-                        -{couponDiscount.toLocaleString()}원
+                        -{formatNumber(couponDiscount)}원
                       </span>
                     </div>
                   )}
                   {totalGroupBuyDiscount > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-[14px] text-gray-400">🎁 공동구매 할인</span>
-                      <span className="text-[14px] font-medium text-gray-900">-{totalGroupBuyDiscount.toLocaleString()}원</span>
+                      <span className="text-[14px] font-medium text-gray-900">-{formatNumber(totalGroupBuyDiscount)}원</span>
                     </div>
                   )}
                   {dealToUse > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-[14px] text-gray-400">딜 포인트</span>
                       <span className="text-[14px] font-medium text-pink-500">
-                        -{dealToUse.toLocaleString()}딜
+                        -{formatNumber(dealToUse)}딜
                       </span>
                     </div>
                   )}
@@ -988,7 +989,7 @@ export default function CheckoutPage() {
                   <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
                   <div className="flex items-baseline gap-0.5">
                     <span className="text-[26px] font-bold tracking-tight text-gray-900">
-                      {Math.max(0, totalAmount).toLocaleString()}
+                      {Math.max(0, totalAmount)}
                     </span>
                     <span className="text-[15px] font-semibold text-gray-900">원</span>
                   </div>
@@ -1017,7 +1018,7 @@ export default function CheckoutPage() {
               <div className="flex items-center justify-between">
                 <span className="text-[14px] text-gray-400">상품금액</span>
                 <span className="text-[14px] text-gray-900">
-                  {subtotal.toLocaleString()}원
+                  {formatNumber(subtotal)}원
                 </span>
               </div>
 
@@ -1027,7 +1028,7 @@ export default function CheckoutPage() {
                   {totalShippingFee === 0 ? (
                     <span className="font-medium text-blue-600">무료</span>
                   ) : (
-                    `${totalShippingFee.toLocaleString()}원`
+                    `${formatNumber(totalShippingFee)}원`
                   )}
                 </span>
               </div>
@@ -1036,20 +1037,20 @@ export default function CheckoutPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-[14px] text-gray-400">쿠폰 할인</span>
                   <span className="text-[14px] font-medium text-red-500">
-                    -{couponDiscount.toLocaleString()}원
+                    -{formatNumber(couponDiscount)}원
                   </span>
                 </div>
               )}
               {totalGroupBuyDiscount > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-[14px] text-gray-400">🎁 공동구매 할인</span>
-                  <span className="text-[14px] font-medium text-gray-900">-{totalGroupBuyDiscount.toLocaleString()}원</span>
+                  <span className="text-[14px] font-medium text-gray-900">-{formatNumber(totalGroupBuyDiscount)}원</span>
                 </div>
               )}
               {dealToUse > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-[14px] text-gray-400">딜 포인트</span>
-                  <span className="text-[14px] font-medium text-pink-500">-{dealToUse.toLocaleString()}딜</span>
+                  <span className="text-[14px] font-medium text-pink-500">-{formatNumber(dealToUse)}딜</span>
                 </div>
               )}
             </div>
@@ -1057,21 +1058,21 @@ export default function CheckoutPage() {
             <div className="flex items-end justify-between pt-3 mt-3 border-t border-gray-100">
               <span className="text-[14px] font-extrabold text-gray-900">총 결제 금액</span>
               <span className="text-[20px] font-black text-red-500" style={{ letterSpacing: '-0.03em' }}>
-                {Math.max(0, totalAmount).toLocaleString()}원
+                {Math.max(0, totalAmount)}원
               </span>
             </div>
             {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시 의무) */}
             {totalAmount > 0 && (
               <div className="flex justify-end mt-0.5">
                 <span className="text-[11px] text-gray-500">
-                  부가세 포함 (10% · {Math.round(Math.max(0, totalAmount) - Math.floor(Math.max(0, totalAmount) / 1.1)).toLocaleString()}원)
+                  부가세 포함 (10% · {Math.round(Math.max(0, totalAmount) - Math.floor(Math.max(0, totalAmount) / 1.1))}원)
                 </span>
               </div>
             )}
             {totalAmount > 0 && (
               <div className="flex justify-end mt-1">
                 <span className="rounded-md px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold">
-                  결제 시 {Math.round(Math.max(0, totalAmount) * 0.03).toLocaleString()}딜 적립 예정
+                  결제 시 {Math.round(Math.max(0, totalAmount) * 0.03)}딜 적립 예정
                 </span>
               </div>
             )}

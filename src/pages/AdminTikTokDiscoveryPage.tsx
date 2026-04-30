@@ -4,6 +4,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Sparkles, Eye, Heart, Video, ExternalLink } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface DiscoveryItem {
   seller_id: number
@@ -107,7 +108,7 @@ export default function AdminTikTokDiscoveryPage() {
                 {item.best_video_title && (
                   <div className="text-xs text-gray-600 mb-2 p-2 bg-gray-50 rounded">
                     🎬 베스트: <strong>{item.best_video_title.slice(0, 40)}</strong>
-                    <div className="text-[10px] text-gray-400 mt-0.5">{(item.best_video_views || 0).toLocaleString()} 조회</div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">{formatNumber(item.best_video_views || 0)} 조회</div>
                   </div>
                 )}
 

@@ -16,6 +16,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { Gift, Loader2, CheckCircle2, XCircle, MapPin, Phone, Sparkles } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface GiftInfo {
   id: number
@@ -143,7 +144,7 @@ export default function GiftClaimPage() {
             )}
             <div className="flex-1 min-w-0">
               <h2 className="font-bold text-gray-900 text-sm leading-tight mb-2">{gift.product_name}</h2>
-              <div className="text-pink-500 font-bold text-base">{gift.amount.toLocaleString()}원</div>
+              <div className="text-pink-500 font-bold text-base">{formatNumber(gift.amount)}원</div>
             </div>
           </div>
 

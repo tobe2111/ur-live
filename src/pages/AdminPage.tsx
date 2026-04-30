@@ -13,6 +13,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { LayoutDashboard } from 'lucide-react'
 import { formatKST, formatKSTDate } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
 
 interface ApiError {
   response?: { status?: number; data?: { error?: string } }
@@ -260,7 +261,7 @@ export default function AdminPage() {
         setAlerts(prev => {
           if (prev.some(a => a.title.includes('고액 주문'))) return prev
           const summary = userEntries.slice(0, 3).map(([uid, d]) =>
-            `${uid}: ${d.count}건 ${d.total.toLocaleString()}원`
+            `${uid}: ${d.count}건 ${formatNumber(d.total)}원`
           ).join(' | ')
           return [...prev, {
             type: 'warning' as const,
@@ -496,9 +497,9 @@ export default function AdminPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
           { label: '오늘 매출', value: fmtPrice(dashboardStats.todaySales), sub: '실시간', icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: '오늘 주문', value: `${(dashboardStats.todayOrders || 0).toLocaleString()}건`, sub: '실시간', icon: <Package className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: '현재 방문자', value: `${(dashboardStats.currentVisitors || 0).toLocaleString()}명`, sub: '최근 5분', icon: <Eye className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: '라이브 방송', value: `${(dashboardStats.liveStreams || 0).toLocaleString()}개`, sub: '진행 중', icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50' },
+          { label: '오늘 주문', value: `${formatNumber(dashboardStats.todayOrders || 0)}건`, sub: '실시간', icon: <Package className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: '현재 방문자', value: `${formatNumber(dashboardStats.currentVisitors || 0)}명`, sub: '최근 5분', icon: <Eye className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: '라이브 방송', value: `${formatNumber(dashboardStats.liveStreams || 0)}개`, sub: '진행 중', icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50' },
         ].map(card => (
           <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
             <div className="flex items-center justify-between mb-2 sm:mb-3">
@@ -574,7 +575,7 @@ export default function AdminPage() {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <Eye className="w-3.5 h-3.5" />
-                    <span>{(stream.viewer_count || 0).toLocaleString()}명</span>
+                    <span>{formatNumber(stream.viewer_count || 0)}명</span>
                   </div>
                   <a
                     href={`/live/${stream.id}`}
@@ -984,7 +985,7 @@ function AdminActivityFeed() {
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
               <span className="text-gray-700 flex-1 truncate">
                 {o.status === 'PAID' || o.status === 'DONE' ? '💰 주문' : o.status === 'SHIPPING' ? '📦 배송' : o.status === 'CANCELLED' ? '❌ 취소' : '📝 ' + o.status}
-                {' '}{o.order_number} · {Number(o.total_amount || 0).toLocaleString()}원
+                {' '}{o.order_number} · {formatNumber(o.total_amount || 0)}원
               </span>
               <span className="text-gray-400 shrink-0">{o.created_at ? new Date(o.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
             </div>

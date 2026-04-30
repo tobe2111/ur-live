@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ShoppingCart, Minus, Plus, Trash2 } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface CartItem {
   id: number
@@ -60,7 +61,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
                 </p>
               )}
               <p className="text-[18px] font-bold text-gray-900 mt-2">
-                {(item.price_snapshot * item.quantity).toLocaleString()}
+                {formatNumber(item.price_snapshot * item.quantity)}
                 <span className="text-[14px] font-semibold text-gray-600 ml-0.5">원</span>
               </p>
             </div>
@@ -104,7 +105,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
           <div className="flex justify-between">
             <span className="text-[13px] text-gray-500">상품 금액</span>
             <span className="text-[14px] font-semibold text-gray-900">
-              {totalAmount.toLocaleString()}원
+              {formatNumber(totalAmount)}원
             </span>
           </div>
           <div className="flex justify-between">
@@ -117,7 +118,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
           <span className="text-[15px] font-bold text-gray-900">총 결제금액</span>
           <div className="text-right">
             <span className="text-[24px] font-extrabold text-pink-500">
-              {totalAmount.toLocaleString()}
+              {formatNumber(totalAmount)}
             </span>
             <span className="text-[14px] font-semibold text-gray-600 ml-1">원</span>
           </div>
@@ -133,7 +134,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
           onClick={onCheckout}
           className="w-full py-3.5 bg-gray-900 text-white text-[15px] font-bold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors shadow-sm"
         >
-          {cartItems.length}개 주문하기 · {totalAmount.toLocaleString()}원
+          {cartItems.length}개 주문하기 · {formatNumber(totalAmount)}원
         </button>
       </div>
     </div>

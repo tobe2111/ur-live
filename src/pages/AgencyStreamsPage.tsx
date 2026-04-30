@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Play, Users, Clock, Radio } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 interface Stream {
   id: number
@@ -70,7 +71,7 @@ export default function AgencyStreamsPage() {
           <div>
             <p className="text-sm font-semibold text-rose-700">현재 {liveCount}개 라이브 방송 진행 중</p>
             <p className="text-xs text-rose-500 mt-0.5">
-              총 시청자: {streams.filter(s => s.status === 'live').reduce((sum, s) => sum + (s.viewer_count || 0), 0).toLocaleString()}명
+              총 시청자: {streams.filter(s => s.status === 'live').reduce((sum, s) => sum + (s.viewer_count || 0), 0)}명
             </p>
           </div>
         </div>
@@ -122,7 +123,7 @@ export default function AgencyStreamsPage() {
                   {s.status === 'live' && (
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Users className="w-3.5 h-3.5" />
-                      {(s.viewer_count || 0).toLocaleString()}
+                      {formatNumber(s.viewer_count || 0)}
                     </div>
                   )}
                   {s.started_at && (

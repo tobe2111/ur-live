@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { formatNumber } from '@/utils/format'
 
 interface ProductHeaderProps {
   name: string;
@@ -57,8 +58,8 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
               </>
             )}
             <span className="text-[12px] text-gray-400">
-              {reviewCount ? `· 리뷰 ${reviewCount.toLocaleString()}` : ''}
-              {soldCount ? ` · ${soldCount.toLocaleString()}명 구매` : ''}
+              {reviewCount ? `· 리뷰 ${formatNumber(reviewCount)}` : ''}
+              {soldCount ? ` · ${formatNumber(soldCount)}명 구매` : ''}
             </span>
           </div>
         )}

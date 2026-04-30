@@ -6,6 +6,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { DollarSign, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 
 export default function AdminSettlementsBulkPage() {
   const { t } = useTranslation()
@@ -81,7 +82,7 @@ export default function AdminSettlementsBulkPage() {
                 <DollarSign className="w-4 h-4 text-green-500" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900">{p.seller_name} ({p.business_name || '-'})</p>
-                  <p className="text-xs text-gray-500">{p.order_count}건 · 총 {Number(p.total_amount).toLocaleString()}원 · 수수료 {Math.round(p.commission).toLocaleString()}원</p>
+                  <p className="text-xs text-gray-500">{p.order_count}건 · 총 {formatNumber(p.total_amount)}원 · 수수료 {Math.round(p.commission)}원</p>
                 </div>
                 <p className="text-sm font-bold text-green-600">{(Number(p.total_amount) - Math.round(p.commission)).toLocaleString()}원</p>
               </div>

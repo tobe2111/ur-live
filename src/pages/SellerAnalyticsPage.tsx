@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardStatCard, DashboardLoading } from '@/components/dashboard'
 import { BarChart2, Users, Package, Loader2, TrendingUp, Repeat, ArrowUpRight } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 // Recharts lazy load (377KB → 차트 영역만 지연 로드)
 const SellerAnalyticsChart = lazy(() => import('@/components/charts/SellerAnalyticsChart'))
@@ -110,7 +111,7 @@ export default function SellerAnalyticsPage() {
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-blue-50 rounded-lg p-3">
                       <p className="text-xs text-blue-600">{t('seller.totalRevenueLabel')}</p>
-                      <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.revenue, 0).toLocaleString()}{t('common.won')}</p>
+                      <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.revenue, 0)}{t('common.won')}</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3">
                       <p className="text-xs text-green-600">{t('seller.totalOrdersLabel')}</p>
@@ -173,7 +174,7 @@ export default function SellerAnalyticsPage() {
                         <p className="text-sm font-medium text-gray-900">{c.name || t('seller.totalCustomersLabel')}</p>
                         <p className="text-xs text-gray-500">{c.order_count}{t('seller.ordersUnit')} {t('seller.orderCount')}</p>
                       </div>
-                      <p className="text-sm font-bold text-gray-900">{Number(c.total_spent).toLocaleString()}{t('common.won')}</p>
+                      <p className="text-sm font-bold text-gray-900">{formatNumber(c.total_spent)}{t('common.won')}</p>
                     </div>
                   ))}
                 </div>
@@ -214,7 +215,7 @@ export default function SellerAnalyticsPage() {
                     </div>
                     <div className="flex md:block md:text-right gap-3 text-xs">
                       <span className="md:hidden font-medium text-gray-400">{t('seller.revenueLabel')}:</span>
-                      <span className="font-bold text-gray-900">{Number(p.revenue).toLocaleString()}{t('common.won')}</span>
+                      <span className="font-bold text-gray-900">{formatNumber(p.revenue)}{t('common.won')}</span>
                     </div>
                     <div className="flex md:block md:text-right gap-3 text-xs text-gray-500">
                       <span className="md:hidden font-medium text-gray-400">{t('seller.avgRating')}:</span>

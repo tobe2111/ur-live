@@ -9,6 +9,7 @@ import WishlistButton from '../components/WishlistButton'
 import { ArrowLeft, Heart } from 'lucide-react'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
+import { formatNumber } from '@/utils/format'
 
 interface WishlistItem {
   id: number
@@ -231,16 +232,16 @@ const WishlistPage: React.FC = () => {
                     {item.discount_rate > 0 ? (
                       <>
                         <p style={{ fontSize: 10, color: tk.tertiary, textDecoration: 'line-through' }}>
-                          {item.original_price.toLocaleString()}원
+                          {formatNumber(item.original_price)}원
                         </p>
                         <div className="flex items-baseline gap-1">
                           <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{item.discount_rate}%</span>
-                          <span style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>{item.price.toLocaleString()}원</span>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>{formatNumber(item.price)}원</span>
                         </div>
                       </>
                     ) : (
                       <p style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>
-                        {item.price.toLocaleString()}원
+                        {formatNumber(item.price)}원
                       </p>
                     )}
                   </div>

@@ -7,6 +7,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { boutiqueCTA } from '@/components/glass/glassTokens'
+import { formatNumber } from '@/utils/format'
 
 interface ShortItem {
   id: number | string
@@ -459,12 +460,12 @@ export default function ShortsPage() {
                         <p style={{ fontSize: 12, fontWeight: 500, color: '#374151', lineHeight: 1.4 }} className="line-clamp-2">{item.product_name}</p>
                         {originalPrice > finalPrice && (
                           <div className="flex items-baseline gap-1.5 mt-1">
-                            <span style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()}</span>
+                            <span style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>{formatNumber(originalPrice)}</span>
                           </div>
                         )}
                         <div className="flex items-baseline gap-1">
                           {discountRate > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>{discountRate}%</span>}
-                          <span style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{finalPrice.toLocaleString()}</span>
+                          <span style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{formatNumber(finalPrice)}</span>
                           <span style={{ fontSize: 11, color: '#6B7280' }}>원</span>
                         </div>
                       </div>

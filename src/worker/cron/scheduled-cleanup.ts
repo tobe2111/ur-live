@@ -5,7 +5,6 @@
 
 import type { Env } from '../types/env';
 import { swallow } from '../utils/swallow';
-
 export async function handleScheduled(env: Env) {
   const DB = env.DB;
   const results: Record<string, number> = {};
@@ -122,7 +121,7 @@ export async function handleScheduled(env: Env) {
           const { sendSystemPush } = await import('../../lib/system-push');
           sendSystemPush(env, 'user', a.winner_user_id, {
             title: '경매 낙찰 🎉',
-            body: `${a.title} ${a.current_price.toLocaleString()}원에 낙찰됐어요. 결제를 진행해주세요.`,
+            body: `${a.title} ${Number(a.current_price ?? 0).toLocaleString('ko-KR')}원에 낙찰됐어요. 결제를 진행해주세요.`,
             url: `/live/${a.stream_id}`,
           }).catch(swallow('scheduled-cleanup:auction-winner-push'));
         } catch { /* ignore */ }
@@ -134,7 +133,7 @@ export async function handleScheduled(env: Env) {
           if (phoneRow?.phone) {
             const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk');
             sendSystemAlimtalk(env, phoneRow.phone, 'auction_won',
-              `[유어딜] 경매 낙찰 안내\n${a.title}\n낙찰가: ${a.current_price.toLocaleString()}원\n결제를 진행해주세요.`
+              `[유어딜] 경매 낙찰 안내\n${a.title}\n낙찰가: ${Number(a.current_price ?? 0).toLocaleString('ko-KR')}원\n결제를 진행해주세요.`
             ).catch(swallow('scheduled-cleanup:auction-won-alimtalk'));
           }
         } catch { /* ignore */ }
@@ -475,7 +474,7 @@ export async function handleScheduled(env: Env) {
                       senderKey: aligoSender,
                       templateCode: 'gift_refunded',
                       to: giftDetail.phone,
-                      message: `[유어딜] 보내신 선물 (${giftDetail.amount.toLocaleString()}원) 이 30일 미수령으로 자동 환불됐어요.`,
+                      message: `[유어딜] 보내신 선물 (${Number(giftDetail.amount ?? 0).toLocaleString('ko-KR')}원) 이 30일 미수령으로 자동 환불됐어요.`,
                     }
                   );
                 }

@@ -16,6 +16,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import { glass } from '@/components/glass/glassTokens'
+import { formatNumber } from '@/utils/format'
 
 interface DonationEffect {
   id: string
@@ -88,7 +89,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
       })
 
       if (res.data.success) {
-        toast.success(res.data.message || `${selectedAmount.amount.toLocaleString()}딜을 후원했습니다!`)
+        toast.success(res.data.message || `${formatNumber(selectedAmount.amount)}딜을 후원했습니다!`)
         setBalance(res.data.data.balance)
         setShowSheet(false)
 
@@ -142,7 +143,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
           <div className="animate-donation-center-alert fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-pink-500/90 to-red-500/90 backdrop-blur-xl rounded-3xl px-8 py-6 shadow-2xl border border-white/20 text-center">
             <div className="text-5xl mb-2">{centerAlert.emoji}</div>
             <p className="text-white text-lg font-bold whitespace-nowrap">
-              {centerAlert.donorName}님이 {centerAlert.amount.toLocaleString()}딜 후원!
+              {centerAlert.donorName}님이 {formatNumber(centerAlert.amount)}딜 후원!
             </p>
           </div>
         </div>
@@ -192,7 +193,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                   ) : (
                     <span className="text-lg font-bold text-pink-600">
-                      {(balance ?? 0).toLocaleString()}딜
+                      {formatNumber(balance ?? 0)}딜
                     </span>
                   )}
                   <button
@@ -256,7 +257,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                 ) : (
                   <Heart className="w-5 h-5" />
                 )}
-                {processing ? '후원 중...' : `${selectedAmount.amount.toLocaleString()}딜 후원하기`}
+                {processing ? '후원 중...' : `${formatNumber(selectedAmount.amount)}딜 후원하기`}
               </button>
             </div>
           </div>
@@ -283,7 +284,7 @@ export function DonationEffect({ donations }: { donations: DonationEffect[] }) {
             <Heart className="w-5 h-5 text-yellow-300 fill-yellow-300 flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-sm font-bold truncate">
-                {d.donorName}님이 {d.amount.toLocaleString()}딜 후원!
+                {d.donorName}님이 {formatNumber(d.amount)}딜 후원!
               </p>
               {d.message && (
                 <p className="text-xs text-white/80 truncate mt-0.5">{d.message}</p>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '@/lib/api'
+import { formatNumber } from '@/utils/format'
 
 const DONATION_GOAL = 10000
 
@@ -47,7 +48,7 @@ export function TeamPointsBadge({ streamId }: TeamPointsBadgeProps) {
       <div className="flex items-center gap-1.5">
         <span className="text-xs">🎁</span>
         <span className="text-[11px] font-bold text-white/90">
-          {donated.toLocaleString()}/{DONATION_GOAL.toLocaleString()}딜
+          {formatNumber(donated)}/{formatNumber(DONATION_GOAL)}딜
         </span>
       </div>
       <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">

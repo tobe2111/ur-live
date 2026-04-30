@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Youtube, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import { formatNumber } from '@/utils/format'
 
 export default function SellerYoutubeGrowthSuccessPage() {
   const { t } = useTranslation()
@@ -89,8 +90,8 @@ export default function SellerYoutubeGrowthSuccessPage() {
             <Youtube className="w-5 h-5 text-red-500" />
             <span className="text-sm text-gray-600">{t('seller.youtubeGrowth')}</span>
           </div>
-          <p className="text-3xl font-bold text-red-600">{String(t('seller.subscriberPlus', { count: result?.subscribers.toLocaleString() } as Record<string, string>))}</p>
-          <p className="text-sm text-gray-500 mt-2">{t('seller.paymentAmountLabel')}: {result?.amount.toLocaleString()}{t('common.won')}</p>
+          <p className="text-3xl font-bold text-red-600">{String(t('seller.subscriberPlus', { count: formatNumber(result?.subscribers) } as Record<string, string>))}</p>
+          <p className="text-sm text-gray-500 mt-2">{t('seller.paymentAmountLabel')}: {formatNumber(result?.amount)}{t('common.won')}</p>
         </div>
         <button
           onClick={() => navigate('/seller/youtube-growth')}

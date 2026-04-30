@@ -24,6 +24,7 @@ import {
   Table
 } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
 
 interface Settlement {
   id: number
@@ -187,7 +188,7 @@ export default function SellerSettlementsPage() {
       toast.error(t('seller.bankInfoRequired'))
       return
     }
-    if (!confirm(t('seller.confirmSettlementRequest', { amount: pendingAmount.toLocaleString() }))) return
+    if (!confirm(t('seller.confirmSettlementRequest', { amount: formatNumber(pendingAmount) }))) return
 
     try {
       const sessionToken = localStorage.getItem('seller_token')
@@ -342,28 +343,28 @@ export default function SellerSettlementsPage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             <DashboardStatCard
               label={t('common.pending')}
-              value={`₩${stats.pending_amount.toLocaleString()}`}
+              value={`₩${formatNumber(stats.pending_amount)}`}
               hint={`${stats.total_pending}건`}
               icon={<Clock className="h-4 w-4" />}
               accent="amber"
             />
             <DashboardStatCard
               label={t('common.completed')}
-              value={`₩${stats.approved_amount.toLocaleString()}`}
+              value={`₩${formatNumber(stats.approved_amount)}`}
               hint={`${stats.total_approved}건`}
               icon={<CheckCircle className="h-4 w-4" />}
               accent="blue"
             />
             <DashboardStatCard
               label={t('common.paid')}
-              value={`₩${stats.paid_amount.toLocaleString()}`}
+              value={`₩${formatNumber(stats.paid_amount)}`}
               hint={`${stats.total_paid}건`}
               icon={<DollarSign className="h-4 w-4" />}
               accent="green"
             />
             <DashboardStatCard
               label={t('common.settlement')}
-              value={`₩${(stats.pending_amount + stats.approved_amount + stats.paid_amount).toLocaleString()}`}
+              value={`₩${formatNumber(stats.pending_amount + stats.approved_amount + stats.paid_amount)}`}
               hint={t('seller.allPeriod')}
               icon={<TrendingUp className="h-4 w-4" />}
               accent="violet"
@@ -488,7 +489,7 @@ export default function SellerSettlementsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          ₩{settlement.total_sales.toLocaleString()}
+                          ₩{formatNumber(settlement.total_sales)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -498,12 +499,12 @@ export default function SellerSettlementsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-red-600 font-medium">
-                          -₩{settlement.commission_amount.toLocaleString()}
+                          -₩{formatNumber(settlement.commission_amount)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-green-600 font-bold">
-                          ₩{settlement.settlement_amount.toLocaleString()}
+                          ₩{formatNumber(settlement.settlement_amount)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

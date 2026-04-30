@@ -9,6 +9,7 @@ import { useState, ReactNode } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
+import { formatNumber } from '@/utils/format'
 
 export type UserRole = 'seller' | 'agency' | 'admin'
 
@@ -216,7 +217,7 @@ export default function ProductRegistrationForm({
       <SectionCard
         title="상품가격"
         required
-        summary={formData.price ? `${Number(formData.price).toLocaleString()}원` : '설정안함'}
+        summary={formData.price ? `${formatNumber(formData.price)}원` : '설정안함'}
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
@@ -362,7 +363,7 @@ export default function ProductRegistrationForm({
         summary={
           formData.shipping_type === 'non_shippable'
             ? '미배송상품'
-            : `기본배송비 ${Number(formData.shipping_fee || 0).toLocaleString()}원`
+            : `기본배송비 ${formatNumber(formData.shipping_fee || 0)}원`
         }
         defaultOpen={false}
       >

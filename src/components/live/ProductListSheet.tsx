@@ -2,6 +2,7 @@ import { ShoppingBag, X } from 'lucide-react'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import type { Product, Stream } from './LiveTypes'
+import { formatNumber } from '@/utils/format'
 
 export function ProductListSheet({
   products,
@@ -130,11 +131,11 @@ export function ProductListSheet({
                       </h4>
                       <div className="flex items-baseline gap-2">
                         <span className="text-xl font-extrabold text-gray-900">
-                          ₩{(product.price || 0).toLocaleString()}
+                          ₩{formatNumber(product.price || 0)}
                         </span>
                         {product.original_price && product.original_price > product.price && (
                           <span className="text-sm text-gray-400 line-through">
-                            ₩{product.original_price.toLocaleString()}
+                            ₩{formatNumber(product.original_price)}
                           </span>
                         )}
                       </div>

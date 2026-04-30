@@ -312,7 +312,7 @@ supplyRoutes.post('/register', async (c) => {
     if (request.supply_price > 0 && body.seller_price < request.supply_price) {
       return c.json({
         success: false,
-        error: `판매가는 공급가(${request.supply_price.toLocaleString()}원) 이상이어야 합니다`,
+        error: `판매가는 공급가(${Number(request.supply_price ?? 0).toLocaleString('ko-KR')}원) 이상이어야 합니다`,
       }, 400);
     }
 

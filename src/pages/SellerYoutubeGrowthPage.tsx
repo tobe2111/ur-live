@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Youtube, Loader2, CheckCircle, Clock, XCircle, Users } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
 
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
 
@@ -229,12 +230,12 @@ export default function SellerYoutubeGrowthPage() {
                       }`}
                     >
                       <span className="text-sm font-bold text-gray-900">
-                        {String(t('seller.subscriberPlus', { count: pkg.subscribers.toLocaleString() } as Record<string, string>))}
+                        {String(t('seller.subscriberPlus', { count: formatNumber(pkg.subscribers) } as Record<string, string>))}
                       </span>
                       <span className={`text-sm font-bold ${
                         selected?.subscribers === pkg.subscribers ? 'text-red-600' : 'text-gray-600'
                       }`}>
-                        {pkg.price.toLocaleString()}{t('common.won')}
+                        {formatNumber(pkg.price)}{t('common.won')}
                       </span>
                     </button>
                   ))}
@@ -258,7 +259,7 @@ export default function SellerYoutubeGrowthPage() {
                     <Loader2 className="w-4 h-4 animate-spin" /> {t('seller.preparingPayment')}
                   </span>
                 ) : selected ? (
-                  `${selected.price.toLocaleString()}${t('common.won')} ${t('common.payment')}`
+                  `${formatNumber(selected.price)}${t('common.won')} ${t('common.payment')}`
                 ) : (
                   t('seller.selectPackagePlease')
                 )}
@@ -273,7 +274,7 @@ export default function SellerYoutubeGrowthPage() {
             <div className="bg-red-50 rounded-xl px-4 py-3 flex justify-between items-center">
               <span className="text-sm text-gray-600">{t('seller.paymentContent')}</span>
               <span className="text-sm font-bold text-red-600">
-                {String(t('seller.subscriberPlus', { count: selected?.subscribers.toLocaleString() } as Record<string, string>))} / {selected?.price.toLocaleString()}{t('common.won')}
+                {String(t('seller.subscriberPlus', { count: formatNumber(selected?.subscribers) } as Record<string, string>))} / {formatNumber(selected?.price)}{t('common.won')}
               </span>
             </div>
             <div id="ytg-payment-method" className="min-h-[200px] bg-white rounded-xl border border-gray-200 p-2" />
@@ -291,7 +292,7 @@ export default function SellerYoutubeGrowthPage() {
                 disabled={processing}
                 className="flex-[2] py-3.5 bg-red-500 text-white text-sm font-bold rounded-xl hover:bg-red-600 disabled:opacity-60"
               >
-                {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${selected?.price.toLocaleString()}${t('common.won')} ${t('common.payment')}`}
+                {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${formatNumber(selected?.price)}${t('common.won')} ${t('common.payment')}`}
               </button>
             </div>
           </div>
@@ -318,11 +319,11 @@ export default function SellerYoutubeGrowthPage() {
                     <p className="text-sm text-gray-900 truncate">{req.channel_url}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <p className="text-xs text-gray-500">
-                        {String(t('seller.subscriberPlus', { count: (req.target_subscribers || 0).toLocaleString() } as Record<string, string>))}
+                        {String(t('seller.subscriberPlus', { count: formatNumber(req.target_subscribers || 0) } as Record<string, string>))}
                       </p>
                       {req.price > 0 && (
                         <p className="text-xs font-medium text-red-600">
-                          {req.price.toLocaleString()}{t('common.won')}
+                          {formatNumber(req.price)}{t('common.won')}
                         </p>
                       )}
                     </div>

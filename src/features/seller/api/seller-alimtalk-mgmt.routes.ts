@@ -16,7 +16,6 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireSeller, getCurrentUser } from '@/worker/middleware/auth'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
-
 type Bindings = {
   DB: D1Database
   JWT_SECRET: string
@@ -363,7 +362,7 @@ sellerAlimtalkMgmtRoutes.post('/alimtalk/charge', requireSeller(), async (c) => 
 
     return c.json({
       success: true,
-      message: `${amount.toLocaleString()}건 충전 완료 (${totalPrice.toLocaleString()}원)`,
+      message: `${Number(amount ?? 0).toLocaleString('ko-KR')}건 충전 완료 (${Number(totalPrice ?? 0).toLocaleString('ko-KR')}원)`,
       data: { amount, unit_price: unitPrice, total_price: totalPrice, order_id: orderId },
     })
   } catch (err) {
