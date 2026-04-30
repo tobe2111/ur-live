@@ -533,3 +533,9 @@ html.native-app nav {
   margin-left: auto !important;
   margin-right: auto !important;
 }
+
+/* Restaurant map LIVE 핀 펄스 — 글로벌 keyframe (kakao 커스텀 오버레이 inline HTML 에서 참조) */
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
+  50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
