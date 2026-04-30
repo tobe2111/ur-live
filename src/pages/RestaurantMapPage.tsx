@@ -103,6 +103,25 @@ export default function RestaurantMapPage() {
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const activeFilterCount = (region ? 1 : 0) + (category ? 1 : 0)
+  // 🛡️ 2026-04-30: bottom-sheet 3-snap (peek=결과만 / mid=절반 / full=거의 풀스크린)
+  const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('mid')
+  const dragStartY = useRef<number | null>(null)
+  const dragStartSnap = useRef<'peek' | 'mid' | 'full'>('mid')
+
+  function handleSheetDragStart(clientY: number) {
+    dragStartY.current = clientY
+    dragStartSnap.current = sheetSnap
+  }
+  function handleSheetDragEnd(clientY: number) {
+    if (dragStartY.current == null) return
+    const dy = clientY - dragStartY.current // 양수 = 아래로 드래그 = 시트 작아짐
+    dragStartY.current = null
+    const order: Array<'peek' | 'mid' | 'full'> = ['peek', 'mid', 'full']
+    const idx = order.indexOf(dragStartSnap.current)
+    if (Math.abs(dy) < 30) return // tap
+    const next = dy > 0 ? order[Math.max(0, idx - 1)] : order[Math.min(2, idx + 1)]
+    setSheetSnap(next)
+  }
 
   const kr = isKorea()
 
@@ -441,166 +460,248 @@ export default function RestaurantMapPage() {
     setMapView(true)
   }
 
+  // 🛡️ 2026-04-30 v3 bottom-sheet: 시트 snap 별 transform 값
+  //   peek = 12vh 만 보임 (결과 카운트 + 첫 카드 일부)
+  //   mid  = 50vh
+  //   full = 90vh 거의 풀스크린
+  const sheetTopByState: Record<typeof sheetSnap, string> = {
+    peek: 'calc(100vh - 18vh)',
+    mid: 'calc(100vh - 55vh)',
+    full: 'calc(100vh - 90vh)',
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-gray-50 pb-16">
+    <div className="relative h-screen w-full bg-gray-100 overflow-hidden pb-16">
       <SEO title="맛집 지도" description="유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인" url="/restaurant-map" />
-      {/* ═══ Header ═══ */}
-      <div className="shrink-0 bg-white z-50 border-b border-gray-200">
-        {/* Title + Search */}
-        <div className="flex items-center gap-2 px-4 py-3">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 shrink-0">
+
+      {/* ═══ 풀스크린 카카오맵 (배경) ═══
+          🛡️ 2026-04-30 CLS: mapRef 컨테이너 항상 렌더 → SDK load 시 placeholder
+            swap 없이 inset-0 에 카카오맵이 그려짐. layout shift 0. */}
+      <div ref={mapRef} className="absolute inset-0 bg-gray-100" />
+      {!(sdkLoaded && window.kakao?.maps) && (
+        <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center pointer-events-none">
+          <MapPin className="w-12 h-12 text-gray-300 mb-3" />
+          {sdkError ? (
+            <>
+              <p className="text-sm text-gray-500 font-medium">지도를 불러올 수 없습니다</p>
+              <p className="text-xs text-gray-400 mt-1">아래 시트에서 맛집을 확인하세요</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-500 font-medium">지도를 불러오는 중...</p>
+              <p className="text-xs text-gray-400 mt-1">카카오맵 SDK 로딩 중</p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══ 상단 floating glass 검색바 ═══ */}
+      <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none">
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <button
+            onClick={() => navigate(-1)}
+            aria-label="뒤로가기"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/95 backdrop-blur-md shadow-md shrink-0"
+          >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="맛집 이름이나 지역을 검색하세요"
-              className="w-full pl-9 pr-8 py-2.5 bg-gray-100 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:bg-white transition-colors"
+              placeholder="맛집 이름·지역 검색"
+              className="w-full pl-10 pr-9 py-2.5 bg-white/95 backdrop-blur-md rounded-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-md"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2">
+              <button onClick={() => setSearch('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2">
                 <X className="w-4 h-4 text-gray-400" />
               </button>
             )}
           </div>
         </div>
-
-        {/* 🛡️ 2026-04-30 UX: 1줄 통합 — 공구권 타입 (주축) + 더보기 필터 버튼 (지역/카테고리 시트) */}
-        <div className="flex items-center gap-2 px-4 pt-1 pb-3">
-          <button
-            onClick={() => setFilterSheetOpen(true)}
-            aria-label="지역·카테고리 필터 열기"
-            className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
-              activeFilterCount > 0
-                ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-                : 'bg-white text-gray-700 border border-gray-200'
-            }`}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>필터</span>
-            {activeFilterCount > 0 && (
-              <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white/25 text-[10px] font-bold">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-          <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto no-scrollbar">
-            {[
-              { key: 'all', label: '전체', emoji: '✨' },
-              { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
-              { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
-              { key: 'health_voucher', label: '헬스', emoji: '💪' },
-              { key: 'pet_voucher', label: '반려', emoji: '🐶' },
-              { key: 'stay_voucher', label: '숙박', emoji: '🏨' },
-              { key: 'activity_voucher', label: '액티비티', emoji: '🎯' },
-            ].map(t => (
-              <button
-                key={t.key}
-                onClick={() => setVoucherType(t.key as typeof voucherType)}
-                className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
-                  voucherType === t.key
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-white text-gray-600 border border-gray-200'
-                }`}
-              >
-                <span>{t.emoji}</span>
-                <span>{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 정렬 + 카운트 + 즐겨찾기 토글 */}
-        <div className="flex items-center justify-between px-4 pb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-gray-500">
-              <span className="font-bold text-gray-900">{filtered.length}</span>곳
-              {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">📍 내 위치 기준</span>}
-            </span>
-            {favorites.length > 0 && (
-              <button
-                onClick={() => setShowFavoritesOnly(v => !v)}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
-                  showFavoritesOnly
-                    ? 'bg-pink-500 text-white border-pink-500'
-                    : 'bg-white text-pink-500 border-pink-200'
-                }`}
-              >
-                <Heart className="w-2.5 h-2.5" fill={showFavoritesOnly ? 'currentColor' : 'none'} />
-                {favorites.length}
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <ArrowUpDown className="w-3 h-3 text-gray-400" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="text-[11px] font-semibold text-gray-700 bg-transparent focus:outline-none"
-            >
-              {userLoc && <option value="distance">거리순</option>}
-              <option value="discount">할인율순</option>
-              <option value="price">가격 낮은순</option>
-              <option value="rating">평점순</option>
-            </select>
-          </div>
-        </div>
       </div>
 
-      {/* ═══ 지도 (위 50vh) + 목록 (아래) 동시 표시 ═══
-          🛡️ 2026-04-28: 토글 → 동시 표시 패턴 (카카오맵/네이버맵 스타일).
-            지도와 목록을 같이 보면서, 목록 부분 자유 스크롤 가능.
-          🛡️ 2026-04-30 CLS: mapRef 컨테이너를 항상 렌더링 → SDK load 시
-            placeholder swap 없이 inset-0 에 카카오맵이 그려짐. layout shift 0. */}
-      <div className="relative shrink-0" style={{ height: '50vh', minHeight: 280 }}>
-        {/* 카카오맵 — 항상 렌더 (CLS 0). SDK 로드되면 그 안에 그려짐. */}
-        <div ref={mapRef} className="absolute inset-0 bg-gray-100" />
-        {/* 로딩/에러 placeholder — 지도 위에 오버레이 (SDK 로드 후 자동 사라짐) */}
-        {!(sdkLoaded && window.kakao?.maps) && (
-          <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center pointer-events-none">
-            <MapPin className="w-12 h-12 text-gray-300 mb-3" />
-            {sdkError ? (
-              <>
-                <p className="text-sm text-gray-500 font-medium">지도를 불러올 수 없습니다</p>
-                <p className="text-xs text-gray-400 mt-1">아래 목록에서 맛집을 확인하세요</p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-gray-500 font-medium">지도를 불러오는 중...</p>
-                <p className="text-xs text-gray-400 mt-1">카카오맵 SDK 로딩 중</p>
-              </>
-            )}
+      {/* ═══ 선택된 맛집 카드 (지도 위 floating, sheet peek 일 때만 표시) ═══ */}
+      {selected && sheetSnap === 'peek' && (
+        <div className="absolute left-3 right-3 z-30" style={{ bottom: 'calc(18vh + 80px)' }}>
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-3.5 relative">
+            <button onClick={() => setSelected(null)} aria-label="닫기" className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100">
+              <X className="w-3.5 h-3.5 text-gray-500" />
+            </button>
+            <div className="flex gap-3 pr-6">
+              {selected.image_url ? (
+                <img src={selected.image_url} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
+                  <span className="text-xl">🍽️</span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
+                  <span className="truncate">{selected.restaurant_name}</span>
+                  {selected.seller_id && liveSellerIds.has(selected.seller_id) && (
+                    <span className="inline-flex items-center gap-0.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                      <Radio className="w-2.5 h-2.5 animate-pulse" /> LIVE
+                    </span>
+                  )}
+                </p>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="text-base font-extrabold text-gray-900">{selected.price?.toLocaleString()}원</span>
+                  {selected.original_price > selected.price && (
+                    <span className="text-[10px] bg-red-500 text-white font-bold px-1 py-0.5 rounded">
+                      -{Math.round((1 - selected.price / selected.original_price) * 100)}%
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => navigate(`/products/${selected.id}`)}
+                className="self-center px-3 py-2 bg-pink-500 text-white text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
+              >
+                구매
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* 선택된 맛집 카드 (지도 위 오버레이) */}
-        {selected && (
-          <div className="absolute bottom-4 left-4 right-4 z-30 animate-in slide-in-from-bottom duration-200">
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4">
-              <button onClick={() => setSelected(null)} className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200">
+      {/* ═══ Bottom Sheet (드래그 가능, 3-snap) ═══ */}
+      <div
+        className="absolute left-0 right-0 bottom-0 z-30 bg-white rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col"
+        style={{
+          top: sheetTopByState[sheetSnap],
+          transition: dragStartY.current == null ? 'top 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
+        }}
+        role="dialog"
+        aria-label="맛집 목록"
+      >
+        {/* Drag handle (탭 / 드래그) */}
+        <div
+          className="flex justify-center py-2.5 cursor-grab active:cursor-grabbing select-none touch-none"
+          onTouchStart={(e) => handleSheetDragStart(e.touches[0].clientY)}
+          onTouchEnd={(e) => handleSheetDragEnd(e.changedTouches[0].clientY)}
+          onMouseDown={(e) => handleSheetDragStart(e.clientY)}
+          onMouseUp={(e) => handleSheetDragEnd(e.clientY)}
+          onClick={() => setSheetSnap(s => s === 'peek' ? 'mid' : s === 'mid' ? 'full' : 'peek')}
+          role="slider"
+          aria-label="시트 크기 조절"
+          aria-valuemin={0}
+          aria-valuemax={2}
+          aria-valuenow={sheetSnap === 'peek' ? 0 : sheetSnap === 'mid' ? 1 : 2}
+          tabIndex={0}
+        >
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+
+        {/* Sticky filter row + count + sort */}
+        <div className="px-3 pb-2 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFilterSheetOpen(true)}
+              aria-label="지역·카테고리 필터 열기"
+              className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
+                activeFilterCount > 0
+                  ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
+                  : 'bg-white text-gray-700 border border-gray-200'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white/25 text-[10px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            <div className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto no-scrollbar">
+              {[
+                { key: 'all', label: '전체', emoji: '✨' },
+                { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
+                { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
+                { key: 'health_voucher', label: '헬스', emoji: '💪' },
+                { key: 'pet_voucher', label: '반려', emoji: '🐶' },
+                { key: 'stay_voucher', label: '숙박', emoji: '🏨' },
+                { key: 'activity_voucher', label: '액티비티', emoji: '🎯' },
+              ].map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setVoucherType(t.key as typeof voucherType)}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
+                    voucherType === t.key
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200'
+                  }`}
+                >
+                  <span>{t.emoji}</span>
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-2 px-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] text-gray-500">
+                <span className="font-bold text-gray-900">{filtered.length}</span>곳
+                {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">📍 내 위치 기준</span>}
+              </span>
+              {favorites.length > 0 && (
+                <button
+                  onClick={() => setShowFavoritesOnly(v => !v)}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+                    showFavoritesOnly
+                      ? 'bg-pink-500 text-white border-pink-500'
+                      : 'bg-white text-pink-500 border-pink-200'
+                  }`}
+                >
+                  <Heart className="w-2.5 h-2.5" fill={showFavoritesOnly ? 'currentColor' : 'none'} />
+                  {favorites.length}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <ArrowUpDown className="w-3 h-3 text-gray-400" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortBy)}
+                aria-label="정렬"
+                className="text-[12px] font-semibold text-gray-700 bg-transparent focus:outline-none"
+              >
+                {userLoc && <option value="distance">거리순</option>}
+                <option value="discount">할인율순</option>
+                <option value="price">가격 낮은순</option>
+                <option value="rating">평점순</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ 시트 안 스크롤 가능한 결과 리스트 ═══ */}
+        <div className="flex-1 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
+          {selected && (
+            /* 선택된 맛집 디테일 카드 (sheet mid/full 일 때 list 위에 표시) */
+            <div className="bg-pink-50 border-2 border-pink-300 rounded-2xl p-4 mb-3 relative">
+              <button onClick={() => setSelected(null)} aria-label="선택 해제" className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white/80">
                 <X className="w-3.5 h-3.5 text-gray-500" />
               </button>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pr-6">
                 {selected.image_url ? (
-                  <img src={selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" />
+                  <img src={selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
                 ) : (
-                  <div className="w-20 h-20 rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
+                  <div className="w-20 h-20 rounded-xl bg-white flex items-center justify-center shrink-0">
                     <span className="text-2xl">🍽️</span>
                   </div>
                 )}
-                <div className="flex-1 min-w-0 pr-6">
+                <div className="flex-1 min-w-0">
                   <p className="font-bold text-gray-900 text-[15px] flex items-center gap-1.5">
-                    {selected.restaurant_name}
+                    <span className="truncate">{selected.restaurant_name}</span>
                     {selected.seller_id && liveSellerIds.has(selected.seller_id) && (
-                      <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-                        <Radio className="w-2.5 h-2.5 animate-pulse" />
-                        LIVE
+                      <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                        <Radio className="w-2.5 h-2.5 animate-pulse" /> LIVE
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-1 flex items-center gap-1">
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-1 flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" />
                     {selected.restaurant_address}
                     {userLoc && selected.restaurant_lat && selected.restaurant_lng && (
@@ -627,13 +728,13 @@ export default function RestaurantMapPage() {
                   onClick={() => toggleFavorite(selected.id)}
                   aria-label={favorites.includes(selected.id) ? '즐겨찾기 해제' : '즐겨찾기'}
                   className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
-                    favorites.includes(selected.id) ? 'bg-pink-50 text-pink-500' : 'bg-gray-100 text-gray-400'
+                    favorites.includes(selected.id) ? 'bg-pink-100 text-pink-500' : 'bg-white text-gray-400'
                   }`}
                 >
                   <Heart className="w-4 h-4" fill={favorites.includes(selected.id) ? 'currentColor' : 'none'} />
                 </button>
                 {selected.restaurant_phone && (
-                  <a href={`tel:${selected.restaurant_phone}`} aria-label="전화" className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-xl text-gray-700">
+                  <a href={`tel:${selected.restaurant_phone}`} aria-label="전화" className="flex items-center justify-center w-10 h-10 bg-white rounded-xl text-gray-700">
                     <Phone className="w-4 h-4" />
                   </a>
                 )}
@@ -655,22 +756,9 @@ export default function RestaurantMapPage() {
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-      </div>
-
-      {/* ═══ 목록 (지도 아래) — flex-1 로 자연 스크롤 ═══ */}
-      <div className="flex-1 bg-gray-50 overflow-y-auto">
-        <div className="px-4 py-4">
-            {/* 통계 */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[16px] font-bold text-gray-900">
-                바우처 맛집 <span className="text-pink-500">{filtered.length}곳</span>
-              </h2>
-            </div>
-
-            {loading ? (
+          {loading ? (
               /* 🛡️ 2026-04-30 CLS: 단일 스피너 → 카드 skeleton 으로 교체.
                  실제 결과 카드와 같은 높이 (90px) 를 유지해 layout shift 0 */
               <div className="space-y-3 pb-8" aria-hidden="true">

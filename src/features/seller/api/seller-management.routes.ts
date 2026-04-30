@@ -392,8 +392,11 @@ sellerManagementRoutes.get('/products/:id/options', async (c) => {
     ).bind(productId, sellerId).first<ProductIdRow>();
     if (!product) return c.json({ success: false, error: 'Product not found' }, 404);
 
+    // 🛡️ 2026-04-30 TD-005: stock_quantity / stock 양쪽 호환 — canonical 은 stock,
+    //   legacy 는 stock_quantity. COALESCE 로 양쪽 안전 + alias 유지 (FE 호환).
     const result = await DB.prepare(
-      `SELECT id, product_id, option_type, option_value, price_adjustment, stock_quantity
+      `SELECT id, product_id, option_type, option_value, price_adjustment,
+              COALESCE(stock, stock_quantity, 0) AS stock_quantity
        FROM product_options WHERE product_id = ? ORDER BY option_type, option_value`
     ).bind(productId).all();
 
@@ -427,9 +430,11 @@ sellerManagementRoutes.post('/products/:id/options', async (c) => {
     // 기존 옵션 삭제 후 새 옵션 삽입 (upsert 방식)
     await DB.prepare(`DELETE FROM product_options WHERE product_id = ?`).bind(productId).run();
 
+    // 🛡️ 2026-04-30 TD-005: canonical 'stock' 컬럼에만 INSERT (stock_quantity 이중 쓰기 제거).
+    //   기존 row 의 stock_quantity 값은 SELECT side COALESCE 로 읽혀 호환됨.
     for (const opt of options) {
       await DB.prepare(
-        `INSERT INTO product_options (product_id, option_type, option_value, price_adjustment, stock_quantity, created_at)
+        `INSERT INTO product_options (product_id, option_type, option_value, price_adjustment, stock, created_at)
          VALUES (?, ?, ?, ?, ?, datetime('now'))`
       ).bind(productId, opt.option_type, opt.option_value, opt.price_adjustment ?? 0, opt.stock_quantity ?? 0).run();
     }

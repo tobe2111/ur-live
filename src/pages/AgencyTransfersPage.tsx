@@ -3,7 +3,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { ArrowRightLeft, ArrowRight, Check, X, Send } from 'lucide-react'
+import { ArrowRightLeft, ArrowRight, Check, X } from 'lucide-react'
 
 interface Transfer {
   id: number
@@ -72,23 +72,8 @@ export default function AgencyTransfersPage() {
     }
   }
 
-  async function submitSellerApproval(id: number, approved: boolean) {
-    const msg = approved
-      ? '셀러가 이전에 동의했음을 확인하셨습니까? 매핑이 즉시 변경됩니다.'
-      : '셀러가 이전을 거부했습니까?'
-    if (!confirm(msg)) return
-    const reason = approved ? undefined : prompt('거부 사유 (선택):') || ''
-    try {
-      const token = localStorage.getItem('agency_token')
-      await api.post(`/api/agency/transfers/${id}/seller-approve`,
-        { approved, reason },
-        { headers: { Authorization: `Bearer ${token}` } })
-      toast.success(approved ? '이전 완료!' : '거부됨')
-      fetchAll()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '실패')
-    }
-  }
+  // 🛡️ 2026-04-30 TD-016 CRITICAL: agency 가 셀러 동의를 대행하던 위험 endpoint 제거.
+  //   대신 셀러에게 알림이 자동 발송되고, 셀러는 /seller/transfers 에서 직접 응답함.
 
   async function cancelOutgoing(id: number) {
     if (!confirm('이 신청을 취소하시겠습니까?')) return
@@ -116,8 +101,8 @@ export default function AgencyTransfersPage() {
         />
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
-          ⚠️ 이전 흐름: ① 보내는 에이전시가 신청 → ② 받는 에이전시 수락 → ③ 셀러 본인 동의 (보내는 쪽이 대행 입력) → 매핑 변경.
-          이전 후 30일 cooldown.
+          ⚠️ 이전 흐름: ① 보내는 에이전시 신청 → ② 받는 에이전시 수락 → <strong>③ 셀러 본인이 셀러 대시보드에서 직접 동의</strong> → 매핑 변경.
+          이전 후 30일 cooldown. 셀러에게 알림이 자동 발송되며, 에이전시가 셀러 대신 동의할 수 없습니다 (보안).
         </div>
 
         {loading ? (
@@ -141,7 +126,6 @@ export default function AgencyTransfersPage() {
             <Section title={incoming.length > 0 ? '보낸 신청' : '신청 내역'}>
               {outgoing.map(t => (
                 <TransferCard key={t.id} t={t} kind="outgoing"
-                  onSellerApprove={(approved) => submitSellerApproval(t.id, approved)}
                   onCancel={() => cancelOutgoing(t.id)} />
               ))}
               {outgoing.length === 0 && (
@@ -170,7 +154,6 @@ function TransferCard(props: {
   t: Transfer
   kind: 'incoming' | 'outgoing'
   onAction?: (response: 'accept' | 'reject') => void
-  onSellerApprove?: (approved: boolean) => void
   onCancel?: () => void
 }) {
   const { t } = props
@@ -212,20 +195,9 @@ function TransferCard(props: {
         </div>
       )}
       {props.kind === 'outgoing' && t.status === 'accepted_by_to' && (
-        <div className="mt-3 space-y-2">
-          <div className="text-[11px] text-blue-700 bg-blue-50 p-2 rounded">
-            받는 에이전시가 수락했습니다. 셀러에게 동의 의사를 확인 후 아래 버튼을 눌러주세요.
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => props.onSellerApprove?.(true)}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold rounded-lg">
-              <Send className="w-3.5 h-3.5" /> 셀러 동의함 → 매핑 변경
-            </button>
-            <button onClick={() => props.onSellerApprove?.(false)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs rounded-lg">
-              셀러 거부
-            </button>
-          </div>
+        <div className="mt-3 text-[11px] text-blue-700 bg-blue-50 p-2.5 rounded">
+          ✅ 받는 에이전시가 수락했습니다. <strong>셀러 본인이 직접 동의해야</strong> 매핑이 변경됩니다.
+          셀러에게 마이페이지 → 셀러 대시보드 → "에이전시 이전" 메뉴에서 응답 요청해주세요.
         </div>
       )}
       {props.kind === 'outgoing' && t.status === 'pending' && (

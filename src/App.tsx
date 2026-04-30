@@ -98,6 +98,7 @@ const SellerAlimtalkPage = lazy(() => import('./pages/SellerAlimtalkPage'))
 const SellerYoutubeGrowthPage = lazy(() => import('./pages/SellerYoutubeGrowthPage'))
 const SellerYoutubeGrowthSuccessPage = lazy(() => import('./pages/SellerYoutubeGrowthSuccessPage'))
 const SellerDonationsPage = lazy(() => import('./pages/SellerDonationsPage'))
+const SellerTransfersPage = lazy(() => import('./pages/SellerTransfersPage'))
 const SellerShortsPage = lazy(() => import('./pages/SellerShortsPage'))
 const SellerLiveBroadcastPage = lazy(() => import('./pages/SellerLiveBroadcastPage'))
 const SellerLiveAnalyticsPage = lazy(() => import('./pages/SellerLiveAnalyticsPage'))
@@ -610,6 +611,11 @@ function AppContent() {
             <Route path="/seller/donations" element={
               <ProtectedRoute requireSeller>
                 <ErrorBoundary><SellerDonationsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/transfers" element={
+              <ProtectedRoute requireSeller>
+                <ErrorBoundary><SellerTransfersPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/seller/shorts" element={
