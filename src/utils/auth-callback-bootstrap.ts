@@ -77,6 +77,13 @@ export function processAuthCallbackParams(): void {
       if (userName) localStorage.setItem('user_name', userName)
       if (userEmail) localStorage.setItem('user_email', userEmail)
       if (profileImage) localStorage.setItem('user_profile_image', profileImage.replace(/^http:\/\//, 'https://'))
+
+      // 🛡️ 2026-05-01: 로그인 직후 어떤 카카오 계정으로 로그인됐는지 명확히 표시.
+      //   사용자 신고: "다른 사람 폰에서 로그인했더니 그 사람 이름으로 됨".
+      //   sessionStorage 에 이름 저장 → React mount 후 toast 가 읽어서 표시.
+      if (userName) {
+        try { sessionStorage.setItem('ur_kakao_login_welcome', userName) } catch { /* */ }
+      }
     } catch { /* localStorage blocked (incognito etc.) — ignore */ }
 
     // linked seller/agency token transfer (cookie → localStorage).

@@ -60,7 +60,14 @@ accountRoutes.delete('/delete', requireAuth(), async (c) => {
       return c.json({ success: false, message: '인증이 필요합니다.' }, 401);
     }
 
-    const body = await c.req.json<DeleteAccountRequest>();
+    // 🛡️ 2026-05-01: DELETE 요청은 body 없을 수 있음. c.req.json() 이 throw 하면
+    //   "Unexpected end of JSON input" 사용자 신고. 안전 파싱.
+    let body: Partial<DeleteAccountRequest> = {};
+    try {
+      body = await c.req.json<DeleteAccountRequest>();
+    } catch {
+      // body 없거나 invalid JSON — 빈 객체로 진행 (reason 은 optional)
+    }
     const { reason } = body;
 
     // userId는 반드시 인증된 사용자 본인의 ID만 사용 — 요청 body userId 무시

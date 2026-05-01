@@ -306,14 +306,26 @@ function AppContent() {
   }, [])
 
   // 🛡️ 2026-05-01: firebase_token URL 처리 useEffect REMOVED.
-  //   백엔드가 firebase_token URL 파라미터 발급 안 함 (Firebase 100% 제거).
-  //   잔여 URL 에 firebase_token 있어도 무시 — 동기 cleanup 만 수행 (revisit 케이스).
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
     if (p.has('firebase_token')) {
       p.delete('firebase_token')
       const clean = p.toString()
       window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
+    }
+  }, [])
+
+  // 🛡️ 2026-05-01: 카카오 로그인 직후 어떤 계정으로 인증됐는지 명시 토스트.
+  //   사용자 신고: "다른 사람 폰에서 그 사람 카카오 계정으로 silent 로그인됨".
+  //   사용자가 본인 계정인지 즉시 확인 가능. 다른 계정이면 '다른 계정으로 로그인' 사용.
+  useEffect(() => {
+    let welcomeName: string | null = null
+    try { welcomeName = sessionStorage.getItem('ur_kakao_login_welcome') } catch { /* */ }
+    if (welcomeName) {
+      try { sessionStorage.removeItem('ur_kakao_login_welcome') } catch { /* */ }
+      import('@/hooks/useToast')
+        .then(({ toast }) => toast.success(`${welcomeName}님으로 로그인됐어요. 다른 계정이면 마이페이지에서 전환할 수 있어요.`))
+        .catch(() => { /* */ })
     }
   }, [])
 
