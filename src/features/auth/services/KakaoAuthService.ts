@@ -121,18 +121,34 @@ export class KakaoAuthService {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
       },
-      body: 'property_keys=["kakao_account.profile","kakao_account.email","properties.nickname","properties.profile_image"]',
-      signal: AbortSignal.timeout(8000), // 15s timeout
+      body: 'property_keys=["kakao_account.profile","kakao_account.email","kakao_account.name","kakao_account.phone_number","properties.nickname","properties.profile_image"]',
+      signal: AbortSignal.timeout(8000),
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[KakaoAuthService] User info fetch failed:', errorText);
       throw new Error(`Failed to get Kakao user info: ${errorText}`);
     }
-    
+
     const data: KakaoUserInfoResponse = await response.json();
-    
+
+    // 🛡️ 2026-05-01 (CRITICAL DIAGNOSTIC): Kakao 가 실제로 반환한 raw 데이터 전체 로깅.
+    //   사용자 신고: "내 카카오 닉네임 = 하은희 인데 우리 서비스엔 유어팀(정지원)" — 받아오는
+    //   정보가 잘못됐는지 검증. Cloudflare Workers logs 에서 확인 가능.
+    console.log('[Kakao API RAW RESPONSE]', JSON.stringify({
+      id: data.id,
+      properties: data.properties,
+      kakao_account: {
+        email: data.kakao_account?.email,
+        // @ts-expect-error — name 필드는 type 정의에 없을 수 있음
+        name: data.kakao_account?.name,
+        // @ts-expect-error — phone_number 필드도
+        phone_number: data.kakao_account?.phone_number,
+        profile: data.kakao_account?.profile,
+      },
+    }, null, 2));
+
     if (!data.id) {
       throw new Error('Invalid user data from Kakao');
     }
