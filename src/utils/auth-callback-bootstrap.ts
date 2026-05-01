@@ -83,11 +83,12 @@ export function processAuthCallbackParams(): void {
       }
     } catch { /* ignore */ }
 
-    // URL 정리 (auth 파라미터 제거 — new=1, restorable 등 onboarding 트리거는 유지)
+    // URL 정리 — 인증용 파라미터만 제거.
+    //   new=1 (onboarding), restorable=1 (Option B 복원), originalName, userName 유지
+    //   (OnboardingTrigger / RestoreConsent 가 useSearchParams 로 읽음).
     try {
       urlParams.delete('login')
       urlParams.delete('userId')
-      urlParams.delete('userName')
       urlParams.delete('userEmail')
       urlParams.delete('profileImage')
       const clean = urlParams.toString()

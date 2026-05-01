@@ -517,6 +517,7 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
     // Set httpOnly session cookie for user auth (new flow)
+    // 🛡️ 2026-05-01: 세션 쿠키 발급 실패 = fatal. silent fail 차단.
     let sessionCookieHeader: string | undefined;
     try {
       sessionCookieHeader = await createSessionCookie(
@@ -528,6 +529,11 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
       );
     } catch (e) {
       if (import.meta.env.DEV) console.error('[Kakao Callback] Session cookie creation failed:', e);
+      return c.json({
+        success: false,
+        error: 'session_cookie_failed',
+        detail: (e as Error).message || 'unknown',
+      }, 500);
     }
 
     // 🛡️ linked seller / agency 자동 JWT 발급

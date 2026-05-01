@@ -11,6 +11,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { User as FirebaseUser } from 'firebase/auth';
+import { isKorea } from '@/shared/config/region';
 
 /**
  * ✅ Zustand Store - KR 전용 인증 (Kakao + Firebase Email)
@@ -369,6 +370,14 @@ export const useAuthKR = create<AuthKRState>()(
          *    permanent loading state.  The catch block now sets isAuthReady.
          */
         initializeAuth: () => {
+          // 🛡️ 2026-05-01: KR 은 Firebase 100% 미사용 — 즉시 ready 처리 후 종료.
+          //   App.tsx 가 이미 `if (isKorea()) setAuthReady(true)` 로 일찍 끊지만
+          //   defense-in-depth 로 store 자체에서도 차단. Firebase SDK lazy import 절대 발생 X.
+          if (isKorea()) {
+            set({ isAuthReady: true });
+            return () => { /* no-op cleanup */ };
+          }
+
           let isMounted = true;           // ✅ tracks whether cleanup was already called
           let unsubscribeFn: (() => void) | null = null;
 
