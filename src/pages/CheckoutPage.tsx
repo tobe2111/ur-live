@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, lazy, Suspense } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -19,18 +19,12 @@ import CheckoutHeader from './checkout/CheckoutHeader'
 import OrderItemsList from './checkout/OrderItemsList'
 import CouponSection from './checkout/CouponSection'
 import ShippingSection from './checkout/ShippingSection'
-import DealPointsSection from './checkout/DealPointsSection'
 import OrderSummary from './checkout/OrderSummary'
 import AddressListModal from './checkout/AddressListModal'
 import NewAddressFormModal from './checkout/NewAddressFormModal'
+import PaymentSection from './checkout/PaymentSection'
 
-// 🔥 Region-based lazy loading for payment components
-const TossPaymentWidget = lazy(() =>
-  import('@/components/payments/TossPaymentWidget').then(m => ({ default: m.TossPaymentWidget }))
-)
-const StripeCheckout = lazy(() =>
-  import('@/components/payments/StripeCheckout').then(m => ({ default: m.StripeCheckout }))
-)
+// TossPaymentWidget / StripeCheckout 은 ./checkout/PaymentSection 내부에서 lazy 마운트.
 
 // 토스 SDK 프리로드 — 체크아웃 진입 전에 로드 시작
 if (typeof window !== 'undefined') {
@@ -653,192 +647,65 @@ export default function CheckoutPage() {
             {/* Divider */}
             <div className="h-[6px] bg-gray-100" />
 
-            {/* 결제 수단 선택 */}
-            <section className="bg-white px-5 py-4">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">결제 수단</h2>
-
-              {/* 결제 방법 탭 */}
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => setPaymentMethod('toss')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
-                    paymentMethod === 'toss'
-                      ? 'border-gray-900 bg-gray-900 text-white'
-                      : 'border-gray-200 bg-white text-gray-500'
-                  }`}
-                >
-                  카드/간편결제
-                </button>
-              </div>
-
-              {/* 딜 포인트 (TD-018 추출) */}
-              <DealPointsSection
-                dealBalance={dealBalance}
-                dealToUse={dealToUse}
-                setDealToUse={setDealToUse}
-                totalBeforeDeal={totalBeforeDeal}
-                totalAmount={totalAmount}
-              />
-
-              {dealToUse >= totalBeforeDeal ? (
-                /* 딜 전액 결제 */
-                <button
-                  onClick={async () => {
-                    if (!selectedAddress) { toast.error(t('common.addressRequired')); return }
-                    setPayingWithDeals(true)
-                    try {
-                      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-                      if (isDirectPurchase) sessionStorage.setItem('directPurchase', 'true')
-                      const res = await api.post('/api/points/pay', {
-                        order_number: orderNumber, total_amount: totalAmount,
-                        items: cartItems.map(item => ({
-                          product_id: String(item.product_id), product_name: item.product_name || '상품',
-                          quantity: item.quantity, price: item.price_snapshot ?? item.price ?? 0,
-                          seller_id: item.seller_id ? String(item.seller_id) : undefined,
-                        })),
-                        shipping: {
-                          name: selectedAddress.recipient_name, phone: selectedAddress.phone,
-                          postal_code: selectedAddress.postal_code, address1: selectedAddress.address,
-                          address2: selectedAddress.address_detail || '',
-                        },
-                      })
-                      if (res.data.success) {
-                        if (couponId && couponDiscount > 0) {
-                          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => { toast.error(t('common.couponApplyFailed')) })
-                        }
-                        navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
-                      }
-                      else toast.error(res.data.error || '결제 실패')
-                    } catch (err: unknown) { toast.error(getUserFriendlyError(err, '딜 결제 실패')) }
-                    finally { setPayingWithDeals(false) }
-                  }}
-                  disabled={payingWithDeals || !selectedAddress}
-                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white text-base font-bold disabled:opacity-40"
-                >
-                  {payingWithDeals ? '처리 중...' : `${formatNumber(totalAmount)}딜로 결제`}
-                </button>
-              ) : isKorea() ? (
-                /* 한국: Toss Payments */
-                <Suspense fallback={
-                  <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
-                    <p>결제 수단 불러오는 중...</p>
-                  </div>
-                }>
-                  <TossPaymentWidget
-                    userId={userId || ''}
-                    clientKey={clientKey}
-                    cartItems={cartItems}
-                    totalAmount={Math.max(0, totalAmount)}
-                    shippingFee={totalShippingFee}
-                    onBeforePayment={handleBeforePayment}
-                    onPaymentSuccess={(orderId, paymentKey, amount) => {
-                      navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
-                    }}
-                    onPaymentError={(error) => {
-                      if (import.meta.env.DEV) console.error('[CheckoutPage] 결제 실패:', error)
-                      showErrorToast(error)
-                    }}
-                  />
-                </Suspense>
-              ) : (
-                /* 글로벌: Stripe */
-                <Suspense fallback={
-                  <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
-                    <p>Loading payment method...</p>
-                  </div>
-                }>
-                  <StripeCheckout
-                    userId={userId || ''}
-                    cartItems={cartItems}
-                    totalAmount={Math.max(0, totalAmount)}
-                    shippingFee={totalShippingFee}
-                    onPaymentSuccess={(orderId, paymentIntentId, amount) => {
-                      navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
-                    }}
-                    onPaymentError={(error) => {
-                      if (import.meta.env.DEV) console.error('[CheckoutPage] Payment failed:', error)
-                      showErrorToast(error)
-                    }}
-                  />
-                </Suspense>
-              )}
-            </section>
+            {/* 결제 수단 (TD-018 추출) */}
+            <PaymentSection
+              paymentMethod={paymentMethod}
+              setPaymentMethod={setPaymentMethod}
+              dealBalance={dealBalance}
+              dealToUse={dealToUse}
+              setDealToUse={setDealToUse}
+              totalBeforeDeal={totalBeforeDeal}
+              totalAmount={totalAmount}
+              payingWithDeals={payingWithDeals}
+              onPayWithDeals={async () => {
+                if (!selectedAddress) { toast.error(t('common.addressRequired')); return }
+                setPayingWithDeals(true)
+                try {
+                  const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+                  if (isDirectPurchase) sessionStorage.setItem('directPurchase', 'true')
+                  const res = await api.post('/api/points/pay', {
+                    order_number: orderNumber, total_amount: totalAmount,
+                    items: cartItems.map(item => ({
+                      product_id: String(item.product_id), product_name: item.product_name || '상품',
+                      quantity: item.quantity, price: item.price_snapshot ?? item.price ?? 0,
+                      seller_id: item.seller_id ? String(item.seller_id) : undefined,
+                    })),
+                    shipping: {
+                      name: selectedAddress.recipient_name, phone: selectedAddress.phone,
+                      postal_code: selectedAddress.postal_code, address1: selectedAddress.address,
+                      address2: selectedAddress.address_detail || '',
+                    },
+                  })
+                  if (res.data.success) {
+                    if (couponId && couponDiscount > 0) {
+                      api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount }).catch(() => { toast.error(t('common.couponApplyFailed')) })
+                    }
+                    navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
+                  } else {
+                    toast.error(res.data.error || '결제 실패')
+                  }
+                } catch (err: unknown) {
+                  toast.error(getUserFriendlyError(err, '딜 결제 실패'))
+                } finally { setPayingWithDeals(false) }
+              }}
+              userId={userId || ''}
+              cartItems={cartItems}
+              totalShippingFee={totalShippingFee}
+              clientKey={clientKey}
+              selectedAddressOk={!!selectedAddress}
+              onBeforePayment={handleBeforePayment}
+              onTossPaymentSuccess={(orderId, paymentKey, amount) => {
+                navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
+              }}
+              onStripePaymentSuccess={(orderId, paymentIntentId, amount) => {
+                navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
+              }}
+            />
           </div>
 
-          {/* Right column - Order summary (desktop only) */}
-          <div className="hidden">
-            <div className="sticky top-20 rounded-3xl">{/* overflow-hidden 제거 */}
-              <section className="bg-white px-5 py-6">
-                <h2 className="text-[15px] font-bold text-gray-900">결제 금액</h2>
-
-                <div className="mt-5 flex flex-col gap-3.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[14px] text-gray-400">상품금액</span>
-                    <span className="text-[14px] text-gray-900">
-                      {formatNumber(subtotal)}원
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-[14px] text-gray-400">배송비</span>
-                    <span className="text-[14px] text-gray-900">
-                      {totalShippingFee === 0 ? (
-                        <span className="font-medium text-blue-600">무료</span>
-                      ) : (
-                        `${formatNumber(totalShippingFee)}원`
-                      )}
-                    </span>
-                  </div>
-
-                  {couponDiscount > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-[14px] text-gray-400">쿠폰 할인</span>
-                      <span className="text-[14px] font-medium text-red-500">
-                        -{formatNumber(couponDiscount)}원
-                      </span>
-                    </div>
-                  )}
-                  {totalGroupBuyDiscount > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-[14px] text-gray-400">🎁 공동구매 할인</span>
-                      <span className="text-[14px] font-medium text-gray-900">-{formatNumber(totalGroupBuyDiscount)}원</span>
-                    </div>
-                  )}
-                  {dealToUse > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-[14px] text-gray-400">딜 포인트</span>
-                      <span className="text-[14px] font-medium text-pink-500">
-                        -{formatNumber(dealToUse)}딜
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="my-5 h-px bg-[#333]" />
-
-                <div className="flex items-end justify-between">
-                  <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
-                  <div className="flex items-baseline gap-0.5">
-                    <span className="text-[26px] font-bold tracking-tight text-gray-900">
-                      {Math.max(0, totalAmount)}
-                    </span>
-                    <span className="text-[15px] font-semibold text-gray-900">원</span>
-                  </div>
-                </div>
-
-                {/* Payment button is inside TossPaymentWidget */}
-                {!selectedAddress && (
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-xs text-amber-800 text-center">
-                      ⚠️ 배송지를 선택하셔야 결제가 가능합니다
-                    </p>
-                  </div>
-                )}
-              </section>
-            </div>
-          </div>
+          {/* 🛡️ 2026-05-01: dead code 제거 — `<div className="hidden">` 의 desktop
+              order summary 는 mobile-only 디자인이라 실제로 렌더 안 됨. 모바일/PC 모두
+              상단 OrderSummary 컴포넌트가 표시. */}
         </div>
 
         {/* 결제 예정금액 (TD-018 추출) */}
