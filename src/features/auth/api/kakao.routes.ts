@@ -121,6 +121,11 @@ function safeRedirect(path: string | null | undefined): string {
   if (path.startsWith('//')) return '/';
   if (path.includes('\\')) return '/';
   if (/[\n\t\r\0]/.test(path)) return '/';
+  // 🛡️ 2026-05-01: query string / hash 제거 — 사용자 신고: 에러 URL 누적 (?error=...?error=...)
+  //   redirect 대상은 pathname only. ?error=, ?login=success 등은 worker 가 새로 부착.
+  const queryIdx = path.search(/[?#]/);
+  if (queryIdx >= 0) path = path.slice(0, queryIdx);
+  if (!path) return '/';
   const FORBIDDEN = ['/login', '/seller/login', '/admin/login', '/agency/login', '/auth/', '/oauth/'];
   for (const prefix of FORBIDDEN) {
     if (prefix.endsWith('/')) {

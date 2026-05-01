@@ -52,6 +52,10 @@ export function isSafeInternalPath(raw: unknown): raw is string {
 /**
  * 안전한 내부 path 만 통과시키고, 그 외엔 fallback (기본 '/').
  * URL 디코딩 자동 시도 (실패 시 raw 그대로 검사).
+ *
+ * 🛡️ 2026-05-01: query / hash 제거 — 사용자 신고된 에러 URL 누적
+ *   (?error=...?error=...) 차단. `/user/profile?error=database_error` 같은 path 가
+ *   returnUrl 로 들어오면 `/user/profile` 만 추출.
  */
 export function safeInternalPath(raw: unknown, fallback: string = '/'): string {
   if (typeof raw !== 'string') return fallback
@@ -61,5 +65,8 @@ export function safeInternalPath(raw: unknown, fallback: string = '/'): string {
   } catch {
     decoded = raw
   }
+  // query / hash 분리 → pathname only
+  const queryIdx = decoded.search(/[?#]/)
+  if (queryIdx >= 0) decoded = decoded.slice(0, queryIdx)
   return isSafeInternalPath(decoded) ? decoded : fallback
 }
