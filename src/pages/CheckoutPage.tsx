@@ -17,6 +17,7 @@ import { toast } from '@/hooks/useToast'
 // 🛡️ 2026-05-01: TD-018 점진 분할 — sub-components.
 import CheckoutHeader from './checkout/CheckoutHeader'
 import OrderItemsList from './checkout/OrderItemsList'
+import CouponSection from './checkout/CouponSection'
 
 // 🔥 Region-based lazy loading for payment components
 const TossPaymentWidget = lazy(() =>
@@ -673,43 +674,14 @@ export default function CheckoutPage() {
             {/* 주문 상품 정보 (TD-018 추출) */}
             <OrderItemsList sellerGroups={sellerGroups} totalItemCount={cartItems.length} />
             
-            {/* 쿠폰 적용 */}
-            <section className="bg-white px-5 py-4 border-t border-gray-100">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-2">할인 쿠폰</h2>
-              <div className="flex gap-2">
-                <input
-                  value={couponCode}
-                  onChange={e => setCouponCode(e.target.value.toUpperCase())}
-                  placeholder="쿠폰 코드 입력"
-                  aria-label="쿠폰 코드 입력"
-                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none"
-                />
-                <button
-                  onClick={async () => {
-                    if (!couponCode.trim()) return
-                    try {
-                      const res = await api.post('/api/coupons/apply', { code: couponCode.trim(), order_amount: totalAmount })
-                      if (res.data.success) {
-                        setCouponDiscount(res.data.data.discount)
-                        setCouponId(res.data.data.coupon_id)
-                        toast.success(`${res.data.data.name}: ${formatNumber(res.data.data.discount)}원 할인`)
-                      } else {
-                        toast.error(res.data.error)
-                      }
-                    } catch (err: unknown) { toast.error(getUserFriendlyError(err, '쿠폰 적용 실패')) }
-                  }}
-                  className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-lg shrink-0"
-                >
-                  적용
-                </button>
-              </div>
-              {couponDiscount > 0 && (
-                <div className="flex items-center justify-between mt-2 p-2 bg-green-50 rounded-lg border border-green-200">
-                  <span className="text-sm text-green-700 font-medium">✓ 쿠폰 할인 적용됨</span>
-                  <span className="text-sm font-bold text-green-700">-{formatNumber(couponDiscount)}원</span>
-                </div>
-              )}
-            </section>
+            {/* 쿠폰 적용 (TD-018 추출) */}
+            <CouponSection
+              couponCode={couponCode}
+              setCouponCode={setCouponCode}
+              couponDiscount={couponDiscount}
+              totalAmount={totalAmount}
+              onApplied={(discount, id) => { setCouponDiscount(discount); setCouponId(id) }}
+            />
 
             {/* Divider */}
             <div className="h-[6px] bg-gray-100" />
