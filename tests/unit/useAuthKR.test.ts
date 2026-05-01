@@ -1,67 +1,60 @@
 /**
- * 🧪 useAuthKR Zustand Store 단위 테스트 (간소화 버전)
+ * 🧪 useAuthKR Zustand Store 단위 테스트
  *
- * Note: useAuthKR.ts 는 firebase/auth 를 직접 쓰지 않고
- *       @/lib/firebase-auth 래퍼를 lazy-import 합니다.
- *       따라서 '@/lib/firebase-auth' 를 mock 해야 합니다.
+ * 🛡️ 2026-05-01: Firebase 100% 제거 — useAuthKR 는 백엔드 JWT (/api/auth/login,
+ *   /api/auth/register, /api/auth/forgot-password, /api/auth/logout) 를 사용.
+ *   Firebase mock 불필요, fetch 만 mock.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import {
   useAuthKR,
-  useAuthKRUser,
-  useAuthKRLoading,
   useAuthKRError,
   useAuthKRRole,
-  useAuthKRReady,
 } from '@/shared/stores/useAuthKR'
 
-// ── Mock: @/lib/firebase-auth (래퍼) ────────────────────────────────────────
-const mockSignInWithEmail = vi.fn()
-const mockCreateUser = vi.fn()
-const mockSignOut = vi.fn()
-const mockSendPasswordReset = vi.fn()
-const mockOnAuthStateChanged = vi.fn()
-const mockGetFirebaseAuth = vi.fn()
-
-vi.mock('@/lib/firebase-auth', () => ({
-  signInWithEmailAndPassword: (...a: unknown[]) => mockSignInWithEmail(...a),
-  createUserWithEmailAndPassword: (...a: unknown[]) => mockCreateUser(...a),
-  signOut: (...a: unknown[]) => mockSignOut(...a),
-  sendPasswordResetEmail: (...a: unknown[]) => mockSendPasswordReset(...a),
-  onAuthStateChanged: (...a: unknown[]) => mockOnAuthStateChanged(...a),
-  getFirebaseAuth: (...a: unknown[]) => mockGetFirebaseAuth(...a),
-  getCurrentUser: vi.fn().mockResolvedValue(null),
-  signInWithCustomToken: vi.fn().mockResolvedValue({ user: { uid: 'mock' } }),
+// region — KR 강제 (initializeAuth 의 isKorea() 가드 통과)
+vi.mock('@/shared/config/region', () => ({
+  isKorea: vi.fn(() => true),
 }))
 
-// ── Mock: @/lib/firebase ─────────────────────────────────────────────────────
-vi.mock('@/lib/firebase', () => ({
-  auth: { currentUser: null, onAuthStateChanged: vi.fn() },
-  app: { name: '[DEFAULT]' },
-  db: {},
+// auth-store (api 토큰 캐시 동기화 — 옵션)
+vi.mock('@/client/stores/auth.store', () => ({
+  useAuthStore: {
+    getState: vi.fn(() => ({
+      setAuth: vi.fn(),
+      clearAuth: vi.fn(),
+      user: null,
+      accessToken: null,
+    })),
+  },
 }))
 
-// ── Mock: @/lib/firebase-config ──────────────────────────────────────────────
-vi.mock('@/lib/firebase-config', () => ({
-  initializeAll: vi.fn().mockResolvedValue({ name: '[DEFAULT]' }),
-  initializeFirebase: vi.fn().mockResolvedValue({ name: '[DEFAULT]' }),
+vi.mock('@/utils/auth', () => ({
+  clearAuthData: vi.fn((type: string) => {
+    if (type === 'user') {
+      localStorage.removeItem('user_type')
+      localStorage.removeItem('user_id')
+      localStorage.removeItem('user_token')
+      localStorage.removeItem('user_name')
+    }
+  }),
 }))
 
-// ── describe ─────────────────────────────────────────────────────────────────
+vi.mock('@/lib/api', () => ({
+  default: {},
+  clearFirebaseTokenCache: vi.fn(),
+}))
 
-describe('useAuthKR Store (간소화 버전)', () => {
+vi.mock('@/lib/react-query', () => ({
+  getQueryClient: vi.fn(() => ({ clear: vi.fn() })),
+}))
+
+describe('useAuthKR Store (post Firebase removal — backend JWT)', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
-
-    mockGetFirebaseAuth.mockResolvedValue({ currentUser: null })
-    mockSignOut.mockResolvedValue(undefined)
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: null) => void) => {
-      cb(null)
-      return vi.fn()
-    })
 
     useAuthKR.setState({
       user: null,
@@ -69,7 +62,8 @@ describe('useAuthKR Store (간소화 버전)', () => {
       error: null,
       isAuthReady: false,
       userRole: null,
-    })
+      tokenCache: null,
+    } as any)
 
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -80,228 +74,150 @@ describe('useAuthKR Store (간소화 버전)', () => {
     vi.restoreAllMocks()
   })
 
-  // ── basic state ────────────────────────────────────────────────────────────
-
-  it('✅ 초기 상태가 올바르게 설정됨', () => {
+  it('✅ 초기 상태', () => {
     const { result } = renderHook(() => useAuthKR())
     expect(result.current.user).toBeNull()
     expect(result.current.isLoading).toBe(false)
-  })
-
-  it('✅ setUser - 사용자 설정', () => {
-    const { result } = renderHook(() => useAuthKR())
-    const mockUser = { uid: 'test-uid' } as Parameters<typeof result.current.setUser>[0]
-
-    act(() => {
-      result.current.setUser(mockUser)
-    })
-
-    expect(result.current.user).toEqual(mockUser)
-  })
-
-  it('✅ setLoading - 로딩 상태 설정', () => {
-    const { result } = renderHook(() => useAuthKR())
-
-    act(() => {
-      result.current.setLoading(true)
-    })
-
-    expect(result.current.isLoading).toBe(true)
-  })
-
-  // ── loginWithEmail ─────────────────────────────────────────────────────────
-
-  it('✅ 이메일/비밀번호 로그인 성공', async () => {
-    const { result } = renderHook(() => useAuthKR())
-
-    const mockUser = {
-      uid: 'test-uid',
-      email: 'test@test.com',
-      getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
-    }
-    // loginWithEmail calls signIn then relies on onAuthStateChanged to set user.
-    // We verify the call was made and no error state was set.
-    mockSignInWithEmail.mockResolvedValueOnce({ user: mockUser })
-
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      json: async () => ({ role: 'user' }),
-    })
-
-    await act(async () => {
-      await result.current.loginWithEmail('test@test.com', 'password123')
-    })
-
-    expect(mockSignInWithEmail).toHaveBeenCalledWith('test@test.com', 'password123')
-    expect(result.current.error).toBeNull()
-    expect(result.current.isLoading).toBe(false)
-  })
-
-  // ── signupWithEmail ────────────────────────────────────────────────────────
-
-  it('✅ 이메일 회원가입 성공', async () => {
-    const { result } = renderHook(() => useAuthKR())
-
-    const mockUser = {
-      uid: 'new-user-uid',
-      getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
-    }
-    // signupWithEmail calls createUser then relies on onAuthStateChanged to set user.
-    // We verify the call was made and no error state was set.
-    mockCreateUser.mockResolvedValueOnce({ user: mockUser })
-
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      json: async () => ({ success: true }),
-    })
-
-    await act(async () => {
-      await result.current.signupWithEmail('newuser@test.com', 'password123', 'New User')
-    })
-
-    expect(mockCreateUser).toHaveBeenCalledWith('newuser@test.com', 'password123')
-    expect(result.current.error).toBeNull()
-    expect(result.current.isLoading).toBe(false)
-  })
-
-  // ── sendPasswordResetEmail ─────────────────────────────────────────────────
-
-  it('✅ 비밀번호 재설정 이메일 발송 성공', async () => {
-    const { result } = renderHook(() => useAuthKR())
-    mockSendPasswordReset.mockResolvedValueOnce(undefined)
-
-    await act(async () => {
-      await result.current.sendPasswordResetEmail('test@test.com')
-    })
-
-    expect(mockSendPasswordReset).toHaveBeenCalledWith('test@test.com')
-  })
-
-  // ── logout ────────────────────────────────────────────────────────────────
-
-  it('✅ 로그아웃 성공 - Firebase + localStorage 정리', async () => {
-    const { result } = renderHook(() => useAuthKR())
-
-    act(() => {
-      result.current.setUser({ uid: 'test-uid' } as Parameters<typeof result.current.setUser>[0])
-    })
-    localStorage.setItem('user', 'test-user')
-
-    mockSignOut.mockResolvedValueOnce(undefined)
-
-    await act(async () => {
-      await result.current.logout()
-    })
-
-    expect(mockSignOut).toHaveBeenCalled()
-    expect(result.current.user).toBeNull()
-  })
-
-  // ── selectors ────────────────────────────────────────────────────────────
-
-  it('✅ useAuthKRUser selector', () => {
-    const mockUser = { uid: 'test-uid' } as Parameters<typeof useAuthKR.setState>[0] extends { user: infer U } ? U : never
-    useAuthKR.setState({ user: mockUser as Parameters<typeof useAuthKR.setState>[0] extends { user: infer U } ? U : never })
-
-    const { result } = renderHook(() => useAuthKRUser())
-    expect(result.current).toEqual(mockUser)
-  })
-
-  it('✅ useAuthKRLoading selector', () => {
-    useAuthKR.setState({ isLoading: true })
-
-    const { result } = renderHook(() => useAuthKRLoading())
-    expect(result.current).toBe(true)
-  })
-
-  // ── regression tests ─────────────────────────────────────────────────────
-
-  it('🆕 initializeAuth — isAuthReady becomes true when onAuthStateChanged fires with null user', async () => {
-    const { result } = renderHook(() => useAuthKR())
-
-    mockOnAuthStateChanged.mockImplementationOnce((_auth: unknown, cb: (u: null) => void) => {
-      cb(null)
-      return vi.fn()
-    })
-
-    await act(async () => {
-      const cleanup = result.current.initializeAuth()
-      await new Promise((r) => setTimeout(r, 20))
-      cleanup()
-    })
-
-    expect(result.current.isAuthReady).toBe(true)
-    expect(result.current.user).toBeNull()
-  })
-
-  it('🆕 initializeAuth — isAuthReady becomes true even if firebase-auth import throws (BUG #9)', async () => {
-    const { result } = renderHook(() => useAuthKR())
-
-    // Simulate import failure by throwing from getFirebaseAuth
-    mockGetFirebaseAuth.mockRejectedValueOnce(new Error('Firebase SDK not available'))
-    mockOnAuthStateChanged.mockImplementationOnce(() => {
-      throw new Error('Firebase SDK not available')
-    })
-
-    await act(async () => {
-      const cleanup = result.current.initializeAuth()
-      await new Promise((r) => setTimeout(r, 30))
-      cleanup()
-    })
-
-    // isAuthReady must be true so the app doesn't hang
-    expect(result.current.isAuthReady).toBe(true)
-  })
-
-  it('🆕 logout — isAuthReady stays true after logout (no infinite loading)', async () => {
-    const { result } = renderHook(() => useAuthKR())
-    useAuthKR.setState({ user: { uid: 'u1' } as Parameters<typeof useAuthKR.setState>[0] extends { user: infer U } ? U : never, isAuthReady: true })
-
-    mockSignOut.mockResolvedValueOnce(undefined)
-
-    await act(async () => {
-      await result.current.logout()
-    })
-
-    expect(result.current.isAuthReady).toBe(true)
-    expect(result.current.user).toBeNull()
-  })
-
-  it('🆕 setAuthReady action works correctly', () => {
-    const { result } = renderHook(() => useAuthKR())
-
-    act(() => { result.current.setAuthReady(true) })
-    expect(result.current.isAuthReady).toBe(true)
-
-    act(() => { result.current.setAuthReady(false) })
     expect(result.current.isAuthReady).toBe(false)
   })
 
-  it('🆕 loginWithEmail — seller/admin role is rejected and Firebase sign-out called', async () => {
+  it('✅ setUser', () => {
     const { result } = renderHook(() => useAuthKR())
-
-    const mockSellerUser = {
-      uid: 'seller-uid',
-      email: 'seller@test.com',
-      displayName: 'Seller',
-      getIdToken: vi.fn().mockResolvedValue('seller-token'),
-    }
-    mockSignInWithEmail.mockResolvedValueOnce({ user: mockSellerUser })
-
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      json: async () => ({ role: 'seller' }),
-    })
-
-    await act(async () => {
-      await expect(
-        result.current.loginWithEmail('seller@test.com', 'password')
-      ).rejects.toThrow(/seller/i)
-    })
-
-    expect(mockSignOut).toHaveBeenCalled()
-    expect(result.current.user).toBeNull()
+    const mockUser = { uid: 'test-uid' } as any
+    act(() => { result.current.setUser(mockUser) })
+    expect(result.current.user).toEqual(mockUser)
   })
 
-  it('🆕 useAuthKRError and useAuthKRRole selectors', () => {
-    useAuthKR.setState({ error: 'test-error', userRole: 'admin' })
+  it('✅ setLoading / setAuthReady', () => {
+    const { result } = renderHook(() => useAuthKR())
+    act(() => { result.current.setLoading(true) })
+    expect(result.current.isLoading).toBe(true)
+    act(() => { result.current.setAuthReady(true) })
+    expect(result.current.isAuthReady).toBe(true)
+  })
+
+  it('✅ initializeAuth — KR 도메인이면 즉시 isAuthReady=true, Firebase SDK 로드 0', () => {
+    const { result } = renderHook(() => useAuthKR())
+    let cleanup: (() => void) | undefined
+    act(() => { cleanup = result.current.initializeAuth() })
+    expect(result.current.isAuthReady).toBe(true)
+    if (cleanup) cleanup()
+  })
+
+  describe('loginWithEmail (backend JWT)', () => {
+    it('✅ 백엔드 /api/auth/login 호출 → JWT localStorage 저장', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            access_token: 'jwt-access',
+            refresh_token: 'jwt-refresh',
+            user: { id: '1', email: 'u@test.com', name: 'User', role: 'user' },
+          },
+        }),
+      }) as any
+
+      const { result } = renderHook(() => useAuthKR())
+      await act(async () => {
+        await result.current.loginWithEmail('u@test.com', 'password')
+      })
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/auth/login', expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+      }))
+      expect(localStorage.getItem('user_type')).toBe('user')
+      expect(localStorage.getItem('user_token')).toBe('jwt-access')
+      expect(localStorage.getItem('user_email')).toBe('u@test.com')
+      expect(result.current.userRole).toBe('user')
+      expect(result.current.isAuthReady).toBe(true)
+    })
+
+    it('❌ 백엔드 401 → 에러 throw, localStorage 안 변경', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다' }),
+      }) as any
+
+      const { result } = renderHook(() => useAuthKR())
+      await act(async () => {
+        await expect(
+          result.current.loginWithEmail('bad@test.com', 'wrong')
+        ).rejects.toThrow(/이메일 또는 비밀번호/)
+      })
+
+      expect(localStorage.getItem('user_token')).toBeNull()
+    })
+  })
+
+  describe('signupWithEmail (backend JWT)', () => {
+    it('✅ /api/auth/register 호출', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            access_token: 'new-jwt',
+            user: { id: '2', email: 'new@test.com', name: 'New' },
+          },
+        }),
+      }) as any
+
+      const { result } = renderHook(() => useAuthKR())
+      await act(async () => {
+        await result.current.signupWithEmail('new@test.com', 'password', 'New User')
+      })
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/auth/register', expect.any(Object))
+      expect(result.current.error).toBeNull()
+    })
+  })
+
+  describe('sendPasswordResetEmail (backend)', () => {
+    it('✅ /api/auth/forgot-password 호출', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) }) as any
+
+      const { result } = renderHook(() => useAuthKR())
+      await act(async () => {
+        await result.current.sendPasswordResetEmail('forgot@test.com')
+      })
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/auth/forgot-password', expect.any(Object))
+    })
+  })
+
+  describe('logout (no Firebase signOut)', () => {
+    it('✅ /api/auth/logout 호출 + localStorage 정리', async () => {
+      // setTimeout window.location.href 보호
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: { href: '' },
+      })
+
+      global.fetch = vi.fn().mockResolvedValueOnce({ ok: true }) as any
+      localStorage.setItem('user_type', 'user')
+      localStorage.setItem('user_id', '1')
+
+      const { result } = renderHook(() => useAuthKR())
+      act(() => {
+        result.current.setUser({ uid: 'x' } as any)
+      })
+
+      await act(async () => {
+        await result.current.logout()
+      })
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/auth/logout', expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+      }))
+      expect(result.current.user).toBeNull()
+    })
+  })
+
+  it('✅ selectors (error, role)', () => {
+    useAuthKR.setState({ error: 'test-error', userRole: 'admin' as any })
 
     const { result: errResult } = renderHook(() => useAuthKRError())
     expect(errResult.current).toBe('test-error')

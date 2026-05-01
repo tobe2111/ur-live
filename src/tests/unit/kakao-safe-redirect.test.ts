@@ -17,10 +17,20 @@ describe('Worker safeRedirect (kakao.routes.ts)', () => {
       ['/products/123'],
       ['/live/42'],
       ['/seller'], // /seller/login 은 차단되지만 /seller 자체는 허용
-      ['/checkout?step=2'],
       ['/my-orders'],
     ])('허용: %s', (path) => {
       expect(safeRedirect(path)).toBe(path)
+    })
+
+    // 🛡️ 2026-05-01: query / hash 제거 (URL 누적 방어 — ?error=...?error=... 차단)
+    it('query string 제거: /checkout?step=2 → /checkout', () => {
+      expect(safeRedirect('/checkout?step=2')).toBe('/checkout')
+    })
+    it('hash 제거: /products/1#section → /products/1', () => {
+      expect(safeRedirect('/products/1#section')).toBe('/products/1')
+    })
+    it('error param 제거: /user/profile?error=database_error → /user/profile', () => {
+      expect(safeRedirect('/user/profile?error=database_error&detail=foo')).toBe('/user/profile')
     })
   })
 
