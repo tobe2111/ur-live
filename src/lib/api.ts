@@ -229,14 +229,17 @@ api.interceptors.request.use(
       // fallthrough to Firebase
     }
 
-    // ── Session Cookie User API (preferred for user login) ──────────────
-    // If user is logged in via session cookie (ur_session), the cookie is
-    // sent automatically (withCredentials: true). No Bearer token needed.
-    // The server-side requireAuth() checks Bearer token first, then cookie.
-    // Session cookie users (카카오 로그인) don't need Bearer token — cookie handles it.
+    // ── User API (Kakao session cookie OR email JWT) ────────────────────
+    // 카카오 로그인: httpOnly 세션 쿠키 자동 전송 (withCredentials: true). Bearer 불필요.
+    // 이메일 로그인 (KR backend JWT): user_token 을 Bearer 로 전송.
     const userType = localStorage.getItem('user_type');
     if (userType === 'user' && localStorage.getItem('user_id')) {
-      // 세션 쿠키 유저 → 토큰 탐색 건너뛰기 (즉시 요청)
+      // 🛡️ 2026-05-01: 이메일 JWT 유저 → user_token Bearer 헤더.
+      //   카카오 세션 쿠키 유저 → user_token 없음 → 쿠키만으로 인증.
+      const userToken = localStorage.getItem('user_token');
+      if (userToken) {
+        config.headers['Authorization'] = `Bearer ${userToken}`;
+      }
       return config;
     }
 

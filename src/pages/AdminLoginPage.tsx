@@ -46,13 +46,17 @@ export default function AdminLoginPage() {
       // User 세션 정리 (동기) + Firebase signOut (비동기, 타임아웃 3초)
       clearAuthData('user')
       clearFirebaseTokenCache()
-      // Firebase signOut은 비동기로 실행 (hang 방지 - 3초 타임아웃)
+      // 🛡️ 2026-05-01: KR Firebase 100% 미사용 — signOut 호출 안 함.
+      //   글로벌만 Firebase signOut 시도 (3초 타임아웃 hang 방지).
       try {
-        const signOutPromise = import('@/lib/firebase-auth').then(m => m.signOut())
-        await Promise.race([
-          signOutPromise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
-        ])
+        const { isKorea } = await import('@/config/region')
+        if (!isKorea()) {
+          const signOutPromise = import('@/lib/firebase-auth').then(m => m.signOut())
+          await Promise.race([
+            signOutPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+          ])
+        }
       } catch (_) {} // non-critical: best-effort signOut before admin login
 
       // JWT-based Login (NO Firebase!)
