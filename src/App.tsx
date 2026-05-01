@@ -8,7 +8,6 @@ import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
 import PushNotificationSetup from './components/PushNotificationSetup'
 import OfflineBanner from './components/OfflineBanner'
-import SecurityReloginBanner from './components/SecurityReloginBanner'
 import InAppBrowserBanner from './components/InAppBrowserBanner'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import OnboardingTrigger from './components/onboarding/OnboardingTrigger'
@@ -1014,7 +1013,6 @@ function AppContent() {
         </Suspense>
       </FrameWrapper>
       <ToastContainer />
-      <SecurityReloginBanner />
     </>
   )
 }

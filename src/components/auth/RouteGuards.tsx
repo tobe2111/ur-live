@@ -154,11 +154,14 @@ export function PublicRoute({
   }
 
   // ─── User ──────────────────────────────────────────────────────────────
-  if (isUserLoggedIn()) {
-    const searchParams = new URLSearchParams(location.search)
+  // 🛡️ 2026-05-01: ?switch=1 query 면 redirect skip → LoginPage 가 localStorage 청소 + 재로그인 UI.
+  //   사용자 신고: "다른 계정으로 로그인" 버튼 누르면 그냥 메인페이지로 가버림.
+  //   원인: PublicRoute 가 LoginPage 렌더 전에 isUserLoggedIn=true 보고 즉시 redirect.
+  const searchParams = new URLSearchParams(location.search)
+  const wantsSwitch = searchParams.get('switch') === '1'
+
+  if (isUserLoggedIn() && !wantsSwitch) {
     const returnUrl = searchParams.get('returnUrl')
-    // 🛡️ 2026-04-29: safeInternalPath 헬퍼로 통일 — open redirect 방어 +
-    // /login·/auth/* 자기참조 차단 (모바일 카카오 로그인 무한 루프 방지)
     const destination = returnUrl ? safeInternalPath(returnUrl, redirectTo) : redirectTo
     if (DEBUG) if (import.meta.env.DEV) console.log('[PublicRoute] ✅ 이미 로그인됨 →', destination)
     return <Navigate to={destination} replace />
