@@ -356,7 +356,26 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       const kakaoRefreshToken = tokenData.refresh_token || null;
       const kakaoUser = await kakaoService.getUserInfo(accessToken);
       const serviceTerms = await kakaoService.getServiceTerms(accessToken);
+
+      // 🛡️ 2026-05-01: 진단 로깅 — 사용자 신고 "다른 카카오 신규 가입자도 유어팀(정지원)" 추적용.
+      //   Kakao API 가 실제로 무엇을 반환했는지, upsertUser 가 어떤 user 를 반환했는지 기록.
+      //   PROD 에서도 console.log (Cloudflare logs 에서 확인 가능).
+      console.log('[Kakao Sync DIAGNOSTIC]', {
+        kakao_id: kakaoUser.kakaoId,
+        kakao_nickname: kakaoUser.name,
+        kakao_email: kakaoUser.email,
+        ts: new Date().toISOString(),
+      });
+
       const user = await kakaoService.upsertUser(kakaoUser);
+
+      console.log('[Kakao Sync DIAGNOSTIC] upserted user:', {
+        db_user_id: user.id,
+        db_user_name: user.name,
+        db_kakao_id: user.kakao_id,
+        is_new: (user as any).isNewUser,
+        kakao_id_match: user.kakao_id === kakaoUser.kakaoId,  // 🚨 false 면 wrong row 반환 (BUG)
+      });
 
       // 🛡️ 2026-05-01: Firebase 100% 제거 — firebase_uid 컬럼 UPDATE 호출 제거.
       //   (이전 코드가 'kakao_<id>' 를 firebase_uid 에 채웠지만, KR Firebase 미사용이라

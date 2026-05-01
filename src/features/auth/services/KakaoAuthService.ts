@@ -263,15 +263,18 @@ export class KakaoAuthService {
         }
 
       } else {
-        // 🛡️ 2026-05-01: production users 테이블에 toss_user_id 컬럼 없음 (사용자 신고 에러).
-        //   Google INSERT 패턴과 동일하게 toss_user_id 제거.
-        //   만약 column 이 존재하는 환경 (legacy migration 적용 환경) 이라도 NOT NULL 이 아닌 한 안전.
-        // 🛡️ 2026-05-01 (race fix): 동시 탭 로그인 race condition 방어 —
-        //   탭 A 와 B 가 동시에 SELECT (둘 다 null) → 둘 다 INSERT 시도 →
-        //   kakao_id UNIQUE constraint 있으면 두 번째 INSERT 가 실패.
-        //   INSERT 실패 시 SELECT 재시도 (다른 탭이 이미 INSERT 했음).
+        // 🛡️ 2026-05-01: production users 테이블에 toss_user_id 컬럼 없음.
+        //   kakao_id UNIQUE constraint 도 production 에 없을 가능성 — 보강 시도.
         try {
-          const result = await this.db.prepare(`
+          await this.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_kakao_id_unique ON users(kakao_id) WHERE kakao_id IS NOT NULL`).run()
+        } catch { /* 인덱스 이미 존재 또는 권한 X */ }
+
+        // 🛡️ 2026-05-01 (CRITICAL fix): last_row_id 의존 제거 — 사용자 신고로
+        //   "다른 카카오 계정 신규 가입자도 유어팀(정지원) 으로 표시" 가능성:
+        //   D1 의 last_row_id 가 항상 새 row 의 ID 를 반환한다고 보장 X.
+        //   해결: INSERT 후 kakao_id 로 다시 SELECT — 100% 새 사용자 row 보장.
+        try {
+          await this.db.prepare(`
             INSERT INTO users (
               kakao_id,
               name,
@@ -287,20 +290,20 @@ export class KakaoAuthService {
             kakaoUser.email || null,
             kakaoUser.profileImage || null
           ).run();
-
-          userId = result.meta.last_row_id as number;
         } catch (insertErr) {
-          // INSERT 실패 — 동시 탭 race condition 가능성. 다시 SELECT 시도.
-          if (import.meta.env.DEV) console.warn('[KakaoAuthService] INSERT failed, retrying SELECT (race condition?):', insertErr);
-          const racedUser = await this.db.prepare(`
-            SELECT id FROM users WHERE kakao_id = ?
-          `).bind(kakaoUser.kakaoId).first<{ id: number }>();
-          if (!racedUser) {
-            // SELECT 도 fail 이면 진짜 에러. throw.
-            throw insertErr;
-          }
-          userId = racedUser.id;
+          // INSERT 실패 — UNIQUE constraint 위반 (race condition) 가능. 무시 후 아래 SELECT.
+          if (import.meta.env.DEV) console.warn('[KakaoAuthService] INSERT failed (likely race or UNIQUE):', insertErr);
         }
+
+        // 🛡️ INSERT 성공/race 무관 — kakao_id 로 SELECT 해서 정확한 user 찾음.
+        //   last_row_id 가 0 또는 다른 row 의 ID 를 반환하더라도 안전.
+        const insertedUser = await this.db.prepare(`
+          SELECT id FROM users WHERE kakao_id = ?
+        `).bind(kakaoUser.kakaoId).first<{ id: number }>();
+        if (!insertedUser) {
+          throw new Error(`Failed to find user after INSERT for kakao_id=${kakaoUser.kakaoId}`);
+        }
+        userId = insertedUser.id;
       }
       
       // 사용자 정보 다시 조회하여 반환.
