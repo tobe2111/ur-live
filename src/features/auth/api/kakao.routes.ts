@@ -346,6 +346,8 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       // 원래 c.header('Set-Cookie', ...) 를 두 번 호출해서 두 번째가 첫 번째를 덮어써
       // 세션 쿠키가 사라지고 카카오 로그인 이후 모든 API 401이 발생하던 버그.
       c.header('Set-Cookie', clearStateCookieHeader());
+      // 🛡️ 2026-05-01: 세션 쿠키 발급 실패는 fatal — silent fail 하면 무한 로딩.
+      //   JWT_SECRET 미설정 / 만료된 secret 등 환경 문제. 명시적 에러로 전환.
       try {
         const sessionCookie = await createSessionCookie(
           user.id,
@@ -357,6 +359,8 @@ kakaoRoutes.get('/sync/callback', async (c) => {
         c.header('Set-Cookie', sessionCookie, { append: true });
       } catch (e) {
         if (import.meta.env.DEV) console.error('[Kakao Sync] Session cookie creation failed:', e);
+        const detail = encodeURIComponent((e as Error).message || 'session_cookie_failed');
+        return c.redirect(`${redirectTarget}?error=session_cookie_failed&detail=${detail}`, 302);
       }
 
       // 🛡️ linked seller/agency JWT 자동 발급 → 프론트엔드 localStorage 로 이전하도록 transfer cookie
@@ -562,50 +566,11 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
   }
 });
 
-/**
- * POST /api/auth/kakao/firebase
- * 카카오 Access Token으로 Firebase Custom Token 발급
- * (프론트엔드가 이미 Kakao SDK로 로그인한 경우)
- */
-kakaoRoutes.post('/firebase', cors(), async (c) => {
-  const { DB } = c.env;
-  
-  try {
-    const { accessToken } = await c.req.json();
-    
-    if (!accessToken) {
-      return c.json({ success: false, error: 'Access token is required' }, 400);
-    }
-    
-    const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
-    const firebaseService = new FirebaseAuthService(c.env);
-    
-    const kakaoUser = await kakaoService.getUserInfo(accessToken);
-    const user = await kakaoService.upsertUser(kakaoUser);
-    
-    // 🛡️ 2026-05-01: Firebase 100% 제거 — customToken 생성 안 함 (dead path).
-    const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
-    const customToken = ''; // 빈 문자열 (응답 호환성 유지)
-    await kakaoService.updateFirebaseUID(user.id, firebaseUID);
-
-
-    return c.json({
-      success: true,
-      customToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        profile_image: user.profile_image
-      }
-    });
-    
-  } catch (error) {
-    if (import.meta.env.DEV) console.error('[Kakao Firebase] Error:', error);
-    const errorMsg = (error as Error).message || 'Unknown error';
-    return c.json({ success: false, error: errorMsg }, 500);
-  }
-});
+// 🛡️ 2026-05-01: /api/auth/kakao/firebase POST endpoint REMOVED.
+//   이 endpoint 는 Kakao SDK access_token 으로 Firebase customToken 을 발급했으나,
+//   Firebase 의존성 100% 제거 (2026-05-01) 로 dead path 가 됨.
+//   모든 카카오 로그인은 server-side OAuth (/auth/kakao/start → /auth/kakao/callback) 로 통일.
+//   세션 쿠키 OR Bearer 토큰만 사용. customToken 생성 안 함.
 
 // NOTE: A legacy `/users/role` route previously lived here that returned
 // `{role:'user'}` without verifying the caller's token. It was a security

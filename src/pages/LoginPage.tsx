@@ -119,16 +119,10 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const accessToken = window.Kakao.Auth.getAccessToken()
-
-      // 기존 토큰이 있으면 재사용
-      if (accessToken) {
-        await processKakaoLogin(accessToken)
-        return
-      }
-
-      // 서버가 client_id를 포함해 Kakao authorize로 리다이렉트 (CSRF state 쿠키 포함)
-      // 🛡️ 2026-04-30: returnUrl 외부 입력 → safeInternalPath 통과 (open redirect / 자기참조 루프 방지)
+      // 🛡️ 2026-05-01: Firebase 100% 제거 — 항상 server-side OAuth redirect 만 사용.
+      //   기존엔 Kakao SDK accessToken 이 있으면 /api/auth/kakao/firebase 로 우회했지만,
+      //   Firebase 의존성을 완전히 제거하기 위해 server-side flow 로 통일.
+      //   /auth/kakao/start → 카카오 authorize → /auth/kakao/callback → 세션 쿠키 발급.
       const rawReturnUrl = searchParams.get('returnUrl')
         || sessionStorage.getItem('returnUrl')
         || '/'
@@ -138,64 +132,6 @@ export default function LoginPage() {
 
     } catch (err: unknown) {
       if (import.meta.env.DEV) console.error('[Kakao Login] ❌ 오류 발생:', err)
-      setError(t('auth.kakaoLoginError'))
-      setLoading(false)
-    }
-  }
-
-  // ✅ Kakao accessToken → 로그인 처리
-  async function processKakaoLogin(accessToken: string) {
-    try {
-      const response = await api.post('/api/auth/kakao/firebase', {
-        accessToken: accessToken
-      })
-
-      if (response.data.success) {
-        const { customToken, user: kakaoUser } = response.data
-
-        // ✅ localStorage 설정 (Firebase 무관)
-        localStorage.setItem('user_type', 'user')
-        localStorage.setItem('user_name', kakaoUser.name)
-        localStorage.setItem('user_id', String(kakaoUser.id))
-        if (kakaoUser.email) localStorage.setItem('user_email', kakaoUser.email)
-
-        if (isKR) {
-          // 한국: Firebase 건너뜀, 세션 쿠키만
-          useAuthKR.getState().setAuthReady(true)
-        } else if (customToken) {
-          // 글로벌: Firebase customToken 로그인
-          try {
-            const { signInWithCustomToken } = await import('@/lib/firebase-auth')
-            const credential = await signInWithCustomToken(customToken)
-            const idToken = await credential.user.getIdToken(false)
-            sessionStorage.setItem('auth_processed_uid', credential.user.uid)
-            const authStore = useAuthWorld.getState()
-            authStore.setUser(credential.user)
-            authStore.setAuthReady(true)
-            try {
-              const { useAuthStore } = await import('@/client/stores/auth.store')
-              useAuthStore.getState().setAuth(
-                { id: credential.user.uid, email: kakaoUser.email || '', name: kakaoUser.name, role: 'user' },
-                idToken, ''
-              )
-            } catch (e) {
-              if (import.meta.env.DEV) console.error('[Login] useAuthStore sync error:', e);
-            }
-          } catch (e) {
-            if (import.meta.env.DEV) console.error('[Login] Firebase failed:', e)
-            useAuthWorld.getState().setAuthReady(true)
-          }
-        }
-
-        // 🛡️ 2026-04-30: sessionStorage returnUrl 도 외부 입력으로 간주 → safeInternalPath 통과
-        const savedReturnUrl = safeInternalPath(sessionStorage.getItem('returnUrl'), '/')
-        sessionStorage.removeItem('returnUrl')
-        navigate(savedReturnUrl, { replace: true })
-      } else {
-        throw new Error(response.data.error || t('auth.loginError'))
-      }
-    } catch (err: unknown) {
-      if (import.meta.env.DEV) console.error('[Kakao Login] ❌ 실패:', err)
       setError(t('auth.kakaoLoginError'))
       setLoading(false)
     }

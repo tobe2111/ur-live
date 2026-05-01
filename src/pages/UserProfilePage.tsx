@@ -5,7 +5,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
-import { loginWithFirebaseToken, logout } from '@/features/auth/login-flow.service'
+import { logout } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
@@ -542,73 +542,25 @@ export default function UserProfilePage() {
   
   const [userName, setUserName] = useState('')
   const [profileImage, setProfileImage] = useState<string | undefined>(undefined)
-  const [isProcessingToken, setIsProcessingToken] = useState(false)
   const hasProcessedToken = useRef(false)
 
   useEffect(() => { document.title = '마이페이지 - 유어딜' }, [])
 
-  // ✅ firebase_token 한 번만 처리
-  // 의존성에서 searchParams, user 제거 → 무한 루프 방지
-  // searchParams는 마운트 시 읽고, user 변화는 hasProcessedToken으로 제어
+  // 🛡️ 2026-05-01: Firebase 100% 제거 — firebase_token URL 파라미터 처리 dead path 가 됨.
+  //   카카오 콜백은 세션 쿠키로 인증되므로 별도 토큰 교환 불필요.
+  //   URL 에 userName / profileImage 가 들어오면 localStorage 만 업데이트 후 정리.
   useEffect(() => {
-    const firebaseToken = searchParams.get('firebase_token')
     const userNameParam = searchParams.get('userName')
     const profileImageParam = searchParams.get('profileImage')
+    const firebaseToken = searchParams.get('firebase_token') // legacy — 그냥 무시
 
-    // ✅ 이미 로그인되어 있고 URL에 파라미터가 있으면 즉시 정리
-    const currentUser = authStore.getState().user
-    if ((firebaseToken || userNameParam) && currentUser) {
+    if (userNameParam || profileImageParam || firebaseToken) {
       if (userNameParam) localStorage.setItem('user_name', userNameParam)
       if (profileImageParam) localStorage.setItem('user_profile_image', profileImageParam)
-      navigate('/user/profile', { replace: true })
-      return
-    }
-
-    // 조건: 토큰 있음 + 아직 안 처리 + 로그인 안 됨
-    if (firebaseToken && !hasProcessedToken.current && !currentUser) {
       hasProcessedToken.current = true
-      setIsProcessingToken(true)
-
-      if (userNameParam) {
-        localStorage.setItem('user_name', userNameParam)
-      }
-      if (profileImageParam) {
-        localStorage.setItem('user_profile_image', profileImageParam)
-      }
-
-      loginWithFirebaseToken(firebaseToken)
-        .then(async () => {
-          try {
-            const { isKorea } = await import('@/shared/config/region')
-            const { useAuthKR } = await import('@/shared/stores/useAuthKR')
-            const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
-            const firebaseUser = (isKorea() ? useAuthKR : useAuthWorld).getState().user
-            if (firebaseUser && (!firebaseUser.displayName || !firebaseUser.photoURL)) {
-              const { updateProfile } = await import('firebase/auth')
-              await updateProfile(firebaseUser, {
-                ...(userNameParam && !firebaseUser.displayName ? { displayName: userNameParam } : {}),
-                ...(profileImageParam && !firebaseUser.photoURL ? { photoURL: profileImageParam } : {}),
-              })
-              if (isKorea()) {
-                useAuthKR.getState().setUser({ ...firebaseUser } as any)
-              } else {
-                useAuthWorld.getState().setUser({ ...firebaseUser } as any)
-              }
-            }
-          } catch (e) {
-            if (import.meta.env.DEV) console.warn('[UserProfilePage] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
-          }
-
-          navigate('/user/profile', { replace: true })
-          setIsProcessingToken(false)
-        })
-        .catch((error) => {
-          if (import.meta.env.DEV) console.error('[UserProfilePage] ❌ 토큰 처리 실패:', error)
-          setIsProcessingToken(false)
-          navigate('/login', { replace: true })
-        })
+      navigate('/user/profile', { replace: true })
     }
-  }, [isAuthReady]) // ✅ isAuthReady만 의존: auth 준비 완료 시 1회 실행
+  }, [isAuthReady])
 
   // ✅ 사용자 이름 + 프로필 이미지 설정
   useEffect(() => {
@@ -619,14 +571,12 @@ export default function UserProfilePage() {
   }, [user])
 
   // 🔄 로딩 중 (한국: localStorage 인증이므로 isAuthReady 무시)
-  if ((!isAuthReady && !isKorea()) || isProcessingToken) {
+  if (!isAuthReady && !isKorea()) {
     return (
       <div className="min-h-screen bg-[#020202] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-400">
-            {isProcessingToken ? '로그인 처리 중...' : '로딩 중...'}
-          </p>
+          <p className="text-gray-400">로딩 중...</p>
         </div>
       </div>
     )
@@ -636,21 +586,6 @@ export default function UserProfilePage() {
   // 한국: localStorage 기반 인증이므로 Zustand user 없어도 OK
   const isLoggedInViaLocalStorage = localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
   if (!user && !isLoggedInViaLocalStorage) {
-    const firebaseToken = searchParams.get('firebase_token')
-    
-    // firebase_token이 있거나 처리 중이면 대기 (리다이렉트 방지)
-    if (firebaseToken || isProcessingToken) {
-      return (
-        <div className="min-h-screen bg-[#020202] flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-            <p className="text-gray-400">로그인 처리 중...</p>
-          </div>
-        </div>
-      )
-    }
-    
-    // 토큰 없고 처리 중도 아니면 로그인 페이지로
     return <Navigate to="/login" replace />
   }
 

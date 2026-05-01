@@ -223,7 +223,17 @@ export default function MainHomePage() {
     document.title = '유어딜 - 라이브 커머스'
     // 🛡️ 2026-04-28: 6 calls → 1 (/api/home/bundle) — 1분 edge cache + swr.
     //   첫 진입: 1회 round-trip (D1 6쿼리 병렬). 이후 진입: edge cache hit (수십 ms).
-    api.get('/api/home/bundle')
+    // 🛡️ 2026-05-01: 8s timeout + 안전 가드 — Worker cold start / D1 hang 시 무한 스켈레톤 차단.
+    //   axios 기본 timeout (15s) 보다 짧게 잡아 사용자에게 빠르게 빈 화면 fallback.
+    let bundleSettled = false
+    const safetyTimer = setTimeout(() => {
+      if (!bundleSettled) {
+        bundleSettled = true
+        setLoading(false)
+      }
+    }, 8000)
+
+    api.get('/api/home/bundle', { timeout: 8000 })
       .then(res => {
         if (!res.data.success) return
         const d = res.data.data || {}
@@ -235,7 +245,13 @@ export default function MainHomePage() {
         if (Array.isArray(d.latest)) setNewProducts(d.latest)
       })
       .catch(() => { /* swallow — 빈 페이지 fallback */ })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        bundleSettled = true
+        clearTimeout(safetyTimer)
+        setLoading(false)
+      })
+
+    return () => { clearTimeout(safetyTimer) }
   }, [])
 
   // Nearby 지역 필터링

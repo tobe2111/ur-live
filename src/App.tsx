@@ -246,95 +246,43 @@ function AppContent() {
   // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
   const authInitialized = useRef(false)
 
-  // ✅ 카카오 로그인 콜백: URL 파라미터 → localStorage (동기, 렌더 전 실행)
-  // useEffect가 아닌 useMemo로 첫 렌더 전에 처리해야 ProtectedRoute가 통과됨
-  const loginParamsProcessed = useRef(false)
-  if (!loginParamsProcessed.current) {
-    loginParamsProcessed.current = true
+  // 🛡️ 2026-05-01 (D fix): 카카오 OAuth callback URL → localStorage 처리는
+  //   src/utils/auth-callback-bootstrap.ts 로 이전됨 (main.tsx 에서 React mount 전 동기 호출).
+  //   render 함수 안에서 localStorage / history 를 건드리지 않음 — pure render.
+
+  // 🛡️ 2026-05-01: 카카오 콜백 에러 파라미터 처리 — 무한 로딩 방지.
+  //   sync/callback 이 세션 쿠키 발급 실패 / 카카오 토큰 교환 실패 등으로 ?error=... 부착 시
+  //   사용자에게 명시적 토스트 + URL 정리. 묵음 실패 → 무한 스피너 시나리오 차단.
+  useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
+    const errorCode = urlParams.get('error')
+    if (!errorCode) return
 
-    if (urlParams.get('login') === 'success' && urlParams.get('userId')) {
-      // ── 카카오 로그인 성공: localStorage 즉시 설정 ──
-      localStorage.setItem('user_type', 'user')
-      localStorage.setItem('user_id', urlParams.get('userId')!)
-      localStorage.setItem('session_login', 'true')
-      const userName = urlParams.get('userName')
-      const userEmail = urlParams.get('userEmail')
-      const profileImage = urlParams.get('profileImage')
-      if (userName) localStorage.setItem('user_name', userName)
-      if (userEmail) localStorage.setItem('user_email', userEmail)
-      if (profileImage) localStorage.setItem('user_profile_image', profileImage.replace(/^http:\/\//, 'https://'))
-
-      // 🛡️ linked seller/agency token transfer (Worker sync/callback 이 세팅한 cookie 읽기)
-      // 카카오 연동된 셀러/에이전시는 이 시점에 seller_token/agency_token 자동 획득
-      const readCookie = (name: string): string | null => {
-        const match = new RegExp(`(?:^|;\\s*)${name}=([^;]+)`).exec(document.cookie)
-        return match ? decodeURIComponent(match[1]) : null
-      }
-      const clearCookie = (name: string) => {
-        document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure`
-      }
-      const sellerToken = readCookie('ur_pending_seller_token')
-      if (sellerToken) {
-        localStorage.setItem('seller_token', sellerToken)
-        const sellerInfoRaw = readCookie('ur_pending_seller_info')
-        if (sellerInfoRaw) {
-          try {
-            const info = JSON.parse(sellerInfoRaw)
-            if (info.id) localStorage.setItem('seller_id', String(info.id))
-            if (info.business_name) localStorage.setItem('seller_name', info.business_name)
-          } catch { /* ignore */ }
-        }
-        clearCookie('ur_pending_seller_token')
-        clearCookie('ur_pending_seller_info')
-      }
-      const agencyToken = readCookie('ur_pending_agency_token')
-      if (agencyToken) {
-        localStorage.setItem('agency_token', agencyToken)
-        const agencyInfoRaw = readCookie('ur_pending_agency_info')
-        if (agencyInfoRaw) {
-          try {
-            const info = JSON.parse(agencyInfoRaw)
-            if (info.id) localStorage.setItem('agency_id', String(info.id))
-            if (info.name) localStorage.setItem('agency_name', info.name)
-          } catch { /* ignore */ }
-        }
-        clearCookie('ur_pending_agency_token')
-        clearCookie('ur_pending_agency_info')
-      }
-
-      // URL 정리 (auth 파라미터 제거)
-      urlParams.delete('login'); urlParams.delete('userId'); urlParams.delete('userName')
-      urlParams.delete('userEmail'); urlParams.delete('profileImage')
-      const clean = urlParams.toString()
-      window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
-    } else if (urlParams.has('firebase_token')) {
-      if (isKorea()) {
-        // 한국: firebase_token에서 claims를 디코딩하여 localStorage 설정
-        const token = urlParams.get('firebase_token')!
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]))
-          const claims = payload.claims || {}
-          localStorage.setItem('user_type', 'user')
-          if (claims.userId) localStorage.setItem('user_id', String(claims.userId))
-          if (claims.userName) localStorage.setItem('user_name', claims.userName)
-          if (claims.email) localStorage.setItem('user_email', claims.email)
-          if (claims.profileImage) localStorage.setItem('user_profile_image', claims.profileImage.replace(/^http:\/\//, 'https://'))
-          localStorage.setItem('session_login', 'true')
-        } catch { /* JWT decode failed — ignore */ }
-        // URL에서 userName/profileImage도 체크
-        const urlUserName = urlParams.get('userName')
-        const urlProfileImage = urlParams.get('profileImage')
-        if (urlUserName) localStorage.setItem('user_name', urlUserName)
-        if (urlProfileImage) localStorage.setItem('user_profile_image', urlProfileImage.replace(/^http:\/\//, 'https://'))
-        // URL 정리
-        urlParams.delete('firebase_token'); urlParams.delete('userName'); urlParams.delete('profileImage')
-        const clean = urlParams.toString()
-        window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
-      }
-      // 글로벌: firebase_token은 아래 useEffect에서 비동기 처리
+    const errorMessages: Record<string, string> = {
+      session_cookie_failed: '로그인 세션 발급에 실패했어요. 다시 시도해주세요.',
+      kakao_auth_failed: '카카오 인증에 실패했어요. 다시 시도해주세요.',
+      kakao_sync_failed: '카카오 로그인에 일시적 문제가 발생했어요. 다시 시도해주세요.',
+      database_error: '서버 오류가 발생했어요. 잠시 후 다시 시도해주세요.',
+      firebase_config_error: '인증 설정 오류가 발생했어요. 관리자에게 문의해주세요.',
     }
-  }
+    const msg = errorMessages[errorCode] || `로그인 중 오류가 발생했어요 (${errorCode})`
+
+    import('@/hooks/useToast').then(({ toast }) => toast.error(msg)).catch(() => {})
+
+    // 잘못된 세션 흔적 정리 — error 시점엔 user_id/user_type 이 절대 남아있으면 안 됨
+    if (errorCode === 'session_cookie_failed' || errorCode === 'kakao_auth_failed' || errorCode === 'kakao_sync_failed') {
+      try {
+        localStorage.removeItem('user_type')
+        localStorage.removeItem('user_id')
+        localStorage.removeItem('user_name')
+        localStorage.removeItem('session_login')
+      } catch { /* ignore */ }
+    }
+
+    urlParams.delete('error'); urlParams.delete('detail')
+    const clean = urlParams.toString()
+    window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
+  }, [])
 
   // ✅ 글로벌 전용: firebase_token 비동기 처리 (Firebase SDK 필요)
   useEffect(() => {
