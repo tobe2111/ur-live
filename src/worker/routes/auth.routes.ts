@@ -63,13 +63,13 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
     const passwordHash = await hashPassword(password);
     const userId = generateId();
 
-    // Production users table requires toss_user_id NOT NULL; omits role/is_email_verified
-    // Use a unique generated value as toss_user_id for local auth registrations
-    const tossUserId = `local_${userId}`;
+    // 🛡️ 2026-05-01: production users 테이블에 toss_user_id 컬럼 없음 (Kakao 로그인 에러로 확인).
+    //   Google/Kakao INSERT 와 동일한 패턴. id 도 INTEGER AUTOINCREMENT 가 아닌 TEXT 사용 시
+    //   userId 명시.
     await qb.execute(
-      `INSERT INTO users (id, toss_user_id, email, password_hash, name, phone)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, tossUserId, email, passwordHash, name, phone ?? null]
+      `INSERT INTO users (id, email, password_hash, name, phone)
+       VALUES (?, ?, ?, ?, ?)`,
+      [userId, email, passwordHash, name, phone ?? null]
     );
 
     const secret = c.env.JWT_SECRET;

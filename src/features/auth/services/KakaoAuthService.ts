@@ -241,10 +241,11 @@ export class KakaoAuthService {
         ).run();
         
       } else {
-        // 새 사용자 생성 (toss_user_id NOT NULL 이므로 kakao_id 기반 유니크 값 사용)
+        // 🛡️ 2026-05-01: production users 테이블에 toss_user_id 컬럼 없음 (사용자 신고 에러).
+        //   Google INSERT 패턴과 동일하게 toss_user_id 제거.
+        //   만약 column 이 존재하는 환경 (legacy migration 적용 환경) 이라도 NOT NULL 이 아닌 한 안전.
         const result = await this.db.prepare(`
           INSERT INTO users (
-            toss_user_id,
             kakao_id,
             name,
             email,
@@ -252,15 +253,14 @@ export class KakaoAuthService {
             created_at,
             last_login_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+          ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
         `).bind(
-          `kakao_${kakaoUser.kakaoId}`,
           kakaoUser.kakaoId,
           kakaoUser.name,
           kakaoUser.email || null,
           kakaoUser.profileImage || null
         ).run();
-        
+
         userId = result.meta.last_row_id as number;
       }
       

@@ -269,14 +269,29 @@ function AppContent() {
 
     import('@/hooks/useToast').then(({ toast }) => toast.error(msg)).catch(() => {})
 
-    // 잘못된 세션 흔적 정리 — error 시점엔 user_id/user_type 이 절대 남아있으면 안 됨
-    if (errorCode === 'session_cookie_failed' || errorCode === 'kakao_auth_failed' || errorCode === 'kakao_sync_failed') {
+    // 잘못된 세션 흔적 정리 — 모든 카카오 콜백 에러에서 localStorage 인증 흔적 제거.
+    //   세션이 발급 안 됐는데 user_id 만 stale 하게 남아있으면 ProtectedRoute 통과 → 401 무한 루프.
+    //   database_error 도 포함 (사용자 신고: toss_user_id 컬럼 누락 → INSERT 실패 → /user/profile redirect).
+    const authErrors = [
+      'session_cookie_failed', 'kakao_auth_failed', 'kakao_sync_failed',
+      'database_error', 'firebase_config_error', 'no_code', 'oauth_state_mismatch',
+    ]
+    const isKakaoOAuthError = errorCode.startsWith('kakao_oauth_')
+    if (authErrors.includes(errorCode) || isKakaoOAuthError) {
       try {
         localStorage.removeItem('user_type')
         localStorage.removeItem('user_id')
         localStorage.removeItem('user_name')
+        localStorage.removeItem('user_email')
+        localStorage.removeItem('user_profile_image')
         localStorage.removeItem('session_login')
       } catch { /* ignore */ }
+      // 보호 경로에서 에러 발생 시 → /login 으로 명시 redirect (무한 ProtectedRoute 루프 차단)
+      const protectedPrefixes = ['/user/', '/checkout', '/my-orders', '/wishlist', '/account/', '/cart']
+      const onProtected = protectedPrefixes.some(p => window.location.pathname.startsWith(p))
+      if (onProtected) {
+        window.history.replaceState({}, '', '/')
+      }
     }
 
     urlParams.delete('error'); urlParams.delete('detail')
