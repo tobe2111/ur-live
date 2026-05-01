@@ -11,6 +11,10 @@ dist/
 !postcss.config.js
 !scripts/**/*.js
 !naver-ad-scraper/**/*.js
+# 🛡️ public/ 의 정적 SW 들은 추적 (PWA/push/killer)
+!public/sw.js
+!public/pwa-sw.js
+!public/push-sw.js
 
 # Wrangler local state
 .wrangler/
