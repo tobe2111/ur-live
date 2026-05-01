@@ -315,8 +315,11 @@ kakaoRoutes.get('/sync/callback', async (c) => {
     const KAKAO_REDIRECT_URI = `${new URL(c.req.url).origin}/auth/kakao/sync/callback`;
     
     const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
-    const firebaseService = new FirebaseAuthService(c.env);
-    
+    // 🛡️ 2026-05-01: Firebase 100% 제거 — 카카오 로그인은 세션 쿠키 인증 only.
+    //   사용자 신고: 신규 가입 시 무한 로딩 → 원인은 Firebase 네트워크 hang.
+    //   한국·글로벌 모두 customToken 생성 안 함. firebase_token URL 부착 안 함.
+    //   글로벌 사용자도 카카오 로그인은 세션 쿠키 / Bearer 토큰만 사용.
+
     try {
       const tokenData = await kakaoService.exchangeCodeFull(code, KAKAO_REDIRECT_URI);
       const accessToken = tokenData.access_token;
@@ -324,17 +327,9 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       const kakaoUser = await kakaoService.getUserInfo(accessToken);
       const serviceTerms = await kakaoService.getServiceTerms(accessToken);
       const user = await kakaoService.upsertUser(kakaoUser);
-      
-      const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
-      const customToken = await firebaseService.createCustomToken(firebaseUID, {
-        role: 'user',
-        userId: user.id,
-        userName: user.name,
-        email: user.email,
-        kakaoId: kakaoUser.kakaoId,
-        ...(user.profile_image ? { profileImage: user.profile_image } : {}),
-      });
 
+      // firebase_uid 필드는 schema 호환 위해 'kakao_<id>' 로 채움 (네트워크 호출 X — 순수 함수).
+      const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
       await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
       // 카카오 access_token + refresh_token 저장 (메시지/캘린더 API용)
@@ -422,12 +417,8 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       }
 
       const stateUrl = new URL(redirectTarget, 'https://dummy.com');
-      // 한국: 세션 쿠키로 인증하므로 firebase_token 불필요
-      // 글로벌: Firebase customToken 필요
-      const isKR = c.env.FRONTEND_URL?.includes('live.ur-team.com') || c.req.header('host')?.includes('live.ur-team.com');
-      if (!isKR) {
-        stateUrl.searchParams.set('firebase_token', customToken);
-      }
+      // 🛡️ 2026-05-01: Firebase 100% 제거 — 한국·글로벌 모두 세션 쿠키 인증 only.
+      //   firebase_token URL 부착 안 함 (App.tsx 의 firebase_token branch 는 dead path).
       stateUrl.searchParams.set('login', 'success');
       stateUrl.searchParams.set('userId', String(user.id));
       stateUrl.searchParams.set('userName', user.name);
@@ -438,6 +429,17 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       const userWithFlag = user as typeof user & { isNewUser?: boolean };
       if (userWithFlag.isNewUser) {
         stateUrl.searchParams.set('new', '1');
+
+        // 🛡️ 2026-05-01: Option B — 같은 카카오로 재가입이면 복원 동의 안내.
+        //   30일 내 탈퇴 기록 있으면 'restorable=1&restored_user_id=X' 부착.
+        //   프론트가 복원 동의 모달 표시 → 동의 시 /api/account/restore 호출.
+        try {
+          const restorable = await kakaoService.checkRestorable(kakaoUser.kakaoId);
+          if (restorable.isRestorable) {
+            stateUrl.searchParams.set('restorable', '1');
+            if (restorable.originalName) stateUrl.searchParams.set('originalName', restorable.originalName);
+          }
+        } catch { /* 복원 체크 실패해도 신규 가입 자체는 진행 */ }
       }
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;
@@ -488,8 +490,7 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
 
     const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
-    const firebaseService = new FirebaseAuthService(c.env);
-    
+    // 🛡️ 2026-05-01: Firebase 인스턴스 생성 제거 (Firebase 100% 미사용)
     const tokenData = await kakaoService.exchangeCodeFull(code, redirectUri);
     const accessToken = tokenData.access_token;
     const kakaoRefreshToken2 = tokenData.refresh_token || null;
@@ -506,16 +507,9 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
       .bind(encAccess2, encRefresh2, user.id).run();
 
+    // 🛡️ 2026-05-01: Firebase 100% 제거 — customToken 생성 안 함 (dead path).
     const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
-    const customToken = await firebaseService.createCustomToken(firebaseUID, {
-      role: 'user',
-      userId: user.id,
-      userName: user.name,
-      email: user.email,
-      kakaoId: kakaoUser.kakaoId,
-      ...(user.profile_image ? { profileImage: user.profile_image } : {}),
-    });
-
+    const customToken = ''; // 빈 문자열 (응답 호환성 유지)
     await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
     // Set httpOnly session cookie for user auth (new flow)
@@ -589,16 +583,9 @@ kakaoRoutes.post('/firebase', cors(), async (c) => {
     const kakaoUser = await kakaoService.getUserInfo(accessToken);
     const user = await kakaoService.upsertUser(kakaoUser);
     
+    // 🛡️ 2026-05-01: Firebase 100% 제거 — customToken 생성 안 함 (dead path).
     const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
-    const customToken = await firebaseService.createCustomToken(firebaseUID, {
-      role: 'user',
-      userId: user.id,
-      userName: user.name,
-      email: user.email,
-      kakaoId: kakaoUser.kakaoId,
-      ...(user.profile_image ? { profileImage: user.profile_image } : {}),
-    });
-
+    const customToken = ''; // 빈 문자열 (응답 호환성 유지)
     await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
 

@@ -181,6 +181,34 @@ export class KakaoAuthService {
   /**
    * DB에 사용자 저장 또는 업데이트 (Upsert)
    */
+  /**
+   * 🛡️ 2026-05-01: Option B — 탈퇴 후 재가입 시 복원 가능 계정 체크.
+   *   같은 kakao_id 의 deleted_accounts row 가 30일 내 있으면 isRestorable: true 반환.
+   *   사용자에게 "이전 계정 복원" 동의 화면 표시 후 restoreUser 호출.
+   *   동의 거부 시 그냥 신규 계정 생성 (옛 계정은 30일 후 hard purge cron 이 처리).
+   */
+  async checkRestorable(kakaoId: string): Promise<{ isRestorable: boolean; deletedAt?: string; originalName?: string | null; reregisterAvailableAt?: string }> {
+    try {
+      const row = await this.db
+        .prepare(
+          `SELECT original_name, deleted_at, reregister_available_at FROM deleted_accounts
+           WHERE kakao_id = ? AND datetime(reregister_available_at) > datetime('now')
+           ORDER BY deleted_at DESC LIMIT 1`
+        )
+        .bind(kakaoId)
+        .first<{ original_name: string | null; deleted_at: string; reregister_available_at: string }>()
+      if (!row) return { isRestorable: false }
+      return {
+        isRestorable: true,
+        deletedAt: row.deleted_at,
+        originalName: row.original_name,
+        reregisterAvailableAt: row.reregister_available_at,
+      }
+    } catch {
+      return { isRestorable: false }
+    }
+  }
+
   async upsertUser(kakaoUser: KakaoUser): Promise<User & { isNewUser?: boolean }> {
     try {
       // 기존 사용자 확인
