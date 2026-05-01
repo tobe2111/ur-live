@@ -34,20 +34,15 @@ function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): num
   return 2 * R * Math.asin(Math.sqrt(a))
 }
 
-const CATEGORIES: { key: string; emoji: string; label: string; keywords: string[] }[] = [
-  { key: '', emoji: '🍽️', label: '전체', keywords: [] },
-  { key: 'korean', emoji: '🍚', label: '한식', keywords: ['한식', '국밥', '비빔밥', '백반', '찌개', '삼겹살'] },
-  { key: 'japanese', emoji: '🍱', label: '일식', keywords: ['일식', '스시', '돈까스', '라멘', '우동', '초밥'] },
-  { key: 'chinese', emoji: '🍜', label: '중식', keywords: ['중식', '짜장', '짬뽕', '탕수육', '마라'] },
-  { key: 'cafe', emoji: '☕', label: '카페', keywords: ['카페', '커피', '디저트', '베이커리'] },
-  { key: 'western', emoji: '🥩', label: '양식', keywords: ['양식', '파스타', '스테이크', '피자', '버거'] },
-  { key: 'snack', emoji: '🥟', label: '분식', keywords: ['분식', '떡볶이', '김밥', '튀김'] },
-]
+// 🛡️ 2026-05-01: TD-018 분할 — sub-components 분리.
+import { CATEGORIES, REGIONS } from './restaurant-map/constants'
+import FilterSheet from './restaurant-map/FilterSheet'
+import SuggestionModal from './restaurant-map/SuggestionModal'
 
 type SortBy = 'distance' | 'discount' | 'price' | 'rating'
 
 // 🛡️ 2026-04-28: 옵션 B — 카카오 Places 일반 맛집 (식사권 미출시)
-interface KakaoPlace {
+export interface KakaoPlace {
   id: string
   place_name: string
   category_name: string
@@ -61,18 +56,7 @@ interface KakaoPlace {
 }
 
 // Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
-
-const REGIONS = [
-  { key: '', label: '전체', emoji: '📍', lat: 36.5, lng: 127.8, level: 13 },
-  { key: '서울', label: '서울', emoji: '🏙️', lat: 37.5665, lng: 126.978, level: 8 },
-  { key: '경기', label: '경기', emoji: '🌳', lat: 37.4138, lng: 127.5183, level: 10 },
-  { key: '인천', label: '인천', emoji: '⚓', lat: 37.4563, lng: 126.7052, level: 9 },
-  { key: '부산', label: '부산', emoji: '🌊', lat: 35.1796, lng: 129.0756, level: 8 },
-  { key: '대구', label: '대구', emoji: '🍎', lat: 35.8714, lng: 128.6014, level: 8 },
-  { key: '광주', label: '광주', emoji: '💡', lat: 35.1595, lng: 126.8526, level: 8 },
-  { key: '대전', label: '대전', emoji: '🧪', lat: 36.3504, lng: 127.3845, level: 8 },
-  { key: '제주', label: '제주', emoji: '🍊', lat: 33.4890, lng: 126.4983, level: 9 },
-]
+// REGIONS 는 ./restaurant-map/constants 에서 import (위 import 문 참고).
 
 export default function RestaurantMapPage() {
   const navigate = useNavigate()
@@ -1197,191 +1181,5 @@ export default function RestaurantMapPage() {
   )
 }
 
-// ── 지역 + 카테고리 필터 시트 (mobile bottom sheet)
-function FilterSheet({
-  region: initialRegion, category: initialCategory, onApply, onClose,
-}: {
-  region: string; category: string;
-  onApply: (region: string, category: string) => void;
-  onClose: () => void;
-}) {
-  useEscapeKey(onClose)
-  const [r, setR] = useState(initialRegion)
-  const [c, setC] = useState(initialCategory)
+// FilterSheet 는 ./restaurant-map/FilterSheet 에서 import.
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center" onClick={onClose} role="presentation">
-      <div
-        className="bg-white rounded-t-3xl w-full max-w-[430px] max-h-[80vh] overflow-y-auto sm:rounded-3xl sm:my-auto sm:mb-auto"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="필터 설정"
-      >
-        <div className="sticky top-0 bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-base font-bold text-gray-900">필터</h3>
-          <button
-            onClick={() => { setR(''); setC('') }}
-            className="text-xs font-semibold text-gray-500"
-            aria-label="필터 초기화"
-          >
-            초기화
-          </button>
-        </div>
-
-        <div className="p-5 space-y-6">
-          <section>
-            <p className="text-xs font-bold text-gray-500 uppercase mb-3">지역</p>
-            <div className="grid grid-cols-3 gap-2">
-              {REGIONS.map(reg => (
-                <button
-                  key={reg.key}
-                  onClick={() => setR(reg.key)}
-                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    r === reg.key
-                      ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
-                  }`}
-                >
-                  <span>{reg.emoji}</span>
-                  <span>{reg.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <p className="text-xs font-bold text-gray-500 uppercase mb-3">카테고리</p>
-            <div className="grid grid-cols-3 gap-2">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat.key || 'all'}
-                  onClick={() => setC(cat.key)}
-                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    c === cat.key
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
-                  }`}
-                >
-                  <span>{cat.emoji}</span>
-                  <span>{cat.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <div className="sticky bottom-0 bg-white px-5 py-4 border-t border-gray-100" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-          <button
-            onClick={() => onApply(r, c)}
-            className="w-full py-3.5 bg-pink-500 text-white text-sm font-bold rounded-2xl active:scale-[0.98] transition-transform"
-          >
-            적용
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── 일반 맛집 클릭 시 모달 — 알림/영입 신청 + 길찾기 ─────────────────
-function SuggestionModal({ place, onClose }: { place: KakaoPlace; onClose: () => void }) {
-  useEscapeKey(onClose)
-  const [phone, setPhone] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [done, setDone] = useState<'invite' | 'notify' | null>(null)
-
-  async function submit(kind: 'invite' | 'notify') {
-    if (kind === 'notify' && !/^010-?\d{3,4}-?\d{4}$/.test(phone.replace(/-/g, ''))) {
-      toast.error('전화번호 형식: 010-0000-0000')
-      return
-    }
-    setSubmitting(true)
-    try {
-      const res = await api.post('/api/restaurant-suggestions', {
-        kakao_place_id: place.id,
-        place_name: place.place_name,
-        category_name: place.category_name,
-        road_address: place.road_address_name || place.address_name,
-        phone: place.phone,
-        lat: Number(place.y),
-        lng: Number(place.x),
-        kind,
-        user_phone: kind === 'notify' ? phone.replace(/-/g, '') : undefined,
-      })
-      if (res.data?.success) {
-        setDone(kind)
-        toast.success(kind === 'notify' ? '출시 시 알림드릴게요!' : '영입 신청 완료!')
-      } else {
-        toast.error(res.data?.error || '신청 실패')
-      }
-    } catch {
-      toast.error('네트워크 오류')
-    } finally { setSubmitting(false) }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center" onClick={onClose} role="presentation">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-[430px] p-5 space-y-4" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
-        <div>
-          <p className="text-xs text-gray-500">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
-          <h3 className="text-lg font-bold text-gray-900">{place.place_name}</h3>
-          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
-            {place.road_address_name || place.address_name}
-            {place.distance && <span className="ml-1 text-pink-500">· {Math.round(Number(place.distance))}m</span>}
-          </p>
-        </div>
-
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
-          ⓘ 이 매장은 <strong>아직 식사권이 출시되지 않았어요</strong>. 출시되면 알려드릴까요?
-        </div>
-
-        {done === 'notify' ? (
-          <div className="text-center py-2 text-sm text-green-600 font-bold">✅ 출시 시 {phone} 로 알림드릴게요!</div>
-        ) : done === 'invite' ? (
-          <div className="text-center py-2 text-sm text-green-600 font-bold">✅ 영입 신청이 어드민에 전달됐어요!</div>
-        ) : (
-          <>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700">📨 출시 알림 받기 (선택)</label>
-              <div className="flex gap-2">
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="010-0000-0000"
-                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-pink-400 focus:outline-none"
-                />
-                <button
-                  onClick={() => submit('notify')}
-                  disabled={submitting || !phone.trim()}
-                  className="px-4 py-2.5 bg-pink-500 text-white text-sm font-bold rounded-lg disabled:opacity-50"
-                >알림</button>
-              </div>
-            </div>
-
-            <button
-              onClick={() => submit('invite')}
-              disabled={submitting}
-              className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-xl disabled:opacity-50"
-            >
-              🤝 이 매장 셀러 영입 신청
-            </button>
-          </>
-        )}
-
-        <div className="flex gap-2 pt-1">
-          <a
-            href={`https://map.kakao.com/link/to/${encodeURIComponent(place.place_name)},${place.y},${place.x}`}
-            target="_blank" rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold"
-          >
-            <Navigation className="w-4 h-4" /> 카카오맵 길찾기
-          </a>
-          <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium">닫기</button>
-        </div>
-      </div>
-    </div>
-  )
-}
