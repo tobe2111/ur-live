@@ -5,7 +5,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast, getUserFriendlyError } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight, Store, CreditCard, Smartphone, Wallet } from 'lucide-react'
+import { AlertCircle, MapPin, Plus, ChevronRight, Store, CreditCard, Smartphone, Wallet } from 'lucide-react'
 import { getUserIdSync } from '@/utils/auth'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -14,6 +14,9 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { isKorea } from '@/config/region'
 import { captureError, captureMessage, addBreadcrumb } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
+// 🛡️ 2026-05-01: TD-018 점진 분할 — sub-components.
+import CheckoutHeader from './checkout/CheckoutHeader'
+import OrderItemsList from './checkout/OrderItemsList'
 
 // 🔥 Region-based lazy loading for payment components
 const TossPaymentWidget = lazy(() =>
@@ -616,16 +619,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
       <SEO title="주문/결제 - 유어딜" description="주문 정보를 확인하고 안전하게 결제하세요" url="/checkout" noindex />
-      {/* v4 Breakdown 헤더 */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="mx-auto max-w-md flex items-center justify-between px-3 py-3">
-          <button onClick={() => navigate('/cart')} aria-label="장바구니로 돌아가기" className="w-9 h-9 flex items-center justify-center">
-            <ArrowLeft className="w-5 h-5 text-gray-900" />
-          </button>
-          <h1 className="text-[15px] font-extrabold text-gray-900">주문 · 결제</h1>
-          <div className="w-9" />
-        </div>
-      </div>
+      <CheckoutHeader onBack={() => navigate('/cart')} />
 
       <main className="mx-auto max-w-md pb-52" style={{ background: '#F4F4F4' }}>
         <div className="flex flex-col">
@@ -676,75 +670,8 @@ export default function CheckoutPage() {
             {/* Divider */}
             <div className="h-[6px] bg-gray-100" />
 
-            {/* 주문 상품 정보 */}
-            <section className="bg-white px-5 py-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[15px] font-bold text-gray-900">주문 상품</h2>
-                <span className="text-[13px] text-gray-400">
-                  {cartItems.length}개
-                </span>
-              </div>
-
-              <div className="mt-5 flex flex-col gap-5">
-                {Object.values(sellerGroups).map((group) => (
-                  <div key={group.seller_id} className="border border-gray-200 rounded-2xl p-4">
-                    <p className="text-[13px] font-semibold text-gray-500 mb-3">
-                      {group.seller_name}
-                    </p>
-                    
-                    {group.items.map((item) => (
-                      <div key={item.id} className="flex gap-4 py-3 border-t border-gray-200 first:border-t-0">
-                        {/* 이미지 or 아이콘 */}
-                        <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-50">
-                          {item.image_url ? (
-                            <img
-                              src={item.image_url}
-                              alt={item.product_name}
-                              className="object-cover w-full h-full" loading="lazy" decoding="async" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center">
-                              <Package className="h-7 w-7 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* 상품 정보 */}
-                        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                          <p className="truncate text-[14px] leading-snug text-gray-900">
-                            {item.product_name}
-                          </p>
-                          {item.option_value && (
-                            <p className="text-[13px] text-gray-400">
-                              {item.option_value} / {item.quantity}개
-                            </p>
-                          )}
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[15px] font-bold text-gray-900">
-                              {formatNumber((item.price_snapshot ?? 0) * item.quantity)}원
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* 배송비 정보 */}
-                    <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between text-[13px]">
-                      <span className="text-gray-400">배송비</span>
-                      <span className="font-semibold text-gray-900">
-                        {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
-                          ? <span className="text-blue-600 font-medium">무료</span>
-                          : `${formatNumber(group.shipping_fee)}원`}
-                      </span>
-                    </div>
-                    {group.free_shipping_threshold > 0 && group.subtotal < group.free_shipping_threshold && (
-                      <p className="text-[12px] text-gray-500 mt-1">
-                        {formatNumber(group.free_shipping_threshold - group.subtotal)}원 추가 시 무료배송
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
+            {/* 주문 상품 정보 (TD-018 추출) */}
+            <OrderItemsList sellerGroups={sellerGroups} totalItemCount={cartItems.length} />
             
             {/* 쿠폰 적용 */}
             <section className="bg-white px-5 py-4 border-t border-gray-100">
