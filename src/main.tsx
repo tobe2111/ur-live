@@ -56,19 +56,36 @@ if (import.meta.env.PROD) {
 //
 // 🛡️ 2026-04-28: push-sw.js (push-only, fetch 핸들러 없음) 는 보호.
 //   PushNotificationSetup 이 명시적으로 등록한 SW 는 unregister 대상 제외.
+// 🛡️ 2026-04-30: pwa-sw.js 도 보호 — PWA installability 위해 등록한 minimal SW.
 try {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => {
       regs.forEach(r => {
         const scriptUrl = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || ''
-        // push-sw.js 는 보호 (push 받기용, fetch 가로채기 없음 → OAuth 안전)
-        if (scriptUrl.includes('push-sw.js')) return
+        // push-sw.js / pwa-sw.js 는 보호 (의도적 SW)
+        if (scriptUrl.includes('push-sw.js') || scriptUrl.includes('pwa-sw.js')) return
         r.unregister().catch(swallow('main:sw-unregister'))
       })
     }).catch(swallow('main:sw-getRegistrations'))
     if ('caches' in window) {
-      caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(swallow('main:caches-clear'))
+      caches.keys().then(keys => keys.forEach(k => {
+        // PWA SW 의 캐시 (ur-pwa-v1) 는 보호
+        if (k.startsWith('ur-pwa-')) return
+        caches.delete(k)
+      })).catch(swallow('main:caches-clear'))
     }
+
+    // 🛡️ 2026-04-30: PWA 설치 가능 만들기 위한 minimal SW 등록.
+    //   인앱 webview 면 skip (Kakao webview SW 차단 + OAuth 흐름 보호).
+    try {
+      // Lazy detect — UA 패턴 minimal check (in-app-browser.ts import 보다 가벼움)
+      const ua = navigator.userAgent || ''
+      const isInApp = /KAKAOTALK|NAVER\(inapp|FB_IAB|FBAV|FBAN|Instagram|\bLine\/|GSA\/|Bytedance|TikTok/i.test(ua)
+      if (!isInApp) {
+        navigator.serviceWorker.register('/pwa-sw.js', { scope: '/' })
+          .catch((err) => { if (import.meta.env.DEV) console.warn('[PWA SW] register failed:', err) })
+      }
+    } catch { /* ignore */ }
   }
 } catch { /* ignore */ }
 

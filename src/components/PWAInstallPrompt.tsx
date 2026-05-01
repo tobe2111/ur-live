@@ -42,25 +42,52 @@ export default function PWAInstallPrompt() {
 
     const inApp = detectInAppBrowser()
 
-    // Android / Samsung Internet — 표준 prompt
+    // 🛡️ 2026-04-30: 인앱 webview 면 PWA 설치 prompt 안 띄움.
+    //   카카오/네이버앱/FB/IG/Line 인앱은 SW 등록 자체를 차단 → beforeinstallprompt 발생 X.
+    //   대신 InAppBrowserBanner 가 외부 브라우저 유도 (분리된 책임).
+    if (inApp) return
+
+    // Android / Samsung Internet / Edge — 표준 prompt 캡처
     const onBeforeInstall = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      // 인앱 사용자 우선 (카메라/popup 차단 환경) — 즉시 표시
-      // 일반 브라우저 사용자는 5초 지연 (UX 방해 ↓)
-      const delay = inApp ? 1500 : 5000
-      setTimeout(() => setShow(true), delay)
+      // 5초 지연 (UX 방해 최소화 — 사용자가 콘텐츠 먼저 확인)
+      setTimeout(() => setShow(true), 5000)
     }
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
 
-    // iOS Safari — 표준 prompt 없음. 수동 안내.
-    //   인앱 webview 면 "공유 메뉴" 도 안 보일 수 있어 외부 브라우저 권장이 더 효과적.
-    if (isIOS() && !inApp && !window.matchMedia('(display-mode: standalone)').matches) {
-      // 일반 Safari 만 수동 안내 표시 (인앱은 InAppBrowserBanner 가 처리)
+    // 사용자가 설치 완료 시 prompt 정리
+    const onInstalled = () => {
+      setShow(false)
+      setIosManual(false)
+      try { localStorage.setItem(DISMISS_KEY, String(Date.now())) } catch { /* */ }
+    }
+    window.addEventListener('appinstalled', onInstalled)
+
+    // iOS Safari — 표준 prompt 미지원 → 수동 안내.
+    //   Chrome iOS / FireFox iOS 도 동일 (모두 WebKit, 표준 PWA install 지원 X).
+    //   조건: standalone 모드 아닐 때만 (이미 설치되어 standalone 으로 진입했을 가능성 차단)
+    if (isIOS() && !window.matchMedia('(display-mode: standalone)').matches) {
       setTimeout(() => setIosManual(true), 8000)
     }
 
-    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+    // 🛡️ Android Chrome 에서 beforeinstallprompt 가 안 떠도 (SW 활성 안 됨, 사용자 engagement 부족 등)
+    //   사용자에게 알려주는 fallback — 30초 후에도 prompt 캡처 안 됐으면 수동 안내.
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+    if (isAndroid()) {
+      fallbackTimer = setTimeout(() => {
+        if (!deferredPrompt) {
+          // beforeinstallprompt 안 떴음 — Chrome 메뉴에서 수동 설치 안내
+          setIosManual(true) // 수동 안내 모달 재사용 (텍스트는 분기)
+        }
+      }, 30000)
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+      window.removeEventListener('appinstalled', onInstalled)
+      if (fallbackTimer) clearTimeout(fallbackTimer)
+    }
   }, [])
 
   const handleInstall = async () => {
@@ -114,8 +141,9 @@ export default function PWAInstallPrompt() {
     )
   }
 
-  // iOS Safari — 수동 안내
+  // iOS Safari / Android Chrome fallback — 수동 안내 (OS 별 분기)
   if (iosManual) {
+    const isIOSDevice = isIOS()
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
         <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4">
@@ -125,7 +153,15 @@ export default function PWAInstallPrompt() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900">유어딜을 앱처럼 사용하기</p>
-              <p className="text-[12px] text-gray-500 mt-0.5">하단 공유 <span className="inline-block">⬆️</span> 메뉴 → "홈 화면에 추가"</p>
+              {isIOSDevice ? (
+                <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">
+                  하단 공유 <span className="inline-block">⬆️</span> 메뉴 → <strong>"홈 화면에 추가"</strong> 선택
+                </p>
+              ) : (
+                <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">
+                  Chrome 우상단 메뉴 ⋮ → <strong>"앱 설치"</strong> 또는 <strong>"홈 화면에 추가"</strong>
+                </p>
+              )}
             </div>
             <button onClick={handleDismiss} aria-label="닫기" className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
               <X className="w-4 h-4 text-gray-400" />
