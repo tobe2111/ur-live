@@ -124,20 +124,54 @@ export default function SellerPublicPage() {
     const file = e.target.files?.[0]
     if (!file) return
     const token = localStorage.getItem('seller_token')
-
-    // 이미지 → base64 or presigned upload
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const base64 = reader.result as string
-      setSaving(true)
-      try {
-        await api.put('/api/seller/profile', { profile_image: base64 }, { headers: { Authorization: `Bearer ${token}` } })
-        setSeller(prev => prev ? { ...prev, profile_image: base64 } : prev)
-        toast.success(t('seller.publicPage.profileImageChanged'))
-      } catch { toast.error(t('seller.publicPage.imageUploadFailed')) }
-      finally { setSaving(false) }
+    if (!token) {
+      toast.error('로그인이 필요합니다')
+      return
     }
-    reader.readAsDataURL(file)
+
+    // 🛡️ 2026-05-01: base64 → DB 직접 저장 → upload-image multipart 로 변경.
+    //   원인: 5MB 이미지가 ~7MB base64 → PUT body 한도 초과 + DB row 비대 → 업로드 실패.
+    //   수정: /api/seller/upload-image (multipart) → URL 받기 → PUT /api/seller/profile 로 URL 만 저장.
+    const MAX_BYTES = 5 * 1024 * 1024
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
+    if (file.size > MAX_BYTES) {
+      toast.error(`파일 크기는 5MB 이하여야 합니다 (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`)
+      return
+    }
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error('JPEG, PNG, WebP, GIF 만 가능합니다')
+      return
+    }
+
+    setSaving(true)
+    try {
+      // 1. 이미지 업로드 → URL 획득
+      const formData = new FormData()
+      formData.append('image', file)
+      const uploadRes = await api.post('/api/seller/upload-image', formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!uploadRes.data?.success || !uploadRes.data?.url) {
+        throw new Error(uploadRes.data?.error || '업로드 실패')
+      }
+      const imageUrl = uploadRes.data.url
+
+      // 2. URL 만 프로필에 저장
+      await api.put('/api/seller/profile', { profile_image: imageUrl }, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      setSeller(prev => prev ? { ...prev, profile_image: imageUrl } : prev)
+      toast.success(t('seller.publicPage.profileImageChanged'))
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } }; message?: string }
+      const msg = e.response?.data?.error || e.message || t('seller.publicPage.imageUploadFailed')
+      toast.error(msg)
+      if (import.meta.env.DEV) console.error('[SellerPublic] Upload failed:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   useEffect(() => {
@@ -231,7 +265,7 @@ export default function SellerPublicPage() {
   ]
 
   return (
-    <div className={`min-h-screen ${T.bg}`}>
+    <div className={`min-h-screen ${T.bg} pb-28`}>
       <SEO
         title={seller.name || t('product.seller')}
         description={seller.bio || `${seller.name || t('product.seller')} - Ur Deal`}

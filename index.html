@@ -7,7 +7,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="유어딜" />
-    <meta name="theme-color" content="#EC4899" />
+    <!-- 🛡️ 2026-05-01: 상태바 색상 — 앱이 주로 다크 테마라 기본 #020202.
+         시스템 라이트 모드 사용자는 #FFFFFF (흰 테마 쇼핑 페이지와 매칭).
+         App.tsx 의 useStatusBarTheme() 가 페이지 테마에 따라 동적으로 override. -->
+    <meta name="theme-color" content="#020202" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- 🛡️ 2026-04-30: iOS Safari PWA 설치용 — 다양한 사이즈 -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
