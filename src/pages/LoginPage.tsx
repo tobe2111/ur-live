@@ -147,6 +147,12 @@ export default function LoginPage() {
         || '/'
       const currentReturnUrl = safeInternalPath(rawReturnUrl, '/')
       const params = new URLSearchParams({ redirect: currentReturnUrl })
+      // 🛡️ 2026-05-01: ?switch=1 진입 (다른 계정 전환) 시 prompt=login 강제로 전달 →
+      //   Kakao 가 매번 인증 화면 표시 (silent auto-approve 차단).
+      //   일반 로그인은 빠른 흐름 유지.
+      if (wantsSwitch) {
+        params.set('force_account', '1')
+      }
       window.location.href = `/auth/kakao/start?${params.toString()}`
 
     } catch (err: unknown) {

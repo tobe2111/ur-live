@@ -214,13 +214,13 @@ kakaoRoutes.get('/start', async (c) => {
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('state', state);
-  // 🛡️ 2026-05-01 (REVISED): prompt=login 항상 강제.
-  //   사용자 신고: 다른 사람 폰에서 로그인하니 그 사람 계정으로 인증됨 (하은희 → 정지원).
-  //   원인: Kakao 가 디바이스에 이미 있는 세션 + 이전 동의 이력으로 silent 승인.
-  //   해결: 매 로그인마다 Kakao 가 인증/동의 화면 표시 → 사용자가 본인 계정인지 확인.
-  //   UX 비용: 본인 디바이스에서도 한 번 더 동의 클릭 필요. 보안/정확성 > 미세 UX.
-  //   skip_login=1 query 로 명시적으로 끌 수 있게 (초고속 재로그인 등 고급 사용).
-  if (c.req.query('skip_login') !== '1') {
+  // 🛡️ 2026-05-01 (REVISED v2): prompt=login 강제 OFF — 일상 사용자 UX 우선.
+  //   대신 토스트 + 전환 버튼으로 잘못된 로그인 즉시 인지 가능.
+  //   force_account=1 query 일 때만 prompt=login 활성 (마이페이지 '다른 계정으로 로그인' 버튼).
+  //   - 모바일 KakaoTalk handoff: prompt=login 도 무시되어 어차피 효과 미흡
+  //   - 일상 사용자: 한 번 동의한 앱은 빠른 재로그인 가능
+  //   - 잘못된 로그인 케이스: 토스트 "X님으로 로그인됐어요" 표시 → 잘못되면 즉시 전환
+  if (c.req.query('force_account') === '1') {
     authUrl.searchParams.set('prompt', 'login');
   }
 
