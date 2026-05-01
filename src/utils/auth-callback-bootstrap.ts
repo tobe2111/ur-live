@@ -32,28 +32,42 @@ export function processAuthCallbackParams(): void {
 
   // ── 카카오 로그인 성공 ──
   if (urlParams.get('login') === 'success' && urlParams.get('userId')) {
-    // 🛡️ 2026-05-01: 새 사용자 로그인 시 이전 사용자의 모든 잔존 데이터 청소.
+    // 🛡️ 2026-05-01: 새 사용자 로그인 시 이전 사용자 데이터 wipe — cross-user leak 차단.
     //   사용자 신고: "다른 사람 폰에서 내 계정 로그인했는데 그 사람 이름으로 됨".
-    //   원인: 이전 사용자의 seller_token, agency_token, admin_token, user_name 등이
-    //   localStorage 에 남아 새 로그인 시 덮어쓰기 안 되면 그대로 사용됨.
-    //   해결: Kakao 콜백 받은 시점에 모든 인증 흔적 wipe → URL 파라미터 + cookie
-    //   기반으로 새로 세팅.
+    //
+    //   접근: prefix 기반 전수 청소 + 기기/앱 설정만 보존.
+    //   - 인증/세션/역할 토큰 prefix 매칭으로 모두 삭제
+    //   - 기기 preferences (theme, i18n, PWA dismiss 등) 는 유지
     try {
-      const STALE_KEYS = [
-        'user_type', 'user_id', 'user_name', 'user_email', 'user_profile_image',
-        'session_login', 'lastLoginUid', 'numeric_user_id', 'user_token', 'user_refresh_token',
-        'seller_token', 'seller_refresh_token', 'seller_id', 'seller_name', 'seller_email',
-        'seller_username', 'seller_type', 'access_token',
-        'agency_token', 'agency_refresh_token', 'agency_id', 'agency_name',
-        'admin_token', 'admin_refresh_token',
-        'firebase_token', 'firebase_token_cache',
+      const KEEP_PREFIXES = ['ur_pwa_', 'ur_kakao_external_', 'i18n', 'feature_flags', 'dark', 'light', 'theme']
+      const KEEP_KEYS = new Set(['affiliate_ref', 'affiliate_ref_expires']) // 추천인 attribution 유지
+      const WIPE_PREFIXES = [
+        'user_', 'seller_', 'agency_', 'admin_',
+        'auth-', // Zustand persist (auth-kr-storage, auth-world-storage)
       ]
-      for (const k of STALE_KEYS) {
-        try { localStorage.removeItem(k) } catch { /* ignore */ }
+      const WIPE_KEYS = [
+        'session_login', 'lastLoginUid', 'numeric_user_id', 'access_token',
+        'firebase_token', 'firebase_token_cache',
+        'hasCartItems', 'tempCartItem',
+        'push_subscribed', 'push_token',
+        'loginReturnUrl', 'userId',
+        'recent-searches', 'recently_viewed',
+        'invite_prompt_shown',
+      ]
+
+      // localStorage 순회 — prefix 매칭 키 + 명시 키 wipe
+      const allKeys: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (k) allKeys.push(k)
       }
-      // Zustand persist storage 도 정리
-      try { localStorage.removeItem('auth-kr-storage') } catch { /* */ }
-      try { localStorage.removeItem('auth-world-storage') } catch { /* */ }
+      for (const k of allKeys) {
+        if (KEEP_PREFIXES.some(p => k.startsWith(p))) continue
+        if (KEEP_KEYS.has(k)) continue
+        if (WIPE_PREFIXES.some(p => k.startsWith(p)) || WIPE_KEYS.includes(k)) {
+          try { localStorage.removeItem(k) } catch { /* ignore */ }
+        }
+      }
       try { sessionStorage.clear() } catch { /* */ }
     } catch { /* ignore */ }
 
