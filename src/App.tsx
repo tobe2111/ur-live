@@ -428,15 +428,37 @@ function AppContent() {
 
   const location = useLocation()
 
-  // 네이티브 앱: 페이지에 따라 상태바 스타일 변경
+  // 네이티브 앱 + 모바일 브라우저: 페이지에 따라 상태바 스타일 / theme-color 변경
   useEffect(() => {
+    // 화이트 테마 페이지 (CLAUDE.md 정책)
+    const lightPages = ['/browse', '/checkout', '/my-orders', '/account/', '/cart',
+      '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
+    const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
+
+    // 1. Capacitor 네이티브 앱 — StatusBar 플러그인
     import('./lib/native').then(({ setStatusBarStyle }) => {
-      // 화이트 테마 페이지는 light 상태바 (검은 텍스트)
-      const lightPages = ['/browse', '/checkout', '/my-orders', '/account/', '/cart',
-        '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
-      const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
       setStatusBarStyle(isLight ? 'light' : 'dark')
     }).catch((err) => { if (import.meta.env.DEV) console.warn('[App] setStatusBarStyle failed:', err) })
+
+    // 2. 모바일 브라우저 — <meta name="theme-color"> 동적 update
+    //    Chrome/Samsung/Edge 가 status bar 배경색을 이 값으로 칠함.
+    //    iOS Safari 는 black-translucent 메타라 영향 X (페이지 배경 그대로).
+    try {
+      // index.html 의 media-query 메타 2개를 dynamic 단일 메타로 override
+      const existing = document.querySelectorAll('meta[name="theme-color"]')
+      existing.forEach(el => {
+        // dynamic override 마크 — re-render 시 같은 노드 재사용
+        if (el.getAttribute('data-dynamic') !== '1') el.remove()
+      })
+      let dynamic = document.querySelector('meta[name="theme-color"][data-dynamic="1"]') as HTMLMetaElement | null
+      if (!dynamic) {
+        dynamic = document.createElement('meta')
+        dynamic.setAttribute('name', 'theme-color')
+        dynamic.setAttribute('data-dynamic', '1')
+        document.head.appendChild(dynamic)
+      }
+      dynamic.setAttribute('content', isLight ? '#FFFFFF' : '#020202')
+    } catch { /* SSR / 브라우저 미지원 */ }
   }, [location.pathname])
   const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
