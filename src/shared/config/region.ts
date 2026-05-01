@@ -254,8 +254,9 @@ export async function getAuthProvider(provider: 'kakao' | 'google') {
  * Region 정보 출력 (디버깅용)
  */
 export function logRegionInfo() {
-  // Only log in development
-  if (typeof window !== 'undefined' && !(import.meta as any).env?.DEV) return
+  // 🛡️ 2026-05-01: DEV gate 수정 — 이전 `!(import.meta as any).env?.DEV` 가
+  //   항상 true 로 해석돼 production 에서도 console 노출됨.
+  if (!import.meta.env.DEV) return
 
   const config = getRegionConfig()
 

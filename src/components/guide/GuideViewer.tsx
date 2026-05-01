@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { ChevronDown, ChevronRight, Loader2, Pencil, Save, X, Trash2, Plus } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import DOMPurify from 'dompurify'
 
 /**
  * 운영 가이드 공통 뷰어 — 어드민/셀러/에이전시 모두 사용
@@ -358,7 +359,13 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
                   <div
                     className="text-sm text-gray-700 leading-relaxed"
                     // eslint-disable-next-line react/no-danger
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(s.content_md) }}
+                    // 🛡️ 2026-05-01: DOMPurify sanitize — admin/seller 가 markdown 에 악성 태그
+                    //   삽입할 수 있는 XSS 위험 차단. renderMarkdown 출력에 추가 layer.
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(s.content_md), {
+                      ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'em', 'u', 's', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'a', 'img', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'span', 'div', 'hr'],
+                      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel'],
+                      ALLOW_DATA_ATTR: false,
+                    }) }}
                   />
                 )}
                 {s.updated_at && (

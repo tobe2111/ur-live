@@ -204,4 +204,44 @@ couponRoutes.get('/claim/:code', requireAuth(), async (c) => {
   return c.json({ success: true, data: { coupon_id: coupon.id, name: coupon.name, type: coupon.type, value: coupon.value } })
 })
 
+// 🛡️ 2026-05-01: 신규 가입자 자동 환영 쿠폰 발급 — WelcomeOnboardingModal 에서 호출.
+//   기존엔 /coupons/apply 호출했지만 그건 검증만 (claim 안 됨). 이 endpoint 가
+//   존재하는 'WELCOME' 코드 쿠폰을 사용자에게 발급 (user_coupons 에 INSERT).
+//   - WELCOME 쿠폰이 admin 에 의해 코드로 등록돼 있어야 함 (없으면 silent skip).
+//   - 이미 받은 사용자면 already_claimed 반환 (idempotent).
+couponRoutes.post('/auto-issue/welcome', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+  const { DB } = c.env
+  await ensureTables(DB)
+
+  // WELCOME 코드 쿠폰 조회 (admin 이 등록해야 작동)
+  const coupon = await DB.prepare(
+    "SELECT id, name, type, value, expires_at FROM coupons WHERE code = 'WELCOME' AND is_active = 1"
+  ).first<{ id: number; name: string; type: string; value: number; expires_at: string | null }>()
+
+  if (!coupon) {
+    // admin 이 WELCOME 코드 쿠폰 등록 안 한 상태 — silent skip (UX 진행).
+    return c.json({ success: true, data: null, message: 'WELCOME 코드 미등록 (silent skip)' })
+  }
+
+  if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+    return c.json({ success: true, data: null, message: '만료된 환영 쿠폰' })
+  }
+
+  // 이미 받은 사용자 체크 (idempotent)
+  const existing = await DB.prepare(
+    "SELECT id FROM user_coupons WHERE user_id = ? AND coupon_id = ?"
+  ).bind(String(user.id), coupon.id).first()
+  if (existing) {
+    return c.json({ success: true, data: { coupon_id: coupon.id, name: coupon.name, type: coupon.type, value: coupon.value }, already_claimed: true })
+  }
+
+  // 발급
+  await DB.prepare("INSERT OR IGNORE INTO user_coupons (user_id, coupon_id) VALUES (?, ?)")
+    .bind(String(user.id), coupon.id).run()
+
+  return c.json({ success: true, data: { coupon_id: coupon.id, name: coupon.name, type: coupon.type, value: coupon.value } })
+})
+
 export { couponRoutes }

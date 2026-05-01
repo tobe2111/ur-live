@@ -513,3 +513,42 @@ High/Medium 은 코드 품질 & 유지보수성 이슈 — 단계적으로.
 ## 진행 기록
 
 - **2026-04-22**: 이 문서 작성. 대장애 복구 완료 후 baseline 부채 정리.
+- **2026-05-01**: 추가 부채 5종 (TD-018 ~ 022) 식별 + 3건 즉시 해결.
+
+### 🆕 2026-05-01 추가 부채
+
+#### TD-018 (HIGH): 거대 페이지 컴포넌트 분할 필요
+**위치**:
+- `src/pages/RestaurantMapPage.tsx` — 1387줄
+- `src/pages/SellerLiveBroadcastPage.tsx` — 1336줄
+- `src/pages/CheckoutPage.tsx` — 1291줄 (25+ useState 단일 컴포넌트)
+
+**영향**: 머지 충돌 / 리렌더 성능 / 테스트 불가
+**예상 작업 시간**: 2-3일 (페이지당 4-8시간)
+**권장 접근**:
+1. 큰 sub-section 을 별도 컴포넌트로 추출 (state 는 부모 유지)
+2. 점진적으로 Zustand store 도입 (CheckoutPage 결제 단계, RestaurantMapPage 필터/지도, SellerLiveBroadcast 방송 상태)
+3. 각 sub-component 단위 테스트 추가
+
+#### TD-019 (MEDIUM): GuideViewer XSS 가드 ✅ 해결됨
+**위치**: `src/components/guide/GuideViewer.tsx`
+**해결**: 2026-05-01 DOMPurify 적용. ALLOWED_TAGS / ALLOWED_ATTR 화이트리스트.
+
+#### TD-020 (MEDIUM): WELCOME 자동 쿠폰 endpoint ✅ 해결됨
+**위치**: `src/features/coupons/api/coupons.routes.ts`
+**해결**: 2026-05-01 `/api/coupons/auto-issue/welcome` 신설. user_coupons INSERT (idempotent).
+
+#### TD-021 (LOW): region.ts logRegionInfo console gate ✅ 해결됨
+**위치**: `src/shared/config/region.ts:256`
+**해결**: 2026-05-01 `import.meta.env.DEV` 직접 사용. 이전 gate 가 항상 true 로 해석돼 production 노출되던 버그.
+
+#### TD-022 (LOW): 로그인 흐름 진단 로그 정리 필요
+**위치**: 여러 commit 들의 진단 로깅
+- `KakaoAuthService.getUserInfo` — `[Kakao API RAW RESPONSE]` 로그
+- `kakao.routes.ts /sync/callback` — `[Kakao Sync DIAGNOSTIC]` 로그
+- `auth-callback-bootstrap.ts` 등
+
+**상태**: 사용자 신고 ("유어팀(정지원)" 표시) 진단 목적. 해결 후 제거 권장.
+**예상 작업 시간**: 30분
+
+- **2026-04-22**: 이 문서 작성. 대장애 복구 완료 후 baseline 부채 정리.

@@ -66,10 +66,11 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
       setClaimingCoupon(false)
     }, 5000)
     try {
-      // Welcome coupon endpoint — 백엔드에 코드 'WELCOME' or 시점 자동 발급 endpoint 가정.
-      // 🛡️ TODO: 백엔드에 신규 사용자 자동 쿠폰 발급 endpoint 신설 권장 (또는 어드민이
-      //   'WELCOME' 코드 발급 후 여기서 claim).
-      const res = await api.post('/api/coupons/apply', { code: 'WELCOME' }).catch(() => null)
+      // 🛡️ 2026-05-01: /api/coupons/auto-issue/welcome 신설 endpoint 사용.
+      //   - admin 이 'WELCOME' 코드 쿠폰 등록한 경우만 발급 (없으면 silent skip)
+      //   - 이미 받은 사용자는 already_claimed 반환 (idempotent)
+      //   - 이전: /coupons/apply 호출 → 검증만 (실제 user_coupons INSERT 안 됨)
+      const res = await api.post('/api/coupons/auto-issue/welcome').catch(() => null)
       clearTimeout(timeoutId)
       if (res?.data?.success) {
         setCouponClaimed(true)
