@@ -268,8 +268,15 @@ export default function AccountSettingsPage() {
 
         <AppVersionSection />
 
-        <div className="mt-8 text-center">
-          <Link to="/account/delete-warning" className="text-[11px] text-white/30 hover:text-white/55 underline">회원 탈퇴</Link>
+        {/* 🛡️ 2026-05-01: 사용자 신고 — "탈퇴 버튼이 없는데?" — 너무 옅어서 안 보임.
+            크기/색 정상화 + Section 스타일로 일관성. */}
+        <div className="mt-8 mb-6 px-4">
+          <Link
+            to="/account/delete-warning"
+            className="block w-full py-3 px-4 text-center text-[13px] text-red-400 hover:text-red-500 border border-red-500/20 hover:border-red-500/40 rounded-xl transition-colors"
+          >
+            회원 탈퇴
+          </Link>
         </div>
       </main>
 

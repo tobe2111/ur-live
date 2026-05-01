@@ -83,14 +83,33 @@ export default function LoginPage() {
   }
   const returnUrl = returnUrlRef.current
   const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
+  // 🛡️ 2026-05-01: ?switch=1 query — 명시적 계정 전환 의도 (다른 사람 디바이스 등).
+  //   localStorage 청소 + auto-redirect skip → 로그인 UI 표시.
+  const wantsSwitch = searchParams.get('switch') === '1'
+  const currentUserName = (typeof window !== 'undefined' && localStorage.getItem('user_name')) || ''
 
   // ✅ 로그인 상태 확인 및 리다이렉트 (isAuthReady 대기 불필요 — KR은 즉시 true)
   useEffect(() => {
+    if (wantsSwitch) {
+      // 명시 전환: localStorage 청소만 (cookie 는 백엔드 logout 호출 권유)
+      try {
+        const KEEP = ['ur_pwa_', 'ur_kakao_external_', 'i18n', 'feature_flags', 'theme', 'dark', 'light', 'affiliate_ref']
+        const keys: string[] = []
+        for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k) keys.push(k) }
+        for (const k of keys) {
+          if (KEEP.some(p => k.startsWith(p)) || k === 'feature_flags') continue
+          try { localStorage.removeItem(k) } catch { /* */ }
+        }
+        // 백엔드 cookie 도 무효화
+        fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => null)
+      } catch { /* */ }
+      return
+    }
     if (isLoggedIn && !hasRedirected.current) {
       hasRedirected.current = true
       navigate(returnUrlRef.current!, { replace: true })
     }
-  }, [isLoggedIn, navigate])
+  }, [isLoggedIn, navigate, wantsSwitch])
 
   // ✅ Kakao SDK 초기화 및 returnUrl 저장 (KR만)
   useEffect(() => {
@@ -282,6 +301,13 @@ export default function LoginPage() {
         {successMessage && (
           <div className="mb-5 px-4 py-3 bg-green-50 border border-green-100 rounded-xl text-[13px] text-green-700 text-center">
             {successMessage}
+          </div>
+        )}
+
+        {/* 🛡️ 2026-05-01: ?switch=1 진입 시 안내 — 다른 사람 디바이스에서 본인 계정으로 로그인 */}
+        {wantsSwitch && (
+          <div className="mb-5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-[13px] text-blue-700 text-center">
+            이전 사용자 데이터를 청소했어요. 본인 계정으로 로그인해주세요.
           </div>
         )}
 
