@@ -35,12 +35,13 @@ export function initSentry() {
         }),
       ],
 
-      // 🛡️ 2026-04-22: 트랜잭션 샘플링 100% → 10% (Sentry 비용 절감, 운영자 1인 한도)
-      tracesSampleRate: 0.1,
-
-      // 세션 재생
-      replaysSessionSampleRate: 0.1,   // 10% 샘플링
-      replaysOnErrorSampleRate: 1.0,   // 에러 발생 시 100% 기록
+      // 🛡️ 2026-05-01: Sentry 429 (quota 초과) 신고 — 샘플링 대폭 축소.
+      //   tracesSampleRate: 10% → 1% (트랜잭션은 운영 monitoring 용 — 적은 표본도 충분)
+      //   replaysSessionSampleRate: 10% → 0% (일반 세션 replay 안 함)
+      //   replaysOnErrorSampleRate: 100% → 10% (에러 시도 10%만)
+      tracesSampleRate: 0.01,
+      replaysSessionSampleRate: 0,     // 일반 세션 replay 0 (quota 초과 방어)
+      replaysOnErrorSampleRate: 0.1,   // 에러 발생 시 10% 기록
 
       // 에러 필터링
       beforeSend(event, hint) {
