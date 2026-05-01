@@ -18,6 +18,9 @@ import { toast } from '@/hooks/useToast'
 import CheckoutHeader from './checkout/CheckoutHeader'
 import OrderItemsList from './checkout/OrderItemsList'
 import CouponSection from './checkout/CouponSection'
+import ShippingSection from './checkout/ShippingSection'
+import DealPointsSection from './checkout/DealPointsSection'
+import OrderSummary from './checkout/OrderSummary'
 
 // 🔥 Region-based lazy loading for payment components
 const TossPaymentWidget = lazy(() =>
@@ -627,46 +630,8 @@ export default function CheckoutPage() {
 
           {/* Left column */}
           <div className="flex flex-1 flex-col lg:rounded-3xl">{/* overflow-hidden 제거 */}
-            {/* 배송지 정보 */}
-            <section className="bg-white px-5 py-5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[15px] font-bold text-gray-900">배송지</h2>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowAddressModal(true) }}
-                  className="text-[13px] font-medium text-blue-600 active:scale-95"
-                >
-                  {selectedAddress ? '변경' : '선택'}
-                </button>
-              </div>
-
-              {!selectedAddress ? (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-2xl p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-red-800 font-semibold text-[14px]">⚠️ 배송지를 선택해주세요</p>
-                      <p className="text-red-700 text-[13px] mt-1">배송지를 선택하셔야 결제가 가능합니다.</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[15px] font-semibold text-gray-900">{selectedAddress.recipient_name}</span>
-                    {selectedAddress.is_default === 1 && (
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-600">
-                        기본
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[14px] leading-relaxed text-gray-400">{selectedAddress.phone}</p>
-                  <p className="text-[14px] leading-relaxed text-gray-900">
-                    [{selectedAddress.postal_code}] {selectedAddress.address} {selectedAddress.address_detail}
-                  </p>
-                </div>
-              )}
-            </section>
+            {/* 배송지 정보 (TD-018 추출) */}
+            <ShippingSection selectedAddress={selectedAddress} onOpenAddressModal={() => setShowAddressModal(true)} />
             
             {/* Divider */}
             <div className="h-[6px] bg-gray-100" />
@@ -704,47 +669,14 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              {/* 딜 포인트 */}
-              <div className="bg-white border-t border-gray-100 px-5 py-5 mb-2">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[15px] font-bold text-gray-900">딜 포인트</h3>
-                  <span className="text-[13px] text-gray-500">보유 <span className="font-bold text-pink-500">{formatNumber(dealBalance)}</span>딜</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={dealToUse || ''}
-                    onChange={e => {
-                      const v = Math.min(Math.max(0, Number(e.target.value)), Math.min(dealBalance, totalBeforeDeal))
-                      setDealToUse(v)
-                    }}
-                    placeholder="사용할 딜 입력"
-                    aria-label="사용할 딜 포인트 입력"
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium placeholder:text-gray-400"
-                  />
-                  {/* 🛡️ 2026-04-28: '전액' 버튼이 좁은 모바일 화면에서 잘리던 문제 fix.
-                       - text-xs(12px) → text-[11px] + px-3(12px) 로 패딩 축소
-                       - whitespace-nowrap 으로 줄바꿈 방지 */}
-                  <button onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
-                    className="px-3 py-3 bg-gray-900 text-white rounded-lg text-[11px] font-bold shrink-0 whitespace-nowrap">전액</button>
-                </div>
-                {dealToUse > 0 && (
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center justify-between text-[13px]">
-                      <span className="text-gray-500">상품 금액</span>
-                      <span className="text-gray-700">{formatNumber(totalBeforeDeal)}원</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[13px] mt-1">
-                      <span className="text-pink-500 font-medium">딜 포인트 차감</span>
-                      <span className="text-pink-500 font-bold">-{formatNumber(dealToUse)}딜</span>
-                    </div>
-                    <div className="border-t border-gray-200 mt-2 pt-2 flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-gray-900">카드 결제 금액</span>
-                      <span className="text-[15px] font-bold text-gray-900">{Math.max(0, totalAmount)}원</span>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* 딜 포인트 (TD-018 추출) */}
+              <DealPointsSection
+                dealBalance={dealBalance}
+                dealToUse={dealToUse}
+                setDealToUse={setDealToUse}
+                totalBeforeDeal={totalBeforeDeal}
+                totalAmount={totalAmount}
+              />
 
               {dealToUse >= totalBeforeDeal ? (
                 /* 딜 전액 결제 */
@@ -907,76 +839,15 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* 결제 예정금액 */}
-        <div>
-          <div className="h-[6px] bg-gray-100" />
-          <section className="bg-white px-5 py-5">
-            <h2 className="text-[15px] font-bold text-gray-900">결제 예정금액</h2>
-
-            <div className="mt-5 flex flex-col gap-3.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[14px] text-gray-400">상품금액</span>
-                <span className="text-[14px] text-gray-900">
-                  {formatNumber(subtotal)}원
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-[14px] text-gray-400">배송비</span>
-                <span className="text-[14px] text-gray-900">
-                  {totalShippingFee === 0 ? (
-                    <span className="font-medium text-blue-600">무료</span>
-                  ) : (
-                    `${formatNumber(totalShippingFee)}원`
-                  )}
-                </span>
-              </div>
-
-              {couponDiscount > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[14px] text-gray-400">쿠폰 할인</span>
-                  <span className="text-[14px] font-medium text-red-500">
-                    -{formatNumber(couponDiscount)}원
-                  </span>
-                </div>
-              )}
-              {totalGroupBuyDiscount > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[14px] text-gray-400">🎁 공동구매 할인</span>
-                  <span className="text-[14px] font-medium text-gray-900">-{formatNumber(totalGroupBuyDiscount)}원</span>
-                </div>
-              )}
-              {dealToUse > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[14px] text-gray-400">딜 포인트</span>
-                  <span className="text-[14px] font-medium text-pink-500">-{formatNumber(dealToUse)}딜</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-end justify-between pt-3 mt-3 border-t border-gray-100">
-              <span className="text-[14px] font-extrabold text-gray-900">총 결제 금액</span>
-              <span className="text-[20px] font-black text-red-500" style={{ letterSpacing: '-0.03em' }}>
-                {Math.max(0, totalAmount)}원
-              </span>
-            </div>
-            {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시 의무) */}
-            {totalAmount > 0 && (
-              <div className="flex justify-end mt-0.5">
-                <span className="text-[11px] text-gray-500">
-                  부가세 포함 (10% · {Math.round(Math.max(0, totalAmount) - Math.floor(Math.max(0, totalAmount) / 1.1))}원)
-                </span>
-              </div>
-            )}
-            {totalAmount > 0 && (
-              <div className="flex justify-end mt-1">
-                <span className="rounded-md px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold">
-                  결제 시 {Math.round(Math.max(0, totalAmount) * 0.03)}딜 적립 예정
-                </span>
-              </div>
-            )}
-          </section>
-        </div>
+        {/* 결제 예정금액 (TD-018 추출) */}
+        <OrderSummary
+          subtotal={subtotal}
+          totalShippingFee={totalShippingFee}
+          couponDiscount={couponDiscount}
+          totalGroupBuyDiscount={totalGroupBuyDiscount}
+          dealToUse={dealToUse}
+          totalAmount={totalAmount}
+        />
       </main>
 
       {/* Mobile payment button removed - now inside TossPaymentWidget */}
