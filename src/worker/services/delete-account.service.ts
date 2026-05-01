@@ -67,12 +67,11 @@ export async function deleteUserAccount(
       // Best-effort — proceed even if lookup fails
     }
 
-    // 1. 병렬 삭제: 장바구니, 찜목록, 배송지
-    await db.batch([
-      db.prepare('DELETE FROM cart_items WHERE user_id = ?').bind(userId),
-      db.prepare('DELETE FROM wishlists WHERE user_id = ?').bind(userId),
-      db.prepare('DELETE FROM shipping_addresses WHERE user_id = ?').bind(userId),
-    ]);
+    // 1. 개별 삭제 (테이블 누락 환경 보호 — db.batch 는 하나라도 fail 하면 전체 fail).
+    //    🛡️ 2026-05-01: 사용자 신고 "회원탈퇴 중 오류" — batch 실패가 원인 가능성.
+    await db.prepare('DELETE FROM cart_items WHERE user_id = ?').bind(userId).run().catch(swallow('cart_items'));
+    await db.prepare('DELETE FROM wishlists WHERE user_id = ?').bind(userId).run().catch(swallow('wishlists'));
+    await db.prepare('DELETE FROM shipping_addresses WHERE user_id = ?').bind(userId).run().catch(swallow('shipping_addresses'));
 
     // 2. 주문 익명화
     await db
@@ -188,51 +187,94 @@ export async function deleteUserAccount(
     // 3. 사용자 정보 익명화 + soft delete
     //    🛡️ 2026-05-01: kakao_id 에 'deleted_<ts>_' prefix 추가 → 즉시 재가입 시 SELECT 매칭 X.
     //    deleted_at 컬럼 set 하면 soft delete (30일 후 cron 이 hard purge).
-    //    NOTE: deleted_at 컬럼이 없는 환경 (옛 schema) 면 ALTER 시도 후 실패해도 진행.
+    //    NOTE: 컬럼 없는 환경 대비 — 단계별 fallback (full → no deleted_at → no firebase_uid → minimal).
     const tsToken = `deleted_${Date.now()}_`
     const newKakaoId = originalKakaoId ? `${tsToken}${originalKakaoId}` : null
+    const anonymizedEmail = `deleted_${Date.now()}@deleted.invalid`
+    await db.prepare('ALTER TABLE users ADD COLUMN deleted_at DATETIME').run().catch(() => null) // 옛 schema 보강
+
+    let anonymizeOk = false
+    // Try 1: full UPDATE (deleted_at + firebase_uid 포함)
     try {
-      await db.prepare('ALTER TABLE users ADD COLUMN deleted_at DATETIME').run().catch(() => null) // 옛 schema 보강
       await db
         .prepare(
-          `UPDATE users
-           SET email = ?,
-               kakao_id = ?,
-               name = '탈퇴 회원',
-               phone = NULL,
-               firebase_uid = NULL,
-               profile_image = NULL,
-               deleted_at = ?,
-               updated_at = CURRENT_TIMESTAMP
-           WHERE id = ?`
+          `UPDATE users SET email = ?, kakao_id = ?, name = '탈퇴 회원', phone = NULL,
+                            firebase_uid = NULL, profile_image = NULL, deleted_at = ?,
+                            updated_at = CURRENT_TIMESTAMP WHERE id = ?`
         )
-        .bind(`deleted_${Date.now()}@deleted.invalid`, newKakaoId, deletedAt, userId)
-        .run();
-    } catch (e) {
-      // deleted_at column 없는 환경 fallback
+        .bind(anonymizedEmail, newKakaoId, deletedAt, userId)
+        .run()
+      anonymizeOk = true
+    } catch (_e1) {
+      // Try 2: firebase_uid 제거 (production 에 컬럼 없음 가능)
       try {
         await db
           .prepare(
-            `UPDATE users SET email = ?, kakao_id = ?, name = '탈퇴 회원', phone = NULL, firebase_uid = NULL, profile_image = NULL WHERE id = ?`
+            `UPDATE users SET email = ?, kakao_id = ?, name = '탈퇴 회원', phone = NULL,
+                              profile_image = NULL, deleted_at = ?,
+                              updated_at = CURRENT_TIMESTAMP WHERE id = ?`
           )
-          .bind(`deleted_${Date.now()}@deleted.invalid`, newKakaoId, userId)
-          .run();
-      } catch {
-        if (typeof console !== 'undefined') console.warn('[delete-account] users anonymize failed', e);
+          .bind(anonymizedEmail, newKakaoId, deletedAt, userId)
+          .run()
+        anonymizeOk = true
+      } catch (_e2) {
+        // Try 3: deleted_at + firebase_uid 둘 다 제거
+        try {
+          await db
+            .prepare(
+              `UPDATE users SET email = ?, kakao_id = ?, name = '탈퇴 회원', phone = NULL,
+                                profile_image = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+            )
+            .bind(anonymizedEmail, newKakaoId, userId)
+            .run()
+          anonymizeOk = true
+        } catch (_e3) {
+          // Try 4: 최소 컬럼만 (kakao_id prefix 만 적용해서 재로그인 시 매칭 차단)
+          try {
+            await db
+              .prepare(`UPDATE users SET kakao_id = ?, name = '탈퇴 회원' WHERE id = ?`)
+              .bind(newKakaoId, userId)
+              .run()
+            anonymizeOk = true
+          } catch (e4) {
+            if (import.meta.env.DEV) console.error('[delete-account] all UPDATE attempts failed:', e4)
+          }
+        }
       }
+    }
+    if (!anonymizeOk) {
+      throw new Error('users 테이블 익명화 실패 — 모든 컬럼 조합 시도 실패')
     }
 
     // 4. 탈퇴 기록 저장 — kakao_id 도 보존 (재가입 시 복원 동의 화면용).
-    //    🛡️ 2026-05-01: kakao_id 컬럼 추가 (옛 schema 보강 ALTER 시도)
+    //    🛡️ 2026-05-01: deleted_accounts 테이블 자동 생성 (production 에 없을 수 있음).
+    //                   ALTER 로 누락 컬럼 보강 후 INSERT.
+    await db.prepare(
+      `CREATE TABLE IF NOT EXISTS deleted_accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        email TEXT,
+        kakao_id TEXT,
+        original_name TEXT,
+        reason TEXT,
+        deleted_at DATETIME,
+        reregister_available_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`
+    ).run().catch(() => null)
+    // 옛 schema 보강
     await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN kakao_id TEXT').run().catch(() => null)
     await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN original_name TEXT').run().catch(() => null)
+    await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN reregister_available_at DATETIME').run().catch(() => null)
+
     await db
       .prepare(
         `INSERT INTO deleted_accounts (user_id, email, kakao_id, original_name, reason, deleted_at, reregister_available_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(userId, originalEmail, originalKakaoId, originalName, reason ?? null, deletedAt, reregisterAvailableAt)
-      .run();
+      .run()
+      .catch(swallow('deleted_accounts INSERT (non-fatal — soft delete 자체는 성공)'));
 
     return {
       success: true,
@@ -240,7 +282,10 @@ export async function deleteUserAccount(
       deletedAt,
     };
   } catch (error) {
-    throw new Error('회원 탈퇴 처리 중 오류가 발생했습니다.');
+    // 🛡️ 2026-05-01: 원본 에러 메시지 노출 — 진단 가능성. 사용자 신고 "회원탈퇴 중 오류" 의 원인 추적용.
+    const detail = (error as Error)?.message || 'unknown'
+    if (import.meta.env.DEV) console.error('[delete-account] FAILED:', error)
+    throw new Error(`회원 탈퇴 처리 중 오류가 발생했습니다: ${detail}`);
   }
 }
 

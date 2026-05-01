@@ -712,8 +712,21 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      {/* v4 로그아웃 + 버전 */}
-      <div className="px-4 py-6">
+      {/* v4 로그아웃 + 계정 전환 + 버전 */}
+      <div className="px-4 py-6 space-y-2">
+        {/* 🛡️ 2026-05-01: 다른 계정으로 로그인 — 다른 사람 디바이스에서 본인 계정 전환 UI.
+            클릭 → /login?switch=1 → localStorage 청소 + cookie 무효화 + 카카오 prompt=login. */}
+        <button
+          type="button"
+          onClick={() => { window.location.href = '/login?switch=1' }}
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/[0.04] text-[13px] font-semibold text-white/65 active:bg-white/[0.08] transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h8" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l3 3m0 0l-3 3m3-3h-7" />
+          </svg>
+          다른 계정으로 로그인
+        </button>
         <button
           type="button"
           onClick={handleLogout}

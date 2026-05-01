@@ -74,12 +74,15 @@ export default function AccountDeleteWarningPage() {
       await authLogout()
       navigate('/account/deleted', { replace: true })
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string }
+      const err = error as { response?: { data?: { error?: string; message?: string; detail?: string }; status?: number }; message?: string }
       if (import.meta.env.DEV) console.error('[Account Delete] 탈퇴 실패:', error)
 
+      // 🛡️ 2026-05-01: 진단 위해 detail / error 우선 표시 (이전엔 일반 메시지만).
       let errorMessage = '탈퇴 처리 중 오류가 발생했습니다.'
       if (err.response?.status === 401) {
         errorMessage = '인증이 만료되었습니다. 다시 로그인한 후 시도해주세요.'
+      } else if (err.response?.data?.detail) {
+        errorMessage = `탈퇴 실패: ${err.response.data.detail}`
       } else if (err.response?.data?.error) {
         errorMessage = err.response.data.error
       } else if (err.response?.data?.message) {

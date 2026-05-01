@@ -71,11 +71,16 @@ accountRoutes.delete('/delete', requireAuth(), async (c) => {
 
     return c.json(result, 200);
   } catch (error) {
-    console.error('[Account Delete] Error:', (error as Error).message);
+    const errMsg = (error as Error).message || 'unknown';
+    console.error('[Account Delete] Error:', errMsg);
 
+    // 🛡️ 2026-05-01: 진단 위해 detail 필드에 원본 메시지 노출.
+    //   message 는 사용자 친화 / detail 은 개발자 진단.
     return c.json({
       success: false,
-      message: '회원 탈퇴 처리 중 오류가 발생했습니다.'
+      message: '회원 탈퇴 처리 중 오류가 발생했습니다.',
+      error: errMsg,
+      detail: errMsg,
     }, 500);
   }
 });
