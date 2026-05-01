@@ -10,7 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign as jwtSign } from 'hono/jwt';
 import { KakaoAuthService } from '../services/KakaoAuthService';
-import { FirebaseAuthService } from '../services/FirebaseAuthService';
+// 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
 import { createSessionCookie } from '@/worker/utils/session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
@@ -79,12 +79,9 @@ async function issueLinkedRoleTokens(
 type Bindings = {
   DB: D1Database;
   KAKAO_REST_API_KEY: string;
-  FIREBASE_PROJECT_ID: string;
-  FIREBASE_PRIVATE_KEY: string;
-  FIREBASE_CLIENT_EMAIL: string;
-  FIREBASE_DATABASE_URL: string;
   JWT_SECRET: string;
   FRONTEND_URL?: string;
+  // 🛡️ 2026-05-01: FIREBASE_* env vars 제거 — KR Kakao 흐름에서 미사용.
 };
 
 export const kakaoRoutes = new Hono<{ Bindings: Bindings }>();
@@ -328,9 +325,9 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       const serviceTerms = await kakaoService.getServiceTerms(accessToken);
       const user = await kakaoService.upsertUser(kakaoUser);
 
-      // firebase_uid 필드는 schema 호환 위해 'kakao_<id>' 로 채움 (네트워크 호출 X — 순수 함수).
-      const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
-      await kakaoService.updateFirebaseUID(user.id, firebaseUID);
+      // 🛡️ 2026-05-01: Firebase 100% 제거 — firebase_uid 컬럼 UPDATE 호출 제거.
+      //   (이전 코드가 'kakao_<id>' 를 firebase_uid 에 채웠지만, KR Firebase 미사용이라
+      //    의미 없음. production 에 컬럼 없을 수도 있어 제거가 더 안전.)
 
       // 카카오 access_token + refresh_token 저장 (메시지/캘린더 API용)
       // ✅ FIX (H5): One-time schema check (not per-request)
@@ -455,9 +452,7 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       const errorMsg = (serviceError as Error).message || 'Unknown error';
       c.header('Set-Cookie', clearStateCookieHeader());
 
-      if (errorMsg.includes('Firebase')) {
-        return c.redirect(`${redirectTarget}?error=firebase_config_error&detail=${encodeURIComponent(errorMsg)}`);
-      }
+      // 🛡️ 2026-05-01: Firebase 분기 제거 (KR 미사용). Database 만 별도 처리.
       if (errorMsg.includes('Database')) {
         return c.redirect(`${redirectTarget}?error=database_error&detail=${encodeURIComponent(errorMsg)}`);
       }
@@ -511,10 +506,9 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
       .bind(encAccess2, encRefresh2, user.id).run();
 
-    // 🛡️ 2026-05-01: Firebase 100% 제거 — customToken 생성 안 함 (dead path).
-    const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
-    const customToken = ''; // 빈 문자열 (응답 호환성 유지)
-    await kakaoService.updateFirebaseUID(user.id, firebaseUID);
+    // 🛡️ 2026-05-01: Firebase 100% 제거 — firebase_uid UPDATE 도 제거.
+    //   응답 호환성 유지 위해 빈 customToken 만 응답에 포함 (legacy 클라이언트 대응).
+    const customToken = '';
 
     // Set httpOnly session cookie for user auth (new flow)
     // 🛡️ 2026-05-01: 세션 쿠키 발급 실패 = fatal. silent fail 차단.
@@ -549,7 +543,7 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
           name: user.name,
           email: user.email,
           profile_image: user.profile_image,
-          firebaseUID
+          firebaseUID: ''  // 🛡️ legacy field — Firebase 미사용
         },
         // 카카오 계정에 연결된 셀러/에이전시 권한이 있으면 같이 전달
         ...(linkedRoles.seller_token ? { seller_token: linkedRoles.seller_token } : {}),
