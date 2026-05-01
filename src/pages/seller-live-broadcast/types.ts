@@ -28,3 +28,27 @@ export interface LiveStream {
 }
 
 export type WizardStep = 'info' | 'setup' | 'live'
+
+export interface YouTubeChannel {
+  id: number
+  channel_id: string
+  channel_title: string
+  channel_thumbnail: string
+  subscriber_count: number
+  is_active: boolean
+  has_persistent_key?: boolean
+  token_expired?: boolean
+}
+
+export type Destination = 'youtube' | 'tiktok' | 'chzzk' | 'soop'
+
+export interface DestinationPlatform {
+  key: string
+  label: string
+  status: 'available' | 'coming_soon' | 'deprecated'
+  icon: string
+  region: string
+  features: { rtmp_ingest: boolean; chat_relay: boolean; product_overlay: boolean; oauth_required: boolean }
+  eta?: string
+  note?: string
+}
