@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'git push.*origin' && ! echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'origin main'; then bash $CLAUDE_PROJECT_DIR/scripts/auto-merge-main.sh; fi"
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/post-bash-auto-merge.sh"
           }
         ]
       }
