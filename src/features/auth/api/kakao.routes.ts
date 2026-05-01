@@ -11,7 +11,7 @@ import { cors } from 'hono/cors';
 import { sign as jwtSign } from 'hono/jwt';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
-import { createSessionCookie } from '@/worker/utils/session';
+import { createSessionCookie, clearSessionCookie } from '@/worker/utils/session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 
@@ -376,6 +376,12 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       // 원래 c.header('Set-Cookie', ...) 를 두 번 호출해서 두 번째가 첫 번째를 덮어써
       // 세션 쿠키가 사라지고 카카오 로그인 이후 모든 API 401이 발생하던 버그.
       c.header('Set-Cookie', clearStateCookieHeader());
+      // 🛡️ 2026-05-01: 다른 사람 폰 cross-user leak 방어 — 이전 사용자의
+      //   seller/admin/agency 세션 cookie 도 모두 청소. 새 사용자가 linked role
+      //   토큰이 있으면 issueLinkedRoleTokens 에서 별도 발급. 없으면 깨끗.
+      c.header('Set-Cookie', clearSessionCookie('seller'), { append: true });
+      c.header('Set-Cookie', clearSessionCookie('admin'), { append: true });
+      c.header('Set-Cookie', clearSessionCookie('agency'), { append: true });
       // 🛡️ 2026-05-01: 세션 쿠키 발급 실패는 fatal — silent fail 하면 무한 로딩.
       //   JWT_SECRET 미설정 / 만료된 secret 등 환경 문제. 명시적 에러로 전환.
       try {

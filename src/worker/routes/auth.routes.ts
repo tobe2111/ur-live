@@ -374,9 +374,15 @@ authRouter.get('/session/health', async (c) => {
   });
 });
 
-// POST /api/auth/logout — clear session cookie (user logout)
+// POST /api/auth/logout — clear ALL session cookies (user + seller + admin + agency)
+//   🛡️ 2026-05-01: 다른 사람 폰 로그인 cross-user leak 방어 — 모든 역할 cookie 청소.
+//     이전: ur_session 만 청소 → ur_seller_session 등 다른 역할 cookie 잔존 →
+//     새 사용자 /seller/* 진입 시 이전 사용자 seller session 으로 인증됨.
 authRouter.post('/logout', async (c) => {
-  c.header('Set-Cookie', clearSessionCookie());
+  c.header('Set-Cookie', clearSessionCookie('user'));
+  c.header('Set-Cookie', clearSessionCookie('seller'), { append: true });
+  c.header('Set-Cookie', clearSessionCookie('admin'), { append: true });
+  c.header('Set-Cookie', clearSessionCookie('agency'), { append: true });
   return c.json({ success: true, message: 'Logged out' });
 });
 
