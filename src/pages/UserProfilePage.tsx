@@ -714,6 +714,24 @@ export default function UserProfilePage() {
 
       {/* v4 로그아웃 + 계정 전환 + 버전 */}
       <div className="px-4 py-6 space-y-2">
+        {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
+            이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
+            이번: 명시 전환만 셀러 모드로. */}
+        {!!localStorage.getItem('seller_token') && (
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.setItem('active_role', 'seller')
+              window.location.href = '/seller'
+            }}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-pink-500/[0.15] border border-pink-500/30 text-[13px] font-semibold text-pink-300 active:bg-pink-500/[0.25] transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18v4H3zM3 9h18v12H3zM9 13h6" />
+            </svg>
+            셀러 대시보드로 전환
+          </button>
+        )}
         {/* 🛡️ 2026-05-01: 다른 계정으로 로그인 — 다른 사람 디바이스에서 본인 계정 전환 UI.
             클릭 → /login?switch=1 → localStorage 청소 + cookie 무효화 + 카카오 prompt=login. */}
         <button

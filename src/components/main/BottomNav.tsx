@@ -45,18 +45,21 @@ export default function BottomNav() {
     setProfileImage(localStorage.getItem('user_profile_image'))
   }, [location.pathname])
 
-  // 🛡️ 카카오 로그인 / 이메일 비번 로그인 / 레거시 토큰 모두 감지
-  // - 이메일/비번 셀러: user_type='seller' + seller_token
-  // - 카카오 로그인 (linked 셀러): user_type='user' + session_login + seller_token (백엔드가 자동 발급)
-  // - 에이전시: 동일 패턴
+  // 🛡️ 2026-05-01: ACCESS 와 DISPLAY 분리 (사용자 신고 — 사업자 자동 표시 버그).
+  //   - ACCESS (라우트/API): seller_token / agency_token 존재로 판단 (CLAUDE.md duality 의도)
+  //   - DISPLAY (BottomNav UI): active_role 로 판단 → 사용자가 명시 전환해야 셀러 UI 표시
+  //   기본 active_role='user' — Kakao 콜백에서 set. 사용자가 마이페이지에서 '셀러
+  //   대시보드로 전환' 클릭 시 active_role='seller' 로 변경.
   const userType = localStorage.getItem('user_type')
+  const activeRole = localStorage.getItem('active_role') || userType || 'user'
   const hasSessionLogin = !!localStorage.getItem('session_login')
   const hasAccessToken = !!localStorage.getItem('access_token')
   const hasSellerToken = !!localStorage.getItem('seller_token')
   const hasAgencyToken = !!localStorage.getItem('agency_token')
   const isLoggedIn = hasAccessToken || hasSessionLogin || hasSellerToken || hasAgencyToken
-  const isSeller = userType === 'seller' || hasSellerToken
-  const isAgency = userType === 'agency' || hasAgencyToken
+  // DISPLAY 는 active_role 로만 판단 — seller_token 자동 발급 이 user UI 를 변형하지 않음
+  const isSeller = activeRole === 'seller'
+  const isAgency = activeRole === 'agency'
 
   const leftItems = [
     { icon: Home, label: '홈', path: '/' },

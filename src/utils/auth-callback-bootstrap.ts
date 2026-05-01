@@ -71,6 +71,9 @@ export function processAuthCallbackParams(): void {
       localStorage.setItem('user_type', 'user')
       localStorage.setItem('user_id', urlParams.get('userId')!)
       localStorage.setItem('session_login', 'true')
+      // 🛡️ 2026-05-01: active_role 명시 — 카카오 user 로그인은 항상 'user' DISPLAY.
+      //   linked seller 가 있어도 BottomNav 는 user UI 표시 (사용자가 명시 전환해야 seller).
+      localStorage.setItem('active_role', 'user')
       const userName = urlParams.get('userName')
       const userEmail = urlParams.get('userEmail')
       const profileImage = urlParams.get('profileImage')

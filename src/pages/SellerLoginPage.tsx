@@ -62,6 +62,7 @@ export default function SellerLoginPage() {
         localStorage.setItem('access_token', accessToken)
         localStorage.setItem('seller_refresh_token', refreshToken)
         localStorage.setItem('user_type', 'seller')
+        localStorage.setItem('active_role', 'seller')  // 🛡️ 2026-05-01: 명시 셀러 로그인 → DISPLAY = seller
         localStorage.setItem('seller_id', seller.id.toString())
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')

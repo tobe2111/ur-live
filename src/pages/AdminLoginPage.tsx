@@ -85,6 +85,7 @@ export default function AdminLoginPage() {
 
         // Store user info
         localStorage.setItem('user_type', 'admin')
+        localStorage.setItem('active_role', 'admin')  // 🛡️ 2026-05-01: DISPLAY = admin
         localStorage.setItem('admin_id', admin.id.toString())
         localStorage.setItem('admin_name', admin.name || '')
         localStorage.setItem('admin_email', admin.email || '')
