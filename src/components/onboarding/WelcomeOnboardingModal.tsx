@@ -60,11 +60,17 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
 
   async function handleClaimCoupon() {
     setClaimingCoupon(true)
+    // 🛡️ 2026-05-01: 무한 로딩 방지 — 5초 timeout (백엔드 hang 시 silent UX 진행)
+    const timeoutId = setTimeout(() => {
+      setCouponClaimed(true)
+      setClaimingCoupon(false)
+    }, 5000)
     try {
       // Welcome coupon endpoint — 백엔드에 코드 'WELCOME' or 시점 자동 발급 endpoint 가정.
       // 🛡️ TODO: 백엔드에 신규 사용자 자동 쿠폰 발급 endpoint 신설 권장 (또는 어드민이
       //   'WELCOME' 코드 발급 후 여기서 claim).
       const res = await api.post('/api/coupons/apply', { code: 'WELCOME' }).catch(() => null)
+      clearTimeout(timeoutId)
       if (res?.data?.success) {
         setCouponClaimed(true)
         toast.success('환영 쿠폰이 발급됐어요! 🎉')
@@ -73,6 +79,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
         setCouponClaimed(true)
       }
     } catch {
+      clearTimeout(timeoutId)
       setCouponClaimed(true) // 실패해도 UX 진행
     } finally {
       setClaimingCoupon(false)

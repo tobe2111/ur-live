@@ -13,6 +13,8 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 import {
   deleteUserAccount,
   checkReregistrationRestriction,
+  restoreUser,
+  findRestorableAccount,
   type DeleteAccountRequest
 } from '@/worker/services/delete-account.service';
 
@@ -116,6 +118,63 @@ accountRoutes.get('/check-restriction', async (c) => {
 });
 
 /**
+ * 🛡️ 2026-05-01: GET /api/account/restorable?kakao_id=XXX
+ *   카카오 OAuth 후 prompt 가 표시될 때 복원 가능 계정 체크.
+ *   인증 불필요 (kakao_id 만으로 readonly 체크).
+ */
+accountRoutes.get('/restorable', async (c) => {
+  const kakaoId = c.req.query('kakao_id')
+  if (!kakaoId) return c.json({ success: false, error: 'kakao_id required' }, 400)
+
+  const found = await findRestorableAccount(kakaoId, c.env.DB)
+  if (!found) return c.json({ success: true, restorable: false })
+
+  return c.json({
+    success: true,
+    restorable: true,
+    data: {
+      original_name: found.original_name,
+      deleted_at: found.deleted_at,
+      reregister_available_at: found.reregister_available_at,
+    },
+  })
+})
+
+/**
+ * 🛡️ 2026-05-01: POST /api/account/restore
+ *   사용자가 동의 화면에서 "복원하기" 클릭 시 호출.
+ *   세션 cookie 가 이미 발급된 상태 (방금 카카오 로그인 끝남).
+ */
+accountRoutes.post('/restore', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'unauth' }, 401)
+
+  // 현재 로그인된 사용자의 kakao_id 조회 (방금 만들어진 신규 row)
+  const current = await c.env.DB
+    .prepare('SELECT kakao_id, name, email, profile_image FROM users WHERE id = ?')
+    .bind(user.id)
+    .first<{ kakao_id: string | null; name: string; email: string | null; profile_image: string | null }>()
+
+  if (!current?.kakao_id) {
+    return c.json({ success: false, error: '카카오 계정이 아닙니다' }, 400)
+  }
+
+  const result = await restoreUser(
+    current.kakao_id,
+    current.name,
+    current.email,
+    current.profile_image,
+    c.env.DB
+  )
+
+  if (!result.success) {
+    return c.json({ success: false, error: result.error || '복원 실패' }, 400)
+  }
+
+  return c.json({ success: true, data: { restored_user_id: result.userId } })
+})
+
+/**
  * GET /api/account/health
  * Health check for account routes
  */
@@ -126,7 +185,9 @@ accountRoutes.get('/health', (c) => {
     version: '1.0.0',
     endpoints: [
       'DELETE /api/account/delete',
-      'GET /api/account/check-restriction'
+      'GET /api/account/check-restriction',
+      'GET /api/account/restorable',
+      'POST /api/account/restore',
     ]
   });
 });

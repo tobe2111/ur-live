@@ -23,10 +23,10 @@ export default function OnboardingTrigger() {
   useEffect(() => {
     if (isOnboardingDone()) return
     const isNew = searchParams.get('new') === '1'
-    const loginSuccess = searchParams.get('login') === 'success'
-    if (isNew && loginSuccess) {
+    // 🛡️ 2026-05-01: login=success 가 App.tsx 에서 history.replaceState 로 사라지면
+    //   useSearchParams 가 못 읽음. 'new' 만 있어도 신규 가입으로 간주 (App 이 이미 처리한 직후 시점).
+    if (isNew) {
       setUserName(searchParams.get('userName') || undefined)
-      // Slight delay so the page underneath renders first (smooth transition)
       const t = setTimeout(() => setShow(true), 600)
       return () => clearTimeout(t)
     }

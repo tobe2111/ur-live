@@ -190,30 +190,52 @@ export default function PWAInstallPrompt() {
   }
 
   // iOS Safari / Android Chrome fallback — 수동 안내 (OS 별 분기)
+  // 🛡️ 2026-05-01: 시각적 안내 강화 — 단순 텍스트 → 이모지 + 굵은 강조
   if (iosManual) {
     const isIOSDevice = isIOS()
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
-              <Smartphone className="w-5 h-5 text-pink-500" />
+        <div className="bg-white rounded-2xl shadow-2xl border-2 border-pink-200 p-4">
+          <div className="flex items-start gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 shadow-md">
+              <Smartphone className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900">유어딜을 앱처럼 사용하기</p>
-              {isIOSDevice ? (
-                <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">
-                  하단 공유 <span className="inline-block">⬆️</span> 메뉴 → <strong>"홈 화면에 추가"</strong> 선택
-                </p>
-              ) : (
-                <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">
-                  Chrome 우상단 메뉴 ⋮ → <strong>"앱 설치"</strong> 또는 <strong>"홈 화면에 추가"</strong>
-                </p>
-              )}
+              <p className="text-sm font-bold text-gray-900">🎁 설치하면 환영 쿠폰!</p>
+              <p className="text-[12px] text-gray-500 mt-0.5">홈 화면에 추가하고 5,000원 받기</p>
             </div>
             <button onClick={handleDismiss} aria-label="닫기" className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
               <X className="w-4 h-4 text-gray-400" />
             </button>
+          </div>
+          <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-100 rounded-xl p-3 text-[12px] text-gray-700 leading-relaxed">
+            {isIOSDevice ? (
+              <>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-pink-500 text-white font-bold text-[10px]">1</span>
+                  <span>하단 <strong className="text-pink-600">공유 버튼</strong> 누르기</span>
+                  <span className="ml-auto text-base">⬆️</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-pink-500 text-white font-bold text-[10px]">2</span>
+                  <span><strong className="text-pink-600">"홈 화면에 추가"</strong> 선택</span>
+                  <span className="ml-auto text-base">📱</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-pink-500 text-white font-bold text-[10px]">1</span>
+                  <span>우상단 <strong className="text-pink-600">⋮ 메뉴</strong> 누르기</span>
+                  <span className="ml-auto font-bold text-lg leading-none">⋮</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-pink-500 text-white font-bold text-[10px]">2</span>
+                  <span><strong className="text-pink-600">"앱 설치"</strong> 또는 <strong className="text-pink-600">"홈 화면에 추가"</strong></span>
+                  <span className="ml-auto text-base">📱</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

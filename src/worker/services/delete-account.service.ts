@@ -1,11 +1,18 @@
 /**
- * 사용자 탈퇴 서비스
+ * 사용자 탈퇴 서비스 — Option B (soft delete + 30일 복원 동의)
  *
  * 탈퇴 시 처리:
- * 1. 장바구니/찜목록/배송지 삭제
- * 2. 주문 내역 익명화
- * 3. 사용자 정보 익명화 (DELETED 상태로 전환)
- * 4. 탈퇴 기록 저장 (30일간 재가입 제한)
+ * 1. 장바구니/찜목록/배송지 삭제 (PII)
+ * 2. 주문 내역 익명화 (audit 보존)
+ * 3. 사용자 정보 익명화 + deleted_at 기록 (soft delete)
+ * 4. kakao_id 는 prefix 'deleted_' 추가 → 즉시 재가입 시 매칭 X
+ * 5. 탈퇴 기록 저장 (kakao_id 도 보존 — 재가입 시 복원 동의 표시용)
+ *
+ * 재가입 시:
+ *   30일 이내 → 사용자에게 "이전 계정 복원" 동의 화면 표시
+ *     동의 → restoreUser 호출 → kakao_id prefix 제거, deleted_at NULL, 익명화 정보 갱신
+ *     거부 → 신규 계정 생성 (옛 계정은 30일 후 hard purge)
+ *   30일 경과 → 자동으로 hard purge (별도 cron 예정), 신규 계정 생성
  */
 
 /**
@@ -43,18 +50,21 @@ export async function deleteUserAccount(
     const deletedAt = new Date().toISOString();
     const reregisterAvailableAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    // 0. Capture the user's original email BEFORE anonymization so we can enforce
-    //    the 30-day re-registration restriction by email (checkReregistrationRestriction).
+    // 0. Capture the user's original email + kakao_id BEFORE anonymization.
+    //    재가입 시 복원 동의 표시 + 30일 차단 enforcement 에 사용.
     let originalEmail: string | null = null;
+    let originalKakaoId: string | null = null;
+    let originalName: string | null = null;
     try {
       const userRow = await db
-        .prepare('SELECT email FROM users WHERE id = ?')
+        .prepare('SELECT email, kakao_id, name FROM users WHERE id = ?')
         .bind(userId)
-        .first<{ email: string | null }>();
+        .first<{ email: string | null; kakao_id: string | null; name: string | null }>();
       originalEmail = userRow?.email ?? null;
+      originalKakaoId = userRow?.kakao_id ?? null;
+      originalName = userRow?.name ?? null;
     } catch {
       // Best-effort — proceed even if lookup fails
-      originalEmail = null;
     }
 
     // 1. 병렬 삭제: 장바구니, 찜목록, 배송지
@@ -175,44 +185,53 @@ export async function deleteUserAccount(
     // refresh token 삭제
     await db.prepare("DELETE FROM auth_refresh_tokens WHERE user_type = 'user' AND user_id = ?").bind(userIdStr).run().catch(swallow("cleanup"));
 
-    // 3. 사용자 정보 익명화
-    // NOTE: production users 테이블에는 status, avatar_url, kakao_access_token 컬럼이 없음.
-    //       존재하는 컬럼(email, name, phone, firebase_uid)만 업데이트.
+    // 3. 사용자 정보 익명화 + soft delete
+    //    🛡️ 2026-05-01: kakao_id 에 'deleted_<ts>_' prefix 추가 → 즉시 재가입 시 SELECT 매칭 X.
+    //    deleted_at 컬럼 set 하면 soft delete (30일 후 cron 이 hard purge).
+    //    NOTE: deleted_at 컬럼이 없는 환경 (옛 schema) 면 ALTER 시도 후 실패해도 진행.
+    const tsToken = `deleted_${Date.now()}_`
+    const newKakaoId = originalKakaoId ? `${tsToken}${originalKakaoId}` : null
     try {
+      await db.prepare('ALTER TABLE users ADD COLUMN deleted_at DATETIME').run().catch(() => null) // 옛 schema 보강
       await db
         .prepare(
           `UPDATE users
            SET email = ?,
+               kakao_id = ?,
                name = '탈퇴 회원',
                phone = NULL,
                firebase_uid = NULL,
+               profile_image = NULL,
+               deleted_at = ?,
                updated_at = CURRENT_TIMESTAMP
            WHERE id = ?`
         )
-        .bind(`deleted_${Date.now()}@deleted.invalid`, userId)
+        .bind(`deleted_${Date.now()}@deleted.invalid`, newKakaoId, deletedAt, userId)
         .run();
     } catch (e) {
-      // If firebase_uid/updated_at columns don't exist, fall back to minimal update
+      // deleted_at column 없는 환경 fallback
       try {
         await db
           .prepare(
-            `UPDATE users SET email = ?, name = '탈퇴 회원', phone = NULL WHERE id = ?`
+            `UPDATE users SET email = ?, kakao_id = ?, name = '탈퇴 회원', phone = NULL, firebase_uid = NULL, profile_image = NULL WHERE id = ?`
           )
-          .bind(`deleted_${Date.now()}@deleted.invalid`, userId)
+          .bind(`deleted_${Date.now()}@deleted.invalid`, newKakaoId, userId)
           .run();
       } catch {
-        // eslint-disable-next-line no-console
         if (typeof console !== 'undefined') console.warn('[delete-account] users anonymize failed', e);
       }
     }
 
-    // 4. 탈퇴 기록 저장 (email 포함 — 30일 재가입 제한에 사용됨)
+    // 4. 탈퇴 기록 저장 — kakao_id 도 보존 (재가입 시 복원 동의 화면용).
+    //    🛡️ 2026-05-01: kakao_id 컬럼 추가 (옛 schema 보강 ALTER 시도)
+    await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN kakao_id TEXT').run().catch(() => null)
+    await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN original_name TEXT').run().catch(() => null)
     await db
       .prepare(
-        `INSERT INTO deleted_accounts (user_id, email, reason, deleted_at, reregister_available_at)
-         VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO deleted_accounts (user_id, email, kakao_id, original_name, reason, deleted_at, reregister_available_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .bind(userId, originalEmail, reason ?? null, deletedAt, reregisterAvailableAt)
+      .bind(userId, originalEmail, originalKakaoId, originalName, reason ?? null, deletedAt, reregisterAvailableAt)
       .run();
 
     return {
@@ -222,6 +241,89 @@ export async function deleteUserAccount(
     };
   } catch (error) {
     throw new Error('회원 탈퇴 처리 중 오류가 발생했습니다.');
+  }
+}
+
+/**
+ * 🛡️ 2026-05-01: 재가입 시 옛 계정 복원 (Option B — 동의 기반).
+ * 카카오 OAuth 후 같은 kakao_id 가 deleted_accounts 에 있으면 사용자에게 동의 표시 후 호출.
+ *
+ * 동작:
+ *   1. deleted_accounts row 찾기 (kakao_id 매칭, reregister_available_at 30일 내)
+ *   2. users 테이블 옛 row 찾기 (kakao_id LIKE 'deleted_%_<originalId>')
+ *   3. UPDATE: kakao_id 원복, name/email 새 값으로, deleted_at = NULL
+ *   4. deleted_accounts row 삭제 (복원 완료)
+ */
+export async function restoreUser(
+  kakaoId: string,
+  newName: string,
+  newEmail: string | null,
+  newProfileImage: string | null,
+  db: D1Database
+): Promise<{ success: boolean; userId?: number; error?: string }> {
+  try {
+    // 1. 30일 내 탈퇴 기록 찾기
+    const deletedRow = await db
+      .prepare(
+        `SELECT user_id, reregister_available_at FROM deleted_accounts
+         WHERE kakao_id = ? AND datetime(reregister_available_at) > datetime('now')
+         ORDER BY deleted_at DESC LIMIT 1`
+      )
+      .bind(kakaoId)
+      .first<{ user_id: number; reregister_available_at: string }>()
+
+    if (!deletedRow) {
+      return { success: false, error: '복원 가능한 탈퇴 기록이 없습니다 (30일 경과 또는 미존재)' }
+    }
+
+    const userId = deletedRow.user_id
+
+    // 2. users row 복원 — kakao_id prefix 제거, 익명화 정보 갱신
+    await db
+      .prepare(
+        `UPDATE users
+         SET kakao_id = ?,
+             name = ?,
+             email = ?,
+             profile_image = ?,
+             deleted_at = NULL,
+             updated_at = CURRENT_TIMESTAMP,
+             last_login_at = CURRENT_TIMESTAMP
+         WHERE id = ?`
+      )
+      .bind(kakaoId, newName, newEmail, newProfileImage, userId)
+      .run()
+
+    // 3. deleted_accounts 기록 삭제 (복원 완료)
+    await db.prepare('DELETE FROM deleted_accounts WHERE user_id = ?').bind(userId).run().catch(swallow('restore'))
+
+    return { success: true, userId }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
+  }
+}
+
+/**
+ * 옛 계정 복원 가능 여부 체크 (UI 안내용).
+ * Returns null if no eligible record (or already expired).
+ */
+export async function findRestorableAccount(
+  kakaoId: string,
+  db: D1Database
+): Promise<{ user_id: number; original_name: string | null; deleted_at: string; reregister_available_at: string } | null> {
+  try {
+    const row = await db
+      .prepare(
+        `SELECT user_id, original_name, deleted_at, reregister_available_at
+         FROM deleted_accounts
+         WHERE kakao_id = ? AND datetime(reregister_available_at) > datetime('now')
+         ORDER BY deleted_at DESC LIMIT 1`
+      )
+      .bind(kakaoId)
+      .first<{ user_id: number; original_name: string | null; deleted_at: string; reregister_available_at: string }>()
+    return row ?? null
+  } catch {
+    return null
   }
 }
 
