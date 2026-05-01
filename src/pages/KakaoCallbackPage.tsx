@@ -1,8 +1,11 @@
 /**
  * KakaoCallbackPage - 카카오 OAuth 콜백 처리
  *
- * 한국: 백엔드 API 호출 → localStorage 설정 → 리다이렉트. Firebase 0.
- * 글로벌: 백엔드 API 호출 → Firebase customToken → localStorage → 리다이렉트.
+ * 🛡️ 2026-05-01: Firebase 100% 제거 — 한국·글로벌 모두 세션 쿠키 only.
+ *
+ * Flow:
+ *   백엔드 POST /api/auth/kakao/callback → localStorage 설정 + httpOnly 세션 쿠키 발급
+ *   → 리다이렉트.
  */
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -40,7 +43,7 @@ export default function KakaoCallbackPage() {
 
         if (!res.data.success) throw new Error(res.data.error || '로그인 실패')
 
-        const { customToken, user, seller_token, agency_token, seller, agency } = res.data.data
+        const { user, seller_token, agency_token, seller, agency } = res.data.data
 
         // ── localStorage 설정 (공통) ──
         localStorage.setItem('user_type', 'user')
@@ -63,17 +66,13 @@ export default function KakaoCallbackPage() {
           if (agency?.name) localStorage.setItem('agency_name', agency.name)
         }
 
-        // ── 글로벌 전용: Firebase customToken 로그인 ──
-        if (!isKorea() && customToken) {
+        // 🛡️ 2026-05-01: Firebase customToken 로그인 경로 제거.
+        //   세션 쿠키만으로 한국·글로벌 모두 인증 처리.
+        if (!isKorea()) {
           try {
-            const { signInWithCustomToken } = await import('@/lib/firebase-auth')
-            const cred = await signInWithCustomToken(customToken)
             const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
-            useAuthWorld.getState().setUser(cred.user)
             useAuthWorld.getState().setAuthReady(true)
-          } catch (e) {
-            if (import.meta.env.DEV) console.warn('[KakaoCallback] Firebase failed (세션 쿠키로 진행):', e)
-          }
+          } catch { /* ignore */ }
         }
 
         // ── 장바구니 복원 ──

@@ -229,18 +229,29 @@ api.interceptors.request.use(
       // fallthrough to Firebase
     }
 
-    // ── Session Cookie User API (preferred for user login) ──────────────
-    // If user is logged in via session cookie (ur_session), the cookie is
-    // sent automatically (withCredentials: true). No Bearer token needed.
-    // The server-side requireAuth() checks Bearer token first, then cookie.
-    // Session cookie users (카카오 로그인) don't need Bearer token — cookie handles it.
+    // ── User API (Kakao session cookie OR email JWT) ────────────────────
+    // 카카오 로그인: httpOnly 세션 쿠키 자동 전송 (withCredentials: true). Bearer 불필요.
+    // 이메일 로그인 (KR backend JWT): user_token 을 Bearer 로 전송.
     const userType = localStorage.getItem('user_type');
     if (userType === 'user' && localStorage.getItem('user_id')) {
-      // 세션 쿠키 유저 → 토큰 탐색 건너뛰기 (즉시 요청)
+      // 🛡️ 2026-05-01: 이메일 JWT 유저 → user_token Bearer 헤더.
+      //   카카오 세션 쿠키 유저 → user_token 없음 → 쿠키만으로 인증.
+      const userToken = localStorage.getItem('user_token');
+      if (userToken) {
+        config.headers['Authorization'] = `Bearer ${userToken}`;
+      }
       return config;
     }
 
-    // ── Firebase User API (legacy fallback) ──────────────────────────────
+    // 🛡️ 2026-05-01: KR 도메인은 Firebase 100% 미사용 — fallback 경로 차단.
+    //   비로그인 KR 사용자가 인증 필요 API 호출 → Firebase 로드 시도하지 않고 즉시 통과.
+    //   (서버는 401 반환, 인터셉터가 처리)
+    try {
+      const { isKorea } = await import('@/config/region');
+      if (isKorea()) return config;
+    } catch { /* region detect fail — continue */ }
+
+    // ── Firebase User API (legacy fallback, 글로벌 전용) ──────────────────
     // ✅ 우선순위 1: useAuthKR/useAuthWorld.getIdToken() → 항상 유효한 토큰 보장
     try {
       const { isKorea } = await import('@/config/region');
@@ -376,36 +387,47 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // ── Firebase User: Token 강제 갱신 시도 ──────────────────────────
+      // 🛡️ 2026-05-01: KR 세션 쿠키 유저는 Firebase 토큰 갱신 경로 자체를 건너뜀.
+      //   세션 쿠키 401 = 쿠키 만료 / 무효. Firebase 로 갱신 시도 = 무의미한 SDK 로드 + 추가 지연.
+      //   바로 session health check → 만료면 로그아웃 흐름.
+      let skipFirebaseRefresh = false;
+      try {
+        const { isKorea } = await import('@/config/region');
+        if (isKorea()) skipFirebaseRefresh = true;
+      } catch { /* region detect fail — continue with Firebase path */ }
+
+      // ── Firebase User: Token 강제 갱신 시도 (글로벌 전용) ─────────────
       // 🛡️ 2026-04-29: 30초 디바운스 — _retry 가드는 request-level 이라 setAuth
       //   side-effect 로 새 request 가 들어오면 우회 가능. 시간 기반 추가 가드.
       const sinceLastRefresh = Date.now() - _lastForceRefreshAt;
-      if (sinceLastRefresh < FORCE_REFRESH_DEBOUNCE_MS) {
+      if (!skipFirebaseRefresh && sinceLastRefresh < FORCE_REFRESH_DEBOUNCE_MS) {
         if (import.meta.env.DEV) console.warn('[API] 토큰 갱신 디바운스 — 직전 갱신 후 30초 미경과:', sinceLastRefresh, 'ms');
         return Promise.reject(error);
       }
-      _lastForceRefreshAt = Date.now();
+      if (!skipFirebaseRefresh) _lastForceRefreshAt = Date.now();
 
       try {
         let newToken: string | null = null;
 
         // ✅ 1차: useAuthKR/useAuthWorld.getIdToken(true) — Firebase User 객체 직접 사용
-        try {
-          const { isKorea } = await import('@/config/region');
-          const isKR = isKorea();
-          const { useAuthKR } = await import('@/shared/stores/useAuthKR');
-          const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
-          const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
-          const authStoreWithToken = authStore as typeof authStore & { getIdToken?: (forceRefresh?: boolean) => Promise<string | null> };
-          if (authStoreWithToken.user && typeof authStoreWithToken.getIdToken === 'function') {
-            newToken = await authStoreWithToken.getIdToken(true); // force refresh
+        if (!skipFirebaseRefresh) {
+          try {
+            const { isKorea } = await import('@/config/region');
+            const isKR = isKorea();
+            const { useAuthKR } = await import('@/shared/stores/useAuthKR');
+            const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
+            const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
+            const authStoreWithToken = authStore as typeof authStore & { getIdToken?: (forceRefresh?: boolean) => Promise<string | null> };
+            if (authStoreWithToken.user && typeof authStoreWithToken.getIdToken === 'function') {
+              newToken = await authStoreWithToken.getIdToken(true); // force refresh
+            }
+          } catch (e) {
+            console.warn('[API] useAuthKR.getIdToken 실패:', e);
           }
-        } catch (e) {
-          console.warn('[API] useAuthKR.getIdToken 실패:', e);
         }
 
         // ✅ 2차: getCachedFirebaseToken(true) — Firebase auth.currentUser 직접 조회
-        if (!newToken) {
+        if (!newToken && !skipFirebaseRefresh) {
           newToken = await getCachedFirebaseToken(true);
         }
 

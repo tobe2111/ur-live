@@ -13,6 +13,16 @@ import { logRegionInfo, isKorea } from '@/shared/config/region'
 import { validateEnvForRuntime } from '@/shared/config/env-validator'
 import { initNativeFeatures, isNative } from '@/lib/native'
 import { swallow } from '@/shared/utils/swallow'
+import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
+
+// 🛡️ 2026-05-01 (D fix): 카카오 OAuth callback URL 파라미터 → localStorage.
+//   React mount 전 동기 처리로 ProtectedRoute 첫 render 통과 보장.
+//   try-catch 로 감싸서 처리 실패해도 React 마운트는 진행 (흰화면 방지).
+try {
+  processAuthCallbackParams()
+} catch (err) {
+  if (import.meta.env.DEV) console.error('[main] auth callback bootstrap failed:', err)
+}
 
 // 다른 인앱(네이버/페북/IG/라인 등) 감지 → App 단 배너로 안내 (강제 redirect 안 함)
 ;(window as { __urInAppBrowser?: string | null }).__urInAppBrowser = detectInAppBrowser()

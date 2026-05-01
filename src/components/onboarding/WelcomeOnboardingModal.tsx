@@ -88,24 +88,32 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
 
   async function handleFinish() {
     setSubmitting(true)
+    // 🛡️ 2026-05-01: 무한 로딩 방지 — 5초 timeout. 백엔드 hang 시도 모달 종료.
+    const timeoutId = setTimeout(() => {
+      try { localStorage.setItem('ur_user_interests', JSON.stringify(selectedCats)) } catch { /* */ }
+      try { localStorage.setItem('ur_alimtalk_optin', alimtalkOptIn ? '1' : '0') } catch { /* */ }
+      markDone()
+      setSubmitting(false)
+      onClose()
+    }, 5000)
     try {
-      // 관심 카테고리 + 알림 옵트인 저장
-      // 🛡️ TODO: 백엔드 endpoint /api/users/onboarding 신설 권장. 현재는 localStorage 만 저장.
       try {
         localStorage.setItem('ur_user_interests', JSON.stringify(selectedCats))
         localStorage.setItem('ur_alimtalk_optin', alimtalkOptIn ? '1' : '0')
       } catch { /* */ }
 
-      // 백엔드 동기화 시도 (없으면 silent)
+      // 백엔드 동기화 시도 (없으면 silent) — 명시 5s timeout
       await api.post('/api/users/onboarding', {
         interests: selectedCats,
         alimtalk_optin: alimtalkOptIn,
-      }).catch(() => null)
+      }, { timeout: 5000 }).catch(() => null)
 
+      clearTimeout(timeoutId)
       markDone()
       toast.success('설정이 저장됐어요!')
       onClose()
     } finally {
+      clearTimeout(timeoutId)
       setSubmitting(false)
     }
   }

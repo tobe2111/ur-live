@@ -50,7 +50,14 @@ export default function SellerLoginPage() {
         const { seller, accessToken, refreshToken } = response.data.data
         clearFirebaseTokenCache()
         clearAuthData('user')
-        import('@/lib/firebase-auth').then(({ signOut }) => signOut()).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
+        // 🛡️ 2026-05-01: KR Firebase 100% 미사용 — signOut 호출 안 함.
+        //   KR 한정으로 Firebase SDK 로드 방지. 글로벌은 기존 동작 유지.
+        try {
+          const { isKorea } = await import('@/config/region')
+          if (!isKorea()) {
+            import('@/lib/firebase-auth').then(({ signOut }) => signOut()).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
+          }
+        } catch { /* region detect 실패 시 안전 — Firebase 호출 안 함 */ }
         localStorage.setItem('seller_token', accessToken)
         localStorage.setItem('access_token', accessToken)
         localStorage.setItem('seller_refresh_token', refreshToken)

@@ -45,7 +45,7 @@ export class KakaoAuthService {
         redirect_uri: redirectUri,
         code: code,
       }),
-      signal: AbortSignal.timeout(15000), // 15s timeout
+      signal: AbortSignal.timeout(8000), // 15s timeout
     });
     
     if (!response.ok) {
@@ -76,7 +76,7 @@ export class KakaoAuthService {
         redirect_uri: redirectUri,
         code,
       }),
-      signal: AbortSignal.timeout(15000), // 15s timeout
+      signal: AbortSignal.timeout(8000), // 15s timeout
     });
 
     if (!response.ok) {
@@ -99,7 +99,7 @@ export class KakaoAuthService {
         client_id: this.kakaoRestApiKey,
         refresh_token: refreshToken,
       }),
-      signal: AbortSignal.timeout(15000), // 15s timeout
+      signal: AbortSignal.timeout(8000), // 15s timeout
     });
 
     if (!response.ok) {
@@ -122,7 +122,7 @@ export class KakaoAuthService {
         'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
       },
       body: 'property_keys=["kakao_account.profile","kakao_account.email","properties.nickname","properties.profile_image"]',
-      signal: AbortSignal.timeout(15000), // 15s timeout
+      signal: AbortSignal.timeout(8000), // 15s timeout
     });
     
     if (!response.ok) {
@@ -160,7 +160,7 @@ export class KakaoAuthService {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
-        signal: AbortSignal.timeout(15000), // 15s timeout
+        signal: AbortSignal.timeout(8000), // 15s timeout
       });
       
       if (!response.ok) {
@@ -225,26 +225,49 @@ export class KakaoAuthService {
       if (existingUser) {
         // 기존 사용자 업데이트
         userId = existingUser.id;
-        await this.db.prepare(`
-          UPDATE users 
-          SET name = ?, 
-              email = ?, 
-              profile_image = ?,
-              updated_at = datetime('now'),
-              last_login_at = datetime('now')
-          WHERE id = ?
-        `).bind(
-          kakaoUser.name, 
-          kakaoUser.email || null, 
-          kakaoUser.profileImage || null, 
-          userId
-        ).run();
-        
+        // 🛡️ 2026-05-01: last_login_at / profile_image 컬럼이 production 에 없을 수 있음.
+        //   첫 시도 → 컬럼 없으면 catch → 핵심 컬럼만 UPDATE.
+        try {
+          await this.db.prepare(`
+            UPDATE users
+            SET name = ?,
+                email = ?,
+                profile_image = ?,
+                updated_at = datetime('now'),
+                last_login_at = datetime('now')
+            WHERE id = ?
+          `).bind(
+            kakaoUser.name,
+            kakaoUser.email || null,
+            kakaoUser.profileImage || null,
+            userId
+          ).run();
+        } catch (e) {
+          if (import.meta.env.DEV) console.warn('[KakaoAuthService] UPDATE with last_login_at/profile_image failed, retrying with minimal columns:', e);
+          // Fallback: 핵심 컬럼만 (name, email, updated_at)
+          try {
+            await this.db.prepare(`
+              UPDATE users
+              SET name = ?,
+                  email = ?,
+                  updated_at = datetime('now')
+              WHERE id = ?
+            `).bind(
+              kakaoUser.name,
+              kakaoUser.email || null,
+              userId
+            ).run();
+          } catch (e2) {
+            if (import.meta.env.DEV) console.warn('[KakaoAuthService] minimal UPDATE also failed (non-fatal — login can still proceed):', e2);
+          }
+        }
+
       } else {
-        // 새 사용자 생성 (toss_user_id NOT NULL 이므로 kakao_id 기반 유니크 값 사용)
+        // 🛡️ 2026-05-01: production users 테이블에 toss_user_id 컬럼 없음 (사용자 신고 에러).
+        //   Google INSERT 패턴과 동일하게 toss_user_id 제거.
+        //   만약 column 이 존재하는 환경 (legacy migration 적용 환경) 이라도 NOT NULL 이 아닌 한 안전.
         const result = await this.db.prepare(`
           INSERT INTO users (
-            toss_user_id,
             kakao_id,
             name,
             email,
@@ -252,21 +275,22 @@ export class KakaoAuthService {
             created_at,
             last_login_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+          ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
         `).bind(
-          `kakao_${kakaoUser.kakaoId}`,
           kakaoUser.kakaoId,
           kakaoUser.name,
           kakaoUser.email || null,
           kakaoUser.profileImage || null
         ).run();
-        
+
         userId = result.meta.last_row_id as number;
       }
       
-      // 사용자 정보 다시 조회하여 반환
+      // 사용자 정보 다시 조회하여 반환.
+      // 🛡️ 2026-05-01: firebase_uid 컬럼 production 에 없을 수도 있어 SELECT projection 에서 제거.
+      //   downstream 어디서도 user.firebase_uid 를 읽지 않음 (firebaseUID 는 kakao_<id> 정적 생성).
       const user = await this.db.prepare(`
-        SELECT id, kakao_id, name, email, profile_image, firebase_uid, created_at
+        SELECT id, kakao_id, name, email, profile_image, created_at
         FROM users
         WHERE id = ?
       `).bind(userId).first<User>();
