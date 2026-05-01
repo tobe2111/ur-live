@@ -140,18 +140,26 @@ export async function restoreCouponsForOrders(DB: D1Database, orderIds: (number 
   return couponIds.length
 }
 
-// 내 쿠폰 목록
+// 내 쿠폰 목록 — 발급받은 (claimed) 쿠폰만 표시.
+// 🛡️ 2026-05-01 (CRITICAL fix): 사용자 신고 "카카오 채널 추가 감사 쿠폰을 추가도 안
+//   했는데 발급되어 있다" — 이전 쿼리가 user_coupons (claim 테이블) 조회 안 하고
+//   coupons 전체를 반환 → 모든 active 쿠폰이 사용자 쿠폰함에 표시됨.
+//   수정: user_coupons (claim 기록) 와 INNER JOIN — claim 한 것만 표시.
 couponRoutes.get('/my', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
   await ensureTables(DB)
-  // 사용 가능한 쿠폰 (아직 안 쓴 것)
+  // user_coupons (claim 기록) 있고 + 아직 사용 안 한 (coupon_uses 에 없음) + 활성 쿠폰
   const { results } = await DB.prepare(`
-    SELECT c.* FROM coupons c WHERE c.is_active = 1 AND (c.expires_at IS NULL OR c.expires_at > datetime('now'))
-    AND c.id NOT IN (SELECT coupon_id FROM coupon_uses WHERE user_id = ?)
-    AND (c.total_count = 0 OR c.used_count < c.total_count)
-  `).bind(String(user.id)).all()
+    SELECT c.*, uc.claimed_at FROM coupons c
+    INNER JOIN user_coupons uc ON uc.coupon_id = c.id
+    WHERE uc.user_id = ?
+      AND c.is_active = 1
+      AND (c.expires_at IS NULL OR c.expires_at > datetime('now'))
+      AND c.id NOT IN (SELECT coupon_id FROM coupon_uses WHERE user_id = ?)
+    ORDER BY uc.claimed_at DESC
+  `).bind(String(user.id), String(user.id)).all()
   return c.json({ success: true, data: results ?? [] })
 })
 
