@@ -1210,9 +1210,9 @@ function FilterSheet({
   const [c, setC] = useState(initialCategory)
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-end" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center" onClick={onClose} role="presentation">
       <div
-        className="bg-white rounded-t-3xl w-full max-h-[80vh] overflow-y-auto"
+        className="bg-white rounded-t-3xl w-full max-w-[430px] max-h-[80vh] overflow-y-auto sm:rounded-3xl sm:my-auto sm:mb-auto"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -1322,7 +1322,7 @@ function SuggestionModal({ place, onClose }: { place: KakaoPlace; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center" onClick={onClose} role="presentation">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-[430px] p-5 space-y-4" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
         <div>
           <p className="text-xs text-gray-500">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
           <h3 className="text-lg font-bold text-gray-900">{place.place_name}</h3>
