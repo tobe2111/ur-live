@@ -5,6 +5,45 @@ import { Home, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, Lo
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
   const navigate = useNavigate()
+  // 🛡️ 2026-05-01: 이미 셀러로 등록된 user 면 "전환" UX, 아니면 "등록" UX.
+  const hasSellerToken = !!localStorage.getItem('seller_token')
+  const hasAgencyToken = !!localStorage.getItem('agency_token')
+
+  if (hasSellerToken) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-2">
+          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-red-100 to-pink-100 flex items-center justify-center">
+            <Radio className="w-7 h-7 text-red-500" />
+          </div>
+          <p className="text-sm text-gray-300 leading-relaxed">
+            등록된 셀러 계정이 있습니다<br />
+            <span className="text-gray-500 text-xs">셀러 대시보드로 전환합니다</span>
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            localStorage.setItem('active_role', 'seller')
+            onDone()
+            window.location.href = '/seller'
+          }}
+          className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+        >
+          <Radio className="w-5 h-5" />
+          셀러 대시보드로 전환
+        </button>
+        {!hasAgencyToken && (
+          <button
+            onClick={() => { onDone(); navigate('/agency/register/business') }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-[13px] rounded-xl"
+          >
+            에이전시로도 등록하기 →
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="text-center py-2">
@@ -18,19 +57,21 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
       </div>
 
       <button
-        onClick={() => { onDone(); navigate('/seller/register/business') }}
+        onClick={() => { onDone(); navigate('/seller/register/business?from=kakao') }}
         className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
       >
         <UserPlus className="w-5 h-5" />
         셀러로 시작하기
       </button>
 
-      <button
-        onClick={() => { onDone(); navigate('/agency/register/business') }}
-        className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-[13px] rounded-xl"
-      >
-        에이전시로 등록하기 →
-      </button>
+      {!hasAgencyToken && (
+        <button
+          onClick={() => { onDone(); navigate('/agency/register/business') }}
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-[13px] rounded-xl"
+        >
+          에이전시로 등록하기 →
+        </button>
+      )}
     </div>
   )
 }
@@ -177,7 +218,16 @@ export default function BottomNav() {
                   {/* Close */}
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-white">
-                      {isSeller ? '라이브 방송' : isAgency ? '에이전시' : !isLoggedIn ? '로그인이 필요합니다' : '셀러로 시작하기'}
+                      {/* 🛡️ 2026-05-01: linked seller 있는 user 는 "전환" 으로 안내 (등록 X) */}
+                      {isSeller
+                        ? '라이브 방송'
+                        : isAgency
+                        ? '에이전시'
+                        : !isLoggedIn
+                        ? '로그인이 필요합니다'
+                        : hasSellerToken
+                        ? '셀러 대시보드'
+                        : '셀러로 시작하기'}
                     </h3>
                     <button onClick={() => setSheetOpen(false)} aria-label="시트 닫기" className="p-1 rounded-full hover:bg-white/10">
                       <X className="w-5 h-5 text-gray-500" />
