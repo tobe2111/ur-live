@@ -12,6 +12,7 @@ import SecurityReloginBanner from './components/SecurityReloginBanner'
 import InAppBrowserBanner from './components/InAppBrowserBanner'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import OnboardingTrigger from './components/onboarding/OnboardingTrigger'
+import RestoreAccountModal from './components/account/RestoreAccountModal'
 import BottomNav from '@/components/main/BottomNav'
 import SideBanner from '@/components/SideBanner'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -408,6 +409,7 @@ function AppContent() {
           <InAppBrowserBanner />
           <PWAInstallPrompt />
           <OnboardingTrigger />
+          <RestoreAccountModal />
           <OfflineBanner />
           <ScrollToTop />
           <PushNotificationSetup />
