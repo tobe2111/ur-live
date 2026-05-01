@@ -1,384 +1,332 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import SEO from '@/components/SEO';
+/**
+ * 회원 탈퇴 안내 페이지
+ *
+ * 🛡️ 2026-05-01: 디자인 시스템 정렬 + Option B 반영.
+ *   - AccountSettingsPage 와 일관된 다크 테마 (bg-[#020202])
+ *   - 카드 스타일: rounded-2xl bg-white/[0.04], 미니멀 보더
+ *   - 텍스트 정정: 30일 soft delete + 복원 가능 명시 (이전엔 "영구 삭제" 만 강조)
+ *   - 이모지 과다 → 아이콘 시스템 통일
+ */
+import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import SEO from '@/components/SEO'
 import {
   AlertTriangle,
-  Trash2,
-  Gift,
   ChevronLeft,
   Loader2,
   CheckCircle2,
-} from 'lucide-react';
-import { getUserId, logout as authLogout } from '@/utils/auth';
-import { DELETE_ACCOUNT_WARNINGS } from '@/features/account/types/delete-account.types';
-import api from '@/lib/api';
-import { toast } from '@/hooks/useToast';
+  ShieldOff,
+  Wallet,
+  Package,
+  Clock,
+  Heart,
+} from 'lucide-react'
+import { getUserId, logout as authLogout } from '@/utils/auth'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 
 export default function AccountDeleteWarningPage() {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [agreedToDataDeletion, setAgreedToDataDeletion] = useState(false);
-  const [agreedToLoseBenefits, setAgreedToLoseBenefits] = useState(false);
-  const [agreedToNoRefund, setAgreedToNoRefund] = useState(false);
-  const [confirmText, setConfirmText] = useState('');
-  const [showScrollHint, setShowScrollHint] = useState(true);
+  const navigate = useNavigate()
+  const [isLoading, setIsLoading] = useState(false)
+  const [agreedSoftDelete, setAgreedSoftDelete] = useState(false)
+  const [agreedLoseBenefits, setAgreedLoseBenefits] = useState(false)
+  const [agreedNoRefund, setAgreedNoRefund] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
 
   useEffect(() => {
     const checkAuth = async () => {
-      const userId = await getUserId();
+      const userId = await getUserId()
       if (!userId) {
-        toast.info('로그인이 필요합니다.');
-        navigate('/login');
+        toast.info('로그인이 필요합니다.')
+        navigate('/login')
       }
-    };
-    checkAuth();
-  }, [navigate]);
-
-  useEffect(() => {
-    // 스크롤 감지
-    const handleScroll = () => {
-      const scrollPercentage =
-        (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
-      if (scrollPercentage > 30) {
-        setShowScrollHint(false);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    }
+    checkAuth()
+  }, [navigate])
 
   const canProceed =
-    agreedToDataDeletion &&
-    agreedToLoseBenefits &&
-    agreedToNoRefund &&
-    confirmText === '회원탈퇴';
+    agreedSoftDelete &&
+    agreedLoseBenefits &&
+    agreedNoRefund &&
+    confirmText === '회원탈퇴'
 
   const handleProceedToDelete = async () => {
     if (!canProceed) {
-      toast.error('모든 동의 항목을 체크하고 "회원탈퇴"를 정확히 입력해주세요.');
-      return;
+      toast.error('모든 동의 항목을 체크하고 "회원탈퇴"를 정확히 입력해주세요.')
+      return
     }
 
-    const finalConfirm = confirm(
-      '정말로 탈퇴하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 모든 데이터가 영구 삭제됩니다.'
-    );
+    const finalConfirm = window.confirm(
+      '정말로 탈퇴하시겠습니까?\n\n30일 내에 같은 카카오 계정으로 재로그인하면 복원 가능합니다. 30일 후엔 영구 삭제됩니다.'
+    )
+    if (!finalConfirm) return
 
-    if (!finalConfirm) {
-      return;
-    }
-
-    setIsLoading(true);
-
+    setIsLoading(true)
     try {
-      const userId = await getUserId();
-      if (!userId) {
-        throw new Error('사용자 ID를 찾을 수 없습니다.');
-      }
+      const userId = await getUserId()
+      if (!userId) throw new Error('사용자 ID를 찾을 수 없습니다.')
 
-      // ✅ API 인스턴스 사용 (자동으로 Authorization 헤더 추가됨)
-      // Note: userId는 서버에서 requireAuth 미들웨어를 통해 자동으로 추출되므로
-      // body에 포함하지 않아도 되지만, 호환성을 위해 유지
-      const response = await api.delete('/api/account/delete');
-
+      const response = await api.delete('/api/account/delete')
       if (!response.data.success) {
-        throw new Error(response.data.error || response.data.message || '탈퇴 처리에 실패했습니다.');
+        throw new Error(response.data.error || response.data.message || '탈퇴 처리에 실패했습니다.')
       }
 
-      // 로그아웃 처리
-      await authLogout();
-
-      // 탈퇴 완료 페이지로 이동
-      navigate('/account/deleted', { replace: true });
+      await authLogout()
+      navigate('/account/deleted', { replace: true })
     } catch (error: unknown) {
-      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string };
-      if (import.meta.env.DEV) console.error('[Account Delete] 탈퇴 실패:', error);
+      const err = error as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string }
+      if (import.meta.env.DEV) console.error('[Account Delete] 탈퇴 실패:', error)
 
-      // Axios 에러 처리
-      let errorMessage = '탈퇴 처리 중 오류가 발생했습니다.';
-      
-      if (error_.response?.status === 401) {
-        errorMessage = '인증이 만료되었습니다. 다시 로그인한 후 시도해주세요.';
-      } else if (error_.response?.data?.error) {
-        errorMessage = error_.response.data.error;
-      } else if (error_.response?.data?.message) {
-        errorMessage = error_.response.data.message;
-      } else if (error_.message) {
-        errorMessage = error_.message;
+      let errorMessage = '탈퇴 처리 중 오류가 발생했습니다.'
+      if (err.response?.status === 401) {
+        errorMessage = '인증이 만료되었습니다. 다시 로그인한 후 시도해주세요.'
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
       }
-      
-      toast.error(errorMessage);
-      
-      // 401 에러인 경우 로그인 페이지로 리다이렉트
-      if (error_.response?.status === 401) {
-        setTimeout(() => {
-          navigate('/login');
-        }, 1000);
+      toast.error(errorMessage)
+
+      if (err.response?.status === 401) {
+        setTimeout(() => navigate('/login'), 1000)
       }
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-
-  const getWarningIcon = (icon: string) => {
-    switch (icon) {
-      case 'trash':
-        return <Trash2 className="w-6 h-6 text-red-500" />;
-      case 'gift':
-        return <Gift className="w-6 h-6 text-orange-500" />;
-      default:
-        return <AlertTriangle className="w-6 h-6 text-yellow-500" />;
-    }
-  };
+  }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-white">
+    <div className="min-h-screen bg-[#020202] pb-32">
       <SEO title="회원 탈퇴 - 유어딜" description="회원 탈퇴 전 안내사항을 확인하세요" url="/account/delete-warning" noindex />
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div className="w-full px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center text-gray-700 hover:text-gray-900"
-            >
-              <ChevronLeft className="w-6 h-6" />
-              <span className="ml-1">뒤로</span>
-            </button>
-            <h1 className="text-lg font-semibold text-gray-900">회원 탈퇴</h1>
-            <div className="w-20"></div>
-          </div>
-        </div>
-      </header>
 
-      {/* Scroll Hint */}
-      {showScrollHint && (
-        <div className="sticky top-16 z-30 bg-yellow-50 border-b border-yellow-200 px-4 py-2">
-          <p className="text-sm text-yellow-800 text-center">
-            ⬇️ 아래로 스크롤하여 주의사항을 모두 확인해주세요
-          </p>
-        </div>
-      )}
+      {/* 헤더 — AccountSettings 와 동일 스타일 */}
+      <div
+        className="sticky top-0 z-50 flex items-center px-2 py-3 gap-1"
+        style={{
+          background: 'rgba(10,10,10,0.85)',
+          backdropFilter: 'blur(20px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+          borderBottom: '0.5px solid rgba(84,84,88,0.34)',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          aria-label="뒤로 가기"
+          className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]"
+        >
+          <ChevronLeft className="w-5 h-5 text-white/80" />
+        </button>
+        <h1 className="ml-2 text-[15px] font-semibold text-white">회원 탈퇴</h1>
+      </div>
 
-      <main className="w-full px-4 sm:px-6 py-8 pb-32">
-        {/* 경고 배너 */}
-        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 mb-8">
-          <div className="flex items-start space-x-3">
-            <AlertTriangle className="w-8 h-8 text-red-500 flex-shrink-0 mt-1" />
-            <div>
-              <h2 className="text-xl font-bold text-red-900 mb-2">
-                정말 탈퇴하시겠습니까?
-              </h2>
-              <p className="text-red-700 leading-relaxed">
-                회원 탈퇴 시 아래 내용을 반드시 확인해주세요. 
-                탈퇴 후에는 되돌릴 수 없습니다.
+      <main className="px-4 pt-5">
+        {/* 경고 헤드라인 */}
+        <div
+          className="rounded-2xl p-5 mb-5"
+          style={{
+            background: 'radial-gradient(ellipse at top, rgba(239,68,68,0.18), transparent 70%), rgba(255,255,255,0.04)',
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-[16px] font-bold text-white mb-1">정말 탈퇴하시겠어요?</h2>
+              <p className="text-[13px] text-white/60 leading-relaxed">
+                30일 내에 같은 카카오 계정으로 재로그인하면 복원할 수 있어요.
+                <br />
+                30일이 지나면 모든 데이터가 영구 삭제됩니다.
               </p>
             </div>
           </div>
         </div>
 
-        {/* 주의사항 상세 */}
-        <div className="space-y-6 mb-8">
-          <h3 className="text-lg font-bold text-gray-900">⚠️ 탈퇴 시 유의사항</h3>
-
-          {DELETE_ACCOUNT_WARNINGS.map((warning, index) => (
-            <div
-              key={warning.id}
-              className="bg-gray-50 border border-gray-200 rounded-xl p-5"
-            >
-              <div className="flex items-start space-x-3 mb-3">
-                {getWarningIcon(warning.icon)}
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-1">
-                    {index + 1}. {warning.title}
-                  </h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {warning.description}
-                  </p>
-                </div>
-              </div>
+        {/* 30일 복원 안내 (Option B) */}
+        <div className="rounded-2xl bg-white/[0.04] p-5 mb-3">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4 text-blue-400" />
             </div>
-          ))}
+            <div className="flex-1">
+              <h3 className="text-[14px] font-semibold text-white mb-1">30일 복원 가능 기간</h3>
+              <p className="text-[12.5px] text-white/55 leading-relaxed">
+                탈퇴 후 30일 내에 같은 카카오 계정으로 다시 로그인하면 모든 데이터를 복원할 수 있어요.
+                30일 후엔 영구 삭제되며 복구 불가합니다.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* 추가 경고 - 더 상세한 내용 */}
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 mb-8">
-          <h4 className="font-semibold text-orange-900 mb-3">
-            📋 삭제되는 정보 상세
-          </h4>
-          <ul className="space-y-2 text-sm text-orange-800">
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>모든 주문 내역 및 배송 정보</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>찜한 상품, 장바구니, 최근 본 상품</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>적립 포인트 및 사용 가능한 쿠폰</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>멤버십 등급 및 누적 구매 혜택</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>작성한 리뷰, 문의, 1:1 상담 내역</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>등록한 배송지 및 결제 수단 정보</span>
-            </li>
+        {/* 삭제되는 정보 */}
+        <div className="rounded-2xl bg-white/[0.04] p-5 mb-3">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+              <Package className="w-4 h-4 text-orange-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-[14px] font-semibold text-white">삭제되는 정보</h3>
+              <p className="text-[12.5px] text-white/45 mt-0.5">30일 후 영구 삭제됩니다</p>
+            </div>
+          </div>
+          <ul className="space-y-1.5 text-[12.5px] text-white/55 ml-12">
+            <li>• 모든 주문 내역 및 배송 정보</li>
+            <li>• 찜한 상품, 장바구니, 최근 본 상품</li>
+            <li>• 적립 포인트 및 사용 가능한 쿠폰</li>
+            <li>• 멤버십 등급 및 누적 구매 혜택</li>
+            <li>• 작성한 리뷰, 문의, 1:1 상담 내역</li>
+            <li>• 등록한 배송지 및 결제 수단 정보</li>
           </ul>
         </div>
 
-        {/* 재가입 제한 안내 */}
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-5 mb-8">
-          <h4 className="font-semibold text-purple-900 mb-3">
-            🚫 재가입 제한 안내
-          </h4>
-          <p className="text-sm text-purple-800 leading-relaxed mb-2">
-            탈퇴 후 <strong>30일간</strong> 동일한 이메일 및 전화번호로 재가입할 수 없습니다.
-          </p>
-          <p className="text-sm text-purple-800 leading-relaxed">
-            재가입 시에도 기존의 <strong>포인트, 쿠폰, 등급, 주문내역</strong>은 복구되지 않습니다.
-          </p>
+        {/* 환불 / 취소 안내 */}
+        <div className="rounded-2xl bg-white/[0.04] p-5 mb-3">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+              <Wallet className="w-4 h-4 text-red-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-[14px] font-semibold text-white mb-1">환불 / 취소 불가</h3>
+              <p className="text-[12.5px] text-white/55 leading-relaxed">
+                탈퇴 후엔 진행 중인 주문의 취소 및 환불이 불가능합니다.
+                배송 중이거나 완료된 상품의 반품/교환도 어려울 수 있어요.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* 환불 불가 안내 */}
-        <div className="bg-red-50 border border-red-200 rounded-xl p-5 mb-8">
-          <h4 className="font-semibold text-red-900 mb-3">
-            💰 환불 및 취소 불가 안내
-          </h4>
-          <p className="text-sm text-red-800 leading-relaxed mb-2">
-            탈퇴 후에는 <strong>진행 중인 주문의 취소 및 환불이 불가능</strong>합니다.
-          </p>
-          <p className="text-sm text-red-800 leading-relaxed">
-            배송 중이거나 배송 완료된 상품은 탈퇴 후 반품/교환 처리가 어려울 수 있습니다.
-          </p>
+        {/* 혜택 / 등급 손실 */}
+        <div className="rounded-2xl bg-white/[0.04] p-5 mb-5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0">
+              <ShieldOff className="w-4 h-4 text-yellow-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-[14px] font-semibold text-white mb-1">혜택 / 등급 손실</h3>
+              <p className="text-[12.5px] text-white/55 leading-relaxed">
+                30일 내 복원 시 모든 혜택이 회복됩니다.
+                30일이 지나면 포인트, 쿠폰, 등급, 누적 혜택 모두 복구되지 않아요.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* 동의 체크박스 */}
-        <div className="bg-white border-2 border-gray-300 rounded-xl p-6 mb-6">
-          <h4 className="font-semibold text-gray-900 mb-4">
-            ✅ 다음 사항을 모두 확인하였으며 동의합니다
-          </h4>
-
-          <div className="space-y-4">
-            <label className="flex items-start space-x-3 cursor-pointer group">
+        {/* 동의 체크 */}
+        <div className="rounded-2xl bg-white/[0.04] p-5 mb-3">
+          <h3 className="text-[14px] font-semibold text-white mb-4">아래 사항을 확인하고 동의합니다</h3>
+          <div className="space-y-3.5">
+            <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={agreedToDataDeletion}
-                onChange={(e) => setAgreedToDataDeletion(e.target.checked)}
-                className="w-5 h-5 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                checked={agreedSoftDelete}
+                onChange={(e) => setAgreedSoftDelete(e.target.checked)}
+                className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
               />
-              <span className="text-sm text-gray-700 leading-relaxed group-hover:text-gray-900">
-                회원 탈퇴 시 모든 데이터가 영구 삭제되며 복구할 수 없음을 이해했습니다.
+              <span className="text-[12.5px] text-white/70 leading-relaxed">
+                탈퇴 후 <strong className="text-white">30일이 지나면 모든 데이터가 영구 삭제</strong>됨을 이해했습니다.
               </span>
             </label>
-
-            <label className="flex items-start space-x-3 cursor-pointer group">
+            <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={agreedToLoseBenefits}
-                onChange={(e) => setAgreedToLoseBenefits(e.target.checked)}
-                className="w-5 h-5 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                checked={agreedLoseBenefits}
+                onChange={(e) => setAgreedLoseBenefits(e.target.checked)}
+                className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
               />
-              <span className="text-sm text-gray-700 leading-relaxed group-hover:text-gray-900">
-                포인트, 쿠폰, 등급 등 모든 혜택을 잃게 되며 재가입 시에도 복구되지 않음을 이해했습니다.
+              <span className="text-[12.5px] text-white/70 leading-relaxed">
+                30일 이후엔 <strong className="text-white">포인트, 쿠폰, 등급 등 모든 혜택이 복구되지 않음</strong>을 이해했습니다.
               </span>
             </label>
-
-            <label className="flex items-start space-x-3 cursor-pointer group">
+            <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={agreedToNoRefund}
-                onChange={(e) => setAgreedToNoRefund(e.target.checked)}
-                className="w-5 h-5 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                checked={agreedNoRefund}
+                onChange={(e) => setAgreedNoRefund(e.target.checked)}
+                className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
               />
-              <span className="text-sm text-gray-700 leading-relaxed group-hover:text-gray-900">
-                탈퇴 후 진행 중인 주문의 취소/환불이 어려울 수 있으며, 30일간 재가입이 제한됨을 이해했습니다.
+              <span className="text-[12.5px] text-white/70 leading-relaxed">
+                탈퇴 후엔 <strong className="text-white">진행 중인 주문의 취소/환불이 어려울 수 있음</strong>을 이해했습니다.
               </span>
             </label>
           </div>
         </div>
 
         {/* 최종 확인 입력 */}
-        <div className="bg-gray-50 border-2 border-gray-300 rounded-xl p-6 mb-8">
-          <h4 className="font-semibold text-gray-900 mb-3">
-            🔐 최종 확인
-          </h4>
-          <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-            정말로 탈퇴하시려면 아래 입력란에{' '}
-            <strong className="text-red-600">"회원탈퇴"</strong>를 정확히 입력해주세요.
+        <div className="rounded-2xl bg-white/[0.04] p-5 mb-5">
+          <h3 className="text-[14px] font-semibold text-white mb-2">최종 확인</h3>
+          <p className="text-[12.5px] text-white/55 mb-3 leading-relaxed">
+            탈퇴를 진행하려면 아래에 <strong className="text-red-400">"회원탈퇴"</strong>를 정확히 입력해주세요.
           </p>
           <input
             type="text"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="회원탈퇴 (정확히 입력)"
-            className={`w-full px-4 py-3 border-2 rounded-lg text-gray-900 focus:outline-none focus:ring-2 ${
-              confirmText === '회원탈퇴'
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                : 'border-gray-300 focus:border-purple-500 focus:ring-purple-200'
-            }`}
+            placeholder="회원탈퇴"
+            className="w-full px-3.5 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-pink-500/50 focus:bg-white/[0.08]"
           />
           {confirmText && confirmText !== '회원탈퇴' && (
-            <p className="text-sm text-red-500 mt-2 font-medium">
-              ⚠️ 정확히 "회원탈퇴"를 입력해주세요. (현재: "{confirmText}")
+            <p className="text-[12px] text-red-400 mt-2 flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              정확히 "회원탈퇴"를 입력해주세요.
             </p>
           )}
           {confirmText === '회원탈퇴' && (
-            <p className="text-sm text-green-600 mt-2 flex items-center font-medium">
-              <CheckCircle2 className="w-4 h-4 mr-1" />
+            <p className="text-[12px] text-green-400 mt-2 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
               확인되었습니다.
             </p>
           )}
         </div>
 
-        {/* 안내 메시지 */}
-        <div className="text-center mb-8">
-          <p className="text-sm text-gray-500 leading-relaxed">
-            탈퇴를 원하지 않으신다면 언제든지 뒤로가기를 눌러주세요.
-            <br />
-            저희 서비스를 계속 이용해주시면 감사하겠습니다. ❤️
+        {/* 머무름 안내 */}
+        <div className="text-center mb-2">
+          <p className="text-[12px] text-white/40 leading-relaxed flex items-center justify-center gap-1.5">
+            <Heart className="w-3.5 h-3.5 text-pink-500/60" />
+            언제든지 돌아올 수 있어요
           </p>
         </div>
       </main>
 
-      {/* 하단 고정 버튼 */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 shadow-lg">
-        <div className="mx-auto max-w-md px-4 py-4 space-y-3">
+      {/* 하단 고정 버튼 — AccountSettings 와 일관 */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 px-4 py-4"
+        style={{
+          background: 'linear-gradient(to top, rgba(2,2,2,1) 60%, rgba(2,2,2,0.6))',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        }}
+      >
+        <div className="mx-auto max-w-md space-y-2">
           <button
+            type="button"
             onClick={handleProceedToDelete}
             disabled={!canProceed || isLoading}
-            className={`w-full py-4 rounded-xl font-semibold transition-all ${
+            className={`w-full h-[52px] rounded-2xl font-semibold text-[14px] transition-all ${
               canProceed && !isLoading
-                ? 'bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-lg'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-red-500 text-white active:scale-[0.98] hover:bg-red-600'
+                : 'bg-white/[0.06] text-white/30 cursor-not-allowed'
             }`}
           >
             {isLoading ? (
-              <span className="flex items-center justify-center">
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
                 탈퇴 처리 중...
               </span>
             ) : (
-              '정말 탈퇴하기'
+              '탈퇴하기'
             )}
           </button>
-
-          <button
-            onClick={() => navigate('/account/settings')}
-            disabled={isLoading}
-            className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 active:scale-95 transition-all"
+          <Link
+            to="/account/settings"
+            className="w-full h-[44px] flex items-center justify-center rounded-2xl bg-white/[0.06] text-white/70 text-[13px] font-medium hover:bg-white/[0.08] transition-colors"
           >
             취소하고 돌아가기
-          </button>
+          </Link>
         </div>
       </div>
     </div>
-  );
+  )
 }
