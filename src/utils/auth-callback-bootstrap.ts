@@ -95,4 +95,35 @@ export function processAuthCallbackParams(): void {
       window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
     } catch { /* ignore */ }
   }
+
+  // 🛡️ 2026-05-01: 인증 상태 무결성 자가 점검 — localStorage 에 user_type/user_id 가
+  //   있는데 세션 쿠키가 없거나 만료된 경우 (브라우저가 Secure 쿠키 drop, 30일 만료 등)
+  //   조용히 정리. 백그라운드 ping 으로 처리해 페이지 렌더 차단 X.
+  //
+  //   호출 X 인 경우: localStorage 인증 흔적 자체가 없을 때 (이미 비로그인).
+  try {
+    const userType = localStorage.getItem('user_type')
+    const userId = localStorage.getItem('user_id')
+    if (userType === 'user' && userId) {
+      // 백그라운드 ping (await X) — 실패 시 localStorage 정리.
+      // login=success URL 거쳐온 경우엔 방금 발급된 쿠키라 healthy 정상 응답.
+      void fetch('/api/auth/session/health', { credentials: 'include' })
+        .then(async (r) => {
+          if (!r.ok) return
+          const body = await r.json().catch(() => null) as { data?: { session?: boolean } } | null
+          if (body?.data?.session === false) {
+            // 세션 무효 — localStorage 잔존 데이터 정리
+            try {
+              localStorage.removeItem('user_type')
+              localStorage.removeItem('user_id')
+              localStorage.removeItem('user_name')
+              localStorage.removeItem('user_email')
+              localStorage.removeItem('user_profile_image')
+              localStorage.removeItem('session_login')
+            } catch { /* ignore */ }
+          }
+        })
+        .catch(() => { /* network error 등 — silent (다음 API 호출에서 재처리) */ })
+    }
+  } catch { /* ignore */ }
 }
