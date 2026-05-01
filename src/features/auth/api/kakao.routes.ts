@@ -272,6 +272,17 @@ kakaoRoutes.get('/consent/start', async (c) => {
 kakaoRoutes.get('/sync/callback', async (c) => {
   const { DB } = c.env;
 
+  // 🛡️ 2026-05-01: 필수 환경변수 사전 검증 — 미설정 시 명시 에러로 redirect.
+  //   silent fail 시 createSessionCookie throw → 무한 로딩 시나리오.
+  if (!c.env.JWT_SECRET) {
+    if (import.meta.env.DEV) console.error('[Kakao Sync] JWT_SECRET not configured');
+    return c.redirect(`/?error=env_missing&detail=JWT_SECRET`);
+  }
+  if (!c.env.KAKAO_REST_API_KEY) {
+    if (import.meta.env.DEV) console.error('[Kakao Sync] KAKAO_REST_API_KEY not configured');
+    return c.redirect(`/?error=env_missing&detail=KAKAO_REST_API_KEY`);
+  }
+
   // Extract & verify OAuth state (CSRF protection) ─────────────
   const receivedState = c.req.query('state') || '';
   const cookieHeader = c.req.header('Cookie') || '';
