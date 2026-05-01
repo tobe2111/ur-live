@@ -66,7 +66,11 @@ export default function RestoreAccountModal() {
         // 복원 후엔 새 user_id 로 인증해야 하므로 로그아웃 후 재로그인 권유.
         try {
           localStorage.clear()
-        } catch { /* */ }
+        } catch (clearErr) {
+          if (import.meta.env.DEV) console.warn('[RestoreAccount] localStorage.clear failed:', clearErr)
+          // partial clear 가능성 — 명시 에러 표시. 사용자가 인지하고 새로고침 가능.
+          toast.error('일부 데이터 청소 실패 — 브라우저를 새로고침 해주세요.')
+        }
         setTimeout(() => { window.location.href = '/login' }, 800)
       } else {
         const errMsg = res.data?.error || '복원 실패'

@@ -268,6 +268,7 @@ function AppContent() {
       env_missing: '서버 환경 설정이 누락됐어요. 관리자에게 문의해주세요.',
       no_code: '카카오 인증 코드를 받지 못했어요. 다시 시도해주세요.',
       oauth_state_mismatch: '인증 정보가 만료됐어요. 다시 시도해주세요.',
+      oauth_state_expired: '로그인 세션이 만료됐어요. 처음부터 다시 시도해주세요.',
     }
     const msg = errorMessages[errorCode] || `로그인 중 오류가 발생했어요 (${errorCode})`
 
@@ -279,7 +280,7 @@ function AppContent() {
     const authErrors = [
       'session_cookie_failed', 'kakao_auth_failed', 'kakao_sync_failed',
       'database_error', 'firebase_config_error', 'no_code', 'oauth_state_mismatch',
-      'env_missing',
+      'env_missing', 'oauth_state_expired',
     ]
     const isKakaoOAuthError = errorCode.startsWith('kakao_oauth_')
     if (authErrors.includes(errorCode) || isKakaoOAuthError) {

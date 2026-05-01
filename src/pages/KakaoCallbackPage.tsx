@@ -76,12 +76,21 @@ export default function KakaoCallbackPage() {
         }
 
         // ── 장바구니 복원 ──
+        // 🛡️ 2026-05-01: 실패 시 명시 toast — 이전엔 silent 무시 → 사용자가 cart 손실 인지 못 함.
         const tempCart = getTempCartItem()
         if (tempCart) {
           api.post('/api/cart', {
             product_id: tempCart.productId, quantity: tempCart.quantity,
             price_snapshot: tempCart.priceSnapshot, live_stream_id: tempCart.liveStreamId,
-          }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => clearTempCartItem())
+          }, { timeout: 5000 })
+            .then(() => {
+              toast.success('장바구니가 복원됐어요!')
+            })
+            .catch((e) => {
+              if (import.meta.env.DEV) console.warn('[KakaoCallback] cart restore failed:', e)
+              toast.error('장바구니 복원에 실패했어요. 다시 담아주세요.')
+            })
+            .finally(() => clearTempCartItem())
         }
 
         // ── returnUrl 결정 & 이동 ──

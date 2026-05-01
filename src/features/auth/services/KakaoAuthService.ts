@@ -266,24 +266,41 @@ export class KakaoAuthService {
         // 🛡️ 2026-05-01: production users 테이블에 toss_user_id 컬럼 없음 (사용자 신고 에러).
         //   Google INSERT 패턴과 동일하게 toss_user_id 제거.
         //   만약 column 이 존재하는 환경 (legacy migration 적용 환경) 이라도 NOT NULL 이 아닌 한 안전.
-        const result = await this.db.prepare(`
-          INSERT INTO users (
-            kakao_id,
-            name,
-            email,
-            profile_image,
-            created_at,
-            last_login_at,
-            updated_at
-          ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
-        `).bind(
-          kakaoUser.kakaoId,
-          kakaoUser.name,
-          kakaoUser.email || null,
-          kakaoUser.profileImage || null
-        ).run();
+        // 🛡️ 2026-05-01 (race fix): 동시 탭 로그인 race condition 방어 —
+        //   탭 A 와 B 가 동시에 SELECT (둘 다 null) → 둘 다 INSERT 시도 →
+        //   kakao_id UNIQUE constraint 있으면 두 번째 INSERT 가 실패.
+        //   INSERT 실패 시 SELECT 재시도 (다른 탭이 이미 INSERT 했음).
+        try {
+          const result = await this.db.prepare(`
+            INSERT INTO users (
+              kakao_id,
+              name,
+              email,
+              profile_image,
+              created_at,
+              last_login_at,
+              updated_at
+            ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+          `).bind(
+            kakaoUser.kakaoId,
+            kakaoUser.name,
+            kakaoUser.email || null,
+            kakaoUser.profileImage || null
+          ).run();
 
-        userId = result.meta.last_row_id as number;
+          userId = result.meta.last_row_id as number;
+        } catch (insertErr) {
+          // INSERT 실패 — 동시 탭 race condition 가능성. 다시 SELECT 시도.
+          if (import.meta.env.DEV) console.warn('[KakaoAuthService] INSERT failed, retrying SELECT (race condition?):', insertErr);
+          const racedUser = await this.db.prepare(`
+            SELECT id FROM users WHERE kakao_id = ?
+          `).bind(kakaoUser.kakaoId).first<{ id: number }>();
+          if (!racedUser) {
+            // SELECT 도 fail 이면 진짜 에러. throw.
+            throw insertErr;
+          }
+          userId = racedUser.id;
+        }
       }
       
       // 사용자 정보 다시 조회하여 반환.

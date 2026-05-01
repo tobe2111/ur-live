@@ -308,6 +308,14 @@ kakaoRoutes.get('/sync/callback', async (c) => {
     intent = stateCookie.intent;
     stateMatched = !!receivedState && receivedState === stateCookie.state;
   } else {
+    // 🛡️ 2026-05-01: state 쿠키 만료 (30분 초과) 또는 미발급 케이스 명시 에러.
+    //   이전: receivedState (random UUID) 를 safeRedirect 통과시켜 silent '/' 로.
+    //   사용자는 왜 로그인 안 됐는지 모름. 에러 명시.
+    if (receivedState) {
+      // 카카오에서 state 는 받았는데 쿠키가 없으면 만료/세션 이슈.
+      c.header('Set-Cookie', clearStateCookieHeader());
+      return c.redirect(`/?error=oauth_state_expired`);
+    }
     redirectTarget = safeRedirect(receivedState);
   }
 

@@ -35,36 +35,32 @@ export function processAuthCallbackParams(): void {
     // 🛡️ 2026-05-01: 새 사용자 로그인 시 이전 사용자 데이터 wipe — cross-user leak 차단.
     //   사용자 신고: "다른 사람 폰에서 내 계정 로그인했는데 그 사람 이름으로 됨".
     //
-    //   접근: prefix 기반 전수 청소 + 기기/앱 설정만 보존.
-    //   - 인증/세션/역할 토큰 prefix 매칭으로 모두 삭제
-    //   - 기기 preferences (theme, i18n, PWA dismiss 등) 는 유지
+    //   접근 변경: KEEP whitelist (allowlist) — 명시된 기기/앱 설정 키만 유지하고
+    //   나머지 모든 localStorage 키 wipe. 새로 추가된 인증/사용자 데이터 키도
+    //   자동으로 wipe 됨 (prefix maintenance 부담 X).
+    //
+    //   유지 대상 (기기 preferences, attribution, PWA 가드):
+    //   - i18n*, feature_flags, dark/light/theme (UI preferences)
+    //   - ur_pwa_*, ur_kakao_external_* (PWA / webview 가드)
+    //   - affiliate_ref, affiliate_ref_expires (추천인 attribution)
     try {
-      const KEEP_PREFIXES = ['ur_pwa_', 'ur_kakao_external_', 'i18n', 'feature_flags', 'dark', 'light', 'theme']
-      const KEEP_KEYS = new Set(['affiliate_ref', 'affiliate_ref_expires']) // 추천인 attribution 유지
-      const WIPE_PREFIXES = [
-        'user_', 'seller_', 'agency_', 'admin_',
-        'auth-', // Zustand persist (auth-kr-storage, auth-world-storage)
-      ]
-      const WIPE_KEYS = [
-        'session_login', 'lastLoginUid', 'numeric_user_id', 'access_token',
-        'firebase_token', 'firebase_token_cache',
-        'hasCartItems', 'tempCartItem',
-        'push_subscribed', 'push_token',
-        'loginReturnUrl', 'userId',
-        'recent-searches', 'recently_viewed',
-        'invite_prompt_shown',
-      ]
+      const KEEP_PREFIXES = ['ur_pwa_', 'ur_kakao_external_', 'i18n']
+      const KEEP_KEYS = new Set([
+        'feature_flags',
+        'dark', 'light', 'theme',
+        'affiliate_ref', 'affiliate_ref_expires',
+      ])
+      const isKeeper = (k: string) =>
+        KEEP_KEYS.has(k) || KEEP_PREFIXES.some(p => k.startsWith(p))
 
-      // localStorage 순회 — prefix 매칭 키 + 명시 키 wipe
+      // localStorage 순회 → keeper 가 아니면 모두 wipe
       const allKeys: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i)
         if (k) allKeys.push(k)
       }
       for (const k of allKeys) {
-        if (KEEP_PREFIXES.some(p => k.startsWith(p))) continue
-        if (KEEP_KEYS.has(k)) continue
-        if (WIPE_PREFIXES.some(p => k.startsWith(p)) || WIPE_KEYS.includes(k)) {
+        if (!isKeeper(k)) {
           try { localStorage.removeItem(k) } catch { /* ignore */ }
         }
       }
