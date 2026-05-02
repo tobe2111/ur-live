@@ -183,7 +183,7 @@ export default function ReferralPage() {
       <SEO title="공동구매 - 유어딜" description="친구와 함께 공동구매로 더 싸게 구매하세요" url="/referral" />
       {/* v4 Header */}
       <div className="sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
-        <div className="flex items-center justify-between px-3 py-3">
+        <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
@@ -192,7 +192,7 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      <div className="px-4 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100vh - 48px)' }}>
+      <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100vh - 48px)' }}>
         {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
         <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
           {product && (

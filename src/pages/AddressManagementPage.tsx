@@ -225,7 +225,7 @@ export default function AddressManagementPage() {
 
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
-        <div className="flex items-center justify-between px-5 py-3">
+        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -234,7 +234,7 @@ export default function AddressManagementPage() {
         </div>
       </div>
 
-      <main className="px-4 py-6">
+      <main className="ur-content-narrow px-4 lg:px-8 py-6">
         {/* 새 배송지 추가 버튼 */}
         <button
           onClick={openAddForm}

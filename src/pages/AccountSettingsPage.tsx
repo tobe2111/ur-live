@@ -195,11 +195,11 @@ export default function AccountSettingsPage() {
       </div>
 
       {/* v4 Large Title */}
-      <div className="px-4 pt-3 pb-1">
+      <div className="ur-content-narrow px-4 lg:px-8 pt-3 pb-1">
         <h1 style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1 }}>설정</h1>
       </div>
 
-      <main className="px-4 pt-3">
+      <main className="ur-content-narrow px-4 lg:px-8 pt-3">
         {/* 프로필 카드 (v4 그라데이션 톤) */}
         <div className="rounded-2xl p-5 mb-5 relative" style={{ background: 'radial-gradient(ellipse at top, rgba(236,72,153,0.18), transparent 70%), rgba(255,255,255,0.04)' }}>
           <div className="flex items-center justify-between mb-4">
