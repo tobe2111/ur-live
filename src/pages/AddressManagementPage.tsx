@@ -348,10 +348,11 @@ export default function AddressManagementPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-recipient-name" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               수령인 이름 <span className="text-red-500">*</span>
             </label>
             <input
+              id="addr-recipient-name"
               type="text"
               value={formData.recipient_name}
               onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
@@ -361,10 +362,11 @@ export default function AddressManagementPage() {
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-phone" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               연락처 <span className="text-red-500">*</span>
             </label>
             <input
+              id="addr-phone"
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -374,11 +376,12 @@ export default function AddressManagementPage() {
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-postal-code" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               우편번호 <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
               <input
+                id="addr-postal-code"
                 type="text"
                 value={formData.postal_code}
                 readOnly
@@ -402,10 +405,11 @@ export default function AddressManagementPage() {
           )}
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-address" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               주소 <span className="text-red-500">*</span>
             </label>
             <input
+              id="addr-address"
               type="text"
               value={formData.address}
               readOnly
@@ -415,10 +419,11 @@ export default function AddressManagementPage() {
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-address-detail" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               상세주소
             </label>
             <input
+              id="addr-address-detail"
               type="text"
               value={formData.address_detail}
               onChange={(e) => setFormData({ ...formData, address_detail: e.target.value })}

@@ -8,9 +8,43 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
-## 📊 2026-04-30 종료 시 상태
+## 📊 2026-05-02 종료 시 상태
 
-### 이번 세션 추가 처리 (PR #295/#296/#297 + Phase 5)
+### 이번 세션 추가 처리 (TD-018 + 다크 모드 토글 + a11y)
+
+#### TD-018 거대 페이지 분할 (점진) — 10개 페이지 평균 -32%
+| 페이지 | Before → After | Δ | 추출 sub-files |
+|---|---|---|---|
+| RestaurantMapPage | 1387 → 1109 | −20.0% | constants/FilterSheet/SuggestionModal + types/utils/HeroCarousel (2 PR) |
+| CheckoutPage | 1291 → 759 | −41.2% | 9 (header, items, coupon, shipping, points, summary, address modals, payment) |
+| SellerLiveBroadcastPage | 1336 → 604 | −54.8% | types + Step{Live,Info,Setup} |
+| SellerPage | 1134 → 889 | −21.6% | types + LazyChart + OnboardingChecklist + RealtimeOrdersPanel (+ DeferUntilVisible 사장 코드 제거) |
+| ProductDetailPage | 1012 → 587 | −42.0% | AccordionSection + GroupBuyCountdown + ProductReviews + ReferralSection |
+| AdminPage | 997 → 744 | −25.4% | types + 6개 컴포넌트 (DeferUntilVisible/ChartSkeleton/RevenueChart/ActivityFeed/RejectionModal/BizInfoModal) |
+| AgencyPage | 968 → 727 | −24.9% | types + NotificationList + badges + InviteLinkSection + RevenueTrendChart |
+| SellerPublicPage | 898 → 816 | −9.1% | types + FollowButton + StreamCard |
+| SellerOrdersPage | 896 → 584 | −34.8% | types + statusHelpers + OrderDetailModal (송장 등록 폼 포함) |
+| MyOrdersPage | 706 → 360 | −49.0% | OrderDetailModal + CancelOrderModal |
+| UserProfilePage | 766 → 256 | −66.6% | 9 (TeamPointsCard, ChatNameSetting, CouponVoucherStats, ShoppingGroup, OrderStatusBar, SellerApplyModal, SellerSwitchInline, useMyCounts, types) |
+| LivePageV2 | 562 → 387 | −31.1% | types + icons + TopNav |
+
+**합계**: 약 11,953 → 7,822 lines (-34.6%) + 50+ 새 sub-component 파일.
+**패턴**: state 부모 보존 + props-down (회귀 위험 0). 기능/디자인/동선 0 변경.
+
+#### 다크 모드 사용자 토글 (CLAUDE.md A안)
+- ✅ **인프라**: `tailwind.config.js` darkMode='class' + `useTheme` Zustand 스토어 (system/light/dark, localStorage 영속) + `ThemeProvider` (prefers-color-scheme listener) + `index.html` inline script (FOUC 방지)
+- ✅ **UI**: `/account/settings` 의 "화면 테마" 섹션 — 시스템/라이트/다크 3-way 토글
+- ✅ **색상 마이그레이션**: 화이트 테마 페이지 14개 + 컴포넌트 24개 (~700 dark: variant). bg/text/border × {gray-50/100/200/300, white, gray-300~900} 11종 매핑. perl 스크립트 (`/tmp/dark_migrate.pl`) 자동화.
+- ✅ **회귀 fix**: 초기 perl 스크립트 lookbehind 가 `dark:` 토큰 안의 부분 매칭 → 체인 중복 (gray-400↔gray-500). regex `(?<![\w:-])` 로 fix + 25 파일 일괄 정리.
+- 적용 범위: 화이트 테마 페이지만. 다크 (홈/라이브/마이) · 라이트 (셀러/어드민) 는 페이지 단 색상 강제로 토글 무영향.
+
+#### TD-022 진단 로그 정리
+- ✅ KakaoAuthService / kakao.routes.ts — 진단 로그를 `import.meta.env.DEV` 게이트로 감쌈
+
+#### TD-015 a11y 잔여 (이번 세션 추가)
+- ✅ AddressManagementPage 폼 label `htmlFor` 보완 (수령인/연락처/우편번호/주소/상세주소)
+
+### 이전 세션 (2026-04-30)
 - ✅ **TD-016 CRITICAL** — seller-transfer 셀러 본인 인증 (agency proxy 차단 410, 신규 `/api/seller/transfers` + `/seller/transfers` 페이지)
 - ✅ **TD-016 LOW** — 카트 UNIQUE NULL race INSERT/UPDATE 재시도 (500 → 정상 누적)
 - ✅ **TD-005** — product_options + products INSERT canonical `stock` 만 사용 (legacy stock_quantity 분기 제거). migration 0233 적용 준비 완료.
