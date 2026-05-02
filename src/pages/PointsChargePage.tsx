@@ -131,7 +131,7 @@ export default function PointsChargePage() {
 
       {/* 헤더 */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
-        <div className="mx-auto max-w-md flex items-center justify-between px-4 h-[52px]">
+        <div className="mx-auto max-w-md lg:max-w-2xl flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button
             onClick={() => navigate(-1)}
             className="w-9 h-9 flex items-center justify-center"
@@ -144,7 +144,7 @@ export default function PointsChargePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-md px-4 pt-5 pb-28 space-y-4">
+      <main className="mx-auto max-w-md lg:max-w-2xl px-4 lg:px-8 pt-5 pb-28 space-y-4">
         {/* 현재 잔액 카드 */}
         <section className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-pink-500 via-rose-500 to-red-500 text-white shadow-md">
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10" aria-hidden="true" />

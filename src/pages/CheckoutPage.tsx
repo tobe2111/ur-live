@@ -621,7 +621,7 @@ export default function CheckoutPage() {
       <SEO title="주문/결제 - 유어딜" description="주문 정보를 확인하고 안전하게 결제하세요" url="/checkout" noindex />
       <CheckoutHeader onBack={() => navigate('/cart')} />
 
-      <main className="mx-auto max-w-md pb-52" style={{ background: '#F4F4F4' }}>
+      <main className="mx-auto max-w-md lg:max-w-2xl pb-52" style={{ background: '#F4F4F4' }}>
         <div className="flex flex-col">
 
           {/* Left column */}

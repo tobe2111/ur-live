@@ -399,7 +399,7 @@ function CartPageContent() {
         <EmptyCart />
       ) : (
         <>
-          <main className="mx-auto max-w-md w-full flex-1 pb-32">
+          <main className="mx-auto max-w-md lg:max-w-2xl w-full flex-1 pb-32">
             {/* v4 Seller Group Cards */}
             {Object.values(sellerGroups).map((group) => {
               const groupAllSelected = group.items.every(item => selectedIds.has(item.id))

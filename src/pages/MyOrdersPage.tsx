@@ -283,7 +283,7 @@ export default function MyOrdersPage() {
       </div>
 
       {/* Content */}
-      <main className="w-full px-4 sm:px-6 py-8 sm:py-12">
+      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
