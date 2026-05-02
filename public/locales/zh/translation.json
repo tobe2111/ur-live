@@ -240,7 +240,20 @@
     "shippingFee": "Shipping Fee",
     "stripeSetupRequired": "Stripe backend setup required",
     "viewOrder": "View Order Details",
-    "widgetNotReady": "Payment widget is not ready"
+    "widgetNotReady": "Payment widget is not ready",
+    "errors": {
+      "invalidUser": "无法验证用户信息。",
+      "emptyCart": "您的购物车是空的。",
+      "loadDataFailed": "加载数据失败。",
+      "paymentInProgress": "付款已在进行中",
+      "selectAddress": "请选择配送地址",
+      "orderCreateFailed": "创建订单失败",
+      "securityAuthInProgress": "正在进行安全验证...",
+      "loading": "加载中...",
+      "paymentFailed": "付款失败",
+      "dealPaymentFailed": "Deal 付款失败",
+      "leaveConfirm": "付款正在进行中。您确定要离开此页面吗?"
+    }
   },
   "cart": {
     "title": "购物车",

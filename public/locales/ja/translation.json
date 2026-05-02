@@ -240,7 +240,20 @@
     "shippingFee": "Shipping Fee",
     "stripeSetupRequired": "Stripe backend setup required",
     "viewOrder": "View Order Details",
-    "widgetNotReady": "Payment widget is not ready"
+    "widgetNotReady": "Payment widget is not ready",
+    "errors": {
+      "invalidUser": "ユーザー情報を確認できません。",
+      "emptyCart": "カートが空です。",
+      "loadDataFailed": "データを読み込めません。",
+      "paymentInProgress": "既に決済が進行中です",
+      "selectAddress": "配送先を選択してください",
+      "orderCreateFailed": "注文の作成に失敗しました",
+      "securityAuthInProgress": "セキュリティ認証中...",
+      "loading": "読み込み中...",
+      "paymentFailed": "決済失敗",
+      "dealPaymentFailed": "ディール決済失敗",
+      "leaveConfirm": "決済が進行中です。ページを離れますか?"
+    }
   },
   "cart": {
     "title": "カート",

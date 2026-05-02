@@ -2000,7 +2000,20 @@
     "stripeSetupRequired": "Stripe backend setup required",
     "totalAmount": "Total Amount",
     "viewOrder": "View Order Details",
-    "widgetNotReady": "Payment widget is not ready"
+    "widgetNotReady": "Payment widget is not ready",
+    "errors": {
+      "invalidUser": "No se puede verificar la información del usuario.",
+      "emptyCart": "Tu carrito está vacío.",
+      "loadDataFailed": "No se pudieron cargar los datos.",
+      "paymentInProgress": "El pago ya está en curso",
+      "selectAddress": "Por favor, selecciona una dirección de envío",
+      "orderCreateFailed": "Error al crear el pedido",
+      "securityAuthInProgress": "Verificando seguridad...",
+      "loading": "Cargando...",
+      "paymentFailed": "Pago fallido",
+      "dealPaymentFailed": "Pago de Deal fallido",
+      "leaveConfirm": "El pago está en curso. ¿Estás seguro de que quieres salir de esta página?"
+    }
   },
   "product": {
     "addToCart": "Add to Cart",

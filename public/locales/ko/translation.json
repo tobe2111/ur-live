@@ -240,7 +240,20 @@
     "widgetNotReady": "결제 위젯이 준비되지 않았습니다",
     "requestError": "결제 요청 실패",
     "stripeSetupRequired": "Stripe 백엔드 설정이 필요합니다",
-    "loading": "결제 정보 로딩 중..."
+    "loading": "결제 정보 로딩 중...",
+    "errors": {
+      "invalidUser": "사용자 정보를 확인할 수 없습니다.",
+      "emptyCart": "장바구니가 비어있습니다.",
+      "loadDataFailed": "데이터를 불러올 수 없습니다.",
+      "paymentInProgress": "이미 결제가 진행 중입니다",
+      "selectAddress": "배송지를 선택해주세요",
+      "orderCreateFailed": "주문 생성에 실패했습니다",
+      "securityAuthInProgress": "보안 인증 중...",
+      "loading": "로딩 중...",
+      "paymentFailed": "결제 실패",
+      "dealPaymentFailed": "딜 결제 실패",
+      "leaveConfirm": "결제가 진행 중입니다. 페이지를 벗어나시겠습니까?"
+    }
   },
   "cart": {
     "title": "장바구니",

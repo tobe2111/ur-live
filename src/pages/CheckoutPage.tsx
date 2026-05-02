@@ -209,7 +209,7 @@ export default function CheckoutPage() {
       if (isSubmittingRef.current) {
         e.preventDefault()
         // 최신 크롬/사파리는 커스텀 메시지 무시, 기본 경고만 표시
-        e.returnValue = '결제가 진행 중입니다. 페이지를 벗어나시겠습니까?'
+        e.returnValue = t('payment.errors.leaveConfirm')
         return e.returnValue
       }
     }
@@ -287,7 +287,7 @@ export default function CheckoutPage() {
 
     if (!uid) {
       captureError(new Error('CheckoutPage: userId 없음'), { context: 'CheckoutPage.loadData' })
-      setError('사용자 정보를 확인할 수 없습니다.')
+      setError(t('payment.errors.invalidUser'))
       setLoading(false)
       return
     }
@@ -326,7 +326,7 @@ export default function CheckoutPage() {
           if (cartItemsData.length > 0) {
             setCartItems(cartItemsData)
           } else {
-            setError('장바구니가 비어있습니다.')
+            setError(t('payment.errors.emptyCart'))
           }
         }
 
@@ -345,7 +345,7 @@ export default function CheckoutPage() {
         if (import.meta.env.DEV) console.error('[CheckoutPage] ❌ API 에러:', err)
         captureError(err as Error, { context: 'CheckoutPage.loadData', userId: uid })
         handleApiError(err)
-        setError('데이터를 불러올 수 없습니다.')
+        setError(t('payment.errors.loadDataFailed'))
       } finally {
         setLoading(false)
       }
@@ -467,13 +467,13 @@ export default function CheckoutPage() {
   const handleBeforePayment = async (orderId: string): Promise<void> => {
     // ✅ UX H7 FIX: 이미 진행 중이면 중복 호출 차단
     if (isSubmittingRef.current) {
-      throw new Error('이미 결제가 진행 중입니다')
+      throw new Error(t('payment.errors.paymentInProgress'))
     }
     isSubmittingRef.current = true
     try {
     if (!isMealVoucher && !selectedAddress) {
       setShowAddressModal(true)
-      throw new Error('배송지를 선택해주세요')
+      throw new Error(t('payment.errors.selectAddress'))
     }
 
     // 바로구매 모드 플래그 저장 (PaymentSuccessPage에서 장바구니 비우기 스킵용)
@@ -541,7 +541,7 @@ export default function CheckoutPage() {
       })
 
       if (!response.data.success) {
-        throw new Error(response.data.error || '주문 생성에 실패했습니다')
+        throw new Error(response.data.error || t('payment.errors.orderCreateFailed'))
       }
 
       // 쿠폰 사용 확정
@@ -587,7 +587,7 @@ export default function CheckoutPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-400 dark:text-gray-500">
-            {tokenRefreshing ? '보안 인증 중...' : '로딩 중...'}
+            {tokenRefreshing ? t('payment.errors.securityAuthInProgress') : t('payment.errors.loading')}
           </p>
         </div>
       </div>
@@ -682,10 +682,10 @@ export default function CheckoutPage() {
                     }
                     navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
                   } else {
-                    toast.error(res.data.error || '결제 실패')
+                    toast.error(res.data.error || t('payment.errors.paymentFailed'))
                   }
                 } catch (err: unknown) {
-                  toast.error(getUserFriendlyError(err, '딜 결제 실패'))
+                  toast.error(getUserFriendlyError(err, t('payment.errors.dealPaymentFailed')))
                 } finally { setPayingWithDeals(false) }
               }}
               userId={userId || ''}

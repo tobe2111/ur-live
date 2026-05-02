@@ -240,7 +240,20 @@
     "widgetNotReady": "Payment widget is not ready",
     "requestError": "Payment request failed",
     "stripeSetupRequired": "Stripe backend setup required",
-    "loading": "Loading payment information..."
+    "loading": "Loading payment information...",
+    "errors": {
+      "invalidUser": "Unable to verify user information.",
+      "emptyCart": "Your cart is empty.",
+      "loadDataFailed": "Failed to load data.",
+      "paymentInProgress": "Payment is already in progress",
+      "selectAddress": "Please select a shipping address",
+      "orderCreateFailed": "Failed to create order",
+      "securityAuthInProgress": "Verifying security...",
+      "loading": "Loading...",
+      "paymentFailed": "Payment failed",
+      "dealPaymentFailed": "Deal payment failed",
+      "leaveConfirm": "Payment is in progress. Are you sure you want to leave this page?"
+    }
   },
   "cart": {
     "title": "Shopping Cart",
