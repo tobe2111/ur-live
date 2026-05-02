@@ -142,7 +142,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
             <input
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
-              placeholder="홍길동"
+              placeholder={t('gift.placeholders.recipientName')}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
             />
           </div>
@@ -155,7 +155,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
             <textarea
               value={message}
               onChange={e => setMessage(e.target.value)}
-              placeholder="생일 축하해! 늘 행복하길 ✨"
+              placeholder={t('gift.placeholders.message')}
               rows={3}
               maxLength={MAX_MESSAGE}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300 resize-none"

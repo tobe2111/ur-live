@@ -252,7 +252,12 @@
       "loading": "読み込み中...",
       "paymentFailed": "決済失敗",
       "dealPaymentFailed": "ディール決済失敗",
-      "leaveConfirm": "決済が進行中です。ページを離れますか?"
+      "leaveConfirm": "決済が進行中です。ページを離れますか?",
+      "networkError": "ネットワークエラーが発生しました。インターネット接続を確認してください。",
+      "authError": "認証エラーが発生しました。ページを更新してください。",
+      "uiNotFound": "決済UI領域が見つかりません。ページを更新してください。",
+      "orderNumberInvalid": "注文番号の形式が正しくありません。ページを更新してください。",
+      "systemError": "決済システムエラー (更新が必要)"
     }
   },
   "cart": {
@@ -2112,5 +2117,11 @@
     "activeDesc": "セラーダッシュボードで放送を開始",
     "pendingDesc": "管理者承認後、セラー機能をご利用いただけます",
     "toDashboard": "セラーダッシュボードへ"
+  },
+  "gift": {
+    "placeholders": {
+      "recipientName": "山田太郎",
+      "message": "お誕生日おめでとう! いつも幸せでいてね ✨"
+    }
   }
 }

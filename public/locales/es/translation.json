@@ -2012,7 +2012,12 @@
       "loading": "Cargando...",
       "paymentFailed": "Pago fallido",
       "dealPaymentFailed": "Pago de Deal fallido",
-      "leaveConfirm": "El pago está en curso. ¿Estás seguro de que quieres salir de esta página?"
+      "leaveConfirm": "El pago está en curso. ¿Estás seguro de que quieres salir de esta página?",
+      "networkError": "Error de red. Por favor, verifica tu conexión a internet.",
+      "authError": "Error de autenticación. Por favor, actualiza la página.",
+      "uiNotFound": "Área de UI de pago no encontrada. Por favor, actualiza la página.",
+      "orderNumberInvalid": "Formato de número de pedido no válido. Por favor, actualiza la página.",
+      "systemError": "Error del sistema de pago (se requiere actualizar)"
     }
   },
   "product": {
@@ -2112,5 +2117,11 @@
     "activeDesc": "Vaya al panel del vendedor para comenzar transmisiones",
     "pendingDesc": "Funciones de vendedor disponibles tras aprobación",
     "toDashboard": "Al Panel del Vendedor"
+  },
+  "gift": {
+    "placeholders": {
+      "recipientName": "Juan Pérez",
+      "message": "¡Feliz cumpleaños! Te deseo lo mejor ✨"
+    }
   }
 }

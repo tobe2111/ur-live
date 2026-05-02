@@ -252,7 +252,12 @@
       "loading": "加载中...",
       "paymentFailed": "付款失败",
       "dealPaymentFailed": "Deal 付款失败",
-      "leaveConfirm": "付款正在进行中。您确定要离开此页面吗?"
+      "leaveConfirm": "付款正在进行中。您确定要离开此页面吗?",
+      "networkError": "发生网络错误。请检查您的网络连接。",
+      "authError": "发生身份验证错误。请刷新页面。",
+      "uiNotFound": "找不到付款 UI 区域。请刷新页面。",
+      "orderNumberInvalid": "订单号格式无效。请刷新页面。",
+      "systemError": "支付系统错误 (需要刷新)"
     }
   },
   "cart": {
@@ -2112,5 +2117,11 @@
     "activeDesc": "前往卖家仪表板开始直播",
     "pendingDesc": "管理员批准后可使用卖家功能",
     "toDashboard": "前往卖家仪表板"
+  },
+  "gift": {
+    "placeholders": {
+      "recipientName": "张三",
+      "message": "生日快乐!愿你永远幸福 ✨"
+    }
   }
 }

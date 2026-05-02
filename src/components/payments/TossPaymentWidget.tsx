@@ -80,9 +80,9 @@ export function TossPaymentWidget({
         if (import.meta.env.DEV) console.error('[TossPayments] 초기화 실패:', err)
         const errMsg = err instanceof Error ? err.message : ''
         const msg = errMsg.includes('network')
-          ? '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.'
+          ? t('payment.errors.networkError')
           : errMsg.includes('auth') || errMsg.includes('400')
-            ? '인증 오류가 발생했습니다. 페이지를 새로고침해주세요.'
+            ? t('payment.errors.authError')
             : t('payment.initError', { defaultValue: '결제 초기화 실패' })
         setErrorMessage(msg)
         setLoadingState('error')
@@ -126,7 +126,7 @@ export function TossPaymentWidget({
           attempts++
         }
         if (!document.getElementById('payment-method')) {
-          throw new Error('결제 UI 영역을 찾을 수 없습니다. 페이지를 새로고침해주세요.')
+          throw new Error(t('payment.errors.uiNotFound'))
         }
 
         // 결제 금액 설정 (KRW, 정수)
@@ -204,7 +204,7 @@ export function TossPaymentWidget({
       if (errObj?.code === 'USER_CANCEL') return
       // INVALID_ORDER_ID: orderId 형식 오류
       if (errObj?.code === 'INVALID_ORDER_ID') {
-        onPaymentError('주문번호 형식이 올바르지 않습니다. 페이지를 새로고침해주세요.')
+        onPaymentError(t('payment.errors.orderNumberInvalid'))
         return
       }
       // 🛡️ 2026-04-30 v2: 인앱 webview 에서 popup 차단 시 외부 브라우저 유도.
@@ -250,7 +250,7 @@ export function TossPaymentWidget({
             결제 시스템 로딩 중...
           </span>
         )}
-        {loadingState === 'error' && '결제 시스템 오류 (새로고침 필요)'}
+        {loadingState === 'error' && t('payment.errors.systemError')}
         {loadingState === 'ready' && !isProcessing && `${formatNumber(totalAmount)}원 결제하기`}
         {loadingState === 'ready' && isProcessing && (
           <span className="flex items-center justify-center gap-2">

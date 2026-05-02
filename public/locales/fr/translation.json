@@ -2012,7 +2012,12 @@
       "loading": "Chargement...",
       "paymentFailed": "Paiement échoué",
       "dealPaymentFailed": "Échec du paiement Deal",
-      "leaveConfirm": "Le paiement est en cours. Êtes-vous sûr de vouloir quitter cette page ?"
+      "leaveConfirm": "Le paiement est en cours. Êtes-vous sûr de vouloir quitter cette page ?",
+      "networkError": "Erreur réseau. Veuillez vérifier votre connexion internet.",
+      "authError": "Erreur d'authentification. Veuillez actualiser la page.",
+      "uiNotFound": "Zone d'interface de paiement introuvable. Veuillez actualiser la page.",
+      "orderNumberInvalid": "Format de numéro de commande invalide. Veuillez actualiser la page.",
+      "systemError": "Erreur du système de paiement (rafraîchissement requis)"
     }
   },
   "product": {
@@ -2112,5 +2117,11 @@
     "activeDesc": "Allez au tableau de bord pour commencer à diffuser",
     "pendingDesc": "Fonctions vendeur disponibles après approbation",
     "toDashboard": "Au Tableau de Bord"
+  },
+  "gift": {
+    "placeholders": {
+      "recipientName": "Jean Dupont",
+      "message": "Joyeux anniversaire ! Je te souhaite tout le meilleur ✨"
+    }
   }
 }

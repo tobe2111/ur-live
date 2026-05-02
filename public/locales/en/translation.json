@@ -252,7 +252,12 @@
       "loading": "Loading...",
       "paymentFailed": "Payment failed",
       "dealPaymentFailed": "Deal payment failed",
-      "leaveConfirm": "Payment is in progress. Are you sure you want to leave this page?"
+      "leaveConfirm": "Payment is in progress. Are you sure you want to leave this page?",
+      "networkError": "Network error occurred. Please check your internet connection.",
+      "authError": "Authentication error. Please refresh the page.",
+      "uiNotFound": "Payment UI area not found. Please refresh the page.",
+      "orderNumberInvalid": "Invalid order number format. Please refresh the page.",
+      "systemError": "Payment system error (refresh required)"
     }
   },
   "cart": {
@@ -2112,5 +2117,11 @@
     "activeDesc": "Go to seller dashboard to start broadcasting",
     "pendingDesc": "Seller features available after admin approval",
     "toDashboard": "To Seller Dashboard"
+  },
+  "gift": {
+    "placeholders": {
+      "recipientName": "John Doe",
+      "message": "Happy birthday! Wishing you all the best ✨"
+    }
   }
 }
