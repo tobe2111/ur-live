@@ -1,95 +1,18 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List, Clock } from 'lucide-react'
+import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
 import api from '@/lib/api'
 import SEO, { itemListJsonLd } from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import RecentlyViewedSection from './browse/RecentlyViewedSection'
+import { SORT_LABELS, ITEMS_PER_PAGE } from './browse/types'
+import type { Product, SortOption } from './browse/types'
 
-interface RecentProduct {
-  id: number
-  name: string
-  price?: number
-  image?: string
-}
-
-function RecentlyViewedSection() {
-  const navigate = useNavigate()
-  const [items, setItems] = useState<RecentProduct[]>([])
-
-  useEffect(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
-      setItems(raw.slice(0, 10))
-    } catch {
-      // ignore parse errors
-    }
-  }, [])
-
-  if (items.length === 0) return null
-
-  return (
-    <div className="mb-5">
-      <div className="flex items-center gap-1.5 mb-3">
-        <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 className="text-[13px] font-bold text-gray-900 dark:text-white">최근 본 상품</h2>
-      </div>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-        {items.map(p => (
-          <button
-            type="button"
-            key={p.id}
-            onClick={() => navigate(`/products/${p.id}`)}
-            className="shrink-0 w-24 cursor-pointer text-left"
-          >
-            <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] rounded-xl overflow-hidden">
-              {p.image ? (
-                <img src={p.image} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
-              )}
-            </div>
-            <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-1.5 truncate">{p.name}</p>
-            {p.price != null && (
-              <p className="text-[12px] font-bold text-gray-900 dark:text-white">{formatNumber(p.price)}원</p>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-interface Product {
-  id: number
-  name: string
-  price: number
-  current_price: number
-  original_price?: number
-  discount_rate: number
-  image_url: string
-  sold_count?: number
-  stock: number
-  category?: string
-  seller_name?: string
-  restaurant_name?: string
-  restaurant_lat?: number
-  restaurant_lng?: number
-}
-
-type SortOption = 'popular' | 'newest' | 'price_asc' | 'price_desc' | 'discount'
-
-const SORT_LABELS: Record<SortOption, string> = {
-  popular: '인기순',
-  newest: '최신순',
-  price_asc: '낮은 가격순',
-  price_desc: '높은 가격순',
-  discount: '할인율순',
-}
-
-const ITEMS_PER_PAGE = 12
+// 🛡️ 2026-05-02: TD-018 분할 — types/RecentlyViewedSection 을 ./browse/ 로 추출.
+//   미사용 lucide 아이콘 (Clock — RecentlyViewed 내부로 이동) 정리.
 
 export default function BrowsePage() {
   const { t } = useTranslation()

@@ -20,11 +20,8 @@ import { downloadSellerTemplate } from '@/utils/product-template'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 
-interface LiveStream {
-  id: number
-  title: string
-  status: string
-}
+// 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-new/types 로 추출.
+import type { LiveStream } from './seller-product-new/types'
 
 export default function SellerProductNewPage() {
   const { t } = useTranslation()
