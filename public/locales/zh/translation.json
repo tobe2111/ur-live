@@ -2148,5 +2148,17 @@
     "authCancelled": "Kakao 认证已取消",
     "linkFailed": "关联失败",
     "unlinkHint": "可随时使用上方的 \"解除\" 按钮取消关联。"
+  },
+  "live": {
+    "player": {
+      "cannotPlay": "无法播放此视频。请联系卖家。",
+      "browserError": "浏览器兼容性问题。请刷新页面。",
+      "errorTitle": "无法播放的视频"
+    },
+    "intro": "推荐中",
+    "tapToStart": "点击开始观看",
+    "tapToStartSub": "直播将带声音开始",
+    "entering": "正在加入直播...",
+    "enteringSub": "请稍候"
   }
 }

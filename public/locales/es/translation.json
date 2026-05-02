@@ -2148,5 +2148,17 @@
     "authCancelled": "Autenticación de KakaoTalk cancelada",
     "linkFailed": "Vinculación fallida",
     "unlinkHint": "Puedes desvincular en cualquier momento con el botón \"Desvincular\" de arriba."
+  },
+  "live": {
+    "player": {
+      "cannotPlay": "No se puede reproducir este vídeo. Contacta con el vendedor.",
+      "browserError": "Problema de compatibilidad del navegador. Por favor, actualiza la página.",
+      "errorTitle": "Vídeo no disponible"
+    },
+    "intro": "Destacado",
+    "tapToStart": "Toca para empezar a ver",
+    "tapToStartSub": "El directo comenzará con sonido",
+    "entering": "Entrando al directo...",
+    "enteringSub": "Por favor espera un momento"
   }
 }

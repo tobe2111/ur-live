@@ -2148,5 +2148,17 @@
     "authCancelled": "KakaoTalk authentication cancelled",
     "linkFailed": "Link failed",
     "unlinkHint": "You can unlink anytime using the \"Unlink\" button above."
+  },
+  "live": {
+    "player": {
+      "cannotPlay": "Can't play this video. Please contact the seller.",
+      "browserError": "Browser compatibility issue. Please refresh the page.",
+      "errorTitle": "Video unavailable"
+    },
+    "intro": "Featured",
+    "tapToStart": "Tap to start watching",
+    "tapToStartSub": "Live will start with sound",
+    "entering": "Joining live...",
+    "enteringSub": "Please wait a moment"
   }
 }

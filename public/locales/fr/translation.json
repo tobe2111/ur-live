@@ -2148,5 +2148,17 @@
     "authCancelled": "Authentification KakaoTalk annulée",
     "linkFailed": "Échec de la liaison",
     "unlinkHint": "Vous pouvez délier à tout moment avec le bouton \"Délier\" ci-dessus."
+  },
+  "live": {
+    "player": {
+      "cannotPlay": "Impossible de lire cette vidéo. Veuillez contacter le vendeur.",
+      "browserError": "Problème de compatibilité du navigateur. Veuillez actualiser la page.",
+      "errorTitle": "Vidéo indisponible"
+    },
+    "intro": "Sélection",
+    "tapToStart": "Toucher pour commencer à regarder",
+    "tapToStartSub": "Le direct commencera avec le son",
+    "entering": "Entrée en direct...",
+    "enteringSub": "Veuillez patienter un instant"
   }
 }

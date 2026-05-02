@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ShoppingBag, MessageCircle, X, Send } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import PKLiveBanner from '@/components/live/PKLiveBanner'
@@ -110,6 +111,7 @@ export default function ReelCard({
   isCurrentProduct?: boolean 
 }) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { showAlert } = useModal()
   const [productListSheetOpen, setProductListSheetOpen] = useState(false)
   const [streamProducts, setStreamProducts] = useState<Product[]>([])
@@ -361,10 +363,10 @@ export default function ReelCard({
                 case 100:
                 case 101:
                 case 150:
-                  setPlayerError('이 영상을 재생할 수 없습니다. 셀러에게 문의해주세요.')
+                  setPlayerError(t('live.player.cannotPlay'))
                   break
                 case 5:
-                  setPlayerError('브라우저 호환성 문제입니다. 새로고침해주세요.')
+                  setPlayerError(t('live.player.browserError'))
                   break
                 default:
                   setShowPlayButton(true)
@@ -854,7 +856,7 @@ export default function ReelCard({
       {isCurrentProduct && isSeller && (
         <div className="absolute top-24 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-          <span className="text-white font-bold text-[11px] tracking-wide">소개 중</span>
+          <span className="text-white font-bold text-[11px] tracking-wide">{t('live.intro')}</span>
         </div>
       )}
       
@@ -902,7 +904,7 @@ export default function ReelCard({
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
             </svg>
           </div>
-          <p className="text-white text-lg font-bold mb-1">재생할 수 없는 영상</p>
+          <p className="text-white text-lg font-bold mb-1">{t('live.player.errorTitle')}</p>
           <p className="text-white/70 text-sm">{playerError}</p>
         </div>
       )}
@@ -934,8 +936,8 @@ export default function ReelCard({
                   </svg>
                 </div>
                 <div className="text-center px-6">
-                  <p className="text-white text-xl font-bold mb-1">터치하여 시청 시작</p>
-                  <p className="text-white/50 text-xs">소리와 함께 라이브가 시작됩니다</p>
+                  <p className="text-white text-xl font-bold mb-1">{t('live.tapToStart')}</p>
+                  <p className="text-white/50 text-xs">{t('live.tapToStartSub')}</p>
                 </div>
               </>
             ) : (
@@ -948,8 +950,8 @@ export default function ReelCard({
                   </div>
                 </div>
                 <div className="text-center px-6">
-                  <p className="text-white text-xl font-bold mb-1.5">라이브 입장 중...</p>
-                  <p className="text-white/60 text-sm">잠시만 기다려주세요</p>
+                  <p className="text-white text-xl font-bold mb-1.5">{t('live.entering')}</p>
+                  <p className="text-white/60 text-sm">{t('live.enteringSub')}</p>
                 </div>
               </>
             )}

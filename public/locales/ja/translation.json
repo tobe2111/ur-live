@@ -2148,5 +2148,17 @@
     "authCancelled": "カカオ認証キャンセル",
     "linkFailed": "連携失敗",
     "unlinkHint": "上の \"解除\" ボタンでいつでも連携解除できます。"
+  },
+  "live": {
+    "player": {
+      "cannotPlay": "この動画を再生できません。セラーにお問い合わせください。",
+      "browserError": "ブラウザの互換性に問題があります。ページを更新してください。",
+      "errorTitle": "再生できない動画"
+    },
+    "intro": "紹介中",
+    "tapToStart": "タップして視聴開始",
+    "tapToStartSub": "音声付きでライブが始まります",
+    "entering": "ライブ入場中...",
+    "enteringSub": "少々お待ちください"
   }
 }

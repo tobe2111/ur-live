@@ -2148,5 +2148,17 @@
     "authCancelled": "카카오 인증 취소됨",
     "linkFailed": "연동 실패",
     "unlinkHint": "언제든 위 \"해제\" 버튼으로 연동 해제할 수 있어요."
+  },
+  "live": {
+    "player": {
+      "cannotPlay": "이 영상을 재생할 수 없습니다. 셀러에게 문의해주세요.",
+      "browserError": "브라우저 호환성 문제입니다. 새로고침해주세요.",
+      "errorTitle": "재생할 수 없는 영상"
+    },
+    "intro": "소개 중",
+    "tapToStart": "터치하여 시청 시작",
+    "tapToStartSub": "소리와 함께 라이브가 시작됩니다",
+    "entering": "라이브 입장 중...",
+    "enteringSub": "잠시만 기다려주세요"
   }
 }
