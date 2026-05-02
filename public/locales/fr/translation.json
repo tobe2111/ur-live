@@ -2177,5 +2177,12 @@
     "genericSolution": "Veuillez réessayer plus tard.",
     "fallbackSolution": "Si le problème persiste, contactez le service client.",
     "docTitle": "Paiement échoué - UR·DEAL"
+  },
+  "shorts": {
+    "empty": "Aucun short pour le moment",
+    "emptySub": "Restez à l’écoute des shorts des vendeurs",
+    "toLive": "Rejoindre le direct",
+    "swipeNext": "Glisser vers le haut · short suivant",
+    "featuredProduct": "Produit présenté dans la vidéo"
   }
 }

@@ -2177,5 +2177,12 @@
     "genericSolution": "Por favor, inténtalo de nuevo más tarde.",
     "fallbackSolution": "Si el problema persiste, contacta con atención al cliente.",
     "docTitle": "Pago fallido - UR·DEAL"
+  },
+  "shorts": {
+    "empty": "Aún no hay shorts",
+    "emptySub": "Espera los shorts de los vendedores",
+    "toLive": "Unirse al directo",
+    "swipeNext": "Desliza hacia arriba · siguiente shorts",
+    "featuredProduct": "Producto del vídeo"
   }
 }

@@ -218,8 +218,8 @@ export default function ShortsPage() {
     return (
       <div className="absolute inset-0 bg-black flex flex-col items-center justify-center text-white">
         <Play className="w-12 h-12 text-gray-500 mb-3" />
-        <p className="text-lg font-bold">아직 쇼츠가 없습니다</p>
-        <p className="text-sm text-gray-500 mt-1">셀러들의 쇼츠를 기다려주세요</p>
+        <p className="text-lg font-bold">{t('shorts.empty')}</p>
+        <p className="text-sm text-gray-500 mt-1">{t('shorts.emptySub')}</p>
         <button onClick={() => navigate('/')} className="mt-4 px-5 py-2 bg-white/10 rounded-full text-sm">홈으로</button>
       </div>
     )
@@ -392,7 +392,7 @@ export default function ShortsPage() {
                       <span className="h-2 w-2 bg-white rounded-full animate-pulse" />
                       <span className="text-xs font-bold text-white">LIVE</span>
                     </div>
-                    <span className="text-xs text-white/80 flex-1 text-left">라이브 방송 입장하기</span>
+                    <span className="text-xs text-white/80 flex-1 text-left">{t('shorts.toLive')}</span>
                     {item.viewer_count != null && item.viewer_count > 0 && (
                       <span className="text-[10px] text-white/70">{item.viewer_count}명 시청</span>
                     )}
@@ -436,7 +436,7 @@ export default function ShortsPage() {
                     <div className="flex items-center justify-between px-4 py-2"
                       style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.08), rgba(236,72,153,0.08))' }}>
                       <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em' }}>FEATURED PRODUCT</span>
-                      <span style={{ fontSize: 10, color: '#6B7280' }}>영상 속 상품</span>
+                      <span style={{ fontSize: 10, color: '#6B7280' }}>{t('shorts.featuredProduct')}</span>
                     </div>
 
                     {/* Main row */}
@@ -526,7 +526,7 @@ export default function ShortsPage() {
               {/* === SWIPE HINT === */}
               <div className="absolute bottom-3 left-0 right-0 z-20 flex flex-col items-center gap-1">
                 <ChevronUp className="w-4 h-4 text-white/50 animate-bounce" />
-                <span className="text-[11px] text-white/40 font-medium">위로 스와이프 · 다음 쇼츠</span>
+                <span className="text-[11px] text-white/40 font-medium">{t('shorts.swipeNext')}</span>
               </div>
             </div>
           )

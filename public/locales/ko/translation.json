@@ -2177,5 +2177,12 @@
     "genericSolution": "잠시 후 다시 시도해주세요.",
     "fallbackSolution": "문제가 지속되면 고객센터로 문의해주세요.",
     "docTitle": "결제 실패 - 유어딜"
+  },
+  "shorts": {
+    "empty": "아직 쇼츠가 없습니다",
+    "emptySub": "셀러들의 쇼츠를 기다려주세요",
+    "toLive": "라이브 방송 입장하기",
+    "swipeNext": "위로 스와이프 · 다음 쇼츠",
+    "featuredProduct": "영상 속 상품"
   }
 }

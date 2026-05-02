@@ -2177,5 +2177,12 @@
     "genericSolution": "请稍后再试。",
     "fallbackSolution": "如果问题持续,请联系客户支持。",
     "docTitle": "支付失败 - UR·DEAL"
+  },
+  "shorts": {
+    "empty": "暂无短视频",
+    "emptySub": "请期待卖家的短视频",
+    "toLive": "进入直播",
+    "swipeNext": "向上滑动 · 下一个短视频",
+    "featuredProduct": "视频中出现的商品"
   }
 }

@@ -2177,5 +2177,12 @@
     "genericSolution": "Please try again later.",
     "fallbackSolution": "If the problem persists, please contact customer support.",
     "docTitle": "Payment Failed - UR·DEAL"
+  },
+  "shorts": {
+    "empty": "No shorts yet",
+    "emptySub": "Stay tuned for sellers' shorts",
+    "toLive": "Join the live stream",
+    "swipeNext": "Swipe up for next shorts",
+    "featuredProduct": "Featured in this video"
   }
 }

@@ -2177,5 +2177,12 @@
     "genericSolution": "しばらく後にもう一度お試しください。",
     "fallbackSolution": "問題が続く場合はカスタマーサポートまでお問い合わせください。",
     "docTitle": "決済失敗 - UR·DEAL"
+  },
+  "shorts": {
+    "empty": "まだショートがありません",
+    "emptySub": "セラーのショートをお待ちください",
+    "toLive": "ライブ配信に入る",
+    "swipeNext": "上にスワイプ · 次のショート",
+    "featuredProduct": "動画に登場した商品"
   }
 }
