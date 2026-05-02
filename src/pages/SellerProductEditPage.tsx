@@ -19,24 +19,8 @@ import {
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 
-interface LiveStream {
-  id: number
-  title: string
-  status: string
-}
-
-interface Product {
-  id: number
-  name: string
-  description: string
-  price: number
-  stock: number
-  image_url: string
-  live_stream_id: number | null
-  is_active: boolean
-  detail_images?: string | string[]
-  product_type?: string // 'live' or 'featured'
-}
+// 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-edit/types 로 추출.
+import type { LiveStream, Product } from './seller-product-edit/types'
 
 export default function SellerProductEditPage() {
   const { t } = useTranslation()

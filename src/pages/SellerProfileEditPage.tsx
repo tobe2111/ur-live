@@ -22,26 +22,8 @@ import {
   ExternalLink
 } from 'lucide-react'
 
-interface SellerProfile {
-  id: number
-  username: string
-  name: string
-  email: string
-  phone?: string
-  business_name?: string
-  business_number?: string
-  company_name?: string
-  profile_image?: string
-  bio?: string
-  sns_instagram?: string
-  sns_youtube?: string
-  sns_facebook?: string
-  sns_twitter?: string
-  website_url?: string
-  kakao_chat_link?: string
-  status: string
-  created_at: string
-}
+// 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-profile-edit/types 로 추출.
+import type { SellerProfile } from './seller-profile-edit/types'
 
 export default function SellerProfileEditPage() {
   const { t } = useTranslation()

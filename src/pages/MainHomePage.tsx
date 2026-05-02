@@ -5,114 +5,19 @@ import api from '@/lib/api'
 import { isLoggedInSync } from '@/utils/auth'
 import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
-import SharePrompt from '@/components/SharePrompt'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
 import { formatNumber } from '@/utils/format'
+import RecentlyViewed from './main-home/RecentlyViewed'
+import InvitePrompt from './main-home/InvitePrompt'
+import { REGIONS, CATEGORIES } from './main-home/constants'
+import { detectRegionFromCoords, getThumb, disc, fmtEnd } from './main-home/utils'
+import type { LiveStream, Product } from './main-home/types'
+
+// 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils + RecentlyViewed/InvitePrompt
+//   를 ./main-home/ 디렉토리로 추출.
 // 🛡️ 2026-04-22: HeroBanner 통합 — 어드민 등록 배너가 메인페이지에 표시되도록 연결
 // 이전: HeroBanner 컴포넌트 존재하지만 MainHomePage 에 import 안 됨 → 어드민 배너 등록해도 메인에 안 뜸
 // 🛡️ 2026-04-22: HeroBanner 별도 섹션 제거. 어드민 배너를 Region Hero 의 배경 이미지로 사용 (풀스크린).
-
-interface LiveStream {
-  id: number; title: string; youtube_video_id?: string; status: string
-  seller_name?: string; viewer_count?: number; scheduled_at?: string
-  current_product?: { id: number; name: string; price: number } | null
-  thumbnail_url?: string; image_url?: string
-}
-
-interface Product {
-  id: number; name: string; price: number; original_price?: number; image_url?: string
-  discount_rate?: number; seller_name?: string; category?: string
-  group_buy_target?: number; group_buy_current?: number; group_buy_deadline?: string
-  sold_count?: number; avg_rating?: number; review_count?: number; restaurant_address?: string
-}
-
-const REGIONS = ['강남 · 역삼', '홍대 · 합정', '성수 · 건대', '여의도', '판교 · 분당', '부산', '대구', '제주']
-
-// 좌표 → 가장 가까운 REGIONS 항목 매핑 (러프한 bounding box, 에너지 적게)
-const REGION_COORDS: Array<{ name: string; lat: number; lng: number }> = [
-  { name: '강남 · 역삼', lat: 37.498, lng: 127.028 },
-  { name: '홍대 · 합정', lat: 37.556, lng: 126.923 },
-  { name: '성수 · 건대', lat: 37.544, lng: 127.056 },
-  { name: '여의도', lat: 37.521, lng: 126.924 },
-  { name: '판교 · 분당', lat: 37.395, lng: 127.110 },
-  { name: '부산', lat: 35.180, lng: 129.075 },
-  { name: '대구', lat: 35.872, lng: 128.601 },
-  { name: '제주', lat: 33.499, lng: 126.531 },
-]
-function detectRegionFromCoords(lat: number, lng: number): string | null {
-  let closest: { name: string; dist: number } | null = null
-  for (const r of REGION_COORDS) {
-    const dLat = lat - r.lat
-    const dLng = lng - r.lng
-    const dist = dLat * dLat + dLng * dLng // squared distance 로 충분 (정렬용)
-    if (!closest || dist < closest.dist) closest = { name: r.name, dist }
-  }
-  // 0.5도 이내 (대략 55km) 만 유효
-  if (closest && closest.dist < 0.25) return closest.name
-  return null
-}
-const CATEGORIES = [
-  { k: 'fashion', l: '패션', i: '👗', bg: '#FCE7F3' },
-  { k: 'beauty', l: '뷰티', i: '💄', bg: '#FEF3C7' },
-  { k: 'food', l: '식품', i: '🍜', bg: '#FEE2E2' },
-  { k: 'living', l: '리빙', i: '🏠', bg: '#DBEAFE' },
-  { k: 'digital', l: '디지털', i: '📱', bg: '#E0E7FF' },
-  { k: 'kids', l: '키즈', i: '🧸', bg: '#D1FAE5' },
-  { k: 'sports', l: '스포츠', i: '⚽', bg: '#FEF3C7' },
-  { k: 'culture', l: '문화', i: '🎫', bg: '#F3E8FF' },
-  { k: 'travel', l: '여행', i: '✈️', bg: '#CFFAFE' },
-  { k: 'pet', l: '반려', i: '🐕', bg: '#FED7AA' },
-]
-
-function getThumb(s: LiveStream) {
-  return s.thumbnail_url || s.image_url || (s.youtube_video_id ? `https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg` : null)
-}
-function disc(p: number, op?: number) { return op && op > p ? Math.round((1 - p / op) * 100) : 0 }
-function fmtEnd(deadline?: string) {
-  if (!deadline) return ''
-  const min = Math.max(0, Math.floor((new Date(deadline).getTime() - Date.now()) / 60000))
-  if (min < 60) return `${min}분 후 마감`
-  if (min < 1440) return `${Math.floor(min / 60)}시간 ${min % 60}분 후 마감`
-  return `${Math.floor(min / 1440)}일 후 마감`
-}
-
-function RecentlyViewed() {
-  const navigate = useNavigate()
-  const [items, setItems] = useState<Array<{ id: number; name: string; price?: number; image?: string }>>([])
-  useEffect(() => { try { setItems(JSON.parse(localStorage.getItem('recently_viewed') || '[]').slice(0, 10)) } catch {} }, [])
-  if (items.length === 0) return null
-  return (
-    <div className="px-4 py-6">
-      <h2 className="text-[15px] font-bold text-white mb-3">최근 본 상품</h2>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-        {items.map(p => (
-          <button type="button" key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-28 cursor-pointer text-left">
-            <div className="aspect-square bg-[#1A1A1A] rounded-xl overflow-hidden">
-              {p.image && <img src={p.image} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />}
-            </div>
-            <p className="text-xs text-gray-300 mt-1.5 truncate">{p.name}</p>
-            <p className="text-xs font-bold text-white">{p.price?.toLocaleString()}원</p>
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function InvitePrompt() {
-  const [show, setShow] = useState(false)
-  useEffect(() => {
-    const userId = localStorage.getItem('user_id')
-    if (!userId || localStorage.getItem('invite_prompt_shown') === '1') return
-    const recent = localStorage.getItem('recently_viewed')
-    if (!recent || JSON.parse(recent).length <= 1) {
-      setTimeout(() => setShow(true), 3000)
-      localStorage.setItem('invite_prompt_shown', '1')
-    }
-  }, [])
-  if (!show) return null
-  return <SharePrompt title="친구를 초대해보세요! 🎉" message="친구에게 유어딜을 소개하면 함께 혜택을 받을 수 있어요" shareTitle="유어딜 - 라이브 커머스" shareDescription="라이브 방송으로 만나는 최저가 특가 상품!" shareLink="/" shareButtonText="유어딜 보러가기" reward="친구 초대 시 500딜 적립!" onClose={() => setShow(false)} />
-}
 
 export default function MainHomePage() {
   const navigate = useNavigate()

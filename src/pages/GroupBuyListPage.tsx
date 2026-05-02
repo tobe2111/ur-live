@@ -17,78 +17,11 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
+import { SORT_LABELS, STATUS_BADGES } from './group-buy-list/constants'
+import { formatTimeLeft, calcDiscountRate } from './group-buy-list/utils'
+import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
 
-interface GroupBuyProduct {
-  id: number
-  name: string
-  price: number
-  original_price?: number
-  image_url?: string
-  category?: string
-  seller_name?: string
-  restaurant_name?: string
-  restaurant_address?: string
-  group_buy_target?: number
-  group_buy_current?: number
-  group_buy_deadline?: string
-  group_buy_status?: string
-  sold_count?: number
-  created_at?: string
-}
-
-interface CommunityGroupBuy {
-  id: number
-  creator_name: string
-  restaurant_name: string
-  restaurant_address?: string
-  proposed_price: number
-  deposit_per_person: number
-  target_count: number
-  current_count: number
-  total_deposited: number
-  status: string
-  invite_code: string
-  expires_at?: string
-  created_at?: string
-}
-
-type MainTab = 'seller' | 'community'
-type CategoryFilter = 'all' | 'meal_voucher' | 'general'
-type SortOption = 'popular' | 'deadline' | 'newest'
-
-const SORT_LABELS: Record<SortOption, string> = {
-  popular: '인기순',
-  deadline: '마감임박순',
-  newest: '신규순',
-}
-
-const STATUS_BADGES: Record<string, { label: string; className: string }> = {
-  proposed: { label: '모집중', className: 'bg-pink-500 text-white' },
-  negotiating: { label: '협상중', className: 'bg-amber-500 text-white' },
-  confirmed: { label: '확정', className: 'bg-emerald-500 text-white' },
-  achieved: { label: '달성', className: 'bg-blue-500 text-white' },
-  failed: { label: '마감', className: 'bg-gray-400 text-white' },
-  refunded: { label: '환불됨', className: 'bg-gray-400 text-white' },
-}
-
-// 남은 시간 포맷
-function formatTimeLeft(deadline?: string): string {
-  if (!deadline) return ''
-  const diff = new Date(deadline).getTime() - Date.now()
-  if (diff <= 0) return '마감'
-  const days = Math.floor(diff / 86_400_000)
-  const hours = Math.floor((diff % 86_400_000) / 3_600_000)
-  const mins = Math.floor((diff % 3_600_000) / 60_000)
-  if (days > 0) return `${days}일 ${hours}시간 남음`
-  if (hours > 0) return `${hours}시간 ${mins}분 남음`
-  return `${mins}분 남음`
-}
-
-// 최대 할인율 계산
-function calcDiscountRate(p: GroupBuyProduct): number {
-  if (!p.original_price || p.original_price <= p.price) return 0
-  return Math.round((1 - p.price / p.original_price) * 100)
-}
+// 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
 export default function GroupBuyListPage() {
   const { t } = useTranslation()
