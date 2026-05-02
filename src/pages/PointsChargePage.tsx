@@ -116,8 +116,8 @@ export default function PointsChargePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400 dark:text-gray-500" />
       </div>
     )
   }
@@ -126,20 +126,20 @@ export default function PointsChargePage() {
   const bonusPoints = selected?.bonus ?? 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
       <SEO title="딜 충전 - 유어딜" description="딜 포인트를 충전하세요" url="/points/charge" noindex />
 
       {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="mx-auto max-w-md flex items-center justify-between px-4 h-[52px]">
           <button
             onClick={() => navigate(-1)}
             className="w-9 h-9 flex items-center justify-center"
             aria-label="뒤로가기"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-900" />
+            <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[15px] font-bold text-gray-900">딜 충전</h1>
+          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">딜 충전</h1>
           <div className="w-9" />
         </div>
       </header>
@@ -167,8 +167,8 @@ export default function PointsChargePage() {
             {/* 충전 금액 선택 */}
             <section>
               <div className="flex items-baseline justify-between mb-3 px-1">
-                <h2 className="text-[14px] font-bold text-gray-900">충전 금액</h2>
-                <span className="text-[11px] text-gray-500">원하는 금액을 선택하세요</span>
+                <h2 className="text-[14px] font-bold text-gray-900 dark:text-white">충전 금액</h2>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500">원하는 금액을 선택하세요</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {options.map(opt => {
@@ -181,7 +181,7 @@ export default function PointsChargePage() {
                       className={`relative flex flex-col items-center justify-center py-5 rounded-2xl border-2 transition-all ${
                         isSelected
                           ? 'border-pink-500 bg-pink-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
+                          : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:border-gray-300'
                       }`}
                     >
                       {isSelected && (
@@ -194,11 +194,11 @@ export default function PointsChargePage() {
                           +{opt.bonus?.toLocaleString()}딜
                         </span>
                       )}
-                      <p className={`text-[18px] font-extrabold ${isSelected ? 'text-pink-600' : 'text-gray-900'}`}>
+                      <p className={`text-[18px] font-extrabold ${isSelected ? 'text-pink-600' : 'text-gray-900 dark:text-white'}`}>
                         {formatNumber(opt.amount)}
                         <span className="text-[12px] font-bold ml-0.5">원</span>
                       </p>
-                      <p className="text-[11px] font-semibold text-gray-500 mt-1">
+                      <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
                         {formatNumber(opt.points)}딜
                       </p>
                     </button>
@@ -209,21 +209,21 @@ export default function PointsChargePage() {
 
             {/* 충전 후 잔액 미리보기 */}
             {selected && (
-              <section className="bg-white rounded-2xl border border-gray-100 p-4">
+              <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4">
                 <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-gray-500">현재 잔액</span>
-                  <span className="font-semibold text-gray-900">{formatNumber(balance)}딜</span>
+                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">현재 잔액</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{formatNumber(balance)}딜</span>
                 </div>
                 <div className="flex items-center justify-between text-[13px] mt-2">
-                  <span className="text-gray-500">충전 딜</span>
+                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">충전 딜</span>
                   <span className="font-semibold text-pink-600">
                     +{formatNumber(pointsPreview)}딜
                     {bonusPoints > 0 && <span className="text-amber-600 ml-1">(+{formatNumber(bonusPoints)}딜 보너스)</span>}
                   </span>
                 </div>
-                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-[13px] font-bold text-gray-900">충전 후 잔액</span>
-                  <span className="text-[18px] font-extrabold text-gray-900">
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
+                  <span className="text-[13px] font-bold text-gray-900 dark:text-white">충전 후 잔액</span>
+                  <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">
                     {formatNumber(balance + pointsPreview + bonusPoints)}
                     <span className="text-[13px] font-bold ml-0.5">딜</span>
                   </span>
@@ -247,11 +247,11 @@ export default function PointsChargePage() {
         {/* 결제 위젯 */}
         {showWidget && (
           <>
-            <section className="bg-white rounded-2xl border border-gray-100 p-4">
+            <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4">
               <div className="flex items-center justify-between">
-                <span className="text-[12px] text-gray-500">충전 내역</span>
+                <span className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">충전 내역</span>
                 <div className="text-right">
-                  <p className="text-[16px] font-extrabold text-gray-900">
+                  <p className="text-[16px] font-extrabold text-gray-900 dark:text-white">
                     {formatNumber(selected?.amount)}
                     <span className="text-[12px] font-bold ml-0.5">원</span>
                   </p>
@@ -262,8 +262,8 @@ export default function PointsChargePage() {
               </div>
             </section>
 
-            <div id="charge-payment-method" className="min-h-[200px] bg-white rounded-2xl border border-gray-100 p-2" />
-            <div id="charge-agreement" className="min-h-[80px] bg-white rounded-2xl border border-gray-100 p-2" />
+            <div id="charge-payment-method" className="min-h-[200px] bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-2" />
+            <div id="charge-agreement" className="min-h-[80px] bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-2" />
 
             <p className="text-[11px] text-center text-amber-700 font-semibold">
               결제 완료 시 충전된 딜은 환불이 불가합니다.
@@ -274,7 +274,7 @@ export default function PointsChargePage() {
 
       {/* 하단 고정 CTA */}
       <div
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30"
+        className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] z-30"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <div className="mx-auto max-w-md px-4 pt-3">
@@ -282,7 +282,7 @@ export default function PointsChargePage() {
             <div className="flex gap-2">
               <button
                 onClick={() => { setShowWidget(false); widgetsRef.current = null; orderRef.current = null }}
-                className="w-24 py-3.5 bg-gray-100 text-gray-700 text-[14px] font-bold rounded-full hover:bg-gray-200 transition-colors"
+                className="w-24 py-3.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 text-[14px] font-bold rounded-full hover:bg-gray-200 transition-colors"
               >
                 이전
               </button>

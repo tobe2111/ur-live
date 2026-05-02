@@ -30,12 +30,12 @@ export const CartHeader = React.memo(function CartHeader({
   return (
     <>
       {/* v4 sticky white header: X left, title center, spacer right */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+      <div className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
           <button type="button" onClick={handleBack} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
-            <X size={22} className="text-gray-900" aria-hidden="true" />
+            <X size={22} className="text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
-          <h1 className="text-[16px] font-extrabold text-gray-900">
+          <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
             장바구니{' '}
             {itemCount > 0 && <span className="text-pink-500">{itemCount}</span>}
           </h1>
@@ -45,7 +45,7 @@ export const CartHeader = React.memo(function CartHeader({
 
       {/* Select-all row */}
       {itemCount > 0 && (
-        <div className="bg-gray-50 border-b border-gray-100">
+        <div className="bg-gray-50 dark:bg-[#121212] border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="mx-auto max-w-md flex items-center justify-between px-4 py-2.5">
             <button
               type="button"
@@ -57,7 +57,7 @@ export const CartHeader = React.memo(function CartHeader({
                 className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors ${
                   allSelected
                     ? 'bg-pink-500 border-pink-500'
-                    : 'bg-white border-gray-300 group-hover:border-gray-400'
+                    : 'bg-white dark:bg-[#0A0A0A] border-gray-300 group-hover:border-gray-400'
                 }`}
               >
                 {allSelected && (
@@ -66,10 +66,10 @@ export const CartHeader = React.memo(function CartHeader({
                   </svg>
                 )}
               </span>
-              <span className="text-[13px] font-semibold text-gray-900">
+              <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
                 전체선택
               </span>
-              <span className="text-[12px] font-medium text-gray-500">
+              <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
                 {selectedCount}/{itemCount}
               </span>
             </button>
@@ -77,11 +77,11 @@ export const CartHeader = React.memo(function CartHeader({
             <button
               onClick={onDeleteSelected}
               disabled={selectedCount === 0}
-              className="text-[13px] font-semibold text-gray-600 hover:text-red-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:text-red-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
             >
               선택삭제
               {selectedCount > 0 && (
-                <span className="ml-1 text-gray-400">({selectedCount})</span>
+                <span className="ml-1 text-gray-400 dark:text-gray-500">({selectedCount})</span>
               )}
             </button>
           </div>

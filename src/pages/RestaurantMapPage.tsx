@@ -647,25 +647,25 @@ export default function RestaurantMapPage() {
   }
 
   return (
-    <div className="relative h-screen w-full bg-gray-100 overflow-hidden pb-16">
+    <div className="relative h-screen w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
       <SEO title="맛집 지도" description="유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인" url="/restaurant-map" />
 
       {/* ═══ 풀스크린 카카오맵 (배경) ═══
           🛡️ 2026-04-30 CLS: mapRef 컨테이너 항상 렌더 → SDK load 시 placeholder
             swap 없이 inset-0 에 카카오맵이 그려짐. layout shift 0. */}
-      <div ref={mapRef} className="absolute inset-0 bg-gray-100" />
+      <div ref={mapRef} className="absolute inset-0 bg-gray-100 dark:bg-[#1A1A1A]" />
       {!(sdkLoaded && window.kakao?.maps) && (
-        <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 bg-gray-100 dark:bg-[#1A1A1A] flex flex-col items-center justify-center pointer-events-none">
           <MapPin className="w-12 h-12 text-gray-300 mb-3" />
           {sdkError ? (
             <>
-              <p className="text-sm text-gray-500 font-medium">지도를 불러올 수 없습니다</p>
-              <p className="text-xs text-gray-400 mt-1">아래 시트에서 맛집을 확인하세요</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium">지도를 불러올 수 없습니다</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">아래 시트에서 맛집을 확인하세요</p>
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-500 font-medium">지도를 불러오는 중...</p>
-              <p className="text-xs text-gray-400 mt-1">카카오맵 SDK 로딩 중</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium">지도를 불러오는 중...</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">카카오맵 SDK 로딩 중</p>
             </>
           )}
         </div>
@@ -679,10 +679,10 @@ export default function RestaurantMapPage() {
             aria-label="뒤로가기"
             className="w-10 h-10 flex items-center justify-center rounded-full bg-white/95 backdrop-blur-md shadow-md shrink-0"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
+            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <div className="flex-1 relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -691,21 +691,21 @@ export default function RestaurantMapPage() {
               onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); (e.target as HTMLInputElement).blur() } }}
               placeholder="맛집 이름·지역 검색"
               aria-label="검색"
-              className="w-full pl-10 pr-9 py-2.5 bg-white/95 backdrop-blur-md rounded-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-md"
+              className="w-full pl-10 pr-9 py-2.5 bg-white/95 backdrop-blur-md rounded-full text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-md"
             />
             {search && (
               <button onClick={() => setSearch('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2">
-                <X className="w-4 h-4 text-gray-400" />
+                <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               </button>
             )}
             {/* 🛡️ Phase 5: 검색 히스토리 dropdown — focus 시 + 입력값 비어있을 때만 */}
             {searchFocused && !search && searchHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-10">
-                <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100">
-                  <span className="text-[11px] font-bold text-gray-500 uppercase">최근 검색</span>
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden z-10">
+                <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A]">
+                  <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">최근 검색</span>
                   <button
                     onClick={() => { setSearchHistory([]); storage.setJSON('restaurant_search_history', []) }}
-                    className="text-[11px] text-gray-400 hover:text-gray-600"
+                    className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300"
                   >
                     전체 삭제
                   </button>
@@ -715,9 +715,9 @@ export default function RestaurantMapPage() {
                     <button
                       key={q}
                       onMouseDown={(e) => { e.preventDefault(); setSearch(q); pushSearchHistory(q) }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212] flex items-center gap-2"
                     >
-                      <Search className="w-3 h-3 text-gray-400 shrink-0" />
+                      <Search className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
                       <span className="truncate">{q}</span>
                     </button>
                   ))}
@@ -731,9 +731,9 @@ export default function RestaurantMapPage() {
       {/* ═══ 선택된 맛집 카드 (지도 위 floating, sheet peek 일 때만 표시) ═══ */}
       {selected && sheetSnap === 'peek' && (
         <div className="absolute left-3 right-3 z-30" style={{ bottom: 'calc(18vh + 80px)' }}>
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-3.5 relative">
-            <button onClick={() => setSelected(null)} aria-label="닫기" className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100">
-              <X className="w-3.5 h-3.5 text-gray-500" />
+          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-xl border border-gray-100 dark:border-[#1A1A1A] p-3.5 relative">
+            <button onClick={() => setSelected(null)} aria-label="닫기" className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#1A1A1A]">
+              <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 dark:text-gray-500" />
             </button>
             <div className="flex gap-3 pr-6">
               {selected.image_url ? (
@@ -744,7 +744,7 @@ export default function RestaurantMapPage() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
+                <p className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-1.5">
                   <span className="truncate">{selected.restaurant_name}</span>
                   {selected.seller_id && liveSellerIds.has(selected.seller_id) && (
                     <span className="inline-flex items-center gap-0.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0">
@@ -753,7 +753,7 @@ export default function RestaurantMapPage() {
                   )}
                 </p>
                 <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="text-base font-extrabold text-gray-900">{selected.price?.toLocaleString()}원</span>
+                  <span className="text-base font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
                   {selected.original_price > selected.price && (
                     <span className="text-[10px] bg-red-500 text-white font-bold px-1 py-0.5 rounded">
                       -{Math.round((1 - selected.price / selected.original_price) * 100)}%
@@ -776,7 +776,7 @@ export default function RestaurantMapPage() {
           🛡️ 2026-04-30 v2: 실시간 드래그 팔로잉 — translateY 로 손가락 따라가기.
           dragDeltaY 가 양수면 아래로 (시트 축소), 음수면 위로 (시트 확장). */}
       <div
-        className="absolute left-0 right-0 bottom-0 z-30 bg-white rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col"
+        className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col"
         style={{
           top: sheetTopByState[sheetSnap],
           transform: dragStartY.current != null ? `translateY(${Math.max(-200, Math.min(400, dragDeltaY))}px)` : 'none',
@@ -806,7 +806,7 @@ export default function RestaurantMapPage() {
         </div>
 
         {/* Sticky filter row + count + sort */}
-        <div className="px-3 pb-2 border-b border-gray-100 shrink-0">
+        <div className="px-3 pb-2 border-b border-gray-100 dark:border-[#1A1A1A] shrink-0">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setFilterSheetOpen(true)}
@@ -814,7 +814,7 @@ export default function RestaurantMapPage() {
               className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
                 activeFilterCount > 0
                   ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-                  : 'bg-white text-gray-700 border border-gray-200'
+                  : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A2A2A]'
               }`}
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -853,7 +853,7 @@ export default function RestaurantMapPage() {
                   className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
                     voucherType === t.key
                       ? 'bg-gray-900 text-white'
-                      : 'bg-gray-50 text-gray-600 border border-gray-200'
+                      : 'bg-gray-50 dark:bg-[#121212] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'
                   }`}
                 >
                   <span>{t.emoji}</span>
@@ -865,8 +865,8 @@ export default function RestaurantMapPage() {
 
           <div className="flex items-center justify-between mt-2 px-1">
             <div className="flex items-center gap-2">
-              <span className="text-[12px] text-gray-500">
-                <span className="font-bold text-gray-900">{filtered.length}</span>곳
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                <span className="font-bold text-gray-900 dark:text-white">{filtered.length}</span>곳
                 {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">📍 내 위치 기준</span>}
               </span>
               {favorites.length > 0 && (
@@ -875,7 +875,7 @@ export default function RestaurantMapPage() {
                   className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
                     showFavoritesOnly
                       ? 'bg-pink-500 text-white border-pink-500'
-                      : 'bg-white text-pink-500 border-pink-200'
+                      : 'bg-white dark:bg-[#0A0A0A] text-pink-500 border-pink-200'
                   }`}
                 >
                   <Heart className="w-2.5 h-2.5" fill={showFavoritesOnly ? 'currentColor' : 'none'} />
@@ -884,12 +884,12 @@ export default function RestaurantMapPage() {
               )}
             </div>
             <div className="flex items-center gap-1">
-              <ArrowUpDown className="w-3 h-3 text-gray-400" />
+              <ArrowUpDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
                 aria-label="정렬"
-                className="text-[12px] font-semibold text-gray-700 bg-transparent focus:outline-none"
+                className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-transparent focus:outline-none"
               >
                 {userLoc && <option value="distance">거리순</option>}
                 <option value="discount">할인율순</option>
@@ -906,18 +906,18 @@ export default function RestaurantMapPage() {
             /* 선택된 맛집 디테일 카드 (sheet mid/full 일 때 list 위에 표시) */
             <div className="bg-pink-50 border-2 border-pink-300 rounded-2xl p-4 mb-3 relative">
               <button onClick={() => setSelected(null)} aria-label="선택 해제" className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white/80">
-                <X className="w-3.5 h-3.5 text-gray-500" />
+                <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 dark:text-gray-500" />
               </button>
               <div className="flex gap-3 pr-6">
                 {selected.image_url ? (
                   <img src={selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
                 ) : (
-                  <div className="w-20 h-20 rounded-xl bg-white flex items-center justify-center shrink-0">
+                  <div className="w-20 h-20 rounded-xl bg-white dark:bg-[#0A0A0A] flex items-center justify-center shrink-0">
                     <span className="text-2xl">🍽️</span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 text-[15px] flex items-center gap-1.5">
+                  <p className="font-bold text-gray-900 dark:text-white text-[15px] flex items-center gap-1.5">
                     <span className="truncate">{selected.restaurant_name}</span>
                     {selected.seller_id && liveSellerIds.has(selected.seller_id) && (
                       <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0">
@@ -925,7 +925,7 @@ export default function RestaurantMapPage() {
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-1 flex items-center gap-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1 flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" />
                     {selected.restaurant_address}
                     {userLoc && selected.restaurant_lat && selected.restaurant_lng && (
@@ -935,10 +935,10 @@ export default function RestaurantMapPage() {
                     )}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-lg font-extrabold text-gray-900">{selected.price?.toLocaleString()}원</span>
+                    <span className="text-lg font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
                     {selected.original_price > selected.price && (
                       <>
-                        <span className="text-xs text-gray-400 line-through">{formatNumber(selected.original_price)}원</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
                         <span className="text-xs bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-md">
                           -{Math.round((1 - selected.price / selected.original_price) * 100)}%
                         </span>
@@ -952,13 +952,13 @@ export default function RestaurantMapPage() {
                   onClick={() => toggleFavorite(selected.id)}
                   aria-label={favorites.includes(selected.id) ? '즐겨찾기 해제' : '즐겨찾기'}
                   className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
-                    favorites.includes(selected.id) ? 'bg-pink-100 text-pink-500' : 'bg-white text-gray-400'
+                    favorites.includes(selected.id) ? 'bg-pink-100 text-pink-500' : 'bg-white dark:bg-[#0A0A0A] text-gray-400 dark:text-gray-500'
                   }`}
                 >
                   <Heart className="w-4 h-4" fill={favorites.includes(selected.id) ? 'currentColor' : 'none'} />
                 </button>
                 {selected.restaurant_phone && (
-                  <a href={`tel:${selected.restaurant_phone}`} aria-label="전화" className="flex items-center justify-center w-10 h-10 bg-white rounded-xl text-gray-700">
+                  <a href={`tel:${selected.restaurant_phone}`} aria-label="전화" className="flex items-center justify-center w-10 h-10 bg-white dark:bg-[#0A0A0A] rounded-xl text-gray-700 dark:text-gray-200">
                     <Phone className="w-4 h-4" />
                   </a>
                 )}
@@ -997,12 +997,12 @@ export default function RestaurantMapPage() {
                  실제 결과 카드와 같은 높이 (90px) 를 유지해 layout shift 0 */
               <div className="space-y-3 pb-8" aria-hidden="true">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex gap-3 p-3.5 rounded-2xl bg-white border border-gray-100">
-                    <div className="w-[72px] h-[72px] rounded-xl bg-gray-100 animate-pulse shrink-0" />
+                  <div key={i} className="flex gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1A1A1A]">
+                    <div className="w-[72px] h-[72px] rounded-xl bg-gray-100 dark:bg-[#1A1A1A] animate-pulse shrink-0" />
                     <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
-                      <div className="h-3.5 w-2/3 rounded bg-gray-100 animate-pulse" />
-                      <div className="h-3 w-4/5 rounded bg-gray-100 animate-pulse" />
-                      <div className="h-4 w-1/3 rounded bg-gray-100 animate-pulse mt-1" />
+                      <div className="h-3.5 w-2/3 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
+                      <div className="h-3 w-4/5 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
+                      <div className="h-4 w-1/3 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse mt-1" />
                     </div>
                   </div>
                 ))}
@@ -1010,8 +1010,8 @@ export default function RestaurantMapPage() {
             ) : filtered.length === 0 ? (
               <div className="text-center py-16">
                 <MapPin className="w-14 h-14 text-gray-200 mx-auto mb-4" />
-                <p className="text-gray-900 font-bold">맛집을 찾지 못했어요</p>
-                <p className="text-sm text-gray-400 mt-1">다른 지역이나 검색어를 시도해보세요</p>
+                <p className="text-gray-900 dark:text-white font-bold">맛집을 찾지 못했어요</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">다른 지역이나 검색어를 시도해보세요</p>
               </div>
             ) : (
               <div className="space-y-3 pb-8">
@@ -1024,7 +1024,7 @@ export default function RestaurantMapPage() {
                       className={`w-full flex gap-3 p-3.5 rounded-2xl text-left transition-all ${
                         selected?.id === r.id
                           ? 'bg-pink-50 border-2 border-pink-300 shadow-sm'
-                          : 'bg-white border border-gray-100 hover:shadow-md'
+                          : 'bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1A1A1A] hover:shadow-md'
                       }`}
                     >
                       {r.image_url ? (
@@ -1036,14 +1036,14 @@ export default function RestaurantMapPage() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="font-bold text-gray-900 text-sm truncate">{r.restaurant_name}</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{r.restaurant_name}</p>
                           {discount > 0 && (
                             <span className="text-[10px] bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-md shrink-0">
                               -{discount}%
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-0.5 truncate flex items-center gap-0.5">
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
                           <MapPin className="w-3 h-3 shrink-0" />
                           {r.restaurant_address || '주소 미등록'}
                           {userLoc && r.restaurant_lat && r.restaurant_lng && (
@@ -1052,11 +1052,11 @@ export default function RestaurantMapPage() {
                             </span>
                           )}
                         </p>
-                        <p className="text-[11px] text-gray-400 mt-0.5 truncate">{r.name}</p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{r.name}</p>
                         <div className="flex items-baseline gap-1.5 mt-1.5">
-                          <span className="text-base font-extrabold text-gray-900">{r.price?.toLocaleString()}원</span>
+                          <span className="text-base font-extrabold text-gray-900 dark:text-white">{r.price?.toLocaleString()}원</span>
                           {r.original_price > r.price && (
-                            <span className="text-xs text-gray-400 line-through">{formatNumber(r.original_price)}원</span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
                           )}
                         </div>
                       </div>

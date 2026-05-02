@@ -121,20 +121,20 @@ export default function ReferralSection({
   const tierPreview = tiers.map(t => `${t.count}명: ${t.discount}%할인`).join(' → ')
 
   return (
-    <div className="mx-4 mb-3 bg-white rounded-xl border border-gray-200 p-4">
+    <div className="mx-4 mb-3 bg-white dark:bg-[#0A0A0A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-4">
       {/* 헤더 */}
       <div className="flex items-center gap-2 mb-1.5">
-        <Gift className="w-4 h-4 text-gray-900" />
-        <h3 className="text-sm font-bold text-gray-900">공동구매로 더 싸게</h3>
+        <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white">공동구매로 더 싸게</h3>
       </div>
-      <p className="text-xs text-gray-600 leading-relaxed mb-3">
+      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
         친구를 초대할수록 더 큰 할인! 모집 인원에 따라 단계별 할인이 적용됩니다.
       </p>
 
       {/* 티어 미리보기 */}
-      <div className="mb-3 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5">
-        <p className="text-[11px] text-gray-500 mb-1">할인 단계</p>
-        <p className="text-xs font-semibold text-gray-900 leading-snug break-keep">
+      <div className="mb-3 rounded-lg bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] px-3 py-2.5">
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">할인 단계</p>
+        <p className="text-xs font-semibold text-gray-900 dark:text-white leading-snug break-keep">
           {tierPreview}
         </p>
       </div>
@@ -152,11 +152,11 @@ export default function ReferralSection({
       {/* 진행 중인 그룹 */}
       {loadingGroups ? (
         <div className="mt-3 space-y-2">
-          <div className="h-14 rounded-lg bg-gray-50 animate-pulse" />
+          <div className="h-14 rounded-lg bg-gray-50 dark:bg-[#121212] animate-pulse" />
         </div>
       ) : groups.length > 0 && (
         <div className="mt-4">
-          <p className="text-xs font-semibold text-gray-900 mb-2">진행 중인 공동구매</p>
+          <p className="text-xs font-semibold text-gray-900 dark:text-white mb-2">진행 중인 공동구매</p>
           <div className="space-y-2">
             {groups.map((g) => {
               const progress = g.target_count > 0 ? (g.current_count / g.target_count) * 100 : 0
@@ -166,20 +166,20 @@ export default function ReferralSection({
                 <button
                   key={g.invite_code}
                   onClick={() => navigate(`/referral/${g.invite_code}`)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white text-left hover:bg-gray-50 active:scale-[0.99] transition"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-left hover:bg-gray-50 dark:bg-[#121212] active:scale-[0.99] transition"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-1">
-                      <p className="text-xs font-semibold text-gray-900 truncate">
+                      <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
                         {g.creator_name}님의 공동구매
                       </p>
                       {unlockedDiscount > 0 && (
-                        <span className="text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-[#1A1A1A] px-1.5 py-0.5 rounded">
                           {unlockedDiscount}% 할인 중
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-gray-500">
+                    <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
                       <Users className="w-3 h-3" />
                       <span>{g.current_count}/{g.target_count}명</span>
                       {timeLeft && (
@@ -190,7 +190,7 @@ export default function ReferralSection({
                         </>
                       )}
                     </div>
-                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gray-900 rounded-full transition-all"
                         style={{ width: `${Math.min(100, progress)}%` }}
@@ -198,8 +198,8 @@ export default function ReferralSection({
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-0.5 shrink-0">
-                    <span className="text-[11px] font-bold text-gray-900">참여</span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                    <span className="text-[11px] font-bold text-gray-900 dark:text-white">참여</span>
+                    <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   </div>
                 </button>
               )

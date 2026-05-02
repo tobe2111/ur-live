@@ -15,15 +15,15 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
+      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212]">
         리뷰 작성하기
       </button>
     )
   }
 
   return (
-    <div className="mt-3 border border-gray-200 rounded-xl p-4">
-      <h3 className="text-sm font-bold text-gray-900 mb-1">리뷰 작성</h3>
+    <div className="mt-3 border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
+      <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">리뷰 작성</h3>
       <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center gap-2 bg-pink-50">
         <span className="text-sm">🎁</span>
         <span className="text-[11px] font-semibold text-pink-700">텍스트 50딜 · 사진 100딜 · 영상 200딜 리워드</span>
@@ -42,10 +42,10 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         rows={3}
         maxLength={2000}
         aria-label="리뷰 내용"
-        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 resize-none focus:outline-none focus:border-blue-400"
+        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white resize-none focus:outline-none focus:border-blue-400"
       />
       <div className="flex gap-2 mt-3">
-        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg font-medium">취소</button>
+        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 text-sm rounded-lg font-medium">취소</button>
         <button
           disabled={content.length < 10 || submitting}
           onClick={async () => {
@@ -122,15 +122,15 @@ export default function ProductReviews({ productId }: { productId: number | stri
 
   return (
     <div>
-      <h2 className="text-sm font-bold text-gray-900 mb-4">
-        리뷰 {totalCount > 0 && <span className="text-gray-500 font-normal">({totalCount})</span>}
+      <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
+        리뷰 {totalCount > 0 && <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 font-normal">({totalCount})</span>}
       </h2>
 
       {/* 평점 요약 */}
       {totalCount > 0 ? (
         <div className="flex items-center gap-4 mb-4">
           <div className="text-center">
-            <p className="text-3xl font-bold text-gray-900">{avgRating}</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">{avgRating}</p>
             <div className="flex gap-0.5 mt-1">
               {[1, 2, 3, 4, 5].map(s => (
                 <span key={s} className={`text-sm ${s <= Math.round(avgRating) ? 'text-yellow-400' : 'text-gray-200'}`}>
@@ -145,8 +145,8 @@ export default function ProductReviews({ productId }: { productId: number | stri
               const pct = totalCount > 0 ? (count / totalCount) * 100 : 0
               return (
                 <div key={s} className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 w-3">{s}</span>
-                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 dark:text-gray-500 w-3">{s}</span>
+                  <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -155,7 +155,7 @@ export default function ProductReviews({ productId }: { productId: number | stri
           </div>
         </div>
       ) : (
-        <p className="text-xs text-gray-500 py-6 text-center">아직 리뷰가 없습니다.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 py-6 text-center">아직 리뷰가 없습니다.</p>
       )}
 
       {/* 리뷰 작성 */}
@@ -176,11 +176,11 @@ export default function ProductReviews({ productId }: { productId: number | stri
                       <span key={s} className={`text-xs ${s <= r.rating ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
                     ))}
                   </div>
-                  <span className="text-[10px] text-gray-500">{r.user_name}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 dark:text-gray-500">{r.user_name}</span>
                 </div>
-                <span className="text-[10px] text-gray-500">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 dark:text-gray-500">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
               </div>
-              {r.content && <p className="text-xs text-gray-900 leading-relaxed">{r.content}</p>}
+              {r.content && <p className="text-xs text-gray-900 dark:text-white leading-relaxed">{r.content}</p>}
             </div>
           ))}
         </div>

@@ -212,24 +212,24 @@ export default function AddressManagementPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-20">
       <SEO title="배송지 관리 - 유어딜" description="배송지를 추가하고 관리하세요" url="/mypage/addresses" noindex />
       {/* ✅ UX H15 FIX: Daum Postcode script는 useEffect에서 1회만 로드 */}
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
+      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-gray-900 font-bold text-[15px]">배송지 관리</h1>
+          <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">배송지 관리</h1>
           <div className="w-6" />
         </div>
       </div>
@@ -238,7 +238,7 @@ export default function AddressManagementPage() {
         {/* 새 배송지 추가 버튼 */}
         <button
           onClick={openAddForm}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-4 text-[15px] font-semibold text-gray-500 transition-all hover:border-pink-500/50 hover:text-pink-500 mb-5 active:scale-[0.98] touch-manipulation"
+          className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212] py-4 text-[15px] font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 transition-all hover:border-pink-500/50 hover:text-pink-500 mb-5 active:scale-[0.98] touch-manipulation"
         >
           <Plus className="w-5 h-5" />
           <span>새 배송지 추가</span>
@@ -248,8 +248,8 @@ export default function AddressManagementPage() {
         {addresses.length === 0 ? (
           <div className="text-center py-16">
             <MapPin className="w-14 h-14 text-gray-300 mx-auto mb-4" />
-            <p className="text-[15px] text-gray-900">등록된 배송지가 없습니다.</p>
-            <p className="text-[13px] text-gray-500 mt-1">배송지를 추가해주세요.</p>
+            <p className="text-[15px] text-gray-900 dark:text-white">등록된 배송지가 없습니다.</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">배송지를 추가해주세요.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -259,7 +259,7 @@ export default function AddressManagementPage() {
                 className={`border rounded-2xl p-4 transition-all ${
                   address.is_default === 1
                     ? 'border-pink-500/40 bg-pink-50/30'
-                    : 'border-gray-200 bg-white'
+                    : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -270,36 +270,36 @@ export default function AddressManagementPage() {
                           {address.label}
                         </span>
                       )}
-                      <p className="text-[15px] font-semibold text-gray-900">{address.recipient_name}</p>
+                      <p className="text-[15px] font-semibold text-gray-900 dark:text-white">{address.recipient_name}</p>
                       {address.is_default === 1 && (
                         <span className="rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-semibold text-pink-500">
                           기본
                         </span>
                       )}
                     </div>
-                    <p className="text-[14px] text-gray-500 mb-1">{address.phone}</p>
-                    <p className="text-[14px] text-gray-700 leading-relaxed">
+                    <p className="text-[14px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">{address.phone}</p>
+                    <p className="text-[14px] text-gray-700 dark:text-gray-200 leading-relaxed">
                       [{address.postal_code}] {address.address}
                     </p>
                     {address.address_detail && (
-                      <p className="text-[14px] text-gray-700 leading-relaxed mt-0.5">
+                      <p className="text-[14px] text-gray-700 dark:text-gray-200 leading-relaxed mt-0.5">
                         {address.address_detail}
                       </p>
                     )}
                     {(address.delivery_note || address.entry_method === 'password' || address.entry_method === 'intercom' || address.entry_method === 'pickup_box') && (
-                      <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
+                      <div className="mt-2 pt-2 border-t border-gray-100 dark:border-[#1A1A1A] space-y-0.5">
                         {address.entry_method && address.entry_method !== 'free' && (
-                          <p className="text-[12px] text-gray-500">
-                            <span className="font-semibold text-gray-700">출입 · </span>
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                            <span className="font-semibold text-gray-700 dark:text-gray-200">출입 · </span>
                             {ENTRY_METHOD_OPTIONS.find(o => o.value === address.entry_method)?.label}
                             {address.entry_method === 'password' && address.entry_code && (
-                              <span className="text-gray-400"> (비번 등록됨)</span>
+                              <span className="text-gray-400 dark:text-gray-500"> (비번 등록됨)</span>
                             )}
                           </p>
                         )}
                         {address.delivery_note && (
-                          <p className="text-[12px] text-gray-500 line-clamp-2">
-                            <span className="font-semibold text-gray-700">메모 · </span>
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500 line-clamp-2">
+                            <span className="font-semibold text-gray-700 dark:text-gray-200">메모 · </span>
                             {address.delivery_note}
                           </p>
                         )}
@@ -319,14 +319,14 @@ export default function AddressManagementPage() {
                     <button
                       onClick={() => openEditForm(address)}
                       aria-label="배송지 수정"
-                      className="p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-xl hover:bg-gray-50"
+                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white transition-colors rounded-xl hover:bg-gray-50 dark:bg-[#121212]"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteAddress(address.id)}
                       aria-label="배송지 삭제"
-                      className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-gray-50"
+                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors rounded-xl hover:bg-gray-50 dark:bg-[#121212]"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -348,33 +348,33 @@ export default function AddressManagementPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               수령인 이름 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.recipient_name}
               onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="받으실 분의 이름을 입력하세요"
             />
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               연락처 <span className="text-red-500">*</span>
             </label>
             <input
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="010-1234-5678"
             />
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               우편번호 <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
@@ -382,13 +382,13 @@ export default function AddressManagementPage() {
                 type="text"
                 value={formData.postal_code}
                 readOnly
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
                 placeholder="우편번호"
               />
               <button
                 type="button"
                 onClick={() => setShowPostcodePopup(true)}
-                className="px-5 py-3 border border-gray-300 rounded-2xl text-[14px] font-semibold text-gray-700 hover:bg-gray-50 transition-all whitespace-nowrap"
+                className="px-5 py-3 border border-gray-300 rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212] transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>
@@ -396,41 +396,41 @@ export default function AddressManagementPage() {
           </div>
 
           {showPostcodePopup && (
-            <div className="rounded-2xl overflow-hidden border border-gray-200">
+            <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A]">
               <div id="daum-postcode-container" style={{ width: '100%', height: '400px' }}></div>
             </div>
           )}
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               주소 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.address}
               readOnly
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
               placeholder="주소 검색 후 자동 입력됩니다"
             />
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               상세주소
             </label>
             <input
               type="text"
               value={formData.address_detail}
               onChange={(e) => setFormData({ ...formData, address_detail: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="동/호수, 건물명 등 (선택)"
             />
           </div>
 
           {/* 배송지 별칭 */}
           <div>
-            <label htmlFor="addr-label" className="block text-[14px] font-semibold text-gray-900 mb-2">
-              배송지 별칭 <span className="text-gray-400 font-normal">(선택)</span>
+            <label htmlFor="addr-label" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+              배송지 별칭 <span className="text-gray-400 dark:text-gray-500 font-normal">(선택)</span>
             </label>
             <div className="flex gap-1.5 mb-2">
               {['집', '회사', '부모님댁'].map(preset => (
@@ -441,7 +441,7 @@ export default function AddressManagementPage() {
                   className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
                     formData.label === preset
                       ? 'bg-pink-500 text-white border-pink-500'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                      : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:bg-[#121212]'
                   }`}
                 >
                   {preset}
@@ -454,15 +454,15 @@ export default function AddressManagementPage() {
               value={formData.label}
               onChange={(e) => setFormData({ ...formData, label: e.target.value })}
               maxLength={20}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="직접 입력도 가능합니다"
             />
           </div>
 
           {/* 출입 방식 */}
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
-              공동 현관 출입 방식 <span className="text-gray-400 font-normal">(선택)</span>
+            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+              공동 현관 출입 방식 <span className="text-gray-400 dark:text-gray-500 font-normal">(선택)</span>
             </label>
             <div className="grid grid-cols-2 gap-2">
               {ENTRY_METHOD_OPTIONS.map(opt => (
@@ -473,7 +473,7 @@ export default function AddressManagementPage() {
                   className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold border transition-colors ${
                     formData.entry_method === opt.value
                       ? 'bg-pink-50 text-pink-600 border-pink-500'
-                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:bg-[#121212]'
                   }`}
                 >
                   {opt.label}
@@ -485,7 +485,7 @@ export default function AddressManagementPage() {
           {/* 공동현관 비밀번호 (password 선택 시만) */}
           {formData.entry_method === 'password' && (
             <div>
-              <label htmlFor="addr-entry-code" className="block text-[14px] font-semibold text-gray-900 mb-2">
+              <label htmlFor="addr-entry-code" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
                 공동현관 비밀번호
               </label>
               <input
@@ -494,10 +494,10 @@ export default function AddressManagementPage() {
                 value={formData.entry_code}
                 onChange={(e) => setFormData({ ...formData, entry_code: e.target.value })}
                 maxLength={20}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="예: #1234*"
               />
-              <p className="mt-1.5 text-[11px] text-gray-500">
+              <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
                 배송기사에게만 전달되며 주문 완료 후 60일 뒤 자동 파기됩니다
               </p>
             </div>
@@ -505,8 +505,8 @@ export default function AddressManagementPage() {
 
           {/* 배송 메모 */}
           <div>
-            <label htmlFor="addr-note" className="block text-[14px] font-semibold text-gray-900 mb-2">
-              배송 메모 <span className="text-gray-400 font-normal">(선택)</span>
+            <label htmlFor="addr-note" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+              배송 메모 <span className="text-gray-400 dark:text-gray-500 font-normal">(선택)</span>
             </label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {DELIVERY_NOTE_PRESETS.map(preset => (
@@ -517,7 +517,7 @@ export default function AddressManagementPage() {
                   className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
                     formData.delivery_note === preset
                       ? 'bg-gray-900 text-white border-gray-900'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                      : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:bg-[#121212]'
                   }`}
                 >
                   {preset}
@@ -530,7 +530,7 @@ export default function AddressManagementPage() {
               onChange={(e) => setFormData({ ...formData, delivery_note: e.target.value })}
               maxLength={200}
               rows={2}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[14px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
               placeholder="배송 시 요청사항을 입력하세요"
             />
           </div>
@@ -543,7 +543,7 @@ export default function AddressManagementPage() {
               onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
               className="w-4 h-4 border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer rounded"
             />
-            <label htmlFor="is_default_modal" className="text-[14px] text-gray-700 cursor-pointer select-none">
+            <label htmlFor="is_default_modal" className="text-[14px] text-gray-700 dark:text-gray-200 cursor-pointer select-none">
               기본 배송지로 설정
             </label>
           </div>
@@ -559,7 +559,7 @@ export default function AddressManagementPage() {
             <button
               type="button"
               onClick={closeForm}
-              className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               취소
             </button>

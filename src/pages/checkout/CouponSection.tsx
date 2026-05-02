@@ -31,15 +31,15 @@ export default function CouponSection({ couponCode, setCouponCode, couponDiscoun
   }
 
   return (
-    <section className="bg-white px-5 py-4 border-t border-gray-100">
-      <h2 className="text-[15px] font-bold text-gray-900 mb-2">할인 쿠폰</h2>
+    <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4 border-t border-gray-100 dark:border-[#1A1A1A]">
+      <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2">할인 쿠폰</h2>
       <div className="flex gap-2">
         <input
           value={couponCode}
           onChange={e => setCouponCode(e.target.value.toUpperCase())}
           placeholder="쿠폰 코드 입력"
           aria-label="쿠폰 코드 입력"
-          className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none"
+          className="flex-1 px-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-blue-400 focus:outline-none"
         />
         <button
           onClick={handleApply}

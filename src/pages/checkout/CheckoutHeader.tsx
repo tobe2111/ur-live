@@ -9,16 +9,16 @@ interface Props {
 
 export default function CheckoutHeader({ onBack }: Props) {
   return (
-    <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+    <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] sticky top-0 z-10">
       <div className="mx-auto max-w-md flex items-center justify-between px-3 py-3">
         <button
           onClick={onBack}
           aria-label="장바구니로 돌아가기"
           className="w-9 h-9 flex items-center justify-center"
         >
-          <ArrowLeft className="w-5 h-5 text-gray-900" />
+          <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
         </button>
-        <h1 className="text-[15px] font-extrabold text-gray-900">주문 · 결제</h1>
+        <h1 className="text-[15px] font-extrabold text-gray-900 dark:text-white">주문 · 결제</h1>
         <div className="w-9" />
       </div>
     </div>

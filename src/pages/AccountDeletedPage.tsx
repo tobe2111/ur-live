@@ -16,32 +16,32 @@ export default function AccountDeletedPage() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] flex items-center justify-center px-4">
       <SEO title="계정 삭제 완료" description="계정이 삭제되었습니다" url="/account/deleted" noindex />
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+        <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-lg p-8 text-center">
           {/* 완료 아이콘 */}
           <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
             <CheckCircle className="w-12 h-12 text-green-600" />
           </div>
 
           {/* 제목 */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             회원 탈퇴가 완료되었습니다
           </h1>
 
           {/* 안내 메시지 */}
-          <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left">
-            <p className="text-sm text-gray-700 leading-relaxed mb-3">
+          <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-6 mb-6 text-left">
+            <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed mb-3">
               그동안 서비스를 이용해 주셔서 감사합니다.
             </p>
-            <p className="text-sm text-gray-600 leading-relaxed mb-2">
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-2">
               • 모든 개인정보가 안전하게 삭제되었습니다.
             </p>
-            <p className="text-sm text-gray-600 leading-relaxed mb-2">
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-2">
               • 30일간 동일한 정보로 재가입이 제한됩니다.
             </p>
-            <p className="text-sm text-gray-600 leading-relaxed">
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
               • 언제든 다시 가입하실 수 있습니다.
             </p>
           </div>
@@ -67,14 +67,14 @@ export default function AccountDeletedPage() {
             홈으로 이동
           </button>
 
-          <p className="text-xs text-gray-500 mt-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-4">
             10초 후 자동으로 홈 페이지로 이동합니다.
           </p>
         </div>
 
         {/* 푸터 메시지 */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
             서비스 개선을 위한 의견이 있으시다면
             <br />
             <a

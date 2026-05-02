@@ -13,9 +13,9 @@ interface Props {
 
 export default function ShippingSection({ selectedAddress, onOpenAddressModal }: Props) {
   return (
-    <section className="bg-white px-5 py-5">
+    <section className="bg-white dark:bg-[#0A0A0A] px-5 py-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-bold text-gray-900">배송지</h2>
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">배송지</h2>
         <button
           type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenAddressModal() }}
@@ -38,15 +38,15 @@ export default function ShippingSection({ selectedAddress, onOpenAddressModal }:
       ) : (
         <div className="mt-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-[15px] font-semibold text-gray-900">{selectedAddress.recipient_name}</span>
+            <span className="text-[15px] font-semibold text-gray-900 dark:text-white">{selectedAddress.recipient_name}</span>
             {selectedAddress.is_default === 1 && (
               <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-600">
                 기본
               </span>
             )}
           </div>
-          <p className="text-[14px] leading-relaxed text-gray-400">{selectedAddress.phone}</p>
-          <p className="text-[14px] leading-relaxed text-gray-900">
+          <p className="text-[14px] leading-relaxed text-gray-400 dark:text-gray-500">{selectedAddress.phone}</p>
+          <p className="text-[14px] leading-relaxed text-gray-900 dark:text-white">
             [{selectedAddress.postal_code}] {selectedAddress.address} {selectedAddress.address_detail}
           </p>
         </div>

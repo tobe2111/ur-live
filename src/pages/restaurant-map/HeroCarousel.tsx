@@ -18,10 +18,10 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
   return (
     <div className="mb-3 -mx-3 px-3">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-bold text-gray-700 flex items-center gap-1">
+        <p className="text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1">
           <span className="text-amber-500">⚡</span> 오늘의 핫딜
         </p>
-        <span className="text-[10px] text-gray-400">{heroDeals.length}곳</span>
+        <span className="text-[10px] text-gray-400 dark:text-gray-500">{heroDeals.length}곳</span>
       </div>
       <div className="flex gap-2 overflow-x-auto no-scrollbar">
         {heroDeals.map(r => {
@@ -30,7 +30,7 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
             <button
               key={`hero-${r.id}`}
               onClick={() => onSelect(r)}
-              className="shrink-0 w-[140px] rounded-2xl bg-white border border-gray-100 overflow-hidden text-left active:scale-[0.97] transition-transform"
+              className="shrink-0 w-[140px] rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1A1A1A] overflow-hidden text-left active:scale-[0.97] transition-transform"
             >
               <div className="relative aspect-square bg-pink-50">
                 {r.image_url ? (
@@ -49,14 +49,14 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
                 )}
               </div>
               <div className="p-2">
-                <p className="text-[11px] font-bold text-gray-900 truncate">{r.restaurant_name}</p>
-                <p className="text-[10px] text-gray-400 truncate flex items-center gap-0.5">
+                <p className="text-[11px] font-bold text-gray-900 dark:text-white truncate">{r.restaurant_name}</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate flex items-center gap-0.5">
                   <MapPin className="w-2.5 h-2.5 shrink-0" />
                   {userLoc && r.restaurant_lat && r.restaurant_lng
                     ? `${distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng).toFixed(1)}km`
                     : (r.restaurant_address || '주소 미등록')}
                 </p>
-                <p className="text-[12px] font-extrabold text-gray-900 mt-1">{r.price?.toLocaleString()}원</p>
+                <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">{r.price?.toLocaleString()}원</p>
               </div>
             </button>
           )

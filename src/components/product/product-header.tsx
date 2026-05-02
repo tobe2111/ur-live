@@ -29,24 +29,24 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
             </div>
             <div>
               {sellerId ? (
-                <Link to={`/s/${sellerId}`} className="text-[13px] font-extrabold text-gray-900 hover:underline">{sellerName}</Link>
+                <Link to={`/s/${sellerId}`} className="text-[13px] font-extrabold text-gray-900 dark:text-white hover:underline">{sellerName}</Link>
               ) : (
-                <p className="text-[13px] font-extrabold text-gray-900">{sellerName}</p>
+                <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">{sellerName}</p>
               )}
-              <p className="text-[10px] text-gray-400">브랜드</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500">브랜드</p>
             </div>
           </div>
-          <button className="rounded-full px-3 py-1.5 border border-gray-900 text-[11px] font-bold text-gray-900 active:scale-95 transition-transform">
+          <button className="rounded-full px-3 py-1.5 border border-gray-900 text-[11px] font-bold text-gray-900 dark:text-white active:scale-95 transition-transform">
             팔로우
           </button>
         </div>
       )}
 
-      <div className="h-px bg-gray-100" />
+      <div className="h-px bg-gray-100 dark:bg-[#1A1A1A]" />
 
       {/* v4 Product info */}
       <section className="px-5 pt-5 pb-6">
-        <p className="text-[13px] text-gray-900 leading-relaxed line-clamp-2">{name}</p>
+        <p className="text-[13px] text-gray-900 dark:text-white leading-relaxed line-clamp-2">{name}</p>
 
         {/* Rating + stats */}
         {(reviewCount || soldCount) && (
@@ -54,10 +54,10 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
             {avgRating && (
               <>
                 <span className="text-yellow-500 text-[12px]">★</span>
-                <span className="text-[12px] font-semibold text-gray-900">{avgRating.toFixed(1)}</span>
+                <span className="text-[12px] font-semibold text-gray-900 dark:text-white">{avgRating.toFixed(1)}</span>
               </>
             )}
-            <span className="text-[12px] text-gray-400">
+            <span className="text-[12px] text-gray-400 dark:text-gray-500">
               {reviewCount ? `· 리뷰 ${formatNumber(reviewCount)}` : ''}
               {soldCount ? ` · ${formatNumber(soldCount)}명 구매` : ''}
             </span>
@@ -69,14 +69,14 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
           {displayDiscount > 0 && (
             <span className="text-[22px] font-extrabold text-red-500">{displayDiscount}%</span>
           )}
-          <span className="text-[26px] font-extrabold text-gray-900" style={{ letterSpacing: '-0.03em' }}>
+          <span className="text-[26px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>
             {formatPrice(price)}
           </span>
-          <span className="text-[14px] text-gray-900">원</span>
+          <span className="text-[14px] text-gray-900 dark:text-white">원</span>
         </div>
 
         {hasDiscount && (
-          <p className="text-[11px] text-gray-400 line-through mt-0.5">{formatPrice(originalPrice)}원</p>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 line-through mt-0.5">{formatPrice(originalPrice)}원</p>
         )}
       </section>
     </>

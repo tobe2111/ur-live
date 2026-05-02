@@ -48,7 +48,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         className={`mt-1 w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
           isSelected
             ? 'bg-pink-500 border-pink-500'
-            : 'bg-white border-gray-300'
+            : 'bg-white dark:bg-[#0A0A0A] border-gray-300'
         } ${isOutOfStock ? 'cursor-not-allowed' : ''}`}
       >
         {isSelected && (
@@ -63,9 +63,9 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         <img
           src={item.image_url}
           alt={item.product_name}
-          className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 shrink-0" loading="lazy" decoding="async" />
+          className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 dark:bg-[#1A1A1A] shrink-0" loading="lazy" decoding="async" />
       ) : (
-        <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 shrink-0 flex items-center justify-center">
+        <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] shrink-0 flex items-center justify-center">
           <span className="text-gray-300 text-[10px]">No img</span>
         </div>
       )}
@@ -73,7 +73,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
       {/* Product info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <h3 className={`text-[14px] font-medium leading-tight line-clamp-2 ${isOutOfStock ? 'text-gray-400' : 'text-gray-900'}`}>
+          <h3 className={`text-[14px] font-medium leading-tight line-clamp-2 ${isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
             {item.product_name}
           </h3>
           <button
@@ -81,7 +81,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             onClick={() => onRemove(item.id)}
             disabled={isUpdating}
             aria-label={`${item.product_name} 장바구니에서 삭제`}
-            className="text-gray-300 hover:text-gray-500 shrink-0"
+            className="text-gray-300 hover:text-gray-500 dark:text-gray-400 dark:text-gray-500 shrink-0"
           >
             <X size={16} />
           </button>
@@ -92,10 +92,10 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           <button
             onClick={() => onOpenOption(item)}
             disabled={isUpdating}
-            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full hover:bg-gray-50 transition-colors"
+            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A] px-2.5 py-1 rounded-full hover:bg-gray-50 dark:bg-[#121212] transition-colors"
           >
             {item.option_value}
-            <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-3 h-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
@@ -103,24 +103,24 @@ export const CartItemComponent = React.memo(function CartItemComponent({
 
         {/* Price row */}
         <div className="mt-2">
-          <p className={`text-[15px] font-bold ${isOutOfStock ? 'text-gray-400' : 'text-gray-900'}`}>
+          <p className={`text-[15px] font-bold ${isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
             {fmt(item.price_snapshot * item.quantity)}원
           </p>
         </div>
 
         {/* v4: quantity +/- buttons (border rounded-lg) */}
         <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+          <div className="flex items-center border border-gray-200 dark:border-[#2A2A2A] rounded-lg overflow-hidden">
             <button
               type="button"
               onClick={() => onUpdateQuantity(item.id, -1)}
               disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
               aria-label="수량 줄이기"
-              className="w-8 h-8 flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-50 transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 dark:text-gray-500 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
             >
               <Minus size={14} aria-hidden="true" />
             </button>
-            <span aria-live="polite" aria-label={`수량 ${item.quantity}`} className="w-8 text-center text-[13px] font-semibold text-gray-900 border-x border-gray-200">
+            <span aria-live="polite" aria-label={`수량 ${item.quantity}`} className="w-8 text-center text-[13px] font-semibold text-gray-900 dark:text-white border-x border-gray-200 dark:border-[#2A2A2A]">
               {item.quantity}
             </span>
             <button
@@ -128,7 +128,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
               onClick={() => onUpdateQuantity(item.id, 1)}
               disabled={isUpdating || isOutOfStock || isAtStockLimit}
               aria-label="수량 늘리기"
-              className="w-8 h-8 flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-50 transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 dark:text-gray-500 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
             >
               <Plus size={14} aria-hidden="true" />
             </button>

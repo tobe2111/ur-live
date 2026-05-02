@@ -141,7 +141,7 @@ export default function ReferralPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -149,10 +149,10 @@ export default function ReferralPage() {
 
   if (!group) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-4">
         <Gift className="w-16 h-16 text-gray-300 mb-4" />
-        <p className="text-gray-900 font-bold text-lg">유효하지 않은 초대입니다</p>
-        <Link to="/" className="mt-4 text-gray-900 text-sm font-medium underline">홈으로 돌아가기</Link>
+        <p className="text-gray-900 dark:text-white font-bold text-lg">유효하지 않은 초대입니다</p>
+        <Link to="/" className="mt-4 text-gray-900 dark:text-white text-sm font-medium underline">홈으로 돌아가기</Link>
       </div>
     )
   }
@@ -179,56 +179,56 @@ export default function ReferralPage() {
   const shareDescription = `지금 ${group.current_count}/${group.target_count}명 모였어요. 친구 초대하면 최대 ${topTier?.discount ?? 0}% 할인!`
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
       <SEO title="공동구매 - 유어딜" description="친구와 함께 공동구매로 더 싸게 구매하세요" url="/referral" />
       {/* v4 Header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-100">
+      <div className="sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="flex items-center justify-between px-3 py-3">
           <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center">
-            <ArrowLeft className="w-5 h-5 text-gray-900" />
+            <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[16px] font-extrabold text-gray-900">공동구매</h1>
+          <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">공동구매</h1>
           <div className="w-9" />
         </div>
       </div>
 
       <div className="px-4 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100vh - 48px)' }}>
         {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
-        <section className="bg-white rounded-2xl p-4 border border-gray-200">
+        <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
           {product && (
             <div className="flex gap-3 mb-4">
               {product.image_url && (
-                <img src={product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100" loading="lazy" />
+                <img src={product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-[#1A1A1A]" loading="lazy" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-[15px] font-bold text-gray-900 line-clamp-2">{product.name}</p>
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-2">{product.name}</p>
                 <div className="mt-1.5 flex items-baseline gap-2">
                   {currentDiscount > 0 ? (
                     <>
                       <span className="text-lg font-bold text-pink-500">{formatNumber(discountedPrice)}원</span>
-                      <span className="text-xs text-gray-400 line-through">{formatNumber(product.price)}원</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(product.price)}원</span>
                     </>
                   ) : (
-                    <span className="text-lg font-bold text-gray-900">{formatNumber(product.price)}원</span>
+                    <span className="text-lg font-bold text-gray-900 dark:text-white">{formatNumber(product.price)}원</span>
                   )}
                 </div>
               </div>
             </div>
           )}
-          <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-[#1A1A1A]">
             <div className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">
               {group.creator_name.slice(0, 1)}
             </div>
-            <p className="text-sm text-gray-900">
+            <p className="text-sm text-gray-900 dark:text-white">
               <span className="font-bold">{group.creator_name}</span>
-              <span className="text-gray-600">님의 공동구매</span>
+              <span className="text-gray-600 dark:text-gray-300">님의 공동구매</span>
             </p>
           </div>
 
           {/* 카운트다운 */}
           <div className="pt-3">
             {isExpired ? (
-              <div className="flex items-center justify-center gap-2 text-gray-500 text-sm">
+              <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">
                 <Clock className="w-4 h-4" />
                 <span>마감된 공동구매입니다</span>
               </div>
@@ -244,22 +244,22 @@ export default function ReferralPage() {
         </section>
 
         {/* 2. Tier Progress Bar */}
-        <section className="bg-white rounded-2xl p-5 border border-gray-200">
+        <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-200 dark:border-[#2A2A2A]">
           {/* 현재 할인 표시 */}
           <div className="text-center mb-5">
             {currentDiscount > 0 ? (
               <>
-                <p className="text-xs text-gray-600 mb-1">현재 적용 할인</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">현재 적용 할인</p>
                 <p className="text-3xl font-bold text-pink-500">{currentDiscount}% 할인 적용 중!</p>
               </>
             ) : (
               <>
-                <p className="text-xs text-gray-600 mb-1">현재 참여 인원</p>
-                <p className="text-3xl font-bold text-gray-900">{group.current_count}명</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">현재 참여 인원</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">{group.current_count}명</p>
               </>
             )}
             {group.next_tier && (
-              <p className="text-sm text-gray-700 mt-2">
+              <p className="text-sm text-gray-700 dark:text-gray-200 mt-2">
                 <span className="font-bold text-pink-500">{group.next_tier.count - group.current_count}명</span>
                 <span> 더 모이면 </span>
                 <span className="font-bold text-pink-500">{group.next_tier.discount}% 할인!</span>
@@ -279,10 +279,10 @@ export default function ReferralPage() {
         </section>
 
         {/* v4 Participants — 아바타 스택 + 최근 참여자 */}
-        <section className="bg-white rounded-2xl p-4 border border-gray-100">
+        <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A]">
           <div className="flex items-center gap-1.5 mb-3">
-            <Users className="w-3.5 h-3.5 text-gray-900" />
-            <p className="text-[13px] font-bold text-gray-900">{group.current_count}명 참여 중</p>
+            <Users className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
+            <p className="text-[13px] font-bold text-gray-900 dark:text-white">{group.current_count}명 참여 중</p>
           </div>
           {/* 아바타 스택 */}
           {group.members.length > 0 && (
@@ -317,24 +317,24 @@ export default function ReferralPage() {
                   style={{ background: '#FCE7F3', color: '#BE185D', fontSize: 10, fontWeight: 700 }}>
                   {(m.user_name || '?').slice(0, 1)}
                 </div>
-                <span className="text-[12px] text-gray-900 font-medium">{m.user_name}</span>
+                <span className="text-[12px] text-gray-900 dark:text-white font-medium">{m.user_name}</span>
                 {i === 0 && <span className="rounded-full px-1.5 py-0.5 bg-gray-900 text-white text-[9px] font-bold">방장</span>}
-                <span className="text-[10px] text-gray-400 ml-auto">
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">
                   {m.joined_at ? new Date(m.joined_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : ''}
                 </span>
               </div>
             ))}
             {group.members.length === 0 && (
-              <p className="text-xs text-gray-500">아직 참여자가 없습니다.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">아직 참여자가 없습니다.</p>
             )}
           </div>
         </section>
 
         {/* v4 티어별 할인표 */}
-        <section className="bg-white rounded-2xl p-4 border border-gray-100">
+        <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A]">
           <div className="flex items-center gap-1.5 mb-3">
             <span className="text-sm">🎁</span>
-            <p className="text-[13px] font-bold text-gray-900">티어별 할인</p>
+            <p className="text-[13px] font-bold text-gray-900 dark:text-white">티어별 할인</p>
           </div>
           <div className="space-y-1.5">
             {group.tiers.map((t, i) => {
@@ -356,7 +356,7 @@ export default function ReferralPage() {
       </div>
 
       {/* 4. Action Buttons (fixed bottom) */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 p-4 safe-area-bottom">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white dark:bg-[#0A0A0A] border-t border-gray-200 dark:border-[#2A2A2A] p-4 safe-area-bottom">
         <div className="max-w-md mx-auto">
           {isAchieved ? (
             <button
@@ -371,7 +371,7 @@ export default function ReferralPage() {
           ) : isExpired ? (
             <button
               disabled
-              className="w-full py-3.5 bg-gray-200 text-gray-500 rounded-xl font-bold text-sm cursor-not-allowed"
+              className="w-full py-3.5 bg-gray-200 text-gray-500 dark:text-gray-400 dark:text-gray-500 rounded-xl font-bold text-sm cursor-not-allowed"
             >
               마감된 공동구매
             </button>
@@ -455,17 +455,17 @@ function TierProgressBar({
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                   reached
                     ? 'bg-pink-500 border-pink-500 shadow-md shadow-pink-200'
-                    : 'bg-white border-gray-300'
+                    : 'bg-white dark:bg-[#0A0A0A] border-gray-300'
                 }`}
               >
                 {reached && <CheckCircle className="w-3 h-3 text-white" />}
               </div>
               {/* 라벨 */}
               <div className="absolute top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-center">
-                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-500'}`}>
+                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`}>
                   {t.count}명
                 </div>
-                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-400'}`}>
+                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-400 dark:text-gray-500'}`}>
                   -{t.discount}%
                 </div>
               </div>

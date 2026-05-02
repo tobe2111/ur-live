@@ -53,8 +53,8 @@ export default function PaymentSection({
   onBeforePayment, onTossPaymentSuccess, onStripePaymentSuccess,
 }: Props) {
   return (
-    <section className="bg-white px-5 py-4">
-      <h2 className="text-[15px] font-bold text-gray-900 mb-3">결제 수단</h2>
+    <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
+      <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">결제 수단</h2>
 
       {/* 결제 방법 탭 */}
       <div className="flex gap-2 mb-4">
@@ -63,7 +63,7 @@ export default function PaymentSection({
           className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
             paymentMethod === 'toss'
               ? 'border-gray-900 bg-gray-900 text-white'
-              : 'border-gray-200 bg-white text-gray-500'
+              : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-gray-500 dark:text-gray-400 dark:text-gray-500'
           }`}
         >
           카드/간편결제
@@ -90,7 +90,7 @@ export default function PaymentSection({
       ) : isKorea() ? (
         /* 한국: Toss Payments */
         <Suspense fallback={
-          <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
+          <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
             <p>결제 수단 불러오는 중...</p>
           </div>
@@ -112,7 +112,7 @@ export default function PaymentSection({
       ) : (
         /* 글로벌: Stripe */
         <Suspense fallback={
-          <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
+          <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
             <p>Loading payment method...</p>
           </div>
