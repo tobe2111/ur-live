@@ -66,7 +66,8 @@ consignmentRoutes.post('/request', requireSeller(), async (c) => {
       return c.json({ success: false, error: '자기 자신과 위탁 파트너십을 만들 수 없습니다' }, 400)
     }
 
-    const rate = Number.isFinite(host_commission_rate) ? Math.max(0, Math.min(50, Number(host_commission_rate))) : 10
+    // 🛡️ 2026-05-02: 위탁 판매 host 수수료 fallback 5% (platform_settings.commission_rate_default 와 일치)
+    const rate = Number.isFinite(host_commission_rate) ? Math.max(0, Math.min(50, Number(host_commission_rate))) : 5
 
     // role 따라 host_seller_id / owner_seller_id 결정
     const hostId = role === 'host' ? sellerId : counterparty_seller_id

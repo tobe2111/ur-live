@@ -176,11 +176,13 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
 - 첫 페인트 FOUC 방지: `index.html` inline script 가 `localStorage.ur_theme_mode_v1` 읽고 `<html>` 에 `dark` 클래스 선반영
 - **다크 테마 페이지 (홈/라이브/마이) 와 셀러·어드민 라이트 테마는 토글 무영향** — 페이지 단에서 `bg-[#020202]` / `bg-white` 가 명시 강제되어 있어 `dark:` variant 가 매칭되지 않음 (의도된 동작)
 
-### 라이트 테마 (셀러/어드민 대시보드)
-- **해당**: 셀러(`/seller/*`), 어드민(`/admin/*`)
-- **배경**: SellerLayout/AdminLayout이 처리 (`#F4F5F7`)
+### 화이트(라이트) 테마 — 셀러/어드민/에이전시 대시보드 (테마 토글 무영향, 고정)
+- **해당**: 셀러(`/seller/*`), 어드민(`/admin/*`), 에이전시(`/agency/*`)
+- **배경**: SellerLayout/AdminLayout/AgencyLayout 이 처리 (`#F4F5F7`)
 - **텍스트**: `text-gray-900` (제목), `text-gray-700` (본문)
-- ❌ 절대 금지: `text-white` (컬러 버튼 위 제외)
+- **사용자 다크 모드 토글 영향 없음** — 페이지/컴포넌트에 `dark:` variant 추가 절대 금지.
+  대시보드는 항상 화이트 (밝은 배경) 고정. PC 풀너비 (`EXCLUDE_MOBILE_LAYOUT`) 도 적용됨.
+- ❌ 절대 금지: `text-white` (컬러 버튼 위 제외), `dark:` variants (`dark:bg-...` 등)
 
 ### 공통 규칙
 - `text-white`는 **컬러 배경 버튼** 위에서만 사용 (bg-pink-500, bg-red-500, bg-blue-600 등)
@@ -355,7 +357,8 @@ if (sessionStorage.getItem('ur_kakao_external_redirect_v1') !== '1') {
 
 - 충전: 1원 = 1딜 (수수료 없음)
 - 후원/상품 결제: 딜 즉시 차감
-- 셀러 정산: 기본 10% 플랫폼 수수료 (어드민이 셀러별로 `sellers.commission_rate` 조정 가능)
+- 셀러 정산: 기본 **5%** 플랫폼 수수료 (`platform_settings.commission_rate_default = 5`).
+  어드민이 셀러별로 `sellers.commission_rate` 조정 가능. 후원 수수료는 별도 15% (`commission_rate_donation`).
 - 최소 후원: 500딜
 
 ## 새 페이지 생성 체크리스트 (필수)

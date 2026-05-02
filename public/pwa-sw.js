@@ -69,12 +69,18 @@ self.addEventListener('fetch', (event) => {
         }).catch(() => { /* offline */ })
         return cached
       }
+      // 🛡️ 2026-05-02: fetch 실패 (네트워크 끊김 / stale chunk hash 가 신 빌드에 없음 등) 시
+      //   uncaught Promise rejection 으로 콘솔 에러 폭주 → catch 로 silent fail.
+      //   브라우저는 SW 가 빈 응답 반환하면 자체 'Failed to load' 에러 페이지로 fallback.
       return fetch(req).then((res) => {
         if (res.ok) {
           const clone = res.clone()
           caches.open(CACHE_NAME).then((c) => c.put(req, clone))
         }
         return res
+      }).catch(() => {
+        // network 에러: 빈 Response (stale chunk hash 일 가능성 있어 reload 권장 자체는 client-side version-check 가 처리)
+        return new Response('', { status: 504, statusText: 'Service Worker offline / stale' })
       })
     })
   )

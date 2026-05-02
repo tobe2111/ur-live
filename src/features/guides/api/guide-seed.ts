@@ -44,7 +44,7 @@ const ADMIN_SEED: SeedSection[] = [
 \`Cloudflare Pages + Workers + D1 + R2 + KV + Durable Objects\`. 프론트는 React + Vite, 모바일은 Capacitor 래핑.
 
 ### 수익 모델
-상품 판매 플랫폼 수수료(기본 10%, 셀러별 조정 가능) + 후원/기부 수수료(15%) + 알림톡 발송비 + 에이전시 수수료.`,
+상품 판매 플랫폼 수수료(기본 5%, 셀러별 조정 가능) + 후원/기부 수수료(15%) + 알림톡 발송비 + 에이전시 수수료.`,
   },
   {
     key: 'daily', icon: '✅', title: '일일 운영 체크리스트', order: 20,
@@ -71,8 +71,9 @@ const ADMIN_SEED: SeedSection[] = [
 - 거부 시 반드시 사유 기입 → 셀러에게 브랜드메시지 자동 발송
 
 ### 수수료율 조정
-- 기본 10% — 대형 셀러 / 전략 파트너는 5~8% 로 협상 가능
-- 후원 수수료 기본 15% — 인플루언서 셀러는 10% 까지 조정
+- 라이브 판매 기본 5% (\`platform_settings.commission_rate_default\`) — 대형 셀러 / 전략 파트너는 협상에 따라 더 낮춤 가능
+- 식사권 기본 5% (\`commission_rate_meal_voucher\`)
+- 후원 수수료 기본 15% (\`commission_rate_donation\`) — 인플루언서 셀러는 10% 까지 조정
 - 변경 시 감사 로그에 자동 기록됨 (롤백 가능)
 
 ### 정지 처분

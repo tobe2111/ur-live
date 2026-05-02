@@ -216,7 +216,7 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
       ).bind(userId, totalAmount, totalAmount, userId, `공동구매: ${product.name}`, orderNumber).run()
     }
 
-    // 수수료 계산 (DB 설정값 또는 기본 10%)
+    // 수수료 계산 (DB 설정값 platform_settings.commission_rate_meal_voucher, 기본 5%)
     const commissionRate = await getMealVoucherCommissionRate(DB)
     const commissionAmount = Math.round(totalAmount * commissionRate)
     const sellerAmount = totalAmount - commissionAmount

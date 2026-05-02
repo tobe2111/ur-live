@@ -65,7 +65,7 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
       sellers = await executeQuery<SellerRow>(DB, `
         SELECT id, email, name, phone, business_name, business_number,
                status, created_at,
-               COALESCE(commission_rate, 10) AS commission_rate,
+               COALESCE(commission_rate, 5) AS commission_rate,
                COALESCE(can_manipulate_stats, 0) AS can_manipulate_stats,
                linked_user_id
         FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
@@ -98,7 +98,7 @@ adminSellersRoutes.get('/sellers/pending', cors(), async (c) => {
     const sellers = await executeQuery<SellerRow>(DB, `
       SELECT s.id, s.email, s.name, s.phone, s.business_name, s.business_number,
              s.status, s.created_at,
-             COALESCE(s.commission_rate, 10) AS commission_rate,
+             COALESCE(s.commission_rate, 5) AS commission_rate,
              s.linked_user_id, u.name AS linked_user_name
       FROM sellers s LEFT JOIN users u ON s.linked_user_id = u.id
       WHERE s.status = 'pending' ORDER BY s.created_at ASC
@@ -118,7 +118,7 @@ adminSellersRoutes.get('/sellers/:id', cors(), async (c) => {
     const seller = await DB.prepare(`
       SELECT s.id, s.email, s.name, s.phone, s.business_name, s.business_number,
              s.status, s.created_at,
-             COALESCE(s.commission_rate, 10) AS commission_rate,
+             COALESCE(s.commission_rate, 5) AS commission_rate,
              COALESCE(s.can_manipulate_stats, 0) AS can_manipulate_stats
       FROM sellers s WHERE s.id = ?
     `).bind(sellerId).first().catch(() => null);
@@ -128,7 +128,8 @@ adminSellersRoutes.get('/sellers/:id', cors(), async (c) => {
         `SELECT id, email, name, phone, business_name, business_number, status, created_at FROM sellers WHERE id = ?`
       ).bind(sellerId).first();
       if (!row2) return c.json({ success: false, error: 'Not found' }, 404);
-      return c.json({ success: true, data: { ...row2, commission_rate: 10, can_manipulate_stats: 0 } });
+      // 🛡️ 2026-05-02: 기본 수수료율 5% (platform_settings.commission_rate_default 와 일치)
+      return c.json({ success: true, data: { ...row2, commission_rate: 5, can_manipulate_stats: 0 } });
     }
 
     let biz = null;
