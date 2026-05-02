@@ -174,8 +174,9 @@ export default function MainHomePage() {
     <div className="bg-[#020202] min-h-screen pb-16">
       <SEO title="홈" description="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매" url="/" jsonLd={[organizationJsonLd, webSiteJsonLd]} />
 
-      {/* ═══ Sticky Top Bar ═══ */}
-      <div className="sticky top-0 inset-x-0 px-4 pt-3 pb-2 flex items-center justify-between z-30 bg-[#020202]/95 backdrop-blur-md">
+      {/* ═══ Sticky Top Bar ═══ — PC 풀너비 sticky, 콘텐츠는 centered */}
+      <div className="sticky top-0 inset-x-0 z-30 bg-[#020202]/95 backdrop-blur-md">
+        <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-1.5">
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
             <Play className="h-3 w-3 text-white fill-white" />
@@ -202,8 +203,10 @@ export default function MainHomePage() {
             )}
           </button>
         </div>
+        </div>
       </div>
 
+      <div className="ur-content-wide">
       {/* ═══ Region Hero (어드민 배너를 풀스크린 배경으로) ═══
            🛡️ 2026-04-22: 어드민 등록 배너(image_url)를 우선 배경으로 사용.
            - 배너 등록되어 있으면: 배너 이미지가 배경, 배너 클릭 시 link_url 이동
@@ -567,6 +570,7 @@ export default function MainHomePage() {
       {/* ═══ Bottom sections ═══ */}
       <RecentlyViewed />
       <InvitePrompt />
+      </div>
       <SiteFooter />
 
 {/* 로딩 오버레이 제거 — 각 섹션이 데이터 없으면 자체 스켈레톤 표시 */}

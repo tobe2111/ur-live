@@ -307,24 +307,31 @@ export default function ProductDetailPage() {
         onToggleWishlist={handleToggleWishlist}
       />
 
-      <main className="pb-20">
-        {/* Product Images Carousel */}
-        <Suspense fallback={<div className="w-full h-96 bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />}>
-          <ProductImageCarousel images={allImages} />
-        </Suspense>
-
-        {/* Product Info */}
-        <ProductHeader
-          name={product.name}
-          price={displayPrice}
-          originalPrice={product.original_price || undefined}
-          discountRate={product.discount_rate || undefined}
-          sellerName={product.seller_name}
-          sellerId={product.seller_id}
-          soldCount={product.sold_count}
-          reviewCount={reviewSummary?.total_count}
-          avgRating={reviewSummary?.avg_rating}
-        />
+      <main className="pb-20 ur-content-wide lg:px-8">
+        {/* PC 좌우 2단: lg 이상에서 좌(이미지) / 우(상품헤더 sticky).
+            mobile: 기존 세로 1열 그대로 (sm/md). */}
+        <div className="lg:grid lg:grid-cols-5 lg:gap-8 lg:pt-6">
+          <div className="lg:col-span-3">
+            {/* Product Images Carousel */}
+            <Suspense fallback={<div className="w-full h-96 bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />}>
+              <ProductImageCarousel images={allImages} />
+            </Suspense>
+          </div>
+          <div className="lg:col-span-2 lg:sticky lg:top-20 lg:self-start">
+            {/* Product Info */}
+            <ProductHeader
+              name={product.name}
+              price={displayPrice}
+              originalPrice={product.original_price || undefined}
+              discountRate={product.discount_rate || undefined}
+              sellerName={product.seller_name}
+              sellerId={product.seller_id}
+              soldCount={product.sold_count}
+              reviewCount={reviewSummary?.total_count}
+              avgRating={reviewSummary?.avg_rating}
+            />
+          </div>
+        </div>
 
         {/* v4: description은 상세정보 섹션에서 통합 표시 */}
 
