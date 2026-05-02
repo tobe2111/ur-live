@@ -315,18 +315,11 @@ function AppContent() {
     }
   }, [])
 
-  // 🛡️ 2026-05-01: 카카오 로그인 직후 어떤 계정으로 인증됐는지 명시 토스트.
-  //   사용자 신고: "다른 사람 폰에서 그 사람 카카오 계정으로 silent 로그인됨".
-  //   사용자가 본인 계정인지 즉시 확인 가능. 다른 계정이면 '다른 계정으로 로그인' 사용.
+  // 🛡️ 2026-05-02: 카카오 로그인 직후 토스트 제거 (사용자 요청).
+  //   이전: '${name}님으로 로그인됐어요. 다른 계정이면 마이페이지에서 전환할 수 있어요.'
+  //   sessionStorage 키는 잔존 가능성 있어 cleanup 만 유지.
   useEffect(() => {
-    let welcomeName: string | null = null
-    try { welcomeName = sessionStorage.getItem('ur_kakao_login_welcome') } catch { /* */ }
-    if (welcomeName) {
-      try { sessionStorage.removeItem('ur_kakao_login_welcome') } catch { /* */ }
-      import('@/hooks/useToast')
-        .then(({ toast }) => toast.success(`${welcomeName}님으로 로그인됐어요. 다른 계정이면 마이페이지에서 전환할 수 있어요.`))
-        .catch(() => { /* */ })
-    }
+    try { sessionStorage.removeItem('ur_kakao_login_welcome') } catch { /* */ }
   }, [])
 
   // ✅ Auth 초기화 — KR 은 Firebase 미사용, 글로벌만 Firebase 초기화.

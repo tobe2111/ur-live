@@ -15,6 +15,7 @@ import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import { useMyCounts } from './user-profile/useMyCounts'
+import ThemeToggleSection from '@/components/settings/ThemeToggleSection'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -149,6 +150,9 @@ export default function UserProfilePage() {
 
       {/* v4 활동 InsetGroup — 채팅 이름 (셀러 전환은 상단 이름 옆으로 이동) */}
       <ChatNameSetting />
+
+      {/* 🛡️ 2026-05-02: 화면 테마 토글 — 사용자 요청. 마이페이지에서 직접 노출. */}
+      <ThemeToggleSection />
 
       {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
       <div className="px-4 pt-5">
