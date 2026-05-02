@@ -1,163 +1,33 @@
-import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo, Suspense } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import {
   Package, ShoppingBag, Play, DollarSign,
-  TrendingUp, Clock,
-  ChevronRight, RefreshCw, ArrowUpRight,
-  AlertCircle, CheckCircle2, Truck, XCircle,
-  AlertTriangle, CreditCard, ArchiveRestore, Users,
-  Utensils, Gift, Radio, MapPin, LayoutDashboard
+  TrendingUp,
+  ChevronRight, ArrowUpRight,
+  AlertCircle,
+  AlertTriangle, CreditCard, Users,
+  Utensils, Gift, Radio, LayoutDashboard
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerOnboardingWidget from '@/components/seller/SellerOnboardingWidget'
 import { formatNumber } from '@/utils/format'
+import LazyChart from './seller-page/LazyChart'
+import OnboardingChecklist from './seller-page/OnboardingChecklist'
+import RealtimeOrdersPanel from './seller-page/RealtimeOrdersPanel'
+import type { DashboardStats, DailyStats, TopProduct, Order, LiveStream } from './seller-page/types'
 
-// recharts lazy load (377KB → 대시보드 진입 시 차트 영역만 지연 로드)
-const LazyChart = lazy(() => import('recharts').then(m => ({
-  default: ({ data, salesLabel, ordersLabel }: { data: { date: string; orders: number; sales: number }[]; salesLabel?: string; ordersLabel?: string }) => {
-    const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = m
-    return (
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-          <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-          <Tooltip />
-          <Legend />
-          <Line yAxisId="left" type="monotone" dataKey="sales" name={salesLabel || 'Sales'} stroke="#3b82f6" strokeWidth={2} dot={false} />
-          <Line yAxisId="right" type="monotone" dataKey="orders" name={ordersLabel || 'Orders'} stroke="#f97316" strokeWidth={2} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
-    )
-  }
-})))
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface DashboardStats {
-  totalRevenue: number
-  totalOrders: number
-  activeStreams: number
-  totalViewers: number
-  pendingOrders: number
-  cancelledOrders: number
-  completedOrders: number
-  avgOrderValue: number
-  totalProducts?: number
-  totalStreams?: number
-  lowStockCount?: number
-  pendingSettlement?: number
-}
-
-interface DailyStats {
-  date: string
-  orders: number
-  sales: number
-}
-
-interface TopProduct {
-  product_id: number
-  product_name: string
-  order_count: number
-  total_revenue: number
-}
-
-interface Order {
-  id: number
-  order_number: string
-  user_name: string
-  user_email: string
-  total_amount: number
-  status: string
-  shipping_name: string
-  shipping_phone: string
-  payment_method: string
-  created_at: string
-}
-
-interface LiveStream {
-  id: number
-  title: string
-  status: 'scheduled' | 'live' | 'ended'
-  viewer_count: number
-  created_at: string
-  youtube_video_id: string
-}
+// 🛡️ 2026-05-02: TD-018 분할 — types / LazyChart / OnboardingChecklist / RealtimeOrdersPanel
+//   를 ./seller-page/ 디렉토리로 추출. STATUS_CONFIG_BASE 는 RealtimeOrdersPanel 내부로 이동.
+//   미사용 DeferUntilVisible 컴포넌트 (dead code) 제거.
 
 // Inline skeleton placeholder
 const Skel = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
 )
-
-// 🛡️ 2026-04-23 배치 170: 셀러 온보딩 체크리스트
-function OnboardingChecklist({ stats, hasBank }: { stats: DashboardStats; hasBank: boolean }) {
-  const { t } = useTranslation()
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem('seller_onboarding_done') === '1')
-  if (dismissed) return null
-
-  const steps = [
-    { key: 'product', done: (stats.totalProducts ?? 0) > 0, label: t('seller.onboarding.addProduct', '첫 상품 등록'), path: '/seller/products/new', icon: Package },
-    { key: 'bank', done: hasBank, label: t('seller.onboarding.bankAccount', '정산 계좌 등록'), path: '/seller/profile', icon: CreditCard },
-    { key: 'live', done: (stats.totalStreams ?? 0) > 0, label: t('seller.onboarding.firstLive', '첫 라이브 방송'), path: '/seller/live-broadcast', icon: Radio },
-    { key: 'order', done: (stats.totalOrders ?? 0) > 0, label: t('seller.onboarding.firstOrder', '첫 주문 받기'), path: '#', icon: ShoppingBag },
-  ]
-  const doneCount = steps.filter(s => s.done).length
-  const allDone = doneCount === steps.length
-  if (allDone) {
-    localStorage.setItem('seller_onboarding_done', '1')
-    return null
-  }
-  const progress = Math.round((doneCount / steps.length) * 100)
-
-  return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-gray-900">{t('seller.onboarding.title', '🚀 시작 가이드')}</h3>
-          <p className="text-xs text-gray-500 mt-0.5">{t('seller.onboarding.subtitle', '아래 단계를 완료하면 판매를 시작할 수 있어요')}</p>
-        </div>
-        <button onClick={() => { setDismissed(true); localStorage.setItem('seller_onboarding_done', '1') }}
-          className="text-xs text-gray-400 hover:text-gray-600">
-          {t('common.dismiss', '닫기')}
-        </button>
-      </div>
-      <div className="w-full bg-blue-100 rounded-full h-2">
-        <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
-      </div>
-      <p className="text-[11px] text-blue-700 font-medium">{doneCount}/{steps.length} {t('seller.onboarding.completed', '완료')}</p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {steps.map(s => (
-          <Link key={s.key} to={s.done ? '#' : s.path}
-            className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs transition-all ${
-              s.done
-                ? 'bg-green-50 border-green-200 text-green-700'
-                : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
-            }`}>
-            {s.done
-              ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-              : <s.icon className="w-4 h-4 text-gray-400 shrink-0" />}
-            <span className={s.done ? 'line-through' : 'font-medium'}>{s.label}</span>
-          </Link>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-const STATUS_CONFIG_BASE: Record<string, { labelKey: string; color: string; bg: string; icon: React.ReactNode }> = {
-  PENDING:   { labelKey: 'seller.statusPending',   color: '#D97706', bg: '#FEF3C7', icon: <Clock className="w-3 h-3" /> },
-  DONE:      { labelKey: 'seller.statusDone',      color: '#2563EB', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
-  PAID:      { labelKey: 'seller.statusDone',      color: '#2563EB', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
-  PREPARING: { labelKey: 'seller.statusPreparing', color: '#7C3AED', bg: '#EDE9FE', icon: <Package className="w-3 h-3" /> },
-  SHIPPING:  { labelKey: 'seller.statusShipping',  color: '#0891B2', bg: '#CFFAFE', icon: <Truck className="w-3 h-3" /> },
-  DELIVERED: { labelKey: 'seller.statusDelivered', color: '#059669', bg: '#D1FAE5', icon: <CheckCircle2 className="w-3 h-3" /> },
-  CANCELLED: { labelKey: 'seller.statusCancelled', color: '#DC2626', bg: '#FEE2E2', icon: <XCircle className="w-3 h-3" /> },
-}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function SellerPage() {
@@ -727,107 +597,15 @@ export default function SellerPage() {
           <div className="grid lg:grid-cols-3 gap-3 sm:gap-5">
 
             {/* ── Real-time orders (col-span-2) ── */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-gray-900">{t('seller.realtimeOrders')}</h2>
-                  {newOrderIds.size > 0 && (
-                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full animate-pulse">
-                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                      {t('seller.newOrders', { count: newOrderIds.size })}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">{t('seller.lastUpdated', { time: timeAgo(lastUpdated) })}</span>
-                  <button
-                    onClick={() => pollOrders(true)}
-                    disabled={ordersRefreshing}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                    title={t('seller.refresh')}
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 text-gray-400 ${ordersRefreshing ? 'animate-spin' : ''}`} />
-                  </button>
-                  <Link
-                    to="/seller/orders"
-                    className="flex items-center gap-1 text-xs text-blue-600 font-medium hover:underline"
-                  >
-                    {t('seller.viewAll')} <ArrowUpRight className="w-3 h-3" />
-                  </Link>
-                </div>
-              </div>
-
-              {recentOrders.length === 0 ? (
-                <div className="py-16 text-center">
-                  <ShoppingBag className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">{t('seller.noOrders')}</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[540px]">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">{t('seller.orderNumber')}</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">{t('seller.buyer')}</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">{t('seller.amount')}</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">{t('seller.status')}</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">{t('seller.orderTime')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {recentOrders.map(order => {
-                        const isNew = newOrderIds.has(order.id)
-                        const scBase = STATUS_CONFIG_BASE[order.status] || { labelKey: '', color: '#6B7280', bg: '#F3F4F6', icon: null }
-                        const sc = { ...scBase, label: scBase.labelKey ? t(scBase.labelKey) : order.status }
-                        return (
-                          <tr
-                            key={order.id}
-                            className={`transition-colors ${isNew ? 'bg-emerald-50/60' : 'hover:bg-gray-50'}`}
-                          >
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-1.5">
-                                {isNew && (
-                                  <span className="text-[10px] font-bold text-white bg-emerald-500 px-1.5 py-0.5 rounded-full leading-none">
-                                    NEW
-                                  </span>
-                                )}
-                                <span className="text-xs font-mono text-gray-700">
-                                  #{order.order_number?.slice(-8) || order.id}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <p className="text-xs font-medium text-gray-800">{order.shipping_name || order.user_name || '-'}</p>
-                              <p className="text-xs text-gray-400 truncate max-w-[120px]">{order.user_email || ''}</p>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <span className="text-sm font-semibold text-gray-900">
-                                {fmtPrice(order.total_amount)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span
-                                className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full"
-                                style={{ color: sc.color, backgroundColor: sc.bg }}
-                              >
-                                {sc.icon}
-                                {sc.label}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right text-xs text-gray-400">
-                              {new Date(order.created_at).toLocaleString(i18n.language, {
-                                month: 'numeric', day: 'numeric',
-                                hour: '2-digit', minute: '2-digit'
-                              })}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <RealtimeOrdersPanel
+              recentOrders={recentOrders}
+              newOrderIds={newOrderIds}
+              ordersRefreshing={ordersRefreshing}
+              lastUpdated={lastUpdated}
+              onRefresh={() => pollOrders(true)}
+              fmtPrice={fmtPrice}
+              timeAgo={timeAgo}
+            />
 
             {/* ── Right panel (col-span-1) ── */}
             <div className="space-y-4">
@@ -1108,27 +886,4 @@ export default function SellerPage() {
       </div>
     </SellerLayout>
   )
-}
-
-/**
- * 자식을 뷰포트에 들어왔을 때만 마운트 (IntersectionObserver).
- */
-function DeferUntilVisible({ children, fallback, rootMargin = '200px' }: { children: React.ReactNode; fallback: React.ReactNode; rootMargin?: string }) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    if (visible) return
-    if (typeof IntersectionObserver === 'undefined') { setVisible(true); return }
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) {
-        setVisible(true)
-        observer.disconnect()
-      }
-    }, { rootMargin })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [visible, rootMargin])
-  return <div ref={ref} style={{ width: '100%', height: '100%' }}>{visible ? children : fallback}</div>
 }
