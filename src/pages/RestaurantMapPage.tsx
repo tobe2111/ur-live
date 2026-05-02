@@ -10,53 +10,18 @@ import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { escapeHtml } from '@/shared/utils/html'
 import { formatNumber } from '@/utils/format'
 
-interface Restaurant {
-  id: number; name: string; restaurant_name: string; restaurant_address: string
-  restaurant_phone: string; restaurant_lat: number; restaurant_lng: number
-  price: number; original_price: number; image_url: string
-  discount_percent: number; rating: number
-  category?: string
-  seller_id?: number
-}
-
-// 카카오맵 길찾기 외부 링크 — 사용자 위치에서 매장까지
-function kakaoDirectionsUrl(r: { restaurant_name?: string; restaurant_lat?: number; restaurant_lng?: number }): string {
-  const name = encodeURIComponent(r.restaurant_name || '맛집')
-  return `https://map.kakao.com/link/to/${name},${r.restaurant_lat},${r.restaurant_lng}`
-}
-
-// Haversine 거리 계산 (km)
-function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(a))
-}
-
-// 🛡️ 2026-05-01: TD-018 분할 — sub-components 분리.
+// 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
 import { CATEGORIES, REGIONS } from './restaurant-map/constants'
 import FilterSheet from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
+import HeroCarousel from './restaurant-map/HeroCarousel'
+import { kakaoDirectionsUrl, distanceKm } from './restaurant-map/utils'
+import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 
-type SortBy = 'distance' | 'discount' | 'price' | 'rating'
-
-// 🛡️ 2026-04-28: 옵션 B — 카카오 Places 일반 맛집 (식사권 미출시)
-export interface KakaoPlace {
-  id: string
-  place_name: string
-  category_name: string
-  phone: string
-  road_address_name: string
-  address_name: string
-  x: string // longitude (string)
-  y: string // latitude (string)
-  place_url: string
-  distance?: string // meters
-}
+// re-export so that any callers importing KakaoPlace from RestaurantMapPage 가 깨지지 않음
+export type { KakaoPlace }
 
 // Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
-// REGIONS 는 ./restaurant-map/constants 에서 import (위 import 문 참고).
 
 export default function RestaurantMapPage() {
   const navigate = useNavigate()
@@ -1018,54 +983,13 @@ export default function RestaurantMapPage() {
           )}
 
           {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 (선택 카드 없을 때만) */}
-          {!loading && !selected && heroDeals.length > 0 && (
-            <div className="mb-3 -mx-3 px-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-gray-700 flex items-center gap-1">
-                  <span className="text-amber-500">⚡</span> 오늘의 핫딜
-                </p>
-                <span className="text-[10px] text-gray-400">{heroDeals.length}곳</span>
-              </div>
-              <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                {heroDeals.map(r => {
-                  const discount = Math.round((1 - r.price / r.original_price) * 100)
-                  return (
-                    <button
-                      key={`hero-${r.id}`}
-                      onClick={() => selectAndPan(r)}
-                      className="shrink-0 w-[140px] rounded-2xl bg-white border border-gray-100 overflow-hidden text-left active:scale-[0.97] transition-transform"
-                    >
-                      <div className="relative aspect-square bg-pink-50">
-                        {r.image_url ? (
-                          <img src={r.image_url} alt="" loading="lazy" decoding="async"
-                            className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center"><span className="text-3xl">🍽️</span></div>
-                        )}
-                        <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded">
-                          -{discount}%
-                        </span>
-                        {r.seller_id && liveSellerIds.has(r.seller_id) && (
-                          <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center gap-0.5">
-                            <Radio className="w-2.5 h-2.5 animate-pulse" /> LIVE
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-2">
-                        <p className="text-[11px] font-bold text-gray-900 truncate">{r.restaurant_name}</p>
-                        <p className="text-[10px] text-gray-400 truncate flex items-center gap-0.5">
-                          <MapPin className="w-2.5 h-2.5 shrink-0" />
-                          {userLoc && r.restaurant_lat && r.restaurant_lng
-                            ? `${distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng).toFixed(1)}km`
-                            : (r.restaurant_address || '주소 미등록')}
-                        </p>
-                        <p className="text-[12px] font-extrabold text-gray-900 mt-1">{r.price?.toLocaleString()}원</p>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+          {!loading && !selected && (
+            <HeroCarousel
+              heroDeals={heroDeals}
+              userLoc={userLoc}
+              liveSellerIds={liveSellerIds}
+              onSelect={selectAndPan}
+            />
           )}
 
           {loading ? (
