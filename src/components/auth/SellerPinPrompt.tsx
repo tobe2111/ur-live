@@ -72,7 +72,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-green-600" aria-hidden="true" />
-            <h3 id="seller-pin-prompt-title" className="text-lg font-bold text-gray-900">보안 PIN 확인</h3>
+            <h3 id="seller-pin-prompt-title" className="text-lg font-bold text-gray-900">{t('sellerPin.confirmTitle')}</h3>
           </div>
           <button type="button" onClick={onCancel} aria-label="PIN 입력 취소" className="text-gray-400 hover:text-gray-700 p-1">
             <X className="w-5 h-5" />
@@ -102,7 +102,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
           <button onClick={submit} disabled={loading || !pin}
             className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {loading ? '확인 중...' : '확인'}
+            {loading ? t('sellerPin.checking') : t('sellerPin.confirm')}
           </button>
         </div>
 
@@ -186,7 +186,7 @@ export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKak
       <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-green-600" />
-          <p className="text-sm font-semibold text-green-800">보안 PIN 설정 완료</p>
+          <p className="text-sm font-semibold text-green-800">{t('sellerPin.setupDone')}</p>
         </div>
         <button onClick={() => setShowForm(true)}
           className="text-xs text-green-700 hover:text-green-900 font-medium">
@@ -202,21 +202,21 @@ export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKak
         className="w-full py-3 bg-white border border-gray-200 hover:border-blue-300 rounded-xl flex items-center gap-3 px-4 text-left">
         <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
         <div className="flex-1">
-          <p className="text-sm font-semibold text-gray-900">보안 PIN 설정하기</p>
-          <p className="text-[11px] text-gray-500 mt-0.5">정산 요청, 계좌 변경 등 민감 액션 전 추가 확인</p>
+          <p className="text-sm font-semibold text-gray-900">{t('sellerPin.setupCta')}</p>
+          <p className="text-[11px] text-gray-500 mt-0.5">{t('sellerPin.setupDesc')}</p>
         </div>
-        <span className="text-xs text-blue-600 font-medium">설정 →</span>
+        <span className="text-xs text-blue-600 font-medium">{t('sellerPin.setupAction')} →</span>
       </button>
     )
   }
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-      <p className="text-sm font-bold text-gray-900">보안 PIN {pinSet ? '재설정' : '설정'}</p>
+      <p className="text-sm font-bold text-gray-900">보안 PIN {pinSet ? t('sellerPin.reset') : t('sellerPin.set')}</p>
 
       {!linkedToKakao && (
         <div>
-          <label className="block text-xs text-gray-600 mb-1">현재 비밀번호 확인</label>
+          <label className="block text-xs text-gray-600 mb-1">{t('sellerPin.currentPassword')}</label>
           <input type="password" value={form.current_password}
             onChange={e => setForm(f => ({ ...f, current_password: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
@@ -224,7 +224,7 @@ export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKak
       )}
 
       <div>
-        <label className="block text-xs text-gray-600 mb-1">새 PIN (4~6자리 숫자)</label>
+        <label className="block text-xs text-gray-600 mb-1">{t('sellerPin.newPin')}</label>
         <input type="password" inputMode="numeric" maxLength={6}
           value={form.pin}
           onChange={e => setForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '') }))}
@@ -247,7 +247,7 @@ export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKak
         <button onClick={save} disabled={loading}
           className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-          {loading ? '저장 중...' : '저장'}
+          {loading ? t('sellerPin.saving') : t('sellerPin.save')}
         </button>
       </div>
     </div>

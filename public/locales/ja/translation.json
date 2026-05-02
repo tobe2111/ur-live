@@ -2123,5 +2123,30 @@
       "recipientName": "山田太郎",
       "message": "お誕生日おめでとう! いつも幸せでいてね ✨"
     }
+  },
+  "sellerPin": {
+    "confirmTitle": "セキュリティPIN確認",
+    "checking": "確認中...",
+    "confirm": "確認",
+    "setupDone": "セキュリティPIN設定完了",
+    "setupCta": "セキュリティPINを設定",
+    "setupDesc": "精算リクエスト、口座変更など重要な操作の前に追加確認",
+    "setupAction": "設定",
+    "reset": "再設定",
+    "set": "設定",
+    "currentPassword": "現在のパスワード確認",
+    "newPin": "新しいPIN (4〜6桁の数字)",
+    "saving": "保存中...",
+    "save": "保存"
+  },
+  "kakaoLink": {
+    "title": "カカオアカウント連携",
+    "processing": "処理中...",
+    "connectCta": "カカオアカウントを連携",
+    "unlinkConfirm": "カカオアカウントの連携を解除しますか? 以降はメール/パスワードのみでログインできます。",
+    "authFailed": "カカオ認証失敗",
+    "authCancelled": "カカオ認証キャンセル",
+    "linkFailed": "連携失敗",
+    "unlinkHint": "上の \"解除\" ボタンでいつでも連携解除できます。"
   }
 }

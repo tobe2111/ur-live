@@ -2123,5 +2123,30 @@
       "recipientName": "张三",
       "message": "生日快乐!愿你永远幸福 ✨"
     }
+  },
+  "sellerPin": {
+    "confirmTitle": "验证安全 PIN",
+    "checking": "验证中...",
+    "confirm": "确认",
+    "setupDone": "安全 PIN 设置完成",
+    "setupCta": "设置安全 PIN",
+    "setupDesc": "结算请求、账户变更等敏感操作前需额外确认",
+    "setupAction": "设置",
+    "reset": "重置",
+    "set": "设置",
+    "currentPassword": "当前密码确认",
+    "newPin": "新 PIN (4~6 位数字)",
+    "saving": "保存中...",
+    "save": "保存"
+  },
+  "kakaoLink": {
+    "title": "Kakao 账户关联",
+    "processing": "处理中...",
+    "connectCta": "关联 Kakao 账户",
+    "unlinkConfirm": "解除 Kakao 账户关联?之后将仅可使用邮箱/密码登录。",
+    "authFailed": "Kakao 认证失败",
+    "authCancelled": "Kakao 认证已取消",
+    "linkFailed": "关联失败",
+    "unlinkHint": "可随时使用上方的 \"解除\" 按钮取消关联。"
   }
 }

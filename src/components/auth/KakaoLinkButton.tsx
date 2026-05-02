@@ -74,7 +74,7 @@ export function KakaoLinkButton({ role }: Props) {
       try { popup.close() } catch { /* ignore */ }
 
       if (error || !success) {
-        toast.error(error ? `카카오 인증 실패: ${error}` : '카카오 인증 취소됨')
+        toast.error(error ? `${t('kakaoLink.authFailed')}: ${error}` : t('kakaoLink.authCancelled'))
         return
       }
 
@@ -90,7 +90,7 @@ export function KakaoLinkButton({ role }: Props) {
         }
       } catch (e: unknown) {
         const err = e as { response?: { data?: { error?: string } } }
-        toast.error(err.response?.data?.error || '연동 실패')
+        toast.error(err.response?.data?.error || t('kakaoLink.linkFailed'))
       } finally { setWorking(false) }
     }
     window.addEventListener('message', handler)
@@ -100,7 +100,7 @@ export function KakaoLinkButton({ role }: Props) {
   }
 
   async function unlink() {
-    if (!confirm('카카오 계정 연동을 해제할까요? 이후엔 이메일/비밀번호로만 로그인 가능합니다.')) return
+    if (!confirm(t('kakaoLink.unlinkConfirm'))) return
     const pw = prompt('본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)')
     if (!pw) return
     setWorking(true)
@@ -158,7 +158,7 @@ export function KakaoLinkButton({ role }: Props) {
       <div className="flex items-start gap-2">
         <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-lg shrink-0">💬</div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900">카카오 계정 연동</p>
+          <p className="text-sm font-bold text-gray-900">{t('kakaoLink.title')}</p>
           <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
             연동하면 카카오 로그인만으로 접근 가능해요.<br />
             비밀번호 관리 부담 ↓ · 보안 ↑
@@ -169,14 +169,14 @@ export function KakaoLinkButton({ role }: Props) {
       <button onClick={startLink} disabled={working}
         className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD800] disabled:opacity-50 text-[#3C1E1E] font-bold text-sm rounded-xl flex items-center justify-center gap-1.5">
         {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>💬</span>}
-        {working ? '처리 중...' : '카카오 계정 연동하기'}
+        {working ? t('kakaoLink.processing') : t('kakaoLink.connectCta')}
       </button>
 
       <div className="flex items-start gap-1.5 text-[10px] text-gray-500">
         <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
         <span>
           기존 이메일/비밀번호 로그인도 계속 사용 가능합니다.
-          언제든 위 "해제" 버튼으로 연동 해제할 수 있어요.
+          {t('kakaoLink.unlinkHint')}
         </span>
       </div>
     </div>

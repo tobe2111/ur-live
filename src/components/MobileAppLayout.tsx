@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import DesktopLiveSidebar from './DesktopLiveSidebar'
+import DesktopLiveRightPanel from './DesktopLiveRightPanel'
 
 interface MobileAppLayoutProps {
   children: ReactNode
@@ -29,6 +30,9 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {/* PC (xl+) 좌측 TikTok 식 사이드바 — data-mobile-only 페이지에서만 노출.
           mobile/tablet (xl 미만) 에서는 hidden (사이드바 자체에서 처리) */}
       {mobileOnly && <DesktopLiveSidebar />}
+      {/* PC (2xl+) 우측 안내 패널 — 좌 224 + 중앙 430 + 우 280 = 약 940px 가 들어가야
+          하므로 1536px 이상 viewport 에서만 노출 (사이드바 자체에서 처리) */}
+      {mobileOnly && <DesktopLiveRightPanel />}
       <div className="mobile-app-container" data-mobile-only={mobileOnly ? 'true' : 'false'}>
         {children}
       </div>

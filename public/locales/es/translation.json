@@ -2123,5 +2123,30 @@
       "recipientName": "Juan Pérez",
       "message": "¡Feliz cumpleaños! Te deseo lo mejor ✨"
     }
+  },
+  "sellerPin": {
+    "confirmTitle": "Verificar PIN de seguridad",
+    "checking": "Verificando...",
+    "confirm": "Confirmar",
+    "setupDone": "PIN de seguridad configurado",
+    "setupCta": "Configurar PIN de seguridad",
+    "setupDesc": "Confirmación adicional antes de acciones sensibles (liquidaciones, cambios bancarios)",
+    "setupAction": "Configurar",
+    "reset": "Restablecer",
+    "set": "Configurar",
+    "currentPassword": "Contraseña actual",
+    "newPin": "Nuevo PIN (4–6 dígitos)",
+    "saving": "Guardando...",
+    "save": "Guardar"
+  },
+  "kakaoLink": {
+    "title": "Vinculación de cuenta KakaoTalk",
+    "processing": "Procesando...",
+    "connectCta": "Vincular cuenta KakaoTalk",
+    "unlinkConfirm": "¿Desvincular tu cuenta KakaoTalk? Después podrás iniciar sesión solo con correo/contraseña.",
+    "authFailed": "Autenticación de KakaoTalk fallida",
+    "authCancelled": "Autenticación de KakaoTalk cancelada",
+    "linkFailed": "Vinculación fallida",
+    "unlinkHint": "Puedes desvincular en cualquier momento con el botón \"Desvincular\" de arriba."
   }
 }

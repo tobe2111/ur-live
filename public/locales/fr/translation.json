@@ -2123,5 +2123,30 @@
       "recipientName": "Jean Dupont",
       "message": "Joyeux anniversaire ! Je te souhaite tout le meilleur ✨"
     }
+  },
+  "sellerPin": {
+    "confirmTitle": "Vérifier le PIN de sécurité",
+    "checking": "Vérification...",
+    "confirm": "Confirmer",
+    "setupDone": "PIN de sécurité configuré",
+    "setupCta": "Configurer le PIN de sécurité",
+    "setupDesc": "Confirmation supplémentaire avant les actions sensibles (règlements, changement de compte bancaire)",
+    "setupAction": "Configurer",
+    "reset": "Réinitialiser",
+    "set": "Configurer",
+    "currentPassword": "Mot de passe actuel",
+    "newPin": "Nouveau PIN (4–6 chiffres)",
+    "saving": "Enregistrement...",
+    "save": "Enregistrer"
+  },
+  "kakaoLink": {
+    "title": "Liaison du compte KakaoTalk",
+    "processing": "Traitement...",
+    "connectCta": "Lier le compte KakaoTalk",
+    "unlinkConfirm": "Délier votre compte KakaoTalk ? Vous pourrez ensuite vous connecter uniquement avec e-mail/mot de passe.",
+    "authFailed": "Échec de l'authentification KakaoTalk",
+    "authCancelled": "Authentification KakaoTalk annulée",
+    "linkFailed": "Échec de la liaison",
+    "unlinkHint": "Vous pouvez délier à tout moment avec le bouton \"Délier\" ci-dessus."
   }
 }

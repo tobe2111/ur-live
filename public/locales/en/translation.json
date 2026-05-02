@@ -2123,5 +2123,30 @@
       "recipientName": "John Doe",
       "message": "Happy birthday! Wishing you all the best ✨"
     }
+  },
+  "sellerPin": {
+    "confirmTitle": "Verify security PIN",
+    "checking": "Verifying...",
+    "confirm": "Confirm",
+    "setupDone": "Security PIN configured",
+    "setupCta": "Set up security PIN",
+    "setupDesc": "Extra confirmation before sensitive actions (settlements, bank account changes)",
+    "setupAction": "Set up",
+    "reset": "Reset",
+    "set": "Set",
+    "currentPassword": "Current password",
+    "newPin": "New PIN (4–6 digits)",
+    "saving": "Saving...",
+    "save": "Save"
+  },
+  "kakaoLink": {
+    "title": "KakaoTalk account link",
+    "processing": "Processing...",
+    "connectCta": "Link KakaoTalk account",
+    "unlinkConfirm": "Unlink your KakaoTalk account? You can sign in with email/password only afterwards.",
+    "authFailed": "KakaoTalk authentication failed",
+    "authCancelled": "KakaoTalk authentication cancelled",
+    "linkFailed": "Link failed",
+    "unlinkHint": "You can unlink anytime using the \"Unlink\" button above."
   }
 }
