@@ -13,6 +13,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt'
 import OnboardingTrigger from './components/onboarding/OnboardingTrigger'
 import RestoreAccountModal from './components/account/RestoreAccountModal'
 import BottomNav from '@/components/main/BottomNav'
+import { swallow } from '@/shared/utils/swallow'
 import SideBanner from '@/components/SideBanner'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -271,7 +272,7 @@ function AppContent() {
     }
     const msg = errorMessages[errorCode] || `로그인 중 오류가 발생했어요 (${errorCode})`
 
-    import('@/hooks/useToast').then(({ toast }) => toast.error(msg)).catch(() => {})
+    import('@/hooks/useToast').then(({ toast }) => toast.error(msg)).catch(swallow('app:oauth-error-toast-import'))
 
     // 잘못된 세션 흔적 정리 — 모든 카카오 콜백 에러에서 localStorage 인증 흔적 제거.
     //   세션이 발급 안 됐는데 user_id 만 stale 하게 남아있으면 ProtectedRoute 통과 → 401 무한 루프.

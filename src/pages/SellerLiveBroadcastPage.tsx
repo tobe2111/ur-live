@@ -39,43 +39,17 @@ import { OBSWebSocketClient, type OBSConnectConfig, type OBSStatus, saveOBSConfi
 import { downloadOBSProfile } from '@/lib/obs-profile'
 
 // ── Types ──────────────────────────────────────────────────────────
-interface YouTubeChannel {
-  id: number
-  channel_id: string
-  channel_title: string
-  channel_thumbnail: string
-  subscriber_count: number
-  is_active: boolean
-  has_persistent_key?: boolean
-  token_expired?: boolean
-}
+// 🛡️ 2026-05-02: TD-018 — types 는 ./seller-live-broadcast/types 로 이미 추출됨.
+//   본체에 중복으로 남아있던 inline interfaces 정리.
+import type {
+  YouTubeChannel,
+  Product,
+  LiveStream,
+  WizardStep,
+  Destination,
+  DestinationPlatform,
+} from './seller-live-broadcast/types'
 
-interface Product {
-  id: number
-  name: string
-  price: number
-  image_url: string
-  stock: number
-  is_active: boolean
-  is_supply_product?: boolean
-}
-
-interface LiveStream {
-  id: number
-  title: string
-  youtube_video_id: string
-  youtube_broadcast_id?: string
-  youtube_url?: string
-  rtmp_url?: string
-  rtmp_key?: string
-  status: 'scheduled' | 'live' | 'ended'
-  viewer_count: number
-  current_product_id?: number
-  ended_at?: string
-  scheduled_at?: string
-}
-
-type WizardStep = 'info' | 'setup' | 'live'
 // 송출 도구 (streaming tool): 셀러가 영상을 어떻게 push 할지 — type StreamMethod 는 ./SellerLiveBroadcast.storage 로 이전
 import type { StreamMethod, BroadcastTemplate } from './SellerLiveBroadcast.storage'
 import { formatNumber } from '@/utils/format'
@@ -89,16 +63,6 @@ import {
   getTemplates,
   saveTemplates,
 } from './SellerLiveBroadcast.storage'
-// 목적지 플랫폼 (destination): 시청자가 어디서 보는지
-type Destination = 'youtube' | 'tiktok' | 'chzzk' | 'soop'
-
-// ── 멀티플랫폼 API 타입 ────────────────────────────────────────────
-interface DestinationPlatform {
-  key: string; label: string; status: 'available' | 'coming_soon' | 'deprecated'
-  icon: string; region: string
-  features: { rtmp_ingest: boolean; chat_relay: boolean; product_overlay: boolean; oauth_required: boolean }
-  eta?: string; note?: string
-}
 
 // 프리셋/RTMP/Stats/Share/StreamList → SellerLiveBroadcast.parts.tsx (TD-006 / audit #10 추가 분할)
 

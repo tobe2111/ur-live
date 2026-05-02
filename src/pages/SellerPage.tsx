@@ -15,6 +15,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerOnboardingWidget from '@/components/seller/SellerOnboardingWidget'
 import { formatNumber } from '@/utils/format'
+import { swallow } from '@/shared/utils/swallow'
 import LazyChart from './seller-page/LazyChart'
 import OnboardingChecklist from './seller-page/OnboardingChecklist'
 import RealtimeOrdersPanel from './seller-page/RealtimeOrdersPanel'
@@ -137,7 +138,7 @@ export default function SellerPage() {
               }
               const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeWj4J1aGBneIONkpGLgXRtZ2l4hI+UkYyBdWxnbHqFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1')
               audio.volume = 0.3
-              audio.play().catch(() => {})
+              audio.play().catch(swallow('seller:new-order-audio'))
             } catch { /* non-critical */ }
           }
           lastMaxIdRef.current = maxId
