@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
+import DesktopLiveSidebar from './DesktopLiveSidebar'
 
 interface MobileAppLayoutProps {
   children: ReactNode
@@ -11,6 +12,7 @@ interface MobileAppLayoutProps {
  *   - 기본: PC 에서도 풀 너비 사용 (페이지별 lg: variants 로 desktop layout 구성)
  *   - 라이브/쇼츠/음성 등 9:16 비디오 페이지는 `MOBILE_ONLY_PATHS` 매칭 시
  *     `data-mobile-only="true"` 부착 → 430px 액자 유지
+ *   - data-mobile-only 페이지는 PC (xl+) 에서 좌측 TikTok 식 사이드바 추가 노출
  */
 
 // 9:16 비디오 / 모바일 전용 UI 페이지 (PC 에서도 액자 유지)
@@ -23,8 +25,14 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   const location = useLocation()
   const mobileOnly = MOBILE_ONLY_PREFIXES.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   return (
-    <div className="mobile-app-container" data-mobile-only={mobileOnly ? 'true' : 'false'}>
-      {children}
-    </div>
+    <>
+      {/* PC (xl+) 좌측 TikTok 식 사이드바 — data-mobile-only 페이지에서만 노출.
+          mobile/tablet (xl 미만) 에서는 hidden (사이드바 자체에서 처리) */}
+      {mobileOnly && <DesktopLiveSidebar />}
+      <div className="mobile-app-container" data-mobile-only={mobileOnly ? 'true' : 'false'}>
+        {children}
+      </div>
+    </>
   )
 }
+
