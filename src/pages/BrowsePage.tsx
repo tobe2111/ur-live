@@ -230,9 +230,10 @@ export default function BrowsePage() {
           }))
         ) : undefined}
       />
-      {/* 상단 헤더: 검색바 + 아이콘 */}
-      <div className="sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] px-4 py-2.5 border-b border-gray-100 dark:border-[#1A1A1A]">
-        <div className="flex items-center gap-3">
+      {/* 상단 헤더: 검색바 + 아이콘 — PC 에서도 풀너비 sticky, 콘텐츠는 centered */}
+      <div className="sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="ur-content-wide px-4 py-2.5 lg:px-8">
+          <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/search')}
@@ -245,12 +246,13 @@ export default function BrowsePage() {
           <button onClick={() => navigate('/cart')} className="p-1 relative">
             <ShoppingCart className="w-6 h-6 text-gray-800 dark:text-gray-100" />
           </button>
+          </div>
         </div>
       </div>
 
-      {/* 카테고리 탭 (v4 Editorial) */}
+      {/* 카테고리 탭 (v4 Editorial) — PC 에서도 풀너비 가로 스크롤, 콘텐츠 centered */}
       <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] overflow-x-auto scrollbar-hide">
-        <div className="flex px-4 gap-1.5 pb-2.5">
+        <div className="ur-content-wide flex px-4 lg:px-8 gap-1.5 pb-2.5">
           {[
             { key: 'all', label: '전체' },
             { key: 'fashion', label: '패션' },
@@ -272,10 +274,10 @@ export default function BrowsePage() {
         </div>
       </div>
 
-      <div className="px-4 py-5">
+      <div className="ur-content-wide px-4 py-5 lg:px-8">
         {/* 섹션 헤더 */}
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">{category === 'all' ? '오늘의 핫딜' : `${({'fashion':'패션','beauty':'뷰티','food':'식품','living':'리빙','digital':'디지털','meal_voucher':'식사권'} as Record<string, string>)[category] || category}`}</h1>
+          <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{category === 'all' ? '오늘의 핫딜' : `${({'fashion':'패션','beauty':'뷰티','food':'식품','living':'리빙','digital':'디지털','meal_voucher':'식사권'} as Record<string, string>)[category] || category}`}</h1>
         </div>
 
         {/* v4 배너 (Editorial Grid) */}
@@ -372,7 +374,7 @@ export default function BrowsePage() {
         {loading ? (
           <div className="space-y-4">
             <div className="aspect-[4/3] bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-2xl" />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {[...Array(4)].map((_, i) => (
                 <div key={i}>
                   <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
@@ -436,7 +438,7 @@ export default function BrowsePage() {
             })()}
 
             {/* 2열 그리드 (나머지 상품) */}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
               {displayed.slice(1).map(product => {
                 const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
                 const displayPrice = product.current_price || product.price

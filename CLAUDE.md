@@ -84,6 +84,57 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
 - `ENVIRONMENT=production` (Plain text) 등록 필수 — 미등록 시 webhook 서명 검증이 우회됨
 - 운영 MID 는 `urteamizy1` 만 사용 (`cp_urteamw10d` 는 잘못 등록된 것, 의식적 방치)
 
+## 📐 PC 반응형 디자인 시스템 (2026-05-02 도입)
+
+### 배경
+이전 (~2026-05-01): PC 에서도 모든 사용자 페이지가 `max-w-[430px]` 모바일 폭으로 강제됨.
+사용자 결정: 모든 페이지가 PC 화면 전체를 활용하되, 디자인 시스템을 일관되게 따라야 함.
+
+### 핵심 원칙
+
+1. **모바일 First**: 기존 모바일 디자인 그대로 (변경 없음)
+2. **PC 활용**: `lg:` (1024px+) / `xl:` (1280px+) / `2xl:` (1536px+) Tailwind variants 로 desktop layout 구성
+3. **콘텐츠 폭 토큰** (`src/index.css`):
+   - `ur-content-narrow` (720px) — form / 결제 / 가입 페이지
+   - `ur-content-medium` (1024px) — 기사 / 가이드 / 약관 페이지
+   - `ur-content-wide` (1280px) — 쇼핑 / 상품 그리드 / 마이페이지
+   - `ur-content-full` (1536px) — 어드민·셀러 대시보드 (이미 적용됨)
+4. **모바일 액자 유지 페이지** (9:16 비디오):
+   - `/live/*`, `/shorts` — `MobileAppLayout` 의 `MOBILE_ONLY_PREFIXES` 매칭 → `data-mobile-only="true"` 부착
+   - PC 에서도 430px 액자 + box-shadow 유지
+
+### 페이지별 패턴
+
+| 페이지 종류 | 폭 토큰 | 핵심 변환 |
+|---|---|---|
+| **쇼핑 그리드** (BrowsePage, WishlistPage) | `ur-content-wide` | `grid-cols-2` → `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5` |
+| **상품 상세** (ProductDetailPage) | `ur-content-wide` | mobile 1열 → lg에서 좌(이미지 갤러리) / 우(상세+구매) 2단 |
+| **결제/주문** (CheckoutPage, MyOrdersPage) | `ur-content-narrow` | mobile 그대로, PC 에서 가운데 정렬 +좌우 여백 |
+| **마이페이지** (UserProfilePage) | `ur-content-medium` | mobile 1열 → lg에서 좌(프로필) / 우(메뉴) 2단 |
+| **홈** (MainHomePage) | `ur-content-wide` | hero + region picker 가운데, 라이브 카드 그리드는 PC 에서 4-5열 |
+| **라이브** (LivePageV2) | `data-mobile-only="true"` | 9:16 풀스크린 유지, PC 에서도 430px 액자 (TikTok 스타일 좌측 사이드바는 별도 PR) |
+| **셀러/어드민/에이전시** | (변경 없음) | 이미 EXCLUDE_MOBILE_LAYOUT — 풀 너비 대시보드 |
+
+### 새 페이지 작성 시 체크리스트
+
+1. **mobile 우선**: 기존 디자인 그대로 (430px 가정 OK)
+2. **PC 활용**:
+   - 외부 wrapper: `<div className="ur-content-wide px-4 lg:px-8">` 같은 패턴
+   - 그리드: `grid-cols-2` → `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`
+   - 폰트: `text-xl` → `text-xl lg:text-3xl` (제목)
+   - 간격: `gap-3` → `gap-3 lg:gap-6`
+3. **sticky header / footer**: 풀너비 sticky 유지하되, 내부 콘텐츠는 `ur-content-*` 로 centered
+4. **9:16 비디오 페이지**: `MOBILE_ONLY_PREFIXES` 에 path 추가 (라이브/쇼츠 같은 경우)
+5. **테스트**: 모바일 (≤640px) / 태블릿 (768px) / 데스크톱 (1280px) / wide (1920px) 4가지 뷰포트 확인
+
+### 현재 적용 상태 (점진 진행)
+
+- ✅ **BrowsePage** — 첫 prototype (sticky header centered + grid 2-5열)
+- ⏳ ProductDetailPage — 좌우 2단 진행 예정
+- ⏳ MainHomePage — 그리드 + 헤로 진행 예정
+- ⏳ CheckoutPage / MyOrdersPage / UserProfilePage / WishlistPage — 점진 적용
+- ⏸️ LivePageV2 — 마지막 단계 (9:16 유지하며 사이드바 추가, 별도 PR)
+
 ## 테마 규칙 (필수)
 
 페이지를 생성하거나 수정할 때 **반드시** 해당 페이지의 테마에 맞는 색상을 사용합니다.

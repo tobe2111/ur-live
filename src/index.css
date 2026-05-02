@@ -486,38 +486,70 @@ html.native-app nav {
 }
 
 /* ============================================
-   Mobile App Layout - PC에서 모바일 앱처럼
-   컨테이너 자체가 뷰포트 역할 (fixed 요소가 이 안에 고정됨)
+   Mobile App Layout — PC 에서도 모든 페이지 대응
+   ----------------------------------------------
+   📐 2026-05-02: PC 풀 너비 활성화 (사용자 요청, 옵션 B 점진 재디자인)
+     - 기본: 모바일 폭 (max-width 풀어 PC 전체 사용)
+     - 페이지별로 lg: / xl: / 2xl: variants 로 desktop layout 정의
+     - 모바일 (≤640px) 은 풀 너비 그대로
+     - data-mobile-only="true" 가 붙은 페이지는 기존 430px 모바일 액자 유지
+       (라이브/쇼츠 등 9:16 비디오 페이지)
    ============================================ */
 .mobile-app-container {
-  max-width: 430px;
   width: 100%;
   margin: 0 auto;
   min-height: 100dvh;
   background-color: #020202;
   position: relative;
-  overflow-x: hidden;
-  /* 🛡️ 2026-04-27: transform: translateZ(0) 제거.
-     transform 이 containing block 을 만들어서 자손 fixed 요소가 viewport 가 아닌
-     이 컨테이너 기준으로 동작 → BottomNav 가 콘텐츠 맨 아래에서만 보이는 버그.
-     BottomNav/Modals 모두 viewport 기준이 정상. PC 프레임은 left-1/2 -translate-x-1/2 + max-w 로 이미 중앙 정렬됨. */
+  /* overflow-x 제거 — PC 에서 좌우 사이드바 사용 시 sticky/fixed 자손에 영향 없도록.
+     PC viewport 보다 넓은 그리드는 의도적으로 가로 스크롤 (Vite/Tailwind 표준 동작). */
 }
 
-/* 모바일: 전체 너비, 평소처럼 */
-@media (max-width: 430px) {
-  .mobile-app-container {
+/* 모바일 액자 모드: data-mobile-only 페이지 (라이브/쇼츠 등) — PC 에서도 430px 폭 유지 */
+.mobile-app-container[data-mobile-only="true"] {
+  max-width: 430px;
+}
+
+/* 모바일 (≤640px): 풀 너비 */
+@media (max-width: 640px) {
+  .mobile-app-container,
+  .mobile-app-container[data-mobile-only="true"] {
     max-width: 100%;
   }
 }
 
-/* PC: 프레임 + 배경 */
-@media (min-width: 431px) {
+/* PC 액자 모드: data-mobile-only 페이지에만 box-shadow */
+@media (min-width: 641px) {
   body {
     background-color: #111;
   }
-  .mobile-app-container {
+  .mobile-app-container[data-mobile-only="true"] {
     box-shadow: 0 0 60px rgba(0, 0, 0, 0.4);
   }
+}
+
+/* PC 콘텐츠 폭 토큰 — 페이지별 max-width 가이드.
+   `class="ur-content-narrow"` 같은 형태로 사용 (form / 상세 폼).
+   `class="ur-content-wide"` (그리드 카드 페이지). */
+.ur-content-narrow {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.ur-content-medium {
+  max-width: 1024px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.ur-content-wide {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.ur-content-full {
+  max-width: 1536px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ============================================
