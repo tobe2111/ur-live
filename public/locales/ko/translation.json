@@ -2160,5 +2160,22 @@
     "tapToStartSub": "소리와 함께 라이브가 시작됩니다",
     "entering": "라이브 입장 중...",
     "enteringSub": "잠시만 기다려주세요"
+  },
+  "paymentFail": {
+    "title": "결제 실패",
+    "subtitle": "결제가 정상적으로 처리되지 않았습니다.",
+    "errorLabel": "오류 내용",
+    "solutionLabel": "해결 방법",
+    "orderNumberLabel": "주문번호",
+    "toHome": "메인으로",
+    "retry": "다시 시도",
+    "helpHeader": "문제가 계속되거나 궁금한 점이 있으신가요?",
+    "csTitle": "고객센터",
+    "csHours": "평일 09:00 - 18:00",
+    "unknownError": "알 수 없는 오류가 발생했습니다.",
+    "genericError": "결제 처리 중 오류가 발생했습니다.",
+    "genericSolution": "잠시 후 다시 시도해주세요.",
+    "fallbackSolution": "문제가 지속되면 고객센터로 문의해주세요.",
+    "docTitle": "결제 실패 - 유어딜"
   }
 }

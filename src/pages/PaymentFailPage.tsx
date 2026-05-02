@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { XCircle, Home, RotateCcw } from 'lucide-react'
 import SEO from '@/components/SEO'
 
 export default function PaymentFailPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -14,14 +16,15 @@ export default function PaymentFailPage() {
   const orderId = searchParams.get('orderId')
 
   useEffect(() => {
-    document.title = '결제 실패 - 유어딜'
+    document.title = t('paymentFail.docTitle')
     // 결제 실패 시 주문은 아직 DB에 생성되지 않은 상태이므로
     // 별도 롤백이 필요하지 않습니다. (주문 생성은 PaymentSuccessPage에서 처리)
   }, [code, message, orderId])
 
   // 에러 코드에 따른 사용자 친화적 메시지
+  // (errorMessages 객체는 한국어 토스 결제 실패 코드 매핑이라 한국어 그대로 유지)
   const getErrorMessage = () => {
-    if (!code) return message || '알 수 없는 오류가 발생했습니다.'
+    if (!code) return message || t('paymentFail.unknownError')
 
     const errorMessages: Record<string, string> = {
       'PAY_PROCESS_CANCELED': '사용자가 결제를 취소했습니다.',
@@ -55,12 +58,12 @@ export default function PaymentFailPage() {
       'INVALID_CARD_COMPANY': '유효하지 않은 카드사입니다.',
     }
 
-    return errorMessages[code] || message || '결제 처리 중 오류가 발생했습니다.'
+    return errorMessages[code] || message || t('paymentFail.genericError')
   }
 
   // 에러 해결 방법 제안
   const getSolution = () => {
-    if (!code) return '잠시 후 다시 시도해주세요.'
+    if (!code) return t('paymentFail.genericSolution')
 
     const solutions: Record<string, string> = {
       'PAY_PROCESS_CANCELED': '다시 결제를 진행하시려면 아래 버튼을 눌러주세요.',
@@ -75,12 +78,12 @@ export default function PaymentFailPage() {
       'ALREADY_APPROVED_PAYMENT': '마이페이지에서 주문 내역을 확인해주세요.',
     }
 
-    return solutions[code] || '문제가 지속되면 고객센터로 문의해주세요.'
+    return solutions[code] || t('paymentFail.fallbackSolution')
   }
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
-      <SEO title="결제 실패 - 유어딜" description="결제가 정상적으로 처리되지 않았습니다" url="/payment/fail" noindex />
+      <SEO title={t('paymentFail.title')} description={t('paymentFail.subtitle')} url="/payment/fail" noindex />
       <div className="max-w-2xl w-full">
         <div className="bg-white rounded-2xl p-8 shadow-lg border border-[#e5e5e7]">
           {/* 실패 아이콘 */}
@@ -88,21 +91,21 @@ export default function PaymentFailPage() {
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 mb-4">
               <XCircle className="h-12 w-12 text-red-600" />
             </div>
-            <h1 className="text-3xl font-bold text-[#1d1d1f] mb-2">결제 실패</h1>
-            <p className="text-[#6e6e73]">결제가 정상적으로 처리되지 않았습니다.</p>
+            <h1 className="text-3xl font-bold text-[#1d1d1f] mb-2">{t('paymentFail.title')}</h1>
+            <p className="text-[#6e6e73]">{t('paymentFail.subtitle')}</p>
           </div>
 
           {/* 오류 정보 */}
           <div className="space-y-4 mb-8">
             {/* 에러 메시지 */}
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-red-900 mb-2">오류 내용</h3>
+              <h3 className="text-sm font-semibold text-red-900 mb-2">{t('paymentFail.errorLabel')}</h3>
               <p className="text-sm text-red-800">{getErrorMessage()}</p>
             </div>
 
             {/* 해결 방법 */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-blue-900 mb-2">해결 방법</h3>
+              <h3 className="text-sm font-semibold text-blue-900 mb-2">{t('paymentFail.solutionLabel')}</h3>
               <p className="text-sm text-blue-800">{getSolution()}</p>
             </div>
 
@@ -110,7 +113,7 @@ export default function PaymentFailPage() {
             {orderId && (
               <div className="bg-[#f5f5f7] rounded-xl p-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#6e6e73]">주문번호</span>
+                  <span className="text-sm text-[#6e6e73]">{t('paymentFail.orderNumberLabel')}</span>
                   <span className="text-sm font-semibold text-[#1d1d1f] font-mono">
                     {orderId}
                   </span>
@@ -126,27 +129,27 @@ export default function PaymentFailPage() {
               className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-12 flex items-center justify-center gap-2"
             >
               <Home className="h-4 w-4" />
-              메인으로
+              {t('paymentFail.toHome')}
             </Button>
             <Button
               onClick={() => navigate('/checkout')}
               className="flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-12 flex items-center justify-center gap-2"
             >
               <RotateCcw className="h-4 w-4" />
-              다시 시도
+              {t('paymentFail.retry')}
             </Button>
           </div>
 
           {/* 고객센터 정보 */}
           <div className="text-center pt-6 border-t border-[#d2d2d7]">
             <p className="text-xs text-[#86868b] mb-2">
-              문제가 계속되거나 궁금한 점이 있으신가요?
+              {t('paymentFail.helpHeader')}
             </p>
             <p className="text-sm font-semibold text-[#1d1d1f] mb-1">
-              고객센터: 0507-0177-0432
+              {t('paymentFail.csTitle')}: 0507-0177-0432
             </p>
             <p className="text-xs text-[#86868b]">
-              평일 09:00 - 18:00
+              {t('paymentFail.csHours')}
             </p>
           </div>
 

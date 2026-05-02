@@ -2160,5 +2160,22 @@
     "tapToStartSub": "El directo comenzará con sonido",
     "entering": "Entrando al directo...",
     "enteringSub": "Por favor espera un momento"
+  },
+  "paymentFail": {
+    "title": "Pago fallido",
+    "subtitle": "Tu pago no se procesó correctamente.",
+    "errorLabel": "Detalles del error",
+    "solutionLabel": "Cómo resolver",
+    "orderNumberLabel": "Número de pedido",
+    "toHome": "Ir al inicio",
+    "retry": "Reintentar",
+    "helpHeader": "¿Sigues teniendo problemas o preguntas?",
+    "csTitle": "Atención al cliente",
+    "csHours": "Días laborables 09:00–18:00",
+    "unknownError": "Se produjo un error desconocido.",
+    "genericError": "Se produjo un error al procesar el pago.",
+    "genericSolution": "Por favor, inténtalo de nuevo más tarde.",
+    "fallbackSolution": "Si el problema persiste, contacta con atención al cliente.",
+    "docTitle": "Pago fallido - UR·DEAL"
   }
 }

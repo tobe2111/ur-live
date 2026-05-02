@@ -2160,5 +2160,22 @@
     "tapToStartSub": "直播将带声音开始",
     "entering": "正在加入直播...",
     "enteringSub": "请稍候"
+  },
+  "paymentFail": {
+    "title": "支付失败",
+    "subtitle": "您的付款未能成功处理。",
+    "errorLabel": "错误详情",
+    "solutionLabel": "解决方法",
+    "orderNumberLabel": "订单号",
+    "toHome": "回到首页",
+    "retry": "重试",
+    "helpHeader": "问题仍未解决或有疑问?",
+    "csTitle": "客户支持",
+    "csHours": "工作日 09:00 - 18:00",
+    "unknownError": "发生未知错误。",
+    "genericError": "处理付款时发生错误。",
+    "genericSolution": "请稍后再试。",
+    "fallbackSolution": "如果问题持续,请联系客户支持。",
+    "docTitle": "支付失败 - UR·DEAL"
   }
 }

@@ -2160,5 +2160,22 @@
     "tapToStartSub": "音声付きでライブが始まります",
     "entering": "ライブ入場中...",
     "enteringSub": "少々お待ちください"
+  },
+  "paymentFail": {
+    "title": "決済失敗",
+    "subtitle": "決済が正常に処理されませんでした。",
+    "errorLabel": "エラー内容",
+    "solutionLabel": "解決方法",
+    "orderNumberLabel": "注文番号",
+    "toHome": "ホームへ",
+    "retry": "もう一度試す",
+    "helpHeader": "問題が続いたり質問がありますか?",
+    "csTitle": "カスタマーサポート",
+    "csHours": "平日 09:00 - 18:00",
+    "unknownError": "不明なエラーが発生しました。",
+    "genericError": "決済処理中にエラーが発生しました。",
+    "genericSolution": "しばらく後にもう一度お試しください。",
+    "fallbackSolution": "問題が続く場合はカスタマーサポートまでお問い合わせください。",
+    "docTitle": "決済失敗 - UR·DEAL"
   }
 }

@@ -2160,5 +2160,22 @@
     "tapToStartSub": "Live will start with sound",
     "entering": "Joining live...",
     "enteringSub": "Please wait a moment"
+  },
+  "paymentFail": {
+    "title": "Payment Failed",
+    "subtitle": "Your payment was not processed successfully.",
+    "errorLabel": "Error details",
+    "solutionLabel": "How to resolve",
+    "orderNumberLabel": "Order number",
+    "toHome": "Go home",
+    "retry": "Try again",
+    "helpHeader": "Still having trouble or any questions?",
+    "csTitle": "Customer Support",
+    "csHours": "Weekdays 09:00–18:00",
+    "unknownError": "An unknown error occurred.",
+    "genericError": "An error occurred while processing the payment.",
+    "genericSolution": "Please try again later.",
+    "fallbackSolution": "If the problem persists, please contact customer support.",
+    "docTitle": "Payment Failed - UR·DEAL"
   }
 }

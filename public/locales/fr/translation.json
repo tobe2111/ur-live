@@ -2160,5 +2160,22 @@
     "tapToStartSub": "Le direct commencera avec le son",
     "entering": "Entrée en direct...",
     "enteringSub": "Veuillez patienter un instant"
+  },
+  "paymentFail": {
+    "title": "Paiement échoué",
+    "subtitle": "Votre paiement n'a pas été traité avec succès.",
+    "errorLabel": "Détails de l'erreur",
+    "solutionLabel": "Comment résoudre",
+    "orderNumberLabel": "Numéro de commande",
+    "toHome": "Retour à l'accueil",
+    "retry": "Réessayer",
+    "helpHeader": "Vous avez encore des problèmes ou des questions ?",
+    "csTitle": "Service client",
+    "csHours": "Jours ouvrés 09:00–18:00",
+    "unknownError": "Une erreur inconnue s'est produite.",
+    "genericError": "Une erreur est survenue lors du traitement du paiement.",
+    "genericSolution": "Veuillez réessayer plus tard.",
+    "fallbackSolution": "Si le problème persiste, contactez le service client.",
+    "docTitle": "Paiement échoué - UR·DEAL"
   }
 }
