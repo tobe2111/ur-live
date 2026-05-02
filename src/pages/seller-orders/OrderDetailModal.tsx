@@ -37,14 +37,14 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-[#0A0A0A] rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Modal Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">{t('seller.orderDetail')}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('seller.orderDetail')}</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors"
             >
               <XCircle className="w-6 h-6" />
             </button>
@@ -54,26 +54,26 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
           <div className="space-y-6">
             {/* Basic Info */}
             <div className="border-b pb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.orderInfoSection')}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{t('seller.orderInfoSection')}</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-gray-500 mb-1">{t('seller.orderNumberHeader')}</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.orderNumberHeader')}</p>
                   <p className="font-mono font-medium">{order.order_number}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 mb-1">{t('seller.orderDateHeader')}</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.orderDateHeader')}</p>
                   <p className="font-medium">
                     {formatKST(order.created_at)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-500 mb-1">{t('seller.orderStatusHeader')}</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.orderStatusHeader')}</p>
                   <div><StatusBadge status={order.status} /></div>
                 </div>
                 <div>
-                  <p className="text-gray-500 mb-1">{t('seller.paymentStatusHeader')}</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.paymentStatusHeader')}</p>
                   <div>
-                    <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                    <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-800 dark:text-gray-100'}>
                       {order.payment_status === 'completed' ? t('seller.statusDone') : order.payment_status}
                     </Badge>
                   </div>
@@ -83,34 +83,34 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
 
             {/* Shipping Info */}
             <div className="border-b pb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.shippingInfoSection')}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{t('seller.shippingInfoSection')}</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <p className="text-gray-500 mb-1">{t('seller.recipient')}</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.recipient')}</p>
                   <p className="font-medium">{order.shipping_name}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 mb-1">{t('seller.contactNumber')}</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.contactNumber')}</p>
                   <p className="font-medium">{order.shipping_phone}</p>
                 </div>
                 {addr.postal_code && (
                 <div>
-                  <p className="text-gray-500 mb-1">{t('seller.postalCode')}</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.postalCode')}</p>
                   <p className="font-medium">{addr.postal_code}</p>
                 </div>
                 )}
                 <div>
-                  <p className="text-gray-500 mb-1">{t('seller.addressField')}</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.addressField')}</p>
                   <p className="font-medium">{addr.address1}{addr.address2 ? ` ${addr.address2}` : ''}</p>
                 </div>
                 {order.courier && order.tracking_number && (
                   <>
                     <div>
-                      <p className="text-gray-500 mb-1">{t('seller.courierLabel')}</p>
+                      <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.courierLabel')}</p>
                       <p className="font-medium">{order.courier}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500 mb-1">{t('seller.trackingNumberLabel')}</p>
+                      <p className="text-gray-500 dark:text-gray-400 mb-1">{t('seller.trackingNumberLabel')}</p>
                       <p className="font-mono font-medium">{order.tracking_number}</p>
                     </div>
                   </>
@@ -121,12 +121,12 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
             {/* Order Items */}
             {order.items && order.items.length > 0 && (
               <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.orderProductsSection')}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{t('seller.orderProductsSection')}</h3>
                 <div className="space-y-3">
                   {order.items.map((item) => (
-                    <div key={item.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div key={item.id} className="flex gap-3 p-3 bg-gray-50 dark:bg-[#121212] rounded-lg">
                       {/* Product Image */}
-                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
+                      <div className="w-16 h-16 bg-gray-200 dark:bg-[#2A2A2A] rounded-lg flex-shrink-0 overflow-hidden">
                         {item.image_url ? (
                           <img
                             src={item.image_url}
@@ -137,7 +137,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                             }}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">
                             No Image
                           </div>
                         )}
@@ -145,9 +145,9 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
 
                       {/* Product Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{item.product_name}</p>
-                        <p className="text-sm text-gray-500 mt-1">{t('seller.quantityLabel')}: {item.quantity}{t('common.count')}</p>
-                        <p className="text-sm font-medium text-gray-900 mt-1">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">{item.product_name}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('seller.quantityLabel')}: {item.quantity}{t('common.count')}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
                           {formatPrice(item.price * item.quantity)}{t('common.won')}
                         </p>
                       </div>
@@ -159,8 +159,8 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
 
             {/* Amount Info */}
             <div className="border-b pb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.paymentInfoSection')}</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{t('seller.paymentInfoSection')}</h3>
+              <div className="bg-gray-50 dark:bg-[#121212] rounded-lg p-4">
                 <div className="flex justify-between text-lg font-bold">
                   <span>{t('seller.totalOrderAmount')}</span>
                   <span className="text-blue-600">{formatPrice(order.total_amount)}{t('common.won')}</span>
@@ -171,7 +171,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
             {/* Status Change */}
             {next && (
               <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.statusChangeSection')}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{t('seller.statusChangeSection')}</h3>
                 <Button
                   onClick={() => onStatusChange(order.order_number, next)}
                   disabled={updating}
@@ -192,24 +192,24 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
             {/* Tracking Number Form */}
             {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.shippingInfoInput')}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{t('seller.shippingInfoInput')}</h3>
                 <form onSubmit={(e) => onTrackingSubmit(e, order.order_number)} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       {t('seller.courierLabel')} <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={trackingForm.courier}
                       onChange={(e) => onTrackingFormChange({ ...trackingForm, courier: e.target.value })}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-[#0A0A0A]"
                     >
                       <option value="">{t('seller.selectCourier')}</option>
                       {COURIERS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       {t('seller.trackingNumberLabel')} <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -218,7 +218,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                       onChange={(e) => onTrackingFormChange({ ...trackingForm, tracking_number: e.target.value })}
                       placeholder={t('seller.trackingNumberPlaceholder')}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                   <Button

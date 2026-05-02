@@ -151,12 +151,12 @@ export default function OrderDetailModal({ order, onClose, onCancel }: Props) {
                       {steps.map((step, si) => (
                         <div key={si} className="flex items-center flex-1">
                           <div className="flex flex-col items-center">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-[#2A2A2A] text-gray-400 dark:text-gray-500'}`}>
                               {step.done ? '✓' : si + 1}
                             </div>
-                            <span className={`text-[10px] mt-1 ${step.done ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>{step.label}</span>
+                            <span className={`text-[10px] mt-1 ${step.done ? 'text-blue-600 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>{step.label}</span>
                           </div>
-                          {si < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${steps[si + 1].done ? 'bg-blue-500' : 'bg-gray-200'}`} />}
+                          {si < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${steps[si + 1].done ? 'bg-blue-500' : 'bg-gray-200 dark:bg-[#2A2A2A]'}`} />}
                         </div>
                       ))}
                     </div>

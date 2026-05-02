@@ -493,7 +493,7 @@ export default function BrowsePage() {
                       )}
                     </div>
                     <div className="absolute bottom-2 right-2 rounded-full p-2 bg-white/90 backdrop-blur-sm">
-                      <Heart className="w-4 h-4 text-gray-300" strokeWidth={1.5} />
+                      <Heart className="w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
                     </div>
                   </div>
                   <div className="mt-2.5">
@@ -539,10 +539,10 @@ export default function BrowsePage() {
                         {isMealVoucher ? (
                           <Bell
                             onClick={(e: React.MouseEvent) => toggleInterest(e, product.id, product.name)}
-                            className={`w-3 h-3 ${interestedIds.has(product.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-300'}`}
+                            className={`w-3 h-3 ${interestedIds.has(product.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-300 dark:text-gray-600'}`}
                           />
                         ) : (
-                          <Heart className="w-3 h-3 text-gray-300" strokeWidth={1.5} />
+                          <Heart className="w-3 h-3 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
                         )}
                       </span>
                     </div>

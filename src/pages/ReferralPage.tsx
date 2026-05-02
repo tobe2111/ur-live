@@ -150,7 +150,7 @@ export default function ReferralPage() {
   if (!group) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-4">
-        <Gift className="w-16 h-16 text-gray-300 mb-4" />
+        <Gift className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
         <p className="text-gray-900 dark:text-white font-bold text-lg">유효하지 않은 초대입니다</p>
         <Link to="/" className="mt-4 text-gray-900 dark:text-white text-sm font-medium underline">홈으로 돌아가기</Link>
       </div>
@@ -371,7 +371,7 @@ export default function ReferralPage() {
           ) : isExpired ? (
             <button
               disabled
-              className="w-full py-3.5 bg-gray-200 text-gray-500 dark:text-gray-400 rounded-xl font-bold text-sm cursor-not-allowed"
+              className="w-full py-3.5 bg-gray-200 dark:bg-[#2A2A2A] text-gray-500 dark:text-gray-400 rounded-xl font-bold text-sm cursor-not-allowed"
             >
               마감된 공동구매
             </button>
@@ -455,7 +455,7 @@ function TierProgressBar({
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                   reached
                     ? 'bg-pink-500 border-pink-500 shadow-md shadow-pink-200'
-                    : 'bg-white dark:bg-[#0A0A0A] border-gray-300'
+                    : 'bg-white dark:bg-[#0A0A0A] border-gray-300 dark:border-[#3A3A3A]'
                 }`}
               >
                 {reached && <CheckCircle className="w-3 h-3 text-white" />}
@@ -499,7 +499,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
               </span>
               <span className="text-[9px] block leading-none mt-0.5 text-pink-700">{t.l}</span>
             </div>
-            {i < arr.length - 1 && <span className="text-[14px] text-gray-300 font-extrabold">:</span>}
+            {i < arr.length - 1 && <span className="text-[14px] text-gray-300 dark:text-gray-600 font-extrabold">:</span>}
           </span>
         ))}
       </div>

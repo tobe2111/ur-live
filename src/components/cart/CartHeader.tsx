@@ -57,7 +57,7 @@ export const CartHeader = React.memo(function CartHeader({
                 className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors ${
                   allSelected
                     ? 'bg-pink-500 border-pink-500'
-                    : 'bg-white dark:bg-[#0A0A0A] border-gray-300 group-hover:border-gray-400'
+                    : 'bg-white dark:bg-[#0A0A0A] border-gray-300 dark:border-[#3A3A3A] group-hover:border-gray-400'
                 }`}
               >
                 {allSelected && (

@@ -8,7 +8,7 @@ export const EmptyCart = React.memo(function EmptyCart() {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4 bg-white dark:bg-[#0A0A0A]">
       <div className="w-20 h-20 bg-gray-50 dark:bg-[#121212] rounded-full flex items-center justify-center mb-5">
-        <ShoppingBag size={36} className="text-gray-300" />
+        <ShoppingBag size={36} className="text-gray-300 dark:text-gray-600" />
       </div>
 
       <h2 className="text-[16px] font-bold text-gray-900 dark:text-white mb-1.5">

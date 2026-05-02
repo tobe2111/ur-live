@@ -64,7 +64,7 @@ export default function CancelOrderModal({
           <select
             value={reason}
             onChange={(e) => onReasonChange(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
             <option value="">취소 사유를 선택해주세요</option>
             <option value="단순 변심">단순 변심</option>
@@ -105,7 +105,7 @@ export default function CancelOrderModal({
               placeholder="취소할 금액 입력 (원)"
               aria-label="부분 취소 금액 입력 (원)"
               min="1"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           )}
         </div>

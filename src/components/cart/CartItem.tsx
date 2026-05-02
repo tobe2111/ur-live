@@ -48,7 +48,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         className={`mt-1 w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
           isSelected
             ? 'bg-pink-500 border-pink-500'
-            : 'bg-white dark:bg-[#0A0A0A] border-gray-300'
+            : 'bg-white dark:bg-[#0A0A0A] border-gray-300 dark:border-[#3A3A3A]'
         } ${isOutOfStock ? 'cursor-not-allowed' : ''}`}
       >
         {isSelected && (
@@ -66,7 +66,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 dark:bg-[#1A1A1A] shrink-0" loading="lazy" decoding="async" />
       ) : (
         <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] shrink-0 flex items-center justify-center">
-          <span className="text-gray-300 text-[10px]">No img</span>
+          <span className="text-gray-300 dark:text-gray-600 text-[10px]">No img</span>
         </div>
       )}
 
@@ -81,7 +81,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             onClick={() => onRemove(item.id)}
             disabled={isUpdating}
             aria-label={`${item.product_name} 장바구니에서 삭제`}
-            className="text-gray-300 hover:text-gray-500 dark:text-gray-400 shrink-0"
+            className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:text-gray-400 shrink-0"
           >
             <X size={16} />
           </button>

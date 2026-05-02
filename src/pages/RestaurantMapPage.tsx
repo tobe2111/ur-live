@@ -656,7 +656,7 @@ export default function RestaurantMapPage() {
       <div ref={mapRef} className="absolute inset-0 bg-gray-100 dark:bg-[#1A1A1A]" />
       {!(sdkLoaded && window.kakao?.maps) && (
         <div className="absolute inset-0 bg-gray-100 dark:bg-[#1A1A1A] flex flex-col items-center justify-center pointer-events-none">
-          <MapPin className="w-12 h-12 text-gray-300 mb-3" />
+          <MapPin className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
           {sdkError ? (
             <>
               <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">지도를 불러올 수 없습니다</p>

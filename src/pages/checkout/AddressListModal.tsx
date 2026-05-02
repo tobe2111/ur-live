@@ -30,7 +30,7 @@ export default function AddressListModal({
       <div className="space-y-2">
         {addresses.length === 0 ? (
           <div className="py-12 text-center">
-            <MapPin className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <MapPin className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-[15px] text-gray-500 dark:text-gray-400">등록된 배송지가 없습니다.</p>
             <p className="text-[13px] text-gray-400 dark:text-gray-500 mt-1">새 배송지를 추가해주세요.</p>
           </div>
@@ -76,7 +76,7 @@ export default function AddressListModal({
             e.stopPropagation()
             onAddNewAddress()
           }}
-          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 py-3.5 text-[14px] font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:bg-[#121212] cursor-pointer active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 dark:border-[#3A3A3A] py-3.5 text-[14px] font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:bg-[#121212] cursor-pointer active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
           새 배송지 추가

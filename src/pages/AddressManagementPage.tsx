@@ -247,7 +247,7 @@ export default function AddressManagementPage() {
         {/* 배송지 목록 */}
         {addresses.length === 0 ? (
           <div className="text-center py-16">
-            <MapPin className="w-14 h-14 text-gray-300 mx-auto mb-4" />
+            <MapPin className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <p className="text-[15px] text-gray-900 dark:text-white">등록된 배송지가 없습니다.</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">배송지를 추가해주세요.</p>
           </div>
@@ -355,7 +355,7 @@ export default function AddressManagementPage() {
               type="text"
               value={formData.recipient_name}
               onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="받으실 분의 이름을 입력하세요"
             />
           </div>
@@ -368,7 +368,7 @@ export default function AddressManagementPage() {
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="010-1234-5678"
             />
           </div>
@@ -382,13 +382,13 @@ export default function AddressManagementPage() {
                 type="text"
                 value={formData.postal_code}
                 readOnly
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
+                className="flex-1 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
                 placeholder="우편번호"
               />
               <button
                 type="button"
                 onClick={() => setShowPostcodePopup(true)}
-                className="px-5 py-3 border border-gray-300 rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212] transition-all whitespace-nowrap"
+                className="px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212] transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>
@@ -409,7 +409,7 @@ export default function AddressManagementPage() {
               type="text"
               value={formData.address}
               readOnly
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
               placeholder="주소 검색 후 자동 입력됩니다"
             />
           </div>
@@ -422,7 +422,7 @@ export default function AddressManagementPage() {
               type="text"
               value={formData.address_detail}
               onChange={(e) => setFormData({ ...formData, address_detail: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="동/호수, 건물명 등 (선택)"
             />
           </div>
@@ -454,7 +454,7 @@ export default function AddressManagementPage() {
               value={formData.label}
               onChange={(e) => setFormData({ ...formData, label: e.target.value })}
               maxLength={20}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="직접 입력도 가능합니다"
             />
           </div>
@@ -494,7 +494,7 @@ export default function AddressManagementPage() {
                 value={formData.entry_code}
                 onChange={(e) => setFormData({ ...formData, entry_code: e.target.value })}
                 maxLength={20}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="예: #1234*"
               />
               <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
@@ -530,7 +530,7 @@ export default function AddressManagementPage() {
               onChange={(e) => setFormData({ ...formData, delivery_note: e.target.value })}
               maxLength={200}
               rows={2}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[14px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
               placeholder="배송 시 요청사항을 입력하세요"
             />
           </div>
@@ -541,7 +541,7 @@ export default function AddressManagementPage() {
               id="is_default_modal"
               checked={formData.is_default}
               onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
-              className="w-4 h-4 border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer rounded"
+              className="w-4 h-4 border-gray-300 dark:border-[#3A3A3A] text-blue-600 focus:ring-blue-500 cursor-pointer rounded"
             />
             <label htmlFor="is_default_modal" className="text-[14px] text-gray-700 dark:text-gray-200 cursor-pointer select-none">
               기본 배송지로 설정

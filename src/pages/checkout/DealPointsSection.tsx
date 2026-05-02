@@ -32,7 +32,7 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
           }}
           placeholder="사용할 딜 입력"
           aria-label="사용할 딜 포인트 입력"
-          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white text-right font-medium placeholder:text-gray-400 dark:text-gray-500"
+          className="flex-1 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-sm text-gray-900 dark:text-white text-right font-medium placeholder:text-gray-400 dark:text-gray-500"
         />
         <button
           onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}

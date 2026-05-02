@@ -55,7 +55,7 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
           {type === 'confirm' && (
             <button
               onClick={onClose}
-              className="flex-1 rounded-lg border border-gray-300 bg-white dark:bg-[#0A0A0A] px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-50 dark:bg-[#121212]"
+              className="flex-1 rounded-lg border border-gray-300 dark:border-[#3A3A3A] bg-white dark:bg-[#0A0A0A] px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-50 dark:bg-[#121212]"
             >
               취소
             </button>
@@ -96,7 +96,7 @@ export default function CartPage() {
         </div>
         <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
           <div className="w-20 h-20 bg-gray-50 dark:bg-[#121212] rounded-full flex items-center justify-center">
-            <ShoppingCart className="h-10 w-10 text-gray-300" aria-hidden="true" />
+            <ShoppingCart className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
           </div>
           <div>
             <p className="text-[16px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
@@ -481,7 +481,7 @@ function CartPageContent() {
                       className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
                         groupAllSelected
                           ? 'bg-pink-500 border-pink-500'
-                          : 'bg-white dark:bg-[#0A0A0A] border-gray-300'
+                          : 'bg-white dark:bg-[#0A0A0A] border-gray-300 dark:border-[#3A3A3A]'
                       }`}
                     >
                       {groupAllSelected && (
@@ -496,7 +496,7 @@ function CartPageContent() {
                         {group.seller_name}
                       </span>
                     </div>
-                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                    <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
                   </div>
 
                   {/* v4 Free shipping progress bar (pink) */}

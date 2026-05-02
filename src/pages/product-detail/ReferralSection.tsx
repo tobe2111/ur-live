@@ -184,7 +184,7 @@ export default function ReferralSection({
                       <span>{g.current_count}/{g.target_count}명</span>
                       {timeLeft && (
                         <>
-                          <span className="text-gray-300">·</span>
+                          <span className="text-gray-300 dark:text-gray-600">·</span>
                           <Clock className="w-3 h-3" />
                           <span>{timeLeft}</span>
                         </>
