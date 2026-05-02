@@ -3,85 +3,30 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { clearAuthData } from '@/utils/auth'
 import {
   Users, Play, Package, TrendingUp, CheckCircle, XCircle,
-  DollarSign, Eye, RefreshCw, X, AlertTriangle, Zap, ChevronRight,
-  Search, MoreVertical, Bell, Send, Shield, Radio, Activity, FileText
+  DollarSign, Eye, RefreshCw, X
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { LayoutDashboard } from 'lucide-react'
 import { formatKST, formatKSTDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
+import DeferUntilVisible from './admin-page/DeferUntilVisible'
+import ChartSkeleton from './admin-page/ChartSkeleton'
+import AdminRevenueChart from './admin-page/AdminRevenueChart'
+import AdminActivityFeed from './admin-page/AdminActivityFeed'
+import RejectionModal from './admin-page/RejectionModal'
+import BizInfoModal from './admin-page/BizInfoModal'
+import type { ApiError, Seller, Stream, Stats, DashboardStats, Alert } from './admin-page/types'
 
-interface ApiError {
-  response?: { status?: number; data?: { error?: string } }
-  message?: string
-}
+// 🛡️ 2026-05-02: TD-018 분할 — types / DeferUntilVisible / ChartSkeleton /
+//   AdminRevenueChart / AdminActivityFeed / RejectionModal / BizInfoModal
+//   를 ./admin-page/ 디렉토리로 추출. 미사용 imports (clearAuthData, formatKST,
+//   AlertTriangle, Zap, ChevronRight, Search, MoreVertical, Bell, Send, Shield,
+//   Radio, Activity, FileText) 제거.
 
-interface Seller {
-  id: number
-  email: string
-  username?: string
-  name?: string
-  phone?: string
-  business_name?: string
-  business_number?: string
-  company_name?: string
-  status: string
-  commission_rate?: number
-  can_manipulate_stats?: number
-  linked_user_id?: number | null
-  created_at: string
-  // seller_business_info joined fields
-  biz_number?: string
-  biz_name?: string
-  ceo_name?: string
-  business_type?: string
-  business_category?: string
-  postal_code?: string
-  address?: string
-  address_detail?: string
-  biz_phone?: string
-  biz_email?: string
-  biz_is_verified?: number
-  biz_verified_at?: string | null
-}
-
-interface Stream {
-  id: number
-  title: string
-  seller_id: number
-  status: string
-  youtube_video_id: string
-  created_at: string
-  seller_name?: string
-  viewer_count?: number
-}
-
-interface Stats {
-  totalSellers: number
-  activeSellers: number
-  totalStreams: number
-  activeStreams: number
-}
-
-interface DashboardStats {
-  todaySales: number
-  todayOrders: number
-  currentVisitors: number
-  liveStreams: number
-}
-
-interface Alert {
-  type: 'success' | 'warning' | 'error'
-  emoji: string
-  title: string
-  message: string
-}
-
-// Inline skeleton placeholder
+// Inline skeleton placeholder (판매자/스트림 테이블에서만 사용)
 const Skel = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
 )
@@ -444,33 +389,13 @@ export default function AdminPage() {
         />
       {/* Rejection Modal */}
       {rejectModalOpen && selectedSeller && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">판매자 승인 거부</h3>
-            <p className="text-sm text-gray-600 mb-1">
-              <strong>{selectedSeller.name || selectedSeller.username}</strong>님의 승인을 거부합니다.
-            </p>
-            <p className="text-xs text-gray-500 mb-3">거부 사유를 입력해주세요:</p>
-            <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="예: 사업자등록증 확인 불가"
-              rows={3}
-              className="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
-            />
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => { setRejectModalOpen(false); setSelectedSeller(null); setRejectionReason('') }}
-                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
-              >취소</button>
-              <button
-                onClick={rejectSeller}
-                disabled={!rejectionReason.trim()}
-                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-              >거부 확정</button>
-            </div>
-          </div>
-        </div>
+        <RejectionModal
+          seller={selectedSeller}
+          reason={rejectionReason}
+          onReasonChange={setRejectionReason}
+          onCancel={() => { setRejectModalOpen(false); setSelectedSeller(null); setRejectionReason('') }}
+          onConfirm={rejectSeller}
+        />
       )}
 
       {/* ── 실시간 알림 ── */}
@@ -805,193 +730,15 @@ export default function AdminPage() {
       </div>
       {/* ── 사업자 정보 상세 모달 ── */}
       {bizInfoSeller && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setBizInfoSeller(null)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-900">
-                사업자 정보 — {bizInfoSeller.business_name || bizInfoSeller.name}
-              </h3>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                bizInfoSeller.biz_is_verified
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : bizInfoSeller.biz_number
-                    ? 'bg-yellow-50 text-yellow-700'
-                    : 'bg-gray-100 text-gray-400'
-              }`}>
-                {bizInfoSeller.biz_is_verified ? '승인됨' : bizInfoSeller.biz_number ? '승인 대기' : '미제출'}
-              </span>
-            </div>
-            {!bizInfoSeller.biz_number ? (
-              <p className="text-sm text-gray-400 text-center py-6">사업자 정보가 아직 제출되지 않았습니다.</p>
-            ) : (
-              <dl className="space-y-3">
-                {[
-                  { label: '사업자번호', value: bizInfoSeller.biz_number },
-                  { label: '상호명', value: bizInfoSeller.biz_name },
-                  { label: '대표자명', value: bizInfoSeller.ceo_name },
-                  { label: '업태', value: bizInfoSeller.business_type },
-                  { label: '업종', value: bizInfoSeller.business_category },
-                  { label: '우편번호', value: bizInfoSeller.postal_code },
-                  { label: '사업장 주소', value: bizInfoSeller.address },
-                  { label: '상세 주소', value: bizInfoSeller.address_detail },
-                  { label: '전화번호', value: bizInfoSeller.biz_phone },
-                  { label: '이메일', value: bizInfoSeller.biz_email },
-                  { label: '승인일시', value: bizInfoSeller.biz_verified_at ? formatKST(bizInfoSeller.biz_verified_at) : null },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex gap-3">
-                    <dt className="text-xs text-gray-400 w-28 shrink-0">{label}</dt>
-                    <dd className="text-xs text-gray-900 break-all">{value || <span className="text-gray-300">미입력</span>}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-            <div className="mt-5 flex gap-2">
-              {bizInfoSeller.biz_number && !bizInfoSeller.biz_is_verified && (
-                <button
-                  onClick={() => approveBizInfo(bizInfoSeller.id)}
-                  className="flex-1 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700"
-                >
-                  승인
-                </button>
-              )}
-              {bizInfoSeller.biz_number && !!bizInfoSeller.biz_is_verified && (
-                <button
-                  onClick={() => rejectBizInfo(bizInfoSeller.id)}
-                  className="flex-1 py-2.5 bg-red-100 text-red-600 text-sm font-medium rounded-xl hover:bg-red-200"
-                >
-                  승인 취소
-                </button>
-              )}
-              <button
-                onClick={() => setBizInfoSeller(null)}
-                className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-200"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
+        <BizInfoModal
+          seller={bizInfoSeller}
+          onClose={() => setBizInfoSeller(null)}
+          onApprove={approveBizInfo}
+          onReject={rejectBizInfo}
+        />
       )}
       </div>
     </AdminLayout>
   )
 }
 
-/**
- * 자식을 뷰포트에 들어왔을 때만 마운트 (IntersectionObserver).
- * 차트/피드 같은 무거운 위젯의 API 호출/렌더를 스크롤 진입 시점까지 지연.
- */
-function DeferUntilVisible({ children, fallback, rootMargin = '200px' }: { children: React.ReactNode; fallback: React.ReactNode; rootMargin?: string }) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    if (visible) return
-    if (typeof IntersectionObserver === 'undefined') { setVisible(true); return }
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) {
-        setVisible(true)
-        observer.disconnect()
-      }
-    }, { rootMargin })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [visible, rootMargin])
-  return <div ref={ref}>{visible ? children : fallback}</div>
-}
-
-function ChartSkeleton({ title }: { title: string }) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-gray-900">{title}</h3>
-      </div>
-      <div className="space-y-2" style={{ minHeight: 160 }}>
-        <Skel className="h-4 w-2/3" />
-        <Skel className="h-4 w-5/6" />
-        <Skel className="h-4 w-1/2" />
-        <Skel className="h-4 w-3/4" />
-        <Skel className="h-4 w-2/3" />
-      </div>
-    </div>
-  )
-}
-
-function AdminRevenueChart() {
-  const [data, setData] = useState<any[]>([])
-  const [days, setDays] = useState(14)
-  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
-  useEffect(() => {
-    api.get(`/api/admin/tools/chart/revenue?days=${days}`, h)
-      .then(r => { if (r.data.success) setData(r.data.data || []) }).catch(() => { /* empty chart is shown on error */ })
-  }, [days])
-  const max = Math.max(...data.map(d => d.revenue), 1)
-  return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-gray-900">매출 추이</h3>
-        <div className="flex gap-1">
-          {[7, 14, 30].map(d => (
-            <button key={d} onClick={() => setDays(d)}
-              className={`px-2 py-1 rounded text-xs font-medium ${days === d ? 'bg-blue-100 text-blue-700' : 'text-gray-500'}`}>{d}일</button>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-end gap-1 overflow-x-auto scrollbar-hide" style={{ minHeight: 160 }}>
-        {data.slice(-14).map(d => (
-          <div key={d.date} className="flex flex-col items-center flex-1 min-w-[28px]">
-            <span className="text-[9px] text-gray-500 mb-1">{(d.revenue / 10000).toFixed(0)}만</span>
-            <div className="w-full bg-gray-100 rounded-t" style={{ height: `${Math.max(4, (d.revenue / max) * 120)}px` }}>
-              <div className="w-full h-full bg-emerald-500 rounded-t" />
-            </div>
-            <span className="text-[9px] text-gray-400 mt-1">{d.date.slice(5)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function AdminActivityFeed() {
-  const [orders, setOrders] = useState<any[]>([])
-  const lastCountRef = useRef(0)
-  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
-  const fetchOrders = () => {
-    api.get('/api/admin/orders?page=1&limit=8', h)
-      .then(r => {
-        const list = r.data.data?.orders || r.data.data || []
-        if (list.length > lastCountRef.current && lastCountRef.current > 0) {
-          // 새 주문 알림
-          try { new Audio('/static/notification.mp3').play().catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }) } catch {}
-        }
-        lastCountRef.current = list.length
-        if (r.data.success) setOrders(list)
-      }).catch(() => { /* empty activity list is shown on error */ })
-  }
-  useEffect(() => {
-    fetchOrders()
-    const interval = setInterval(fetchOrders, 30000) // 30초 자동 갱신
-    return () => clearInterval(interval)
-  }, [])
-  return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
-      <h3 className="text-sm font-bold text-gray-900 mb-3">최근 활동</h3>
-      {orders.length === 0 ? <p className="text-xs text-gray-400">활동이 없습니다</p> : (
-        <div className="space-y-2">
-          {orders.slice(0, 8).map((o: { status: string; order_number: string; total_amount: number; created_at?: string }, i: number) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-              <span className="text-gray-700 flex-1 truncate">
-                {o.status === 'PAID' || o.status === 'DONE' ? '💰 주문' : o.status === 'SHIPPING' ? '📦 배송' : o.status === 'CANCELLED' ? '❌ 취소' : '📝 ' + o.status}
-                {' '}{o.order_number} · {formatNumber(o.total_amount || 0)}원
-              </span>
-              <span className="text-gray-400 shrink-0">{o.created_at ? new Date(o.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
