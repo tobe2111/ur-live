@@ -95,12 +95,35 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
 - **보더**: `border-[#1A1A1A]`, `border-[#2A2A2A]`
 - ❌ 절대 금지: `text-gray-900`, `text-gray-800`, `text-gray-700`, `bg-white`, `border-gray-200`
 
-### 화이트 테마 페이지 (쇼핑/결제)
+### 화이트 테마 페이지 (쇼핑/결제) — 사용자 다크 모드 토글 지원
 - **해당**: 쇼핑(`/browse`), 장바구니(`/cart`), 결제(`/checkout`), 상품상세(`/products/*`), 주문내역(`/my-orders`), 검색(`/search`), 위시리스트(`/wishlist`), 배송지(`/mypage/addresses`), 계정설정(`/account/*`), 공동구매(`/referral/*`), 맛집지도(`/restaurant-map`), 딜충전(`/points/charge`)
 - **배경**: `bg-white` (메인), `bg-gray-50` (서브)
 - **텍스트**: `text-gray-900` (제목), `text-gray-600` (본문), `text-gray-500` (보조)
 - **보더**: `border-gray-100`, `border-gray-200`
 - ❌ 절대 금지: `text-white` (컬러 버튼 위 제외), `text-gray-100`, `bg-[#020202]`, `bg-[#121212]`, `border-[#333]`, `hover:bg-[#333]`
+
+#### 🌗 사용자 다크 모드 토글 (2026-05-02)
+- 화이트 테마 페이지는 **사용자가 `/account/settings` 의 "화면 테마" 섹션에서 시스템 / 라이트 / 다크 선택 가능**
+- 인프라: `useTheme` 스토어 (`src/shared/stores/useTheme.ts`) + `<html class="dark">` 토글 + Tailwind `darkMode: 'class'`
+- **새 페이지·컴포넌트 작성 시 dark: variant 동시 추가 필수**. 표준 매핑:
+
+  | 라이트 (기본) | 다크 |
+  |---|---|
+  | `bg-white` | `dark:bg-[#0A0A0A]` |
+  | `bg-gray-50` | `dark:bg-[#121212]` |
+  | `bg-gray-100` | `dark:bg-[#1A1A1A]` |
+  | `text-gray-900` | `dark:text-white` |
+  | `text-gray-800` | `dark:text-gray-100` |
+  | `text-gray-700` | `dark:text-gray-200` |
+  | `text-gray-600` | `dark:text-gray-300` |
+  | `text-gray-500` | `dark:text-gray-400` |
+  | `text-gray-400` | `dark:text-gray-500` |
+  | `border-gray-100` | `dark:border-[#1A1A1A]` |
+  | `border-gray-200` | `dark:border-[#2A2A2A]` |
+
+- 자동 마이그레이션 스크립트: `perl /tmp/dark_migrate.pl <files...>` (사용 후 git diff 검토 필수)
+- 첫 페인트 FOUC 방지: `index.html` inline script 가 `localStorage.ur_theme_mode_v1` 읽고 `<html>` 에 `dark` 클래스 선반영
+- **다크 테마 페이지 (홈/라이브/마이) 와 셀러·어드민 라이트 테마는 토글 무영향** — 페이지 단에서 `bg-[#020202]` / `bg-white` 가 명시 강제되어 있어 `dark:` variant 가 매칭되지 않음 (의도된 동작)
 
 ### 라이트 테마 (셀러/어드민 대시보드)
 - **해당**: 셀러(`/seller/*`), 어드민(`/admin/*`)

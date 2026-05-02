@@ -77,6 +77,23 @@
     <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
     <meta property="og:image" content="https://live.ur-team.com/logo.png" />
 
+    <!-- 🛡️ 2026-05-02: FOUC 방지 — React 마운트 전 <html> 에 dark 클래스 적용.
+         localStorage 'ur_theme_mode_v1' 가 'dark' 이거나 'system' + OS 다크 모드일 때만 추가.
+         useTheme 스토어가 마운트되면 동일 로직으로 다시 동기화하지만, 이 inline 스크립트가
+         첫 페인트 전에 클래스를 잡아둬서 흰화면 깜빡임을 방지한다. -->
+    <script>
+      (function () {
+        try {
+          var m = localStorage.getItem('ur_theme_mode_v1');
+          var dark = m === 'dark' ||
+            ((m === null || m === 'system') &&
+             window.matchMedia &&
+             window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) { /* private mode / SSR */ }
+      })();
+    </script>
+
     <script async src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js" crossorigin="anonymous"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-B1ST2L37CM"></script>
     <script>

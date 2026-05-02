@@ -288,7 +288,7 @@ export default function MyOrdersPage() {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p className="text-[17px] text-gray-500">로딩 중...</p>
+              <p className="text-[17px] text-gray-500 dark:text-gray-400 dark:text-gray-500">로딩 중...</p>
             </div>
           </div>
         ) : error ? (
@@ -296,7 +296,7 @@ export default function MyOrdersPage() {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <p className="text-[15px] text-gray-900 mb-4">{error}</p>
+              <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
               <button
                 onClick={() => loadData()}
                 className="px-6 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold"
@@ -332,13 +332,13 @@ export default function MyOrdersPage() {
       {/* Order Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedOrder(null)} role="presentation">
-          <div className="bg-white rounded-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="주문 상세">
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">주문 상세</h3>
+          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="주문 상세">
+            <div className="sticky top-0 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] p-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">주문 상세</h3>
               <button
                 onClick={() => setSelectedOrder(null)}
                 aria-label="닫기"
-                className="text-gray-500 hover:text-gray-900"
+                className="text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white"
               >
                 ✕
               </button>
@@ -347,20 +347,20 @@ export default function MyOrdersPage() {
             <div className="p-6 space-y-6">
               {/* Order Info */}
               <div>
-                <h4 className="text-[15px] font-semibold text-gray-900 mb-3">주문 정보</h4>
+                <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">주문 정보</h4>
                 <div className="space-y-2 text-[14px]">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">주문번호</span>
-                    <span className="font-medium text-gray-900">{selectedOrder.order_number}</span>
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">주문번호</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.order_number}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">주문일시</span>
-                    <span className="font-medium text-gray-900">
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">주문일시</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
                       {formatKST(selectedOrder.created_at)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">주문상태</span>
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">주문상태</span>
                     <Badge
                       className={`
                         border-0 px-3 py-1
@@ -393,24 +393,24 @@ export default function MyOrdersPage() {
 
               {/* Order Items */}
               <div>
-                <h4 className="text-[15px] font-semibold text-gray-900 mb-3">주문 상품</h4>
+                <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">주문 상품</h4>
                 <div className="space-y-3">
                   {selectedOrder.items?.map((item, idx) => (
-                    <div key={idx} className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div key={idx} className="flex gap-3 p-3 bg-gray-50 dark:bg-[#121212] rounded-xl">
                       <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-medium text-gray-900 line-clamp-2">
+                        <p className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-2">
                           {item.product_name}
                         </p>
                         {item.option_value && (
-                          <p className="text-[12px] text-gray-500">
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
                             옵션: {item.option_value}
                           </p>
                         )}
                         <div className="flex justify-between items-center mt-1">
-                          <p className="text-[13px] text-gray-500">
+                          <p className="text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
                             {item.quantity}개
                           </p>
-                          <p className="text-[14px] font-semibold text-gray-900">
+                          <p className="text-[14px] font-semibold text-gray-900 dark:text-white">
                             {/* ✅ BUG #7 FIX: price_snapshot is optional; guard against undefined→NaN */}
                             {formatNumber((item.price_snapshot ?? 0) * item.quantity)}원
                           </p>
@@ -423,19 +423,19 @@ export default function MyOrdersPage() {
 
               {/* Shipping Info */}
               <div>
-                <h4 className="text-[15px] font-semibold text-gray-900 mb-3">배송 정보</h4>
-                <div className="p-4 bg-gray-50 rounded-xl space-y-2 text-[14px]">
+                <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">배송 정보</h4>
+                <div className="p-4 bg-gray-50 dark:bg-[#121212] rounded-xl space-y-2 text-[14px]">
                   <div className="flex gap-2">
-                    <span className="text-gray-500 min-w-[60px]">받는분</span>
-                    <span className="font-medium text-gray-900">{selectedOrder.shipping_name}</span>
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 min-w-[60px]">받는분</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.shipping_name}</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-gray-500 min-w-[60px]">연락처</span>
-                    <span className="font-medium text-gray-900">{selectedOrder.shipping_phone}</span>
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 min-w-[60px]">연락처</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.shipping_phone}</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-gray-500 min-w-[60px]">주소</span>
-                    <span className="font-medium text-gray-900">
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 min-w-[60px]">주소</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
                       {(() => {
                         const addr = selectedOrder.shipping_address
                         if (typeof addr === 'object' && addr !== null) {
@@ -456,15 +456,15 @@ export default function MyOrdersPage() {
                       { label: '배송완료', done: status === 'DELIVERED' },
                     ]
                     return (
-                      <div className="pt-3 border-t border-gray-200">
+                      <div className="pt-3 border-t border-gray-200 dark:border-[#2A2A2A]">
                         <div className="flex items-center justify-between mb-3">
                           {steps.map((step, si) => (
                             <div key={si} className="flex items-center flex-1">
                               <div className="flex flex-col items-center">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400 dark:text-gray-500'}`}>
                                   {step.done ? '✓' : si + 1}
                                 </div>
-                                <span className={`text-[10px] mt-1 ${step.done ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>{step.label}</span>
+                                <span className={`text-[10px] mt-1 ${step.done ? 'text-blue-600 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>{step.label}</span>
                               </div>
                               {si < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${steps[si + 1].done ? 'bg-blue-500' : 'bg-gray-200'}`} />}
                             </div>
@@ -475,9 +475,9 @@ export default function MyOrdersPage() {
                             <Truck className="h-4 w-4 text-blue-600" />
                             <div className="text-[13px]">
                               {selectedOrder.courier && (
-                                <span className="text-gray-500">{selectedOrder.courier} · </span>
+                                <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">{selectedOrder.courier} · </span>
                               )}
-                              <span className="font-medium text-gray-900">{selectedOrder.tracking_number}</span>
+                              <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.tracking_number}</span>
                             </div>
                           </div>
                           {getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number) && (
@@ -499,29 +499,29 @@ export default function MyOrdersPage() {
 
               {/* Payment Info */}
               <div>
-                <h4 className="text-[15px] font-semibold text-gray-900 mb-3">결제 정보</h4>
+                <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">결제 정보</h4>
                 <div className="space-y-2 text-[14px]">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">상품 금액</span>
-                    <span className="font-medium text-gray-900">
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">상품 금액</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
                       {/* ✅ items가 배열이 아닌 값(object 등)으로 올 경우 .reduce is not a function 방어 */}
                     {(Array.isArray(selectedOrder.items) ? selectedOrder.items : []).reduce((sum, item) => sum + (item.price_snapshot ?? 0) * item.quantity, 0)}원
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">배송비</span>
-                    <span className="font-medium text-gray-900">3,000원</span>
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">배송비</span>
+                    <span className="font-medium text-gray-900 dark:text-white">3,000원</span>
                   </div>
-                  <div className="flex justify-between pt-2 border-t border-gray-200">
-                    <span className="text-gray-900 font-semibold">총 결제금액</span>
+                  <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-[#2A2A2A]">
+                    <span className="text-gray-900 dark:text-white font-semibold">총 결제금액</span>
                     <span className="text-[19px] font-bold text-blue-600">
                       {/* ✅ BUG #7 FIX: total_amount is optional in Order type; nullish fallback prevents TypeError */}
                       {formatNumber(selectedOrder.total_amount ?? selectedOrder.amount ?? 0)}원
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">결제수단</span>
-                    <span className="font-medium text-gray-900">{selectedOrder.payment_method || 'Mock 결제'}</span>
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">결제수단</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.payment_method || 'Mock 결제'}</span>
                   </div>
                 </div>
               </div>
@@ -578,27 +578,27 @@ export default function MyOrdersPage() {
       {cancelModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
           <div 
-            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
+            className="bg-white dark:bg-[#0A0A0A] rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                 주문 취소
               </h3>
               <button
                 onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
                 aria-label="닫기"
-                className="text-gray-500 hover:text-gray-500 transition-colors"
+                className="text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:text-gray-400 dark:text-gray-500 transition-colors"
               >
                 <X className="h-6 w-6" />
               </button>
             </div>
 
             {/* Order Info */}
-            <div className="mb-4 p-4 bg-gray-50 rounded-xl">
-              <p className="text-sm text-gray-500 mb-1">주문번호</p>
-              <p className="font-semibold text-gray-900">{cancelModal.orderNumber}</p>
+            <div className="mb-4 p-4 bg-gray-50 dark:bg-[#121212] rounded-xl">
+              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">주문번호</p>
+              <p className="font-semibold text-gray-900 dark:text-white">{cancelModal.orderNumber}</p>
             </div>
 
             {/* 🛡️ 배치 170: 환불 가이드 (셀프서비스 안내) */}
@@ -613,13 +613,13 @@ export default function MyOrdersPage() {
 
             {/* Cancel Reason */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-600 mb-2">
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
                 취소 사유 <span className="text-red-500">*</span>
               </label>
               <select
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="">취소 사유를 선택해주세요</option>
                 <option value="단순 변심">단순 변심</option>
@@ -632,13 +632,13 @@ export default function MyOrdersPage() {
 
             {/* Partial Cancel */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-600 mb-2">환불 방식</label>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">환불 방식</label>
               <div className="flex gap-2 mb-3">
                 <button
                   type="button"
                   onClick={() => setIsPartialCancel(false)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    !isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                    !isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 dark:bg-[#121212] text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:bg-[#1A1A1A]'
                   }`}
                 >
                   전액 취소
@@ -647,7 +647,7 @@ export default function MyOrdersPage() {
                   type="button"
                   onClick={() => setIsPartialCancel(true)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                    isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 dark:bg-[#121212] text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:bg-[#1A1A1A]'
                   }`}
                 >
                   부분 취소
@@ -661,7 +661,7 @@ export default function MyOrdersPage() {
                   placeholder="취소할 금액 입력 (원)"
                   aria-label="부분 취소 금액 입력 (원)"
                   min="1"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               )}
             </div>
@@ -682,7 +682,7 @@ export default function MyOrdersPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
-                className="flex-1 py-3 px-4 bg-gray-50 text-gray-600 font-medium rounded-full hover:bg-gray-100 transition-colors"
+                className="flex-1 py-3 px-4 bg-gray-50 dark:bg-[#121212] text-gray-600 dark:text-gray-300 font-medium rounded-full hover:bg-gray-100 dark:bg-[#1A1A1A] transition-colors"
                 disabled={processing}
               >
                 닫기

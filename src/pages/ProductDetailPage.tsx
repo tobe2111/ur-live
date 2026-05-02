@@ -245,9 +245,9 @@ export default function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white p-4">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0A0A0A] p-4">
         <div className="text-center">
-          <p className="text-sm text-gray-500">{error?.message || '상품을 찾을 수 없습니다.'}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">{error?.message || '상품을 찾을 수 없습니다.'}</p>
           <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
           <button
             onClick={() => navigate('/')}
@@ -279,7 +279,7 @@ export default function ProductDetailPage() {
   const allImages = [product.image_url, ...detailImages].filter(Boolean)
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
       <SEO
         title={product.name}
         description={product.description?.slice(0, 160) || `${product.name} - 유어딜에서 만나보세요`}
@@ -309,7 +309,7 @@ export default function ProductDetailPage() {
 
       <main className="pb-20">
         {/* Product Images Carousel */}
-        <Suspense fallback={<div className="w-full h-96 bg-gray-100 animate-pulse" />}>
+        <Suspense fallback={<div className="w-full h-96 bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />}>
           <ProductImageCarousel images={allImages} />
         </Suspense>
 
@@ -331,17 +331,17 @@ export default function ProductDetailPage() {
         {/* v4 상세 정보 (이미지 + 설명 + 펼쳐보기) */}
         <div style={{ height: 8, background: '#F9FAFB' }} />
         <section className="px-5 py-5">
-          <p className="text-[13px] font-bold text-gray-900 mb-3">상세 정보</p>
+          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">상세 정보</p>
           {detailImages.length > 0 && (
             <div className="rounded-xl overflow-hidden mb-3" style={{ background: '#F9FAFB' }}>
               <img src={detailImages[0]} alt={product.name || '상품 상세 이미지'} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
             </div>
           )}
           {product.long_description && (
-            <p className="text-[12px] text-gray-700 leading-relaxed">{product.long_description.slice(0, 200)}</p>
+            <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">{product.long_description.slice(0, 200)}</p>
           )}
           {(detailImages.length > 1 || (product.long_description && product.long_description.length > 200)) && (
-            <button className="w-full mt-4 py-3 rounded-xl border border-gray-200 bg-white text-[12px] font-semibold text-gray-700 active:bg-gray-50">
+            <button className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:bg-[#121212]">
               상세정보 펼쳐보기
             </button>
           )}
@@ -373,24 +373,24 @@ export default function ProductDetailPage() {
         {/* 식당 정보 (식사권일 때만) */}
         {product.category === 'meal_voucher' && product.restaurant_name && (
           <AccordionSection title="식당 정보" defaultOpen={true}>
-            <div className="space-y-2.5 text-xs text-gray-500">
-              <div className="flex"><span className="w-16 shrink-0 text-gray-400">식당명</span><span className="text-gray-900 font-medium">{product.restaurant_name}</span></div>
+            <div className="space-y-2.5 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">식당명</span><span className="text-gray-900 dark:text-white font-medium">{product.restaurant_name}</span></div>
               {product.restaurant_address && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400">주소</span><span>{product.restaurant_address}</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">주소</span><span>{product.restaurant_address}</span></div>
               )}
               {product.restaurant_phone && (
                 <div className="flex items-center">
-                  <span className="w-16 shrink-0 text-gray-400">전화</span>
+                  <span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">전화</span>
                   <a href={`tel:${product.restaurant_phone}`} className="text-blue-600 font-medium underline">
                     {product.restaurant_phone}
                   </a>
                 </div>
               )}
               {product.voucher_terms && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400">이용조건</span><span>{product.voucher_terms}</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">이용조건</span><span>{product.voucher_terms}</span></div>
               )}
               {product.voucher_expiry && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400">유효기간</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">유효기간</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
               )}
 
               {/* 지도 + 외부 연결 버튼 */}
@@ -398,7 +398,7 @@ export default function ProductDetailPage() {
                 <div className="grid grid-cols-3 gap-2 pt-2">
                   <button type="button"
                     onClick={() => navigate(`/restaurant-map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
-                    className="py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-gray-200 text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
                     🗺 지도
                   </button>
                   <a href={`https://map.naver.com/v5/search/${encodeURIComponent(product.restaurant_name || product.restaurant_address)}`}
@@ -420,15 +420,15 @@ export default function ProductDetailPage() {
         {/* v4 옵션 선택 */}
         <div style={{ height: 8, background: '#F9FAFB' }} />
         <section className="px-5 py-5">
-          <p className="text-[13px] font-bold text-gray-900 mb-3">옵션 선택</p>
+          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">옵션 선택</p>
           {options.length > 0 ? (
             <div className="space-y-2">
               {options.map((opt: ProductOption) => (
                 <button key={opt.id} onClick={() => setSelectedOptions({ option: Number(opt.id) })}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
-                    selectedOptions.option === opt.id ? 'border-gray-900 bg-gray-50' : 'border-gray-200'
+                    selectedOptions.option === opt.id ? 'border-gray-900 bg-gray-50 dark:bg-[#121212]' : 'border-gray-200 dark:border-[#2A2A2A]'
                   }`}>
-                  <span className="text-[12px] text-gray-900">{opt.option_value}</span>
+                  <span className="text-[12px] text-gray-900 dark:text-white">{opt.option_value}</span>
                   {opt.price_adjustment !== 0 && (
                     <span className="text-[11px] text-red-500 font-bold">
                       {(opt.price_adjustment || 0) > 0 ? '+' : ''}{formatNumber(opt.price_adjustment || 0)}원
@@ -438,17 +438,17 @@ export default function ProductDetailPage() {
               ))}
             </div>
           ) : (
-            <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200">
-              <span className="text-[12px] text-gray-500">옵션을 선택해주세요</span>
-              <svg className="w-3.5 h-3.5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
+            <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A]">
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">옵션을 선택해주세요</span>
+              <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
           )}
           <div className="flex items-center gap-2 mt-3">
-            <span className="text-[11px] text-gray-400">포인트 적립</span>
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">포인트 적립</span>
             <span className="text-[11px] font-bold text-pink-500">최대 {Math.round(displayPrice * 0.03)}딜</span>
           </div>
           {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
-          <div className="mt-1 text-[10.5px] text-gray-400">부가세 포함 (VAT 10%)</div>
+          <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">부가세 포함 (VAT 10%)</div>
         </section>
         <div style={{ height: 8, background: '#F9FAFB' }} />
 
@@ -478,10 +478,10 @@ export default function ProductDetailPage() {
 
         {/* v4 배송 정보 카드 */}
         <div className="px-5 py-3">
-          <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50">
+          <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50 dark:bg-[#121212]">
             <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            <span className="text-[12px] font-semibold text-gray-900">내일 도착 예정</span>
-            <span className="text-[11px] text-gray-500">· 5만원 이상 무료</span>
+            <span className="text-[12px] font-semibold text-gray-900 dark:text-white">내일 도착 예정</span>
+            <span className="text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500">· 5만원 이상 무료</span>
           </div>
         </div>
 
@@ -499,10 +499,10 @@ export default function ProductDetailPage() {
         <div style={{ height: 8, background: '#F9FAFB' }} />
         <section className="px-5 py-6">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-[13px] font-bold text-gray-900">
-              리뷰 <span className="text-gray-400 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
+            <p className="text-[13px] font-bold text-gray-900 dark:text-white">
+              리뷰 <span className="text-gray-400 dark:text-gray-500 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
             </p>
-            <button className="flex items-center gap-0.5 text-[11px] text-gray-400">
+            <button className="flex items-center gap-0.5 text-[11px] text-gray-400 dark:text-gray-500">
               전체보기 <ChevronRight className="w-2.5 h-2.5" />
             </button>
           </div>
@@ -510,7 +510,7 @@ export default function ProductDetailPage() {
         </section>
 
         {/* v4 아코디언 — 3개 표준 섹션 */}
-        <div className="border-t border-gray-100">
+        <div className="border-t border-gray-100 dark:border-[#1A1A1A]">
           <AccordionSection title="상품 정보 고시">
             <ProductInfoGrid items={[
               { label: '재고', value: `${product.stock ?? 0}개` },
@@ -530,7 +530,7 @@ export default function ProductDetailPage() {
       </main>
 
       {/* Floating Cart / Purchase Bar */}
-      <Suspense fallback={<div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-gray-100 animate-pulse" />}>
+      <Suspense fallback={<div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />}>
         <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
@@ -576,7 +576,7 @@ export default function ProductDetailPage() {
           className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg max-w-sm transition-all ${
             toast.type === 'success' 
               ? 'bg-foreground text-background' 
-              : 'bg-destructive text-gray-900'
+              : 'bg-destructive text-gray-900 dark:text-white'
           }`}
         >
           <p className="text-sm font-medium text-center">{toast.message}</p>

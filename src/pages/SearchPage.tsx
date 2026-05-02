@@ -107,7 +107,7 @@ export default function SearchPage() {
   const relatedKeywords = relatedKeywordsMap[query] || relatedKeywordsMap.default
 
   return (
-    <div className="bg-white pb-20 min-h-screen">
+    <div className="bg-white dark:bg-[#0A0A0A] pb-20 min-h-screen">
       <SEO title={query ? `${query} 검색결과 - 유어딜` : '검색 - 유어딜'} description="유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요." url="/search" noindex />
       {/* Header */}
       <SearchHeader
@@ -150,14 +150,14 @@ export default function SearchPage() {
             </div>
 
             {/* Related Keywords Section */}
-            <div className="mt-10 pt-8 border-t border-gray-100">
-              <h3 className="text-[15px] font-bold text-gray-900 mb-3">함께 검색된 키워드</h3>
+            <div className="mt-10 pt-8 border-t border-gray-100 dark:border-[#1A1A1A]">
+              <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">함께 검색된 키워드</h3>
               <div className="flex flex-wrap gap-2">
                 {relatedKeywords.map((keyword) => (
                   <button
                     key={keyword}
                     onClick={() => handleSearch(keyword)}
-                    className="px-4 py-2 rounded-full border border-gray-200 text-[13px] text-gray-600 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                    className="px-4 py-2 rounded-full border border-gray-200 dark:border-[#2A2A2A] text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:bg-[#121212] active:bg-gray-100 dark:bg-[#1A1A1A] transition-colors"
                   >
                     {keyword}
                   </button>

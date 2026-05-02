@@ -570,7 +570,7 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-400">로딩 중...</p>
+          <p className="text-gray-400 dark:text-gray-500">로딩 중...</p>
         </div>
       </div>
     )
@@ -586,7 +586,7 @@ export default function CheckoutPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-400">
+          <p className="mt-4 text-gray-400 dark:text-gray-500">
             {tokenRefreshing ? '보안 인증 중...' : '로딩 중...'}
           </p>
         </div>
@@ -630,7 +630,7 @@ export default function CheckoutPage() {
             <ShippingSection selectedAddress={selectedAddress} onOpenAddressModal={() => setShowAddressModal(true)} />
             
             {/* Divider */}
-            <div className="h-[6px] bg-gray-100" />
+            <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
 
             {/* 주문 상품 정보 (TD-018 추출) */}
             <OrderItemsList sellerGroups={sellerGroups} totalItemCount={cartItems.length} />
@@ -645,7 +645,7 @@ export default function CheckoutPage() {
             />
 
             {/* Divider */}
-            <div className="h-[6px] bg-gray-100" />
+            <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
 
             {/* 결제 수단 (TD-018 추출) */}
             <PaymentSection

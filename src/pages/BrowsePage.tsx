@@ -33,8 +33,8 @@ function RecentlyViewedSection() {
   return (
     <div className="mb-5">
       <div className="flex items-center gap-1.5 mb-3">
-        <Clock className="w-4 h-4 text-gray-400" />
-        <h2 className="text-[13px] font-bold text-gray-900">최근 본 상품</h2>
+        <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+        <h2 className="text-[13px] font-bold text-gray-900 dark:text-white">최근 본 상품</h2>
       </div>
       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
         {items.map(p => (
@@ -44,16 +44,16 @@ function RecentlyViewedSection() {
             onClick={() => navigate(`/products/${p.id}`)}
             className="shrink-0 w-24 cursor-pointer text-left"
           >
-            <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
+            <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] rounded-xl overflow-hidden">
               {p.image ? (
                 <img src={p.image} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gray-100" />
+                <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
               )}
             </div>
-            <p className="text-[11px] text-gray-600 mt-1.5 truncate">{p.name}</p>
+            <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-1.5 truncate">{p.name}</p>
             {p.price != null && (
-              <p className="text-[12px] font-bold text-gray-900">{formatNumber(p.price)}원</p>
+              <p className="text-[12px] font-bold text-gray-900 dark:text-white">{formatNumber(p.price)}원</p>
             )}
           </button>
         ))}
@@ -293,7 +293,7 @@ export default function BrowsePage() {
   const hasMore = showCount < sorted.length
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
         title="쇼핑"
         description="유어딜 인기 상품, 맛집 바우처, 라이브 특가를 만나보세요"
@@ -308,25 +308,25 @@ export default function BrowsePage() {
         ) : undefined}
       />
       {/* 상단 헤더: 검색바 + 아이콘 */}
-      <div className="sticky top-0 z-50 bg-white px-4 py-2.5 border-b border-gray-100">
+      <div className="sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] px-4 py-2.5 border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/search')}
-            className="flex-1 flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2.5 cursor-pointer"
+            className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-[#1A1A1A] rounded-full px-4 py-2.5 cursor-pointer"
             aria-label="상품 검색"
           >
-            <Search className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-400">상품명, 브랜드명</span>
+            <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+            <span className="text-sm text-gray-400 dark:text-gray-500">상품명, 브랜드명</span>
           </button>
           <button onClick={() => navigate('/cart')} className="p-1 relative">
-            <ShoppingCart className="w-6 h-6 text-gray-800" />
+            <ShoppingCart className="w-6 h-6 text-gray-800 dark:text-gray-100" />
           </button>
         </div>
       </div>
 
       {/* 카테고리 탭 (v4 Editorial) */}
-      <div className="bg-white border-b border-gray-100 overflow-x-auto scrollbar-hide">
+      <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] overflow-x-auto scrollbar-hide">
         <div className="flex px-4 gap-1.5 pb-2.5">
           {[
             { key: 'all', label: '전체' },
@@ -341,7 +341,7 @@ export default function BrowsePage() {
               onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
               className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap ${
                 category === c.key || (c.key === 'all' && category === 'all')
-                  ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'
+                  ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 dark:text-gray-500'
               }`}>
               {c.label}
             </button>
@@ -352,7 +352,7 @@ export default function BrowsePage() {
       <div className="px-4 py-5">
         {/* 섹션 헤더 */}
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-extrabold text-gray-900">{category === 'all' ? '오늘의 핫딜' : `${({'fashion':'패션','beauty':'뷰티','food':'식품','living':'리빙','digital':'디지털','meal_voucher':'식사권'} as Record<string, string>)[category] || category}`}</h1>
+          <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">{category === 'all' ? '오늘의 핫딜' : `${({'fashion':'패션','beauty':'뷰티','food':'식품','living':'리빙','digital':'디지털','meal_voucher':'식사권'} as Record<string, string>)[category] || category}`}</h1>
         </div>
 
         {/* v4 배너 (Editorial Grid) */}
@@ -372,13 +372,13 @@ export default function BrowsePage() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <button onClick={() => setShowFilter(v => !v)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}>
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A2A2A]'}`}>
               <SlidersHorizontal className="w-3 h-3" /> 필터
             </button>
-            <span className="text-xs text-gray-500">{sorted.length}개</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{sorted.length}개</span>
             {isMealVoucher && (
               <button onClick={() => setMapView(!mapView)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200'}`}>
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A]'}`}>
                 {mapView ? <><List className="w-3 h-3" /> 리스트</> : <><Map className="w-3 h-3" /> 지도</>}
               </button>
             )}
@@ -386,19 +386,19 @@ export default function BrowsePage() {
           <div className="relative" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setShowSortDropdown(v => !v)}
-              className="flex items-center gap-1 text-sm text-gray-700 font-medium"
+              className="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-200 font-medium"
             >
               {SORT_LABELS[sortBy]}
               <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showSortDropdown && (
-              <div className="absolute top-full right-0 mt-1 w-32 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
+              <div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
                 {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
                   <button
                     key={opt}
                     onClick={() => { setSortBy(opt); setShowSortDropdown(false) }}
                     className={`w-full text-left px-3 py-2.5 text-sm ${
-                      sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 hover:bg-gray-50'
+                      sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212]'
                     }`}
                   >
                     {SORT_LABELS[opt]}
@@ -411,19 +411,19 @@ export default function BrowsePage() {
 
         {/* 필터 패널 */}
         {showFilter && (
-          <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-3">
+          <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-3 mb-4 space-y-3">
             <div>
-              <p className="text-xs font-medium text-gray-700 mb-1.5">가격대</p>
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1.5">가격대</p>
               <div className="flex flex-wrap gap-1.5">
                 {([['all','전체'],['under10','1만원 미만'],['under30','3만원 미만'],['under50','5만원 미만'],['over50','5만원 이상']] as const).map(([v, l]) => (
                   <button key={v} onClick={() => { setPriceRange(v); setShowCount(ITEMS_PER_PAGE) }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${priceRange === v ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>{l}</button>
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${priceRange === v ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'}`}>{l}</button>
                 ))}
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => { setFreeShipOnly(!freeShipOnly); setShowCount(ITEMS_PER_PAGE) }}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-blue-600 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'}`}>
                 <Truck className="w-3 h-3" /> 무료배송만
               </button>
               {(priceRange !== 'all' || freeShipOnly) && (
@@ -437,8 +437,8 @@ export default function BrowsePage() {
 
         {/* 지도 뷰 (식사권 카테고리일 때) */}
         {isMealVoucher && mapView && (
-          <div className="mb-4 rounded-xl overflow-hidden border border-gray-200">
-            <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100" />
+          <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A]">
+            <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100 dark:bg-[#1A1A1A]" />
           </div>
         )}
 
@@ -448,12 +448,12 @@ export default function BrowsePage() {
         {/* v4 Editorial Grid — hero + 2열 */}
         {loading ? (
           <div className="space-y-4">
-            <div className="aspect-[4/3] bg-gray-100 animate-pulse rounded-2xl" />
+            <div className="aspect-[4/3] bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-2xl" />
             <div className="grid grid-cols-2 gap-3">
               {[...Array(4)].map((_, i) => (
                 <div key={i}>
-                  <div className="aspect-square bg-gray-100 animate-pulse rounded-xl" />
-                  <div className="mt-2 h-3 bg-gray-100 rounded animate-pulse w-full" />
+                  <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
+                  <div className="mt-2 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse w-full" />
                 </div>
               ))}
             </div>
@@ -461,7 +461,7 @@ export default function BrowsePage() {
         ) : error ? (
           /* ✅ UX M17 FIX: 에러 상태 + 재시도 버튼 */
           <div className="text-center py-16">
-            <p className="text-gray-900 mb-4">{error}</p>
+            <p className="text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={loadProducts}
               className="px-6 py-2 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-colors"
@@ -471,7 +471,7 @@ export default function BrowsePage() {
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-400">상품이 없습니다</p>
+            <p className="text-gray-400 dark:text-gray-500">상품이 없습니다</p>
           </div>
         ) : (
           <>
@@ -497,16 +497,16 @@ export default function BrowsePage() {
                     </div>
                   </div>
                   <div className="mt-2.5">
-                    {hero.seller_name && <p className="text-[10px] text-gray-400">@{hero.seller_name}</p>}
-                    <p className="text-[14px] text-gray-900 font-medium mt-0.5 line-clamp-1">{hero.name}</p>
+                    {hero.seller_name && <p className="text-[10px] text-gray-400 dark:text-gray-500">@{hero.seller_name}</p>}
+                    <p className="text-[14px] text-gray-900 dark:text-white font-medium mt-0.5 line-clamp-1">{hero.name}</p>
                     <div className="flex items-baseline gap-1.5 mt-1">
                       {hero.original_price && hero.original_price > heroPrice && (
-                        <span className="text-[11px] text-gray-400 line-through">{formatPrice(hero.original_price)}</span>
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{formatPrice(hero.original_price)}</span>
                       )}
                       {heroDiscount > 0 && <span className="text-[18px] font-extrabold text-red-500">{heroDiscount}%</span>}
-                      <span className="text-[18px] font-extrabold text-gray-900">{formatPrice(heroPrice)}</span>
+                      <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">{formatPrice(heroPrice)}</span>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-1">⭐ {hero.sold_count || 0}명 구매 · 🚚 무료배송</p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">⭐ {hero.sold_count || 0}명 구매 · 🚚 무료배송</p>
                   </div>
                 </button>
               )
@@ -524,11 +524,11 @@ export default function BrowsePage() {
                     onClick={() => navigate(`/products/${product.id}`)}
                     className="text-left active:scale-[0.98] transition-transform"
                   >
-                    <div className="relative aspect-square overflow-hidden bg-gray-50 rounded-xl">
+                    <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
                       {product.image_url ? (
                         <img src={product.image_url} alt={product.name || '상품 이미지'} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
-                        <div className="w-full h-full bg-gray-100" />
+                        <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
                       )}
                       {discountRate > 0 && (
                         <span className="absolute top-1.5 left-1.5 rounded-md px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">
@@ -548,19 +548,19 @@ export default function BrowsePage() {
                     </div>
 
                     <div className="mt-2">
-                      {product.seller_name && <p className="text-[10px] text-gray-400">@{product.seller_name}</p>}
-                      <p className="text-[12px] text-gray-900 leading-tight line-clamp-2">{product.name}</p>
+                      {product.seller_name && <p className="text-[10px] text-gray-400 dark:text-gray-500">@{product.seller_name}</p>}
+                      <p className="text-[12px] text-gray-900 dark:text-white leading-tight line-clamp-2">{product.name}</p>
                       {product.original_price && product.original_price > displayPrice && (
-                        <p className="text-[10px] text-gray-400 line-through mt-1">{formatPrice(product.original_price)}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 line-through mt-1">{formatPrice(product.original_price)}</p>
                       )}
                       <div className="flex items-baseline gap-1 mt-0.5">
                         {discountRate > 0 && (
                           <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
                         )}
-                        <span className="text-[13px] font-extrabold text-gray-900">{formatPrice(displayPrice)}</span>
+                        <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice)}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-gray-400">⭐ {product.sold_count || 0}</span>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">⭐ {product.sold_count || 0}</span>
                         <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 font-semibold">
                           <Truck className="w-2.5 h-2.5" /> 무료
                         </span>
@@ -575,7 +575,7 @@ export default function BrowsePage() {
             {hasMore && (
               <div className="flex justify-center mt-6 pb-20">
                 <button onClick={() => setShowCount(c => c + ITEMS_PER_PAGE)}
-                  className="px-8 py-3 border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  className="px-8 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212]">
                   더보기 ({sorted.length - showCount}개 남음)
                 </button>
               </div>

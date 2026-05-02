@@ -6,6 +6,7 @@ const _kakaoRedirected = autoRedirectKakaoToExternal()
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import ThemeProvider from '@/components/ThemeProvider'
 import './index.css'
 import './i18n' // ✅ i18n 초기화
 import { logRegionInfo, isKorea } from '@/shared/config/region'
@@ -122,7 +123,9 @@ if (!rootElement) {
 
     // ✅ React StrictMode 제거 (중복 마운트 방지)
     ReactDOM.createRoot(rootElement).render(
-      <App />
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
     )
   } catch (error) {
     console.error('[App] ❌ React 렌더링 실패:', error)

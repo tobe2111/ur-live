@@ -41,21 +41,21 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
       case 'confirm':
         return <Info className="h-12 w-12 text-blue-500" />
       default:
-        return <Info className="h-12 w-12 text-gray-400" />
+        return <Info className="h-12 w-12 text-gray-400 dark:text-gray-500" />
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={onClose} role="presentation">
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? 'cart-modal-title' : undefined}>
+      <div className="w-full max-w-sm rounded-lg bg-white dark:bg-[#0A0A0A] p-6 shadow-xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? 'cart-modal-title' : undefined}>
         <div className="mb-4 flex justify-center">{getIcon()}</div>
-        {title && <h2 className="mb-2 text-center text-lg font-bold text-gray-900">{title}</h2>}
-        <p className="mb-6 text-center text-sm text-gray-400">{message}</p>
+        {title && <h2 className="mb-2 text-center text-lg font-bold text-gray-900 dark:text-white">{title}</h2>}
+        <p className="mb-6 text-center text-sm text-gray-400 dark:text-gray-500">{message}</p>
         <div className="flex gap-2">
           {type === 'confirm' && (
             <button
               onClick={onClose}
-              className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50"
+              className="flex-1 rounded-lg border border-gray-300 bg-white dark:bg-[#0A0A0A] px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-50 dark:bg-[#121212]"
             >
               취소
             </button>
@@ -83,24 +83,24 @@ export default function CartPage() {
   // 비로그인 상태: v4 clean white design
   if (!loggedIn) {
     return (
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-screen bg-white dark:bg-[#0A0A0A]">
         <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" noindex />
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+        <div className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
             <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
-              <X className="h-5 w-5 text-gray-900" aria-hidden="true" />
+              <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
             </button>
-            <h1 className="text-[16px] font-extrabold text-gray-900">{t('cart.title')}</h1>
+            <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('cart.title')}</h1>
             <div className="w-9" />
           </div>
         </div>
         <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
-          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center">
+          <div className="w-20 h-20 bg-gray-50 dark:bg-[#121212] rounded-full flex items-center justify-center">
             <ShoppingCart className="h-10 w-10 text-gray-300" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-[16px] font-bold text-gray-900">{t('common.loginRequired')}</p>
-            <p className="mt-1.5 text-[13px] text-gray-500">장바구니를 이용하려면 로그인해 주세요</p>
+            <p className="text-[16px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
+            <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500">장바구니를 이용하려면 로그인해 주세요</p>
           </div>
           <button
             type="button"
@@ -109,7 +109,7 @@ export default function CartPage() {
           >
             {t('common.loginButton')}
           </button>
-          <button onClick={() => navigate('/')} className="text-[13px] text-gray-500 underline">
+          <button onClick={() => navigate('/')} className="text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500 underline">
             쇼핑 계속하기
           </button>
         </div>
@@ -424,10 +424,10 @@ function CartPageContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0A0A0A]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
-          <p className="mt-4 text-sm text-gray-400">로딩 중...</p>
+          <p className="mt-4 text-sm text-gray-400 dark:text-gray-500">로딩 중...</p>
         </div>
       </div>
     )
@@ -462,7 +462,7 @@ function CartPageContent() {
                 : 0
 
               return (
-                <div key={group.seller_id} className="mt-2 bg-white">
+                <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#0A0A0A]">
                   {/* Seller header with checkbox + badge + name + chevron */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-50">
                     <span
@@ -481,7 +481,7 @@ function CartPageContent() {
                       className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
                         groupAllSelected
                           ? 'bg-pink-500 border-pink-500'
-                          : 'bg-white border-gray-300'
+                          : 'bg-white dark:bg-[#0A0A0A] border-gray-300'
                       }`}
                     >
                       {groupAllSelected && (
@@ -491,8 +491,8 @@ function CartPageContent() {
                       )}
                     </span>
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                      <Store size={14} className="text-gray-400 shrink-0" />
-                      <span className="text-[14px] font-bold text-gray-900 truncate">
+                      <Store size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                      <span className="text-[14px] font-bold text-gray-900 dark:text-white truncate">
                         {group.seller_name}
                       </span>
                     </div>
@@ -542,9 +542,9 @@ function CartPageContent() {
                   </div>
 
                   {/* Seller group shipping info */}
-                  <div className="mx-4 mb-3 pt-3 border-t border-gray-100 flex justify-between text-[12px]">
-                    <span className="text-gray-400">배송비</span>
-                    <span className="font-medium text-gray-700">
+                  <div className="mx-4 mb-3 pt-3 border-t border-gray-100 dark:border-[#1A1A1A] flex justify-between text-[12px]">
+                    <span className="text-gray-400 dark:text-gray-500">배송비</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200">
                       {freeShipThreshold > 0 && group.subtotal >= freeShipThreshold
                         ? <span className="text-pink-500">무료</span>
                         : `${formatNumber(group.shipping_fee)}원`}
@@ -555,7 +555,7 @@ function CartPageContent() {
             })}
 
             {/* v4 Summary section */}
-            <div className="mt-2 bg-white px-4 py-4">
+            <div className="mt-2 bg-white dark:bg-[#0A0A0A] px-4 py-4">
               <CartSummary
                 totalItems={totalItems}
                 subtotal={subtotal}
@@ -566,7 +566,7 @@ function CartPageContent() {
           </main>
 
           {/* v4 Bottom fixed CTA: "N원 주문하기" (bg-gray-900 text-white rounded-xl) */}
-          <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 safe-bottom">
+          <div className="fixed bottom-0 left-0 right-0 z-20 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] safe-bottom">
             <div className="mx-auto max-w-md px-4 py-3">
               <button
                 onClick={handleCheckout}
