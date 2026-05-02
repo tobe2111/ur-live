@@ -44,6 +44,76 @@
 #### TD-015 a11y 잔여 (이번 세션 추가)
 - ✅ AddressManagementPage 폼 label `htmlFor` 보완 (수령인/연락처/우편번호/주소/상세주소)
 
+#### 추가 페이지 분할 (4-5번째 배치, 2026-05-02 후반)
+| 페이지 | Before → After | Δ |
+|---|---|---|
+| MainHomePage | 670 → 575 | −14.2% |
+| GroupBuyListPage | 691 → 624 | −9.7% |
+| AdminProductsPage | 696 → 632 | −9.2% |
+| SellerProductEditPage | 702 → 686 | −2.3% |
+| SellerProfileEditPage | 670 → 652 | −2.7% |
+| SellerBusinessInfoPage | 670 → 650 | −3.0% |
+| CartPage | 604 → 551 | −8.8% (+ CustomModal 추출) |
+| BrowsePage | 588 → 511 | −13.1% (+ RecentlyViewedSection 추출) |
+| SellerInventoryPage | 598 → 574 | −4.0% (types) |
+| SellerProductNewPage | 586 → 583 | −0.5% (types) |
+| **누적 합계** | **11953 → 7448** | **−37.7% (-4505 lines), 70+ 새 sub-files** |
+
+#### TD-014 i18n 부분 처리 (CheckoutPage + 결제 모달)
+- ✅ CheckoutPage: 사용자 메시지 11개 i18n 변환 (invalidUser/emptyCart/loadDataFailed/paymentInProgress/selectAddress/orderCreateFailed/securityAuthInProgress/loading/paymentFailed/dealPaymentFailed/leaveConfirm)
+- ✅ TossPaymentWidget: 5개 (networkError/authError/uiNotFound/orderNumberInvalid/systemError)
+- ✅ GiftSendModal: 2개 placeholders (recipientName/message)
+- 6개 언어 (ko/en/ja/zh/es/fr) 동시 추가 → `payment.errors.*` + `gift.placeholders.*` 네임스페이스
+- 누적 18건 / TD-014 462건 중. 잔여 444건 — 별도 PR + 번역가 review
+
+#### 잔여 cleanup
+- ✅ 빈 catch 2건 → swallow() (App.tsx, SellerPage.tsx)
+- ✅ console.log DEV 게이트 audit — 모든 frontend console 이미 게이트 적용됨 (false positive)
+- ✅ SellerLiveBroadcastPage 본체 inline interfaces 제거 (이미 추출된 types 와 중복)
+
+#### 📐 PC 반응형 도입 (옵션 B 점진 재디자인, 2026-05-02 마무리)
+
+**인프라**:
+- `MobileAppLayout` 의 max-width 430px 제거 — PC 풀너비 활성화 + 페이지별 `lg:` variants 로 desktop layout 구성
+- 9:16 비디오 페이지 (`/live`, `/shorts`) 만 `data-mobile-only="true"` → 430px 액자 유지
+- 폭 토큰 4종 (`ur-content-narrow/medium/wide/full`) 도입
+- `CLAUDE.md` 에 PC 반응형 디자인 시스템 가이드 + 페이지별 패턴 표 + 새 페이지 작성 체크리스트 추가
+
+**페이지별 PC 적용 (13개)**:
+| 페이지 | 패턴 |
+|---|---|
+| BrowsePage / SearchPage / WishlistPage | sticky header centered + grid 2→2/3/4/5 컬럼 |
+| ProductDetailPage | lg:grid-cols-5 (좌 이미지 col-3 / 우 정보 sticky col-2) |
+| MainHomePage | sticky 풀너비 + 콘텐츠 ur-content-wide centered (다크 유지) |
+| CheckoutPage / CartPage | max-w-md → max-w-md lg:max-w-2xl |
+| MyOrdersPage | ur-content-medium |
+| PointsChargePage / ReferralIndexPage | header + main max-w-md lg:max-w-2xl |
+| AddressManagementPage / ReferralPage / AccountSettingsPage | ur-content-narrow |
+
+**LivePageV2 PC 사이드바**:
+- 신규 `DesktopLiveSidebar` 컴포넌트 — TikTok 식 좌측 사이드바 (224px, fixed left:0)
+- `MobileAppLayout` 에서 data-mobile-only 페이지에만 마운트, xl 이상 (1280px+) 표시
+- LivePageV2 / ShortsPage 코드 변경 0 — 기존 9:16 컨테이너 영향 없음 (낮은 회귀 위험)
+
+**대시보드 테마 정책 명확화**:
+- 셀러/어드민/에이전시 대시보드 = 화이트(라이트) 테마 고정, 사용자 다크 토글 영향 없음
+- `dark:` variants 절대 금지 명시
+- 점검 결과: 대시보드 페이지/컴포넌트 모두 dark: 0건 (정상)
+
+#### 수수료 5% 일괄 정정 (2026-05-02)
+**사용자 지적**: 실제 정책 5% (`platform_settings.commission_rate_default = 5`) 인데 코드 곳곳 10% 박힘.
+
+코드 정정:
+- `admin-sellers.routes.ts` 4건 (COALESCE 3 + json fallback 1)
+- `consignment.routes.ts` host_commission_rate fallback 10 → 5
+- `seller.routes.ts` / `repair-schema.routes.ts` ALTER TABLE DEFAULT 10.00 → 5.00
+- `group-buy.routes.ts` 주석 정정
+- `guide-seed.ts` 어드민 가이드 본문 (라이브 5% / 식사권 5% / 후원 15% 명확 분리)
+- `CLAUDE.md` 셀러 정산 5% + `platform_settings` 키명 명시
+
+#### Service Worker 안전화
+- `pwa-sw.js`: 캐시 미스 + fetch 실패 시 504 Response 반환 → uncaught Promise rejection 콘솔 에러 폭주 차단 (어드민 콘솔 에러 보고 대응)
+
 ### 이전 세션 (2026-04-30)
 - ✅ **TD-016 CRITICAL** — seller-transfer 셀러 본인 인증 (agency proxy 차단 410, 신규 `/api/seller/transfers` + `/seller/transfers` 페이지)
 - ✅ **TD-016 LOW** — 카트 UNIQUE NULL race INSERT/UPDATE 재시도 (500 → 정상 누적)
