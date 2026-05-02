@@ -33,7 +33,7 @@ export default function FilterSheet({ region: initialRegion, category: initialCa
           <h3 className="text-base font-bold text-gray-900 dark:text-white">필터</h3>
           <button
             onClick={() => { setR(''); setC('') }}
-            className="text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500"
+            className="text-xs font-semibold text-gray-500 dark:text-gray-400"
             aria-label="필터 초기화"
           >
             초기화
@@ -42,7 +42,7 @@ export default function FilterSheet({ region: initialRegion, category: initialCa
 
         <div className="p-5 space-y-6">
           <section>
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase mb-3">지역</p>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">지역</p>
             <div className="grid grid-cols-3 gap-2">
               {REGIONS.map(reg => (
                 <button
@@ -62,7 +62,7 @@ export default function FilterSheet({ region: initialRegion, category: initialCa
           </section>
 
           <section>
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase mb-3">카테고리</p>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">카테고리</p>
             <div className="grid grid-cols-3 gap-2">
               {CATEGORIES.map(cat => (
                 <button

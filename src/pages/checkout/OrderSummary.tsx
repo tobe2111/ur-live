@@ -82,7 +82,7 @@ export default function OrderSummary({
         {finalAmount > 0 && (
           <>
             <div className="flex justify-end mt-0.5">
-              <span className="text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500">부가세 포함 (10% · {vat}원)</span>
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">부가세 포함 (10% · {vat}원)</span>
             </div>
             <div className="flex justify-end mt-1">
               <span className="rounded-md px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold">

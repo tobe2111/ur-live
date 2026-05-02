@@ -238,7 +238,7 @@ export default function AddressManagementPage() {
         {/* 새 배송지 추가 버튼 */}
         <button
           onClick={openAddForm}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212] py-4 text-[15px] font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 transition-all hover:border-pink-500/50 hover:text-pink-500 mb-5 active:scale-[0.98] touch-manipulation"
+          className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212] py-4 text-[15px] font-semibold text-gray-500 dark:text-gray-400 transition-all hover:border-pink-500/50 hover:text-pink-500 mb-5 active:scale-[0.98] touch-manipulation"
         >
           <Plus className="w-5 h-5" />
           <span>새 배송지 추가</span>
@@ -249,7 +249,7 @@ export default function AddressManagementPage() {
           <div className="text-center py-16">
             <MapPin className="w-14 h-14 text-gray-300 mx-auto mb-4" />
             <p className="text-[15px] text-gray-900 dark:text-white">등록된 배송지가 없습니다.</p>
-            <p className="text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">배송지를 추가해주세요.</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">배송지를 추가해주세요.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -277,7 +277,7 @@ export default function AddressManagementPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[14px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">{address.phone}</p>
+                    <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-1">{address.phone}</p>
                     <p className="text-[14px] text-gray-700 dark:text-gray-200 leading-relaxed">
                       [{address.postal_code}] {address.address}
                     </p>
@@ -289,7 +289,7 @@ export default function AddressManagementPage() {
                     {(address.delivery_note || address.entry_method === 'password' || address.entry_method === 'intercom' || address.entry_method === 'pickup_box') && (
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-[#1A1A1A] space-y-0.5">
                         {address.entry_method && address.entry_method !== 'free' && (
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400">
                             <span className="font-semibold text-gray-700 dark:text-gray-200">출입 · </span>
                             {ENTRY_METHOD_OPTIONS.find(o => o.value === address.entry_method)?.label}
                             {address.entry_method === 'password' && address.entry_code && (
@@ -298,7 +298,7 @@ export default function AddressManagementPage() {
                           </p>
                         )}
                         {address.delivery_note && (
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500 line-clamp-2">
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400 line-clamp-2">
                             <span className="font-semibold text-gray-700 dark:text-gray-200">메모 · </span>
                             {address.delivery_note}
                           </p>
@@ -497,7 +497,7 @@ export default function AddressManagementPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="예: #1234*"
               />
-              <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
                 배송기사에게만 전달되며 주문 완료 후 60일 뒤 자동 파기됩니다
               </p>
             </div>

@@ -247,7 +247,7 @@ export default function ProductDetailPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0A0A0A] p-4">
         <div className="text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">{error?.message || '상품을 찾을 수 없습니다.'}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{error?.message || '상품을 찾을 수 없습니다.'}</p>
           <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
           <button
             onClick={() => navigate('/')}
@@ -373,7 +373,7 @@ export default function ProductDetailPage() {
         {/* 식당 정보 (식사권일 때만) */}
         {product.category === 'meal_voucher' && product.restaurant_name && (
           <AccordionSection title="식당 정보" defaultOpen={true}>
-            <div className="space-y-2.5 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+            <div className="space-y-2.5 text-xs text-gray-500 dark:text-gray-400">
               <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">식당명</span><span className="text-gray-900 dark:text-white font-medium">{product.restaurant_name}</span></div>
               {product.restaurant_address && (
                 <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">주소</span><span>{product.restaurant_address}</span></div>
@@ -439,7 +439,7 @@ export default function ProductDetailPage() {
             </div>
           ) : (
             <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A]">
-              <span className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">옵션을 선택해주세요</span>
+              <span className="text-[12px] text-gray-500 dark:text-gray-400">옵션을 선택해주세요</span>
               <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
           )}
@@ -481,7 +481,7 @@ export default function ProductDetailPage() {
           <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50 dark:bg-[#121212]">
             <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             <span className="text-[12px] font-semibold text-gray-900 dark:text-white">내일 도착 예정</span>
-            <span className="text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500">· 5만원 이상 무료</span>
+            <span className="text-[11px] text-gray-500 dark:text-gray-400">· 5만원 이상 무료</span>
           </div>
         </div>
 

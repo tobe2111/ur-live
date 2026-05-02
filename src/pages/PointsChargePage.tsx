@@ -168,7 +168,7 @@ export default function PointsChargePage() {
             <section>
               <div className="flex items-baseline justify-between mb-3 px-1">
                 <h2 className="text-[14px] font-bold text-gray-900 dark:text-white">충전 금액</h2>
-                <span className="text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500">원하는 금액을 선택하세요</span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">원하는 금액을 선택하세요</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {options.map(opt => {
@@ -198,7 +198,7 @@ export default function PointsChargePage() {
                         {formatNumber(opt.amount)}
                         <span className="text-[12px] font-bold ml-0.5">원</span>
                       </p>
-                      <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
+                      <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mt-1">
                         {formatNumber(opt.points)}딜
                       </p>
                     </button>
@@ -211,11 +211,11 @@ export default function PointsChargePage() {
             {selected && (
               <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4">
                 <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">현재 잔액</span>
+                  <span className="text-gray-500 dark:text-gray-400">현재 잔액</span>
                   <span className="font-semibold text-gray-900 dark:text-white">{formatNumber(balance)}딜</span>
                 </div>
                 <div className="flex items-center justify-between text-[13px] mt-2">
-                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">충전 딜</span>
+                  <span className="text-gray-500 dark:text-gray-400">충전 딜</span>
                   <span className="font-semibold text-pink-600">
                     +{formatNumber(pointsPreview)}딜
                     {bonusPoints > 0 && <span className="text-amber-600 ml-1">(+{formatNumber(bonusPoints)}딜 보너스)</span>}
@@ -249,7 +249,7 @@ export default function PointsChargePage() {
           <>
             <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4">
               <div className="flex items-center justify-between">
-                <span className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">충전 내역</span>
+                <span className="text-[12px] text-gray-500 dark:text-gray-400">충전 내역</span>
                 <div className="text-right">
                   <p className="text-[16px] font-extrabold text-gray-900 dark:text-white">
                     {formatNumber(selected?.amount)}

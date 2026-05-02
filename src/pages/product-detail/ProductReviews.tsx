@@ -123,7 +123,7 @@ export default function ProductReviews({ productId }: { productId: number | stri
   return (
     <div>
       <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
-        리뷰 {totalCount > 0 && <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 font-normal">({totalCount})</span>}
+        리뷰 {totalCount > 0 && <span className="text-gray-500 dark:text-gray-400 font-normal">({totalCount})</span>}
       </h2>
 
       {/* 평점 요약 */}
@@ -145,7 +145,7 @@ export default function ProductReviews({ productId }: { productId: number | stri
               const pct = totalCount > 0 ? (count / totalCount) * 100 : 0
               return (
                 <div key={s} className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 dark:text-gray-500 w-3">{s}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 w-3">{s}</span>
                   <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
@@ -155,7 +155,7 @@ export default function ProductReviews({ productId }: { productId: number | stri
           </div>
         </div>
       ) : (
-        <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 py-6 text-center">아직 리뷰가 없습니다.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 py-6 text-center">아직 리뷰가 없습니다.</p>
       )}
 
       {/* 리뷰 작성 */}
@@ -176,9 +176,9 @@ export default function ProductReviews({ productId }: { productId: number | stri
                       <span key={s} className={`text-xs ${s <= r.rating ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
                     ))}
                   </div>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 dark:text-gray-500">{r.user_name}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">{r.user_name}</span>
                 </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 dark:text-gray-500">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
               </div>
               {r.content && <p className="text-xs text-gray-900 dark:text-white leading-relaxed">{r.content}</p>}
             </div>

@@ -69,7 +69,7 @@ export const CartHeader = React.memo(function CartHeader({
               <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
                 전체선택
               </span>
-              <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">
                 {selectedCount}/{itemCount}
               </span>
             </button>

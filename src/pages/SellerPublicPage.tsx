@@ -8,30 +8,12 @@ import { toast } from '@/hooks/useToast'
 import { nativeShare } from '@/lib/native'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
+import FollowButton from './seller-public/FollowButton'
+import StreamCard from './seller-public/StreamCard'
+import type { Seller, LiveStream, Product, Short, Tab } from './seller-public/types'
 
-interface Seller {
-  id: number; name: string; username?: string; slug?: string; business_name?: string; profile_image?: string; bio?: string
-  sns_instagram?: string; sns_youtube?: string; sns_facebook?: string; sns_twitter?: string
-  kakao_chat_link?: string; website_url?: string; created_at: string
-  business_number?: string; email?: string; phone?: string
-  ceo_name?: string; mail_order_number?: string; business_address?: string
-}
-interface LiveStream {
-  id: number; title: string; youtube_video_id?: string; status: string; viewer_count?: number
-  scheduled_at?: string; created_at: string
-}
-interface Product {
-  id: number; name: string; price: number; original_price?: number; discount_rate?: number
-  image_url?: string; sold_count?: number; category?: string
-  restaurant_name?: string; restaurant_address?: string
-  group_buy_target?: number; group_buy_current?: number; group_buy_deadline?: string
-}
-interface Short {
-  id: number; title: string; youtube_video_id?: string; view_count: number; thumbnail_url?: string
-  product_id?: number; product_name?: string; product_price?: number
-}
-
-type Tab = 'home' | 'vouchers' | 'shorts' | 'live' | 'info'
+// 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
+//   ./seller-public/ 디렉토리로 추출.
 
 export default function SellerPublicPage() {
   const { t } = useTranslation()
@@ -830,69 +812,5 @@ export default function SellerPublicPage() {
         </div>
       )}
     </div>
-  )
-}
-
-function FollowButton({ sellerId }: { sellerId: string }) {
-  const { t } = useTranslation()
-  const [following, setFollowing] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    api.get(`/api/social/follow/${sellerId}`).then(r => {
-      if (r.data.success) setFollowing(r.data.data.following)
-    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-  }, [sellerId])
-
-  return (
-    <button
-      onClick={async () => {
-        setLoading(true)
-        try {
-          const res = await api.post(`/api/social/follow/${sellerId}`)
-          if (res.data.success) setFollowing(res.data.data.following)
-        } catch { /* 로그인 필요 */ }
-        finally { setLoading(false) }
-      }}
-      disabled={loading}
-      className={`w-full py-3 rounded-xl text-sm font-bold mt-4 transition-all active:scale-[0.98] ${
-        following
-          ? 'bg-[#1A1A1A] text-gray-400 border border-[#2A2A2A]'
-          : 'bg-pink-500 text-white'
-      }`}
-    >
-      {following ? t('seller.publicPage.following') : t('seller.publicPage.follow')}
-    </button>
-  )
-}
-
-function StreamCard({ stream, onClick }: { stream: LiveStream; onClick: () => void }) {
-  const { t } = useTranslation()
-  const isLive = stream.status === 'live'
-  const thumb = stream.youtube_video_id ? `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg` : null
-
-  return (
-    <button onClick={onClick} className="text-left active:scale-[0.98] transition-transform">
-      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#1A1A1A]">
-        {thumb ? <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />}
-        {isLive ? (
-          <span className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-            <span className="h-1.5 w-1.5 bg-[#020202] rounded-full animate-pulse" />LIVE
-          </span>
-        ) : stream.status === 'scheduled' ? (
-          <span className="absolute top-2 left-2 bg-blue-500 text-white text-[9px] font-bold px-2 py-0.5 rounded">{t('seller.scheduledLabel')}</span>
-        ) : null}
-        {isLive && stream.viewer_count !== undefined && (
-          <span className="absolute bottom-2 left-2 text-white text-[10px] flex items-center gap-0.5 drop-shadow-lg">
-            <Eye className="w-3 h-3" /> {formatNumber(stream.viewer_count || 0)}
-          </span>
-        )}
-      </div>
-      <p className="text-[11px] text-gray-800 mt-1.5 line-clamp-2 font-medium">{stream.title}</p>
-      <p className="text-[10px] text-gray-400 mt-0.5">
-        {stream.viewer_count !== undefined ? `👁 ${formatNumber(stream.viewer_count || 0)}` : ''}
-        {stream.created_at ? ` · ${new Date(stream.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}` : ''}
-      </p>
-    </button>
   )
 }

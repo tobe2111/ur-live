@@ -133,7 +133,7 @@ export default function ReferralSection({
 
       {/* 티어 미리보기 */}
       <div className="mb-3 rounded-lg bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] px-3 py-2.5">
-        <p className="text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">할인 단계</p>
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">할인 단계</p>
         <p className="text-xs font-semibold text-gray-900 dark:text-white leading-snug break-keep">
           {tierPreview}
         </p>
@@ -179,7 +179,7 @@ export default function ReferralSection({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                    <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-gray-500 dark:text-gray-400">
                       <Users className="w-3 h-3" />
                       <span>{g.current_count}/{g.target_count}명</span>
                       {timeLeft && (

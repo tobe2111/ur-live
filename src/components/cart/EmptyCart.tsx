@@ -15,7 +15,7 @@ export const EmptyCart = React.memo(function EmptyCart() {
         장바구니가 비어있습니다
       </h2>
 
-      <p className="text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500 text-center mb-6">
+      <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center mb-6">
         마음에 드는 상품을 담아보세요
       </p>
 

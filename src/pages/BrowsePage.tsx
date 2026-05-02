@@ -341,7 +341,7 @@ export default function BrowsePage() {
               onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
               className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap ${
                 category === c.key || (c.key === 'all' && category === 'all')
-                  ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 dark:text-gray-500'
+                  ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400'
               }`}>
               {c.label}
             </button>
@@ -375,7 +375,7 @@ export default function BrowsePage() {
               className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A2A2A]'}`}>
               <SlidersHorizontal className="w-3 h-3" /> 필터
             </button>
-            <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{sorted.length}개</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{sorted.length}개</span>
             {isMealVoucher && (
               <button onClick={() => setMapView(!mapView)}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A]'}`}>

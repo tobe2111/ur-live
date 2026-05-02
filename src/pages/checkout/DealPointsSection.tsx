@@ -18,7 +18,7 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
     <div className="bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-5 py-5 mb-2">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">딜 포인트</h3>
-        <span className="text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
+        <span className="text-[13px] text-gray-500 dark:text-gray-400">
           보유 <span className="font-bold text-pink-500">{formatNumber(dealBalance)}</span>딜
         </span>
       </div>
@@ -42,7 +42,7 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
       {dealToUse > 0 && (
         <div className="mt-3 p-3 bg-gray-50 dark:bg-[#121212] rounded-lg border border-gray-200 dark:border-[#2A2A2A]">
           <div className="flex items-center justify-between text-[13px]">
-            <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">상품 금액</span>
+            <span className="text-gray-500 dark:text-gray-400">상품 금액</span>
             <span className="text-gray-700 dark:text-gray-200">{formatNumber(totalBeforeDeal)}원</span>
           </div>
           <div className="flex items-center justify-between text-[13px] mt-1">

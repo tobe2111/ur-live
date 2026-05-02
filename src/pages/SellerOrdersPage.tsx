@@ -29,46 +29,12 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
+import OrderDetailModal from './seller-orders/OrderDetailModal'
+import { StatusBadge, useStatusText, nextStatusOf } from './seller-orders/statusHelpers'
+import type { Order } from './seller-orders/types'
 
-interface OrderItem {
-  id: number
-  product_id: number
-  product_name: string
-  image_url: string | null
-  quantity: number
-  price: number
-}
-
-interface Order {
-  id: string
-  order_number: string
-  user_name: string
-  total_amount: number
-  status: string
-  payment_status: string
-  shipping_name: string
-  shipping_phone: string
-  shipping_address: string
-  courier: string | null
-  tracking_number: string | null
-  created_at: string
-  updated_at: string
-  items?: OrderItem[]
-}
-
-function parseShippingAddress(address: string, detail?: string): { postal_code: string; address1: string; address2: string } {
-  if (!address) return { postal_code: '', address1: '', address2: detail || '' }
-  try {
-    const parsed = JSON.parse(address)
-    return {
-      postal_code: parsed.postal_code || parsed.zipcode || '',
-      address1: parsed.address1 || parsed.address || '',
-      address2: parsed.address2 || parsed.detail || detail || '',
-    }
-  } catch {
-    return { postal_code: '', address1: address, address2: detail || '' }
-  }
-}
+// 🛡️ 2026-05-02: TD-018 분할 — types / parseShippingAddress / status 헬퍼 / 주문 상세 모달
+//   을 ./seller-orders/ 디렉토리로 추출.
 
 export default function SellerOrdersPage() {
   const { t } = useTranslation()
@@ -311,53 +277,8 @@ export default function SellerOrdersPage() {
     }
   }, [bulkStatus, selectedIds])
 
-  function getStatusText(status: string) {
-    switch (status) {
-      case 'PAY_COMPLETE': case 'PAID': case 'DONE': return t('seller.statusDone')
-      case 'PENDING': case 'AWAITING_PAYMENT': return t('seller.statusPending')
-      case 'PREPARING': return t('seller.statusPreparing')
-      case 'SHIPPING': return t('seller.statusShipping')
-      case 'DELIVERED': return t('seller.statusDelivered')
-      case 'CANCELLED': return t('seller.statusCancelled')
-      case 'REFUNDED': return t('common.refunded')
-      case 'FAILED': return status
-      default: return status
-    }
-  }
-
-  function getStatusBadge(status: string) {
-    switch (status) {
-      case 'PAY_COMPLETE': case 'PAID': case 'DONE':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{t('seller.statusDone')}</Badge>
-      case 'PENDING': case 'AWAITING_PAYMENT':
-        return <Badge className="bg-gray-100 text-gray-700 border-gray-200">{t('seller.statusPending')}</Badge>
-      case 'PREPARING':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">{t('seller.statusPreparing')}</Badge>
-      case 'SHIPPING':
-        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">{t('seller.statusShipping')}</Badge>
-      case 'DELIVERED':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">{t('seller.statusDelivered')}</Badge>
-      case 'CANCELLED':
-        return <Badge className="bg-red-100 text-red-800 border-red-200">{t('seller.statusCancelled')}</Badge>
-      case 'REFUNDED':
-        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{t('common.refunded')}</Badge>
-      default:
-        return <Badge>{status}</Badge>
-    }
-  }
-
-  function getNextStatus(currentStatus: string): string | null {
-    switch (currentStatus) {
-      case 'PAY_COMPLETE': case 'PAID': case 'DONE': return 'PREPARING'
-      case 'PREPARING': return 'SHIPPING'
-      case 'SHIPPING': return 'DELIVERED'
-      default: return null
-    }
-  }
-
-  function formatPrice(price: number) {
-    return formatNumber(price)
-  }
+  // 🛡️ status 헬퍼 / formatPrice 는 ./seller-orders/statusHelpers 로 이동.
+  const getStatusText = useStatusText()
 
   function viewOrderDetail(order: Order) {
     setSelectedOrder(order)
@@ -575,8 +496,8 @@ export default function SellerOrdersPage() {
                             <div>{order.shipping_name}</div>
                             <div className="text-xs text-gray-400">{order.shipping_phone}</div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-right text-gray-900">{formatPrice(order.total_amount)}{t('common.won')}</td>
-                          <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
+                          <td className="px-6 py-4 text-sm text-right text-gray-900">{formatNumber(order.total_amount)}{t('common.won')}</td>
+                          <td className="px-6 py-4 text-center"><StatusBadge status={order.status} /></td>
                           <td className="px-6 py-4 text-center">
                             <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
                               {order.payment_status === 'completed' ? t('seller.statusDone') : order.payment_status}
@@ -646,250 +567,17 @@ export default function SellerOrdersPage() {
         )}
       </div>
 
-      {/* Order Detail Modal */}
+      {/* Order Detail Modal — extracted to ./seller-orders/OrderDetailModal */}
       {showDetail && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">{t('seller.orderDetail')}</h2>
-                <button
-                  onClick={() => setShowDetail(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <XCircle className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* Order Info */}
-              <div className="space-y-6">
-                {/* Basic Info */}
-                <div className="border-b pb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.orderInfoSection')}</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500 mb-1">{t('seller.orderNumberHeader')}</p>
-                      <p className="font-mono font-medium">{selectedOrder.order_number}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 mb-1">{t('seller.orderDateHeader')}</p>
-                      <p className="font-medium">
-                        {formatKST(selectedOrder.created_at)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 mb-1">{t('seller.orderStatusHeader')}</p>
-                      <div>{getStatusBadge(selectedOrder.status)}</div>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 mb-1">{t('seller.paymentStatusHeader')}</p>
-                      <div>
-                        <Badge className={selectedOrder.payment_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                          {selectedOrder.payment_status === 'completed' ? t('seller.statusDone') : selectedOrder.payment_status}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Shipping Info */}
-                <div className="border-b pb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.shippingInfoSection')}</h3>
-                  {(() => {
-                    const addr = parseShippingAddress(selectedOrder.shipping_address)
-                    return (
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <p className="text-gray-500 mb-1">{t('seller.recipient')}</p>
-                      <p className="font-medium">{selectedOrder.shipping_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 mb-1">{t('seller.contactNumber')}</p>
-                      <p className="font-medium">{selectedOrder.shipping_phone}</p>
-                    </div>
-                    {addr.postal_code && (
-                    <div>
-                      <p className="text-gray-500 mb-1">{t('seller.postalCode')}</p>
-                      <p className="font-medium">{addr.postal_code}</p>
-                    </div>
-                    )}
-                    <div>
-                      <p className="text-gray-500 mb-1">{t('seller.addressField')}</p>
-                      <p className="font-medium">{addr.address1}{addr.address2 ? ` ${addr.address2}` : ''}</p>
-                    </div>
-                    {selectedOrder.courier && selectedOrder.tracking_number && (
-                      <>
-                        <div>
-                          <p className="text-gray-500 mb-1">{t('seller.courierLabel')}</p>
-                          <p className="font-medium">{selectedOrder.courier}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500 mb-1">{t('seller.trackingNumberLabel')}</p>
-                          <p className="font-mono font-medium">{selectedOrder.tracking_number}</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                    )
-                  })()}
-                </div>
-
-                {/* Order Items */}
-                {selectedOrder.items && selectedOrder.items.length > 0 && (
-                  <div className="border-b pb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.orderProductsSection')}</h3>
-                    <div className="space-y-3">
-                      {selectedOrder.items.map((item) => (
-                        <div key={item.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
-                          {/* Product Image */}
-                          <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
-                            {item.image_url ? (
-                              <img 
-                                src={item.image_url} 
-                                alt={item.product_name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.src = 'https://via.placeholder.com/64?text=No+Image'
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                No Image
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Product Info */}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 truncate">{item.product_name}</p>
-                            <p className="text-sm text-gray-500 mt-1">{t('seller.quantityLabel')}: {item.quantity}{t('common.count')}</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">
-                              {formatPrice(item.price * item.quantity)}{t('common.won')}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Amount Info */}
-                <div className="border-b pb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.paymentInfoSection')}</h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>{t('seller.totalOrderAmount')}</span>
-                      <span className="text-blue-600">{formatPrice(selectedOrder.total_amount)}{t('common.won')}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Change */}
-                {getNextStatus(selectedOrder.status) && (
-                  <div className="border-b pb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.statusChangeSection')}</h3>
-                    <Button
-                      onClick={() => handleStatusChange(selectedOrder.order_number, getNextStatus(selectedOrder.status)!)}
-                      disabled={updating}
-                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      {updating ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          {t('seller.processingStatus')}
-                        </span>
-                      ) : (
-                        t('seller.changeStatusTo', { status: getStatusText(getNextStatus(selectedOrder.status)!) })
-                      )}
-                    </Button>
-                  </div>
-                )}
-
-                {/* Tracking Number Form */}
-                {selectedOrder.status !== 'DELIVERED' && selectedOrder.status !== 'CANCELLED' && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.shippingInfoInput')}</h3>
-                    <form onSubmit={(e) => handleTrackingSubmit(e, selectedOrder.order_number)} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {t('seller.courierLabel')} <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={trackingForm.courier}
-                          onChange={(e) => setTrackingForm({ ...trackingForm, courier: e.target.value })}
-                          required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        >
-                          <option value="">{t('seller.selectCourier')}</option>
-                          <option value="CJ대한통운">CJ대한통운</option>
-                          <option value="로젠택배">로젠택배</option>
-                          <option value="옐로우캡">옐로우캡</option>
-                          <option value="우체국택배">우체국택배</option>
-                          <option value="한진택배">한진택배</option>
-                          <option value="롯데택배">롯데택배</option>
-                          <option value="드림택배">드림택배</option>
-                          <option value="KGB택배">KGB택배</option>
-                          <option value="대신택배">대신택배</option>
-                          <option value="일양로지스">일양로지스</option>
-                          <option value="경동택배">경동택배</option>
-                          <option value="천일택배">천일택배</option>
-                          <option value="합동택배">합동택배</option>
-                          <option value="CVSnet편의점택배">CVSnet편의점택배</option>
-                          <option value="우편발송">우편발송</option>
-                          <option value="GTX로지스">GTX로지스</option>
-                          <option value="건영택배">건영택배</option>
-                          <option value="EMS">EMS</option>
-                          <option value="DHL">DHL</option>
-                          <option value="FedEx">FedEx</option>
-                          <option value="UPS">UPS</option>
-                          <option value="USPS">USPS</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {t('seller.trackingNumberLabel')} <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={trackingForm.tracking_number}
-                          onChange={(e) => setTrackingForm({ ...trackingForm, tracking_number: e.target.value })}
-                          placeholder={t('seller.trackingNumberPlaceholder')}
-                          required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                      <Button
-                        type="submit"
-                        disabled={updating}
-                        className="w-full py-3 bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {updating ? (
-                          <span className="flex items-center justify-center gap-2">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            {t('seller.registeringTracking')}
-                          </span>
-                        ) : (
-                          t('seller.registerTracking')
-                        )}
-                      </Button>
-                    </form>
-                  </div>
-                )}
-              </div>
-
-              {/* Close Button */}
-              <div className="mt-6 pt-4 border-t">
-                <Button
-                  onClick={() => setShowDetail(false)}
-                  className="w-full py-3 bg-gray-600 hover:bg-gray-700 text-white"
-                >
-                  {t('common.close')}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <OrderDetailModal
+          order={selectedOrder}
+          updating={updating}
+          trackingForm={trackingForm}
+          onTrackingFormChange={setTrackingForm}
+          onClose={() => setShowDetail(false)}
+          onStatusChange={handleStatusChange}
+          onTrackingSubmit={handleTrackingSubmit}
+        />
       )}
     </SellerLayout>
   )

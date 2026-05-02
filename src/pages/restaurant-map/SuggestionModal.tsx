@@ -54,9 +54,9 @@ export default function SuggestionModal({ place, onClose }: Props) {
     <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center" onClick={onClose} role="presentation">
       <div className="bg-white dark:bg-[#0A0A0A] rounded-t-2xl sm:rounded-2xl w-full max-w-[430px] p-5 space-y-4" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
         <div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">{place.place_name}</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
             <MapPin className="w-3 h-3" />
             {place.road_address_name || place.address_name}
             {place.distance && <span className="ml-1 text-pink-500">· {Math.round(Number(place.distance))}m</span>}

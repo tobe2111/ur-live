@@ -67,14 +67,14 @@ export default function AccountDeletedPage() {
             홈으로 이동
           </button>
 
-          <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
             10초 후 자동으로 홈 페이지로 이동합니다.
           </p>
         </div>
 
         {/* 푸터 메시지 */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             서비스 개선을 위한 의견이 있으시다면
             <br />
             <a

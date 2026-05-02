@@ -228,7 +228,7 @@ export default function ReferralPage() {
           {/* 카운트다운 */}
           <div className="pt-3">
             {isExpired ? (
-              <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">
+              <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
                 <Clock className="w-4 h-4" />
                 <span>마감된 공동구매입니다</span>
               </div>
@@ -325,7 +325,7 @@ export default function ReferralPage() {
               </div>
             ))}
             {group.members.length === 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">아직 참여자가 없습니다.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">아직 참여자가 없습니다.</p>
             )}
           </div>
         </section>
@@ -371,7 +371,7 @@ export default function ReferralPage() {
           ) : isExpired ? (
             <button
               disabled
-              className="w-full py-3.5 bg-gray-200 text-gray-500 dark:text-gray-400 dark:text-gray-500 rounded-xl font-bold text-sm cursor-not-allowed"
+              className="w-full py-3.5 bg-gray-200 text-gray-500 dark:text-gray-400 rounded-xl font-bold text-sm cursor-not-allowed"
             >
               마감된 공동구매
             </button>
@@ -462,7 +462,7 @@ function TierProgressBar({
               </div>
               {/* 라벨 */}
               <div className="absolute top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-center">
-                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`}>
+                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-500 dark:text-gray-400'}`}>
                   {t.count}명
                 </div>
                 <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-400 dark:text-gray-500'}`}>

@@ -33,7 +33,7 @@ export default function ReferralIndexPage() {
             친구와 함께<br />
             <span className="text-pink-500">더 저렴하게</span> 쇼핑하세요
           </h2>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
             공동구매 인원이 모일수록 할인율이 커져요
           </p>
         </section>
@@ -73,7 +73,7 @@ export default function ReferralIndexPage() {
                       <span className="text-pink-500 mr-1">0{i + 1}</span>
                       {step.title}
                     </p>
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
                       {step.desc}
                     </p>
                   </div>

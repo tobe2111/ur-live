@@ -23,7 +23,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
       <div className="mt-5 flex flex-col gap-5">
         {Object.values(sellerGroups).map((group) => (
           <div key={group.seller_id} className="border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4">
-            <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-3">
+            <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 mb-3">
               {group.seller_name}
             </p>
 
@@ -71,7 +71,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
               </span>
             </div>
             {group.free_shipping_threshold > 0 && group.subtotal < group.free_shipping_threshold && (
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                 {formatNumber(group.free_shipping_threshold - group.subtotal)}원 추가 시 무료배송
               </p>
             )}

@@ -659,12 +659,12 @@ export default function RestaurantMapPage() {
           <MapPin className="w-12 h-12 text-gray-300 mb-3" />
           {sdkError ? (
             <>
-              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium">지도를 불러올 수 없습니다</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">지도를 불러올 수 없습니다</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">아래 시트에서 맛집을 확인하세요</p>
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium">지도를 불러오는 중...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">지도를 불러오는 중...</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">카카오맵 SDK 로딩 중</p>
             </>
           )}
@@ -702,7 +702,7 @@ export default function RestaurantMapPage() {
             {searchFocused && !search && searchHistory.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden z-10">
                 <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A]">
-                  <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">최근 검색</span>
+                  <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">최근 검색</span>
                   <button
                     onClick={() => { setSearchHistory([]); storage.setJSON('restaurant_search_history', []) }}
                     className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300"
@@ -733,7 +733,7 @@ export default function RestaurantMapPage() {
         <div className="absolute left-3 right-3 z-30" style={{ bottom: 'calc(18vh + 80px)' }}>
           <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-xl border border-gray-100 dark:border-[#1A1A1A] p-3.5 relative">
             <button onClick={() => setSelected(null)} aria-label="닫기" className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#1A1A1A]">
-              <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 dark:text-gray-500" />
+              <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
             </button>
             <div className="flex gap-3 pr-6">
               {selected.image_url ? (
@@ -865,7 +865,7 @@ export default function RestaurantMapPage() {
 
           <div className="flex items-center justify-between mt-2 px-1">
             <div className="flex items-center gap-2">
-              <span className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              <span className="text-[12px] text-gray-500 dark:text-gray-400">
                 <span className="font-bold text-gray-900 dark:text-white">{filtered.length}</span>곳
                 {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">📍 내 위치 기준</span>}
               </span>
@@ -906,7 +906,7 @@ export default function RestaurantMapPage() {
             /* 선택된 맛집 디테일 카드 (sheet mid/full 일 때 list 위에 표시) */
             <div className="bg-pink-50 border-2 border-pink-300 rounded-2xl p-4 mb-3 relative">
               <button onClick={() => setSelected(null)} aria-label="선택 해제" className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white/80">
-                <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 dark:text-gray-500" />
+                <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
               </button>
               <div className="flex gap-3 pr-6">
                 {selected.image_url ? (
@@ -925,7 +925,7 @@ export default function RestaurantMapPage() {
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1 flex items-center gap-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1 flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" />
                     {selected.restaurant_address}
                     {userLoc && selected.restaurant_lat && selected.restaurant_lng && (

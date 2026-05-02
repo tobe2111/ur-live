@@ -56,7 +56,7 @@ export default function PointsChargeSuccessPage() {
         <SEO title="딜 충전 처리" description="딜 포인트 충전 처리 중" url="/points/charge/success" noindex />
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-pink-500 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500">충전을 처리하는 중...</p>
+          <p className="text-gray-500 dark:text-gray-400">충전을 처리하는 중...</p>
         </div>
       </div>
     )
@@ -90,7 +90,7 @@ export default function PointsChargeSuccessPage() {
             <span className="text-sm text-gray-600 dark:text-gray-300">충전된 딜</span>
           </div>
           <p className="text-3xl font-bold text-pink-600">+{formatNumber(result?.points_added)}딜</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2">현재 잔액: {formatNumber(result?.balance)}딜</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">현재 잔액: {formatNumber(result?.balance)}딜</p>
         </div>
         <div className="flex gap-3">
           <button

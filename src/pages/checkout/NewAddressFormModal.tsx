@@ -86,7 +86,7 @@ export default function NewAddressFormModal({
             <button
               type="button"
               onClick={() => setShowPostcodePopup(true)}
-              className="px-5 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[14px] font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:bg-[#121212] transition-all whitespace-nowrap"
+              className="px-5 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[14px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:bg-[#121212] transition-all whitespace-nowrap"
             >
               주소 검색
             </button>
@@ -146,7 +146,7 @@ export default function NewAddressFormModal({
               e.stopPropagation()
               onClose()
             }}
-            className="flex-1 py-4 bg-gray-50 dark:bg-[#121212] text-gray-500 dark:text-gray-400 dark:text-gray-500 rounded-2xl text-[16px] font-bold hover:bg-gray-100 dark:bg-[#1A1A1A] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+            className="flex-1 py-4 bg-gray-50 dark:bg-[#121212] text-gray-500 dark:text-gray-400 rounded-2xl text-[16px] font-bold hover:bg-gray-100 dark:bg-[#1A1A1A] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
           >
             취소
           </button>

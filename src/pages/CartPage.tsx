@@ -55,7 +55,7 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
           {type === 'confirm' && (
             <button
               onClick={onClose}
-              className="flex-1 rounded-lg border border-gray-300 bg-white dark:bg-[#0A0A0A] px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-50 dark:bg-[#121212]"
+              className="flex-1 rounded-lg border border-gray-300 bg-white dark:bg-[#0A0A0A] px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-50 dark:bg-[#121212]"
             >
               취소
             </button>
@@ -100,7 +100,7 @@ export default function CartPage() {
           </div>
           <div>
             <p className="text-[16px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
-            <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500">장바구니를 이용하려면 로그인해 주세요</p>
+            <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">장바구니를 이용하려면 로그인해 주세요</p>
           </div>
           <button
             type="button"
@@ -109,7 +109,7 @@ export default function CartPage() {
           >
             {t('common.loginButton')}
           </button>
-          <button onClick={() => navigate('/')} className="text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500 underline">
+          <button onClick={() => navigate('/')} className="text-[13px] text-gray-500 dark:text-gray-400 underline">
             쇼핑 계속하기
           </button>
         </div>

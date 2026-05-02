@@ -21,11 +21,11 @@ export const CartSummary = React.memo(function CartSummary({
       {/* Subtotal / shipping / discount rows */}
       <div className="space-y-2.5">
         <div className="flex justify-between text-[13px]">
-          <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">상품금액 ({totalItems}개)</span>
+          <span className="text-gray-500 dark:text-gray-400">상품금액 ({totalItems}개)</span>
           <span className="text-gray-900 dark:text-white font-medium">{fmt(subtotal)}원</span>
         </div>
         <div className="flex justify-between text-[13px]">
-          <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">배송비</span>
+          <span className="text-gray-500 dark:text-gray-400">배송비</span>
           <span className="text-gray-900 dark:text-white font-medium">
             {shippingFee === 0 ? (
               <span className="text-pink-500 font-semibold">무료</span>

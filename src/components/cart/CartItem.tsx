@@ -81,7 +81,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             onClick={() => onRemove(item.id)}
             disabled={isUpdating}
             aria-label={`${item.product_name} 장바구니에서 삭제`}
-            className="text-gray-300 hover:text-gray-500 dark:text-gray-400 dark:text-gray-500 shrink-0"
+            className="text-gray-300 hover:text-gray-500 dark:text-gray-400 shrink-0"
           >
             <X size={16} />
           </button>
@@ -116,7 +116,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
               onClick={() => onUpdateQuantity(item.id, -1)}
               disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
               aria-label="수량 줄이기"
-              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 dark:text-gray-500 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
             >
               <Minus size={14} aria-hidden="true" />
             </button>
@@ -128,7 +128,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
               onClick={() => onUpdateQuantity(item.id, 1)}
               disabled={isUpdating || isOutOfStock || isAtStockLimit}
               aria-label="수량 늘리기"
-              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 dark:text-gray-500 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
             >
               <Plus size={14} aria-hidden="true" />
             </button>

@@ -3,27 +3,27 @@ import { Link, useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Badge } from '@/components/ui/badge'
 import MobileFooter from '@/components/MobileFooter'
 import { CartTab } from '@/components/mypage/CartTab'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
-import { OrdersTab, getTrackingUrl } from '@/components/mypage/OrdersTab'
+import { OrdersTab } from '@/components/mypage/OrdersTab'
 import {
   ArrowLeft,
   Package,
   ShoppingCart,
-  X,
   AlertCircle,
-  Truck,
-  ChevronRight
 } from 'lucide-react'
 import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
-import type { Order, OrderItem } from '@/types/order'
+import type { Order } from '@/types/order'
 import type { CartItem } from '@/types/cart'
-import { formatKST } from '@/utils/date'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
-import { formatNumber } from '@/utils/format'
+import OrderDetailModal from './my-orders/OrderDetailModal'
+import CancelOrderModal from './my-orders/CancelOrderModal'
+
+// 🛡️ 2026-05-02: TD-018 분할 — Order/Cancel 모달을 ./my-orders/ 디렉토리로 추출.
+//   미사용 import (Badge, X, Truck, ChevronRight, formatKST, formatNumber,
+//   getTrackingUrl, OrderItem) 정리.
 
 type TabType = 'cart' | 'orders'
 
@@ -288,7 +288,7 @@ export default function MyOrdersPage() {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p className="text-[17px] text-gray-500 dark:text-gray-400 dark:text-gray-500">로딩 중...</p>
+              <p className="text-[17px] text-gray-500 dark:text-gray-400">로딩 중...</p>
             </div>
           </div>
         ) : error ? (
@@ -329,374 +329,29 @@ export default function MyOrdersPage() {
         )}
       </main>
 
-      {/* Order Detail Modal */}
+      {/* Order Detail Modal — extracted to ./my-orders/OrderDetailModal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedOrder(null)} role="presentation">
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="주문 상세">
-            <div className="sticky top-0 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] p-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">주문 상세</h3>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                aria-label="닫기"
-                className="text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Order Info */}
-              <div>
-                <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">주문 정보</h4>
-                <div className="space-y-2 text-[14px]">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">주문번호</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.order_number}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">주문일시</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {formatKST(selectedOrder.created_at)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">주문상태</span>
-                    <Badge
-                      className={`
-                        border-0 px-3 py-1
-                        ${selectedOrder.status.toLowerCase() === 'delivered'
-                          ? 'bg-emerald-500 text-white'
-                          : selectedOrder.status.toLowerCase() === 'shipping'
-                          ? 'bg-blue-500 text-white'
-                          : ['cancelled', 'refunded'].includes(selectedOrder.status.toLowerCase())
-                          ? 'bg-red-500 text-white'
-                          : selectedOrder.status.toLowerCase() === 'preparing'
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-gray-400 text-white'
-                        }
-                      `}
-                    >
-                      {selectedOrder.status.toLowerCase() === 'delivered'
-                        ? '배송완료'
-                        : selectedOrder.status.toLowerCase() === 'shipping'
-                        ? '배송중'
-                        : ['cancelled', 'refunded'].includes(selectedOrder.status.toLowerCase())
-                        ? '취소/환불'
-                        : selectedOrder.status.toLowerCase() === 'preparing'
-                        ? '상품준비중'
-                        : '결제완료'
-                      }
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              {/* Order Items */}
-              <div>
-                <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">주문 상품</h4>
-                <div className="space-y-3">
-                  {selectedOrder.items?.map((item, idx) => (
-                    <div key={idx} className="flex gap-3 p-3 bg-gray-50 dark:bg-[#121212] rounded-xl">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-2">
-                          {item.product_name}
-                        </p>
-                        {item.option_value && (
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
-                            옵션: {item.option_value}
-                          </p>
-                        )}
-                        <div className="flex justify-between items-center mt-1">
-                          <p className="text-[13px] text-gray-500 dark:text-gray-400 dark:text-gray-500">
-                            {item.quantity}개
-                          </p>
-                          <p className="text-[14px] font-semibold text-gray-900 dark:text-white">
-                            {/* ✅ BUG #7 FIX: price_snapshot is optional; guard against undefined→NaN */}
-                            {formatNumber((item.price_snapshot ?? 0) * item.quantity)}원
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Shipping Info */}
-              <div>
-                <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">배송 정보</h4>
-                <div className="p-4 bg-gray-50 dark:bg-[#121212] rounded-xl space-y-2 text-[14px]">
-                  <div className="flex gap-2">
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 min-w-[60px]">받는분</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.shipping_name}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 min-w-[60px]">연락처</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.shipping_phone}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 min-w-[60px]">주소</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {(() => {
-                        const addr = selectedOrder.shipping_address
-                        if (typeof addr === 'object' && addr !== null) {
-                          const a = addr as { postal_code?: string; address1?: string; address2?: string }
-                          return `[${a.postal_code || ''}] ${a.address1 || ''} ${a.address2 || ''}`
-                        }
-                        return `[${selectedOrder.shipping_postal_code || ''}] ${addr || ''} ${selectedOrder.shipping_address_detail || ''}`
-                      })()}
-                    </span>
-                  </div>
-                  {/* 배송 상태 타임라인 */}
-                  {selectedOrder.tracking_number && (() => {
-                    const status = selectedOrder.status?.toUpperCase()
-                    const steps = [
-                      { label: '결제완료', done: true },
-                      { label: '상품준비', done: ['SHIPPING', 'DELIVERED', 'DONE'].some(s => status?.includes(s)) || !!selectedOrder.tracking_number },
-                      { label: '배송중', done: ['SHIPPING'].some(s => status?.includes(s)) || status === 'DELIVERED' },
-                      { label: '배송완료', done: status === 'DELIVERED' },
-                    ]
-                    return (
-                      <div className="pt-3 border-t border-gray-200 dark:border-[#2A2A2A]">
-                        <div className="flex items-center justify-between mb-3">
-                          {steps.map((step, si) => (
-                            <div key={si} className="flex items-center flex-1">
-                              <div className="flex flex-col items-center">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400 dark:text-gray-500'}`}>
-                                  {step.done ? '✓' : si + 1}
-                                </div>
-                                <span className={`text-[10px] mt-1 ${step.done ? 'text-blue-600 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>{step.label}</span>
-                              </div>
-                              {si < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${steps[si + 1].done ? 'bg-blue-500' : 'bg-gray-200'}`} />}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Truck className="h-4 w-4 text-blue-600" />
-                            <div className="text-[13px]">
-                              {selectedOrder.courier && (
-                                <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">{selectedOrder.courier} · </span>
-                              )}
-                              <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.tracking_number}</span>
-                            </div>
-                          </div>
-                          {getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number) && (
-                            <a
-                              href={getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number)}
-                              target="_blank" rel="noopener noreferrer"
-                              className="text-[13px] text-blue-600 font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
-                            >
-                              배송조회
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
-              </div>
-
-              {/* Payment Info */}
-              <div>
-                <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">결제 정보</h4>
-                <div className="space-y-2 text-[14px]">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">상품 금액</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {/* ✅ items가 배열이 아닌 값(object 등)으로 올 경우 .reduce is not a function 방어 */}
-                    {(Array.isArray(selectedOrder.items) ? selectedOrder.items : []).reduce((sum, item) => sum + (item.price_snapshot ?? 0) * item.quantity, 0)}원
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">배송비</span>
-                    <span className="font-medium text-gray-900 dark:text-white">3,000원</span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-[#2A2A2A]">
-                    <span className="text-gray-900 dark:text-white font-semibold">총 결제금액</span>
-                    <span className="text-[19px] font-bold text-blue-600">
-                      {/* ✅ BUG #7 FIX: total_amount is optional in Order type; nullish fallback prevents TypeError */}
-                      {formatNumber(selectedOrder.total_amount ?? selectedOrder.amount ?? 0)}원
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">결제수단</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{selectedOrder.payment_method || 'Mock 결제'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 판매자 문의 */}
-              <button
-                onClick={() => {
-                  const kakao = selectedOrder.seller_kakao_chat_url as string | undefined
-                  const phone = selectedOrder.seller_phone as string | undefined
-                  if (kakao) {
-                    window.open(kakao, '_blank', 'noopener,noreferrer')
-                  } else if (phone) {
-                    toast.info(`판매자 연락처: ${phone}`)
-                  } else {
-                    toast.info('판매자 연락처가 등록되지 않았습니다')
-                  }
-                }}
-                className="w-full py-3 text-[15px] font-medium text-blue-600 border border-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-colors"
-              >
-                판매자 문의
-              </button>
-
-              {/* 리뷰 작성 (배송완료 상태) */}
-              {['delivered', 'done'].includes(selectedOrder.status.toLowerCase()) && selectedOrder.items?.[0]?.product_id && (
-                <button
-                  onClick={() => {
-                    setSelectedOrder(null)
-                    navigate(`/products/${selectedOrder.items?.[0]?.product_id || ''}`)
-                  }}
-                  className="w-full py-3 text-[15px] font-medium text-amber-600 border border-amber-300 rounded-xl hover:bg-amber-50 transition-colors"
-                >
-                  ★ 리뷰 작성하기
-                </button>
-              )}
-
-              {/* Actions */}
-              {['pending', 'paid', 'confirmed', 'done'].includes(selectedOrder.status.toLowerCase()) && (
-                <button
-                  onClick={() => {
-                    setSelectedOrder(null)
-                    handleCancelOrder(selectedOrder.id, selectedOrder.order_number ?? String(selectedOrder.id))
-                  }}
-                  className="w-full py-3 text-[15px] font-medium text-red-500 border border-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-colors"
-                >
-                  주문 취소
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onCancel={handleCancelOrder}
+        />
       )}
 
-      {/* Cancel Order Modal */}
+      {/* Cancel Order Modal — extracted to ./my-orders/CancelOrderModal */}
       {cancelModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div 
-            className="bg-white dark:bg-[#0A0A0A] rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                주문 취소
-              </h3>
-              <button
-                onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
-                aria-label="닫기"
-                className="text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:text-gray-400 dark:text-gray-500 transition-colors"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            {/* Order Info */}
-            <div className="mb-4 p-4 bg-gray-50 dark:bg-[#121212] rounded-xl">
-              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">주문번호</p>
-              <p className="font-semibold text-gray-900 dark:text-white">{cancelModal.orderNumber}</p>
-            </div>
-
-            {/* 🛡️ 배치 170: 환불 가이드 (셀프서비스 안내) */}
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-              <p className="text-xs font-bold text-blue-800 mb-1">💡 환불 안내</p>
-              <ul className="text-[11px] text-blue-700 space-y-0.5">
-                <li>• 결제 취소 시 결제 수단으로 <span className="font-semibold">자동 환불</span>됩니다</li>
-                <li>• 카드 결제: 3~5 영업일 내 환불 | 포인트 결제: 즉시 환불</li>
-                <li>• 배송 시작 후에는 반품 절차가 필요합니다</li>
-              </ul>
-            </div>
-
-            {/* Cancel Reason */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
-                취소 사유 <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">취소 사유를 선택해주세요</option>
-                <option value="단순 변심">단순 변심</option>
-                <option value="다른 상품 구매">다른 상품 구매</option>
-                <option value="배송 지연">배송 지연</option>
-                <option value="상품 정보 불일치">상품 정보 불일치</option>
-                <option value="기타">기타</option>
-              </select>
-            </div>
-
-            {/* Partial Cancel */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">환불 방식</label>
-              <div className="flex gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => setIsPartialCancel(false)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    !isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 dark:bg-[#121212] text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:bg-[#1A1A1A]'
-                  }`}
-                >
-                  전액 취소
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsPartialCancel(true)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 dark:bg-[#121212] text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:bg-[#1A1A1A]'
-                  }`}
-                >
-                  부분 취소
-                </button>
-              </div>
-              {isPartialCancel && (
-                <input
-                  type="number"
-                  value={cancelAmount}
-                  onChange={(e) => setCancelAmount(e.target.value)}
-                  placeholder="취소할 금액 입력 (원)"
-                  aria-label="부분 취소 금액 입력 (원)"
-                  min="1"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-              )}
-            </div>
-
-            {/* Notice */}
-            <div className="mb-6 p-4 bg-blue-50 rounded-xl">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-700">
-                  <p className="font-medium mb-1">취소 안내</p>
-                  <p className="text-blue-600">• 결제완료 상태에서만 취소가 가능합니다.</p>
-                  <p className="text-blue-600">• 취소 시 토스페이먼츠를 통해 자동 환불됩니다. (3-5영업일 소요)</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
-                className="flex-1 py-3 px-4 bg-gray-50 dark:bg-[#121212] text-gray-600 dark:text-gray-300 font-medium rounded-full hover:bg-gray-100 dark:bg-[#1A1A1A] transition-colors"
-                disabled={processing}
-              >
-                닫기
-              </button>
-              <button
-                onClick={confirmCancelOrder}
-                disabled={processing || !cancelReason.trim()}
-                className="flex-1 py-3 px-4 bg-red-500 text-white font-medium rounded-full hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {processing ? '처리중...' : '취소 확정'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <CancelOrderModal
+          orderNumber={cancelModal.orderNumber}
+          reason={cancelReason}
+          onReasonChange={setCancelReason}
+          isPartialCancel={isPartialCancel}
+          onPartialCancelChange={setIsPartialCancel}
+          cancelAmount={cancelAmount}
+          onCancelAmountChange={setCancelAmount}
+          processing={processing}
+          onClose={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
+          onConfirm={confirmCancelOrder}
+        />
       )}
 
       {/* Mobile Footer */}
