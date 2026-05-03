@@ -317,6 +317,35 @@
     "submit": "注销账号",
     "cancel": "取消并返回"
   },
+  "storeStats": {
+    "authFail": "验证失败",
+    "authFailedMsg": "验证失败",
+    "seoTitle": "餐厅统计",
+    "seoDesc": "团购餐厅统计页面",
+    "passwordPlaceholder": "输入密码",
+    "confirm": "确认",
+    "fallbackRestaurant": "餐厅",
+    "titleSuffix": "{{name}} 统计",
+    "labelUsed": "已使用",
+    "labelUnused": "未使用",
+    "labelExpired": "已过期",
+    "labelTotal": "总发放"
+  },
+  "referralPage": {
+    "inviteLinkInvalid": "邀请链接无效",
+    "joinSuccess": "参与成功！",
+    "joinFail": "参与失败",
+    "seoTitle": "团购 - UR-DEAL",
+    "seoDesc": "和朋友一起团购更划算",
+    "checkout": "结账",
+    "joining": "参与中...",
+    "join": "参与",
+    "timeRemaining": "剩余时间",
+    "unitDays": "天",
+    "unitHours": "小时",
+    "unitMinutes": "分",
+    "unitSeconds": "秒"
+  },
   "productDetailPage": {
     "docTitleSuffix": " - UR-DEAL",
     "wishlistAdded": "已加入心愿单。",

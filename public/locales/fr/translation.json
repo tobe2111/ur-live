@@ -2065,6 +2065,35 @@
     "submit": "Supprimer le compte",
     "cancel": "Annuler et revenir"
   },
+  "storeStats": {
+    "authFail": "Auth échouée",
+    "authFailedMsg": "Échec de l'authentification",
+    "seoTitle": "Statistiques restaurant",
+    "seoDesc": "Page des statistiques d'achat groupé restaurant",
+    "passwordPlaceholder": "Entrer le mot de passe",
+    "confirm": "Confirmer",
+    "fallbackRestaurant": "Restaurant",
+    "titleSuffix": "Stats {{name}}",
+    "labelUsed": "Utilisés",
+    "labelUnused": "Non utilisés",
+    "labelExpired": "Expirés",
+    "labelTotal": "Total émis"
+  },
+  "referralPage": {
+    "inviteLinkInvalid": "Lien d'invitation invalide",
+    "joinSuccess": "Inscription réussie !",
+    "joinFail": "Échec de l'inscription",
+    "seoTitle": "Achat groupé - YourDeal",
+    "seoDesc": "Économisez plus avec vos amis grâce aux achats groupés",
+    "checkout": "Payer",
+    "joining": "Inscription en cours...",
+    "join": "Rejoindre",
+    "timeRemaining": "Temps restant",
+    "unitDays": "j",
+    "unitHours": "h",
+    "unitMinutes": "m",
+    "unitSeconds": "s"
+  },
   "productDetailPage": {
     "docTitleSuffix": " - YourDeal",
     "wishlistAdded": "Ajouté à la liste de souhaits.",

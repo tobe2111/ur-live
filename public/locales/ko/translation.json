@@ -317,6 +317,35 @@
     "submit": "탈퇴하기",
     "cancel": "취소하고 돌아가기"
   },
+  "storeStats": {
+    "authFail": "인증 실패",
+    "authFailedMsg": "인증에 실패했습니다",
+    "seoTitle": "식당 통계",
+    "seoDesc": "공동구매 식당 통계 페이지",
+    "passwordPlaceholder": "비밀번호 입력",
+    "confirm": "확인",
+    "fallbackRestaurant": "식당",
+    "titleSuffix": "{{name}} 통계",
+    "labelUsed": "사용 완료",
+    "labelUnused": "미사용",
+    "labelExpired": "만료됨",
+    "labelTotal": "총 발급"
+  },
+  "referralPage": {
+    "inviteLinkInvalid": "초대 링크가 유효하지 않습니다",
+    "joinSuccess": "참여 완료!",
+    "joinFail": "참여 실패",
+    "seoTitle": "공동구매 - 유어딜",
+    "seoDesc": "친구와 함께 공동구매로 더 싸게 구매하세요",
+    "checkout": "결제하기",
+    "joining": "참여 중...",
+    "join": "참여하기",
+    "timeRemaining": "남은 시간",
+    "unitDays": "일",
+    "unitHours": "시간",
+    "unitMinutes": "분",
+    "unitSeconds": "초"
+  },
   "productDetailPage": {
     "docTitleSuffix": " - 유어딜",
     "wishlistAdded": "찜 목록에 추가되었습니다.",

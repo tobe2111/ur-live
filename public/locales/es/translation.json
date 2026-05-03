@@ -2065,6 +2065,35 @@
     "submit": "Eliminar cuenta",
     "cancel": "Cancelar y volver"
   },
+  "storeStats": {
+    "authFail": "Auth fallida",
+    "authFailedMsg": "Autenticación fallida",
+    "seoTitle": "Estadísticas del restaurante",
+    "seoDesc": "Página de estadísticas de compra grupal del restaurante",
+    "passwordPlaceholder": "Introduce contraseña",
+    "confirm": "Confirmar",
+    "fallbackRestaurant": "Restaurante",
+    "titleSuffix": "Estadísticas de {{name}}",
+    "labelUsed": "Usados",
+    "labelUnused": "Sin usar",
+    "labelExpired": "Caducados",
+    "labelTotal": "Total emitidos"
+  },
+  "referralPage": {
+    "inviteLinkInvalid": "Enlace de invitación inválido",
+    "joinSuccess": "¡Te uniste con éxito!",
+    "joinFail": "Error al unirse",
+    "seoTitle": "Compra grupal - YourDeal",
+    "seoDesc": "Ahorra más con amigos en compras grupales",
+    "checkout": "Pagar",
+    "joining": "Uniéndose...",
+    "join": "Unirse",
+    "timeRemaining": "Tiempo restante",
+    "unitDays": "d",
+    "unitHours": "h",
+    "unitMinutes": "m",
+    "unitSeconds": "s"
+  },
   "productDetailPage": {
     "docTitleSuffix": " - YourDeal",
     "wishlistAdded": "Añadido a la lista de deseos.",

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Users, Clock, Gift, CheckCircle, ShoppingBag } from 'lucide-react'
 import api from '@/lib/api'
@@ -61,6 +62,7 @@ function useCountdown(targetDate: Date) {
 }
 
 export default function ReferralPage() {
+  const { t } = useTranslation()
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
   const userId = useCurrentUserId()
@@ -95,7 +97,7 @@ export default function ReferralPage() {
         }
       }
     } catch {
-      toast.error('초대 링크가 유효하지 않습니다')
+      toast.error(t('referralPage.inviteLinkInvalid'))
     } finally {
       setLoading(false)
     }
@@ -120,15 +122,15 @@ export default function ReferralPage() {
         } else if (d.unlocked_tier) {
           toast.success(`${d.unlocked_tier.discount}% 할인 단계 달성!`)
         } else {
-          toast.success('참여 완료!')
+          toast.success(t('referralPage.joinSuccess'))
         }
         await fetchGroup()
       } else {
-        toast.error(res.data.error || '참여 실패')
+        toast.error(res.data.error || t('referralPage.joinFail'))
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      toast.error(err_.response?.data?.error || '참여 실패')
+      toast.error(err_.response?.data?.error || t('referralPage.joinFail'))
     } finally {
       setJoining(false)
     }
@@ -180,7 +182,7 @@ export default function ReferralPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
-      <SEO title="공동구매 - 유어딜" description="친구와 함께 공동구매로 더 싸게 구매하세요" url="/referral" />
+      <SEO title={t('referralPage.seoTitle')} description={t('referralPage.seoDesc')} url="/referral" />
       {/* v4 Header */}
       <div className="sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
@@ -366,7 +368,7 @@ export default function ReferralPage() {
               <ShoppingBag className="w-4 h-4" />
               {product
                 ? `${formatNumber(discountedPrice)}원에 결제하기 (${currentDiscount}% 할인)`
-                : '결제하기'}
+                : t('referralPage.checkout')}
             </button>
           ) : isExpired ? (
             <button
@@ -397,7 +399,7 @@ export default function ReferralPage() {
                 disabled={joining}
                 className="flex-1 py-3.5 bg-gray-900 text-white rounded-xl font-bold text-sm active:scale-[0.98] disabled:opacity-50"
               >
-                {joining ? '참여 중...' : '참여하기'}
+                {joining ? t('referralPage.joining') : t('referralPage.join')}
               </button>
               <div className="shrink-0">
                 <KakaoShareButton
@@ -479,18 +481,19 @@ function TierProgressBar({
 
 /** 실시간 카운트다운 (days:hours:minutes:seconds) */
 function CountdownTimer({ expiresAt }: { expiresAt: string }) {
+  const { t } = useTranslation()
   const { days, hours, minutes, seconds, isExpired } = useCountdown(new Date(expiresAt))
   if (isExpired) return null
 
   return (
     <div className="pt-4 text-center">
-      <p className="text-[11px] text-pink-500 font-bold mb-2">⏰ 남은 시간</p>
+      <p className="text-[11px] text-pink-500 font-bold mb-2">⏰ {t('referralPage.timeRemaining')}</p>
       <div className="flex items-center justify-center gap-1.5">
         {[
-          { v: days, l: '일' },
-          { v: hours, l: '시간' },
-          { v: minutes, l: '분' },
-          { v: seconds, l: '초' },
+          { v: days, l: t('referralPage.unitDays') },
+          { v: hours, l: t('referralPage.unitHours') },
+          { v: minutes, l: t('referralPage.unitMinutes') },
+          { v: seconds, l: t('referralPage.unitSeconds') },
         ].filter((t, i) => i > 0 || t.v > 0).map((t, i, arr) => (
           <span key={t.l} className="contents">
             <div className="rounded-lg px-2.5 py-1.5 bg-pink-50">

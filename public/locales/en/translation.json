@@ -317,6 +317,35 @@
     "submit": "Delete account",
     "cancel": "Cancel and go back"
   },
+  "storeStats": {
+    "authFail": "Auth failed",
+    "authFailedMsg": "Authentication failed",
+    "seoTitle": "Restaurant Stats",
+    "seoDesc": "Group buy restaurant statistics page",
+    "passwordPlaceholder": "Enter password",
+    "confirm": "Confirm",
+    "fallbackRestaurant": "Restaurant",
+    "titleSuffix": "{{name}} Stats",
+    "labelUsed": "Used",
+    "labelUnused": "Unused",
+    "labelExpired": "Expired",
+    "labelTotal": "Total issued"
+  },
+  "referralPage": {
+    "inviteLinkInvalid": "Invalid invite link",
+    "joinSuccess": "Joined successfully!",
+    "joinFail": "Failed to join",
+    "seoTitle": "Group Buy - YourDeal",
+    "seoDesc": "Save more with friends through group buys",
+    "checkout": "Checkout",
+    "joining": "Joining...",
+    "join": "Join",
+    "timeRemaining": "Time left",
+    "unitDays": "d",
+    "unitHours": "h",
+    "unitMinutes": "m",
+    "unitSeconds": "s"
+  },
   "productDetailPage": {
     "docTitleSuffix": " - YourDeal",
     "wishlistAdded": "Added to wishlist.",

@@ -317,6 +317,35 @@
     "submit": "退会する",
     "cancel": "キャンセルして戻る"
   },
+  "storeStats": {
+    "authFail": "認証失敗",
+    "authFailedMsg": "認証に失敗しました",
+    "seoTitle": "店舗統計",
+    "seoDesc": "共同購入 店舗統計ページ",
+    "passwordPlaceholder": "パスワード入力",
+    "confirm": "確認",
+    "fallbackRestaurant": "店舗",
+    "titleSuffix": "{{name}} 統計",
+    "labelUsed": "使用済み",
+    "labelUnused": "未使用",
+    "labelExpired": "期限切れ",
+    "labelTotal": "総発行"
+  },
+  "referralPage": {
+    "inviteLinkInvalid": "招待リンクが無効です",
+    "joinSuccess": "参加完了！",
+    "joinFail": "参加失敗",
+    "seoTitle": "共同購入 - ユアディール",
+    "seoDesc": "友達と一緒に共同購入でお得にお買い物",
+    "checkout": "決済する",
+    "joining": "参加中...",
+    "join": "参加する",
+    "timeRemaining": "残り時間",
+    "unitDays": "日",
+    "unitHours": "時間",
+    "unitMinutes": "分",
+    "unitSeconds": "秒"
+  },
   "productDetailPage": {
     "docTitleSuffix": " - ユアディール",
     "wishlistAdded": "お気に入りに追加しました。",

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -16,6 +17,7 @@ interface StoreStats {
 }
 
 export default function StoreStatsPage() {
+  const { t } = useTranslation()
   const { productId } = useParams<{ productId: string }>()
   const [searchParams] = useSearchParams()
   const magicToken = searchParams.get('t')?.trim() || ''
@@ -39,11 +41,11 @@ export default function StoreStatsPage() {
         setStats(res.data.data)
         setAuthenticated(true)
       } else {
-        setError(res.data.error || '인증 실패')
+        setError(res.data.error || t('storeStats.authFail'))
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      setError(err_.response?.data?.error || '인증에 실패했습니다')
+      setError(err_.response?.data?.error || t('storeStats.authFailedMsg'))
     } finally {
       setLoading(false)
     }
@@ -61,7 +63,7 @@ export default function StoreStatsPage() {
   if (magicToken && !authenticated && !error) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-5">
-        <SEO title="식당 통계" description="공동구매 식당 통계 페이지" url={`/store/stats/${productId ?? ''}`} noindex />
+        <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
         <div className="text-center">
           <Loader2 className="w-10 h-10 text-orange-500 animate-spin mx-auto mb-4" />
           <p className="text-sm text-gray-500">매장 인증 중...</p>
@@ -73,7 +75,7 @@ export default function StoreStatsPage() {
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-5">
-        <SEO title="식당 통계" description="공동구매 식당 통계 페이지" url={`/store/stats/${productId ?? ''}`} noindex />
+        <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
         <div className="w-full max-w-sm text-center">
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-orange-100 flex items-center justify-center">
             <Lock className="w-7 h-7 text-orange-600" />
@@ -88,7 +90,7 @@ export default function StoreStatsPage() {
             value={pin}
             onChange={e => setPin(e.target.value)}
             type="password"
-            placeholder="비밀번호 입력"
+            placeholder={t('storeStats.passwordPlaceholder')}
             className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg text-gray-900 tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
             onKeyDown={e => e.key === 'Enter' && authenticate()}
           />
@@ -97,7 +99,7 @@ export default function StoreStatsPage() {
             disabled={!pin.trim() || loading}
             className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold rounded-xl disabled:opacity-40"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : '확인'}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('storeStats.confirm')}
           </button>
         </div>
       </div>
@@ -110,21 +112,21 @@ export default function StoreStatsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-5 py-8">
-      <SEO title={`${stats.restaurant_name || '식당'} 통계`} description={`${stats.product_name} 공동구매 식당 통계`} url={`/store/stats/${productId ?? ''}`} noindex />
+      <SEO title={t('storeStats.titleSuffix', { name: stats.restaurant_name || t('storeStats.fallbackRestaurant') })} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
       <div className="ur-content-narrow">
         {/* 헤더 */}
         <div className="text-center mb-6">
-          <h1 className="text-xl font-extrabold text-gray-900">{stats.restaurant_name || '식당'}</h1>
+          <h1 className="text-xl font-extrabold text-gray-900">{stats.restaurant_name || t('storeStats.fallbackRestaurant')}</h1>
           <p className="text-sm text-gray-500 mt-1">{stats.product_name}</p>
         </div>
 
         {/* 요약 카드 */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           {[
-            { label: '사용 완료', value: stats.used, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: '미사용', value: stats.unused, icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: '만료됨', value: stats.expired, icon: XCircle, color: 'text-gray-500', bg: 'bg-gray-100' },
-            { label: '총 발급', value: stats.total_vouchers, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+            { label: t('storeStats.labelUsed'), value: stats.used, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+            { label: t('storeStats.labelUnused'), value: stats.unused, icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500', bg: 'bg-gray-100' },
+            { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-200">
               <div className="flex items-center justify-between mb-2">
