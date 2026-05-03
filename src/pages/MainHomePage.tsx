@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Search, ShoppingCart, Eye, Play, Clock, Bell, MapPin, ChevronDown, Map } from 'lucide-react'
 import api from '@/lib/api'
 import { isLoggedInSync } from '@/utils/auth'
@@ -20,6 +21,7 @@ import type { LiveStream, Product } from './main-home/types'
 // 🛡️ 2026-04-22: HeroBanner 별도 섹션 제거. 어드민 배너를 Region Hero 의 배경 이미지로 사용 (풀스크린).
 
 export default function MainHomePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   // 지역: localStorage 저장값 > GPS 자동 감지 > 기본값
   const [region, setRegion] = useState(() => {
@@ -125,7 +127,7 @@ export default function MainHomePage() {
   }, [])
 
   useEffect(() => {
-    document.title = '유어딜 - 라이브 커머스'
+    document.title = t('mainHome.docTitle')
     // 🛡️ 2026-04-28: 6 calls → 1 (/api/home/bundle) — 1분 edge cache + swr.
     //   첫 진입: 1회 round-trip (D1 6쿼리 병렬). 이후 진입: edge cache hit (수십 ms).
     // 🛡️ 2026-05-01: 8s timeout + 안전 가드 — Worker cold start / D1 hang 시 무한 스켈레톤 차단.
@@ -172,7 +174,7 @@ export default function MainHomePage() {
 
   return (
     <div className="bg-[#020202] min-h-screen pb-16">
-      <SEO title="홈" description="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매" url="/" jsonLd={[organizationJsonLd, webSiteJsonLd]} />
+      <SEO title={t('mainHome.seoTitle')} description={t('mainHome.seoDesc')} url="/" jsonLd={[organizationJsonLd, webSiteJsonLd]} />
 
       {/* ═══ Sticky Top Bar ═══ — PC 풀너비 sticky, 콘텐츠는 centered */}
       <div className="sticky top-0 inset-x-0 z-30 bg-[#020202]/95 backdrop-blur-md">
@@ -185,7 +187,7 @@ export default function MainHomePage() {
         </Link>
         <div className="flex items-center gap-1 text-gray-200">
           <button onClick={() => navigate('/search')} className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
-          <button onClick={() => navigate('/notifications')} aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 (읽지 않음)` : '알림'} className="p-1.5 relative">
+          <button onClick={() => navigate('/notifications')} aria-label={unreadCount > 0 ? t('mainHome.ariaNotificationsCount', { count: unreadCount }) : t('mainHome.ariaNotifications')} className="p-1.5 relative">
             <Bell className="h-5 w-5" strokeWidth={1.5} />
             {/* 🛡️ 2026-04-22: static red dot → 실제 unread count badge */}
             {unreadCount > 0 && (
@@ -216,7 +218,7 @@ export default function MainHomePage() {
         {(heroBanner?.image_url || featured?.image_url) && (
           <img
             src={heroBanner?.image_url || featured?.image_url}
-            alt={heroBanner?.title || featured?.name || '배너'}
+            alt={heroBanner?.title || featured?.name || t('mainHome.altBanner')}
             className="absolute inset-0 w-full h-full object-cover opacity-55"
             fetchPriority="high"
             decoding="async"
@@ -244,9 +246,9 @@ export default function MainHomePage() {
             <span className="text-[12px] font-bold text-white">{region}</span>
             <ChevronDown className="w-2.5 h-2.5 text-white" />
           </button>
-          <p className="text-[11px] text-white/70 font-semibold tracking-widest mt-3">NOW · 오늘의 마감 임박</p>
+          <p className="text-[11px] text-white/70 font-semibold tracking-widest mt-3">{t('mainHome.nowDeadline')}</p>
           <h1 className="text-[26px] font-black text-white mt-1" style={{ letterSpacing: '-0.04em', lineHeight: 1.1, textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>
-            {featured?.name || '맛집 공동구매'}
+            {featured?.name || t('mainHome.fallbackProduct')}
           </h1>
           {featured && (
             <div className="flex items-baseline gap-2 mt-2">
@@ -262,15 +264,15 @@ export default function MainHomePage() {
           <div className="flex-1 rounded-xl p-2.5 flex items-center gap-2 bg-red-500/[0.18] backdrop-blur-md border border-red-500/40">
             <Clock className="w-3.5 h-3.5 text-red-300 shrink-0" />
             <div>
-              <p className="text-[11px] text-white font-bold leading-tight">{featured ? fmtEnd(featured.group_buy_deadline) : '진행 중'}</p>
+              <p className="text-[11px] text-white font-bold leading-tight">{featured ? fmtEnd(featured.group_buy_deadline) : t('mainHome.ongoing')}</p>
               <p className="text-[10px] text-red-300 font-semibold">
                 {featured && (featured.group_buy_current || 0) > 0
-                  ? `지금 ${featured.group_buy_current}명 구매 중`
-                  : '마감 임박'}
+                  ? t('mainHome.buyersCount', { count: featured.group_buy_current }) + ' ' + t('mainHome.buyingNow')
+                  : t('mainHome.deadlineSoon')}
               </p>
             </div>
           </div>
-          <button onClick={() => featured && navigate(`/products/${featured.id}`)} className="rounded-xl px-4 py-3 shrink-0 bg-white text-black text-[12px] font-extrabold">구매하기</button>
+          <button onClick={() => featured && navigate(`/products/${featured.id}`)} className="rounded-xl px-4 py-3 shrink-0 bg-white text-black text-[12px] font-extrabold">{t('mainHome.buyNow')}</button>
         </div>
       </div>
 
@@ -282,24 +284,24 @@ export default function MainHomePage() {
               <span className="w-1.5 h-1.5 bg-[#EF4444] rounded-full animate-pulse" />
               <span className="text-[9px] text-red-300 font-extrabold tracking-widest">LIVE</span>
             </div>
-            <p className="text-[12px] text-white font-extrabold">지금 라이브딜</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">{liveStreams.length}개 방송</p>
+            <p className="text-[12px] text-white font-extrabold">{t('mainHome.quickLiveTitle')}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{t('mainHome.quickLiveSub', { count: liveStreams.length })}</p>
           </button>
           <button onClick={() => navigate('/browse?category=meal_voucher')} className="rounded-xl p-2.5 text-left bg-yellow-400/[0.08] border border-yellow-400/25">
             <div className="flex items-center gap-1 mb-0.5">
               <span className="text-[10px]">🍽</span>
               <span className="text-[9px] text-yellow-200 font-extrabold tracking-widest">MEAL</span>
             </div>
-            <p className="text-[12px] text-white font-extrabold">오늘의 식사권딜</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">{displayMeals.length}개 모집 중</p>
+            <p className="text-[12px] text-white font-extrabold">{t('mainHome.quickMealTitle')}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{t('mainHome.quickMealSub', { count: displayMeals.length })}</p>
           </button>
           <button onClick={() => navigate('/browse')} className="rounded-xl p-2.5 text-left bg-blue-400/[0.08] border border-blue-400/25">
             <div className="flex items-center gap-1 mb-0.5">
               <span className="text-[10px]">🛍</span>
               <span className="text-[9px] text-blue-300 font-extrabold tracking-widest">SPECIAL</span>
             </div>
-            <p className="text-[12px] text-white font-extrabold">UR특가</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">최대 70%</p>
+            <p className="text-[12px] text-white font-extrabold">{t('mainHome.quickSpecialTitle')}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{t('mainHome.quickSpecialSub')}</p>
           </button>
         </div>
       </div>
@@ -310,16 +312,16 @@ export default function MainHomePage() {
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-[14px]">📍</span>
-              <span className="text-[10px] font-extrabold text-[#FBBF24] tracking-[0.14em]">NEARBY · 내 주변</span>
+              <span className="text-[10px] font-extrabold text-[#FBBF24] tracking-[0.14em]">{t('mainHome.nearbyTag')}</span>
             </div>
-            <p className="text-[18px] font-extrabold text-white" style={{ letterSpacing: '-0.03em' }}>{region.split(' ')[0]} 맛집 식사권</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{displayMeals.length}개 · 인기순</p>
+            <p className="text-[18px] font-extrabold text-white" style={{ letterSpacing: '-0.03em' }}>{t('mainHome.nearbyTitle', { region: region.split(' ')[0] })}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{t('mainHome.nearbyCount', { count: displayMeals.length })}</p>
           </div>
           <div className="flex items-center gap-2 pb-1">
             <button onClick={() => navigate('/restaurant-map')} className="flex items-center gap-1 text-[11px] text-[#FBBF24] font-bold">
-              <Map className="w-3.5 h-3.5" /> 지도
+              <Map className="w-3.5 h-3.5" /> {t('mainHome.mapShortcut')}
             </button>
-            <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[11px] text-gray-400">전체 →</button>
+            <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[11px] text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
         </div>
 
@@ -332,8 +334,8 @@ export default function MainHomePage() {
             <Map className="w-5 h-5 text-[#FBBF24]" />
           </div>
           <div className="flex-1 text-left min-w-0">
-            <p className="text-[13px] font-extrabold text-white leading-tight">🗺️ 지도에서 한눈에 보기</p>
-            <p className="text-[10px] text-gray-400 mt-0.5 truncate">내 위치 기준 가까운 맛집 식사권</p>
+            <p className="text-[13px] font-extrabold text-white leading-tight">{t('mainHome.mapBannerTitle')}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5 truncate">{t('mainHome.mapBannerSub')}</p>
           </div>
           <span className="text-[14px] text-[#FBBF24] shrink-0">→</span>
         </button>
@@ -348,13 +350,13 @@ export default function MainHomePage() {
               <button key={m.id} onClick={() => navigate(`/products/${m.id}`)} className="w-full flex items-center gap-3 rounded-xl p-2.5 text-left bg-[#0B0B0B] border border-[#151515]">
                 <span className="text-[20px] font-black w-[22px] shrink-0" style={{ color: i < 3 ? '#FBBF24' : '#6B7280', letterSpacing: '-0.03em' }}>{i + 1}</span>
                 <div className="rounded-lg overflow-hidden shrink-0 relative w-[68px] h-[68px] bg-[#1A1A1A]">
-                  {m.image_url && <img src={m.image_url} alt={m.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />}
+                  {m.image_url && <img src={m.image_url} alt={m.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1 mb-1 flex-wrap">
-                    <span className="text-[9px] font-extrabold px-1 rounded bg-[#FDE68A] text-[#78350F]">🍽 {m.restaurant_address?.split(' ')[0] || '맛집'}</span>
-                    {isHot && <span className="text-[9px] font-extrabold px-1 rounded bg-pink-500 text-white">🔥 HOT</span>}
-                    {isClosing && <span className="text-[9px] font-extrabold px-1 rounded bg-[#EF4444] text-white">⏰ 곧 마감</span>}
+                    <span className="text-[9px] font-extrabold px-1 rounded bg-[#FDE68A] text-[#78350F]">🍽 {m.restaurant_address?.split(' ')[0] || t('mainHome.fallbackRestaurant')}</span>
+                    {isHot && <span className="text-[9px] font-extrabold px-1 rounded bg-pink-500 text-white">{t('mainHome.tagHot')}</span>}
+                    {isClosing && <span className="text-[9px] font-extrabold px-1 rounded bg-[#EF4444] text-white">{t('mainHome.tagClosing')}</span>}
                   </div>
                   <p className="text-[12px] text-white font-bold leading-tight line-clamp-2">{m.name}</p>
                   <div className="flex items-baseline gap-1 mt-1">
@@ -363,7 +365,7 @@ export default function MainHomePage() {
                   </div>
                   {current > 0 && (
                     <p className="text-[10px] mt-1.5 text-gray-400">
-                      👥 <span className="font-semibold text-gray-200">{current}명</span> 구매 중
+                      👥 <span className="font-semibold text-gray-200">{t('mainHome.buyersCount', { count: current })}</span> {t('mainHome.buyingNow')}
                     </p>
                   )}
                 </div>
@@ -380,11 +382,11 @@ export default function MainHomePage() {
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <span className="w-2 h-2 bg-[#EF4444] rounded-full animate-pulse" />
-                <span className="text-[10px] font-extrabold text-red-400 tracking-[0.14em]">NOW LIVE · 지금 방송</span>
+                <span className="text-[10px] font-extrabold text-red-400 tracking-[0.14em]">{t('mainHome.nowLiveTag')}</span>
               </div>
-              <p className="text-[18px] font-extrabold text-white" style={{ letterSpacing: '-0.03em' }}>지금 라이브딜</p>
+              <p className="text-[18px] font-extrabold text-white" style={{ letterSpacing: '-0.03em' }}>{t('mainHome.quickLiveTitle')}</p>
             </div>
-            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400 pb-1">전체 →</button>
+            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400 pb-1">{t('mainHome.seeAll')}</button>
           </div>
           <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
             {liveStreams.map(s => {
@@ -392,7 +394,7 @@ export default function MainHomePage() {
               return (
                 <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] lg:w-auto text-left active:scale-[0.98] transition-transform">
                   <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-[#1A1A1A]">
-                    {thumb && <img src={thumb} alt={s.title || '라이브 방송'} loading="lazy" className="w-full h-full object-cover" />}
+                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altLiveStream')} loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 35%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
                       <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
@@ -405,7 +407,7 @@ export default function MainHomePage() {
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 right-2">
-                      <p className="text-[10px] text-white/80 font-semibold truncate">@{s.seller_name || '셀러'}</p>
+                      <p className="text-[10px] text-white/80 font-semibold truncate">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
                       <p className="text-[12px] text-white font-bold leading-tight line-clamp-2 mt-0.5">{s.title}</p>
                     </div>
                   </div>
@@ -426,10 +428,10 @@ export default function MainHomePage() {
         <div className="px-4 pt-6">
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-[10px] font-extrabold text-blue-400 tracking-[0.14em]">🔔 UPCOMING</p>
-              <p className="text-[15px] font-extrabold text-white mt-0.5">예정 방송</p>
+              <p className="text-[10px] font-extrabold text-blue-400 tracking-[0.14em]">{t('mainHome.scheduledTag')}</p>
+              <p className="text-[15px] font-extrabold text-white mt-0.5">{t('mainHome.scheduledTitle')}</p>
             </div>
-            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">전체 →</button>
+            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
           <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
             {scheduledStreams.slice(0, 10).map(s => {
@@ -439,15 +441,15 @@ export default function MainHomePage() {
               return (
                 <div key={s.id} className="shrink-0 w-[170px] lg:w-auto text-left">
                   <button type="button" onClick={() => navigate(`/live/${s.id}`)} className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-[#1A1A1A] cursor-pointer text-left">
-                    {thumb && <img src={thumb} alt={s.title || '예정 방송'} loading="lazy" className="w-full h-full object-cover" />}
+                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altScheduled')} loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-500 px-2 py-0.5 rounded-md">
                       <Clock className="h-2.5 w-2.5 text-white" />
-                      <span className="text-[10px] font-bold text-white">예정</span>
+                      <span className="text-[10px] font-bold text-white">{t('mainHome.scheduledBadge')}</span>
                     </div>
                     <div className="absolute bottom-2 left-2 right-2">
                       {timeLabel && <p className="text-[18px] font-black text-white">{timeLabel}</p>}
-                      <p className="text-[10px] text-white/70 truncate">@{s.seller_name || '셀러'}</p>
+                      <p className="text-[10px] text-white/70 truncate">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
                     </div>
                   </button>
                   <p className="text-[11px] text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
@@ -466,10 +468,10 @@ export default function MainHomePage() {
         <div className="px-4 pt-6">
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-[10px] font-extrabold text-gray-500 tracking-[0.14em]">▶ REPLAY</p>
-              <p className="text-[15px] font-extrabold text-white mt-0.5">다시보기</p>
+              <p className="text-[10px] font-extrabold text-gray-500 tracking-[0.14em]">{t('mainHome.replayTag')}</p>
+              <p className="text-[15px] font-extrabold text-white mt-0.5">{t('mainHome.replayTitle')}</p>
             </div>
-            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">전체 →</button>
+            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
           <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
             {endedStreams.slice(0, 10).map(s => {
@@ -477,14 +479,14 @@ export default function MainHomePage() {
               return (
                 <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[150px] lg:w-auto text-left">
                   <div className="relative rounded-xl overflow-hidden bg-[#1A1A1A]" style={{ aspectRatio: '16/9' }}>
-                    {thumb && <img src={thumb} alt={s.title || '다시보기'} loading="lazy" className="w-full h-full object-cover brightness-[0.85]" />}
+                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altReplay')} loading="lazy" className="w-full h-full object-cover brightness-[0.85]" />}
                     <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
                       <Play className="h-2.5 w-2.5 text-white" />
-                      <span className="text-[9px] font-bold text-white">다시보기</span>
+                      <span className="text-[9px] font-bold text-white">{t('mainHome.replayBadge')}</span>
                     </div>
                   </div>
                   <p className="text-[11px] text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
-                  <p className="text-[9px] text-gray-500 mt-0.5">@{s.seller_name || '셀러'}</p>
+                  <p className="text-[9px] text-gray-500 mt-0.5">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
                 </button>
               )
             })}
@@ -495,8 +497,8 @@ export default function MainHomePage() {
       {/* ═══ UR특가 ═══ */}
       <div className="pt-8 mt-6" style={{ background: '#050505', borderTop: '8px solid #0A0A0A' }}>
         <div className="px-4 pt-5 pb-3">
-          <p className="text-[10px] text-blue-300 font-extrabold tracking-[0.14em]">🛍 UR SPECIAL</p>
-          <p className="text-[22px] font-black text-white mt-0.5" style={{ letterSpacing: '-0.04em' }}>UR특가</p>
+          <p className="text-[10px] text-blue-300 font-extrabold tracking-[0.14em]">{t('mainHome.specialTag')}</p>
+          <p className="text-[22px] font-black text-white mt-0.5" style={{ letterSpacing: '-0.04em' }}>{t('mainHome.specialTitle')}</p>
         </div>
 
         {/* Category grid */}
@@ -514,14 +516,14 @@ export default function MainHomePage() {
         {/* 실시간 랭킹 */}
         {products.length > 0 && (
           <div className="px-4 pb-5">
-            <p className="text-[14px] font-extrabold text-white mb-3">🏆 실시간 랭킹</p>
+            <p className="text-[14px] font-extrabold text-white mb-3">{t('mainHome.rankingTitle')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {products.slice(0, 5).map((p, i) => {
                 const d = disc(p.price, p.original_price)
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative">
                     <div className="relative rounded-lg overflow-hidden aspect-square bg-[#1A1A1A]">
-                      {p.image_url && <img src={p.image_url} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />}
+                      {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                       <span className="absolute top-1.5 left-1.5 rounded flex items-center justify-center w-[22px] h-[22px] bg-[#EF4444] text-[11px] font-black text-white">{i + 1}</span>
                     </div>
                     <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
@@ -538,14 +540,14 @@ export default function MainHomePage() {
         {/* 추천 상품 */}
         {products.length > 4 && (
           <div className="px-4 pb-5">
-            <p className="text-[14px] font-extrabold text-white mb-3">추천 상품</p>
+            <p className="text-[14px] font-extrabold text-white mb-3">{t('mainHome.recommendTitle')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-5">
               {products.slice(5).map(p => {
                 const d = disc(p.price, p.original_price)
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left">
                     <div className="relative rounded-lg overflow-hidden aspect-square bg-[#1A1A1A]">
-                      {p.image_url && <img src={p.image_url} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />}
+                      {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                       {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
                     </div>
                     <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>

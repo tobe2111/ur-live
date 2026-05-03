@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Eye, Clock, Play, Bell, Search, ShoppingCart, Radio } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -29,6 +30,7 @@ interface LiveStream {
 type Tab = 'all' | 'live' | 'scheduled' | 'replay'
 
 export default function LiveListPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
   const [scheduledStreams, setScheduledStreams] = useState<LiveStream[]>([])
@@ -38,7 +40,7 @@ export default function LiveListPage() {
   const [activeCategory, setActiveCategory] = useState<string>('all')
 
   useEffect(() => {
-    document.title = '라이브 - 유어딜'
+    document.title = t('liveList.docTitle')
     Promise.allSettled([
       api.get('/api/streams?status=live'),
       api.get('/api/streams?status=scheduled'),
@@ -75,21 +77,21 @@ export default function LiveListPage() {
 
   const tabIdx = ['all', 'live', 'scheduled', 'replay'].indexOf(tab)
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'all',       label: '전체' },
-    { key: 'live',      label: '실시간' },
-    { key: 'scheduled', label: '예정' },
-    { key: 'replay',    label: '다시보기' },
+    { key: 'all',       label: t('liveList.tabAll') },
+    { key: 'live',      label: t('liveList.tabLive') },
+    { key: 'scheduled', label: t('liveList.tabScheduled') },
+    { key: 'replay',    label: t('liveList.tabReplay') },
   ]
 
   return (
     <div className="min-h-screen bg-[#020202] text-white pb-24">
-      <SEO title="라이브" description="유어딜 라이브 방송과 다시보기" url="/live" />
+      <SEO title={t('liveList.seoTitle')} description={t('liveList.seoDesc')} url="/live" />
 
       {/* 🛡️ 2026-04-29 v4 Film Strip 헤더 — UR·DEAL 로고 + 검색/알림/장바구니 */}
       <header className="sticky top-0 z-50" style={{ background: 'rgba(2,2,2,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center justify-between px-4 h-[52px]">
           {/* UR·DEAL 로고 (홈으로) */}
-          <button onClick={() => navigate('/')} aria-label="홈으로" className="font-black tracking-tight">
+          <button onClick={() => navigate('/')} aria-label={t('liveList.ariaHome')} className="font-black tracking-tight">
             <span style={{ fontSize: 18, color: '#EF4444', letterSpacing: '-0.04em' }}>UR·</span>
             <span style={{ fontSize: 18, color: '#fff', letterSpacing: '-0.04em' }}>DEAL</span>
           </button>
@@ -97,21 +99,21 @@ export default function LiveListPage() {
             <button
               onClick={() => navigate('/search?scope=live')}
               className="p-1.5 rounded-full hover:bg-white/10"
-              aria-label="라이브 검색"
+              aria-label={t('liveList.ariaSearch')}
             >
               <Search className="w-5 h-5 text-gray-400" />
             </button>
             <button
               onClick={() => navigate('/notifications')}
               className="p-1.5 rounded-full hover:bg-white/10"
-              aria-label="알림"
+              aria-label={t('liveList.ariaNotifications')}
             >
               <Bell className="w-5 h-5 text-gray-400" />
             </button>
             <button
               onClick={() => navigate('/cart')}
               className="p-1.5 rounded-full hover:bg-white/10"
-              aria-label="장바구니"
+              aria-label={t('liveList.ariaCart')}
             >
               <ShoppingCart className="w-5 h-5 text-gray-400" />
             </button>
@@ -120,7 +122,7 @@ export default function LiveListPage() {
 
         {/* 큰 "라이브" 제목 + 카운트 */}
         <div className="px-4 pt-2 flex items-end justify-between">
-          <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em' }}>라이브</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em' }}>{t('liveList.title')}</h1>
           <p style={{ fontSize: 11, color: '#6B7280', paddingBottom: 4 }}>
             <span style={{ color: '#EF4444', fontWeight: 700 }}>● {filteredLive.length}</span>
             <span style={{ margin: '0 6px', opacity: 0.4 }}>·</span>
@@ -180,7 +182,7 @@ export default function LiveListPage() {
                   <span className="rounded-full" style={{ width: 5, height: 5, background: '#fff', boxShadow: '0 0 6px #fff' }} />
                   <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#fff' }}>LIVE</span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>지금 방송 중</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t('liveList.nowLiveLabel')}</span>
               </div>
               <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-2 lg:overflow-visible lg:grid lg:grid-cols-3 xl:grid-cols-4 lg:px-4">
                 {filteredLive.map(s => (
@@ -188,7 +190,7 @@ export default function LiveListPage() {
                     key={s.id}
                     onClick={() => navigate(`/live/${s.id}`)}
                     className="shrink-0 w-[280px] lg:w-full text-left active:scale-[0.99] transition-transform"
-                    aria-label={`${s.title} 라이브 입장`}
+                    aria-label={t('liveList.ariaLiveJoin', { title: s.title })}
                   >
                     <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '4/5', background: '#121212' }}>
                       {getThumb(s) ? (
@@ -231,13 +233,13 @@ export default function LiveListPage() {
             <section className="px-4 mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="w-3.5 h-3.5 text-blue-400" strokeWidth={2.5} />
-                <span style={{ fontSize: 13, fontWeight: 700 }}>방송 예정</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t('liveList.scheduledLabel')}</span>
               </div>
               <div className="space-y-2">
                 {filteredScheduled.map(s => {
                   const d = s.scheduled_at ? new Date(s.scheduled_at) : null
                   const isToday = d && d.toDateString() === new Date().toDateString()
-                  const dateLabel = d ? (isToday ? '오늘' : `${d.getMonth() + 1}/${d.getDate()}`) : ''
+                  const dateLabel = d ? (isToday ? t('liveList.today') : `${d.getMonth() + 1}/${d.getDate()}`) : ''
                   const time = d ? d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
                   return (
                     <button
@@ -245,7 +247,7 @@ export default function LiveListPage() {
                       onClick={() => navigate(`/live/${s.id}`)}
                       className="w-full flex items-center gap-3 p-2 rounded-2xl active:scale-[0.99] transition-transform"
                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                      aria-label={`${s.title} 방송 예정`}
+                      aria-label={t('liveList.ariaScheduled', { title: s.title })}
                     >
                       <div className="shrink-0 rounded-xl overflow-hidden" style={{ width: 72, height: 72, background: '#1A1A1A' }}>
                         {getThumb(s) ? (
@@ -286,7 +288,7 @@ export default function LiveListPage() {
             <section className="px-4 pb-6">
               <div className="flex items-center gap-2 mb-3">
                 <Play className="w-3.5 h-3.5 text-gray-400" strokeWidth={2.5} fill="currentColor" />
-                <span style={{ fontSize: 13, fontWeight: 700 }}>다시보기</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t('liveList.replayLabel')}</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
                 {filteredEnded.map(s => (
@@ -294,7 +296,7 @@ export default function LiveListPage() {
                     key={s.id}
                     onClick={() => navigate(`/live/${s.id}`)}
                     className="text-left active:scale-[0.99] transition-transform"
-                    aria-label={`${s.title} 다시보기`}
+                    aria-label={t('liveList.ariaReplay', { title: s.title })}
                   >
                     <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '3/4', background: '#1A1A1A' }}>
                       {getThumb(s) ? (
@@ -408,11 +410,13 @@ function StreamCard({ stream, type, onClick, getThumb }: {
   onClick: () => void
   getThumb: (s: LiveStream) => string | null
 }) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
   const thumb = getThumb(stream)
   const schedDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null
   const endedAt = stream.ended_at ? new Date(stream.ended_at) : null
 
-  const timeAgo = endedAt ? relativeTime(endedAt) : null
+  const timeAgo = endedAt ? relativeTime(endedAt, t, locale) : null
 
   return (
     <button onClick={onClick} className="text-left active:scale-[0.97] transition-transform w-full">
@@ -489,6 +493,7 @@ function StreamCard({ stream, type, onClick, getThumb }: {
 // ─── Empty State ──────────────────────────────────────────────
 
 function EmptyState({ onExplore }: { onExplore: () => void }) {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col items-center justify-center pt-20 pb-24 px-6 text-center">
       <div className="relative mb-5">
@@ -499,13 +504,13 @@ function EmptyState({ onExplore }: { onExplore: () => void }) {
           <span className="h-1.5 w-1.5 bg-red-500 rounded-full animate-pulse" />
         </span>
       </div>
-      <h2 className="text-[17px] font-bold text-white mb-1.5">진행 중인 라이브가 없습니다</h2>
-      <p className="text-[13px] text-gray-500 mb-6">곧 새로운 방송이 시작됩니다</p>
+      <h2 className="text-[17px] font-bold text-white mb-1.5">{t('liveList.emptyTitle')}</h2>
+      <p className="text-[13px] text-gray-500 mb-6">{t('liveList.emptyHint')}</p>
       <button
         onClick={onExplore}
         className="px-5 py-2.5 bg-white text-black text-[13px] font-bold rounded-full hover:bg-gray-100 transition-colors"
       >
-        UR특가 구경하기
+        {t('liveList.exploreSpecial')}
       </button>
     </div>
   )
@@ -519,14 +524,14 @@ function formatCount(n: number): string {
   return formatNumber(n)
 }
 
-function relativeTime(date: Date): string {
+function relativeTime(date: Date, t: (key: string, opts?: any) => string, locale: string): string {
   const diffMs = Date.now() - date.getTime()
   const min = Math.floor(diffMs / 60000)
-  if (min < 1) return '방금 전'
-  if (min < 60) return `${min}분 전`
+  if (min < 1) return t('liveList.justNow')
+  if (min < 60) return t('liveList.minutesAgo', { min })
   const hour = Math.floor(min / 60)
-  if (hour < 24) return `${hour}시간 전`
+  if (hour < 24) return t('liveList.hoursAgo', { hour })
   const day = Math.floor(hour / 24)
-  if (day < 7) return `${day}일 전`
-  return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+  if (day < 7) return t('liveList.daysAgo', { day })
+  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }
