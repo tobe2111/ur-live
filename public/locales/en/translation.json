@@ -297,6 +297,28 @@
     "quantity": "Quantity",
     "seller": "Seller"
   },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you requested may have been moved or removed.",
+    "seoDescription": "The page may have been removed or the URL is invalid. Find live shopping and restaurant deals on YourDeal home.",
+    "goHome": "Home",
+    "goBack": "Back",
+    "popularPages": "Popular pages",
+    "linkLive": "Live",
+    "linkRestaurant": "Restaurant Deals",
+    "linkGroupBuy": "Group Buy"
+  },
+  "serverError": {
+    "title": "Temporary error",
+    "seoDescription": "A temporary error has occurred",
+    "heading": "A server error occurred",
+    "description": "Sorry, a temporary server error occurred.\nPlease try again later or contact support.",
+    "refresh": "Refresh page",
+    "goHome": "Go Home",
+    "stillIssue": "Still having issues?",
+    "contactSupport": "Contact Support",
+    "statusCheck": "Service status:"
+  },
   "accountDeleted": {
     "title": "Your account has been deleted",
     "thanks": "Thank you for using our service.",

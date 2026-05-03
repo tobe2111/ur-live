@@ -297,6 +297,28 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "notFound": {
+    "title": "ページが見つかりません",
+    "description": "お探しのページは移動または削除された可能性があります。",
+    "seoDescription": "ページが削除されたか、URLが無効です。ユアディールでライブショッピングとグルメディールを探しましょう。",
+    "goHome": "ホーム",
+    "goBack": "戻る",
+    "popularPages": "人気ページ",
+    "linkLive": "ライブ",
+    "linkRestaurant": "グルメディール",
+    "linkGroupBuy": "共同購入"
+  },
+  "serverError": {
+    "title": "一時的なエラー",
+    "seoDescription": "一時的なエラーが発生しました",
+    "heading": "サーバーエラーが発生しました",
+    "description": "申し訳ございません。一時的なサーバーエラーが発生しました。\nしばらくしてから再試行するか、サポートにお問い合わせください。",
+    "refresh": "ページを再読み込み",
+    "goHome": "ホームへ戻る",
+    "stillIssue": "問題が続きますか？",
+    "contactSupport": "サポートに問い合わせ",
+    "statusCheck": "サービス状態の確認:"
+  },
   "accountDeleted": {
     "title": "退会が完了しました",
     "thanks": "ご利用いただきありがとうございました。",

@@ -297,6 +297,28 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "notFound": {
+    "title": "找不到页面",
+    "description": "您请求的页面可能已被移动或删除。",
+    "seoDescription": "页面可能已删除或URL无效。在 UR-DEAL 首页发现直播购物和餐厅团购。",
+    "goHome": "返回首页",
+    "goBack": "返回",
+    "popularPages": "热门页面",
+    "linkLive": "直播",
+    "linkRestaurant": "餐厅团购",
+    "linkGroupBuy": "团购"
+  },
+  "serverError": {
+    "title": "临时错误",
+    "seoDescription": "发生临时错误",
+    "heading": "发生服务器错误",
+    "description": "抱歉，发生了临时服务器错误。\n请稍后再试或联系客服。",
+    "refresh": "刷新页面",
+    "goHome": "返回首页",
+    "stillIssue": "问题仍未解决？",
+    "contactSupport": "联系客服",
+    "statusCheck": "服务状态:"
+  },
   "accountDeleted": {
     "title": "账号注销完成",
     "thanks": "感谢您一直以来的使用。",

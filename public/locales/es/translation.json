@@ -2045,6 +2045,28 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "La página solicitada puede haber sido movida o eliminada.",
+    "seoDescription": "La página fue eliminada o la URL no es válida. Descubre compras en vivo y ofertas de restaurantes en YourDeal.",
+    "goHome": "Inicio",
+    "goBack": "Atrás",
+    "popularPages": "Páginas populares",
+    "linkLive": "En vivo",
+    "linkRestaurant": "Ofertas de restaurantes",
+    "linkGroupBuy": "Compra grupal"
+  },
+  "serverError": {
+    "title": "Error temporal",
+    "seoDescription": "Se ha producido un error temporal",
+    "heading": "Se produjo un error del servidor",
+    "description": "Lo sentimos, ocurrió un error temporal del servidor.\nPor favor intenta de nuevo más tarde o contacta con soporte.",
+    "refresh": "Recargar página",
+    "goHome": "Ir al inicio",
+    "stillIssue": "¿Sigues teniendo problemas?",
+    "contactSupport": "Contactar soporte",
+    "statusCheck": "Estado del servicio:"
+  },
   "accountDeleted": {
     "title": "Tu cuenta ha sido eliminada",
     "thanks": "Gracias por usar nuestro servicio.",

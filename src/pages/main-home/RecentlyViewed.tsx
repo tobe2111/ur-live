@@ -17,9 +17,9 @@ export default function RecentlyViewed() {
   return (
     <div className="px-4 py-6">
       <h2 className="text-[15px] font-bold text-white mb-3">최근 본 상품</h2>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 lg:overflow-visible lg:grid lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-10">
         {items.map(p => (
-          <button type="button" key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-28 cursor-pointer text-left">
+          <button type="button" key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-28 lg:w-auto cursor-pointer text-left">
             <div className="aspect-square bg-[#1A1A1A] rounded-xl overflow-hidden">
               {p.image && <img src={p.image} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />}
             </div>

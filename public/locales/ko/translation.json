@@ -297,6 +297,28 @@
     "quantity": "수량",
     "seller": "판매자"
   },
+  "notFound": {
+    "title": "페이지를 찾을 수 없어요",
+    "description": "요청하신 페이지가 사라졌거나, 잘못된 주소일 수 있어요.",
+    "seoDescription": "요청하신 페이지가 사라졌거나, 잘못된 주소일 수 있어요. 유어딜 메인에서 라이브 쇼핑과 맛집딜을 만나보세요.",
+    "goHome": "메인으로",
+    "goBack": "이전 페이지",
+    "popularPages": "인기 페이지 둘러보기",
+    "linkLive": "라이브",
+    "linkRestaurant": "맛집딜",
+    "linkGroupBuy": "공동구매"
+  },
+  "serverError": {
+    "title": "일시적인 오류",
+    "seoDescription": "일시적인 오류가 발생했습니다",
+    "heading": "서버 오류가 발생했어요",
+    "description": "죄송합니다. 일시적인 서버 오류가 발생했습니다.\n잠시 후 다시 시도해주시거나 고객센터로 문의해주세요.",
+    "refresh": "페이지 새로고침",
+    "goHome": "홈으로 돌아가기",
+    "stillIssue": "문제가 계속되나요?",
+    "contactSupport": "고객센터 문의하기",
+    "statusCheck": "서비스 상태 확인:"
+  },
   "accountDeleted": {
     "title": "회원 탈퇴가 완료되었습니다",
     "thanks": "그동안 서비스를 이용해 주셔서 감사합니다.",

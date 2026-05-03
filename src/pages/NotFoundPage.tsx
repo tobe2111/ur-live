@@ -1,21 +1,23 @@
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Home, ArrowLeft, Radio, Utensils, Users } from 'lucide-react'
 import SEO from '@/components/SEO'
 
 export default function NotFoundPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   const popularLinks = [
-    { to: '/', label: '라이브', Icon: Radio },
-    { to: '/restaurant-map', label: '맛집딜', Icon: Utensils },
-    { to: '/referral', label: '공동구매', Icon: Users },
+    { to: '/', label: t('notFound.linkLive'), Icon: Radio },
+    { to: '/restaurant-map', label: t('notFound.linkRestaurant'), Icon: Utensils },
+    { to: '/referral', label: t('notFound.linkGroupBuy'), Icon: Users },
   ]
 
   return (
     <>
       <SEO
-        title="페이지를 찾을 수 없어요"
-        description="요청하신 페이지가 사라졌거나, 잘못된 주소일 수 있어요. 유어딜 메인에서 라이브 쇼핑과 맛집딜을 만나보세요."
+        title={t('notFound.title')}
+        description={t('notFound.seoDescription')}
         url="/404"
         noindex
       />
@@ -58,12 +60,12 @@ export default function NotFoundPage() {
 
           {/* Subtitle */}
           <h2 className="mt-2 text-2xl font-bold text-gray-900">
-            페이지를 찾을 수 없어요
+            {t('notFound.title')}
           </h2>
 
           {/* Description */}
           <p className="mt-3 text-base text-gray-500">
-            요청하신 페이지가 사라졌거나, 잘못된 주소일 수 있어요.
+            {t('notFound.description')}
           </p>
 
           {/* Action Buttons */}
@@ -73,7 +75,7 @@ export default function NotFoundPage() {
               className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-black text-white font-bold text-[15px] shadow-sm hover:bg-gray-900 hover:shadow-md transition-all duration-200 active:scale-[0.98]"
             >
               <Home className="h-4 w-4" />
-              메인으로
+              {t('notFound.goHome')}
             </Link>
             <button
               type="button"
@@ -81,14 +83,14 @@ export default function NotFoundPage() {
               className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-gray-200 bg-white text-gray-700 font-bold text-[15px] hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 active:scale-[0.98]"
             >
               <ArrowLeft className="h-4 w-4" />
-              이전 페이지
+              {t('notFound.goBack')}
             </button>
           </div>
 
           {/* Popular Links */}
           <div className="mt-12 pt-8 border-t border-gray-200/70">
             <p className="mb-4 text-sm font-medium text-gray-500">
-              인기 페이지 둘러보기
+              {t('notFound.popularPages')}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               {popularLinks.map(({ to, label, Icon }) => (

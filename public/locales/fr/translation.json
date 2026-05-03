@@ -2045,6 +2045,28 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "notFound": {
+    "title": "Page introuvable",
+    "description": "La page demandée a peut-être été déplacée ou supprimée.",
+    "seoDescription": "La page a peut-être été supprimée ou l'URL est invalide. Découvrez le shopping en direct et les bons plans restaurants sur YourDeal.",
+    "goHome": "Accueil",
+    "goBack": "Retour",
+    "popularPages": "Pages populaires",
+    "linkLive": "En direct",
+    "linkRestaurant": "Bons plans restaurants",
+    "linkGroupBuy": "Achat groupé"
+  },
+  "serverError": {
+    "title": "Erreur temporaire",
+    "seoDescription": "Une erreur temporaire s'est produite",
+    "heading": "Une erreur serveur s'est produite",
+    "description": "Désolé, une erreur serveur temporaire s'est produite.\nVeuillez réessayer plus tard ou contacter le support.",
+    "refresh": "Actualiser la page",
+    "goHome": "Aller à l'accueil",
+    "stillIssue": "Le problème persiste ?",
+    "contactSupport": "Contacter le support",
+    "statusCheck": "État du service :"
+  },
   "accountDeleted": {
     "title": "Votre compte a été supprimé",
     "thanks": "Merci d'avoir utilisé notre service.",

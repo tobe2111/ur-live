@@ -1,16 +1,18 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Home, RefreshCw, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import SEO from '@/components/SEO'
 
 export default function ServerErrorPage() {
+  const { t } = useTranslation()
   const handleRefresh = () => {
     window.location.reload()
   }
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center px-4">
-      <SEO title="일시적인 오류" description="일시적인 오류가 발생했습니다" url="/500" noindex />
+      <SEO title={t('serverError.title')} description={t('serverError.seoDescription')} url="/500" noindex />
       <div className="max-w-lg w-full text-center">
         {/* Error Icon */}
         <div className="mb-8 smooth-appear">
@@ -30,14 +32,12 @@ export default function ServerErrorPage() {
 
         {/* Title */}
         <h1 className="mb-4 text-[32px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] smooth-appear" style={{ animationDelay: '0.2s' }}>
-          서버 오류가 발생했어요
+          {t('serverError.heading')}
         </h1>
 
         {/* Description */}
-        <p className="mb-8 text-[17px] sm:text-[19px] leading-[1.47059] font-normal text-[#6e6e73] smooth-appear" style={{ animationDelay: '0.3s' }}>
-          죄송합니다. 일시적인 서버 오류가 발생했습니다.
-          <br />
-          잠시 후 다시 시도해주시거나 고객센터로 문의해주세요.
+        <p className="mb-8 text-[17px] sm:text-[19px] leading-[1.47059] font-normal text-[#6e6e73] smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
+          {t('serverError.description')}
         </p>
 
         {/* Action Buttons */}
@@ -47,13 +47,13 @@ export default function ServerErrorPage() {
             onClick={handleRefresh}
           >
             <RefreshCw className="mr-2 h-4 w-4" />
-            페이지 새로고침
+            {t('serverError.refresh')}
           </Button>
           
           <Button className="apple-button border border-[#007aff] bg-white text-[#007aff] hover:bg-[#007aff] hover:text-white" asChild>
             <Link to="/">
               <Home className="mr-2 h-4 w-4" />
-              홈으로 돌아가기
+              {t('serverError.goHome')}
             </Link>
           </Button>
         </div>
@@ -61,7 +61,7 @@ export default function ServerErrorPage() {
         {/* Customer Support */}
         <div className="mt-12 pt-8 border-t border-black/5 smooth-appear" style={{ animationDelay: '0.5s' }}>
           <p className="mb-4 text-[14px] font-normal text-[#6e6e73]">
-            문제가 계속되나요?
+            {t('serverError.stillIssue')}
           </p>
           <a
             href="http://pf.kakao.com/_AITdn/chat"
@@ -69,14 +69,14 @@ export default function ServerErrorPage() {
             className="inline-flex items-center justify-center px-6 py-3 text-[15px] font-normal text-[#007aff] hover:text-[#0051d5] transition-colors rounded-lg hover:bg-[#007aff]/5"
           >
             <MessageCircle className="mr-2 h-4 w-4" />
-            고객센터 문의하기
+            {t('serverError.contactSupport')}
           </a>
         </div>
 
         {/* Status Page Link */}
         <div className="mt-8 smooth-appear" style={{ animationDelay: '0.6s' }}>
           <p className="text-[12px] font-normal text-[#6e6e73]">
-            서비스 상태 확인:{' '}
+            {t('serverError.statusCheck')}{' '}
             <a 
               href="https://live.ur-team.com" 
               target="_blank" rel="noopener noreferrer" 
