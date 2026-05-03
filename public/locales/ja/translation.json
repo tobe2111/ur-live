@@ -297,6 +297,14 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "theme": {
+    "title": "画面テーマ",
+    "system": "システム",
+    "light": "ライト",
+    "dark": "ダーク",
+    "description": "ショッピング・決済・注文などホワイトテーマページに適用されます。マイページ／ホーム／ライブは常にダーク。",
+    "currentlyFollowing": "現在のOS：{{theme}}"
+  },
   "myOrders": {
     "docTitle": "注文履歴 - ユアディール",
     "title": "注文履歴",

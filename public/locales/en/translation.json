@@ -297,6 +297,14 @@
     "quantity": "Quantity",
     "seller": "Seller"
   },
+  "theme": {
+    "title": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "description": "Applied to white-theme pages (shopping, checkout, orders). My/Home/Live remain always dark.",
+    "currentlyFollowing": "OS: {{theme}}"
+  },
   "myOrders": {
     "docTitle": "My Orders - YourDeal",
     "title": "My Orders",

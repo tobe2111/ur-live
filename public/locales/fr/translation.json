@@ -2045,6 +2045,14 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "theme": {
+    "title": "Thème",
+    "system": "Système",
+    "light": "Clair",
+    "dark": "Sombre",
+    "description": "S'applique aux pages à thème clair (shopping, paiement, commandes). Mes/Accueil/Live restent toujours en sombre.",
+    "currentlyFollowing": "OS : {{theme}}"
+  },
   "myOrders": {
     "docTitle": "Mes commandes - YourDeal",
     "title": "Mes commandes",

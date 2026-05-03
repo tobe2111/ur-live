@@ -297,6 +297,14 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "theme": {
+    "title": "主题",
+    "system": "系统",
+    "light": "浅色",
+    "dark": "深色",
+    "description": "应用于购物、结账、订单等浅色主题页面。我的/首页/直播始终为深色。",
+    "currentlyFollowing": "当前 OS：{{theme}}"
+  },
   "myOrders": {
     "docTitle": "订单记录 - UR-DEAL",
     "title": "订单记录",

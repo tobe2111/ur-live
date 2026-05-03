@@ -297,6 +297,14 @@
     "quantity": "수량",
     "seller": "판매자"
   },
+  "theme": {
+    "title": "화면 테마",
+    "system": "시스템",
+    "light": "라이트",
+    "dark": "다크",
+    "description": "쇼핑·결제·주문 등 화이트 테마 페이지에 적용됩니다. 마이페이지/홈/라이브는 항상 다크 테마.",
+    "currentlyFollowing": "현재 OS: {{theme}}"
+  },
   "myOrders": {
     "docTitle": "주문내역 - 유어딜",
     "title": "주문내역",

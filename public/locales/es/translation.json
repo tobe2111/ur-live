@@ -2045,6 +2045,14 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "theme": {
+    "title": "Tema",
+    "system": "Sistema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "description": "Se aplica a páginas con tema claro (compras, pago, pedidos). Mi/Inicio/En vivo siempre permanecen oscuros.",
+    "currentlyFollowing": "OS: {{theme}}"
+  },
   "myOrders": {
     "docTitle": "Mis pedidos - YourDeal",
     "title": "Mis pedidos",
