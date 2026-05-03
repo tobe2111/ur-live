@@ -2083,7 +2083,16 @@
       "seoTitle": "Voucher Verification",
       "seoDescription": "Verify a voucher by QR code"
     },
-    "qrCode": "QR Code"
+    "qrCode": "QR Code",
+    "share": "Share",
+    "gift": "Send Gift",
+    "linkCopied": "Link copied",
+    "shareTitle": "[YourDeal Voucher] {{productName}}",
+    "shareText": "Sending {{restaurant}}{{productName}} voucher to you.",
+    "groupUnused": "Available",
+    "groupUsed": "Used",
+    "groupExpired": "Expired",
+    "groupRefunded": "Refunded"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

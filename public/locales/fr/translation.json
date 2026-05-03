@@ -2083,7 +2083,16 @@
       "seoTitle": "Vérification du coupon",
       "seoDescription": "Vérifier le coupon par code QR"
     },
-    "qrCode": "Code QR"
+    "qrCode": "Code QR",
+    "share": "Partager",
+    "gift": "Offrir",
+    "linkCopied": "Lien copié",
+    "shareTitle": "[Bon YourDeal] {{productName}}",
+    "shareText": "Je vous envoie le bon {{restaurant}}{{productName}}.",
+    "groupUnused": "Disponible",
+    "groupUsed": "Utilisé",
+    "groupExpired": "Expiré",
+    "groupRefunded": "Remboursé"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",

@@ -2083,7 +2083,16 @@
       "seoTitle": "餐券确认",
       "seoDescription": "通过二维码确认餐券"
     },
-    "qrCode": "二维码"
+    "qrCode": "二维码",
+    "share": "分享",
+    "gift": "送礼",
+    "linkCopied": "链接已复制",
+    "shareTitle": "[UR-DEAL 餐券] {{productName}}",
+    "shareText": "向您赠送 {{restaurant}}{{productName}} 餐券。",
+    "groupUnused": "可使用",
+    "groupUsed": "已使用",
+    "groupExpired": "已过期",
+    "groupRefunded": "已退款"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",

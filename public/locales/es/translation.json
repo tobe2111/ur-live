@@ -2083,7 +2083,16 @@
       "seoTitle": "Verificación de cupón",
       "seoDescription": "Verificar cupón mediante código QR"
     },
-    "qrCode": "Código QR"
+    "qrCode": "Código QR",
+    "share": "Compartir",
+    "gift": "Enviar regalo",
+    "linkCopied": "Enlace copiado",
+    "shareTitle": "[Cupón YourDeal] {{productName}}",
+    "shareText": "Te envío el cupón de {{restaurant}}{{productName}}.",
+    "groupUnused": "Disponible",
+    "groupUsed": "Usado",
+    "groupExpired": "Caducado",
+    "groupRefunded": "Reembolsado"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",

@@ -2083,7 +2083,16 @@
       "seoTitle": "식사권 확인",
       "seoDescription": "QR 코드로 식사권을 확인합니다"
     },
-    "qrCode": "QR 코드"
+    "qrCode": "QR 코드",
+    "share": "공유",
+    "gift": "선물하기",
+    "linkCopied": "링크가 복사되었습니다",
+    "shareTitle": "[유어딜 식사권] {{productName}}",
+    "shareText": "{{restaurant}}{{productName}} 식사권을 보내드립니다.",
+    "groupUnused": "사용 가능",
+    "groupUsed": "사용 완료",
+    "groupExpired": "만료",
+    "groupRefunded": "환불"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",

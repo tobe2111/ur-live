@@ -2083,7 +2083,16 @@
       "seoTitle": "クーポン確認",
       "seoDescription": "QRコードでクーポンを確認します"
     },
-    "qrCode": "QRコード"
+    "qrCode": "QRコード",
+    "share": "共有",
+    "gift": "プレゼント",
+    "linkCopied": "リンクをコピーしました",
+    "shareTitle": "[ユアディール 食事券] {{productName}}",
+    "shareText": "{{restaurant}}{{productName}} の食事券をお送りします。",
+    "groupUnused": "利用可能",
+    "groupUsed": "利用済み",
+    "groupExpired": "期限切れ",
+    "groupRefunded": "返金済み"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",

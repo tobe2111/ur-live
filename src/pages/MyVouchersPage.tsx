@@ -47,8 +47,8 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
 
   async function shareVoucher() {
     const shareData = {
-      title: `[유어딜 식사권] ${voucher.product_name}`,
-      text: `${voucher.restaurant_name ? voucher.restaurant_name + ' · ' : ''}${voucher.product_name} 식사권을 보내드립니다.`,
+      title: t('voucher.shareTitle', { productName: voucher.product_name }),
+      text: t('voucher.shareText', { restaurant: voucher.restaurant_name ? voucher.restaurant_name + ' · ' : '', productName: voucher.product_name }),
       url: qrUrl,
     }
     const nav = typeof navigator !== 'undefined' ? navigator : null
@@ -57,7 +57,7 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
     }
     try {
       await (nav as Navigator)?.clipboard.writeText(`${shareData.text}\n${qrUrl}`)
-      toast.success('링크가 복사되었습니다')
+      toast.success(t('voucher.linkCopied'))
     } catch { /* ignore */ }
   }
 
@@ -84,11 +84,11 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button onClick={shareVoucher}
               className="py-2.5 rounded-xl bg-pink-50 border border-pink-200 text-pink-600 text-xs font-bold flex items-center justify-center gap-1">
-              <Share2 className="w-3.5 h-3.5" /> 공유
+              <Share2 className="w-3.5 h-3.5" /> {t('voucher.share')}
             </button>
             <button onClick={shareVoucher}
               className="py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold flex items-center justify-center gap-1">
-              <Gift className="w-3.5 h-3.5" /> 선물하기
+              <Gift className="w-3.5 h-3.5" /> {t('voucher.gift')}
             </button>
           </div>
         )}
@@ -119,10 +119,10 @@ export default function MyVouchersPage() {
 
   // 상태별 그룹핑
   const groups = [
-    { key: 'unused',   label: '사용 가능',  items: vouchers.filter(v => v.status === 'unused') },
-    { key: 'used',     label: '사용 완료',  items: vouchers.filter(v => v.status === 'used') },
-    { key: 'expired',  label: '만료',       items: vouchers.filter(v => v.status === 'expired') },
-    { key: 'refunded', label: '환불',       items: vouchers.filter(v => v.status === 'refunded') },
+    { key: 'unused',   label: t('voucher.groupUnused'),   items: vouchers.filter(v => v.status === 'unused') },
+    { key: 'used',     label: t('voucher.groupUsed'),     items: vouchers.filter(v => v.status === 'used') },
+    { key: 'expired',  label: t('voucher.groupExpired'),  items: vouchers.filter(v => v.status === 'expired') },
+    { key: 'refunded', label: t('voucher.groupRefunded'), items: vouchers.filter(v => v.status === 'refunded') },
   ].filter(g => g.items.length > 0)
 
   return (
