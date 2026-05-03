@@ -432,11 +432,18 @@ app.get('/api/health', async (c) => {
     checks.status = 'degraded';
   }
 
-  // KV check
+  // KV check — 🛡️ 2026-05-03: rate limit 무력화 방지. 미등록 시 'missing' 명시
   try {
     if (env.RATE_LIMIT_KV) {
       await env.RATE_LIMIT_KV.get('health-check');
       checks.kv = 'ok';
+    } else if (env.SESSION_KV) {
+      await env.SESSION_KV.get('health-check');
+      checks.kv = 'session_kv_only'; // legacy fallback
+    } else {
+      // ⚠️ 운영 위험: rate limit fail-OPEN. Dashboard Bindings 등록 필수.
+      checks.kv = 'missing — rate limit disabled';
+      checks.status = 'degraded';
     }
   } catch {
     checks.kv = 'error';

@@ -64,18 +64,28 @@ export default function LivePageV2() {
   }, [])
 
   useEffect(() => {
+    // 🛡️ 2026-05-03 TD-024 fix: 스크롤 시 가장 많이 보이는 reel 을 active 로 결정.
+    // 기존: entries.forEach + isIntersecting → 여러 entry 가 동시 visible 일 때 마지막 entry 가 win.
+    //       스크롤 transition 중 잘못된 reel 이 active 로 잡혀 영상 재생 안 되는 사고 원인.
+    // 개선: 모든 visible entry 중 intersectionRatio 가장 높은 것만 active.
+    //       multiple thresholds 로 더 정확한 ratio 측정.
     observerRef.current = new IntersectionObserver(
       (entries) => {
+        let bestEntry: IntersectionObserverEntry | null = null
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = Number(entry.target.getAttribute('data-index'))
-            setActiveIndex(index)
+          if (!entry.isIntersecting) return
+          if (!bestEntry || entry.intersectionRatio > bestEntry.intersectionRatio) {
+            bestEntry = entry
           }
         })
+        if (bestEntry) {
+          const index = Number((bestEntry as IntersectionObserverEntry).target.getAttribute('data-index'))
+          if (Number.isFinite(index)) setActiveIndex(index)
+        }
       },
       {
         root: containerRef.current,
-        threshold: 0.6,
+        threshold: [0.3, 0.5, 0.7, 0.9], // 다중 threshold 로 ratio 추적 정확도 ↑
       }
     )
 

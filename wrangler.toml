@@ -34,8 +34,25 @@ database_name = "toss-live-commerce-db"
 database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 
 # ============================================================
-# KV Namespaces (create via: wrangler kv:namespace create NAME)
+# KV Namespaces — 🚨 운영 필수 (DDoS / brute-force 방어)
 # ============================================================
+# 이 파일에 id 가 비어있어도 Pages 배포는 통과하지만,
+# Cloudflare Dashboard → Workers & Pages → ur-live (Pages) → Settings → Bindings
+# 에 RATE_LIMIT_KV / SESSION_KV namespace 가 등록되어야 production rate limit 작동.
+#
+# 미등록 시 영향 (src/worker/middleware/rate-limiter.ts:90 참조):
+#   - 비-인증 라우트: rate limit 무력화 (fail-OPEN, 콘솔 경고)
+#   - 인증 라우트 (login/refresh 등): fail-CLOSED → 일시적 모든 요청 429
+#
+# 확인 방법:
+#   curl -I https://live.ur-team.com/api/products
+#   → X-RateLimit-Limit / X-RateLimit-Remaining 헤더 있어야 정상
+#
+# 등록 방법 (CLI):
+#   wrangler kv:namespace create RATE_LIMIT_KV
+#   wrangler kv:namespace create SESSION_KV
+#   → 출력된 id 를 Dashboard Bindings 에 등록 (또는 아래 주석 풀어서 사용)
+#
 # [[kv_namespaces]]
 # binding = "RATE_LIMIT_KV"
 # id = "YOUR_KV_NAMESPACE_ID"
