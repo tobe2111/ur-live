@@ -145,7 +145,7 @@ export default function MyVouchersPage() {
       {/* Large Title */}
       <LargeTitle theme={theme} title={t('voucher.myVouchers')} />
 
-      <div className="px-4 pb-2">
+      <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: tk.accent, borderTopColor: 'transparent' }} />

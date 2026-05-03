@@ -45,7 +45,7 @@ export default function FAQPage() {
 
       {/* 상단 헤더 */}
       <header className="sticky top-0 z-10 bg-white border-b border-gray-100">
-        <div className="flex items-center px-4 py-3">
+        <div className="ur-content-medium flex items-center px-4 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} className="p-1 -ml-1">
             <ChevronLeft size={22} className="text-gray-700" />
           </button>
@@ -53,7 +53,7 @@ export default function FAQPage() {
         </div>
       </header>
 
-      <div className="px-4 pt-4 pb-20">
+      <div className="ur-content-medium px-4 lg:px-8 pt-4 pb-20">
         {/* Hero */}
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2">

@@ -47,7 +47,7 @@ export default function InterestListPage() {
 
       {/* 헤더 */}
       <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
-        <div className="flex items-center justify-between px-5 py-3">
+        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} className="text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -56,7 +56,7 @@ export default function InterestListPage() {
         </div>
       </div>
 
-      <div className="px-5 py-4">
+      <div className="ur-content-narrow px-5 lg:px-8 py-4">
         {loading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (

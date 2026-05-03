@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
 
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
-        <div className="max-w-[430px] mx-auto flex items-center justify-between px-5 py-3">
+        <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} className="text-gray-900">
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -25,7 +25,7 @@ export default function TermsOfServicePage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-[430px] mx-auto px-5 pt-6">
+      <div className="ur-content-medium px-5 pt-6">
         <p className="text-[11px] text-gray-400 mb-6">
           {isKR ? '최종 수정일: 2024년 1월 15일' : 'Last updated: January 15, 2024'}
         </p>

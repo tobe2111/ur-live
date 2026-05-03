@@ -28,7 +28,7 @@ export default function AffiliatePage() {
       <SEO title="제휴 마케팅 - 유어딜" description="유어딜 제휴 마케팅으로 수익을 만들어보세요" url="/user/affiliate" />
       {/* 헤더 */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="ur-content-narrow flex items-center gap-3 px-4 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-gray-100">
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
@@ -41,7 +41,7 @@ export default function AffiliatePage() {
       ) : !data ? (
         <div className="text-center py-20 text-gray-500">로그인이 필요합니다</div>
       ) : (
-        <div className="px-4 py-5 space-y-4">
+        <div className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4">
 
           {/* 히어로 카드 */}
           <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl p-5 text-white">

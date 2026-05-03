@@ -120,7 +120,7 @@ export default function GiftClaimPage() {
         url={`/gift/claim/${token}`}
       />
 
-      <div className="max-w-[430px] mx-auto px-5 py-10">
+      <div className="ur-content-narrow px-5 lg:px-8 py-10">
         {/* 헤더 */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-pink-100 mb-3">
