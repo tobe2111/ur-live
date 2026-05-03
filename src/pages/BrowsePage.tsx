@@ -170,12 +170,12 @@ export default function BrowsePage() {
         if (r.data.success) {
           setProducts(r.data.data || [])
         } else {
-          setError('상품을 불러올 수 없습니다.')
+          setError(t('browse.loadError'))
         }
       })
       .catch(() => {
         // ✅ UX M17 FIX: 에러 상태 설정 (무시 금지)
-        setError('상품을 불러올 수 없습니다. 다시 시도해주세요.')
+        setError(t('browse.loadRetry'))
       })
       .finally(() => setLoading(false))
   }, [category])
@@ -218,8 +218,8 @@ export default function BrowsePage() {
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
-        title="쇼핑"
-        description="유어딜 인기 상품, 맛집 바우처, 라이브 특가를 만나보세요"
+        title={t('browse.title')}
+        description={t('browse.seoDesc')}
         url="/browse"
         jsonLd={products.length > 0 ? itemListJsonLd(
           products.slice(0, 20).map((p, i) => ({
@@ -238,7 +238,7 @@ export default function BrowsePage() {
             type="button"
             onClick={() => navigate('/search')}
             className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-[#1A1A1A] rounded-full px-4 py-2.5 cursor-pointer"
-            aria-label="상품 검색"
+            aria-label={t('browse.searchAria')}
           >
             <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             <span className="text-sm text-gray-400 dark:text-gray-500">상품명, 브랜드명</span>
@@ -254,13 +254,13 @@ export default function BrowsePage() {
       <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] overflow-x-auto scrollbar-hide">
         <div className="ur-content-wide flex px-4 lg:px-8 gap-1.5 pb-2.5">
           {[
-            { key: 'all', label: '전체' },
-            { key: 'fashion', label: '패션' },
-            { key: 'beauty', label: '뷰티' },
-            { key: 'food', label: '식품' },
-            { key: 'living', label: '리빙' },
-            { key: 'digital', label: '디지털' },
-            { key: 'meal_voucher', label: '식사권' },
+            { key: 'all', label: t('browse.categoryAll') },
+            { key: 'fashion', label: t('browse.categoryFashion') },
+            { key: 'beauty', label: t('browse.categoryBeauty') },
+            { key: 'food', label: t('browse.categoryFood') },
+            { key: 'living', label: t('browse.categoryLiving') },
+            { key: 'digital', label: t('browse.categoryDigital') },
+            { key: 'meal_voucher', label: t('browse.categoryVoucher') },
           ].map(c => (
             <button key={c.key}
               onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
@@ -277,7 +277,7 @@ export default function BrowsePage() {
       <div className="ur-content-wide px-4 py-5 lg:px-8">
         {/* 섹션 헤더 */}
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{category === 'all' ? '오늘의 핫딜' : `${({'fashion':'패션','beauty':'뷰티','food':'식품','living':'리빙','digital':'디지털','meal_voucher':'식사권'} as Record<string, string>)[category] || category}`}</h1>
+          <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{category === 'all' ? t('browse.todaysHot') : (({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':t('browse.categoryVoucher')} as Record<string, string>)[category] || category)}</h1>
         </div>
 
         {/* v4 배너 (Editorial Grid) */}
@@ -304,7 +304,7 @@ export default function BrowsePage() {
             {isMealVoucher && (
               <button onClick={() => setMapView(!mapView)}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A]'}`}>
-                {mapView ? <><List className="w-3 h-3" /> 리스트</> : <><Map className="w-3 h-3" /> 지도</>}
+                {mapView ? <><List className="w-3 h-3" /> {t('browse.viewList')}</> : <><Map className="w-3 h-3" /> {t('browse.viewMap')}</>}
               </button>
             )}
           </div>
@@ -340,7 +340,7 @@ export default function BrowsePage() {
             <div>
               <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1.5">가격대</p>
               <div className="flex flex-wrap gap-1.5">
-                {([['all','전체'],['under10','1만원 미만'],['under30','3만원 미만'],['under50','5만원 미만'],['over50','5만원 이상']] as const).map(([v, l]) => (
+                {([['all', t('browse.priceAll')],['under10', t('browse.priceUnder10')],['under30', t('browse.priceUnder30')],['under50', t('browse.priceUnder50')],['over50', t('browse.priceOver50')]] as const).map(([v, l]) => (
                   <button key={v} onClick={() => { setPriceRange(v); setShowCount(ITEMS_PER_PAGE) }}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium ${priceRange === v ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'}`}>{l}</button>
                 ))}
@@ -411,7 +411,7 @@ export default function BrowsePage() {
                   className="block w-full text-left mb-6"
                 >
                   <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '4/3', background: '#F9FAFB' }}>
-                    {hero.image_url && <img src={hero.image_url} alt={hero.name || '상품 이미지'} className="w-full h-full object-cover" fetchPriority="high" decoding="async" />}
+                    {hero.image_url && <img src={hero.image_url} alt={hero.name || t('browse.altProduct')} className="w-full h-full object-cover" fetchPriority="high" decoding="async" />}
                     <div className="absolute top-2 left-2 flex gap-1">
                       {heroDiscount > 0 && (
                         <span className="rounded-md px-2 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">-{heroDiscount}%</span>
@@ -451,7 +451,7 @@ export default function BrowsePage() {
                   >
                     <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
                       {product.image_url ? (
-                        <img src={product.image_url} alt={product.name || '상품 이미지'} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={product.image_url} alt={product.name || t('browse.altProduct')} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
                       )}
