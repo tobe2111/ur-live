@@ -297,6 +297,18 @@
     "quantity": "수량",
     "seller": "판매자"
   },
+  "interestList": {
+    "title": "관심 맛집",
+    "loadError": "관심 목록을 불러오지 못했습니다",
+    "removed": "관심 등록이 해제되었습니다",
+    "removeError": "삭제에 실패했습니다",
+    "empty": "관심 등록한 맛집이 없습니다",
+    "emptyHint": "공동구매나 식사권에서 관심 등록해보세요",
+    "browseGroupBuy": "공동구매 보러가기",
+    "tagGroupBuy": "공동구매",
+    "tagVoucher": "식사권",
+    "removeAria": "삭제"
+  },
   "wishlist": {
     "title": "위시리스트",
     "subtitleCount": "찜한 상품 {{count}}개",

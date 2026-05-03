@@ -297,6 +297,18 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "interestList": {
+    "title": "お気に入りグルメ",
+    "loadError": "お気に入りリストの読み込みに失敗しました",
+    "removed": "お気に入りを解除しました",
+    "removeError": "削除に失敗しました",
+    "empty": "お気に入りのグルメがありません",
+    "emptyHint": "共同購入や食事券からお気に入り登録してみよう",
+    "browseGroupBuy": "共同購入を見る",
+    "tagGroupBuy": "共同購入",
+    "tagVoucher": "食事券",
+    "removeAria": "削除"
+  },
   "wishlist": {
     "title": "ウィッシュリスト",
     "subtitleCount": "お気に入り商品 {{count}}件",

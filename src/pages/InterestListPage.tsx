@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, Bell, Trash2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
@@ -18,6 +19,7 @@ interface InterestItem {
 }
 
 export default function InterestListPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [items, setItems] = useState<InterestItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,17 +29,17 @@ export default function InterestListPage() {
       .then(r => {
         if (r.data.success) setItems(r.data.data || [])
       })
-      .catch(() => toast.error('관심 목록을 불러오지 못했습니다'))
+      .catch(() => toast.error(t('interestList.loadError')))
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   const handleRemove = (item: InterestItem) => {
     setItems(prev => prev.filter(i => i.id !== item.id))
     api.post('/api/interest/remove', { product_id: item.product_id, type: item.type })
-      .then(() => toast.success('관심 등록이 해제되었습니다'))
+      .then(() => toast.success(t('interestList.removed')))
       .catch(() => {
         setItems(prev => [...prev, item])
-        toast.error('삭제에 실패했습니다')
+        toast.error(t('interestList.removeError'))
       })
   }
 
@@ -51,7 +53,7 @@ export default function InterestListPage() {
           <button onClick={() => navigate(-1)} className="text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-white font-bold text-[15px]">관심 맛집</h1>
+          <h1 className="text-white font-bold text-[15px]">{t('interestList.title')}</h1>
           <div className="w-6" />
         </div>
       </div>
@@ -70,16 +72,16 @@ export default function InterestListPage() {
           <div className="text-center py-20">
             <Bell className="w-10 h-10 text-gray-600 mx-auto mb-3" />
             <p className="text-gray-300 font-semibold text-[14px]">
-              관심 등록한 맛집이 없습니다
+              {t('interestList.empty')}
             </p>
             <p className="text-gray-500 text-[12px] mt-1">
-              공동구매나 식사권에서 관심 등록해보세요
+              {t('interestList.emptyHint')}
             </p>
             <button
               onClick={() => navigate('/group-buy')}
               className="mt-5 px-5 py-2.5 bg-pink-500 text-white text-[13px] font-semibold rounded-full"
             >
-              공동구매 보러가기
+              {t('interestList.browseGroupBuy')}
             </button>
           </div>
         ) : (
@@ -98,14 +100,14 @@ export default function InterestListPage() {
                       {item.restaurant_name || `상품 #${item.product_id}`}
                     </p>
                     <p className="text-gray-500 text-[11px] mt-0.5">
-                      {item.type === 'group_buy' ? '공동구매' : '식사권'}
+                      {item.type === 'group_buy' ? t('interestList.tagGroupBuy') : t('interestList.tagVoucher')}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => handleRemove(item)}
                   className="p-2 text-gray-500 hover:text-red-400 transition-colors flex-shrink-0"
-                  aria-label="삭제"
+                  aria-label={t('interestList.removeAria')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

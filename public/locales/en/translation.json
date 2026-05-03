@@ -297,6 +297,18 @@
     "quantity": "Quantity",
     "seller": "Seller"
   },
+  "interestList": {
+    "title": "Saved Restaurants",
+    "loadError": "Failed to load saved list",
+    "removed": "Removed from saved list",
+    "removeError": "Failed to remove",
+    "empty": "No saved restaurants",
+    "emptyHint": "Save restaurants from group buys or vouchers",
+    "browseGroupBuy": "Browse Group Buys",
+    "tagGroupBuy": "Group Buy",
+    "tagVoucher": "Voucher",
+    "removeAria": "Remove"
+  },
   "wishlist": {
     "title": "Wishlist",
     "subtitleCount": "{{count}} saved items",

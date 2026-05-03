@@ -2045,6 +2045,18 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "interestList": {
+    "title": "Restaurantes guardados",
+    "loadError": "Error al cargar la lista de guardados",
+    "removed": "Eliminado de la lista",
+    "removeError": "No se pudo eliminar",
+    "empty": "No hay restaurantes guardados",
+    "emptyHint": "Guarda restaurantes desde compras grupales o cupones",
+    "browseGroupBuy": "Ver compras grupales",
+    "tagGroupBuy": "Compra grupal",
+    "tagVoucher": "Cupón",
+    "removeAria": "Eliminar"
+  },
   "wishlist": {
     "title": "Lista de deseos",
     "subtitleCount": "{{count}} guardados",

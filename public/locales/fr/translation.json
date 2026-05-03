@@ -2045,6 +2045,18 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "interestList": {
+    "title": "Restaurants enregistrés",
+    "loadError": "Échec du chargement de la liste",
+    "removed": "Retiré de la liste",
+    "removeError": "Échec de la suppression",
+    "empty": "Aucun restaurant enregistré",
+    "emptyHint": "Enregistrez des restaurants depuis les achats groupés ou les bons",
+    "browseGroupBuy": "Voir les achats groupés",
+    "tagGroupBuy": "Achat groupé",
+    "tagVoucher": "Bon",
+    "removeAria": "Supprimer"
+  },
   "wishlist": {
     "title": "Liste de souhaits",
     "subtitleCount": "{{count}} articles enregistrés",

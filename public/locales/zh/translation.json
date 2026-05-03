@@ -297,6 +297,18 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "interestList": {
+    "title": "关注的餐厅",
+    "loadError": "无法加载关注列表",
+    "removed": "已取消关注",
+    "removeError": "删除失败",
+    "empty": "暂无关注的餐厅",
+    "emptyHint": "在团购或餐券中关注餐厅",
+    "browseGroupBuy": "查看团购",
+    "tagGroupBuy": "团购",
+    "tagVoucher": "餐券",
+    "removeAria": "删除"
+  },
   "wishlist": {
     "title": "心愿单",
     "subtitleCount": "已收藏 {{count}} 件",
