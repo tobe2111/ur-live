@@ -108,12 +108,12 @@ export default function UserProfilePage() {
       </div>
 
       {/* v4 Wallet Large Title */}
-      <div className="px-4 pt-3 pb-1">
+      <div className="ur-content-medium px-4 lg:px-8 pt-3 pb-1">
         <h2 style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1 }}>My</h2>
       </div>
 
       {/* v4 Hero Profile — 단색 배경 + 이름 옆 셀러 버튼 + 편집 */}
-      <div className="px-4 pt-2 pb-5">
+      <div className="ur-content-medium px-4 lg:px-8 pt-2 pb-5">
         <div className="flex items-center gap-3">
           <img
             src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
@@ -155,7 +155,7 @@ export default function UserProfilePage() {
       <ThemeToggleSection />
 
       {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
-      <div className="px-4 pt-5">
+      <div className="ur-content-medium px-4 lg:px-8 pt-5">
         <p className="text-[12px] font-bold text-white mb-2">더보기</p>
         <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
           {[
@@ -181,7 +181,7 @@ export default function UserProfilePage() {
       <RewardAdCard />
 
       {/* v4 도움말 InsetGroup */}
-      <div className="px-4 pt-5">
+      <div className="ur-content-medium px-4 lg:px-8 pt-5">
         <p className="text-[12px] font-bold text-white mb-2">도움말</p>
         <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
           {[
@@ -208,7 +208,7 @@ export default function UserProfilePage() {
       </div>
 
       {/* v4 로그아웃 + 계정 전환 + 버전 */}
-      <div className="px-4 py-6 space-y-2">
+      <div className="ur-content-medium px-4 lg:px-8 py-6 space-y-2">
         {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
             이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
             이번: 명시 전환만 셀러 모드로. */}

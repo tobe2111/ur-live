@@ -35,7 +35,7 @@ export default function NotificationsPage() {
       <SEO title="알림 - 유어딜" description="새로운 알림을 확인하세요" url="/notifications" noindex />
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
-        <div className="flex items-center justify-between px-5 py-3">
+        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="text-white">
             <ChevronLeft className="w-6 h-6" aria-hidden="true" />
           </button>
@@ -44,7 +44,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <div className="px-4 py-2">
+      <div className="ur-content-narrow px-4 lg:px-8 py-2">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />

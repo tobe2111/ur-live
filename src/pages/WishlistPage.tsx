@@ -161,7 +161,7 @@ const WishlistPage: React.FC = () => {
 
       <LargeTitle theme={theme} title="위시리스트" subtitle={`찜한 상품 ${wishlists.length}개`} />
 
-      <div className="px-4 pb-2">
+      <div className="ur-content-wide px-4 lg:px-8 pb-2">
         {wishlists.length === 0 ? (
           <div className="rounded-2xl p-12 text-center" style={{ background: tk.card }}>
             <Heart className="w-16 h-16 mx-auto mb-4" style={{ color: tk.tertiary }} />
