@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Gift, CheckCircle, XCircle, Loader2, ShoppingBag } from 'lucide-react'
@@ -91,6 +92,7 @@ function ConfettiCanvas() {
 }
 
 export default function CouponClaimPage() {
+  const { t } = useTranslation()
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
   const [status, setStatus] = useState<'loading' | 'success' | 'already' | 'error'>('loading')
@@ -101,7 +103,7 @@ export default function CouponClaimPage() {
   const isLoggedIn = localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
 
   useEffect(() => {
-    if (!code) { setStatus('error'); setErrorMsg('쿠폰 코드가 없습니다'); return }
+    if (!code) { setStatus('error'); setErrorMsg(t('couponClaim.noCode')); return }
     if (!isLoggedIn) {
       localStorage.setItem('loginReturnUrl', `/coupon/${code}`)
       navigate(`/login?returnUrl=${encodeURIComponent(`/coupon/${code}`)}`, { replace: true })
@@ -126,7 +128,7 @@ export default function CouponClaimPage() {
         setStatus('already')
       } else {
         setStatus('error')
-        setErrorMsg(res.data.error || '쿠폰 발급에 실패했습니다')
+        setErrorMsg(res.data.error || t('couponClaim.claimFail'))
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string; already_claimed?: boolean } } }
@@ -134,14 +136,14 @@ export default function CouponClaimPage() {
         setStatus('already')
       } else {
         setStatus('error')
-        setErrorMsg(e.response?.data?.error || '쿠폰 발급에 실패했습니다')
+        setErrorMsg(e.response?.data?.error || t('couponClaim.claimFail'))
       }
     }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center px-4">
-      <SEO title="쿠폰 발급 - 유어딜" description="유어딜 할인 쿠폰을 받아보세요" url={`/coupon/${code}`} />
+      <SEO title={t('couponClaim.seoTitle')} description={t('couponClaim.seoDesc')} url={`/coupon/${code}`} />
       {status === 'success' && <ConfettiCanvas />}
 
       <div className="w-full max-w-sm text-center relative z-10">
@@ -150,7 +152,7 @@ export default function CouponClaimPage() {
             <div className="w-20 h-20 mx-auto bg-pink-100 rounded-full flex items-center justify-center mb-4">
               <Gift className="w-10 h-10 text-pink-400 animate-bounce" />
             </div>
-            <p className="text-gray-500 text-sm">쿠폰 발급 중...</p>
+            <p className="text-gray-500 text-sm">{t('couponClaim.claiming')}</p>
           </div>
         )}
 
@@ -160,33 +162,33 @@ export default function CouponClaimPage() {
               <Gift className="w-12 h-12 text-white" />
             </div>
 
-            <h1 className="text-2xl font-extrabold text-gray-900 mb-1">🎉 축하합니다!</h1>
-            <p className="text-sm text-gray-500 mb-6">쿠폰이 발급되었습니다</p>
+            <h1 className="text-2xl font-extrabold text-gray-900 mb-1">{t('couponClaim.celebrate')}</h1>
+            <p className="text-sm text-gray-500 mb-6">{t('couponClaim.issuedHint')}</p>
 
             <div className="relative bg-white rounded-3xl p-6 border-2 border-dashed border-pink-300 shadow-xl overflow-hidden">
               <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-pink-50 to-white rounded-full" />
               <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-pink-50 to-white rounded-full" />
 
-              <p className="text-xs text-pink-500 font-medium mb-1">COUPON</p>
+              <p className="text-xs text-pink-500 font-medium mb-1">{t('couponClaim.couponLabel')}</p>
               <p className="text-[15px] font-bold text-gray-900 mb-3">{coupon.name}</p>
               <p className="text-4xl font-black text-pink-500">
                 {coupon.type === 'percent' ? `${coupon.value}%` : `${formatNumber(coupon.value)}원`}
               </p>
-              <p className="text-lg font-bold text-gray-700 -mt-1">할인</p>
+              <p className="text-lg font-bold text-gray-700 -mt-1">{t('couponClaim.discount')}</p>
               <div className="mt-4 pt-4 border-t border-dashed border-pink-200">
-                <p className="text-[11px] text-gray-400">결제 시 자동 적용 · 다른 쿠폰과 중복 사용 불가</p>
+                <p className="text-[11px] text-gray-400">{t('couponClaim.footerNote')}</p>
               </div>
             </div>
 
             <button onClick={() => navigate('/')}
               className="w-full mt-6 py-4 bg-gray-900 text-white font-bold rounded-2xl active:scale-[0.97] transition-transform flex items-center justify-center gap-2 shadow-lg">
               <ShoppingBag className="w-5 h-5" />
-              쇼핑하러 가기
+              {t('couponClaim.goShop')}
             </button>
 
             <button onClick={() => navigate('/browse')}
               className="w-full mt-2 py-3 text-sm text-gray-500 font-medium">
-              상품 둘러보기 →
+              {t('couponClaim.browseProducts')}
             </button>
           </div>
         )}
@@ -196,11 +198,11 @@ export default function CouponClaimPage() {
             <div className="w-20 h-20 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
               <Gift className="w-10 h-10 text-amber-500" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">이미 받은 쿠폰입니다</h1>
-            <p className="text-sm text-gray-500">결제 시 자동으로 적용됩니다</p>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">{t('couponClaim.alreadyTitle')}</h1>
+            <p className="text-sm text-gray-500">{t('couponClaim.alreadyHint')}</p>
             <button onClick={() => navigate('/')}
               className="w-full mt-6 py-3.5 bg-gray-900 text-white font-bold rounded-xl active:scale-[0.98]">
-              홈으로 가기
+              {t('couponClaim.goHome')}
             </button>
           </div>
         )}
@@ -210,11 +212,11 @@ export default function CouponClaimPage() {
             <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
               <XCircle className="w-10 h-10 text-red-500" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">쿠폰 발급 실패</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">{t('couponClaim.errorTitle')}</h1>
             <p className="text-sm text-gray-500">{errorMsg}</p>
             <button onClick={() => navigate('/')}
               className="w-full mt-6 py-3.5 bg-gray-900 text-white font-bold rounded-xl active:scale-[0.98]">
-              홈으로 가기
+              {t('couponClaim.goHome')}
             </button>
           </div>
         )}

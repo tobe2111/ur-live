@@ -9,6 +9,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation, Trans } from 'react-i18next'
 import SEO from '@/components/SEO'
 import {
   AlertTriangle,
@@ -26,6 +27,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
 export default function AccountDeleteWarningPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [agreedSoftDelete, setAgreedSoftDelete] = useState(false)
@@ -37,7 +39,7 @@ export default function AccountDeleteWarningPage() {
     const checkAuth = async () => {
       const userId = await getUserId()
       if (!userId) {
-        toast.info('로그인이 필요합니다.')
+        toast.info(t('accountDeleteWarning.loginRequired'))
         navigate('/login')
       }
     }
@@ -48,27 +50,27 @@ export default function AccountDeleteWarningPage() {
     agreedSoftDelete &&
     agreedLoseBenefits &&
     agreedNoRefund &&
-    confirmText === '회원탈퇴'
+    confirmText === t('accountDeleteWarning.confirmText')
 
   const handleProceedToDelete = async () => {
     if (!canProceed) {
-      toast.error('모든 동의 항목을 체크하고 "회원탈퇴"를 정확히 입력해주세요.')
+      toast.error(t('accountDeleteWarning.needAllChecks'))
       return
     }
 
     const finalConfirm = window.confirm(
-      '정말로 탈퇴하시겠습니까?\n\n30일 내에 같은 카카오 계정으로 재로그인하면 복원 가능합니다. 30일 후엔 영구 삭제됩니다.'
+      t('accountDeleteWarning.confirmDialog')
     )
     if (!finalConfirm) return
 
     setIsLoading(true)
     try {
       const userId = await getUserId()
-      if (!userId) throw new Error('사용자 ID를 찾을 수 없습니다.')
+      if (!userId) throw new Error(t('accountDeleteWarning.userIdNotFound'))
 
       const response = await api.delete('/api/account/delete')
       if (!response.data.success) {
-        throw new Error(response.data.error || response.data.message || '탈퇴 처리에 실패했습니다.')
+        throw new Error(response.data.error || response.data.message || t('accountDeleteWarning.deleteFailed'))
       }
 
       await authLogout()
@@ -78,9 +80,9 @@ export default function AccountDeleteWarningPage() {
       if (import.meta.env.DEV) console.error('[Account Delete] 탈퇴 실패:', error)
 
       // 🛡️ 2026-05-01: 진단 위해 detail / error 우선 표시 (이전엔 일반 메시지만).
-      let errorMessage = '탈퇴 처리 중 오류가 발생했습니다.'
+      let errorMessage = t('accountDeleteWarning.deleteError')
       if (err.response?.status === 401) {
-        errorMessage = '인증이 만료되었습니다. 다시 로그인한 후 시도해주세요.'
+        errorMessage = t('accountDeleteWarning.authExpired')
       } else if (err.response?.data?.detail) {
         errorMessage = `탈퇴 실패: ${err.response.data.detail}`
       } else if (err.response?.data?.error) {
@@ -102,7 +104,7 @@ export default function AccountDeleteWarningPage() {
 
   return (
     <div className="min-h-screen bg-[#020202] pb-32">
-      <SEO title="회원 탈퇴 - 유어딜" description="회원 탈퇴 전 안내사항을 확인하세요" url="/account/delete-warning" noindex />
+      <SEO title={t('accountDeleteWarning.seoTitle')} description={t('accountDeleteWarning.seoDesc')} url="/account/delete-warning" noindex />
 
       {/* 헤더 — AccountSettings 와 동일 스타일 */}
       <div
@@ -117,12 +119,12 @@ export default function AccountDeleteWarningPage() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          aria-label="뒤로 가기"
+          aria-label={t('accountDeleteWarning.back')}
           className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]"
         >
           <ChevronLeft className="w-5 h-5 text-white/80" />
         </button>
-        <h1 className="ml-2 text-[15px] font-semibold text-white">회원 탈퇴</h1>
+        <h1 className="ml-2 text-[15px] font-semibold text-white">{t('accountDeleteWarning.title')}</h1>
       </div>
 
       <main className="px-4 pt-5">
@@ -261,22 +263,25 @@ export default function AccountDeleteWarningPage() {
         <div className="rounded-2xl bg-white/[0.04] p-5 mb-5">
           <h3 className="text-[14px] font-semibold text-white mb-2">최종 확인</h3>
           <p className="text-[12.5px] text-white/55 mb-3 leading-relaxed">
-            탈퇴를 진행하려면 아래에 <strong className="text-red-400">"회원탈퇴"</strong>를 정확히 입력해주세요.
+            <Trans
+              i18nKey="accountDeleteWarning.confirmInputLabel"
+              components={[<strong key="0" className="text-red-400" />]}
+            />
           </p>
           <input
             type="text"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="회원탈퇴"
+            placeholder={t('accountDeleteWarning.confirmPlaceholder')}
             className="w-full px-3.5 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-pink-500/50 focus:bg-white/[0.08]"
           />
-          {confirmText && confirmText !== '회원탈퇴' && (
+          {confirmText && confirmText !== t('accountDeleteWarning.confirmText') && (
             <p className="text-[12px] text-red-400 mt-2 flex items-center gap-1">
               <AlertTriangle className="w-3.5 h-3.5" />
-              정확히 "회원탈퇴"를 입력해주세요.
+              {t('accountDeleteWarning.confirmMismatch')}
             </p>
           )}
-          {confirmText === '회원탈퇴' && (
+          {confirmText === t('accountDeleteWarning.confirmText') && (
             <p className="text-[12px] text-green-400 mt-2 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" />
               확인되었습니다.
@@ -316,17 +321,17 @@ export default function AccountDeleteWarningPage() {
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                탈퇴 처리 중...
+                {t('accountDeleteWarning.deleting')}
               </span>
             ) : (
-              '탈퇴하기'
+              t('accountDeleteWarning.submit')
             )}
           </button>
           <Link
             to="/account/settings"
             className="w-full h-[44px] flex items-center justify-center rounded-2xl bg-white/[0.06] text-white/70 text-[13px] font-medium hover:bg-white/[0.08] transition-colors"
           >
-            취소하고 돌아가기
+            {t('accountDeleteWarning.cancel')}
           </Link>
         </div>
       </div>
