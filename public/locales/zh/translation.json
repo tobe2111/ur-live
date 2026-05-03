@@ -297,6 +297,26 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "userProfile": {
+    "docTitle": "我的页面 - UR-DEAL",
+    "seoDesc": "管理个人资料、订单和优惠券",
+    "defaultName": "用户",
+    "ariaNotifications": "通知",
+    "ariaSettings": "设置",
+    "moreSection": "更多",
+    "addressManage": "地址管理",
+    "myReviews": "我的评论",
+    "inviteFriends": "邀请好友",
+    "helpSection": "帮助",
+    "customerCenter": "客服中心",
+    "faq": "常见问题",
+    "terms": "服务条款",
+    "privacy": "隐私政策",
+    "shippingPolicy": "配送政策",
+    "switchToSeller": "切换到卖家仪表盘",
+    "switchAccount": "使用其他账号登录",
+    "logout": "退出登录"
+  },
   "theme": {
     "title": "主题",
     "system": "系统",

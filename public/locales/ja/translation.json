@@ -297,6 +297,26 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "userProfile": {
+    "docTitle": "マイページ - ユアディール",
+    "seoDesc": "プロフィール、注文履歴、クーポンなどを管理します",
+    "defaultName": "ユーザー",
+    "ariaNotifications": "通知",
+    "ariaSettings": "設定",
+    "moreSection": "もっと見る",
+    "addressManage": "住所管理",
+    "myReviews": "マイレビュー",
+    "inviteFriends": "友達招待",
+    "helpSection": "ヘルプ",
+    "customerCenter": "カスタマーセンター",
+    "faq": "よくある質問",
+    "terms": "利用規約",
+    "privacy": "プライバシーポリシー",
+    "shippingPolicy": "配送ポリシー",
+    "switchToSeller": "セラーダッシュボードへ切替",
+    "switchAccount": "別のアカウントでログイン",
+    "logout": "ログアウト"
+  },
   "theme": {
     "title": "画面テーマ",
     "system": "システム",

@@ -297,6 +297,26 @@
     "quantity": "Quantity",
     "seller": "Seller"
   },
+  "userProfile": {
+    "docTitle": "My Page - YourDeal",
+    "seoDesc": "Manage your profile, orders, and coupons",
+    "defaultName": "User",
+    "ariaNotifications": "Notifications",
+    "ariaSettings": "Settings",
+    "moreSection": "More",
+    "addressManage": "Manage Addresses",
+    "myReviews": "My Reviews",
+    "inviteFriends": "Invite Friends",
+    "helpSection": "Help",
+    "customerCenter": "Customer Service",
+    "faq": "FAQ",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "shippingPolicy": "Shipping Policy",
+    "switchToSeller": "Switch to Seller Dashboard",
+    "switchAccount": "Sign in with another account",
+    "logout": "Log out"
+  },
   "theme": {
     "title": "Theme",
     "system": "System",

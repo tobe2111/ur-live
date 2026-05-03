@@ -2045,6 +2045,26 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "userProfile": {
+    "docTitle": "Mi página - YourDeal",
+    "seoDesc": "Gestiona tu perfil, pedidos y cupones",
+    "defaultName": "Usuario",
+    "ariaNotifications": "Notificaciones",
+    "ariaSettings": "Ajustes",
+    "moreSection": "Más",
+    "addressManage": "Gestionar direcciones",
+    "myReviews": "Mis reseñas",
+    "inviteFriends": "Invitar amigos",
+    "helpSection": "Ayuda",
+    "customerCenter": "Atención al cliente",
+    "faq": "Preguntas frecuentes",
+    "terms": "Términos del servicio",
+    "privacy": "Política de privacidad",
+    "shippingPolicy": "Política de envío",
+    "switchToSeller": "Ir al panel del vendedor",
+    "switchAccount": "Iniciar sesión con otra cuenta",
+    "logout": "Cerrar sesión"
+  },
   "theme": {
     "title": "Tema",
     "system": "Sistema",

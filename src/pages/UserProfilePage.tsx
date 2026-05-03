@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams, Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
@@ -22,6 +23,7 @@ import ThemeToggleSection from '@/components/settings/ThemeToggleSection'
  *   원본 inline 컴포넌트는 동일 동작을 보존하며 props 전달 패턴 유지.
  */
 export default function UserProfilePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   // 🛡️ 2026-04-30: 카운트 통합 fetch — 자식 컴포넌트 (CouponVoucherStats / ShoppingGroup) 가
@@ -36,7 +38,7 @@ export default function UserProfilePage() {
   const [profileImage, setProfileImage] = useState<string | undefined>(undefined)
   const hasProcessedToken = useRef(false)
 
-  useEffect(() => { document.title = '마이페이지 - 유어딜' }, [])
+  useEffect(() => { document.title = t('userProfile.docTitle') }, [t])
 
   // 🛡️ 2026-05-01: Firebase 100% 제거 — firebase_token URL 파라미터 처리 dead path 가 됨.
   //   카카오 콜백은 세션 쿠키로 인증되므로 별도 토큰 교환 불필요.
@@ -56,7 +58,7 @@ export default function UserProfilePage() {
 
   // ✅ 사용자 이름 + 프로필 이미지 설정
   useEffect(() => {
-    const name = user?.displayName || localStorage.getItem('user_name') || '사용자'
+    const name = user?.displayName || localStorage.getItem('user_name') || t('userProfile.defaultName')
     setUserName(name)
     const image = user?.photoURL || getUserProfileImage() || undefined
     setProfileImage(image)
@@ -94,15 +96,15 @@ export default function UserProfilePage() {
   // 🛡️ 2026-04-30 v4 Wallet 디자인 시안 매칭 — InsetGroup 형태로 정돈, 모든 기능 보존
   return (
     <div className="bg-[#020202] flex flex-col min-h-screen pb-7">
-      <SEO title="마이페이지 - 유어딜" description="내 프로필, 주문내역, 쿠폰 등을 관리하세요" url="/user/profile" noindex />
+      <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className="sr-only">마이페이지</h1>
 
       {/* v4 Wallet sticky chrome — 알림 + 설정 (한 손 도달 영역 우측) */}
       <div className="sticky top-0 z-50 flex items-center justify-end px-2 py-3 gap-1" style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(84,84,88,0.34)' }}>
-        <button onClick={() => navigate('/notifications')} aria-label="알림" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+        <button onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
         </button>
-        <button onClick={() => navigate('/account/settings')} aria-label="설정" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+        <button onClick={() => navigate('/account/settings')} aria-label={t('userProfile.ariaSettings')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
         </button>
       </div>
@@ -156,12 +158,12 @@ export default function UserProfilePage() {
 
       {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
-        <p className="text-[12px] font-bold text-white mb-2">더보기</p>
+        <p className="text-[12px] font-bold text-white mb-2">{t('userProfile.moreSection')}</p>
         <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
           {[
-            { icon: '📍', label: '배송지 관리', path: '/mypage/addresses' },
-            { icon: '📝', label: '내 리뷰', path: '/my-reviews' },
-            { icon: '👥', label: '친구 초대', path: '/referral' },
+            { icon: '📍', label: t('userProfile.addressManage'), path: '/mypage/addresses' },
+            { icon: '📝', label: t('userProfile.myReviews'), path: '/my-reviews' },
+            { icon: '👥', label: t('userProfile.inviteFriends'), path: '/referral' },
           ].map((item, i) => (
             <button
               key={item.label}
@@ -182,14 +184,14 @@ export default function UserProfilePage() {
 
       {/* v4 도움말 InsetGroup */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
-        <p className="text-[12px] font-bold text-white mb-2">도움말</p>
+        <p className="text-[12px] font-bold text-white mb-2">{t('userProfile.helpSection')}</p>
         <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
           {[
-            { label: '고객센터', sub: '0507-0177-0432', action: () => window.open('tel:0507-0177-0432') },
-            { label: '자주 묻는 질문', path: '/faq' },
-            { label: '이용약관', path: '/terms' },
-            { label: '개인정보 처리방침', path: '/privacy' },
-            { label: '배송 정책', path: '/shipping-policy' },
+            { label: t('userProfile.customerCenter'), sub: '0507-0177-0432', action: () => window.open('tel:0507-0177-0432') },
+            { label: t('userProfile.faq'), path: '/faq' },
+            { label: t('userProfile.terms'), path: '/terms' },
+            { label: t('userProfile.privacy'), path: '/privacy' },
+            { label: t('userProfile.shippingPolicy'), path: '/shipping-policy' },
           ].map((item, i) => (
             <button
               key={item.label}
@@ -224,7 +226,7 @@ export default function UserProfilePage() {
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18v4H3zM3 9h18v12H3zM9 13h6" />
             </svg>
-            셀러 대시보드로 전환
+            {t('userProfile.switchToSeller')}
           </button>
         )}
         {/* 🛡️ 2026-05-01: 다른 계정으로 로그인 — 다른 사람 디바이스에서 본인 계정 전환 UI.
@@ -238,7 +240,7 @@ export default function UserProfilePage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h8" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l3 3m0 0l-3 3m3-3h-7" />
           </svg>
-          다른 계정으로 로그인
+          {t('userProfile.switchAccount')}
         </button>
         <button
           type="button"
@@ -246,7 +248,7 @@ export default function UserProfilePage() {
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/[0.04] text-[13px] font-semibold text-white/75 active:bg-white/[0.08] transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-          로그아웃
+          {t('userProfile.logout')}
         </button>
         <p className="text-[10px] text-white/25 text-center mt-3">
           유어딜 v1.0.0

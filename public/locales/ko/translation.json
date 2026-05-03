@@ -297,6 +297,26 @@
     "quantity": "수량",
     "seller": "판매자"
   },
+  "userProfile": {
+    "docTitle": "마이페이지 - 유어딜",
+    "seoDesc": "내 프로필, 주문내역, 쿠폰 등을 관리하세요",
+    "defaultName": "사용자",
+    "ariaNotifications": "알림",
+    "ariaSettings": "설정",
+    "moreSection": "더보기",
+    "addressManage": "배송지 관리",
+    "myReviews": "내 리뷰",
+    "inviteFriends": "친구 초대",
+    "helpSection": "도움말",
+    "customerCenter": "고객센터",
+    "faq": "자주 묻는 질문",
+    "terms": "이용약관",
+    "privacy": "개인정보 처리방침",
+    "shippingPolicy": "배송 정책",
+    "switchToSeller": "셀러 대시보드로 전환",
+    "switchAccount": "다른 계정으로 로그인",
+    "logout": "로그아웃"
+  },
   "theme": {
     "title": "화면 테마",
     "system": "시스템",
