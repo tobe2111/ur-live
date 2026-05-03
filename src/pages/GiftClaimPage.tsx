@@ -12,6 +12,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation, Trans } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -33,6 +34,7 @@ interface GiftInfo {
 }
 
 export default function GiftClaimPage() {
+  const { t, i18n } = useTranslation()
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
   const [gift, setGift] = useState<GiftInfo | null>(null)
@@ -60,7 +62,7 @@ export default function GiftClaimPage() {
     e.preventDefault()
     if (!token) return
     if (address.trim().length < 5) {
-      toast.error('주소를 정확히 입력해주세요')
+      toast.error(t('giftClaim.errorAddressInvalid'))
       return
     }
     setSubmitting(true)
@@ -71,13 +73,13 @@ export default function GiftClaimPage() {
         postal_code: postalCode.trim() || undefined,
         phone: phone.trim() || undefined,
       })
-      toast.success('선물 받기 완료! 곧 발송됩니다.')
+      toast.success(t('giftClaim.successClaimed'))
       // 새로고침해서 상태 업데이트
       const r = await api.get(`/api/gifts/claim/${token}`)
       setGift(r.data?.data || null)
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e.response?.data?.error || '받기에 실패했어요')
+      toast.error(e.response?.data?.error || t('giftClaim.errorClaimFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -94,13 +96,13 @@ export default function GiftClaimPage() {
   if (!gift) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-6">
-        <SEO title="선물을 찾을 수 없어요 - 유어딜" description="선물 링크가 만료되었거나 잘못되었습니다" url={`/gift/claim/${token}`} />
+        <SEO title={t('giftClaim.notFoundSeoTitle')} description={t('giftClaim.notFoundSeoDesc')} url={`/gift/claim/${token}`} />
         <div className="text-center max-w-sm">
           <XCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h1 className="text-lg font-bold text-gray-900 mb-2">선물을 찾을 수 없어요</h1>
-          <p className="text-sm text-gray-500 mb-6">링크가 만료됐거나 잘못된 주소입니다.</p>
+          <h1 className="text-lg font-bold text-gray-900 mb-2">{t('giftClaim.notFoundTitle')}</h1>
+          <p className="text-sm text-gray-500 mb-6">{t('giftClaim.notFoundDesc')}</p>
           <button onClick={() => navigate('/')} className="px-6 py-3 bg-pink-500 text-white rounded-full text-sm font-bold">
-            홈으로
+            {t('common.back')}
           </button>
         </div>
       </div>
@@ -127,9 +129,13 @@ export default function GiftClaimPage() {
             <Gift className="w-8 h-8 text-pink-500" />
           </div>
           <h1 className="text-xl font-bold text-gray-900 mb-1">
-            <span className="text-pink-500">{gift.sender_name}</span>님이<br/>선물을 보냈어요!
+            <Trans
+              i18nKey="giftClaim.fromSender"
+              values={{ name: gift.sender_name }}
+              components={[<span key="0" className="text-pink-500" />, <br key="1" />]}
+            />
           </h1>
-          <p className="text-xs text-gray-500 mt-2">{new Date(gift.created_at).toLocaleDateString('ko-KR')}</p>
+          <p className="text-xs text-gray-500 mt-2">{new Date(gift.created_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US')}</p>
         </div>
 
         {/* 상품 카드 */}
@@ -151,7 +157,7 @@ export default function GiftClaimPage() {
           {gift.message && (
             <div className="bg-pink-50 rounded-xl p-4 border border-pink-100">
               <div className="flex items-center gap-1 text-xs font-bold text-pink-600 mb-2">
-                <Sparkles className="w-3 h-3" /> 메시지
+                <Sparkles className="w-3 h-3" /> {t('giftClaim.messageLabel')}
               </div>
               <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{gift.message}</p>
             </div>
@@ -162,16 +168,16 @@ export default function GiftClaimPage() {
         {isExpired && (
           <div className="bg-gray-50 rounded-2xl p-5 text-center">
             <XCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-gray-700">선물이 만료됐어요</p>
-            <p className="text-xs text-gray-500 mt-1">유효기간 30일이 지나 자동 환불됩니다.</p>
+            <p className="text-sm font-semibold text-gray-700">{t('giftClaim.expiredTitle')}</p>
+            <p className="text-xs text-gray-500 mt-1">{t('giftClaim.expiredHint')}</p>
           </div>
         )}
 
         {isPending && (
           <div className="bg-yellow-50 rounded-2xl p-5 text-center border border-yellow-100">
             <Loader2 className="w-6 h-6 text-yellow-600 mx-auto mb-2 animate-spin" />
-            <p className="text-sm font-semibold text-yellow-800">결제 진행 중</p>
-            <p className="text-xs text-yellow-700 mt-1">잠시 후 다시 확인해주세요.</p>
+            <p className="text-sm font-semibold text-yellow-800">{t('giftClaim.pendingTitle')}</p>
+            <p className="text-xs text-yellow-700 mt-1">{t('giftClaim.pendingHint')}</p>
           </div>
         )}
 
@@ -179,9 +185,9 @@ export default function GiftClaimPage() {
           <div className="bg-green-50 rounded-2xl p-5 text-center border border-green-100">
             <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
             <p className="text-sm font-semibold text-green-700">
-              {gift.status === 'claimed' && '받기 완료! 곧 발송됩니다.'}
-              {gift.status === 'shipped' && '발송 완료! 배송을 기다려주세요.'}
-              {gift.status === 'delivered' && '배송 완료되었어요. 즐거운 시간 되세요!'}
+              {gift.status === 'claimed' && t('giftClaim.statusClaimed')}
+              {gift.status === 'shipped' && t('giftClaim.statusShipped')}
+              {gift.status === 'delivered' && t('giftClaim.statusDelivered')}
             </p>
           </div>
         )}
@@ -189,26 +195,26 @@ export default function GiftClaimPage() {
         {canClaim && (
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
             <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-pink-500" /> 받을 주소를 입력해주세요
+              <MapPin className="w-4 h-4 text-pink-500" /> {t('giftClaim.addressTitle')}
             </h3>
             <div className="space-y-3">
               <input
                 value={postalCode}
                 onChange={e => setPostalCode(e.target.value)}
-                placeholder="우편번호"
+                placeholder={t('giftClaim.postalCode')}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
               />
               <input
                 value={address}
                 onChange={e => setAddress(e.target.value)}
-                placeholder="기본 주소 *"
+                placeholder={t('giftClaim.addressMain')}
                 required
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
               />
               <input
                 value={addressDetail}
                 onChange={e => setAddressDetail(e.target.value)}
-                placeholder="상세 주소"
+                placeholder={t('giftClaim.addressDetail')}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
               />
               <div className="relative">
@@ -216,7 +222,7 @@ export default function GiftClaimPage() {
                 <input
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
-                  placeholder="휴대폰 번호 (배송 안내용)"
+                  placeholder={t('giftClaim.phone')}
                   type="tel"
                   className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
                 />
@@ -228,10 +234,10 @@ export default function GiftClaimPage() {
               className="w-full mt-5 py-4 bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600 transition-colors disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
-              선물 받기
+              {t('giftClaim.submit')}
             </button>
             <p className="text-[11px] text-gray-400 text-center mt-3">
-              유효기간: {new Date(gift.expires_at).toLocaleDateString('ko-KR')} 까지
+              {t('giftClaim.expiresAt', { date: new Date(gift.expires_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US') })}
             </p>
           </form>
         )}
