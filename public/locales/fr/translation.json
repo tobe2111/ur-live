@@ -2045,6 +2045,27 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "myGroupBuys": {
+    "title": "Mes achats groupés",
+    "seoDesc": "Consultez vos achats groupés actifs.",
+    "tabOngoing": "En cours",
+    "tabDone": "Terminés",
+    "loginRequired": "Connexion requise.",
+    "loadError": "Impossible de charger la liste.",
+    "ended": "Terminé",
+    "daysHoursLeft": "{{days}}j {{hours}}h restants",
+    "hoursMinutesLeft": "{{hours}}h {{minutes}}m restants",
+    "minutesLeft": "{{minutes}}m restants",
+    "iStarted": "J'ai lancé",
+    "creatorGroup": "Groupe de {{name}}",
+    "statusOngoing": "Actif",
+    "statusAchieved": "Atteint",
+    "statusCanceled": "Annulé",
+    "statusExpired": "Expiré",
+    "emptyTitle": "Aucun achat groupé actif",
+    "emptyHint": "Économisez entre amis",
+    "browseProducts": "Voir les produits"
+  },
   "interestList": {
     "title": "Restaurants enregistrés",
     "loadError": "Échec du chargement de la liste",

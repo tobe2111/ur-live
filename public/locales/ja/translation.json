@@ -297,6 +297,27 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "myGroupBuys": {
+    "title": "マイ共同購入",
+    "seoDesc": "参加中の共同購入状況を確認しよう。",
+    "tabOngoing": "進行中",
+    "tabDone": "完了",
+    "loginRequired": "ログインが必要です。",
+    "loadError": "共同購入リストを読み込めませんでした。",
+    "ended": "終了",
+    "daysHoursLeft": "残り{{days}}日{{hours}}時間",
+    "hoursMinutesLeft": "残り{{hours}}時間{{minutes}}分",
+    "minutesLeft": "残り{{minutes}}分",
+    "iStarted": "自分が開始",
+    "creatorGroup": "{{name}}さんの共同購入",
+    "statusOngoing": "進行中",
+    "statusAchieved": "達成",
+    "statusCanceled": "キャンセル",
+    "statusExpired": "期限切れ",
+    "emptyTitle": "参加中の共同購入がありません",
+    "emptyHint": "友達と一緒にお得に買おう",
+    "browseProducts": "商品を見る"
+  },
   "interestList": {
     "title": "お気に入りグルメ",
     "loadError": "お気に入りリストの読み込みに失敗しました",

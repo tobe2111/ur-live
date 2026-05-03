@@ -2045,6 +2045,27 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "myGroupBuys": {
+    "title": "Mis compras grupales",
+    "seoDesc": "Consulta tus compras grupales activas.",
+    "tabOngoing": "En curso",
+    "tabDone": "Completadas",
+    "loginRequired": "Inicio de sesión requerido.",
+    "loadError": "No se pudo cargar la lista.",
+    "ended": "Finalizado",
+    "daysHoursLeft": "{{days}}d {{hours}}h restantes",
+    "hoursMinutesLeft": "{{hours}}h {{minutes}}m restantes",
+    "minutesLeft": "{{minutes}}m restantes",
+    "iStarted": "Yo inicié",
+    "creatorGroup": "Grupo de {{name}}",
+    "statusOngoing": "Activo",
+    "statusAchieved": "Logrado",
+    "statusCanceled": "Cancelado",
+    "statusExpired": "Caducado",
+    "emptyTitle": "No hay compras grupales activas",
+    "emptyHint": "Ahorra con amigos",
+    "browseProducts": "Explorar productos"
+  },
   "interestList": {
     "title": "Restaurantes guardados",
     "loadError": "Error al cargar la lista de guardados",

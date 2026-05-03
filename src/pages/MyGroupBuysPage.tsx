@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, Users, Clock, ShoppingBag, Gift } from 'lucide-react';
 import api from '@/lib/api';
 import SEO from '@/components/SEO';
@@ -31,18 +32,19 @@ interface ProductInfo {
 
 type TabKey = 'ongoing' | 'done';
 
-function formatTimeLeft(expiresAt: string): string {
+function formatTimeLeft(expiresAt: string, t: (key: string, opts?: any) => string): string {
   const diff = new Date(expiresAt).getTime() - Date.now();
-  if (diff <= 0) return '종료됨';
+  if (diff <= 0) return t('myGroupBuys.ended');
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
   const minutes = Math.floor((diff % 3600000) / 60000);
-  if (days > 0) return `${days}일 ${hours}시간 남음`;
-  if (hours > 0) return `${hours}시간 ${minutes}분 남음`;
-  return `${minutes}분 남음`;
+  if (days > 0) return t('myGroupBuys.daysHoursLeft', { days, hours });
+  if (hours > 0) return t('myGroupBuys.hoursMinutesLeft', { hours, minutes });
+  return t('myGroupBuys.minutesLeft', { minutes });
 }
 
 export default function MyGroupBuysPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabKey>('ongoing');
   const [groups, setGroups] = useState<ReferralGroup[]>([]);
@@ -53,7 +55,7 @@ export default function MyGroupBuysPage() {
     const userType = localStorage.getItem('user_type');
     const userId = localStorage.getItem('user_id');
     if (userType !== 'user' || !userId) {
-      toast.info('로그인이 필요합니다.');
+      toast.info(t('myGroupBuys.loginRequired'));
       navigate('/login');
       return;
     }
@@ -79,7 +81,7 @@ export default function MyGroupBuysPage() {
           setProducts(map);
         }
       } catch {
-        toast.error('공동구매 목록을 불러오지 못했습니다.');
+        toast.error(t('myGroupBuys.loadError'));
       } finally {
         setLoading(false);
       }
@@ -94,8 +96,8 @@ export default function MyGroupBuysPage() {
   return (
     <div className="min-h-dvh bg-white">
       <SEO
-        title="내 공동구매"
-        description="참여 중인 공동구매 현황을 확인하세요."
+        title={t('myGroupBuys.title')}
+        description={t('myGroupBuys.seoDesc')}
         url="/my-group-buys"
       />
       {/* 헤더 */}
@@ -104,7 +106,7 @@ export default function MyGroupBuysPage() {
           <button onClick={() => navigate(-1)} className="flex items-center text-gray-700 hover:text-gray-900">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-base font-semibold text-gray-900">내 공동구매</h1>
+          <h1 className="text-base font-semibold text-gray-900">{t('myGroupBuys.title')}</h1>
           <div className="w-6" />
         </div>
       </header>
@@ -112,19 +114,19 @@ export default function MyGroupBuysPage() {
       {/* 탭 */}
       <div className="flex border-b border-gray-200 bg-white sticky top-14 z-30">
         {([
-          { key: 'ongoing', label: '진행 중' },
-          { key: 'done', label: '완료' },
-        ] as const).map(t => (
+          { key: 'ongoing' as TabKey, label: t('myGroupBuys.tabOngoing') },
+          { key: 'done' as TabKey, label: t('myGroupBuys.tabDone') },
+        ]).map(item => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={item.key}
+            onClick={() => setTab(item.key)}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              tab === t.key
+              tab === item.key
                 ? 'text-gray-900 border-b-2 border-gray-900'
                 : 'text-gray-500 border-b-2 border-transparent'
             }`}
           >
-            {t.label}
+            {item.label}
           </button>
         ))}
       </div>
@@ -170,7 +172,7 @@ export default function MyGroupBuysPage() {
                           <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                             g.is_creator ? 'bg-pink-50 text-pink-600' : 'bg-gray-100 text-gray-600'
                           }`}>
-                            {g.is_creator ? '내가 시작' : `${g.creator_name}님의 공구`}
+                            {g.is_creator ? t('myGroupBuys.iStarted') : t('myGroupBuys.creatorGroup', { name: g.creator_name })}
                           </span>
                         </div>
 
@@ -195,7 +197,7 @@ export default function MyGroupBuysPage() {
                           {g.status === 'open' && (
                             <span className="inline-flex items-center gap-1 text-gray-500">
                               <Clock className="w-3.5 h-3.5" />
-                              {formatTimeLeft(g.expires_at)}
+                              {formatTimeLeft(g.expires_at, t)}
                             </span>
                           )}
                         </div>
@@ -213,31 +215,33 @@ export default function MyGroupBuysPage() {
 }
 
 function StatusBadge({ status }: { status: ReferralGroup['status'] }) {
+  const { t } = useTranslation();
   if (status === 'open') {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-900 text-white">진행중</span>;
+    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-900 text-white">{t('myGroupBuys.statusOngoing')}</span>;
   }
   if (status === 'achieved') {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">달성</span>;
+    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{t('myGroupBuys.statusAchieved')}</span>;
   }
   if (status === 'cancelled') {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">취소</span>;
+    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">{t('myGroupBuys.statusCanceled')}</span>;
   }
-  return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">만료</span>;
+  return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">{t('myGroupBuys.statusExpired')}</span>;
 }
 
 function EmptyState({ onBrowse }: { onBrowse: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
       <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
         <Gift className="w-8 h-8 text-gray-400" />
       </div>
-      <p className="text-sm font-medium text-gray-900 mb-1">참여 중인 공동구매가 없습니다</p>
-      <p className="text-xs text-gray-500 mb-6">친구와 함께 할인받아 보세요</p>
+      <p className="text-sm font-medium text-gray-900 mb-1">{t('myGroupBuys.emptyTitle')}</p>
+      <p className="text-xs text-gray-500 mb-6">{t('myGroupBuys.emptyHint')}</p>
       <button
         onClick={onBrowse}
         className="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors"
       >
-        상품 둘러보기
+        {t('myGroupBuys.browseProducts', { defaultValue: '상품 둘러보기' })}
       </button>
     </div>
   );

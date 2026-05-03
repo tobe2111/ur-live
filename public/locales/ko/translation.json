@@ -297,6 +297,27 @@
     "quantity": "수량",
     "seller": "판매자"
   },
+  "myGroupBuys": {
+    "title": "내 공동구매",
+    "seoDesc": "참여 중인 공동구매 현황을 확인하세요.",
+    "tabOngoing": "진행 중",
+    "tabDone": "완료",
+    "loginRequired": "로그인이 필요합니다.",
+    "loadError": "공동구매 목록을 불러오지 못했습니다.",
+    "ended": "종료됨",
+    "daysHoursLeft": "{{days}}일 {{hours}}시간 남음",
+    "hoursMinutesLeft": "{{hours}}시간 {{minutes}}분 남음",
+    "minutesLeft": "{{minutes}}분 남음",
+    "iStarted": "내가 시작",
+    "creatorGroup": "{{name}}님의 공구",
+    "statusOngoing": "진행중",
+    "statusAchieved": "달성",
+    "statusCanceled": "취소",
+    "statusExpired": "만료",
+    "emptyTitle": "참여 중인 공동구매가 없습니다",
+    "emptyHint": "친구와 함께 할인받아 보세요",
+    "browseProducts": "상품 둘러보기"
+  },
   "interestList": {
     "title": "관심 맛집",
     "loadError": "관심 목록을 불러오지 못했습니다",

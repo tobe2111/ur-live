@@ -297,6 +297,27 @@
     "quantity": "Quantity",
     "seller": "Seller"
   },
+  "myGroupBuys": {
+    "title": "My Group Buys",
+    "seoDesc": "Check your active group buys.",
+    "tabOngoing": "Ongoing",
+    "tabDone": "Done",
+    "loginRequired": "Login required.",
+    "loadError": "Failed to load group buys.",
+    "ended": "Ended",
+    "daysHoursLeft": "{{days}}d {{hours}}h left",
+    "hoursMinutesLeft": "{{hours}}h {{minutes}}m left",
+    "minutesLeft": "{{minutes}}m left",
+    "iStarted": "I started",
+    "creatorGroup": "{{name}}'s group",
+    "statusOngoing": "Active",
+    "statusAchieved": "Achieved",
+    "statusCanceled": "Canceled",
+    "statusExpired": "Expired",
+    "emptyTitle": "No active group buys",
+    "emptyHint": "Save with friends",
+    "browseProducts": "Browse Products"
+  },
   "interestList": {
     "title": "Saved Restaurants",
     "loadError": "Failed to load saved list",
