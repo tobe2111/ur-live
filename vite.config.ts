@@ -87,6 +87,13 @@ export default defineConfig({
           if (id.includes('framer-motion')) return 'animation'
           // QR / 바코드
           if (id.includes('qrcode') || id.includes('jsbarcode') || id.includes('html5-qrcode')) return 'codes'
+          // 🛡️ 2026-05-03: index entry 추가 분할 — i18n 확장 누적으로 800KB 근접 → 마진 확보.
+          //   axios: ~50KB (모든 페이지가 사용하지만 별도 청크로 캐싱 분리)
+          //   zustand: ~3KB (작지만 모든 store 의존 — 별도)
+          //   react-helmet-async: ~10KB (SEO, lazy 페이지 진입 시 필요)
+          if (id.includes('node_modules/axios/')) return 'axios'
+          if (id.includes('node_modules/zustand/')) return 'zustand'
+          if (id.includes('react-helmet-async')) return 'helmet'
         },
       },
     },
