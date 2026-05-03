@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -28,6 +29,7 @@ import CancelOrderModal from './my-orders/CancelOrderModal'
 type TabType = 'cart' | 'orders'
 
 export default function MyOrdersPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabType>('cart')
   const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -62,12 +64,12 @@ export default function MyOrdersPage() {
   // both read `activeTab` from the closure at the same point in time.
   const isLoadingRef = useRef(false)
 
-  useEffect(() => { document.title = '주문내역 - 유어딜' }, [])
+  useEffect(() => { document.title = t('myOrders.docTitle') }, [t])
 
   // ✅ UX C5 FIX: 로그인 체크는 최초 마운트 시에만 (activeTab 변경 시 리다이렉트 루프 방지)
   useEffect(() => {
     if (!isLoggedInSync() || !userId) {
-      requireLogin(navigate, '로그인이 필요합니다.')
+      requireLogin(navigate, t('myOrders.loginRequired'))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -112,9 +114,9 @@ export default function MyOrdersPage() {
       if (import.meta.env.DEV) console.error('Failed to load data:', err)
       const e = err as { response?: { status?: number } }
       if (e?.response?.status === 401) {
-        setError('세션이 만료되었습니다. 다시 로그인해주세요.')
+        setError(t('myOrders.sessionExpired'))
       } else {
-        setError(activeTab === 'cart' ? '장바구니를 불러올 수 없습니다.' : '주문 목록을 불러올 수 없습니다.')
+        setError(activeTab === 'cart' ? t('myOrders.errorCart') : t('myOrders.errorOrders'))
       }
     } finally {
       setLoading(false)
@@ -131,12 +133,12 @@ export default function MyOrdersPage() {
       }
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to update quantity:', error)
-      toast.error('수량 변경에 실패했습니다.')
+      toast.error(t('myOrders.errorQty'))
     }
   }
 
   async function handleRemoveItem(itemId: number) {
-    if (!confirm('장바구니에서 삭제하시겠습니까?')) return
+    if (!confirm(t('myOrders.confirmCartDelete'))) return
     try {
       const response = await api.delete(`/api/cart/${itemId}`)
       if (response.data.success) {
@@ -144,13 +146,13 @@ export default function MyOrdersPage() {
       }
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to remove item:', error)
-      toast.error('삭제에 실패했습니다.')
+      toast.error(t('myOrders.errorDelete'))
     }
   }
 
   function handleCheckout() {
     if (cartItems.length === 0) {
-      toast.info('장바구니가 비어있습니다.')
+      toast.info(t('myOrders.cartEmpty'))
       return
     }
     navigate('/checkout')
@@ -162,14 +164,14 @@ export default function MyOrdersPage() {
     try {
       const response = await api.post(`/api/orders/${orderId}/confirm`)
       if (response.data.success) {
-        toast.success('구매확정이 완료되었습니다.')
+        toast.success(t('myOrders.confirmSuccess'))
         loadData()
       } else {
-        toast.error(response.data.error || '구매확정에 실패했습니다.')
+        toast.error(response.data.error || t('myOrders.confirmFail'))
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string }; status?: number } }
-      toast.error(error_.response?.data?.error || '구매확정 중 오류가 발생했습니다.')
+      toast.error(error_.response?.data?.error || t('myOrders.confirmError'))
     } finally {
       setProcessing(false)
     }
@@ -186,11 +188,11 @@ export default function MyOrdersPage() {
     const { orderId } = cancelModal
     if (!orderId) return
     if (!cancelReason.trim()) {
-      toast.error('취소 사유를 입력해주세요.')
+      toast.error(t('myOrders.cancelReasonRequired'))
       return
     }
     if (isPartialCancel && (!cancelAmount || Number(cancelAmount) <= 0)) {
-      toast.error('부분 취소 금액을 입력해주세요.')
+      toast.error(t('myOrders.cancelAmountRequired'))
       return
     }
     setProcessing(true)
@@ -200,19 +202,19 @@ export default function MyOrdersPage() {
         ...(isPartialCancel && cancelAmount ? { cancel_amount: Number(cancelAmount) } : {}),
       })
       if (response.data.success) {
-        toast.success('주문이 취소되었습니다.')
+        toast.success(t('myOrders.cancelSuccess'))
         setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
         setCancelReason('')
         setIsPartialCancel(false)
         setCancelAmount('')
         loadData()
       } else {
-        toast.error(response.data.error || '주문 취소에 실패했습니다.')
+        toast.error(response.data.error || t('myOrders.cancelFail'))
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       if (import.meta.env.DEV) console.error('Failed to cancel order:', error)
-      toast.error(error_.response?.data?.error || '주문 취소 중 오류가 발생했습니다.')
+      toast.error(error_.response?.data?.error || t('myOrders.cancelError'))
     } finally {
       setProcessing(false)
     }
@@ -226,7 +228,7 @@ export default function MyOrdersPage() {
 
   return (
     <WalletPageWrapper theme={theme}>
-      <SEO title="주문내역 - 유어딜" description="주문 내역과 배송 현황을 확인하세요" url="/my-orders" noindex />
+      <SEO title={t('myOrders.docTitle')} description={t('myOrders.seoDesc')} url="/my-orders" noindex />
       {/* 상단 chrome — 뒤로가기 */}
       <div className="sticky top-0 z-30 px-2 pt-3 pb-2 flex items-center"
         style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
@@ -234,13 +236,13 @@ export default function MyOrdersPage() {
           onClick={() => navigate(-1)}
           className="w-9 h-9 flex items-center justify-center rounded-full"
           style={{ background: tk.fillSoft, color: tk.label }}
-          aria-label="뒤로가기"
+          aria-label={t('common.back')}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
 
-      <LargeTitle theme={theme} title="주문내역" />
+      <LargeTitle theme={theme} title={t('myOrders.title')} />
 
       {/* Tab Navigation — underline 탭 */}
       <div className="px-4 mb-4">
@@ -257,7 +259,7 @@ export default function MyOrdersPage() {
             aria-pressed={activeTab === 'cart'}
           >
             <ShoppingCart className="h-4 w-4" />
-            장바구니
+            {t('myOrders.tabCart')}
             {activeTab === 'cart' && (
               <div className="absolute bottom-0 left-0 right-0" style={{ height: 2, background: tk.label }} />
             )}
@@ -274,7 +276,7 @@ export default function MyOrdersPage() {
             aria-pressed={activeTab === 'orders'}
           >
             <Package className="h-4 w-4" />
-            주문내역
+            {t('myOrders.tabOrders')}
             {activeTab === 'orders' && (
               <div className="absolute bottom-0 left-0 right-0" style={{ height: 2, background: tk.label }} />
             )}
