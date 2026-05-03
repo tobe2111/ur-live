@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Search, Ticket, Phone, X, Navigation, ArrowUpDown, Heart, Radio, SlidersHorizontal } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -24,6 +25,7 @@ export type { KakaoPlace }
 // Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
 
 export default function RestaurantMapPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
@@ -70,7 +72,7 @@ export default function RestaurantMapPage() {
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 클릭 — GPS 요청 + 거리순 + 위치로 pan
   const requestNearMe = useCallback(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      toast.error('이 기기는 위치 서비스를 지원하지 않습니다.')
+      toast.error(t('restaurantMap.geoNotSupported'))
       return
     }
     if (userLoc) {
@@ -94,7 +96,7 @@ export default function RestaurantMapPage() {
           mapInstance.current.setLevel(5)
         }
       },
-      () => toast.error('위치 권한이 필요합니다. 브라우저 설정에서 허용해주세요.'),
+      () => toast.error(t('restaurantMap.geoPermissionDenied')),
       { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
     )
   }, [userLoc])
@@ -659,13 +661,13 @@ export default function RestaurantMapPage() {
           <MapPin className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
           {sdkError ? (
             <>
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">지도를 불러올 수 없습니다</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">아래 시트에서 맛집을 확인하세요</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{t('restaurantMap.mapErrorTitle')}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('restaurantMap.mapErrorSub')}</p>
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">지도를 불러오는 중...</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">카카오맵 SDK 로딩 중</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{t('restaurantMap.mapLoading')}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('restaurantMap.sdkLoading')}</p>
             </>
           )}
         </div>
@@ -689,7 +691,7 @@ export default function RestaurantMapPage() {
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
               onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); (e.target as HTMLInputElement).blur() } }}
-              placeholder="맛집 이름·지역 검색"
+              placeholder={t('restaurantMap.searchPlaceholder')}
               aria-label="검색"
               className="w-full pl-10 pr-9 py-2.5 bg-white/95 backdrop-blur-md rounded-full text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-md"
             />
@@ -702,7 +704,7 @@ export default function RestaurantMapPage() {
             {searchFocused && !search && searchHistory.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden z-10">
                 <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A]">
-                  <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">최근 검색</span>
+                  <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">{t('restaurantMap.recentSearch')}</span>
                   <button
                     onClick={() => { setSearchHistory([]); storage.setJSON('restaurant_search_history', []) }}
                     className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300"
@@ -836,7 +838,7 @@ export default function RestaurantMapPage() {
                 }`}
               >
                 <Navigation className="w-3 h-3" />
-                <span>내 주변</span>
+                <span>{t('restaurantMap.nearMe')}</span>
               </button>
               {[
                 { key: 'all', label: '전체', emoji: '✨' },
@@ -891,10 +893,10 @@ export default function RestaurantMapPage() {
                 aria-label="정렬"
                 className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-transparent focus:outline-none"
               >
-                {userLoc && <option value="distance">거리순</option>}
-                <option value="discount">할인율순</option>
-                <option value="price">가격 낮은순</option>
-                <option value="rating">평점순</option>
+                {userLoc && <option value="distance">{t('restaurantMap.sort.distance')}</option>}
+                <option value="discount">{t('restaurantMap.sort.discount')}</option>
+                <option value="price">{t('restaurantMap.sort.price')}</option>
+                <option value="rating">{t('restaurantMap.sort.rating')}</option>
               </select>
             </div>
           </div>

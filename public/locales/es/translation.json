@@ -2197,5 +2197,22 @@
     "toLive": "Unirse al directo",
     "swipeNext": "Desliza hacia arriba · siguiente shorts",
     "featuredProduct": "Producto del vídeo"
+  },
+  "restaurantMap": {
+    "geoNotSupported": "Este dispositivo no admite servicios de ubicación.",
+    "geoPermissionDenied": "Se requiere permiso de ubicación. Permítelo en la configuración del navegador.",
+    "mapErrorTitle": "No se puede cargar el mapa",
+    "mapErrorSub": "Consulta los restaurantes en la hoja de abajo",
+    "mapLoading": "Cargando mapa...",
+    "sdkLoading": "Cargando SDK de Kakao Maps",
+    "searchPlaceholder": "Busca por nombre o zona del restaurante",
+    "recentSearch": "Búsquedas recientes",
+    "nearMe": "Cerca de mí",
+    "sort": {
+      "distance": "Por distancia",
+      "discount": "Por descuento",
+      "price": "Precio más bajo",
+      "rating": "Por valoración"
+    }
   }
 }

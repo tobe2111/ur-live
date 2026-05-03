@@ -2197,5 +2197,22 @@
     "toLive": "Join the live stream",
     "swipeNext": "Swipe up for next shorts",
     "featuredProduct": "Featured in this video"
+  },
+  "restaurantMap": {
+    "geoNotSupported": "Location services are not supported on this device.",
+    "geoPermissionDenied": "Location permission required. Please allow it in your browser settings.",
+    "mapErrorTitle": "Can't load the map",
+    "mapErrorSub": "See restaurants in the sheet below",
+    "mapLoading": "Loading map...",
+    "sdkLoading": "Kakao Maps SDK loading",
+    "searchPlaceholder": "Search restaurants by name or area",
+    "recentSearch": "Recent searches",
+    "nearMe": "Near me",
+    "sort": {
+      "distance": "By distance",
+      "discount": "By discount",
+      "price": "Lowest price",
+      "rating": "By rating"
+    }
   }
 }

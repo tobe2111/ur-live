@@ -2197,5 +2197,22 @@
     "toLive": "进入直播",
     "swipeNext": "向上滑动 · 下一个短视频",
     "featuredProduct": "视频中出现的商品"
+  },
+  "restaurantMap": {
+    "geoNotSupported": "此设备不支持位置服务。",
+    "geoPermissionDenied": "需要位置权限。请在浏览器设置中允许。",
+    "mapErrorTitle": "无法加载地图",
+    "mapErrorSub": "请在下方滑出查看餐厅",
+    "mapLoading": "正在加载地图...",
+    "sdkLoading": "Kakao Maps SDK 加载中",
+    "searchPlaceholder": "按名称或地区搜索餐厅",
+    "recentSearch": "最近搜索",
+    "nearMe": "附近",
+    "sort": {
+      "distance": "按距离",
+      "discount": "按折扣",
+      "price": "价格从低到高",
+      "rating": "按评分"
+    }
   }
 }

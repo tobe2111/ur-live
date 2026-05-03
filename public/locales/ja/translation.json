@@ -2197,5 +2197,22 @@
     "toLive": "ライブ配信に入る",
     "swipeNext": "上にスワイプ · 次のショート",
     "featuredProduct": "動画に登場した商品"
+  },
+  "restaurantMap": {
+    "geoNotSupported": "このデバイスは位置情報サービスに対応していません。",
+    "geoPermissionDenied": "位置情報の許可が必要です。ブラウザ設定で許可してください。",
+    "mapErrorTitle": "地図を読み込めません",
+    "mapErrorSub": "下のシートでお店を確認してください",
+    "mapLoading": "地図を読み込み中...",
+    "sdkLoading": "Kakao Maps SDK 読み込み中",
+    "searchPlaceholder": "店名・地域で検索",
+    "recentSearch": "最近の検索",
+    "nearMe": "現在地周辺",
+    "sort": {
+      "distance": "距離順",
+      "discount": "割引率順",
+      "price": "価格が安い順",
+      "rating": "評価順"
+    }
   }
 }
