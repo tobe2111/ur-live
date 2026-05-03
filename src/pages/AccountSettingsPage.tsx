@@ -145,21 +145,21 @@ export default function AccountSettingsPage() {
 
   useEffect(() => {
     const userId = getUserIdSync();
-    if (!userId) { toast.info('로그인이 필요합니다.'); navigate('/login'); return; }
+    if (!userId) { toast.info(t('accountSettings.loginRequired')); navigate('/login'); return; }
     (async () => {
       let phone = '';
       try {
         const res = await api.get('/api/auth/me');
         if (res.data.success && res.data.data) phone = res.data.data.phone || '';
       } catch {}
-      setUser({ id: userId, name: getUserNameSync() || '사용자', email: getUserEmail() || '', phone });
+      setUser({ id: userId, name: getUserNameSync() || t('accountSettings.fallbackName'), email: getUserEmail() || '', phone });
     })();
   }, [navigate]);
 
   function openEdit() { setEditForm({ name: user.name, phone: user.phone }); setEditModal(true); }
 
   async function saveProfile() {
-    if (!editForm.name.trim()) { toast.error('이름을 입력해주세요.'); return; }
+    if (!editForm.name.trim()) { toast.error(t('accountSettings.nameRequired')); return; }
     setEditLoading(true);
     try {
       const res = await api.patch('/api/auth/profile', { name: editForm.name.trim(), phone: editForm.phone.trim() });
@@ -167,11 +167,11 @@ export default function AccountSettingsPage() {
         setUser(u => ({ ...u, name: editForm.name.trim(), phone: editForm.phone.trim() }));
         localStorage.setItem('user_name', editForm.name.trim());
         setEditModal(false);
-        toast.success('프로필이 업데이트되었습니다.');
+        toast.success(t('accountSettings.profileUpdated'));
       }
     } catch (e: unknown) {
       const e_ = e as { response?: { data?: { error?: string }; status?: number } }
-      toast.error(e_.response?.data?.error || '업데이트에 실패했습니다.');
+      toast.error(e_.response?.data?.error || t('accountSettings.updateFailed'));
     } finally { setEditLoading(false); }
   }
 
@@ -179,20 +179,21 @@ export default function AccountSettingsPage() {
     const next = { ...notif, [key]: !notif[key] };
     setNotif(next);
     localStorage.setItem('notif_settings', JSON.stringify(next));
-    toast.success(`${key === 'push' ? '푸시' : '이메일'} 알림이 ${next[key] ? '켜졌' : '꺼졌'}습니다.`);
+    const type = key === 'push' ? t('accountSettings.notifPush') : t('accountSettings.notifEmail');
+    toast.success(next[key] ? t('accountSettings.notifTurnedOn', { type }) : t('accountSettings.notifTurnedOff', { type }));
   }
 
   return (
     <div className="min-h-screen bg-[#020202] pb-7">
       <SEO
-        title="계정 설정"
-        description="프로필, 알림, 결제 수단 등 계정 설정을 관리하세요."
+        title={t('accountSettings.seoTitle')}
+        description={t('accountSettings.seoDesc')}
         url="/account/settings"
         noindex
       />
       {/* 🛡️ 2026-04-30 v4 Wallet sticky chrome */}
       <div className="sticky top-0 z-50 flex items-center px-2 py-3 gap-1" style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(84,84,88,0.34)' }}>
-        <button type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기" className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
+        <button type="button" onClick={() => navigate(-1)} aria-label={t('accountSettings.back')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
           <ChevronLeft className="w-4 h-4 text-white" aria-hidden="true" />
         </button>
       </div>
@@ -207,15 +208,15 @@ export default function AccountSettingsPage() {
         <div className="rounded-2xl p-5 mb-5 relative" style={{ background: 'radial-gradient(ellipse at top, rgba(236,72,153,0.18), transparent 70%), rgba(255,255,255,0.04)' }}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[15px] font-bold text-white">{t('accountSettings.myProfile')}</h2>
-            <button type="button" onClick={openEdit} aria-label="프로필 수정" className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.08] text-[11px] font-semibold text-white/80 hover:bg-white/[0.12] transition-colors">
+            <button type="button" onClick={openEdit} aria-label={t('accountSettings.editProfileAria')} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.08] text-[11px] font-semibold text-white/80 hover:bg-white/[0.12] transition-colors">
               <Edit className="w-3 h-3" aria-hidden="true" />수정
             </button>
           </div>
           <div className="space-y-2">
             {[
-              { icon: <User className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: '이름', value: user.name },
-              { icon: <Mail className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: '이메일', value: user.email },
-              { icon: <Phone className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: '전화번호', value: user.phone || '미등록' },
+              { icon: <User className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: t('accountSettings.labelName'), value: user.name },
+              { icon: <Mail className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: t('accountSettings.labelEmail'), value: user.email },
+              { icon: <Phone className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: t('accountSettings.labelPhone'), value: user.phone || t('accountSettings.phoneNotRegistered') },
             ].map(({ icon, label, value }) => (
               <div key={label} className="flex items-center gap-3 bg-white/[0.04] rounded-xl px-3 py-2.5">
                 {icon}
@@ -228,24 +229,24 @@ export default function AccountSettingsPage() {
           </div>
         </div>
 
-        <Section title="알림">
-          <ToggleItem icon={<Bell className="w-4 h-4" aria-hidden="true" />} label="푸시 알림" value={notif.push} onChange={() => toggleNotif('push')} />
-          <ToggleItem icon={<Mail className="w-4 h-4" aria-hidden="true" />} label="이메일 알림" value={notif.email} onChange={() => toggleNotif('email')} />
+        <Section title={t('accountSettings.sectionNotification')}>
+          <ToggleItem icon={<Bell className="w-4 h-4" aria-hidden="true" />} label={t('accountSettings.togglePush')} value={notif.push} onChange={() => toggleNotif('push')} />
+          <ToggleItem icon={<Mail className="w-4 h-4" aria-hidden="true" />} label={t('accountSettings.toggleEmail')} value={notif.email} onChange={() => toggleNotif('email')} />
         </Section>
 
         <ThemeToggleSection />
 
 
-        <Section title="결제 및 배송">
+        <Section title={t('accountSettings.sectionPaymentShipping')}>
           <Link to="/mypage/addresses" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
             <MapPin className="w-4 h-4 text-white/55" aria-hidden="true" />
             <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.addresses')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
-          <Item icon={<CreditCard className="w-4 h-4" aria-hidden="true" />} label="결제 수단 관리" onClick={() => toast.info('준비 중인 기능입니다.')} badge="준비중" />
+          <Item icon={<CreditCard className="w-4 h-4" aria-hidden="true" />} label={t('accountSettings.paymentMethod')} onClick={() => toast.info(t('accountSettings.preparingFeature'))} badge={t('accountSettings.comingSoonBadge')} />
         </Section>
 
-        <Section title="기타">
+        <Section title={t('accountSettings.sectionOther')}>
           <div className="flex items-center gap-3 px-3.5 py-3">
             <Globe className="w-4 h-4 text-white/55" aria-hidden="true" />
             <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.language')}</span>
@@ -258,7 +259,7 @@ export default function AccountSettingsPage() {
           </Link>
         </Section>
 
-        <Section title="약관 및 정책">
+        <Section title={t('accountSettings.sectionPolicies')}>
           <Link to="/privacy" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
             <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.privacy')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
@@ -282,7 +283,7 @@ export default function AccountSettingsPage() {
             to="/account/delete-warning"
             className="block w-full py-3 px-4 text-center text-[13px] text-red-400 hover:text-red-500 border border-red-500/20 hover:border-red-500/40 rounded-xl transition-colors"
           >
-            회원 탈퇴
+            {t('accountSettings.deleteAccount')}
           </Link>
         </div>
       </main>
@@ -290,7 +291,7 @@ export default function AccountSettingsPage() {
       {/* 프로필 편집 모달 — stays white for readability */}
       {editModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setEditModal(false)} role="presentation">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="프로필 수정">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('accountSettings.modalEditAria')}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-gray-900">{t('accountSettings.editProfile')}</h3>
               <button onClick={() => setEditModal(false)}><X className="w-5 h-5 text-gray-400" /></button>
@@ -322,7 +323,7 @@ export default function AccountSettingsPage() {
             <div className="flex gap-3 mt-6">
               <button onClick={() => setEditModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors">{t('accountSettings.editCancel')}</button>
               <button onClick={saveProfile} disabled={editLoading} className="flex-1 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50">
-                {editLoading ? '저장 중...' : '저장'}
+                {editLoading ? t('accountSettings.saving') : t('accountSettings.save')}
               </button>
             </div>
           </div>
@@ -357,6 +358,7 @@ function Item({ icon, label, onClick, badge }: { icon: React.ReactNode; label: s
 //   (UserProfilePage 와 공유).
 
 function ToggleItem({ icon, label, value, onChange }: { icon: React.ReactNode; label: string; value: boolean; onChange: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-3 px-3.5 py-3" style={{ borderTop: 'var(--toggle-border, none)' }}>
       <span className="text-white/55">{icon}</span>
@@ -364,7 +366,7 @@ function ToggleItem({ icon, label, value, onChange }: { icon: React.ReactNode; l
       <button
         type="button"
         onClick={onChange}
-        aria-label={`${label} ${value ? '끄기' : '켜기'}`}
+        aria-label={value ? t('accountSettings.ariaToggleOff', { label }) : t('accountSettings.ariaToggleOn', { label })}
         aria-pressed={value}
         className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-pink-500' : 'bg-white/[0.15]'}`}
       >

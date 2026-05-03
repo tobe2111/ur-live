@@ -46,22 +46,21 @@ const EMPTY_FORM = {
   entry_method: 'free' as EntryMethod,
 }
 
-const ENTRY_METHOD_OPTIONS: { value: EntryMethod; label: string }[] = [
-  { value: 'free',       label: '자유 출입' },
-  { value: 'password',   label: '공동현관 비밀번호' },
-  { value: 'intercom',   label: '경비실 호출' },
-  { value: 'pickup_box', label: '무인택배함' },
-]
-
-const DELIVERY_NOTE_PRESETS = [
-  '문 앞에 놓아주세요',
-  '경비실에 맡겨주세요',
-  '부재 시 연락 부탁드려요',
-  '조심히 다뤄주세요 (깨짐 주의)',
-]
-
 export default function AddressManagementPage() {
   const { t } = useTranslation()
+  const ENTRY_METHOD_OPTIONS: { value: EntryMethod; label: string }[] = [
+    { value: 'free',       label: t('address.entryFree') },
+    { value: 'password',   label: t('address.entryPassword') },
+    { value: 'intercom',   label: t('address.entryIntercom') },
+    { value: 'pickup_box', label: t('address.entryPickupBox') },
+  ]
+
+  const DELIVERY_NOTE_PRESETS = [
+    t('address.msgPresetDoor'),
+    t('address.msgPresetGuard'),
+    t('address.msgPresetCall'),
+    t('address.msgPresetFragile'),
+  ]
   const navigate = useNavigate()
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,7 +74,7 @@ export default function AddressManagementPage() {
     // 동기 체크를 위해 getUserIdSync() 사용.
     const userId = getUserIdSync()
     if (!userId) {
-      toast.info('로그인이 필요합니다.')
+      toast.info(t('address.loginRequired'))
       navigate('/login')
       return
     }
@@ -125,7 +124,7 @@ export default function AddressManagementPage() {
       }
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to load addresses:', error)
-      toast.error('배송지 목록을 불러오는데 실패했습니다.')
+      toast.error(t('address.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -133,7 +132,7 @@ export default function AddressManagementPage() {
 
   async function handleSaveAddress() {
     if (!formData.recipient_name || !formData.phone || !formData.address) {
-      toast.error('모든 필수 항목을 입력해주세요.')
+      toast.error(t('address.requiredFields'))
       return
     }
 
@@ -153,18 +152,18 @@ export default function AddressManagementPage() {
       loadAddresses()
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to save address:', error)
-      toast.error('배송지 저장에 실패했습니다.')
+      toast.error(t('address.saveFailed'))
     }
   }
 
   async function handleDeleteAddress(id: number) {
-    if (!confirm('이 배송지를 삭제하시겠습니까?')) return
+    if (!confirm(t('address.deleteConfirm'))) return
     try {
       await api.delete(`/api/shipping-addresses/${id}`)
       loadAddresses()
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to delete address:', error)
-      toast.error('배송지 삭제에 실패했습니다.')
+      toast.error(t('address.deleteFailed'))
     }
   }
 
@@ -176,7 +175,7 @@ export default function AddressManagementPage() {
       loadAddresses()
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to set default:', error)
-      toast.error('기본 배송지 설정에 실패했습니다.')
+      toast.error(t('address.setDefaultFailed'))
     }
   }
 
@@ -222,13 +221,13 @@ export default function AddressManagementPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-20">
-      <SEO title="배송지 관리 - 유어딜" description="배송지를 추가하고 관리하세요" url="/mypage/addresses" noindex />
+      <SEO title={t('address.seoTitle')} description={t('address.seoDesc')} url="/mypage/addresses" noindex />
       {/* ✅ UX H15 FIX: Daum Postcode script는 useEffect에서 1회만 로드 */}
 
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
+          <button onClick={() => navigate(-1)} aria-label={t('address.back')} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">{t('address.title')}</h1>
@@ -320,14 +319,14 @@ export default function AddressManagementPage() {
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={() => openEditForm(address)}
-                      aria-label="배송지 수정"
+                      aria-label={t('address.ariaEdit')}
                       className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white transition-colors rounded-xl hover:bg-gray-50 dark:bg-[#121212]"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteAddress(address.id)}
-                      aria-label="배송지 삭제"
+                      aria-label={t('address.ariaDelete')}
                       className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors rounded-xl hover:bg-gray-50 dark:bg-[#121212]"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -344,7 +343,7 @@ export default function AddressManagementPage() {
       <CustomModal
         isOpen={showForm}
         onClose={closeForm}
-        title={editingId ? '배송지 수정' : '새 배송지 추가'}
+        title={editingId ? t('address.modalEditTitle') : t('address.modalAddTitle')}
         type="custom"
         maxWidth="lg"
       >
@@ -440,7 +439,7 @@ export default function AddressManagementPage() {
               {t('address.label')} <span className="text-gray-400 dark:text-gray-500 font-normal">{t('address.optional')}</span>
             </label>
             <div className="flex gap-1.5 mb-2">
-              {['집', '회사', '부모님댁'].map(preset => (
+              {[t('address.presetHome'), t('address.presetWork'), t('address.presetParents')].map(preset => (
                 <button
                   key={preset}
                   type="button"
@@ -561,7 +560,7 @@ export default function AddressManagementPage() {
               onClick={handleSaveAddress}
               className="flex-1 py-4 bg-pink-500 text-white rounded-2xl text-[16px] font-bold hover:bg-pink-600 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
-              {editingId ? '수정' : '저장'}
+              {editingId ? t('address.edit') : t('address.save')}
             </button>
             <button
               type="button"
