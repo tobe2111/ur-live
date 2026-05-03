@@ -26,6 +26,13 @@ bash scripts/check-schema-refs.sh || {
   exit 1
 }
 
+# 🛡️ 2026-05-03: 대시보드 dark: variants 절대 금지 (사용자 요구).
+echo "==> Pre-commit: 대시보드 테마 정책 검증..."
+bash scripts/check-dashboard-theme.sh || {
+  echo "❌ Commit blocked. 셀러/어드민/에이전시 대시보드는 dark: variant 사용 절대 금지."
+  exit 1
+}
+
 # 🚨 2026-04-27 (PWA 사고 재발 방지): Service Worker 등록 코드 차단
 echo "==> Pre-commit: Service Worker 등록 코드 검사..."
 bash scripts/check-no-sw-register.sh || {

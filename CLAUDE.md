@@ -197,12 +197,17 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
 
 > ⚠️ **2026-05-03 시도/롤백**: 글로벌 CSS override (`html:not(.dark)` selector)로 다크 페이지를 light 모드 시 invert 시도 → 사용자 신고 "모든 페이지 UI 깨짐" → 즉시 revert. 향후 "모든 페이지 토글" 구현은 페이지별 명시 `dark:` variant 추가 (글로벌 invert 금지).
 
-### 화이트(라이트) 테마 — 셀러/어드민/에이전시 대시보드 (테마 토글 무영향, 고정)
+### 화이트(라이트) 테마 — 셀러/어드민/에이전시 대시보드 (테마 토글 무영향, 고정 — 절대 변경 금지)
 - **해당**: 셀러(`/seller/*`), 어드민(`/admin/*`), 에이전시(`/agency/*`)
 - **배경**: SellerLayout/AdminLayout/AgencyLayout 이 처리 (`#F4F5F7`)
 - **텍스트**: `text-gray-900` (제목), `text-gray-700` (본문)
-- **사용자 다크 모드 토글 영향 없음** — 페이지/컴포넌트에 `dark:` variant 추가 절대 금지.
-  대시보드는 항상 화이트 (밝은 배경) 고정. PC 풀너비 (`EXCLUDE_MOBILE_LAYOUT`) 도 적용됨.
+- **🚨 절대 규칙 (사용자 명령, 위반 즉시 차단)**:
+  - 대시보드는 사용자 다크 모드 토글에 절대 영향받지 않아야 함
+  - 페이지/컴포넌트에 `dark:` variant 추가 절대 금지
+  - 향후 다크 모드가 다시 활성화되더라도 대시보드는 항상 화이트 유지
+  - `scripts/check-dashboard-theme.sh` (pre-commit hook) 가 위반 차단
+- **현재 상태**: dark 모드 자체가 비활성 (2026-05-03 정책 복귀, useTheme.applyToDocument no-op)
+  → 모든 페이지에서 dark class 미적용. dark: variants 가 코드에 있어도 매칭 안 됨.
 - ❌ 절대 금지: `text-white` (컬러 버튼 위 제외), `dark:` variants (`dark:bg-...` 등)
 
 ### 공통 규칙
