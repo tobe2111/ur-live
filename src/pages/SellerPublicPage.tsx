@@ -452,7 +452,7 @@ export default function SellerPublicPage() {
       </div>
 
       {/* 탭 콘텐츠 */}
-      <div className="px-4 py-5">
+      <div className="ur-content-wide px-4 lg:px-8 py-5">
         {/* ═══ 홈 탭 ═══ */}
         {tab === 'home' && (
           <div className="space-y-6">
@@ -508,7 +508,7 @@ export default function SellerPublicPage() {
                   <h2 className={`text-base font-bold ${T.text}`}>📹 {t('seller.publicPage.reviewVideos')}</h2>
                   {isOwner && <button onClick={() => navigate('/seller/shorts')} className="text-xs text-blue-500 flex items-center gap-0.5"><Plus className="w-3 h-3" /> {t('seller.publicPage.addVideo')}</button>}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                   {shorts.slice(0, 4).map(s => (
                     <div key={s.id} className="rounded-xl overflow-hidden bg-[#1A1A1A]">
                       {s.youtube_video_id ? (
@@ -550,7 +550,7 @@ export default function SellerPublicPage() {
                   <h2 className={`text-base font-bold ${T.text}`}>{t('seller.tabLive')} <span className="text-pink-500">{streams.length}</span></h2>
                   <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                   {recentStreams.slice(0, 4).map(s => (
                     <StreamCard key={s.id} stream={s} onClick={() => navigate(`/live/${s.id}`)} />
                   ))}
@@ -615,7 +615,7 @@ export default function SellerPublicPage() {
               {isOwner && <button onClick={() => navigate('/seller/shorts')} className="mt-3 text-sm text-blue-500 font-medium">{t('seller.publicPage.registerVideo')}</button>}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {shorts.map(s => (
                 <div key={s.id} className="rounded-xl overflow-hidden bg-[#1A1A1A]">
                   {s.youtube_video_id ? (
@@ -654,7 +654,7 @@ export default function SellerPublicPage() {
           streams.length === 0 ? (
             <div className="text-center py-16 text-gray-400 text-sm">{t('seller.publicPage.noLiveRecords')}</div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {streams.map(s => (
                 <StreamCard key={s.id} stream={s} onClick={() => navigate(`/live/${s.id}`)} />
               ))}
