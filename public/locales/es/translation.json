@@ -2045,6 +2045,18 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "wishlist": {
+    "title": "Lista de deseos",
+    "subtitleCount": "{{count}} guardados",
+    "emptyTitle": "No tienes productos guardados",
+    "emptyHint": "Guarda los productos que te gusten",
+    "continueShopping": "Seguir comprando",
+    "loadError": "No se pudo cargar la lista de deseos.",
+    "addCartError": "No se pudo añadir al carrito.",
+    "loading": "Cargando lista de deseos...",
+    "retry": "Reintentar",
+    "addToCart": "Añadir al carrito"
+  },
   "voucher": {
     "myVouchers": "Mis cupones",
     "empty": "Aún no tienes cupones",

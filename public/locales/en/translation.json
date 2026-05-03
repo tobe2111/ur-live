@@ -297,6 +297,18 @@
     "quantity": "Quantity",
     "seller": "Seller"
   },
+  "wishlist": {
+    "title": "Wishlist",
+    "subtitleCount": "{{count}} saved items",
+    "emptyTitle": "No saved items",
+    "emptyHint": "Save products you love",
+    "continueShopping": "Continue Shopping",
+    "loadError": "Failed to load wishlist.",
+    "addCartError": "Failed to add to cart.",
+    "loading": "Loading wishlist...",
+    "retry": "Retry",
+    "addToCart": "Add to Cart"
+  },
   "seller": {
     "dashboard": "Dashboard",
     "dashboardSubtitle": "Seller Dashboard — Sales / Orders / Live status",

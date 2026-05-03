@@ -297,6 +297,18 @@
     "quantity": "수량",
     "seller": "판매자"
   },
+  "wishlist": {
+    "title": "위시리스트",
+    "subtitleCount": "찜한 상품 {{count}}개",
+    "emptyTitle": "찜한 상품이 없습니다",
+    "emptyHint": "마음에 드는 상품을 찜해보세요",
+    "continueShopping": "쇼핑 계속하기",
+    "loadError": "위시리스트를 불러오는데 실패했습니다.",
+    "addCartError": "장바구니 추가에 실패했습니다.",
+    "loading": "위시리스트를 불러오는 중...",
+    "retry": "다시 시도",
+    "addToCart": "장바구니"
+  },
   "seller": {
     "dashboard": "대시보드",
     "dashboardSubtitle": "셀러 대시보드 — 매출 / 주문 / 라이브 현황",

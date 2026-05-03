@@ -66,7 +66,7 @@ const WishlistPage: React.FC = () => {
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
       if (import.meta.env.DEV) console.error('[Wishlist] Load error:', err)
-      setError(err_.response?.data?.error || '위시리스트를 불러오는데 실패했습니다.')
+      setError(err_.response?.data?.error || t('wishlist.loadError'))
     } finally {
       setLoading(false)
     }
@@ -98,7 +98,7 @@ const WishlistPage: React.FC = () => {
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       if (import.meta.env.DEV) console.error('[Wishlist] Add to cart error:', error)
-      toast.error(error_.response?.data?.error || '장바구니 추가에 실패했습니다.')
+      toast.error(error_.response?.data?.error || t('wishlist.addCartError'))
     }
   }
 
@@ -119,7 +119,7 @@ const WishlistPage: React.FC = () => {
       <WalletPageWrapper theme={theme} className="flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: tk.accent }} />
-          <p style={{ color: tk.secondary }}>위시리스트를 불러오는 중...</p>
+          <p style={{ color: tk.secondary }}>{t('wishlist.loading')}</p>
         </div>
       </WalletPageWrapper>
     )
@@ -135,7 +135,7 @@ const WishlistPage: React.FC = () => {
             className="px-6 py-2 rounded-xl text-white active:opacity-90"
             style={{ background: tk.accentGradient }}
           >
-            다시 시도
+            {t('wishlist.retry')}
           </button>
         </div>
       </WalletPageWrapper>
@@ -153,26 +153,26 @@ const WishlistPage: React.FC = () => {
           onClick={() => navigate(-1)}
           className="w-9 h-9 flex items-center justify-center rounded-full"
           style={{ background: tk.fillSoft, color: tk.label }}
-          aria-label="뒤로가기"
+          aria-label={t('common.back')}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
 
-      <LargeTitle theme={theme} title="위시리스트" subtitle={`찜한 상품 ${wishlists.length}개`} />
+      <LargeTitle theme={theme} title={t('wishlist.title')} subtitle={t('wishlist.subtitleCount', { count: wishlists.length })} />
 
       <div className="ur-content-wide px-4 lg:px-8 pb-2">
         {wishlists.length === 0 ? (
           <div className="rounded-2xl p-12 text-center" style={{ background: tk.card }}>
             <Heart className="w-16 h-16 mx-auto mb-4" style={{ color: tk.tertiary }} />
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: tk.label, marginBottom: 6 }}>찜한 상품이 없습니다</h2>
-            <p className="mb-6" style={{ fontSize: 13, color: tk.secondary }}>마음에 드는 상품을 찜해보세요</p>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: tk.label, marginBottom: 6 }}>{t('wishlist.emptyTitle')}</h2>
+            <p className="mb-6" style={{ fontSize: 13, color: tk.secondary }}>{t('wishlist.emptyHint')}</p>
             <button
               onClick={() => navigate('/')}
               className="px-6 py-3 rounded-xl text-white active:opacity-90"
               style={{ background: tk.accentGradient, fontSize: 14, fontWeight: 700 }}
             >
-              쇼핑 계속하기
+              {t('wishlist.continueShopping')}
             </button>
           </div>
         ) : (
@@ -209,7 +209,7 @@ const WishlistPage: React.FC = () => {
 
                   {item.stock === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-                      <span className="px-4 py-2 rounded-full font-semibold text-sm" style={{ background: tk.label, color: tk.bg }}>품절</span>
+                      <span className="px-4 py-2 rounded-full font-semibold text-sm" style={{ background: tk.label, color: tk.bg }}>{t('product.outOfStock')}</span>
                     </div>
                   )}
 
@@ -255,7 +255,7 @@ const WishlistPage: React.FC = () => {
                       color: item.stock === 0 ? tk.tertiary : tk.bg,
                     }}
                   >
-                    {item.stock === 0 ? '품절' : '장바구니'}
+                    {item.stock === 0 ? t('product.outOfStock') : t('wishlist.addToCart')}
                   </button>
                 </div>
               </div>

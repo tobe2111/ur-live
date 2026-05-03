@@ -297,6 +297,18 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "wishlist": {
+    "title": "ウィッシュリスト",
+    "subtitleCount": "お気に入り商品 {{count}}件",
+    "emptyTitle": "お気に入り商品がありません",
+    "emptyHint": "気になる商品をお気に入りに追加してみよう",
+    "continueShopping": "ショッピングを続ける",
+    "loadError": "ウィッシュリストの読み込みに失敗しました。",
+    "addCartError": "カートへの追加に失敗しました。",
+    "loading": "ウィッシュリストを読み込み中...",
+    "retry": "再試行",
+    "addToCart": "カート"
+  },
   "seller": {
     "dashboard": "ダッシュボード",
     "dashboardSubtitle": "セラーダッシュボード — 売上 / 注文 / ライブ状況",

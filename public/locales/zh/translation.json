@@ -297,6 +297,18 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "wishlist": {
+    "title": "心愿单",
+    "subtitleCount": "已收藏 {{count}} 件",
+    "emptyTitle": "心愿单为空",
+    "emptyHint": "收藏喜欢的商品",
+    "continueShopping": "继续购物",
+    "loadError": "无法加载心愿单。",
+    "addCartError": "加入购物车失败。",
+    "loading": "正在加载心愿单...",
+    "retry": "重试",
+    "addToCart": "加入购物车"
+  },
   "seller": {
     "dashboard": "仪表盘",
     "dashboardSubtitle": "卖家仪表盘 — 销售 / 订单 / 直播状态",

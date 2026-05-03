@@ -2045,6 +2045,18 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "wishlist": {
+    "title": "Liste de souhaits",
+    "subtitleCount": "{{count}} articles enregistrés",
+    "emptyTitle": "Aucun article enregistré",
+    "emptyHint": "Enregistrez les produits qui vous plaisent",
+    "continueShopping": "Continuer mes achats",
+    "loadError": "Impossible de charger la liste de souhaits.",
+    "addCartError": "Échec de l'ajout au panier.",
+    "loading": "Chargement de la liste de souhaits...",
+    "retry": "Réessayer",
+    "addToCart": "Ajouter au panier"
+  },
   "voucher": {
     "myVouchers": "Mes coupons",
     "empty": "Aucun coupon pour le moment",
