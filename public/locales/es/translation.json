@@ -2285,5 +2285,15 @@
     "paymentAmount": "Importe",
     "demoMode": "Modo demostración",
     "demoModeDesc": "No se realizó un pago real. Solo para pruebas."
+  },
+  "myCoupons": {
+    "title": "Mis cupones",
+    "empty": "No hay cupones disponibles",
+    "emptySub": "Consigue cupones participando en directos y eventos"
+  },
+  "myReviews": {
+    "title": "Escribir reseña",
+    "empty": "Sin reseñas pendientes",
+    "emptySub": "Podrás escribir reseñas después de la entrega"
   }
 }

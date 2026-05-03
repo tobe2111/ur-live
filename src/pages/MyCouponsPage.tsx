@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Ticket, AlertCircle } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
@@ -18,6 +19,7 @@ interface Coupon {
 }
 
 export default function MyCouponsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [coupons, setCoupons] = useState<Coupon[]>([])
   const [loading, setLoading] = useState(true)
@@ -86,7 +88,7 @@ export default function MyCouponsPage() {
           >
             <ArrowLeft className="h-5 w-5 text-gray-900" />
           </button>
-          <h1 className="text-[15px] font-bold text-gray-900">내 쿠폰</h1>
+          <h1 className="text-[15px] font-bold text-gray-900">{t('myCoupons.title')}</h1>
           <div className="w-9" />
         </div>
       </header>
@@ -112,8 +114,8 @@ export default function MyCouponsPage() {
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5">
               <Ticket className="h-10 w-10 text-gray-400" strokeWidth={1.5} />
             </div>
-            <h2 className="text-[16px] font-bold text-gray-900 mb-1.5">사용 가능한 쿠폰이 없습니다</h2>
-            <p className="text-[13px] text-gray-500">라이브 방송·이벤트 참여로 쿠폰을 받아보세요</p>
+            <h2 className="text-[16px] font-bold text-gray-900 mb-1.5">{t('myCoupons.empty')}</h2>
+            <p className="text-[13px] text-gray-500">{t('myCoupons.emptySub')}</p>
           </div>
         ) : (
           <div className="space-y-3">

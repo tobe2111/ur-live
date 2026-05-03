@@ -2285,5 +2285,15 @@
     "paymentAmount": "付款金额",
     "demoMode": "演示模式",
     "demoModeDesc": "未进行实际付款。仅用于测试目的。"
+  },
+  "myCoupons": {
+    "title": "我的优惠券",
+    "empty": "没有可用的优惠券",
+    "emptySub": "通过参与直播和活动获得优惠券"
+  },
+  "myReviews": {
+    "title": "撰写评论",
+    "empty": "没有可撰写的评论",
+    "emptySub": "商品送达后即可撰写评论"
   }
 }

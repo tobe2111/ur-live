@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Star, AlertCircle, MessageSquare } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
@@ -7,6 +8,7 @@ import { requireLogin, isLoggedInSync } from '@/utils/auth'
 import type { Order } from '@/types/order'
 
 export default function MyReviewsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,7 +63,7 @@ export default function MyReviewsPage() {
           >
             <ArrowLeft className="h-5 w-5 text-gray-900" />
           </button>
-          <h1 className="text-[15px] font-bold text-gray-900">리뷰 작성</h1>
+          <h1 className="text-[15px] font-bold text-gray-900">{t('myReviews.title')}</h1>
           <div className="w-9" />
         </div>
       </header>
@@ -87,8 +89,8 @@ export default function MyReviewsPage() {
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5">
               <MessageSquare className="h-10 w-10 text-gray-400" strokeWidth={1.5} />
             </div>
-            <h2 className="text-[16px] font-bold text-gray-900 mb-1.5">작성 가능한 리뷰가 없습니다</h2>
-            <p className="text-[13px] text-gray-500">배송 완료된 상품에 리뷰를 남길 수 있어요</p>
+            <h2 className="text-[16px] font-bold text-gray-900 mb-1.5">{t('myReviews.empty')}</h2>
+            <p className="text-[13px] text-gray-500">{t('myReviews.emptySub')}</p>
           </div>
         ) : (
           <div className="space-y-3">

@@ -2285,5 +2285,15 @@
     "paymentAmount": "Montant",
     "demoMode": "Mode démo",
     "demoModeDesc": "Aucun paiement réel n'a été effectué. À des fins de test uniquement."
+  },
+  "myCoupons": {
+    "title": "Mes coupons",
+    "empty": "Aucun coupon disponible",
+    "emptySub": "Obtenez des coupons en participant aux directs et événements"
+  },
+  "myReviews": {
+    "title": "Rédiger un avis",
+    "empty": "Aucun avis à rédiger",
+    "emptySub": "Vous pouvez rédiger un avis après la livraison"
   }
 }

@@ -2285,5 +2285,15 @@
     "paymentAmount": "Amount",
     "demoMode": "Demo Mode",
     "demoModeDesc": "No real payment was made. For testing purposes only."
+  },
+  "myCoupons": {
+    "title": "My Coupons",
+    "empty": "No coupons available",
+    "emptySub": "Get coupons by joining live streams and events"
+  },
+  "myReviews": {
+    "title": "Write a Review",
+    "empty": "No reviews to write",
+    "emptySub": "You can review products after delivery"
   }
 }

@@ -2285,5 +2285,15 @@
     "paymentAmount": "결제 금액",
     "demoMode": "데모 모드",
     "demoModeDesc": "실제 결제가 진행되지 않았습니다. 테스트 목적으로만 사용하세요."
+  },
+  "myCoupons": {
+    "title": "내 쿠폰",
+    "empty": "사용 가능한 쿠폰이 없습니다",
+    "emptySub": "라이브 방송·이벤트 참여로 쿠폰을 받아보세요"
+  },
+  "myReviews": {
+    "title": "리뷰 작성",
+    "empty": "작성 가능한 리뷰가 없습니다",
+    "emptySub": "배송 완료된 상품에 리뷰를 남길 수 있어요"
   }
 }
