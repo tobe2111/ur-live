@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, BarChart2, Users, TrendingUp } from 'lucide-react'
+import TurnstileWidget from '@/components/auth/TurnstileWidget'
 
 export default function AgencyLoginPage() {
   const { t } = useTranslation()
@@ -13,6 +14,8 @@ export default function AgencyLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
+  // 🛡️ 2026-05-03: Turnstile token (분산 봇 brute-force 방어)
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
 
   // 🛡️ 2026-04-29: 401 인터셉터가 ?error=session_expired 로 redirect 시 toast 표시
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function AgencyLoginPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await api.post('/api/agency/login', formData)
+      const res = await api.post('/api/agency/login', { ...formData, turnstile_token: turnstileToken })
       if (res.data.success) {
         const { token, agency } = res.data
         localStorage.setItem('agency_token', token)
@@ -159,6 +162,9 @@ export default function AgencyLoginPage() {
                   {t('auth.forgotPassword')}
                 </Link>
               </div>
+
+              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge */}
+              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
 
               <button
                 type="submit"

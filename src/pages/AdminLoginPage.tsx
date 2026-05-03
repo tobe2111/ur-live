@@ -6,6 +6,7 @@ import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Shield, BarChart2, Settings } from 'lucide-react'
+import TurnstileWidget from '@/components/auth/TurnstileWidget'
 
 export default function AdminLoginPage() {
   const { t } = useTranslation()
@@ -13,6 +14,8 @@ export default function AdminLoginPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // 🛡️ 2026-05-03: Turnstile token (TURNSTILE_SITE_KEY 미설정 시 'disabled' 자동 통과)
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -62,7 +65,8 @@ export default function AdminLoginPage() {
       // JWT-based Login (NO Firebase!)
       const response = await api.post('/api/admin/login', {
         email,
-        password
+        password,
+        turnstile_token: turnstileToken,
       })
 
       if (response.data.success) {
@@ -223,6 +227,9 @@ export default function AdminLoginPage() {
                   {t('admin.login.rememberEmail')}
                 </label>
               </div>
+
+              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge (VITE_TURNSTILE_SITE_KEY 미설정 시 자동 통과) */}
+              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
 
               <button
                 type="submit"

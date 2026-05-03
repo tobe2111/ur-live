@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password';
 import { sendEmail } from '@/services/email';
 import type { AuthResponse } from '../types';
@@ -30,6 +31,7 @@ type Bindings = {
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
   FRONTEND_URL?: string;
+  TURNSTILE_SECRET?: string;
 };
 
 /**
@@ -155,15 +157,27 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     }
 
     // Request body 파싱
-    const body = await c.req.json<SellerLoginRequest>();
+    const body = await c.req.json<SellerLoginRequest & { turnstile_token?: string }>();
     const { email, password } = body;
-    
+
     // Validation
     if (!email || !password) {
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: '이메일과 비밀번호를 입력해주세요.' 
+      return c.json<AuthResponse>({
+        success: false,
+        error: '이메일과 비밀번호를 입력해주세요.'
       }, 400);
+    }
+
+    // 🛡️ 2026-05-03: Turnstile (분산 봇 brute-force 방어). TURNSTILE_SECRET 미설정 시 fail-open.
+    {
+      const ip = c.req.header('cf-connecting-ip') || undefined;
+      const ok = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip);
+      if (!ok) {
+        return c.json<AuthResponse>({
+          success: false,
+          error: '봇 검증 실패. 페이지를 새로고침 후 다시 시도해주세요.'
+        }, 403);
+      }
     }
     
     // 누락 가능한 컬럼 자동 추가 (idempotent — 이미 있으면 throw → catch)

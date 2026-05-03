@@ -21,6 +21,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { sign, verify } from 'hono/jwt'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { verifyTurnstile } from '@/worker/utils/turnstile'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import type { Context, Next } from 'hono'
 import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password'
@@ -358,8 +359,18 @@ app.get('/my-agency-status', async (c) => {
 // ── POST /login ───────────────────────────────────────────────
 app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSec: 300 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
-  const { email, password } = await c.req.json<{ email: string; password: string }>()
+  const body = await c.req.json<{ email: string; password: string; turnstile_token?: string }>()
+  const { email, password } = body
   if (!email || !password) return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400)
+
+  // 🛡️ 2026-05-03: Turnstile (분산 봇 brute-force 방어). TURNSTILE_SECRET 미설정 시 fail-open.
+  {
+    const ip = c.req.header('cf-connecting-ip') || undefined
+    const ok = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip)
+    if (!ok) {
+      return c.json({ success: false, error: '봇 검증 실패. 페이지를 새로고침 후 다시 시도해주세요.' }, 403)
+    }
+  }
 
   const agency = await c.env.DB.prepare(
     'SELECT id, name, contact_name, email, password_hash, status FROM agencies WHERE email = ?'

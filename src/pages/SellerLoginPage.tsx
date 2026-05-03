@@ -6,6 +6,7 @@ import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Play, Package, TrendingUp, ArrowRight } from 'lucide-react'
+import TurnstileWidget from '@/components/auth/TurnstileWidget'
 
 export default function SellerLoginPage() {
   const { t } = useTranslation()
@@ -16,6 +17,8 @@ export default function SellerLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
+  // 🛡️ 2026-05-03: Turnstile token (분산 봇 brute-force 방어)
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
 
   useEffect(() => {
     const saved = localStorage.getItem('seller_remember_email')
@@ -40,6 +43,7 @@ export default function SellerLoginPage() {
       const response = await api.post('/api/seller/login', {
         email: formData.email,
         password: formData.password,
+        turnstile_token: turnstileToken,
       })
       if (response.data.success) {
         if (rememberMe) {
@@ -231,6 +235,9 @@ export default function SellerLoginPage() {
                   {t('auth.forgotPassword')}
                 </Link>
               </div>
+
+              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge */}
+              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
 
               {/* Login button */}
               <button

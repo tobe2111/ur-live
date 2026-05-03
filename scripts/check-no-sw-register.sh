@@ -38,10 +38,17 @@ if [ -n "$PATTERN_WB" ]; then
   ERRORS=$((ERRORS + 1))
 fi
 
-# 3. navigator.serviceWorker.register 검출 (예외: main.tsx 의 unregister 만 허용)
-PATTERN_REG=$(grep -rEn "navigator\.serviceWorker\.register\(" src/ 2>/dev/null | grep -v "scripts/check-no-sw-register.sh" || true)
+# 3. navigator.serviceWorker.register 검출
+#    예외 (allowlist): 의도적으로 제한된 SW
+#      - PushNotificationSetup.tsx (/push-sw.js — Web Push 알림 전용)
+#      - main.tsx (/pwa-sw.js — 캐싱만, navigateFallback 없음 ✓ OAuth 안전)
+PATTERN_REG=$(grep -rEn "navigator\.serviceWorker\.register\(" src/ 2>/dev/null \
+  | grep -v "scripts/check-no-sw-register.sh" \
+  | grep -v "PushNotificationSetup\.tsx" \
+  | grep -v "main\.tsx" \
+  || true)
 if [ -n "$PATTERN_REG" ]; then
-  echo "❌ navigator.serviceWorker.register() 호출 발견"
+  echo "❌ navigator.serviceWorker.register() 호출 발견 (허용 리스트 외부)"
   echo "$PATTERN_REG"
   ERRORS=$((ERRORS + 1))
 fi

@@ -13,6 +13,7 @@ import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
 import { maskEmail } from '@/lib/mask';
+import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
 
 /**
@@ -39,6 +40,7 @@ async function ensureAuthRefreshTokensTable(DB: D1Database) {
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
+  TURNSTILE_SECRET?: string;
 };
 
 type AdminLoginRequest = {
@@ -54,19 +56,28 @@ export const adminRoutes = new Hono<{ Bindings: Bindings }>();
  */
 adminRoutes.post('/login', cors(), async (c) => {
   const { DB, JWT_SECRET } = c.env;
-  
+
   try {
     if (!JWT_SECRET) {
       console.error('[Admin Login] JWT_SECRET not configured');
       return c.json({ success: false, error: 'Server configuration error' }, 500);
     }
 
-    const body = await c.req.json<AdminLoginRequest>();
+    const body = await c.req.json<AdminLoginRequest & { turnstile_token?: string }>();
     const { email, password } = body;
-    
+
     const validationErrors = validateRequired(body, ['email', 'password']);
     if (validationErrors.length > 0) {
       return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400);
+    }
+
+    // 🛡️ 2026-05-03: Turnstile (분산 봇 brute-force 방어). TURNSTILE_SECRET 미설정 시 fail-open.
+    {
+      const ip = c.req.header('cf-connecting-ip') || undefined;
+      const ok = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip);
+      if (!ok) {
+        return c.json({ success: false, error: '봇 검증 실패. 페이지를 새로고침 후 다시 시도해주세요.' }, 403);
+      }
     }
 
     // 누락 가능한 컬럼 자동 추가 (idempotent)
