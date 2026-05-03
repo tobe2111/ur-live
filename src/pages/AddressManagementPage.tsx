@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import {
@@ -60,6 +61,7 @@ const DELIVERY_NOTE_PRESETS = [
 ]
 
 export default function AddressManagementPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [loading, setLoading] = useState(true)
@@ -229,7 +231,7 @@ export default function AddressManagementPage() {
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">배송지 관리</h1>
+          <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">{t('address.title')}</h1>
           <div className="w-6" />
         </div>
       </div>
@@ -241,15 +243,15 @@ export default function AddressManagementPage() {
           className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212] py-4 text-[15px] font-semibold text-gray-500 dark:text-gray-400 transition-all hover:border-pink-500/50 hover:text-pink-500 mb-5 active:scale-[0.98] touch-manipulation"
         >
           <Plus className="w-5 h-5" />
-          <span>새 배송지 추가</span>
+          <span>{t('address.addNew')}</span>
         </button>
 
         {/* 배송지 목록 */}
         {addresses.length === 0 ? (
           <div className="text-center py-16">
             <MapPin className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-[15px] text-gray-900 dark:text-white">등록된 배송지가 없습니다.</p>
-            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">배송지를 추가해주세요.</p>
+            <p className="text-[15px] text-gray-900 dark:text-white">{t('address.empty')}</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">{t('address.emptySub')}</p>
           </div>
         ) : (
           <div className="space-y-3">

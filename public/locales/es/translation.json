@@ -2214,5 +2214,11 @@
       "price": "Precio más bajo",
       "rating": "Por valoración"
     }
+  },
+  "address": {
+    "title": "Direcciones de envío",
+    "addNew": "Añadir dirección",
+    "empty": "No hay direcciones guardadas.",
+    "emptySub": "Por favor, añade una dirección de envío."
   }
 }

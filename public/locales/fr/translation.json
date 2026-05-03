@@ -2214,5 +2214,11 @@
       "price": "Prix croissant",
       "rating": "Par évaluation"
     }
+  },
+  "address": {
+    "title": "Adresses de livraison",
+    "addNew": "Ajouter une adresse",
+    "empty": "Aucune adresse enregistrée.",
+    "emptySub": "Veuillez ajouter une adresse de livraison."
   }
 }

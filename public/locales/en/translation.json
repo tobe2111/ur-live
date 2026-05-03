@@ -2214,5 +2214,11 @@
       "price": "Lowest price",
       "rating": "By rating"
     }
+  },
+  "address": {
+    "title": "Shipping Addresses",
+    "addNew": "Add new address",
+    "empty": "No saved addresses.",
+    "emptySub": "Please add a shipping address."
   }
 }
