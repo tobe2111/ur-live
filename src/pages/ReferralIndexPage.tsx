@@ -10,7 +10,7 @@ export default function ReferralIndexPage() {
       <SEO title="친구초대 - 유어딜" description="친구와 함께 공동구매로 더 저렴하게 쇼핑하세요" url="/referral" />
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
-        <div className="mx-auto max-w-md lg:max-w-2xl flex items-center justify-between px-4 lg:px-8 h-[52px]">
+        <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button
             onClick={() => navigate(-1)}
             className="w-9 h-9 flex items-center justify-center"
@@ -23,7 +23,7 @@ export default function ReferralIndexPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-md lg:max-w-2xl px-4 lg:px-8 pb-20">
+      <main className="ur-content-narrow px-4 lg:px-8 pb-20">
         {/* Hero */}
         <section className="pt-6 pb-8 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 mb-4">

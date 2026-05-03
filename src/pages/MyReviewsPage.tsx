@@ -55,7 +55,7 @@ export default function MyReviewsPage() {
       <SEO title="리뷰 작성 - 유어딜" description="배송 완료된 상품의 리뷰를 작성하세요" url="/my-reviews" noindex />
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
-        <div className="mx-auto max-w-md flex items-center justify-between px-4 h-[52px]">
+        <div className="ur-content-narrow flex items-center justify-between px-4 h-[52px]">
           <button
             onClick={() => navigate(-1)}
             className="w-9 h-9 flex items-center justify-center"
@@ -68,7 +68,7 @@ export default function MyReviewsPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-md px-4 py-4 pb-20">
+      <main className="ur-content-narrow px-4 py-4 pb-20">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />

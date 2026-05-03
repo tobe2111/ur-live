@@ -302,7 +302,7 @@ export default function AccountDeleteWarningPage() {
           WebkitBackdropFilter: 'blur(20px)',
         }}
       >
-        <div className="mx-auto max-w-md space-y-2">
+        <div className="ur-content-narrow space-y-2">
           <button
             type="button"
             onClick={handleProceedToDelete}

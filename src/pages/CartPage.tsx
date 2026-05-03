@@ -34,7 +34,7 @@ export default function CartPage() {
       <div className="flex flex-col min-h-screen bg-white dark:bg-[#0A0A0A]">
         <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" noindex />
         <div className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
-          <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
+          <div className="ur-content-narrow flex items-center justify-between px-4 py-3">
             <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
               <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
             </button>
@@ -400,7 +400,7 @@ function CartPageContent() {
         <EmptyCart />
       ) : (
         <>
-          <main className="mx-auto max-w-md lg:max-w-2xl w-full flex-1 pb-32">
+          <main className="ur-content-narrow w-full flex-1 pb-32">
             {/* v4 Seller Group Cards */}
             {Object.values(sellerGroups).map((group) => {
               const groupAllSelected = group.items.every(item => selectedIds.has(item.id))
@@ -516,7 +516,7 @@ function CartPageContent() {
 
           {/* v4 Bottom fixed CTA: "N원 주문하기" (bg-gray-900 text-white rounded-xl) */}
           <div className="fixed bottom-0 left-0 right-0 z-20 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] safe-bottom">
-            <div className="mx-auto max-w-md px-4 py-3">
+            <div className="ur-content-narrow px-4 py-3">
               <button
                 onClick={handleCheckout}
                 disabled={selectedIds.size === 0 || updating}

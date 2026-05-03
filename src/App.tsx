@@ -410,7 +410,10 @@ function AppContent() {
       </a>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
-          <div className={fullScreen ? 'min-h-dvh' : 'max-w-[430px] mx-auto bg-white min-h-dvh'}>
+          {/* 📐 2026-05-03: PC 풀너비 활성화 — 모바일 폭 강제 제거.
+              각 페이지가 자체 `ur-content-narrow/medium/wide/full` 토큰으로 max-width 관리.
+              MobileAppLayout 의 `data-mobile-only="true"` (라이브/쇼츠) 페이지는 여전히 430px 액자 유지. */}
+          <div className="min-h-dvh">
           <div className="flex-1">
           <InAppBrowserBanner />
           <PWAInstallPrompt />
