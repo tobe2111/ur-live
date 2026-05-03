@@ -111,7 +111,7 @@ export default function StoreStatsPage() {
   return (
     <div className="min-h-screen bg-gray-50 px-5 py-8">
       <SEO title={`${stats.restaurant_name || '식당'} 통계`} description={`${stats.product_name} 공동구매 식당 통계`} url={`/store/stats/${productId ?? ''}`} noindex />
-      <div className="max-w-md mx-auto">
+      <div className="ur-content-narrow">
         {/* 헤더 */}
         <div className="text-center mb-6">
           <h1 className="text-xl font-extrabold text-gray-900">{stats.restaurant_name || '식당'}</h1>

@@ -100,7 +100,7 @@ export default function MyGroupBuysPage() {
       />
       {/* 헤더 */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between h-14 px-4">
+        <div className="ur-content-narrow flex items-center justify-between h-14 px-4 lg:px-8">
           <button onClick={() => navigate(-1)} className="flex items-center text-gray-700 hover:text-gray-900">
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -129,7 +129,7 @@ export default function MyGroupBuysPage() {
         ))}
       </div>
 
-      <main className="px-4 py-4 pb-24">
+      <main className="ur-content-narrow px-4 lg:px-8 py-4 pb-24">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
