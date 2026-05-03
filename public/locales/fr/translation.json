@@ -1989,7 +1989,16 @@
     "shippingFee": "Frais de livraison",
     "free": "Gratuit",
     "selectProductsFirst": "Veuillez sélectionner des articles",
-    "placeOrder": "Commander {{amount}} KRW"
+    "placeOrder": "Commander {{amount}} KRW",
+    "docTitle": "Panier - YourDeal",
+    "seoTitle": "Panier - YourDeal",
+    "seoDesc": "Vérifiez les articles de votre panier et payez",
+    "qtyChangeFailedTitle": "Échec du changement de quantité",
+    "optionChangedMsg": "Option modifiée.",
+    "changeCompleteTitle": "Mis à jour",
+    "changeFailedTitle": "Échec de la mise à jour",
+    "fallbackSeller": "Vendeur",
+    "alertTitle": "Avis"
   },
   "payment": {
     "agreeToTerms": "I agree to proceed with payment",
@@ -2760,11 +2769,40 @@
   "myCoupons": {
     "title": "Mes coupons",
     "empty": "Aucun coupon disponible",
-    "emptySub": "Obtenez des coupons en participant aux directs et événements"
+    "emptySub": "Obtenez des coupons en participant aux directs et événements",
+    "loginRequired": "Connexion requise.",
+    "loadFailed": "Impossible de charger les coupons.",
+    "sessionExpired": "Session expirée. Reconnectez-vous.",
+    "always": "Toujours",
+    "expired": "Expiré",
+    "expiresAtDays": "Jusqu'au {{date}} ({{days}}j restants)",
+    "expiresAt": "Jusqu'au {{date}}",
+    "seoTitle": "Mes coupons - YourDeal",
+    "seoDesc": "Consultez vos coupons actifs",
+    "back": "Retour",
+    "retry": "Réessayer",
+    "available": "{{count}} disponibles",
+    "labelDiscountRate": "Réduction",
+    "labelDiscount": "Off",
+    "labelMaxDiscount": "Max {{amount}} KRW",
+    "minOrder": "Commande min {{amount}} KRW",
+    "footerNote": "Les coupons peuvent être sélectionnés et appliqués au paiement"
   },
   "myReviews": {
     "title": "Rédiger un avis",
     "empty": "Aucun avis à rédiger",
-    "emptySub": "Vous pouvez rédiger un avis après la livraison"
+    "emptySub": "Vous pouvez rédiger un avis après la livraison",
+    "loginRequired": "Connexion requise.",
+    "loadFailed": "Impossible de charger les commandes.",
+    "sessionExpired": "Session expirée. Reconnectez-vous.",
+    "seoTitle": "Rédiger un avis - YourDeal",
+    "seoDesc": "Rédigez des avis pour vos articles livrés",
+    "back": "Retour",
+    "retry": "Réessayer",
+    "deliveredCount": "Livrés : {{count}}",
+    "rewardHint": "· Gagnez 100~500 deal pour chaque avis",
+    "purchaseDate": "Acheté {{date}}",
+    "optionLabel": "Option · {{value}}",
+    "writeReview": "Rédiger un avis"
   }
 }

@@ -27,7 +27,7 @@ export default function MyCouponsPage() {
 
   useEffect(() => {
     if (!isLoggedInSync()) {
-      requireLogin(navigate, '로그인이 필요합니다.')
+      requireLogin(navigate, t('myCoupons.loginRequired'))
       return
     }
     loadCoupons()
@@ -42,13 +42,13 @@ export default function MyCouponsPage() {
       if (res.data.success) {
         setCoupons(Array.isArray(res.data.data) ? res.data.data : [])
       } else {
-        setError(res.data.error || '쿠폰을 불러올 수 없습니다.')
+        setError(res.data.error || t('myCoupons.loadFailed'))
       }
     } catch (err: any) {
       if (err?.response?.status === 401) {
-        setError('세션이 만료되었습니다. 다시 로그인해주세요.')
+        setError(t('myCoupons.sessionExpired'))
       } else {
-        setError('쿠폰을 불러올 수 없습니다.')
+        setError(t('myCoupons.loadFailed'))
       }
     } finally {
       setLoading(false)
@@ -63,20 +63,20 @@ export default function MyCouponsPage() {
   }
 
   function formatExpiry(expires_at: string | null) {
-    if (!expires_at) return '상시'
+    if (!expires_at) return t('myCoupons.always')
     const d = new Date(expires_at)
     const now = new Date()
     const diffMs = d.getTime() - now.getTime()
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
     const dateStr = d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-    if (diffDays <= 0) return `만료됨`
-    if (diffDays <= 7) return `${dateStr}까지 (${diffDays}일 남음)`
-    return `${dateStr}까지`
+    if (diffDays <= 0) return t('myCoupons.expired')
+    if (diffDays <= 7) return t('myCoupons.expiresAtDays', { date: dateStr, days: diffDays })
+    return t('myCoupons.expiresAt', { date: dateStr })
   }
 
   return (
     <div className="min-h-screen bg-white">
-      <SEO title="내 쿠폰 - 유어딜" description="보유 중인 쿠폰을 확인하세요" url="/my-coupons" noindex />
+      <SEO title={t('myCoupons.seoTitle')} description={t('myCoupons.seoDesc')} url="/my-coupons" noindex />
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
@@ -84,7 +84,7 @@ export default function MyCouponsPage() {
           <button
             onClick={() => navigate(-1)}
             className="w-9 h-9 flex items-center justify-center"
-            aria-label="뒤로가기"
+            aria-label={t('myCoupons.back')}
           >
             <ArrowLeft className="h-5 w-5 text-gray-900" />
           </button>
@@ -106,7 +106,7 @@ export default function MyCouponsPage() {
               onClick={loadCoupons}
               className="px-5 py-2 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
             >
-              다시 시도
+              {t('myCoupons.retry')}
             </button>
           </div>
         ) : coupons.length === 0 ? (
@@ -119,10 +119,14 @@ export default function MyCouponsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-[12px] text-gray-500 mb-2">사용 가능 {coupons.length}장</p>
+            <p className="text-[12px] text-gray-500 mb-2">{t('myCoupons.available', { count: coupons.length })}</p>
             {coupons.map(c => {
               const expiry = formatExpiry(c.expires_at)
-              const isUrgent = expiry.includes('일 남음')
+              const isUrgent = !!c.expires_at && (() => {
+                const d = new Date(c.expires_at!)
+                const diffDays = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                return diffDays > 0 && diffDays <= 7
+              })()
               return (
                 <article
                   key={c.id}
@@ -132,13 +136,13 @@ export default function MyCouponsPage() {
                     {/* 할인 금액 */}
                     <div className="flex flex-col items-center justify-center px-5 py-4 bg-gradient-to-br from-pink-500 to-rose-500 text-white min-w-[100px]">
                       <p className="text-[10px] font-bold tracking-wide opacity-90">
-                        {c.type === 'percent' ? '할인율' : '할인'}
+                        {c.type === 'percent' ? t('myCoupons.labelDiscountRate') : t('myCoupons.labelDiscount')}
                       </p>
                       <p className="text-[22px] font-extrabold leading-tight mt-0.5">
                         {formatDiscount(c)}
                       </p>
                       {c.type === 'percent' && c.max_discount && (
-                        <p className="text-[9px] opacity-80 mt-0.5">최대 {formatNumber(c.max_discount)}원</p>
+                        <p className="text-[9px] opacity-80 mt-0.5">{t('myCoupons.labelMaxDiscount', { amount: formatNumber(c.max_discount) })}</p>
                       )}
                     </div>
                     {/* Notched divider */}
@@ -154,7 +158,7 @@ export default function MyCouponsPage() {
                       <div className="mt-1.5 space-y-0.5">
                         {c.min_order_amount > 0 && (
                           <p className="text-[11px] text-gray-500">
-                            {formatNumber(c.min_order_amount)}원 이상 결제 시
+                            {t('myCoupons.minOrder', { amount: formatNumber(c.min_order_amount) })}
                           </p>
                         )}
                         <p className={`text-[11px] font-semibold ${isUrgent ? 'text-red-500' : 'text-gray-500'}`}>
@@ -171,7 +175,7 @@ export default function MyCouponsPage() {
             })}
 
             <p className="text-[11px] text-gray-400 text-center pt-2">
-              쿠폰은 결제 페이지에서 선택하여 적용할 수 있습니다
+              {t('myCoupons.footerNote')}
             </p>
           </div>
         )}

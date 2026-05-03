@@ -16,7 +16,7 @@ export default function MyReviewsPage() {
 
   useEffect(() => {
     if (!isLoggedInSync()) {
-      requireLogin(navigate, '로그인이 필요합니다.')
+      requireLogin(navigate, t('myReviews.loginRequired'))
       return
     }
     loadOrders()
@@ -37,13 +37,13 @@ export default function MyReviewsPage() {
         })
         setOrders(reviewable)
       } else {
-        setError(res.data.error || '주문 목록을 불러올 수 없습니다.')
+        setError(res.data.error || t('myReviews.loadFailed'))
       }
     } catch (err: any) {
       if (err?.response?.status === 401) {
-        setError('세션이 만료되었습니다. 다시 로그인해주세요.')
+        setError(t('myReviews.sessionExpired'))
       } else {
-        setError('주문 목록을 불러올 수 없습니다.')
+        setError(t('myReviews.loadFailed'))
       }
     } finally {
       setLoading(false)
@@ -52,14 +52,14 @@ export default function MyReviewsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <SEO title="리뷰 작성 - 유어딜" description="배송 완료된 상품의 리뷰를 작성하세요" url="/my-reviews" noindex />
+      <SEO title={t('myReviews.seoTitle')} description={t('myReviews.seoDesc')} url="/my-reviews" noindex />
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="ur-content-narrow flex items-center justify-between px-4 h-[52px]">
           <button
             onClick={() => navigate(-1)}
             className="w-9 h-9 flex items-center justify-center"
-            aria-label="뒤로가기"
+            aria-label={t('myReviews.back')}
           >
             <ArrowLeft className="h-5 w-5 text-gray-900" />
           </button>
@@ -81,7 +81,7 @@ export default function MyReviewsPage() {
               onClick={loadOrders}
               className="px-5 py-2 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
             >
-              다시 시도
+              {t('myReviews.retry')}
             </button>
           </div>
         ) : orders.length === 0 ? (
@@ -95,8 +95,8 @@ export default function MyReviewsPage() {
         ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 mb-1">
-              <p className="text-[12px] text-gray-500">배송 완료 {orders.length}건</p>
-              <span className="text-[11px] text-amber-600 font-semibold">· 리뷰 작성 시 100~500딜 적립</span>
+              <p className="text-[12px] text-gray-500">{t('myReviews.deliveredCount', { count: orders.length })}</p>
+              <span className="text-[11px] text-amber-600 font-semibold">{t('myReviews.rewardHint')}</span>
             </div>
             {orders.flatMap(order => {
               // v32 audit FIX: API가 items를 array 대신 단일 object로 반환할 수도 있음 — 방어적 처리
@@ -108,20 +108,20 @@ export default function MyReviewsPage() {
                   className="bg-white rounded-2xl border border-gray-100 p-4"
                 >
                   <p className="text-[11px] text-gray-500 mb-1">
-                    {new Date(order.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 구매
+                    {t('myReviews.purchaseDate', { date: new Date(order.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) })}
                   </p>
                   <p className="text-[14px] font-semibold text-gray-900 line-clamp-2 mb-2">
                     {item.product_name}
                   </p>
                   {item.option_value && (
-                    <p className="text-[12px] text-gray-500 mb-2">옵션 · {item.option_value}</p>
+                    <p className="text-[12px] text-gray-500 mb-2">{t('myReviews.optionLabel', { value: item.option_value })}</p>
                   )}
                   <button
                     onClick={() => navigate(`/products/${item.product_id}#review`)}
                     className="w-full mt-2 py-2.5 bg-amber-50 text-amber-700 text-[13px] font-semibold rounded-xl border border-amber-100 hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Star className="h-3.5 w-3.5" fill="currentColor" />
-                    리뷰 작성하기
+                    {t('myReviews.writeReview')}
                   </button>
                 </article>
               ))

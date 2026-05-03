@@ -283,7 +283,16 @@
     "shippingFee": "배송비",
     "free": "무료",
     "selectProductsFirst": "상품을 선택해주세요",
-    "placeOrder": "{{amount}}원 주문하기"
+    "placeOrder": "{{amount}}원 주문하기",
+    "docTitle": "장바구니 - 유어딜",
+    "seoTitle": "장바구니 - 유어딜",
+    "seoDesc": "장바구니에 담긴 상품을 확인하고 주문하세요",
+    "qtyChangeFailedTitle": "수량 변경 실패",
+    "optionChangedMsg": "옵션이 변경되었습니다.",
+    "changeCompleteTitle": "변경 완료",
+    "changeFailedTitle": "변경 실패",
+    "fallbackSeller": "판매자",
+    "alertTitle": "알림"
   },
   "product": {
     "addToCart": "장바구니 담기",
@@ -2760,11 +2769,40 @@
   "myCoupons": {
     "title": "내 쿠폰",
     "empty": "사용 가능한 쿠폰이 없습니다",
-    "emptySub": "라이브 방송·이벤트 참여로 쿠폰을 받아보세요"
+    "emptySub": "라이브 방송·이벤트 참여로 쿠폰을 받아보세요",
+    "loginRequired": "로그인이 필요합니다.",
+    "loadFailed": "쿠폰을 불러올 수 없습니다.",
+    "sessionExpired": "세션이 만료되었습니다. 다시 로그인해주세요.",
+    "always": "상시",
+    "expired": "만료됨",
+    "expiresAtDays": "{{date}}까지 ({{days}}일 남음)",
+    "expiresAt": "{{date}}까지",
+    "seoTitle": "내 쿠폰 - 유어딜",
+    "seoDesc": "보유 중인 쿠폰을 확인하세요",
+    "back": "뒤로가기",
+    "retry": "다시 시도",
+    "available": "사용 가능 {{count}}장",
+    "labelDiscountRate": "할인율",
+    "labelDiscount": "할인",
+    "labelMaxDiscount": "최대 {{amount}}원",
+    "minOrder": "{{amount}}원 이상 결제 시",
+    "footerNote": "쿠폰은 결제 페이지에서 선택하여 적용할 수 있습니다"
   },
   "myReviews": {
     "title": "리뷰 작성",
     "empty": "작성 가능한 리뷰가 없습니다",
-    "emptySub": "배송 완료된 상품에 리뷰를 남길 수 있어요"
+    "emptySub": "배송 완료된 상품에 리뷰를 남길 수 있어요",
+    "loginRequired": "로그인이 필요합니다.",
+    "loadFailed": "주문 목록을 불러올 수 없습니다.",
+    "sessionExpired": "세션이 만료되었습니다. 다시 로그인해주세요.",
+    "seoTitle": "리뷰 작성 - 유어딜",
+    "seoDesc": "배송 완료된 상품의 리뷰를 작성하세요",
+    "back": "뒤로가기",
+    "retry": "다시 시도",
+    "deliveredCount": "배송 완료 {{count}}건",
+    "rewardHint": "· 리뷰 작성 시 100~500딜 적립",
+    "purchaseDate": "{{date}} 구매",
+    "optionLabel": "옵션 · {{value}}",
+    "writeReview": "리뷰 작성하기"
   }
 }

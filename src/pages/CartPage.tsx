@@ -32,7 +32,7 @@ export default function CartPage() {
   if (!loggedIn) {
     return (
       <div className="flex flex-col min-h-screen bg-white dark:bg-[#0A0A0A]">
-        <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" noindex />
+        <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
         <div className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="ur-content-narrow flex items-center justify-between px-4 py-3">
             <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
@@ -117,7 +117,7 @@ function CartPageContent() {
     setModal({ isOpen: false, message: '' })
   }
 
-  useEffect(() => { document.title = '장바구니 - 유어딜' }, [])
+  useEffect(() => { document.title = t('cart.docTitle') }, [t])
 
   useEffect(() => {
     // 🧹 JWT/레거시 토큰 URL 파라미터 자동 정리
@@ -188,7 +188,7 @@ function CartPageContent() {
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to update quantity:', error)
       const msg = error instanceof Error ? error.message : t('cart.quantityChangeFailed')
-      showAlert(msg, 'error', '수량 변경 실패')
+      showAlert(msg, 'error', t('cart.qtyChangeFailedTitle'))
     } finally {
       setUpdating(false)
     }
@@ -242,11 +242,11 @@ function CartPageContent() {
         itemId: String(optionModal.cartItemId),
         optionId
       })
-      showAlert('옵션이 변경되었습니다.', 'success', '변경 완료')
+      showAlert(t('cart.optionChangedMsg'), 'success', t('cart.changeCompleteTitle'))
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to change option:', error)
       const msg = error instanceof Error ? error.message : t('cart.optionChangeFailed')
-      showAlert(msg, 'error', '변경 실패')
+      showAlert(msg, 'error', t('cart.changeFailedTitle'))
     } finally {
       setUpdating(false)
     }
@@ -286,7 +286,7 @@ function CartPageContent() {
       if (!groups[sellerId]) {
         groups[sellerId] = {
           seller_id: sellerId,
-          seller_name: item.seller_name || '판매자',
+          seller_name: item.seller_name || t('cart.fallbackSeller'),
           items: [] as CartItem[],
           subtotal: 0,
           shipping_fee: item.shipping_fee || 3000,
@@ -356,7 +356,7 @@ function CartPageContent() {
 
   const handleCheckout = () => {
     if (selectedIds.size === 0) {
-      showAlert('상품을 선택해주세요.', 'alert', '알림')
+      showAlert(t('cart.selectProductsFirst'), 'alert', t('cart.alertTitle'))
       return
     }
 
@@ -384,7 +384,7 @@ function CartPageContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F4F4F4]">
-      <SEO title="장바구니 - 유어딜" description="장바구니에 담긴 상품을 확인하고 주문하세요" url="/cart" noindex />
+      <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
 
       {/* v4 Header + Select All */}
       <CartHeader

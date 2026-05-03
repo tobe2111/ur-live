@@ -283,7 +283,16 @@
     "shippingFee": "送料",
     "free": "無料",
     "selectProductsFirst": "商品を選択してください",
-    "placeOrder": "{{amount}}ウォン 注文"
+    "placeOrder": "{{amount}}ウォン 注文",
+    "docTitle": "カート - ユアディール",
+    "seoTitle": "カート - ユアディール",
+    "seoDesc": "カートの商品を確認して注文しよう",
+    "qtyChangeFailedTitle": "数量変更失敗",
+    "optionChangedMsg": "オプションが変更されました。",
+    "changeCompleteTitle": "変更完了",
+    "changeFailedTitle": "変更失敗",
+    "fallbackSeller": "販売者",
+    "alertTitle": "お知らせ"
   },
   "product": {
     "addToCart": "カートに追加",
@@ -2760,11 +2769,40 @@
   "myCoupons": {
     "title": "マイクーポン",
     "empty": "利用可能なクーポンがありません",
-    "emptySub": "ライブ配信・イベント参加でクーポンを受け取ろう"
+    "emptySub": "ライブ配信・イベント参加でクーポンを受け取ろう",
+    "loginRequired": "ログインが必要です。",
+    "loadFailed": "クーポンを読み込めません。",
+    "sessionExpired": "セッションが切れました。再度ログインしてください。",
+    "always": "常時",
+    "expired": "期限切れ",
+    "expiresAtDays": "{{date}} まで（残り{{days}}日）",
+    "expiresAt": "{{date}} まで",
+    "seoTitle": "マイクーポン - ユアディール",
+    "seoDesc": "保有クーポンを確認します",
+    "back": "戻る",
+    "retry": "再試行",
+    "available": "利用可能 {{count}}件",
+    "labelDiscountRate": "割引率",
+    "labelDiscount": "割引",
+    "labelMaxDiscount": "最大 {{amount}}ウォン",
+    "minOrder": "{{amount}}ウォン以上のお買い物時",
+    "footerNote": "クーポンは決済ページで選択して適用できます"
   },
   "myReviews": {
     "title": "レビュー作成",
     "empty": "作成可能なレビューがありません",
-    "emptySub": "配送完了した商品にレビューが書けます"
+    "emptySub": "配送完了した商品にレビューが書けます",
+    "loginRequired": "ログインが必要です。",
+    "loadFailed": "注文一覧を読み込めません。",
+    "sessionExpired": "セッションが切れました。再度ログインしてください。",
+    "seoTitle": "レビュー作成 - ユアディール",
+    "seoDesc": "配送完了商品のレビューを書きましょう",
+    "back": "戻る",
+    "retry": "再試行",
+    "deliveredCount": "配送完了 {{count}}件",
+    "rewardHint": "· レビュー作成で100~500ディール還元",
+    "purchaseDate": "{{date}} 購入",
+    "optionLabel": "オプション · {{value}}",
+    "writeReview": "レビューを書く"
   }
 }

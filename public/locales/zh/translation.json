@@ -283,7 +283,16 @@
     "shippingFee": "运费",
     "free": "免费",
     "selectProductsFirst": "请选择商品",
-    "placeOrder": "{{amount}}韩元 下单"
+    "placeOrder": "{{amount}}韩元 下单",
+    "docTitle": "购物车 - UR-DEAL",
+    "seoTitle": "购物车 - UR-DEAL",
+    "seoDesc": "查看购物车商品并下单",
+    "qtyChangeFailedTitle": "数量更新失败",
+    "optionChangedMsg": "选项已更改。",
+    "changeCompleteTitle": "更改完成",
+    "changeFailedTitle": "更改失败",
+    "fallbackSeller": "卖家",
+    "alertTitle": "提示"
   },
   "product": {
     "addToCart": "加入购物车",
@@ -2760,11 +2769,40 @@
   "myCoupons": {
     "title": "我的优惠券",
     "empty": "没有可用的优惠券",
-    "emptySub": "通过参与直播和活动获得优惠券"
+    "emptySub": "通过参与直播和活动获得优惠券",
+    "loginRequired": "需要登录。",
+    "loadFailed": "无法加载优惠券。",
+    "sessionExpired": "会话已过期，请重新登录。",
+    "always": "长期",
+    "expired": "已过期",
+    "expiresAtDays": "至 {{date}}（剩余 {{days}} 天）",
+    "expiresAt": "至 {{date}}",
+    "seoTitle": "我的优惠券 - UR-DEAL",
+    "seoDesc": "查看持有的优惠券",
+    "back": "返回",
+    "retry": "重试",
+    "available": "可用 {{count}} 张",
+    "labelDiscountRate": "折扣率",
+    "labelDiscount": "折扣",
+    "labelMaxDiscount": "最多 {{amount}} 韩元",
+    "minOrder": "消费满 {{amount}} 韩元",
+    "footerNote": "优惠券可在结账页面选择并应用"
   },
   "myReviews": {
     "title": "撰写评论",
     "empty": "没有可撰写的评论",
-    "emptySub": "商品送达后即可撰写评论"
+    "emptySub": "商品送达后即可撰写评论",
+    "loginRequired": "需要登录。",
+    "loadFailed": "无法加载订单列表。",
+    "sessionExpired": "会话已过期，请重新登录。",
+    "seoTitle": "撰写评论 - UR-DEAL",
+    "seoDesc": "为已送达的商品撰写评论",
+    "back": "返回",
+    "retry": "重试",
+    "deliveredCount": "已送达 {{count}} 件",
+    "rewardHint": "· 撰写评论可获得 100~500 Deal 积分",
+    "purchaseDate": "{{date}} 购买",
+    "optionLabel": "选项 · {{value}}",
+    "writeReview": "撰写评论"
   }
 }

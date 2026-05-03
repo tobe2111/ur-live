@@ -283,7 +283,16 @@
     "shippingFee": "Shipping fee",
     "free": "Free",
     "selectProductsFirst": "Please select items",
-    "placeOrder": "Order {{amount}} KRW"
+    "placeOrder": "Order {{amount}} KRW",
+    "docTitle": "Cart - YourDeal",
+    "seoTitle": "Cart - YourDeal",
+    "seoDesc": "Review items in your cart and check out",
+    "qtyChangeFailedTitle": "Quantity update failed",
+    "optionChangedMsg": "Option changed.",
+    "changeCompleteTitle": "Updated",
+    "changeFailedTitle": "Update failed",
+    "fallbackSeller": "Seller",
+    "alertTitle": "Notice"
   },
   "product": {
     "addToCart": "Add to Cart",
@@ -2760,11 +2769,40 @@
   "myCoupons": {
     "title": "My Coupons",
     "empty": "No coupons available",
-    "emptySub": "Get coupons by joining live streams and events"
+    "emptySub": "Get coupons by joining live streams and events",
+    "loginRequired": "Login required.",
+    "loadFailed": "Unable to load coupons.",
+    "sessionExpired": "Session expired. Please log in again.",
+    "always": "Always",
+    "expired": "Expired",
+    "expiresAtDays": "Until {{date}} ({{days}}d left)",
+    "expiresAt": "Until {{date}}",
+    "seoTitle": "My Coupons - YourDeal",
+    "seoDesc": "Check your active coupons",
+    "back": "Back",
+    "retry": "Retry",
+    "available": "{{count}} available",
+    "labelDiscountRate": "Discount",
+    "labelDiscount": "Off",
+    "labelMaxDiscount": "Max {{amount}} KRW",
+    "minOrder": "Min order {{amount}} KRW",
+    "footerNote": "Coupons can be selected and applied on the checkout page"
   },
   "myReviews": {
     "title": "Write a Review",
     "empty": "No reviews to write",
-    "emptySub": "You can review products after delivery"
+    "emptySub": "You can review products after delivery",
+    "loginRequired": "Login required.",
+    "loadFailed": "Unable to load orders.",
+    "sessionExpired": "Session expired. Please log in again.",
+    "seoTitle": "Write Review - YourDeal",
+    "seoDesc": "Write reviews for delivered items",
+    "back": "Back",
+    "retry": "Retry",
+    "deliveredCount": "Delivered: {{count}}",
+    "rewardHint": "· Earn 100~500 deal for each review",
+    "purchaseDate": "Purchased {{date}}",
+    "optionLabel": "Option · {{value}}",
+    "writeReview": "Write a review"
   }
 }

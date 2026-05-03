@@ -1989,7 +1989,16 @@
     "shippingFee": "Tarifa de envío",
     "free": "Gratis",
     "selectProductsFirst": "Selecciona artículos",
-    "placeOrder": "Pedir {{amount}} KRW"
+    "placeOrder": "Pedir {{amount}} KRW",
+    "docTitle": "Carrito - YourDeal",
+    "seoTitle": "Carrito - YourDeal",
+    "seoDesc": "Revisa los artículos de tu carrito y paga",
+    "qtyChangeFailedTitle": "Error al cambiar cantidad",
+    "optionChangedMsg": "Opción cambiada.",
+    "changeCompleteTitle": "Actualizado",
+    "changeFailedTitle": "Error al actualizar",
+    "fallbackSeller": "Vendedor",
+    "alertTitle": "Aviso"
   },
   "payment": {
     "agreeToTerms": "I agree to proceed with payment",
@@ -2760,11 +2769,40 @@
   "myCoupons": {
     "title": "Mis cupones",
     "empty": "No hay cupones disponibles",
-    "emptySub": "Consigue cupones participando en directos y eventos"
+    "emptySub": "Consigue cupones participando en directos y eventos",
+    "loginRequired": "Inicio de sesión requerido.",
+    "loadFailed": "No se pueden cargar los cupones.",
+    "sessionExpired": "Sesión caducada. Inicia sesión de nuevo.",
+    "always": "Siempre",
+    "expired": "Caducado",
+    "expiresAtDays": "Hasta {{date}} (quedan {{days}}d)",
+    "expiresAt": "Hasta {{date}}",
+    "seoTitle": "Mis cupones - YourDeal",
+    "seoDesc": "Consulta tus cupones disponibles",
+    "back": "Atrás",
+    "retry": "Reintentar",
+    "available": "{{count}} disponibles",
+    "labelDiscountRate": "Descuento",
+    "labelDiscount": "Off",
+    "labelMaxDiscount": "Máx. {{amount}} KRW",
+    "minOrder": "Pedido mínimo {{amount}} KRW",
+    "footerNote": "Los cupones se pueden seleccionar y aplicar al pagar"
   },
   "myReviews": {
     "title": "Escribir reseña",
     "empty": "Sin reseñas pendientes",
-    "emptySub": "Podrás escribir reseñas después de la entrega"
+    "emptySub": "Podrás escribir reseñas después de la entrega",
+    "loginRequired": "Inicio de sesión requerido.",
+    "loadFailed": "No se pueden cargar los pedidos.",
+    "sessionExpired": "Sesión caducada. Inicia sesión de nuevo.",
+    "seoTitle": "Escribir reseña - YourDeal",
+    "seoDesc": "Escribe reseñas de tus pedidos entregados",
+    "back": "Atrás",
+    "retry": "Reintentar",
+    "deliveredCount": "Entregados: {{count}}",
+    "rewardHint": "· Gana 100~500 deal por cada reseña",
+    "purchaseDate": "Comprado {{date}}",
+    "optionLabel": "Opción · {{value}}",
+    "writeReview": "Escribir reseña"
   }
 }
