@@ -159,7 +159,7 @@ export default function CheckoutPage() {
     if (!groups[sellerId]) {
       groups[sellerId] = {
         seller_id: sellerId,
-        seller_name: item.seller_name || '판매자',
+        seller_name: item.seller_name || t('checkoutPage.fallbackSeller'),
         items: [],
         subtotal: 0,
         shipping_fee: item.shipping_fee || 3000,
@@ -200,7 +200,7 @@ export default function CheckoutPage() {
   const totalBeforeDeal = subtotal + totalShippingFee - couponDiscount - totalGroupBuyDiscount
   const totalAmount = totalBeforeDeal - dealToUse
 
-  useEffect(() => { document.title = '주문/결제 - 유어딜' }, [])
+  useEffect(() => { document.title = t('checkoutPage.docTitle') }, [t])
 
   // v36 FIX: 결제 진행 중 페이지 이탈(새로고침/탭 닫기/뒤로가기) 경고
   // cartItems가 있고 결제 버튼 눌러 isSubmittingRef.current=true 상태에서 이탈 시 확인
@@ -485,10 +485,10 @@ export default function CheckoutPage() {
 
     const shippingAddress = isMealVoucher ? {
       postal_code: '00000',
-      address1: '식사권 (배송 불필요)',
+      address1: t('checkoutPage.voucherAddress'),
       address2: '',
       country: 'KR',
-      recipient_name: '식사권 구매자',
+      recipient_name: t('checkoutPage.voucherRecipient'),
     } : {
       postal_code: selectedAddress!.postal_code,
       address1: selectedAddress!.address,
@@ -520,7 +520,7 @@ export default function CheckoutPage() {
           ...(item.option_value ? { options: { value: item.option_value } } : {}),
         })),
         shipping_address: shippingAddress,
-        shipping_name: isMealVoucher ? '식사권 구매자' : selectedAddress!.recipient_name,
+        shipping_name: isMealVoucher ? t('checkoutPage.voucherRecipient') : selectedAddress!.recipient_name,
         shipping_phone: isMealVoucher ? '' : selectedAddress!.phone,
         shipping_fee: groupShippingFee,
         idempotency_key: `${orderId}_${group.seller_id}`,
@@ -618,7 +618,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
-      <SEO title="주문/결제 - 유어딜" description="주문 정보를 확인하고 안전하게 결제하세요" url="/checkout" noindex />
+      <SEO title={t('checkoutPage.seoTitle')} description={t('checkoutPage.seoDesc')} url="/checkout" noindex />
       <CheckoutHeader onBack={() => navigate('/cart')} />
 
       <main className="ur-content-narrow pb-52" style={{ background: '#F4F4F4' }}>
@@ -666,7 +666,7 @@ export default function CheckoutPage() {
                   const res = await api.post('/api/points/pay', {
                     order_number: orderNumber, total_amount: totalAmount,
                     items: cartItems.map(item => ({
-                      product_id: String(item.product_id), product_name: item.product_name || '상품',
+                      product_id: String(item.product_id), product_name: item.product_name || t('checkoutPage.fallbackProduct'),
                       quantity: item.quantity, price: item.price_snapshot ?? item.price ?? 0,
                       seller_id: item.seller_id ? String(item.seller_id) : undefined,
                     })),

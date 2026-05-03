@@ -198,7 +198,7 @@ export default function ShortsPage() {
   // Extract hashtags from title
   function extractHashtags(title: string): string[] {
     const tags = title.match(/#[\w가-힣]+/g)
-    return tags ? tags.slice(0, 4) : ['#쇼츠', '#유어딜']
+    return tags ? tags.slice(0, 4) : [t('shortsPage.tagShorts'), t('shortsPage.tagBrand')]
   }
 
   // Get next shorts thumbnails for the strip
@@ -227,7 +227,7 @@ export default function ShortsPage() {
 
   return (
     <div className="absolute inset-0 bg-black">
-      <SEO title="쇼츠 - 유어딜" description="유어딜 쇼츠에서 인기 상품 숏폼 영상을 감상하세요." url="/shorts" />
+      <SEO title={t('shortsPage.seoTitle')} description={t('shortsPage.seoDesc')} url="/shorts" />
 
       {/* 세로 스와이프 컨테이너 */}
       <div
@@ -290,13 +290,13 @@ export default function ShortsPage() {
                 >
                   <div className="w-7 h-7 rounded-full overflow-hidden bg-white/20 flex items-center justify-center shrink-0">
                     {item.seller_avatar ? (
-                      <img src={item.seller_avatar} alt={`${item.seller_name || '셀러'} 프로필 이미지`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                      <img src={item.seller_avatar} alt={t('shortsPage.altSellerProfile', { name: item.seller_name || t('shortsPage.fallbackSeller') })} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       <span className="text-[10px] font-bold text-white">{(item.seller_name || '?').charAt(0)}</span>
                     )}
                   </div>
                   <div className="text-left">
-                    <p className="text-white text-[12px] font-bold leading-tight">{item.seller_name || '셀러'}</p>
+                    <p className="text-white text-[12px] font-bold leading-tight">{item.seller_name || t('shortsPage.fallbackSeller')}</p>
                     <p className="text-white/60 text-[10px] leading-tight">{item.view_count || 0} 조회</p>
                   </div>
                 </button>
@@ -309,10 +309,10 @@ export default function ShortsPage() {
                   >
                     팔로우
                   </button>
-                  <button onClick={() => setMuted(!muted)} aria-label={muted ? '음소거 해제' : '음소거'} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
+                  <button onClick={() => setMuted(!muted)} aria-label={muted ? t('shortsPage.ariaUnmute') : t('shortsPage.ariaMute')} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
                   </button>
-                  <button onClick={() => navigate(-1)} aria-label="닫기" className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
+                  <button onClick={() => navigate(-1)} aria-label={t('shortsPage.ariaClose')} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     <X className="w-4 h-4 text-white" />
                   </button>
                 </div>
@@ -365,7 +365,7 @@ export default function ShortsPage() {
                 {/* Share (Kakao) */}
                 <KakaoShareButton
                   title={item.title}
-                  description={item.seller_name ? `${item.seller_name}의 영상` : '유어딜 쇼츠'}
+                  description={item.seller_name ? t('shortsPage.videoDescSeller', { name: item.seller_name }) : t('shortsPage.videoDescDefault')}
                   link={typeof item.id === 'number' ? `/shorts/${item.id}` : `/live/${item.live_stream_id}`}
                   compact
                   className="flex flex-col items-center gap-1"
@@ -479,11 +479,11 @@ export default function ShortsPage() {
                           if (!item.product_id) return
                           api.post('/api/wishlists', { product_id: item.product_id })
                             .then(() => toast.success(t('common.wishlistAdded')))
-                            .catch(() => toast.error('로그인이 필요합니다'))
+                            .catch(() => toast.error(t('shortsPage.loginRequired')))
                         }}
                         className="py-3 flex flex-col items-center gap-0.5"
                         style={{ borderRight: '1px solid #F3F4F6' }}
-                        aria-label="찜하기"
+                        aria-label={t('shortsPage.ariaWishlist')}
                       >
                         <Heart style={{ width: 16, height: 16, color: '#6B7280' }} />
                         <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>찜하기</span>
@@ -501,7 +501,7 @@ export default function ShortsPage() {
                         }}
                         className="py-3 flex flex-col items-center gap-0.5"
                         style={{ borderRight: '1px solid #F3F4F6' }}
-                        aria-label="장바구니에 담기"
+                        aria-label={t('shortsPage.ariaAddCart')}
                       >
                         <ShoppingCart style={{ width: 16, height: 16, color: '#6B7280' }} />
                         <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>장바구니</span>
@@ -513,7 +513,7 @@ export default function ShortsPage() {
                         }}
                         className="py-3 flex flex-col items-center gap-0.5 active:opacity-90"
                         style={boutiqueCTA}
-                        aria-label="바로구매"
+                        aria-label={t('shortsPage.ariaBuyNow')}
                       >
                         <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>바로구매</span>
                         <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>무료배송</span>

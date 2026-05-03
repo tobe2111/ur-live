@@ -95,7 +95,7 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (product) {
-      document.title = product.name + ' - 유어딜'
+      document.title = product.name + t('productDetailPage.docTitleSuffix')
     }
   }, [product])
 
@@ -136,10 +136,10 @@ export default function ProductDetailPage() {
       if (res.data.success) {
         const nowWishlisted = res.data.data?.isWishlisted ?? res.data.action === 'added'
         setIsWishlisted(nowWishlisted)
-        showToast(nowWishlisted ? '찜 목록에 추가되었습니다.' : '찜 목록에서 삭제되었습니다.', 'success')
+        showToast(nowWishlisted ? t('productDetailPage.wishlistAdded') : t('productDetailPage.wishlistRemoved'), 'success')
       }
     } catch {
-      showToast('찜하기에 실패했습니다.', 'error')
+      showToast(t('productDetailPage.wishlistFailed'), 'error')
     } finally {
       setWishlistLoading(false)
     }
@@ -177,7 +177,7 @@ export default function ProductDetailPage() {
       if (import.meta.env.DEV) {
         if (import.meta.env.DEV) console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
       }
-      const errorMessage = err instanceof Error ? err.message : '장바구니 추가에 실패했습니다.'
+      const errorMessage = err instanceof Error ? err.message : t('productDetailPage.addCartFailed')
       showToast(errorMessage, 'error')
     }
   }
@@ -234,7 +234,7 @@ export default function ProductDetailPage() {
       })
     } else {
       navigator.clipboard.writeText(shareUrl).then(() => {
-        showToast('링크가 복사되었습니다.', 'success')
+        showToast(t('productDetailPage.linkCopied'), 'success')
       })
     }
   }
@@ -247,7 +247,7 @@ export default function ProductDetailPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0A0A0A] p-4">
         <div className="text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">{error?.message || '상품을 찾을 수 없습니다.'}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{error?.message || t('productDetailPage.notFound')}</p>
           <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('productDetail.retry')}</button>
           <button
             onClick={() => navigate('/')}
@@ -341,7 +341,7 @@ export default function ProductDetailPage() {
           <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.detailInfo')}</p>
           {detailImages.length > 0 && (
             <div className="rounded-xl overflow-hidden mb-3" style={{ background: '#F9FAFB' }}>
-              <img src={detailImages[0]} alt={product.name || '상품 상세 이미지'} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
+              <img src={detailImages[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
             </div>
           )}
           {product.long_description && (
@@ -379,7 +379,7 @@ export default function ProductDetailPage() {
 
         {/* 식당 정보 (식사권일 때만) */}
         {product.category === 'meal_voucher' && product.restaurant_name && (
-          <AccordionSection title="식당 정보" defaultOpen={true}>
+          <AccordionSection title={t('productDetailPage.restaurantInfo')} defaultOpen={true}>
             <div className="space-y-2.5 text-xs text-gray-500 dark:text-gray-400">
               <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.restaurantName')}</span><span className="text-gray-900 dark:text-white font-medium">{product.restaurant_name}</span></div>
               {product.restaurant_address && (
@@ -467,7 +467,7 @@ export default function ProductDetailPage() {
                 const userId = getUserId()
                 const url = `https://live.ur-team.com/products/${product.id}?ref=${userId}`
                 navigator.clipboard.writeText(url)
-                showToast('추천 링크가 복사되었습니다!', 'success')
+                showToast(t('productDetailPage.shareLinkCopied'), 'success')
               }}
               className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98]"
             >
@@ -479,7 +479,7 @@ export default function ProductDetailPage() {
             description={`${formatNumber(displayPrice)}원 ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
             imageUrl={product.image_url || undefined}
             link={`/products/${product.id}`}
-            buttonText="상품 보러가기"
+            buttonText={t('productDetailPage.viewProductCta')}
           />
         </div>
 
@@ -518,17 +518,17 @@ export default function ProductDetailPage() {
 
         {/* v4 아코디언 — 3개 표준 섹션 */}
         <div className="border-t border-gray-100 dark:border-[#1A1A1A]">
-          <AccordionSection title="상품 정보 고시">
+          <AccordionSection title={t('productDetailPage.productInfo')}>
             <ProductInfoGrid items={[
-              { label: '재고', value: `${product.stock ?? 0}개` },
-              ...(product.sold_count ? [{ label: '판매량', value: `${product.sold_count}개` }] : []),
-              ...(product.category ? [{ label: '카테고리', value: product.category }] : []),
+              { label: t('productDetailPage.stock'), value: t('productDetailPage.unitCount', { count: product.stock ?? 0 }) },
+              ...(product.sold_count ? [{ label: t('productDetailPage.sold'), value: t('productDetailPage.unitCount', { count: product.sold_count }) }] : []),
+              ...(product.category ? [{ label: t('productDetailPage.category'), value: product.category }] : []),
             ]} />
           </AccordionSection>
-          <AccordionSection title="배송 · 교환 · 반품 안내">
+          <AccordionSection title={t('productDetailPage.shippingExchange')}>
             <ReturnPolicySection />
           </AccordionSection>
-          <AccordionSection title="유의사항">
+          <AccordionSection title={t('productDetailPage.notes')}>
             <ProductNoticeSection />
           </AccordionSection>
         </div>
@@ -557,7 +557,7 @@ export default function ProductDetailPage() {
           <button
             onClick={() => setGiftModalOpen(true)}
             className="pointer-events-auto w-12 h-12 rounded-full bg-pink-500 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-            aria-label="선물하기"
+            aria-label={t('productDetailPage.ariaGift')}
           >
             <Gift className="w-5 h-5" />
           </button>
