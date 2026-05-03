@@ -338,8 +338,8 @@ export default function MainHomePage() {
           <span className="text-[14px] text-[#FBBF24] shrink-0">→</span>
         </button>
 
-        <div className="space-y-2">
-          {displayMeals.slice(0, 5).map((m, i) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+          {displayMeals.slice(0, 8).map((m, i) => {
             const current = m.group_buy_current || 0
             const d = disc(m.price, m.original_price)
             const isClosing = m.group_buy_deadline && (new Date(m.group_buy_deadline).getTime() - Date.now()) < 3600000
@@ -386,11 +386,11 @@ export default function MainHomePage() {
             </div>
             <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400 pb-1">전체 →</button>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
             {liveStreams.map(s => {
               const thumb = getThumb(s)
               return (
-                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] text-left active:scale-[0.98] transition-transform">
+                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] lg:w-auto text-left active:scale-[0.98] transition-transform">
                   <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-[#1A1A1A]">
                     {thumb && <img src={thumb} alt={s.title || '라이브 방송'} loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 35%, rgba(0,0,0,0.9) 100%)' }} />
@@ -431,13 +431,13 @@ export default function MainHomePage() {
             </div>
             <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">전체 →</button>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
-            {scheduledStreams.slice(0, 6).map(s => {
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
+            {scheduledStreams.slice(0, 10).map(s => {
               const thumb = getThumb(s)
               const schedDate = s.scheduled_at ? new Date(s.scheduled_at) : null
               const timeLabel = schedDate ? schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
               return (
-                <div key={s.id} className="shrink-0 w-[170px] text-left">
+                <div key={s.id} className="shrink-0 w-[170px] lg:w-auto text-left">
                   <button type="button" onClick={() => navigate(`/live/${s.id}`)} className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-[#1A1A1A] cursor-pointer text-left">
                     {thumb && <img src={thumb} alt={s.title || '예정 방송'} loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.9) 100%)' }} />
@@ -471,11 +471,11 @@ export default function MainHomePage() {
             </div>
             <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">전체 →</button>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
-            {endedStreams.slice(0, 6).map(s => {
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
+            {endedStreams.slice(0, 10).map(s => {
               const thumb = getThumb(s)
               return (
-                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[150px] text-left">
+                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[150px] lg:w-auto text-left">
                   <div className="relative rounded-xl overflow-hidden bg-[#1A1A1A]" style={{ aspectRatio: '16/9' }}>
                     {thumb && <img src={thumb} alt={s.title || '다시보기'} loading="lazy" className="w-full h-full object-cover brightness-[0.85]" />}
                     <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
@@ -501,7 +501,7 @@ export default function MainHomePage() {
 
         {/* Category grid */}
         <div className="px-4 pb-4">
-          <div className="grid grid-cols-5 gap-y-4">
+          <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-y-4">
             {CATEGORIES.map(c => (
               <button key={c.k} onClick={() => navigate(`/browse?category=${c.k}`)} className="flex flex-col items-center gap-1.5">
                 <div className="rounded-2xl flex items-center justify-center w-[52px] h-[52px] text-[22px]" style={{ background: c.bg }}>{c.i}</div>
@@ -515,8 +515,8 @@ export default function MainHomePage() {
         {products.length > 0 && (
           <div className="px-4 pb-5">
             <p className="text-[14px] font-extrabold text-white mb-3">🏆 실시간 랭킹</p>
-            <div className="grid grid-cols-2 gap-3">
-              {products.slice(0, 4).map((p, i) => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {products.slice(0, 5).map((p, i) => {
                 const d = disc(p.price, p.original_price)
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative">
@@ -539,8 +539,8 @@ export default function MainHomePage() {
         {products.length > 4 && (
           <div className="px-4 pb-5">
             <p className="text-[14px] font-extrabold text-white mb-3">추천 상품</p>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-5">
-              {products.slice(4).map(p => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-5">
+              {products.slice(5).map(p => {
                 const d = disc(p.price, p.original_price)
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left">
