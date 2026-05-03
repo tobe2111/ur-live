@@ -2274,5 +2274,16 @@
     "pointReward": "ポイント還元",
     "vatIncluded": "消費税込 (VAT 10%)",
     "tomorrowDelivery": "明日到着予定"
+  },
+  "paymentSuccess": {
+    "approving": "決済を承認中です...",
+    "approveFailed": "決済承認失敗",
+    "title": "決済完了!",
+    "subtitle": "注文が正常に完了しました。",
+    "orderNumber": "注文番号",
+    "paymentMethod": "決済方法",
+    "paymentAmount": "決済金額",
+    "demoMode": "デモモード",
+    "demoModeDesc": "実際の決済は行われていません。テスト目的のみご利用ください。"
   }
 }

@@ -2274,5 +2274,16 @@
     "pointReward": "积分奖励",
     "vatIncluded": "含增值税 (10%)",
     "tomorrowDelivery": "明日送达"
+  },
+  "paymentSuccess": {
+    "approving": "正在批准付款...",
+    "approveFailed": "付款批准失败",
+    "title": "付款完成!",
+    "subtitle": "订单已成功提交。",
+    "orderNumber": "订单号",
+    "paymentMethod": "付款方式",
+    "paymentAmount": "付款金额",
+    "demoMode": "演示模式",
+    "demoModeDesc": "未进行实际付款。仅用于测试目的。"
   }
 }

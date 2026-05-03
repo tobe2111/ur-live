@@ -2274,5 +2274,16 @@
     "pointReward": "Reward points",
     "vatIncluded": "VAT included (10%)",
     "tomorrowDelivery": "Arrives tomorrow"
+  },
+  "paymentSuccess": {
+    "approving": "Approving payment...",
+    "approveFailed": "Payment approval failed",
+    "title": "Payment complete!",
+    "subtitle": "Your order has been placed successfully.",
+    "orderNumber": "Order number",
+    "paymentMethod": "Payment method",
+    "paymentAmount": "Amount",
+    "demoMode": "Demo Mode",
+    "demoModeDesc": "No real payment was made. For testing purposes only."
   }
 }

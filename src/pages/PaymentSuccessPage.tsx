@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
@@ -9,7 +10,7 @@ import { addBreadcrumb, captureError } from '@/lib/sentry'
 import { formatNumber } from '@/utils/format'
 
 export default function PaymentSuccessPage() {
-  
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -184,7 +185,7 @@ export default function PaymentSuccessPage() {
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#007aff] mx-auto mb-4"></div>
-          <p className="text-[#6e6e73] font-medium">결제를 승인하는 중입니다...</p>
+          <p className="text-[#6e6e73] font-medium">{t('paymentSuccess.approving')}</p>
         </div>
       </div>
     )
@@ -195,7 +196,7 @@ export default function PaymentSuccessPage() {
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <AlertCircle className="h-20 w-20 text-red-500 mx-auto mb-6" />
-          <h1 className="text-2xl font-bold text-[#1d1d1f] mb-4">결제 승인 실패</h1>
+          <h1 className="text-2xl font-bold text-[#1d1d1f] mb-4">{t('paymentSuccess.approveFailed')}</h1>
           <p className="text-[#6e6e73] mb-8">{error}</p>
           <div className="flex gap-3">
             <Button
@@ -226,8 +227,8 @@ export default function PaymentSuccessPage() {
             <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-green-100 mb-3 sm:mb-4">
               <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-green-600" />
             </div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#1d1d1f] mb-1 sm:mb-2">결제 완료!</h1>
-            <p className="text-xs sm:text-sm lg:text-base text-[#6e6e73]">주문이 성공적으로 완료되었습니다.</p>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#1d1d1f] mb-1 sm:mb-2">{t('paymentSuccess.title')}</h1>
+            <p className="text-xs sm:text-sm lg:text-base text-[#6e6e73]">{t('paymentSuccess.subtitle')}</p>
           </div>
 
           {/* 주문 정보 */}
@@ -242,21 +243,21 @@ export default function PaymentSuccessPage() {
                 <div className="space-y-2.5 sm:space-y-3">
                   {/* 주문번호 */}
                   <div className="flex justify-between items-start gap-3">
-                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">주문번호</span>
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">{t('paymentSuccess.orderNumber')}</span>
                     <span className="text-xs sm:text-sm font-semibold text-[#007aff] font-mono break-all text-right max-w-[65%]">
                       {orderInfo.orderId || orderId}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center gap-3">
-                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">결제 방법</span>
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">{t('paymentSuccess.paymentMethod')}</span>
                     <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#1d1d1f]">
                       {orderInfo.payment?.method || orderInfo.orders?.[0]?.payment_method || '-'}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7]">
-                    <span className="text-sm sm:text-base lg:text-lg font-medium text-[#1d1d1f]">결제 금액</span>
+                    <span className="text-sm sm:text-base lg:text-lg font-medium text-[#1d1d1f]">{t('paymentSuccess.paymentAmount')}</span>
                     <span className="text-lg sm:text-xl lg:text-2xl font-bold text-[#007aff]">
                       {parseInt(amount || '0')}원
                     </span>
@@ -268,7 +269,7 @@ export default function PaymentSuccessPage() {
               {orderInfo?.status === 'demo' ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
                   <p className="text-xs sm:text-sm lg:text-base text-yellow-900 leading-relaxed">
-                    🎭 <strong>데모 모드</strong>: 실제 결제가 진행되지 않았습니다. 테스트 목적으로만 사용하세요.
+                    🎭 <strong>{t('paymentSuccess.demoMode')}</strong>: {t('paymentSuccess.demoModeDesc')}
                   </p>
                 </div>
               ) : (

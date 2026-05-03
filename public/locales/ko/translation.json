@@ -2274,5 +2274,16 @@
     "pointReward": "포인트 적립",
     "vatIncluded": "부가세 포함 (VAT 10%)",
     "tomorrowDelivery": "내일 도착 예정"
+  },
+  "paymentSuccess": {
+    "approving": "결제를 승인하는 중입니다...",
+    "approveFailed": "결제 승인 실패",
+    "title": "결제 완료!",
+    "subtitle": "주문이 성공적으로 완료되었습니다.",
+    "orderNumber": "주문번호",
+    "paymentMethod": "결제 방법",
+    "paymentAmount": "결제 금액",
+    "demoMode": "데모 모드",
+    "demoModeDesc": "실제 결제가 진행되지 않았습니다. 테스트 목적으로만 사용하세요."
   }
 }

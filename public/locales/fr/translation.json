@@ -2274,5 +2274,16 @@
     "pointReward": "Points de récompense",
     "vatIncluded": "TVA incluse (10%)",
     "tomorrowDelivery": "Arrive demain"
+  },
+  "paymentSuccess": {
+    "approving": "Approbation du paiement...",
+    "approveFailed": "Échec de l'approbation du paiement",
+    "title": "Paiement terminé !",
+    "subtitle": "Votre commande a bien été passée.",
+    "orderNumber": "Numéro de commande",
+    "paymentMethod": "Méthode de paiement",
+    "paymentAmount": "Montant",
+    "demoMode": "Mode démo",
+    "demoModeDesc": "Aucun paiement réel n'a été effectué. À des fins de test uniquement."
   }
 }
