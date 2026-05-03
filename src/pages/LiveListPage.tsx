@@ -182,13 +182,12 @@ export default function LiveListPage() {
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>지금 방송 중</span>
               </div>
-              <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-2">
+              <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-2 lg:overflow-visible lg:grid lg:grid-cols-3 xl:grid-cols-4 lg:px-4">
                 {filteredLive.map(s => (
                   <button
                     key={s.id}
                     onClick={() => navigate(`/live/${s.id}`)}
-                    className="shrink-0 text-left active:scale-[0.99] transition-transform"
-                    style={{ width: 280 }}
+                    className="shrink-0 w-[280px] lg:w-full text-left active:scale-[0.99] transition-transform"
                     aria-label={`${s.title} 라이브 입장`}
                   >
                     <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '4/5', background: '#121212' }}>
@@ -289,7 +288,7 @@ export default function LiveListPage() {
                 <Play className="w-3.5 h-3.5 text-gray-400" strokeWidth={2.5} fill="currentColor" />
                 <span style={{ fontSize: 13, fontWeight: 700 }}>다시보기</span>
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
                 {filteredEnded.map(s => (
                   <button
                     key={s.id}

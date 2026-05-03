@@ -189,7 +189,7 @@ export default function GroupBuyListPage() {
       </header>
 
       {/* 배너 — 클릭 시 맛집 공구 시작 */}
-      <div className="px-4 pt-4">
+      <div className="ur-content-wide px-4 lg:px-8 pt-4">
         <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 rounded-2xl px-5 py-4 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-white text-[15px] font-extrabold">
@@ -211,7 +211,7 @@ export default function GroupBuyListPage() {
       </div>
 
       {/* 메인 탭: 셀러 공구 | 유저 공구 */}
-      <div className="px-4 mt-4">
+      <div className="ur-content-wide px-4 lg:px-8 mt-4">
         <div className="flex border-b border-gray-200">
           <button
             onClick={() => setMainTab('seller')}
@@ -238,7 +238,7 @@ export default function GroupBuyListPage() {
 
       {/* 카테고리 탭 (셀러 공구 전용) */}
       {mainTab === 'seller' && (
-        <div className="px-4 mt-4">
+        <div className="ur-content-wide px-4 lg:px-8 mt-4">
           <div className="flex gap-2">
             {([
               { key: 'all', label: '전체' },
@@ -307,12 +307,12 @@ export default function GroupBuyListPage() {
           현재는 hero banner 우측 '시작' 버튼 + empty state CTA 로 자연스럽게 통합. */}
 
       {/* 콘텐츠 영역 */}
-      <div className="px-4 py-4 pb-20">
+      <div className="ur-content-wide px-4 lg:px-8 py-4 pb-20">
         {mainTab === 'seller' ? (
           /* ── 셀러 공구 상품 그리드 (2열) ── */
           <>
             {loading ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {[...Array(4)].map((_, i) => (
                   <div key={i}>
                     <div className="aspect-square bg-gray-100 animate-pulse rounded-xl" />
@@ -346,7 +346,7 @@ export default function GroupBuyListPage() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-x-3 gap-y-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-5">
                 {filtered.map((p) => {
                   const discount = calcDiscountRate(p)
                   const target = p.group_buy_target || 0
