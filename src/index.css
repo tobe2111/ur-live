@@ -568,58 +568,18 @@ html.native-app nav {
 }
 
 /* ============================================
-   🛡️ 2026-05-03: 사용자 요청 — 테마 토글이 강제 다크 페이지(홈/마이/라이브)에도
-   적용되도록 글로벌 override.
+   🛡️ 2026-05-03 (revert): 글로벌 CSS override 제거.
+   사용자 신고: 모든 페이지 UI 깨짐 (text-white/text-gray-300 invert 가
+   light 테마 페이지 + 컬러 카드/버튼 광범위 영향).
 
-   원래 정책 (CLAUDE.md): 홈/라이브/마이는 강제 다크 (`bg-[#020202]` 명시) → 토글 무영향.
-   사용자 요구: 모든 페이지가 light/dark 토글 따르도록.
+   원래 CLAUDE.md 정책으로 복귀:
+   - 홈/마이/라이브 = 강제 다크 (테마 토글 무영향)
+   - 쇼핑/결제/주문 = 화이트 + dark: variants (토글 영향)
+   - 셀러/어드민/에이전시 = 강제 라이트 (토글 무영향)
 
-   접근: html:not(.dark) 일 때 hardcoded 다크 색상을 light 로 invert.
-   text-white 는 컬러 버튼 위(bg-pink-500 등)에서도 사용되므로 OUTER 페이지 컨테이너만 타깃.
+   "모든 페이지 토글" 요구는 추후 페이지별 명시 dark: variant 추가로
+   재설계 필요 (글로벌 override 위험).
    ============================================ */
-html:not(.dark) .bg-\[\#020202\] { background-color: #ffffff !important; }
-html:not(.dark) .bg-\[\#0A0A0A\] { background-color: #fafafa !important; }
-html:not(.dark) .bg-\[\#0B0B0B\] { background-color: #fafafa !important; }
-html:not(.dark) .bg-\[\#121212\] { background-color: #f3f4f6 !important; }
-html:not(.dark) .bg-\[\#151515\] { background-color: #f3f4f6 !important; }
-html:not(.dark) .bg-\[\#1A1A1A\] { background-color: #e5e7eb !important; }
-
-/* 다크 페이지의 흰 텍스트 → 어두운 텍스트 (light 모드).
-   주의: 컬러 버튼 (bg-pink-500 + text-white) 위에서는 text-white 유지해야 하므로
-   :where() 로 specificity 낮추고, 컬러 bg 가 있으면 자식 text-white 는 그대로. */
-html:not(.dark) .text-white { color: #1f2937 !important; }
-html:not(.dark) .text-gray-300 { color: #6b7280 !important; }
-html:not(.dark) .text-gray-400 { color: #4b5563 !important; }
-html:not(.dark) .text-gray-500 { color: #6b7280 !important; }
-
-/* 컬러 배경 위의 흰 텍스트는 유지 — 명시 list */
-html:not(.dark) [class*="bg-pink-"] .text-white,
-html:not(.dark) [class*="bg-red-"] .text-white,
-html:not(.dark) [class*="bg-blue-"] .text-white,
-html:not(.dark) [class*="bg-green-"] .text-white,
-html:not(.dark) [class*="bg-purple-"] .text-white,
-html:not(.dark) [class*="bg-violet-"] .text-white,
-html:not(.dark) [class*="bg-yellow-"] .text-white,
-html:not(.dark) [class*="bg-amber-"] .text-white,
-html:not(.dark) [class*="bg-orange-"] .text-white,
-html:not(.dark) [class*="bg-rose-"] .text-white,
-html:not(.dark) [class*="bg-indigo-"] .text-white,
-html:not(.dark) [class*="bg-teal-"] .text-white,
-html:not(.dark) [class*="bg-cyan-"] .text-white,
-html:not(.dark) [class*="bg-emerald-"] .text-white,
-html:not(.dark) [class*="bg-lime-"] .text-white,
-html:not(.dark) [class*="bg-fuchsia-"] .text-white,
-html:not(.dark) [class*="bg-sky-"] .text-white,
-html:not(.dark) [class*="bg-gradient"] .text-white,
-html:not(.dark) .bg-gray-900 .text-white,
-html:not(.dark) .bg-black .text-white {
-  color: #ffffff !important;
-}
-
-/* 보더/separator 색상도 light 모드에서 부드럽게 */
-html:not(.dark) .border-\[\#1A1A1A\] { border-color: #e5e7eb !important; }
-html:not(.dark) .border-\[\#2A2A2A\] { border-color: #d1d5db !important; }
-html:not(.dark) .border-\[\#0A0A0A\] { border-color: #f3f4f6 !important; }
 
 .mx-auto {
   margin-left: auto !important;

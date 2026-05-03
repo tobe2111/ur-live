@@ -111,10 +111,13 @@ export function ProductListSheet({
                         loading="lazy"
                         decoding="async"
                         onError={(e) => {
+                          // 🛡️ 2026-05-03: maxresdefault.jpg 404 fallback 체인
+                          //   1순위: 명시 thumbnail (있으면), 2순위: hqdefault (항상 존재)
                           const img = e.target as HTMLImageElement
-                          const fallback = sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')
-                          if (fallback && img.src !== fallback) {
-                            img.src = fallback
+                          if (img.src.includes('maxresdefault') && sheetStream?.youtube_video_id) {
+                            img.src = `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/hqdefault.jpg`
+                          } else if (sheetStream?.thumbnail_url && img.src !== sheetStream.thumbnail_url) {
+                            img.src = sheetStream.thumbnail_url
                           }
                         }}
                       />

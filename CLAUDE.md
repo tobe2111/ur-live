@@ -193,21 +193,9 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
 
 - 자동 마이그레이션 스크립트: `perl /tmp/dark_migrate.pl <files...>` (사용 후 git diff 검토 필수)
 - 첫 페인트 FOUC 방지: `index.html` inline script 가 `localStorage.ur_theme_mode_v1` 읽고 `<html>` 에 `dark` 클래스 선반영
+- **다크 테마 페이지 (홈/라이브/마이) 와 셀러·어드민 라이트 테마는 토글 무영향** — 페이지 단에서 `bg-[#020202]` / `bg-white` 가 명시 강제되어 있어 `dark:` variant 가 매칭되지 않음 (의도된 동작)
 
-#### 🆕 2026-05-03 정책 변경: 모든 페이지 토글 적용
-**이전**: 다크 테마 페이지 (홈/라이브/마이) 강제 다크 → 토글 무영향 (의도된 동작)
-**변경**: 모든 user-facing 페이지가 light/dark 토글 따르도록 (사용자 요청).
-
-**구현 방식**: `src/index.css` 글로벌 CSS override (`html:not(.dark)` selector).
-페이지 코드 수정 없이 다음 색상이 light 모드에서 invert 됨:
-- 배경: `#020202` → `#ffffff`, `#0A0A0A`/`#0B0B0B` → `#fafafa`, `#121212`/`#151515` → `#f3f4f6`, `#1A1A1A` → `#e5e7eb`
-- 텍스트: `text-white`/`text-gray-300/400/500` → 어두운 톤
-- 보더: `border-[#1A1A1A]`/`border-[#2A2A2A]`/`border-[#0A0A0A]` → 가벼운 gray
-
-🛡️ **안전장치**: 컬러 배경 (bg-pink/red/blue/purple/gradient...) 위 `text-white` 는 그대로 유지
-→ 버튼/뱃지의 흰 텍스트가 light 모드에서 invisible 되는 문제 방지.
-
-**여전히 유효**: 셀러/어드민/에이전시 대시보드 (#F4F5F7) 는 `dark:` variants 절대 금지 (아래 섹션 참조).
+> ⚠️ **2026-05-03 시도/롤백**: 글로벌 CSS override (`html:not(.dark)` selector)로 다크 페이지를 light 모드 시 invert 시도 → 사용자 신고 "모든 페이지 UI 깨짐" → 즉시 revert. 향후 "모든 페이지 토글" 구현은 페이지별 명시 `dark:` variant 추가 (글로벌 invert 금지).
 
 ### 화이트(라이트) 테마 — 셀러/어드민/에이전시 대시보드 (테마 토글 무영향, 고정)
 - **해당**: 셀러(`/seller/*`), 어드민(`/admin/*`), 에이전시(`/agency/*`)

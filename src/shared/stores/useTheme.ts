@@ -41,11 +41,15 @@ function resolveApplied(mode: ThemeMode): AppliedTheme {
   return mode === 'system' ? detectSystemTheme() : mode
 }
 
-function applyToDocument(applied: AppliedTheme) {
+function applyToDocument(_applied: AppliedTheme) {
+  // 🛡️ 2026-05-03 (revert): 다크 모드 toggle 비활성화.
+  // 사용자 신고: 화이트/다크 테마 구별 모호 (화이트 테마 페이지가 dark 토글로 다크 렌더 → 다크 페이지와 구분 안 됨).
+  // 정책 복귀:
+  //   - 화이트 테마 페이지 (쇼핑/결제) = 항상 화이트
+  //   - 다크 테마 페이지 (홈/마이/라이브) = 항상 다크 (bg-[#020202] 명시 강제, 토글 무영향)
+  //   - dark class 항상 제거 → 화이트 페이지의 dark: variants 비활성
   try {
-    const root = document.documentElement
-    if (applied === 'dark') root.classList.add('dark')
-    else root.classList.remove('dark')
+    document.documentElement.classList.remove('dark')
   } catch { /* SSR */ }
 }
 
