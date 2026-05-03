@@ -2045,6 +2045,19 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "accountDeleted": {
+    "title": "Votre compte a été supprimé",
+    "thanks": "Merci d'avoir utilisé notre service.",
+    "bullet1": "Toutes les données personnelles ont été supprimées en toute sécurité.",
+    "bullet2": "La réinscription avec les mêmes informations est restreinte pendant 30 jours.",
+    "bullet3": "Vous pouvez vous réinscrire à tout moment.",
+    "comebackTitle": "💡 Envie de revenir ?",
+    "comebackBody": "Vous pouvez vous réinscrire après 30 jours.\nNous reviendrons avec un meilleur service.",
+    "goHome": "Aller à l'accueil",
+    "autoRedirect": "Redirection automatique vers l'accueil dans 10 secondes.",
+    "feedbackPrefix": "Pour toute suggestion d'amélioration, contactez",
+    "feedbackSuffix": "."
+  },
   "myGroupBuys": {
     "title": "Mes achats groupés",
     "seoDesc": "Consultez vos achats groupés actifs.",

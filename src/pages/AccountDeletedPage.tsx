@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle, Home } from 'lucide-react';
 import SEO from '@/components/SEO';
 
 export default function AccountDeletedPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,34 +29,32 @@ export default function AccountDeletedPage() {
 
           {/* 제목 */}
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            회원 탈퇴가 완료되었습니다
+            {t('accountDeleted.title')}
           </h1>
 
           {/* 안내 메시지 */}
           <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-6 mb-6 text-left">
             <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed mb-3">
-              그동안 서비스를 이용해 주셔서 감사합니다.
+              {t('accountDeleted.thanks')}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-2">
-              • 모든 개인정보가 안전하게 삭제되었습니다.
+              • {t('accountDeleted.bullet1')}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-2">
-              • 30일간 동일한 정보로 재가입이 제한됩니다.
+              • {t('accountDeleted.bullet2')}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-              • 언제든 다시 가입하실 수 있습니다.
+              • {t('accountDeleted.bullet3')}
             </p>
           </div>
 
           {/* 재가입 안내 */}
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-5 mb-6">
             <p className="text-sm text-purple-800 font-semibold mb-2">
-              💡 다시 돌아오고 싶으시다면?
+              {t('accountDeleted.comebackTitle')}
             </p>
-            <p className="text-sm text-purple-700 leading-relaxed">
-              30일 후 언제든 재가입하실 수 있습니다.
-              <br />
-              더 나은 서비스로 다시 찾아뵙겠습니다.
+            <p className="text-sm text-purple-700 leading-relaxed whitespace-pre-line">
+              {t('accountDeleted.comebackBody')}
             </p>
           </div>
 
@@ -64,18 +64,18 @@ export default function AccountDeletedPage() {
             className="w-full py-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center"
           >
             <Home className="w-5 h-5 mr-2" />
-            홈으로 이동
+            {t('accountDeleted.goHome')}
           </button>
 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-            10초 후 자동으로 홈 페이지로 이동합니다.
+            {t('accountDeleted.autoRedirect')}
           </p>
         </div>
 
         {/* 푸터 메시지 */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            서비스 개선을 위한 의견이 있으시다면
+            {t('accountDeleted.feedbackPrefix')}
             <br />
             <a
               href="mailto:support@ur-team.com"
@@ -83,7 +83,7 @@ export default function AccountDeletedPage() {
             >
               support@ur-team.com
             </a>
-            으로 연락해주세요.
+            {t('accountDeleted.feedbackSuffix')}
           </p>
         </div>
       </div>

@@ -2045,6 +2045,19 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "accountDeleted": {
+    "title": "Tu cuenta ha sido eliminada",
+    "thanks": "Gracias por usar nuestro servicio.",
+    "bullet1": "Todos los datos personales se han eliminado de forma segura.",
+    "bullet2": "Volver a registrarse con la misma información está restringido durante 30 días.",
+    "bullet3": "Puedes volver a registrarte cuando quieras.",
+    "comebackTitle": "💡 ¿Quieres volver?",
+    "comebackBody": "Puedes registrarte de nuevo después de 30 días.\nVolveremos con un mejor servicio.",
+    "goHome": "Ir al inicio",
+    "autoRedirect": "Redirección automática al inicio en 10 segundos.",
+    "feedbackPrefix": "Si tienes comentarios para mejorar, contacta",
+    "feedbackSuffix": "."
+  },
   "myGroupBuys": {
     "title": "Mis compras grupales",
     "seoDesc": "Consulta tus compras grupales activas.",

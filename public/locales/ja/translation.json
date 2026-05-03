@@ -297,6 +297,19 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "accountDeleted": {
+    "title": "退会が完了しました",
+    "thanks": "ご利用いただきありがとうございました。",
+    "bullet1": "すべての個人情報は安全に削除されました。",
+    "bullet2": "同一情報での再登録は30日間制限されます。",
+    "bullet3": "いつでも再登録できます。",
+    "comebackTitle": "💡 また戻ってきたいですか？",
+    "comebackBody": "30日後にいつでも再登録できます。\nより良いサービスでお会いしましょう。",
+    "goHome": "ホームへ",
+    "autoRedirect": "10秒後に自動的にホームへ移動します。",
+    "feedbackPrefix": "改善のためのご意見は",
+    "feedbackSuffix": "までご連絡ください。"
+  },
   "myGroupBuys": {
     "title": "マイ共同購入",
     "seoDesc": "参加中の共同購入状況を確認しよう。",

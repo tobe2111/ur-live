@@ -297,6 +297,19 @@
     "selectOption": "Select Option",
     "seller": "Seller"
   },
+  "accountDeleted": {
+    "title": "账号注销完成",
+    "thanks": "感谢您一直以来的使用。",
+    "bullet1": "所有个人信息已安全删除。",
+    "bullet2": "30 天内不可使用相同信息再次注册。",
+    "bullet3": "您可以随时重新注册。",
+    "comebackTitle": "💡 想再回来吗？",
+    "comebackBody": "30 天后您可以随时重新注册。\n我们会以更好的服务再次与您见面。",
+    "goHome": "返回首页",
+    "autoRedirect": "10 秒后自动返回首页。",
+    "feedbackPrefix": "如有改进建议请联系",
+    "feedbackSuffix": "。"
+  },
   "myGroupBuys": {
     "title": "我的团购",
     "seoDesc": "查看参与中的团购状态。",

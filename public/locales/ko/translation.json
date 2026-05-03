@@ -297,6 +297,19 @@
     "quantity": "수량",
     "seller": "판매자"
   },
+  "accountDeleted": {
+    "title": "회원 탈퇴가 완료되었습니다",
+    "thanks": "그동안 서비스를 이용해 주셔서 감사합니다.",
+    "bullet1": "모든 개인정보가 안전하게 삭제되었습니다.",
+    "bullet2": "30일간 동일한 정보로 재가입이 제한됩니다.",
+    "bullet3": "언제든 다시 가입하실 수 있습니다.",
+    "comebackTitle": "💡 다시 돌아오고 싶으시다면?",
+    "comebackBody": "30일 후 언제든 재가입하실 수 있습니다.\n더 나은 서비스로 다시 찾아뵙겠습니다.",
+    "goHome": "홈으로 이동",
+    "autoRedirect": "10초 후 자동으로 홈 페이지로 이동합니다.",
+    "feedbackPrefix": "서비스 개선을 위한 의견이 있으시다면",
+    "feedbackSuffix": "으로 연락해주세요."
+  },
   "myGroupBuys": {
     "title": "내 공동구매",
     "seoDesc": "참여 중인 공동구매 현황을 확인하세요.",

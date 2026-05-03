@@ -297,6 +297,19 @@
     "quantity": "Quantity",
     "seller": "Seller"
   },
+  "accountDeleted": {
+    "title": "Your account has been deleted",
+    "thanks": "Thank you for using our service.",
+    "bullet1": "All personal data has been securely deleted.",
+    "bullet2": "Re-signup with the same info is restricted for 30 days.",
+    "bullet3": "You can sign up again anytime.",
+    "comebackTitle": "💡 Want to come back?",
+    "comebackBody": "You can re-register anytime after 30 days.\nWe'll be back with better service.",
+    "goHome": "Go to Home",
+    "autoRedirect": "Auto-redirecting to home in 10 seconds.",
+    "feedbackPrefix": "If you have feedback for improvement, please contact",
+    "feedbackSuffix": "."
+  },
   "myGroupBuys": {
     "title": "My Group Buys",
     "seoDesc": "Check your active group buys.",
