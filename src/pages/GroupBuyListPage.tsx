@@ -174,7 +174,7 @@ export default function GroupBuyListPage() {
 
       {/* 헤더 */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
-        <div className="flex items-center h-12 px-2">
+        <div className="ur-content-wide flex items-center h-12 px-2 lg:px-8">
           <button
             onClick={() => navigate(-1)}
             className="p-2 -ml-1"
@@ -262,7 +262,7 @@ export default function GroupBuyListPage() {
       )}
 
       {/* 정렬 pills */}
-      <div className={`px-4 ${mainTab === 'seller' ? 'mt-3' : 'mt-4'} flex items-center justify-between`}>
+      <div className={`ur-content-wide px-4 lg:px-8 ${mainTab === 'seller' ? 'mt-3' : 'mt-4'} flex items-center justify-between`}>
         <span className="text-[12px] text-gray-500">
           총 <span className="font-semibold text-gray-900">{currentCount}</span>
           개

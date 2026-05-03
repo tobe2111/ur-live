@@ -36,7 +36,7 @@ export default function OrderStatusBar() {
   ]
 
   return (
-    <div className="px-4 pt-3">
+    <div className="ur-content-medium px-4 lg:px-8 pt-3">
       <p className="text-[12px] font-bold text-white mb-3">주문 현황</p>
       <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-white/[0.04]">
         {items.map(o => (

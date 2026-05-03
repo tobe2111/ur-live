@@ -13,6 +13,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt'
 import OnboardingTrigger from './components/onboarding/OnboardingTrigger'
 import RestoreAccountModal from './components/account/RestoreAccountModal'
 import BottomNav from '@/components/main/BottomNav'
+import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
 import SideBanner from '@/components/SideBanner'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -414,6 +415,8 @@ function AppContent() {
               각 페이지가 자체 `ur-content-narrow/medium/wide/full` 토큰으로 max-width 관리.
               MobileAppLayout 의 `data-mobile-only="true"` (라이브/쇼츠) 페이지는 여전히 430px 액자 유지. */}
           <div className="min-h-dvh">
+          {/* 📐 2026-05-03: PC 상단 네비게이션 — 모바일 BottomNav 의 PC 대응. lg+ 에서만 표시. */}
+          {!hideBottomNav && <DesktopTopNav />}
           <div className="flex-1">
           <InAppBrowserBanner />
           <PWAInstallPrompt />

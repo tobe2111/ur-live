@@ -27,7 +27,7 @@ export default function TeamPointsCard() {
   }, [])
 
   return (
-    <div className="px-5 py-3">
+    <div className="ur-content-medium px-5 lg:px-8 py-3">
       <button
         type="button"
         onClick={() => navigate('/points/charge')}

@@ -29,7 +29,7 @@ export default function ThemeToggleSection() {
   ]
 
   return (
-    <div className="px-4 pt-5">
+    <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-white mb-2">{t('theme.title', { defaultValue: '화면 테마' })}</p>
       <div className="rounded-2xl bg-white/[0.04] p-3">
         <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('theme.title', { defaultValue: '화면 테마 선택' })}>

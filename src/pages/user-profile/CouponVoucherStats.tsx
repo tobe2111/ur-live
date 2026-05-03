@@ -8,7 +8,7 @@ export default function CouponVoucherStats({ counts }: { counts: MyCounts }) {
   const navigate = useNavigate()
 
   return (
-    <div className="px-4 pt-2">
+    <div className="ur-content-medium px-4 lg:px-8 pt-2">
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"

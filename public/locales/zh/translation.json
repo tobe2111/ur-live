@@ -493,7 +493,9 @@
     "specialTitle": "UR特价",
     "rankingTitle": "🏆 实时排行",
     "recommendTitle": "推荐商品",
-    "buyNow": "立即购买"
+    "buyNow": "立即购买",
+    "regionPickerAria": "选择地区",
+    "regionPickerTitle": "选择地区"
   },
   "browse": {
     "title": "购物",

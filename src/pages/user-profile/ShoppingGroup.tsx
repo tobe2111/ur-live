@@ -16,7 +16,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
   ]
 
   return (
-    <div className="px-4 pt-5">
+    <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-white mb-2">쇼핑</p>
       <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
         {items.map((item, i) => (

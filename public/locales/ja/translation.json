@@ -493,7 +493,9 @@
     "specialTitle": "UR特価",
     "rankingTitle": "🏆 リアルタイムランキング",
     "recommendTitle": "おすすめ商品",
-    "buyNow": "購入する"
+    "buyNow": "購入する",
+    "regionPickerAria": "地域選択",
+    "regionPickerTitle": "地域選択"
   },
   "browse": {
     "title": "ショッピング",

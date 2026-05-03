@@ -493,7 +493,9 @@
     "specialTitle": "UR Special",
     "rankingTitle": "🏆 Live Ranking",
     "recommendTitle": "Recommended",
-    "buyNow": "Buy now"
+    "buyNow": "Buy now",
+    "regionPickerAria": "Choose region",
+    "regionPickerTitle": "Choose region"
   },
   "browse": {
     "title": "Shop",

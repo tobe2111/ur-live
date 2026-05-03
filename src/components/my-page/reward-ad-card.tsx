@@ -20,7 +20,7 @@ export function RewardAdCard() {
   // 웹: 앱 다운로드 유도 배너
   if (!isNative) {
     return (
-      <div className="px-5 py-1">
+      <div className="ur-content-medium px-5 lg:px-8 py-1">
         <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center shrink-0">
@@ -134,7 +134,7 @@ export function RewardAdCard() {
   const isMaxed = remaining <= 0
 
   return (
-    <div className="px-5 py-1">
+    <div className="ur-content-medium px-5 lg:px-8 py-1">
       <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

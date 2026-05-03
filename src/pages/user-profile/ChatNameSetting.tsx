@@ -21,7 +21,7 @@ export default function ChatNameSetting() {
   }
 
   return (
-    <div className="px-5 py-1.5">
+    <div className="ur-content-medium px-5 lg:px-8 py-1.5">
       <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
         <div className="flex items-center justify-between">
           <div>

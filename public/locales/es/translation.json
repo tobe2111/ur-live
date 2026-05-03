@@ -2241,7 +2241,9 @@
     "specialTitle": "UR Especial",
     "rankingTitle": "🏆 Ranking en vivo",
     "recommendTitle": "Recomendados",
-    "buyNow": "Comprar"
+    "buyNow": "Comprar",
+    "regionPickerAria": "Elegir región",
+    "regionPickerTitle": "Elegir región"
   },
   "browse": {
     "title": "Comprar",

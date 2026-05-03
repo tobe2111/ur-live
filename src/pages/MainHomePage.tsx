@@ -31,6 +31,8 @@ export default function MainHomePage() {
     } catch { /* ignore */ }
     return REGIONS[0]
   })
+  // 🛡️ 2026-05-03: 지역 선택 모달 — cycle 대신 전체 리스트에서 직접 선택.
+  const [regionModalOpen, setRegionModalOpen] = useState(false)
 
   // GPS 자동 지역 감지 (한 번만 시도, 권한 거부 시 기본값 유지)
   useEffect(() => {
@@ -240,7 +242,9 @@ export default function MainHomePage() {
 
         {/* Region + featured content */}
         <div className="absolute top-4 left-4 right-4 z-10">
-          <button onClick={() => handleRegionChange(REGIONS[(REGIONS.indexOf(region) + 1) % REGIONS.length])}
+          <button
+            onClick={() => setRegionModalOpen(true)}
+            aria-label={t('mainHome.regionPickerAria', { defaultValue: '지역 선택' })}
             className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-white/[0.12] backdrop-blur-md border border-white/20">
             <MapPin className="w-3.5 h-3.5 text-white" />
             <span className="text-[12px] font-bold text-white">{region}</span>
@@ -574,6 +578,58 @@ export default function MainHomePage() {
       <InvitePrompt />
       </div>
       <SiteFooter />
+
+      {/* 🛡️ 2026-05-03: 지역 선택 모달 — 전체 REGIONS 리스트에서 직접 선택. */}
+      {regionModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setRegionModalOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-[#2A2A2A] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('mainHome.regionPickerAria', { defaultValue: '지역 선택' })}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#1A1A1A]">
+              <h3 className="text-[15px] font-bold text-white">
+                {t('mainHome.regionPickerTitle', { defaultValue: '지역 선택' })}
+              </h3>
+              <button
+                onClick={() => setRegionModalOpen(false)}
+                aria-label={t('common.close', { defaultValue: '닫기' })}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/[0.06]"
+              >
+                <span className="text-white/70 text-lg leading-none">×</span>
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto">
+              {REGIONS.map(r => {
+                const active = r === region
+                return (
+                  <button
+                    key={r}
+                    onClick={() => { handleRegionChange(r); setRegionModalOpen(false) }}
+                    className={`w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors ${
+                      active ? 'bg-pink-500/[0.12]' : 'hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <MapPin className={`w-4 h-4 ${active ? 'text-pink-400' : 'text-white/40'}`} />
+                    <span className={`flex-1 text-[14px] ${active ? 'text-pink-300 font-bold' : 'text-white'}`}>
+                      {r}
+                    </span>
+                    {active && (
+                      <span className="text-pink-400 text-[12px] font-bold">✓</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
 {/* 로딩 오버레이 제거 — 각 섹션이 데이터 없으면 자체 스켈레톤 표시 */}
     </div>

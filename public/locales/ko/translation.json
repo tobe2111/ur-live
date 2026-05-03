@@ -493,7 +493,9 @@
     "specialTitle": "UR특가",
     "rankingTitle": "🏆 실시간 랭킹",
     "recommendTitle": "추천 상품",
-    "buyNow": "구매하기"
+    "buyNow": "구매하기",
+    "regionPickerAria": "지역 선택",
+    "regionPickerTitle": "지역 선택"
   },
   "browse": {
     "title": "쇼핑",

@@ -23,10 +23,12 @@ export default function KakaoConsultButton() {
   const isFullScreen = location.pathname.startsWith('/embed/') || location.pathname.startsWith('/checkout/return')
   if (isDashboard || isFullScreen) return null
 
+  // 🛡️ 2026-05-03: PC 에서는 BottomNav 가 없으므로 bottom-6, 우측 끝에 floating.
+  // 모바일은 기존 위치 (BottomNav 위 + 모바일 액자 우측).
   return (
-    <div className="fixed bottom-20 left-0 right-0 z-40 px-4 pr-5 pointer-events-none">
+    <div className="fixed bottom-20 lg:bottom-6 left-0 right-0 z-40 px-4 pr-5 lg:pr-6 pointer-events-none">
       {/* 🛡️ 2026-04-28: pr-5 로 우측 여백 보강 (모바일에서 화면 벽에 너무 붙던 문제) */}
-      <div className="max-w-[430px] mx-auto flex justify-end">
+      <div className="max-w-[430px] lg:max-w-none mx-auto flex justify-end">
         <a
           href={KAKAO_CHAT_URL}
           target="_blank" rel="noopener noreferrer"
