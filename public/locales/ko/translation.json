@@ -270,7 +270,20 @@
     "continueShop": "계속 쇼핑하기",
     "goToCheckout": "결제하기",
     "itemAdded": "장바구니에 추가되었습니다",
-    "itemRemoved": "장바구니에서 삭제되었습니다"
+    "itemRemoved": "장바구니에서 삭제되었습니다",
+    "loginRequired": "장바구니를 이용하려면 로그인해 주세요",
+    "quantityChangeFailed": "수량 변경에 실패했습니다.",
+    "deleteConfirmMsg": "이 상품을 장바구니에서 삭제하시겠습니까?",
+    "deleteConfirmTitle": "상품 삭제",
+    "deleteFailed": "상품 삭제에 실패했습니다.",
+    "optionChangeFailed": "옵션 변경에 실패했습니다.",
+    "deleteSelected": "선택 삭제",
+    "loading": "로딩 중...",
+    "freeShipping": "무료배송",
+    "shippingFee": "배송비",
+    "free": "무료",
+    "selectProductsFirst": "상품을 선택해주세요",
+    "placeOrder": "{{amount}}원 주문하기"
   },
   "product": {
     "addToCart": "장바구니 담기",

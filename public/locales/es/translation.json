@@ -1976,7 +1976,20 @@
     "quantity": "Quantity",
     "removeItem": "Remove Item",
     "title": "Shopping Cart",
-    "total": "Total"
+    "total": "Total",
+    "loginRequired": "Inicia sesión para usar el carrito",
+    "quantityChangeFailed": "No se pudo cambiar la cantidad.",
+    "deleteConfirmMsg": "¿Eliminar este artículo del carrito?",
+    "deleteConfirmTitle": "Eliminar artículo",
+    "deleteFailed": "No se pudo eliminar el artículo.",
+    "optionChangeFailed": "No se pudo cambiar la opción.",
+    "deleteSelected": "Eliminar seleccionados",
+    "loading": "Cargando...",
+    "freeShipping": "Envío gratis",
+    "shippingFee": "Tarifa de envío",
+    "free": "Gratis",
+    "selectProductsFirst": "Selecciona artículos",
+    "placeOrder": "Pedir {{amount}} KRW"
   },
   "payment": {
     "agreeToTerms": "I agree to proceed with payment",

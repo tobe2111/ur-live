@@ -270,7 +270,20 @@
     "price": "Price",
     "quantity": "Quantity",
     "removeItem": "Remove Item",
-    "total": "Total"
+    "total": "Total",
+    "loginRequired": "请登录后使用购物车",
+    "quantityChangeFailed": "修改数量失败。",
+    "deleteConfirmMsg": "从购物车中删除此商品?",
+    "deleteConfirmTitle": "删除商品",
+    "deleteFailed": "删除商品失败。",
+    "optionChangeFailed": "更改选项失败。",
+    "deleteSelected": "删除所选",
+    "loading": "加载中...",
+    "freeShipping": "免运费",
+    "shippingFee": "运费",
+    "free": "免费",
+    "selectProductsFirst": "请选择商品",
+    "placeOrder": "{{amount}}韩元 下单"
   },
   "product": {
     "addToCart": "加入购物车",

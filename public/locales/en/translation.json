@@ -270,7 +270,20 @@
     "continueShop": "Continue Shopping",
     "goToCheckout": "Proceed to Checkout",
     "itemAdded": "Item added to cart",
-    "itemRemoved": "Item removed from cart"
+    "itemRemoved": "Item removed from cart",
+    "loginRequired": "Please log in to use the cart",
+    "quantityChangeFailed": "Failed to change quantity.",
+    "deleteConfirmMsg": "Remove this item from your cart?",
+    "deleteConfirmTitle": "Remove item",
+    "deleteFailed": "Failed to remove item.",
+    "optionChangeFailed": "Failed to change option.",
+    "deleteSelected": "Delete selected",
+    "loading": "Loading...",
+    "freeShipping": "Free shipping",
+    "shippingFee": "Shipping fee",
+    "free": "Free",
+    "selectProductsFirst": "Please select items",
+    "placeOrder": "Order {{amount}} KRW"
   },
   "product": {
     "addToCart": "Add to Cart",

@@ -48,7 +48,7 @@ export default function CartPage() {
           </div>
           <div>
             <p className="text-[16px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
-            <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">장바구니를 이용하려면 로그인해 주세요</p>
+            <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">{t('cart.loginRequired')}</p>
           </div>
           <button
             type="button"
@@ -70,6 +70,7 @@ export default function CartPage() {
 }
 
 function CartPageContent() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   // 🎯 React Query 훅 사용 (refetchOnMount로 항상 최신 데이터 가져오기)
@@ -186,7 +187,7 @@ function CartPageContent() {
       })
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to update quantity:', error)
-      const msg = error instanceof Error ? error.message : '수량 변경에 실패했습니다.'
+      const msg = error instanceof Error ? error.message : t('cart.quantityChangeFailed')
       showAlert(msg, 'error', '수량 변경 실패')
     } finally {
       setUpdating(false)
@@ -198,23 +199,23 @@ function CartPageContent() {
     if (updating) return
 
     showConfirm(
-      '이 상품을 장바구니에서 삭제하시겠습니까?',
+      t('cart.deleteConfirmMsg'),
       async () => {
         setUpdating(true)
         try {
           await removeItemMutation.mutateAsync(String(cartItemId))
-          showAlert('상품이 삭제되었습니다.', 'success', '삭제 완료')
+          showAlert(t('cart.deleteConfirmTitle'), 'success', t('cart.deleteConfirmTitle'))
         } catch (error: unknown) {
           if (import.meta.env.DEV) console.error('Failed to remove item:', error)
-          const msg = error instanceof Error ? error.message : '상품 삭제에 실패했습니다.'
-          showAlert(msg, 'error', '삭제 실패')
+          const msg = error instanceof Error ? error.message : t('cart.deleteFailed')
+          showAlert(msg, 'error', t('cart.deleteFailed'))
         } finally {
           setUpdating(false)
         }
       },
-      '상품 삭제'
+      t('cart.deleteConfirmTitle')
     )
-  }, [updating, removeItemMutation])
+  }, [updating, removeItemMutation, t, showAlert, showConfirm])
 
   const openOptionModal = (item: CartItem) => {
     setOptionModal({
@@ -244,7 +245,7 @@ function CartPageContent() {
       showAlert('옵션이 변경되었습니다.', 'success', '변경 완료')
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to change option:', error)
-      const msg = error instanceof Error ? error.message : '옵션 변경에 실패했습니다.'
+      const msg = error instanceof Error ? error.message : t('cart.optionChangeFailed')
       showAlert(msg, 'error', '변경 실패')
     } finally {
       setUpdating(false)
@@ -265,16 +266,16 @@ function CartPageContent() {
               removeItemMutation.mutateAsync(String(id))
             )
           )
-          showAlert('선택한 상품이 삭제되었습니다.', 'success', '삭제 완료')
+          showAlert(t('cart.deleteSelected'), 'success', t('cart.deleteSelected'))
         } catch (error: unknown) {
           if (import.meta.env.DEV) console.error('Failed to delete selected:', error)
-          const msg = error instanceof Error ? error.message : '상품 삭제에 실패했습니다.'
-          showAlert(msg, 'error', '삭제 실패')
+          const msg = error instanceof Error ? error.message : t('cart.deleteFailed')
+          showAlert(msg, 'error', t('cart.deleteFailed'))
         } finally {
           setUpdating(false)
         }
       },
-      '선택 삭제'
+      t('cart.deleteSelected')
     )
   }, [selectedIds, removeItemMutation])
 
@@ -375,7 +376,7 @@ function CartPageContent() {
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0A0A0A]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
-          <p className="mt-4 text-sm text-gray-400 dark:text-gray-500">로딩 중...</p>
+          <p className="mt-4 text-sm text-gray-400 dark:text-gray-500">{t('cart.loading')}</p>
         </div>
       </div>
     )
@@ -463,7 +464,7 @@ function CartPageContent() {
                   )}
                   {freeShipThreshold > 0 && remaining <= 0 && (
                     <div className="mx-4 mt-3 px-3 py-2 bg-[#FDF2F8] rounded-lg">
-                      <p className="text-[12px] text-pink-600 font-semibold">무료배송</p>
+                      <p className="text-[12px] text-pink-600 font-semibold">{t('cart.freeShipping')}</p>
                     </div>
                   )}
 
@@ -491,10 +492,10 @@ function CartPageContent() {
 
                   {/* Seller group shipping info */}
                   <div className="mx-4 mb-3 pt-3 border-t border-gray-100 dark:border-[#1A1A1A] flex justify-between text-[12px]">
-                    <span className="text-gray-400 dark:text-gray-500">배송비</span>
+                    <span className="text-gray-400 dark:text-gray-500">{t('cart.shippingFee')}</span>
                     <span className="font-medium text-gray-700 dark:text-gray-200">
                       {freeShipThreshold > 0 && group.subtotal >= freeShipThreshold
-                        ? <span className="text-pink-500">무료</span>
+                        ? <span className="text-pink-500">{t('cart.free')}</span>
                         : `${formatNumber(group.shipping_fee)}원`}
                     </span>
                   </div>
@@ -521,7 +522,7 @@ function CartPageContent() {
                 disabled={selectedIds.size === 0 || updating}
                 className="w-full py-3.5 bg-gray-900 text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all"
               >
-                {selectedIds.size === 0 ? '상품을 선택해주세요' : `${formatNumber(total)}원 주문하기`}
+                {selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })}
               </button>
             </div>
           </div>
