@@ -127,13 +127,32 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
 4. **9:16 비디오 페이지**: `MOBILE_ONLY_PREFIXES` 에 path 추가 (라이브/쇼츠 같은 경우)
 5. **테스트**: 모바일 (≤640px) / 태블릿 (768px) / 데스크톱 (1280px) / wide (1920px) 4가지 뷰포트 확인
 
-### 현재 적용 상태 (점진 진행)
+### 현재 적용 상태 (2026-05-03 — 거의 완료)
 
-- ✅ **BrowsePage** — 첫 prototype (sticky header centered + grid 2-5열)
-- ⏳ ProductDetailPage — 좌우 2단 진행 예정
-- ⏳ MainHomePage — 그리드 + 헤로 진행 예정
-- ⏳ CheckoutPage / MyOrdersPage / UserProfilePage / WishlistPage — 점진 적용
-- ⏸️ LivePageV2 — 마지막 단계 (9:16 유지하며 사이드바 추가, 별도 PR)
+**✅ ur-content-* 토큰 적용 페이지 (20+)**:
+- BrowsePage / SearchPage / WishlistPage (wide + grid 2-5열)
+- ProductDetailPage (wide + lg:grid-cols-5 좌이미지/우정보 sticky)
+- MainHomePage (wide + 라이브/예정/다시보기 4-5열, 카테고리 5/6/8/10)
+- LiveListPage / GroupBuyListPage / SellerPublicPage (그리드 2-5열)
+- CheckoutPage / CartPage / PointsChargePage / ReferralIndexPage (narrow)
+- MyOrdersPage / UserProfilePage / FAQPage / Privacy/Terms/Refund (medium)
+- AddressManagementPage / AccountSettingsPage / MyVouchersPage / MyCouponsPage / MyReviewsPage / NotificationsPage (narrow)
+- AffiliatePage / GiftClaimPage / InterestListPage / StoreStatsPage / ReferralPage (narrow)
+- 404 / 500 / AccountDeleted (자체 max-w-xl/lg)
+
+**✅ App.tsx 430px 강제 제약 제거** (2026-05-03):
+- `<div className="max-w-[430px] mx-auto bg-white">` 래퍼 → `<div className="min-h-dvh">` 만
+- 페이지가 자체 ur-content-* 로 max-width 결정
+- /live/:id, /shorts 만 MobileAppLayout 의 data-mobile-only 로 430px 액자 유지
+
+**✅ ur-content-* 클래스 — width 100% 명시 (모바일 좁은 컬럼 fix)**:
+- flex-col 부모 안에서 `margin: auto auto` 가 align-self: stretch 해제하던 버그 → `width: 100%` 추가
+
+**✅ PC 사이드바 패턴 모든 페이지 확장** (2026-05-03):
+- 신규 `DesktopTopNav` (lg+ 상단 네비) + 기존 `DesktopLiveSidebar` (xl+ 좌측 사이드바)
+- BottomNav 에 `lg:hidden` 추가 — PC 에서 숨김
+- MobileAppLayout 에 `xl:pl-56` (사이드바 224px) + `2xl:pr-72` (라이브 우측 패널) 자동 적용
+- HIDE_SIDEBAR_PREFIXES (셀러/어드민/에이전시/embed/checkout-return/introduce) 만 사이드바 제외
 
 ## 테마 규칙 (필수)
 
@@ -174,7 +193,21 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
 
 - 자동 마이그레이션 스크립트: `perl /tmp/dark_migrate.pl <files...>` (사용 후 git diff 검토 필수)
 - 첫 페인트 FOUC 방지: `index.html` inline script 가 `localStorage.ur_theme_mode_v1` 읽고 `<html>` 에 `dark` 클래스 선반영
-- **다크 테마 페이지 (홈/라이브/마이) 와 셀러·어드민 라이트 테마는 토글 무영향** — 페이지 단에서 `bg-[#020202]` / `bg-white` 가 명시 강제되어 있어 `dark:` variant 가 매칭되지 않음 (의도된 동작)
+
+#### 🆕 2026-05-03 정책 변경: 모든 페이지 토글 적용
+**이전**: 다크 테마 페이지 (홈/라이브/마이) 강제 다크 → 토글 무영향 (의도된 동작)
+**변경**: 모든 user-facing 페이지가 light/dark 토글 따르도록 (사용자 요청).
+
+**구현 방식**: `src/index.css` 글로벌 CSS override (`html:not(.dark)` selector).
+페이지 코드 수정 없이 다음 색상이 light 모드에서 invert 됨:
+- 배경: `#020202` → `#ffffff`, `#0A0A0A`/`#0B0B0B` → `#fafafa`, `#121212`/`#151515` → `#f3f4f6`, `#1A1A1A` → `#e5e7eb`
+- 텍스트: `text-white`/`text-gray-300/400/500` → 어두운 톤
+- 보더: `border-[#1A1A1A]`/`border-[#2A2A2A]`/`border-[#0A0A0A]` → 가벼운 gray
+
+🛡️ **안전장치**: 컬러 배경 (bg-pink/red/blue/purple/gradient...) 위 `text-white` 는 그대로 유지
+→ 버튼/뱃지의 흰 텍스트가 light 모드에서 invisible 되는 문제 방지.
+
+**여전히 유효**: 셀러/어드민/에이전시 대시보드 (#F4F5F7) 는 `dark:` variants 절대 금지 (아래 섹션 참조).
 
 ### 화이트(라이트) 테마 — 셀러/어드민/에이전시 대시보드 (테마 토글 무영향, 고정)
 - **해당**: 셀러(`/seller/*`), 어드민(`/admin/*`), 에이전시(`/agency/*`)
