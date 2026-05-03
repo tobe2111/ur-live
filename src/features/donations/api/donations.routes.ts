@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { verifyTurnstile } from '@/worker/utils/turnstile';
 import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL } from '@/shared/constants';
 
@@ -24,6 +25,7 @@ donationsRoutes.use('*', cors({
 // ── POST /api/donations/init ─────────────────────────────────────────────────
 // 후원 결제 시작: pending 레코드를 DB에 저장 후 토스 결제 정보 반환
 // confirm 단계에서 DB 저장 금액으로 검증하여 금액 조작을 방지합니다.
+// 🛡️ 2026-05-03: Turnstile (CAPTCHA) 추가 — 분산 봇 spam donate 방어 (rate limit + bot challenge 다층).
 donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
@@ -35,7 +37,15 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
     message?: string;
     donor_name?: string;
     is_anonymous?: boolean;
+    turnstile_token?: string;
   }>();
+
+  // 🛡️ Turnstile 검증 (TURNSTILE_SECRET 미설정 시 fail-open, 즉시 활성 안전).
+  const ip = c.req.header('cf-connecting-ip') || undefined;
+  const turnstileOk = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip);
+  if (!turnstileOk) {
+    return c.json({ success: false, error: '봇 검증 실패. 페이지를 새로고침 후 다시 시도해주세요.' }, 403);
+  }
 
   if (!body.stream_id || !body.amount) {
     return c.json({ success: false, error: '필수 항목 누락 (stream_id, amount)' }, 400);

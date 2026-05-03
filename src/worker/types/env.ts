@@ -26,6 +26,10 @@ export interface Env {
 
   // ---- Auth ----
   JWT_SECRET: string;
+  // 🛡️ 2026-05-03: Cloudflare Turnstile (CAPTCHA) — 봇/분산 brute-force 방어.
+  //   Dashboard → Turnstile → site key 발급. secret 은 server-only.
+  //   미설정 시 verifyTurnstile() 가 fail-open (검증 skip).
+  TURNSTILE_SECRET?: string;
 
   // ---- Firebase ----
   FIREBASE_PROJECT_ID?: string;

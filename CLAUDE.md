@@ -283,7 +283,15 @@ bash scripts/quality-check.sh
    - `SELECT price FROM products WHERE id IN (...)` 서버에서 다시 조회
 5. **Rate limit** (민감한 엔드포인트):
    - `/login`, `/register`, `/forgot-password`, `/pay`, `/donate`, `/review` 등
-6. **Idempotency**:
+   - 🛡️ **운영 필수**: `RATE_LIMIT_KV` Dashboard Bindings 등록 (미등록 시 비-인증 fail-OPEN)
+   - 검증: `curl -I https://live.ur-team.com/api/products` → `X-RateLimit-Limit` 헤더 있어야 정상
+6. **Bot challenge (Turnstile)** — 분산 봇 brute-force 방어 추가 layer:
+   - `verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip)` 사용
+   - 적용 권장: login / register / donate / group_buy_create
+   - 현재 적용: `/api/donations/init` (2026-05-03)
+   - `TURNSTILE_SECRET` 미설정 시 fail-open (즉시 활성 안전)
+   - frontend: `<TurnstileWidget onVerify={token => setTurnstileToken(token)} />`
+7. **Idempotency**:
    - 결제 관련 Toss API 호출 시 `Idempotency-Key` 헤더 필수
 7. **에러 처리**:
    - try-catch 래핑
