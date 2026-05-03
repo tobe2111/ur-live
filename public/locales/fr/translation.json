@@ -2219,7 +2219,23 @@
     "title": "Adresses de livraison",
     "addNew": "Ajouter une adresse",
     "empty": "Aucune adresse enregistrée.",
-    "emptySub": "Veuillez ajouter une adresse de livraison."
+    "emptySub": "Veuillez ajouter une adresse de livraison.",
+    "recipientName": "Nom du destinataire",
+    "recipientPlaceholder": "Saisissez le nom du destinataire",
+    "phone": "Téléphone",
+    "postalCode": "Code postal",
+    "postalPlaceholder": "Code postal",
+    "address": "Adresse",
+    "addressPlaceholder": "Saisie auto après la recherche",
+    "detail": "Adresse détaillée",
+    "detailPlaceholder": "Apt, bâtiment, etc. (optionnel)",
+    "label": "Étiquette d'adresse",
+    "labelPlaceholder": "Étiquette personnalisée",
+    "entryMethod": "Mode d'accès à l'immeuble",
+    "note": "Note",
+    "notePlaceholder": "Instructions de livraison",
+    "entryCodePlaceholder": "ex. #1234*",
+    "optional": "(optionnel)"
   },
   "accountSettings": {
     "title": "Paramètres",
@@ -2233,6 +2249,30 @@
       "terms": "Conditions d'utilisation",
       "refund": "Politique de livraison et de remboursement",
       "languageValue": "Français"
-    }
+    },
+    "editName": "Nom",
+    "editNamePlaceholder": "Saisissez votre nom",
+    "editPhone": "Téléphone",
+    "editCancel": "Annuler",
+    "appInfo": "Infos de l'app",
+    "currentVersion": "Version actuelle",
+    "build": "Build",
+    "checkLatest": "Vérifier les mises à jour"
+  },
+  "productDetail": {
+    "retry": "Réessayer",
+    "detailInfo": "Détails",
+    "groupBuyJoin": "Rejoindre l'achat groupé",
+    "extraDiscount": "Remise supplémentaire de 15%",
+    "restaurantName": "Restaurant",
+    "restaurantAddress": "Adresse",
+    "restaurantPhone": "Téléphone",
+    "voucherTerms": "Conditions",
+    "voucherExpiry": "Valable jusqu'au",
+    "optionSelect": "Sélectionner une option",
+    "optionPlaceholder": "Veuillez sélectionner une option",
+    "pointReward": "Points de récompense",
+    "vatIncluded": "TVA incluse (10%)",
+    "tomorrowDelivery": "Arrive demain"
   }
 }

@@ -351,7 +351,7 @@ export default function AddressManagementPage() {
         <div className="space-y-4">
           <div>
             <label htmlFor="addr-recipient-name" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
-              수령인 이름 <span className="text-red-500">*</span>
+              {t('address.recipientName')} <span className="text-red-500">*</span>
             </label>
             <input
               id="addr-recipient-name"
@@ -359,13 +359,13 @@ export default function AddressManagementPage() {
               value={formData.recipient_name}
               onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              placeholder="받으실 분의 이름을 입력하세요"
+              placeholder={t('address.recipientPlaceholder')}
             />
           </div>
 
           <div>
             <label htmlFor="addr-phone" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
-              연락처 <span className="text-red-500">*</span>
+              {t('address.phone')} <span className="text-red-500">*</span>
             </label>
             <input
               id="addr-phone"
@@ -379,7 +379,7 @@ export default function AddressManagementPage() {
 
           <div>
             <label htmlFor="addr-postal-code" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
-              우편번호 <span className="text-red-500">*</span>
+              {t('address.postalCode')} <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
               <input
@@ -388,7 +388,7 @@ export default function AddressManagementPage() {
                 value={formData.postal_code}
                 readOnly
                 className="flex-1 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
-                placeholder="우편번호"
+                placeholder={t('address.postalPlaceholder')}
               />
               <button
                 type="button"
@@ -408,7 +408,7 @@ export default function AddressManagementPage() {
 
           <div>
             <label htmlFor="addr-address" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
-              주소 <span className="text-red-500">*</span>
+              {t('address.address')} <span className="text-red-500">*</span>
             </label>
             <input
               id="addr-address"
@@ -416,13 +416,13 @@ export default function AddressManagementPage() {
               value={formData.address}
               readOnly
               className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
-              placeholder="주소 검색 후 자동 입력됩니다"
+              placeholder={t('address.addressPlaceholder')}
             />
           </div>
 
           <div>
             <label htmlFor="addr-address-detail" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
-              상세주소
+              {t('address.detail')}
             </label>
             <input
               id="addr-address-detail"
@@ -430,14 +430,14 @@ export default function AddressManagementPage() {
               value={formData.address_detail}
               onChange={(e) => setFormData({ ...formData, address_detail: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              placeholder="동/호수, 건물명 등 (선택)"
+              placeholder={t('address.detailPlaceholder')}
             />
           </div>
 
           {/* 배송지 별칭 */}
           <div>
             <label htmlFor="addr-label" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
-              배송지 별칭 <span className="text-gray-400 dark:text-gray-500 font-normal">(선택)</span>
+              {t('address.label')} <span className="text-gray-400 dark:text-gray-500 font-normal">{t('address.optional')}</span>
             </label>
             <div className="flex gap-1.5 mb-2">
               {['집', '회사', '부모님댁'].map(preset => (
@@ -462,14 +462,14 @@ export default function AddressManagementPage() {
               onChange={(e) => setFormData({ ...formData, label: e.target.value })}
               maxLength={20}
               className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              placeholder="직접 입력도 가능합니다"
+              placeholder={t('address.labelPlaceholder')}
             />
           </div>
 
           {/* 출입 방식 */}
           <div>
             <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
-              공동 현관 출입 방식 <span className="text-gray-400 dark:text-gray-500 font-normal">(선택)</span>
+              {t('address.entryMethod')} <span className="text-gray-400 dark:text-gray-500 font-normal">{t('address.optional')}</span>
             </label>
             <div className="grid grid-cols-2 gap-2">
               {ENTRY_METHOD_OPTIONS.map(opt => (
@@ -502,7 +502,7 @@ export default function AddressManagementPage() {
                 onChange={(e) => setFormData({ ...formData, entry_code: e.target.value })}
                 maxLength={20}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                placeholder="예: #1234*"
+                placeholder={t('address.entryCodePlaceholder')}
               />
               <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
                 배송기사에게만 전달되며 주문 완료 후 60일 뒤 자동 파기됩니다
@@ -538,7 +538,7 @@ export default function AddressManagementPage() {
               maxLength={200}
               rows={2}
               className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-              placeholder="배송 시 요청사항을 입력하세요"
+              placeholder={t('address.notePlaceholder')}
             />
           </div>
 

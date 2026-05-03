@@ -21,6 +21,7 @@ const APP_VERSION = '1.0.0' // package.json version 동기 (manual)
 const BUILD_HASH = (import.meta.env.VITE_APP_VERSION || '').slice(0, 7)
 
 function AppVersionSection() {
+  const { t } = useTranslation();
   const [serverVersion, setServerVersion] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
@@ -64,20 +65,20 @@ function AppVersionSection() {
 
   return (
     <div className="mb-2">
-      <p className="text-[12px] font-bold text-white mb-2 px-1">앱 정보</p>
+      <p className="text-[12px] font-bold text-white mb-2 px-1">{t('accountSettings.appInfo')}</p>
       <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
         <div className="flex items-center justify-between px-4 py-3.5">
-          <span className="text-[13px] text-white/75">현재 버전</span>
+          <span className="text-[13px] text-white/75">{t('accountSettings.currentVersion')}</span>
           <span className="text-[12px] font-medium text-white">v{APP_VERSION}</span>
         </div>
         {BUILD_HASH && (
           <div className="flex items-center justify-between px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <span className="text-[13px] text-white/75">빌드</span>
+            <span className="text-[13px] text-white/75">{t('accountSettings.build')}</span>
             <span className="text-[11px] font-mono text-white/55">{BUILD_HASH}</span>
           </div>
         )}
         <div className="flex items-center justify-between px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <span className="text-[13px] text-white/75">최신 빌드 확인</span>
+          <span className="text-[13px] text-white/75">{t('accountSettings.checkLatest')}</span>
           {loading ? (
             <span className="flex items-center gap-1.5 text-[12px] text-white/45">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> 확인 중
@@ -296,7 +297,7 @@ export default function AccountSettingsPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label htmlFor="account-name" className="block text-sm font-medium text-gray-700 mb-1.5">이름 <span className="text-red-500" aria-hidden="true">*</span></label>
+                <label htmlFor="account-name" className="block text-sm font-medium text-gray-700 mb-1.5">{t('accountSettings.editName')} <span className="text-red-500" aria-hidden="true">*</span></label>
                 <input
                   id="account-name"
                   required
@@ -304,11 +305,11 @@ export default function AccountSettingsPage() {
                   value={editForm.name}
                   onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                  placeholder="이름을 입력하세요"
+                  placeholder={t('accountSettings.editNamePlaceholder')}
                 />
               </div>
               <div>
-                <label htmlFor="account-phone" className="block text-sm font-medium text-gray-700 mb-1.5">전화번호</label>
+                <label htmlFor="account-phone" className="block text-sm font-medium text-gray-700 mb-1.5">{t('accountSettings.editPhone')}</label>
                 <input
                   id="account-phone"
                   value={editForm.phone}
@@ -319,7 +320,7 @@ export default function AccountSettingsPage() {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setEditModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors">취소</button>
+              <button onClick={() => setEditModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors">{t('accountSettings.editCancel')}</button>
               <button onClick={saveProfile} disabled={editLoading} className="flex-1 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50">
                 {editLoading ? '저장 중...' : '저장'}
               </button>

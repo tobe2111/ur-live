@@ -248,7 +248,7 @@ export default function ProductDetailPage() {
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0A0A0A] p-4">
         <div className="text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">{error?.message || '상품을 찾을 수 없습니다.'}</p>
-          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
+          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('productDetail.retry')}</button>
           <button
             onClick={() => navigate('/')}
             className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
@@ -338,7 +338,7 @@ export default function ProductDetailPage() {
         {/* v4 상세 정보 (이미지 + 설명 + 펼쳐보기) */}
         <div style={{ height: 8, background: '#F9FAFB' }} />
         <section className="px-5 py-5">
-          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">상세 정보</p>
+          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.detailInfo')}</p>
           {detailImages.length > 0 && (
             <div className="rounded-xl overflow-hidden mb-3" style={{ background: '#F9FAFB' }}>
               <img src={detailImages[0]} alt={product.name || '상품 상세 이미지'} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
@@ -360,8 +360,8 @@ export default function ProductDetailPage() {
             <div className="rounded-2xl p-4 bg-gray-900 text-white">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 bg-red-500 text-[9px] font-extrabold tracking-wide mb-2">공동구매 참여하기</span>
-                  <p className="text-[15px] font-bold">추가 15% 할인</p>
+                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 bg-red-500 text-[9px] font-extrabold tracking-wide mb-2">{t('productDetail.groupBuyJoin')}</span>
+                  <p className="text-[15px] font-bold">{t('productDetail.extraDiscount')}</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-white/60" />
               </div>
@@ -381,23 +381,23 @@ export default function ProductDetailPage() {
         {product.category === 'meal_voucher' && product.restaurant_name && (
           <AccordionSection title="식당 정보" defaultOpen={true}>
             <div className="space-y-2.5 text-xs text-gray-500 dark:text-gray-400">
-              <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">식당명</span><span className="text-gray-900 dark:text-white font-medium">{product.restaurant_name}</span></div>
+              <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.restaurantName')}</span><span className="text-gray-900 dark:text-white font-medium">{product.restaurant_name}</span></div>
               {product.restaurant_address && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">주소</span><span>{product.restaurant_address}</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.restaurantAddress')}</span><span>{product.restaurant_address}</span></div>
               )}
               {product.restaurant_phone && (
                 <div className="flex items-center">
-                  <span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">전화</span>
+                  <span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.restaurantPhone')}</span>
                   <a href={`tel:${product.restaurant_phone}`} className="text-blue-600 font-medium underline">
                     {product.restaurant_phone}
                   </a>
                 </div>
               )}
               {product.voucher_terms && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">이용조건</span><span>{product.voucher_terms}</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.voucherTerms')}</span><span>{product.voucher_terms}</span></div>
               )}
               {product.voucher_expiry && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">유효기간</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.voucherExpiry')}</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
               )}
 
               {/* 지도 + 외부 연결 버튼 */}
@@ -427,7 +427,7 @@ export default function ProductDetailPage() {
         {/* v4 옵션 선택 */}
         <div style={{ height: 8, background: '#F9FAFB' }} />
         <section className="px-5 py-5">
-          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">옵션 선택</p>
+          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.optionSelect')}</p>
           {options.length > 0 ? (
             <div className="space-y-2">
               {options.map((opt: ProductOption) => (
@@ -446,16 +446,16 @@ export default function ProductDetailPage() {
             </div>
           ) : (
             <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A]">
-              <span className="text-[12px] text-gray-500 dark:text-gray-400">옵션을 선택해주세요</span>
+              <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('productDetail.optionPlaceholder')}</span>
               <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
           )}
           <div className="flex items-center gap-2 mt-3">
-            <span className="text-[11px] text-gray-400 dark:text-gray-500">포인트 적립</span>
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
             <span className="text-[11px] font-bold text-pink-500">최대 {Math.round(displayPrice * 0.03)}딜</span>
           </div>
           {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
-          <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">부가세 포함 (VAT 10%)</div>
+          <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>
         </section>
         <div style={{ height: 8, background: '#F9FAFB' }} />
 
@@ -487,7 +487,7 @@ export default function ProductDetailPage() {
         <div className="px-5 py-3">
           <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50 dark:bg-[#121212]">
             <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            <span className="text-[12px] font-semibold text-gray-900 dark:text-white">내일 도착 예정</span>
+            <span className="text-[12px] font-semibold text-gray-900 dark:text-white">{t('productDetail.tomorrowDelivery')}</span>
             <span className="text-[11px] text-gray-500 dark:text-gray-400">· 5만원 이상 무료</span>
           </div>
         </div>

@@ -2219,7 +2219,23 @@
     "title": "Direcciones de envío",
     "addNew": "Añadir dirección",
     "empty": "No hay direcciones guardadas.",
-    "emptySub": "Por favor, añade una dirección de envío."
+    "emptySub": "Por favor, añade una dirección de envío.",
+    "recipientName": "Nombre del destinatario",
+    "recipientPlaceholder": "Introduce el nombre del destinatario",
+    "phone": "Teléfono",
+    "postalCode": "Código postal",
+    "postalPlaceholder": "Código postal",
+    "address": "Dirección",
+    "addressPlaceholder": "Se rellenará automáticamente tras la búsqueda",
+    "detail": "Dirección detallada",
+    "detailPlaceholder": "Apto, edificio, etc. (opcional)",
+    "label": "Etiqueta",
+    "labelPlaceholder": "Etiqueta personalizada",
+    "entryMethod": "Método de entrada al edificio",
+    "note": "Nota",
+    "notePlaceholder": "Instrucciones de entrega",
+    "entryCodePlaceholder": "ej. #1234*",
+    "optional": "(opcional)"
   },
   "accountSettings": {
     "title": "Ajustes",
@@ -2233,6 +2249,30 @@
       "terms": "Términos de servicio",
       "refund": "Política de envíos y reembolsos",
       "languageValue": "Español"
-    }
+    },
+    "editName": "Nombre",
+    "editNamePlaceholder": "Introduce tu nombre",
+    "editPhone": "Teléfono",
+    "editCancel": "Cancelar",
+    "appInfo": "Información de la app",
+    "currentVersion": "Versión actual",
+    "build": "Build",
+    "checkLatest": "Buscar actualizaciones"
+  },
+  "productDetail": {
+    "retry": "Reintentar",
+    "detailInfo": "Detalles",
+    "groupBuyJoin": "Unirse a la compra grupal",
+    "extraDiscount": "15% extra",
+    "restaurantName": "Restaurante",
+    "restaurantAddress": "Dirección",
+    "restaurantPhone": "Teléfono",
+    "voucherTerms": "Términos",
+    "voucherExpiry": "Válido hasta",
+    "optionSelect": "Selecciona opción",
+    "optionPlaceholder": "Selecciona una opción",
+    "pointReward": "Puntos de recompensa",
+    "vatIncluded": "IVA incluido (10%)",
+    "tomorrowDelivery": "Llega mañana"
   }
 }

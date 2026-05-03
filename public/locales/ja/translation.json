@@ -2219,7 +2219,23 @@
     "title": "配送先の管理",
     "addNew": "新しい配送先を追加",
     "empty": "登録された配送先がありません。",
-    "emptySub": "配送先を追加してください。"
+    "emptySub": "配送先を追加してください。",
+    "recipientName": "受取人名",
+    "recipientPlaceholder": "受取人のお名前を入力してください",
+    "phone": "電話番号",
+    "postalCode": "郵便番号",
+    "postalPlaceholder": "郵便番号",
+    "address": "住所",
+    "addressPlaceholder": "住所検索後に自動入力されます",
+    "detail": "詳細住所",
+    "detailPlaceholder": "部屋番号、建物名など (任意)",
+    "label": "配送先ラベル",
+    "labelPlaceholder": "直接入力も可能です",
+    "entryMethod": "エントランス出入方法",
+    "note": "メモ",
+    "notePlaceholder": "配送時の要望を入力してください",
+    "entryCodePlaceholder": "例: #1234*",
+    "optional": "(任意)"
   },
   "accountSettings": {
     "title": "設定",
@@ -2233,6 +2249,30 @@
       "terms": "利用規約",
       "refund": "配送および返金ポリシー",
       "languageValue": "日本語"
-    }
+    },
+    "editName": "名前",
+    "editNamePlaceholder": "名前を入力してください",
+    "editPhone": "電話番号",
+    "editCancel": "キャンセル",
+    "appInfo": "アプリ情報",
+    "currentVersion": "現在のバージョン",
+    "build": "ビルド",
+    "checkLatest": "最新ビルド確認"
+  },
+  "productDetail": {
+    "retry": "もう一度試す",
+    "detailInfo": "詳細情報",
+    "groupBuyJoin": "共同購入に参加",
+    "extraDiscount": "追加15%割引",
+    "restaurantName": "店舗名",
+    "restaurantAddress": "住所",
+    "restaurantPhone": "電話",
+    "voucherTerms": "利用条件",
+    "voucherExpiry": "有効期限",
+    "optionSelect": "オプション選択",
+    "optionPlaceholder": "オプションを選択してください",
+    "pointReward": "ポイント還元",
+    "vatIncluded": "消費税込 (VAT 10%)",
+    "tomorrowDelivery": "明日到着予定"
   }
 }

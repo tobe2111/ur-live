@@ -2219,7 +2219,23 @@
     "title": "배송지 관리",
     "addNew": "새 배송지 추가",
     "empty": "등록된 배송지가 없습니다.",
-    "emptySub": "배송지를 추가해주세요."
+    "emptySub": "배송지를 추가해주세요.",
+    "recipientName": "수령인 이름",
+    "recipientPlaceholder": "받으실 분의 이름을 입력하세요",
+    "phone": "연락처",
+    "postalCode": "우편번호",
+    "postalPlaceholder": "우편번호",
+    "address": "주소",
+    "addressPlaceholder": "주소 검색 후 자동 입력됩니다",
+    "detail": "상세주소",
+    "detailPlaceholder": "동/호수, 건물명 등 (선택)",
+    "label": "배송지 별칭",
+    "labelPlaceholder": "직접 입력도 가능합니다",
+    "entryMethod": "공동 현관 출입 방식",
+    "note": "메모",
+    "notePlaceholder": "배송 시 요청사항을 입력하세요",
+    "entryCodePlaceholder": "예: #1234*",
+    "optional": "(선택)"
   },
   "accountSettings": {
     "title": "설정",
@@ -2233,6 +2249,30 @@
       "terms": "이용약관",
       "refund": "배송 및 환불 정책",
       "languageValue": "한국어"
-    }
+    },
+    "editName": "이름",
+    "editNamePlaceholder": "이름을 입력하세요",
+    "editPhone": "전화번호",
+    "editCancel": "취소",
+    "appInfo": "앱 정보",
+    "currentVersion": "현재 버전",
+    "build": "빌드",
+    "checkLatest": "최신 빌드 확인"
+  },
+  "productDetail": {
+    "retry": "다시 시도",
+    "detailInfo": "상세 정보",
+    "groupBuyJoin": "공동구매 참여하기",
+    "extraDiscount": "추가 15% 할인",
+    "restaurantName": "식당명",
+    "restaurantAddress": "주소",
+    "restaurantPhone": "전화",
+    "voucherTerms": "이용조건",
+    "voucherExpiry": "유효기간",
+    "optionSelect": "옵션 선택",
+    "optionPlaceholder": "옵션을 선택해주세요",
+    "pointReward": "포인트 적립",
+    "vatIncluded": "부가세 포함 (VAT 10%)",
+    "tomorrowDelivery": "내일 도착 예정"
   }
 }

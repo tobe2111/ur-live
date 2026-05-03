@@ -2219,7 +2219,23 @@
     "title": "Shipping Addresses",
     "addNew": "Add new address",
     "empty": "No saved addresses.",
-    "emptySub": "Please add a shipping address."
+    "emptySub": "Please add a shipping address.",
+    "recipientName": "Recipient name",
+    "recipientPlaceholder": "Enter the recipient's name",
+    "phone": "Phone",
+    "postalCode": "Postal code",
+    "postalPlaceholder": "Postal code",
+    "address": "Address",
+    "addressPlaceholder": "Auto-filled after address search",
+    "detail": "Address detail",
+    "detailPlaceholder": "Apt, suite, building name (optional)",
+    "label": "Address label",
+    "labelPlaceholder": "Type a custom label",
+    "entryMethod": "Building entry method",
+    "note": "Note",
+    "notePlaceholder": "Enter delivery instructions",
+    "entryCodePlaceholder": "e.g., #1234*",
+    "optional": "(optional)"
   },
   "accountSettings": {
     "title": "Settings",
@@ -2233,6 +2249,30 @@
       "terms": "Terms of Service",
       "refund": "Shipping & Refund Policy",
       "languageValue": "English"
-    }
+    },
+    "editName": "Name",
+    "editNamePlaceholder": "Enter your name",
+    "editPhone": "Phone",
+    "editCancel": "Cancel",
+    "appInfo": "App Info",
+    "currentVersion": "Current version",
+    "build": "Build",
+    "checkLatest": "Check for updates"
+  },
+  "productDetail": {
+    "retry": "Retry",
+    "detailInfo": "Details",
+    "groupBuyJoin": "Join group buy",
+    "extraDiscount": "Extra 15% off",
+    "restaurantName": "Restaurant",
+    "restaurantAddress": "Address",
+    "restaurantPhone": "Phone",
+    "voucherTerms": "Terms",
+    "voucherExpiry": "Valid until",
+    "optionSelect": "Select option",
+    "optionPlaceholder": "Please select an option",
+    "pointReward": "Reward points",
+    "vatIncluded": "VAT included (10%)",
+    "tomorrowDelivery": "Arrives tomorrow"
   }
 }

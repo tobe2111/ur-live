@@ -2219,7 +2219,23 @@
     "title": "收货地址管理",
     "addNew": "添加新地址",
     "empty": "没有已保存的地址。",
-    "emptySub": "请添加收货地址。"
+    "emptySub": "请添加收货地址。",
+    "recipientName": "收件人姓名",
+    "recipientPlaceholder": "请输入收件人姓名",
+    "phone": "联系电话",
+    "postalCode": "邮政编码",
+    "postalPlaceholder": "邮政编码",
+    "address": "地址",
+    "addressPlaceholder": "地址搜索后自动填写",
+    "detail": "详细地址",
+    "detailPlaceholder": "房号、楼栋名等 (可选)",
+    "label": "地址别称",
+    "labelPlaceholder": "可直接输入",
+    "entryMethod": "门禁进入方式",
+    "note": "备注",
+    "notePlaceholder": "请输入配送注意事项",
+    "entryCodePlaceholder": "如: #1234*",
+    "optional": "(可选)"
   },
   "accountSettings": {
     "title": "设置",
@@ -2233,6 +2249,30 @@
       "terms": "使用条款",
       "refund": "配送和退款政策",
       "languageValue": "中文"
-    }
+    },
+    "editName": "姓名",
+    "editNamePlaceholder": "请输入姓名",
+    "editPhone": "电话号码",
+    "editCancel": "取消",
+    "appInfo": "应用信息",
+    "currentVersion": "当前版本",
+    "build": "构建",
+    "checkLatest": "检查最新构建"
+  },
+  "productDetail": {
+    "retry": "重试",
+    "detailInfo": "详细信息",
+    "groupBuyJoin": "参与团购",
+    "extraDiscount": "额外 15% 折扣",
+    "restaurantName": "店铺名",
+    "restaurantAddress": "地址",
+    "restaurantPhone": "电话",
+    "voucherTerms": "使用条款",
+    "voucherExpiry": "有效期至",
+    "optionSelect": "选择选项",
+    "optionPlaceholder": "请选择选项",
+    "pointReward": "积分奖励",
+    "vatIncluded": "含增值税 (10%)",
+    "tomorrowDelivery": "明日送达"
   }
 }
