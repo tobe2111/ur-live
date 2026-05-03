@@ -2220,5 +2220,19 @@
     "addNew": "Ajouter une adresse",
     "empty": "Aucune adresse enregistrée.",
     "emptySub": "Veuillez ajouter une adresse de livraison."
+  },
+  "accountSettings": {
+    "title": "Paramètres",
+    "myProfile": "Mon profil",
+    "editProfile": "Modifier le profil",
+    "menu": {
+      "addresses": "Adresses de livraison",
+      "language": "Langue",
+      "support": "Service client",
+      "privacy": "Politique de confidentialité",
+      "terms": "Conditions d'utilisation",
+      "refund": "Politique de livraison et de remboursement",
+      "languageValue": "Français"
+    }
   }
 }

@@ -2220,5 +2220,19 @@
     "addNew": "Añadir dirección",
     "empty": "No hay direcciones guardadas.",
     "emptySub": "Por favor, añade una dirección de envío."
+  },
+  "accountSettings": {
+    "title": "Ajustes",
+    "myProfile": "Mi perfil",
+    "editProfile": "Editar perfil",
+    "menu": {
+      "addresses": "Direcciones de envío",
+      "language": "Idioma",
+      "support": "Atención al cliente",
+      "privacy": "Política de privacidad",
+      "terms": "Términos de servicio",
+      "refund": "Política de envíos y reembolsos",
+      "languageValue": "Español"
+    }
   }
 }

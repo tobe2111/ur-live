@@ -2220,5 +2220,19 @@
     "addNew": "Add new address",
     "empty": "No saved addresses.",
     "emptySub": "Please add a shipping address."
+  },
+  "accountSettings": {
+    "title": "Settings",
+    "myProfile": "My Profile",
+    "editProfile": "Edit profile",
+    "menu": {
+      "addresses": "Shipping addresses",
+      "language": "Language",
+      "support": "Customer support",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "refund": "Shipping & Refund Policy",
+      "languageValue": "English"
+    }
   }
 }

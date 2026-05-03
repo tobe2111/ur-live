@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ChevronLeft, User, Mail, Phone, Bell, CreditCard,
   MapPin, Globe, HelpCircle, ChevronRight, Edit, X,
@@ -124,6 +125,7 @@ function AppVersionSection() {
 }
 
 export default function AccountSettingsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [user, setUser] = useState({ id: '', name: '', email: '', phone: '' });
 
@@ -196,14 +198,14 @@ export default function AccountSettingsPage() {
 
       {/* v4 Large Title */}
       <div className="ur-content-narrow px-4 lg:px-8 pt-3 pb-1">
-        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1 }}>설정</h1>
+        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{t('accountSettings.title')}</h1>
       </div>
 
       <main className="ur-content-narrow px-4 lg:px-8 pt-3">
         {/* 프로필 카드 (v4 그라데이션 톤) */}
         <div className="rounded-2xl p-5 mb-5 relative" style={{ background: 'radial-gradient(ellipse at top, rgba(236,72,153,0.18), transparent 70%), rgba(255,255,255,0.04)' }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[15px] font-bold text-white">내 프로필</h2>
+            <h2 className="text-[15px] font-bold text-white">{t('accountSettings.myProfile')}</h2>
             <button type="button" onClick={openEdit} aria-label="프로필 수정" className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.08] text-[11px] font-semibold text-white/80 hover:bg-white/[0.12] transition-colors">
               <Edit className="w-3 h-3" aria-hidden="true" />수정
             </button>
@@ -236,7 +238,7 @@ export default function AccountSettingsPage() {
         <Section title="결제 및 배송">
           <Link to="/mypage/addresses" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
             <MapPin className="w-4 h-4 text-white/55" aria-hidden="true" />
-            <span className="flex-1 text-[13px] text-white">배송지 관리</span>
+            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.addresses')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
           <Item icon={<CreditCard className="w-4 h-4" aria-hidden="true" />} label="결제 수단 관리" onClick={() => toast.info('준비 중인 기능입니다.')} badge="준비중" />
@@ -245,27 +247,27 @@ export default function AccountSettingsPage() {
         <Section title="기타">
           <div className="flex items-center gap-3 px-3.5 py-3">
             <Globe className="w-4 h-4 text-white/55" aria-hidden="true" />
-            <span className="flex-1 text-[13px] text-white">언어 설정</span>
-            <span className="text-[12px] text-white/45">한국어</span>
+            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.language')}</span>
+            <span className="text-[12px] text-white/45">{t('accountSettings.menu.languageValue')}</span>
           </div>
           <Link to="/faq" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <HelpCircle className="w-4 h-4 text-white/55" aria-hidden="true" />
-            <span className="flex-1 text-[13px] text-white">고객센터</span>
+            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.support')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
         </Section>
 
         <Section title="약관 및 정책">
           <Link to="/privacy" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
-            <span className="flex-1 text-[13px] text-white">개인정보 처리방침</span>
+            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.privacy')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
           <Link to="/terms" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <span className="flex-1 text-[13px] text-white">이용약관</span>
+            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.terms')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
           <Link to="/refund" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <span className="flex-1 text-[13px] text-white">배송 및 환불 정책</span>
+            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.refund')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
           </Link>
         </Section>
@@ -289,7 +291,7 @@ export default function AccountSettingsPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setEditModal(false)} role="presentation">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="프로필 수정">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">프로필 수정</h3>
+              <h3 className="text-lg font-bold text-gray-900">{t('accountSettings.editProfile')}</h3>
               <button onClick={() => setEditModal(false)}><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <div className="space-y-4">

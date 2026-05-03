@@ -2220,5 +2220,19 @@
     "addNew": "새 배송지 추가",
     "empty": "등록된 배송지가 없습니다.",
     "emptySub": "배송지를 추가해주세요."
+  },
+  "accountSettings": {
+    "title": "설정",
+    "myProfile": "내 프로필",
+    "editProfile": "프로필 수정",
+    "menu": {
+      "addresses": "배송지 관리",
+      "language": "언어 설정",
+      "support": "고객센터",
+      "privacy": "개인정보 처리방침",
+      "terms": "이용약관",
+      "refund": "배송 및 환불 정책",
+      "languageValue": "한국어"
+    }
   }
 }

@@ -2220,5 +2220,19 @@
     "addNew": "新しい配送先を追加",
     "empty": "登録された配送先がありません。",
     "emptySub": "配送先を追加してください。"
+  },
+  "accountSettings": {
+    "title": "設定",
+    "myProfile": "マイプロフィール",
+    "editProfile": "プロフィール編集",
+    "menu": {
+      "addresses": "配送先の管理",
+      "language": "言語設定",
+      "support": "カスタマーサポート",
+      "privacy": "プライバシーポリシー",
+      "terms": "利用規約",
+      "refund": "配送および返金ポリシー",
+      "languageValue": "日本語"
+    }
   }
 }

@@ -2220,5 +2220,19 @@
     "addNew": "添加新地址",
     "empty": "没有已保存的地址。",
     "emptySub": "请添加收货地址。"
+  },
+  "accountSettings": {
+    "title": "设置",
+    "myProfile": "我的个人资料",
+    "editProfile": "编辑个人资料",
+    "menu": {
+      "addresses": "收货地址管理",
+      "language": "语言设置",
+      "support": "客户支持",
+      "privacy": "隐私政策",
+      "terms": "使用条款",
+      "refund": "配送和退款政策",
+      "languageValue": "中文"
+    }
   }
 }
