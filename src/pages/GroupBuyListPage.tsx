@@ -324,10 +324,10 @@ export default function GroupBuyListPage() {
             ) : filtered.length === 0 ? (
               <div className="text-center py-20">
                 <p className="text-[36px] mb-3">🛒</p>
-                <p className="text-gray-900 font-semibold text-[14px]">
+                <p className="text-gray-900 dark:text-white font-semibold text-[14px]">
                   진행 중인 공동구매가 없습니다
                 </p>
-                <p className="text-gray-500 text-[12px] mt-1">
+                <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
                   곧 새로운 상품이 올라와요!
                 </p>
                 <div className="mt-5 flex gap-2 justify-center">
@@ -490,10 +490,10 @@ export default function GroupBuyListPage() {
             ) : filteredCommunity.length === 0 ? (
               <div className="text-center py-20">
                 <p className="text-[36px] mb-3">🙋</p>
-                <p className="text-gray-900 font-semibold text-[14px]">
+                <p className="text-gray-900 dark:text-white font-semibold text-[14px]">
                   진행 중인 유저 공구가 없습니다
                 </p>
-                <p className="text-gray-500 text-[12px] mt-1">
+                <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
                   원하는 맛집 공구를 직접 시작해보세요!
                 </p>
                 <button

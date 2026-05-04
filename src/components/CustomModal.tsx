@@ -93,7 +93,7 @@ export function CustomModal({
               <button
                 onClick={onClose}
                 aria-label="닫기"
-                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+                className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#2A2A2A] flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
               >
                 <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               </button>
