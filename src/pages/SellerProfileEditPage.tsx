@@ -404,9 +404,11 @@ export default function SellerProfileEditPage() {
               {formData.profile_image && (
                 <div className="flex justify-center">
                   <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[#e5e5ea]">
-                    <img 
+                    <img
                       src={formData.profile_image}
                       alt="Profile preview"
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = ''

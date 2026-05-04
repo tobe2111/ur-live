@@ -380,7 +380,7 @@ export default function SellerMealVoucherNewPage() {
                             form.image_url === url ? 'border-pink-500 ring-2 ring-pink-200' : 'border-gray-200 hover:border-gray-400'
                           }`}
                         >
-                          <img src={url} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                          <img src={url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
                         </button>
                       ))}
                     </div>
