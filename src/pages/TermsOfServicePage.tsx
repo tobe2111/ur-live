@@ -8,16 +8,16 @@ export default function TermsOfServicePage() {
   const isKR = isKorea()
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-20">
       <SEO title="이용약관 - 유어딜" description="유어딜 서비스 이용약관입니다." url="/terms" />
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
+      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} className="text-gray-900">
+          <button onClick={() => navigate(-1)} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-[16px] font-bold text-gray-900">
+          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">
             {isKR ? '이용약관' : 'Terms of Service'}
           </h1>
           <div className="w-6" />
@@ -26,34 +26,34 @@ export default function TermsOfServicePage() {
 
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
-        <p className="text-[11px] text-gray-400 mb-6">
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6">
           {isKR ? '최종 수정일: 2024년 1월 15일' : 'Last updated: January 15, 2024'}
         </p>
 
         {isKR ? (
           <div className="space-y-0">
             <section>
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제1조 (목적)</h2>
-              <p className="text-[13px] text-gray-600 leading-relaxed mb-4">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제1조 (목적)</h2>
+              <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
                 본 약관은 리스터코퍼레이션(상호명: 리스터코퍼레이션, 대표자: 정지원, 이하 "회사")이 제공하는
                 라이브 커머스 서비스(이하 "서비스")의 이용과 관련하여
                 회사와 회원 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
               </p>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                <p className="text-[13px] font-semibold text-gray-900 mb-2">사업자 정보</p>
-                <p className="text-[13px] text-gray-600">• 상호명: 리스터코퍼레이션</p>
-                <p className="text-[13px] text-gray-600">• 대표자: 정지원</p>
-                <p className="text-[13px] text-gray-600">• 사업자등록번호: 479-09-02930</p>
-                <p className="text-[13px] text-gray-600">• 통신판매업신고번호: 2025-부산금정-0540</p>
-                <p className="text-[13px] text-gray-600">• 사업장주소: 부산광역시 금정구 놀이마당로26 1402호</p>
-                <p className="text-[13px] text-gray-600">• 대표전화: 0507-0177-0432</p>
-                <p className="text-[13px] text-gray-600">• 대표이메일: jiwon@ur-team.com</p>
+              <div className="bg-gray-50 dark:bg-[#121212] rounded-lg p-4 space-y-1">
+                <p className="text-[13px] font-semibold text-gray-900 dark:text-white mb-2">사업자 정보</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 상호명: 리스터코퍼레이션</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표자: 정지원</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업자등록번호: 479-09-02930</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 통신판매업신고번호: 2025-부산금정-0540</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업장주소: 부산광역시 금정구 놀이마당로26 1402호</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표전화: 0507-0177-0432</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표이메일: jiwon@ur-team.com</p>
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제2조 (정의)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제2조 (정의)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>본 약관에서 사용하는 용어의 정의는 다음과 같습니다:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
                   <li>"서비스"란 회사가 제공하는 라이브 스트리밍을 통한 상품 판매 및 구매 플랫폼을 의미합니다.</li>
@@ -64,9 +64,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제3조 (약관의 게시와 개정)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제3조 (약관의 게시와 개정)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 본 약관의 내용을 회원이 쉽게 알 수 있도록 서비스 초기 화면에 게시합니다.</p>
                 <p>② 회사는 필요한 경우 관련 법령을 위배하지 않는 범위에서 본 약관을 개정할 수 있습니다.</p>
                 <p>③ 회사가 약관을 개정할 경우 적용일자 및 개정사유를 명시하여 현행 약관과 함께
@@ -74,9 +74,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제4조 (회원가입)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제4조 (회원가입)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 이용자는 회사가 정한 가입 양식에 따라 회원정보를 기입한 후 본 약관에 동의한다는 의사표시를 함으로써
                   회원가입을 신청합니다.</p>
                 <p>② 회사는 제1항과 같이 회원으로 가입할 것을 신청한 이용자 중 다음 각 호에 해당하지 않는 한
@@ -88,9 +88,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제5조 (서비스의 제공 및 변경)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제5조 (서비스의 제공 및 변경)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 다음과 같은 서비스를 제공합니다:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
                   <li>라이브 스트리밍을 통한 상품 소개 및 판매</li>
@@ -102,9 +102,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제6조 (서비스의 중단)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제6조 (서비스의 중단)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 컴퓨터 등 정보통신설비의 보수점검, 교체 및 고장, 통신의 두절 등의 사유가 발생한 경우에는
                   서비스의 제공을 일시적으로 중단할 수 있습니다.</p>
                 <p>② 제1항에 의한 서비스 중단의 경우 회사는 사전에 공지합니다. 다만, 회사가 통제할 수 없는 사유로 인한
@@ -112,9 +112,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제7조 (회원의 의무)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제7조 (회원의 의무)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회원은 다음 행위를 하여서는 안 됩니다:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
                   <li>신청 또는 변경 시 허위내용의 등록</li>
@@ -128,9 +128,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제8조 (구매 및 결제)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제8조 (구매 및 결제)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 구매자는 서비스를 통해 상품을 구매할 수 있으며, 구매 시 다음 사항을 확인해야 합니다:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
                   <li>상품의 명칭, 가격, 수량</li>
@@ -142,9 +142,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제9조 (환불 및 교환)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제9조 (환불 및 교환)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 구매자는 상품 수령 후 7일 이내에 환불 또는 교환을 요청할 수 있습니다.</p>
                 <p>② 다음의 경우 환불 또는 교환이 제한될 수 있습니다:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
@@ -155,9 +155,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제10조 (개인정보보호)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제10조 (개인정보보호)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 이용자의 개인정보 수집 시 서비스 제공을 위하여 필요한 범위에서 최소한의 개인정보를 수집합니다.</p>
                 <p>② 회사는 회원가입 시 구매계약 이행에 필요한 정보를 미리 수집하지 않습니다.
                   다만, 관련 법령상 의무이행을 위하여 구매계약 이전에 본인확인이 필요한 경우로서
@@ -166,9 +166,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제11조 (회사의 의무)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제11조 (회사의 의무)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 법령과 본 약관이 금지하거나 공서양속에 반하는 행위를 하지 않으며 본 약관이 정하는 바에 따라
                   지속적이고, 안정적으로 서비스를 제공하는데 최선을 다하여야 합니다.</p>
                 <p>② 회사는 이용자가 안전하게 서비스를 이용할 수 있도록 이용자의 개인정보보호를 위한
@@ -178,9 +178,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제12조 (분쟁 해결)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제12조 (분쟁 해결)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 이용자가 제기하는 정당한 의견이나 불만을 반영하고 그 피해를 보상처리하기 위하여
                   피해보상처리기구를 설치·운영합니다.</p>
                 <p>② 회사는 이용자로부터 제출되는 불만사항 및 의견은 우선적으로 그 사항을 처리합니다.
@@ -190,9 +190,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">제13조 (재판권 및 준거법)</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제13조 (재판권 및 준거법)</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사와 이용자 간에 발생한 전자상거래 분쟁에 관한 소송은 제소 당시의 이용자의 주소에 의하고,
                   주소가 없는 경우에는 거소를 관할하는 지방법원의 전속관할로 합니다.
                   다만, 제소 당시 이용자의 주소 또는 거소가 분명하지 않거나 외국 거주자의 경우에는
@@ -204,23 +204,23 @@ export default function TermsOfServicePage() {
         ) : (
           <div className="space-y-0">
             <section>
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">1. Purpose</h2>
-              <p className="text-[13px] text-gray-600 leading-relaxed mb-4">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">1. Purpose</h2>
+              <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
                 These Terms of Service ("Terms") govern your use of the YourDeal live commerce platform ("Service")
                 operated by Lister Corporation ("Company"). By accessing or using the Service, you agree to be bound by these Terms.
               </p>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                <p className="text-[13px] font-semibold text-gray-900 mb-2">Company Information</p>
-                <p className="text-[13px] text-gray-600">• Company: Lister Corporation</p>
-                <p className="text-[13px] text-gray-600">• CEO: Jiwon Jung</p>
-                <p className="text-[13px] text-gray-600">• Email: jiwon@ur-team.com</p>
-                <p className="text-[13px] text-gray-600">• Phone: +82-507-0177-0432</p>
+              <div className="bg-gray-50 dark:bg-[#121212] rounded-lg p-4 space-y-1">
+                <p className="text-[13px] font-semibold text-gray-900 dark:text-white mb-2">Company Information</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• Company: Lister Corporation</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• CEO: Jiwon Jung</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• Email: jiwon@ur-team.com</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• Phone: +82-507-0177-0432</p>
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">2. Definitions</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">2. Definitions</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <ol className="list-decimal list-inside space-y-2 ml-2">
                   <li>"Service" refers to the live streaming commerce platform provided by the Company.</li>
                   <li>"User" refers to any person who agrees to these Terms and enters into a service agreement.</li>
@@ -230,17 +230,17 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">3. Account Registration</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">3. Account Registration</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>You may register an account by providing accurate information and agreeing to these Terms.
                   The Company may refuse registration if false information is provided.</p>
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">4. Services Provided</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">4. Services Provided</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>The Company provides the following services:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
                   <li>Live streaming product showcase and sales</li>
@@ -252,18 +252,18 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">5. Purchases & Payments</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">5. Purchases & Payments</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>Buyers may purchase products through the Service. Payment is processed via Stripe (international)
                   or Toss Payments (Korea). All prices are displayed in the applicable currency.</p>
                 <p>By making a purchase, you agree to pay the listed price plus any applicable shipping fees.</p>
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">6. Refunds & Returns</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">6. Refunds & Returns</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>Buyers may request a refund or exchange within 7 days of receiving the product, except when:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
                   <li>The product has been damaged due to the buyer's fault</li>
@@ -273,9 +273,9 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">7. User Obligations</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">7. User Obligations</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>Users must not:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
                   <li>Register false information</li>
@@ -287,25 +287,25 @@ export default function TermsOfServicePage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">8. Privacy</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">8. Privacy</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>The Company collects and processes personal data in accordance with our Privacy Policy.
                   We collect only the minimum information necessary to provide the Service.</p>
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">9. Limitation of Liability</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">9. Limitation of Liability</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>The Service is provided "as is." The Company shall not be liable for any indirect, incidental,
                   or consequential damages arising from the use of the Service, to the extent permitted by law.</p>
               </div>
             </section>
 
-            <section className="border-t border-gray-100 pt-6 mt-6">
-              <h2 className="text-[15px] font-bold text-gray-900 mb-3">10. Governing Law</h2>
-              <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">10. Governing Law</h2>
+              <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>These Terms shall be governed by and construed in accordance with the laws of the Republic of Korea.
                   Any disputes shall be submitted to the jurisdiction of the competent courts in Korea.</p>
               </div>

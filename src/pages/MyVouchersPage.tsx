@@ -24,7 +24,7 @@ interface Voucher {
 
 const STATUS_MAP = {
   unused: { labelKey: 'voucher.status.unused', color: 'bg-green-100 text-green-700', icon: Ticket },
-  used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 text-gray-500', icon: CheckCircle },
+  used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400', icon: CheckCircle },
   expired: { labelKey: 'voucher.status.expired', color: 'bg-red-100 text-red-600', icon: XCircle },
   refunded: { labelKey: 'voucher.status.refunded', color: 'bg-yellow-100 text-yellow-700', icon: XCircle },
 } as const
@@ -63,21 +63,21 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose} role="presentation">
-      <div className="bg-white rounded-2xl p-6 mx-4 max-w-xs w-full relative" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
+      <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-6 mx-4 max-w-xs w-full relative" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
         <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
-          <X className="w-5 h-5 text-gray-500" />
+          <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
         </button>
-        <p className="text-center text-sm font-bold text-gray-900 mb-1">{voucher.product_name}</p>
+        <p className="text-center text-sm font-bold text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
         {voucher.restaurant_name && (
-          <p className="text-center text-xs text-gray-500 mb-4">{voucher.restaurant_name}</p>
+          <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-4">{voucher.restaurant_name}</p>
         )}
         <div className="flex justify-center mb-4">
           <VoucherQRCode value={qrUrl} size={160} />
         </div>
-        <div className="bg-gray-100 rounded-lg px-3 py-2 text-center">
+        <div className="bg-gray-100 dark:bg-[#1A1A1A] rounded-lg px-3 py-2 text-center">
           <code className="text-sm font-mono font-bold text-pink-500">{voucher.code}</code>
         </div>
-        <p className="text-[10px] text-gray-400 text-center mt-2">{t('voucher.showQrAtStore')}</p>
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-2">{t('voucher.showQrAtStore')}</p>
 
         {/* 선물/공유 버튼 (사용 가능한 식사권만) */}
         {voucher.status === 'unused' && (

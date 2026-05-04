@@ -76,7 +76,7 @@ export default function VoucherVerifyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-5">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center px-5">
       <SEO title={t('voucher.verify.seoTitle')} description={t('voucher.verify.seoDescription')} url={urlCode ? `/v/${urlCode}` : '/v'} noindex />
       <div className="w-full max-w-sm">
         {/* 로고 */}
@@ -84,8 +84,8 @@ export default function VoucherVerifyPage() {
           <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
             <Ticket className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-xl font-extrabold text-gray-900">{t('voucher.verify.title')}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t('voucher.verify.subtitle')}</p>
+          <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">{t('voucher.verify.title')}</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('voucher.verify.subtitle')}</p>
         </div>
 
         {/* 결과 표시 */}
@@ -99,7 +99,7 @@ export default function VoucherVerifyPage() {
         {!voucher ? (
           /* Step 1: 코드 입력 */
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('voucher.verify.codeLabel')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{t('voucher.verify.codeLabel')}</label>
             <input
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
@@ -109,12 +109,12 @@ export default function VoucherVerifyPage() {
                 setCode(parseVoucherCode(pasted))
               }}
               placeholder={t('voucher.verify.codePlaceholder')}
-              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg text-gray-900 font-mono font-bold tracking-widest focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
+              className="w-full px-4 py-3.5 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-lg text-gray-900 dark:text-white font-mono font-bold tracking-widest focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
               maxLength={60}
             />
             <div className="flex items-center gap-1.5 mt-2 justify-center">
-              <QrCode className="w-3.5 h-3.5 text-gray-400" />
-              <p className="text-xs text-gray-400">{t('voucher.verify.qrHint')}</p>
+              <QrCode className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+              <p className="text-xs text-gray-400 dark:text-gray-500">{t('voucher.verify.qrHint')}</p>
             </div>
             <button
               onClick={lookupVoucher}
@@ -127,39 +127,39 @@ export default function VoucherVerifyPage() {
         ) : voucher.status !== 'unused' ? (
           /* 이미 사용/만료된 바우처 */
           <div className="text-center py-8">
-            <XCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-900 font-bold">{voucher.status === 'used' ? t('voucher.verify.alreadyUsed') : t('voucher.verify.expired')}</p>
-            <p className="text-sm text-gray-500 mt-1">{voucher.product_name}</p>
+            <XCircle className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+            <p className="text-gray-900 dark:text-white font-bold">{voucher.status === 'used' ? t('voucher.verify.alreadyUsed') : t('voucher.verify.expired')}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{voucher.product_name}</p>
             <button onClick={() => { setVoucher(null); setCode(''); setResult(null) }} className="mt-4 text-sm text-pink-500 font-medium">{t('voucher.verify.lookupAnother')}</button>
           </div>
         ) : (
           /* Step 2: 바우처 확인 + 비밀번호 입력 */
           <div>
             {/* 바우처 정보 카드 */}
-            <div className="bg-gray-50 rounded-xl p-4 mb-5">
+            <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-4 mb-5">
               {voucher.product_image && (
                 <img src={voucher.product_image} alt="" className="w-full h-32 object-cover rounded-lg mb-3" loading="lazy" />
               )}
-              <p className="text-base font-bold text-gray-900">{voucher.product_name}</p>
+              <p className="text-base font-bold text-gray-900 dark:text-white">{voucher.product_name}</p>
               {voucher.restaurant_name && (
-                <p className="text-sm text-gray-500 mt-0.5">📍 {voucher.restaurant_name}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">📍 {voucher.restaurant_name}</p>
               )}
-              <div className="mt-2 bg-white rounded-lg px-3 py-2 text-center">
+              <div className="mt-2 bg-white dark:bg-[#0A0A0A] rounded-lg px-3 py-2 text-center">
                 <code className="text-lg font-mono font-bold text-pink-500">{voucher.code}</code>
               </div>
               {voucher.expires_at && (
-                <p className="text-xs text-gray-400 mt-2 text-center">{t('voucher.expiresAt')}: {new Date(voucher.expires_at).toLocaleDateString(locale)}{t('voucher.until')}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">{t('voucher.expiresAt')}: {new Date(voucher.expires_at).toLocaleDateString(locale)}{t('voucher.until')}</p>
               )}
             </div>
 
             {/* 비밀번호 입력 */}
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('voucher.verify.enterPin')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{t('voucher.verify.enterPin')}</label>
             <input
               value={pin}
               onChange={e => setPin(e.target.value)}
               type="password"
               placeholder={t('voucher.verify.pinPlaceholder')}
-              className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-xl text-gray-900 tracking-[0.5em] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
+              className="w-full px-4 py-3.5 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-xl text-gray-900 dark:text-white tracking-[0.5em] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
               maxLength={10}
             />
             <button
@@ -169,7 +169,7 @@ export default function VoucherVerifyPage() {
             >
               {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.confirm')}
             </button>
-            <button onClick={() => { setVoucher(null); setCode(''); setPin(''); setResult(null) }} className="w-full mt-2 py-2 text-sm text-gray-500">{t('voucher.verify.cancel')}</button>
+            <button onClick={() => { setVoucher(null); setCode(''); setPin(''); setResult(null) }} className="w-full mt-2 py-2 text-sm text-gray-500 dark:text-gray-400">{t('voucher.verify.cancel')}</button>
           </div>
         )}
       </div>

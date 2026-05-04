@@ -62,11 +62,11 @@ export default function StoreStatsPage() {
   // Magic Link 토큰으로 자동 인증 중 — 로딩 화면
   if (magicToken && !authenticated && !error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-5">
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center px-5">
         <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
         <div className="text-center">
           <Loader2 className="w-10 h-10 text-orange-500 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-500">매장 인증 중...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">매장 인증 중...</p>
         </div>
       </div>
     )
@@ -74,15 +74,15 @@ export default function StoreStatsPage() {
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-5">
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center px-5">
         <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
         <div className="w-full max-w-sm text-center">
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-orange-100 flex items-center justify-center">
             <Lock className="w-7 h-7 text-orange-600" />
           </div>
-          <h1 className="text-lg font-extrabold text-gray-900 mb-1">식당 통계</h1>
-          <p className="text-sm text-gray-500 mb-2">사장님께 알림톡으로 발송된 링크로 접속하시면 비밀번호 없이 바로 확인할 수 있어요.</p>
-          <p className="text-xs text-gray-400 mb-6">또는 인플루언서에게 받은 비밀번호를 입력하세요</p>
+          <h1 className="text-lg font-extrabold text-gray-900 dark:text-white mb-1">식당 통계</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">사장님께 알림톡으로 발송된 링크로 접속하시면 비밀번호 없이 바로 확인할 수 있어요.</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-6">또는 인플루언서에게 받은 비밀번호를 입력하세요</p>
 
           {error && <p className="text-sm text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
 
@@ -91,7 +91,7 @@ export default function StoreStatsPage() {
             onChange={e => setPin(e.target.value)}
             type="password"
             placeholder={t('storeStats.passwordPlaceholder')}
-            className="w-full px-4 py-3.5 border border-gray-300 rounded-xl text-center text-lg text-gray-900 tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
+            className="w-full px-4 py-3.5 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-lg text-gray-900 dark:text-white tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
             onKeyDown={e => e.key === 'Enter' && authenticate()}
           />
           <button
@@ -111,13 +111,13 @@ export default function StoreStatsPage() {
   const usedPercent = stats.total_vouchers > 0 ? Math.round((stats.used / stats.total_vouchers) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-gray-50 px-5 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] px-5 py-8">
       <SEO title={t('storeStats.titleSuffix', { name: stats.restaurant_name || t('storeStats.fallbackRestaurant') })} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
       <div className="ur-content-narrow">
         {/* 헤더 */}
         <div className="text-center mb-6">
-          <h1 className="text-xl font-extrabold text-gray-900">{stats.restaurant_name || t('storeStats.fallbackRestaurant')}</h1>
-          <p className="text-sm text-gray-500 mt-1">{stats.product_name}</p>
+          <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">{stats.restaurant_name || t('storeStats.fallbackRestaurant')}</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{stats.product_name}</p>
         </div>
 
         {/* 요약 카드 */}
@@ -125,12 +125,12 @@ export default function StoreStatsPage() {
           {[
             { label: t('storeStats.labelUsed'), value: stats.used, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
             { label: t('storeStats.labelUnused'), value: stats.unused, icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500', bg: 'bg-gray-100' },
+            { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1A1A1A]' },
             { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
           ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-200">
+            <div key={s.label} className="bg-white dark:bg-[#0A0A0A] rounded-xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">{s.label}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{s.label}</span>
                 <div className={`w-7 h-7 ${s.bg} rounded-lg flex items-center justify-center`}>
                   <s.icon className={`w-4 h-4 ${s.color}`} />
                 </div>
@@ -141,30 +141,30 @@ export default function StoreStatsPage() {
         </div>
 
         {/* 사용률 바 */}
-        <div className="bg-white rounded-xl p-5 border border-gray-200 mb-5">
+        <div className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border border-gray-200 dark:border-[#2A2A2A] mb-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-gray-900">바우처 사용률</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-white">바우처 사용률</span>
             <span className="text-sm font-bold text-green-600">{usedPercent}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
+          <div className="w-full bg-gray-200 dark:bg-[#2A2A2A] rounded-full h-3">
             <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${usedPercent}%` }} />
           </div>
-          <p className="text-xs text-gray-500 mt-2">{stats.used}장 사용 / {stats.total_vouchers}장 발급</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{stats.used}장 사용 / {stats.total_vouchers}장 발급</p>
         </div>
 
         {/* 공동구매 현황 */}
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">공동구매 현황</h3>
+        <div className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border border-gray-200 dark:border-[#2A2A2A]">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">공동구매 현황</h3>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-500">참여자</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">참여자</span>
             <span className="text-sm font-bold text-pink-600">{stats.group_buy_current}/{stats.group_buy_target}명</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 dark:bg-[#2A2A2A] rounded-full h-2">
             <div className="h-full bg-pink-500 rounded-full" style={{ width: `${stats.group_buy_target > 0 ? Math.min(100, (stats.group_buy_current / stats.group_buy_target) * 100) : 0}%` }} />
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">유어딜 · 식당 공동구매 서비스</p>
+        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">유어딜 · 식당 공동구매 서비스</p>
       </div>
     </div>
   )

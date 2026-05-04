@@ -51,19 +51,19 @@ export default function MyReviewsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
       <SEO title={t('myReviews.seoTitle')} description={t('myReviews.seoDesc')} url="/my-reviews" noindex />
 
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-4 h-[52px]">
           <button
             onClick={() => navigate(-1)}
             className="w-9 h-9 flex items-center justify-center"
             aria-label={t('myReviews.back')}
           >
-            <ArrowLeft className="h-5 w-5 text-gray-900" />
+            <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[15px] font-bold text-gray-900">{t('myReviews.title')}</h1>
+          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('myReviews.title')}</h1>
           <div className="w-9" />
         </div>
       </header>
@@ -76,7 +76,7 @@ export default function MyReviewsPage() {
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20">
             <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-            <p className="text-[14px] text-gray-900 mb-4">{error}</p>
+            <p className="text-[14px] text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={loadOrders}
               className="px-5 py-2 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
@@ -85,17 +85,17 @@ export default function MyReviewsPage() {
             </button>
           </div>
         ) : orders.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 py-16 text-center">
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5">
-              <MessageSquare className="h-10 w-10 text-gray-400" strokeWidth={1.5} />
+          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] py-16 text-center">
+            <div className="w-20 h-20 bg-gray-50 dark:bg-[#121212] rounded-full flex items-center justify-center mx-auto mb-5">
+              <MessageSquare className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
             </div>
-            <h2 className="text-[16px] font-bold text-gray-900 mb-1.5">{t('myReviews.empty')}</h2>
-            <p className="text-[13px] text-gray-500">{t('myReviews.emptySub')}</p>
+            <h2 className="text-[16px] font-bold text-gray-900 dark:text-white mb-1.5">{t('myReviews.empty')}</h2>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('myReviews.emptySub')}</p>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 mb-1">
-              <p className="text-[12px] text-gray-500">{t('myReviews.deliveredCount', { count: orders.length })}</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('myReviews.deliveredCount', { count: orders.length })}</p>
               <span className="text-[11px] text-amber-600 font-semibold">{t('myReviews.rewardHint')}</span>
             </div>
             {orders.flatMap(order => {
@@ -105,16 +105,16 @@ export default function MyReviewsPage() {
               return items.map((item: any, idx: number) => (
                 <article
                   key={`${order.id}-${idx}`}
-                  className="bg-white rounded-2xl border border-gray-100 p-4"
+                  className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4"
                 >
-                  <p className="text-[11px] text-gray-500 mb-1">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">
                     {t('myReviews.purchaseDate', { date: new Date(order.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) })}
                   </p>
-                  <p className="text-[14px] font-semibold text-gray-900 line-clamp-2 mb-2">
+                  <p className="text-[14px] font-semibold text-gray-900 dark:text-white line-clamp-2 mb-2">
                     {item.product_name}
                   </p>
                   {item.option_value && (
-                    <p className="text-[12px] text-gray-500 mb-2">{t('myReviews.optionLabel', { value: item.option_value })}</p>
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-2">{t('myReviews.optionLabel', { value: item.option_value })}</p>
                   )}
                   <button
                     onClick={() => navigate(`/products/${item.product_id}#review`)}
