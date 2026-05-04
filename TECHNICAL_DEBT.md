@@ -8,6 +8,47 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 📊 2026-05-04 종료 시 상태 — 코드 자동 작업 audit 완료
+
+### 이번 세션 처리
+
+**사용자 신고 fix**:
+- ✅ 셀러 대시보드 "재고 부족 1" 표시 — `/api/inventory/stock/alerts` IDOR + 품절 혼동 fix (commit `e133324e`)
+  - 이전: `WHERE seller_id` 필터 없음 → 다른 셀러 상품도 카운트 + 정보 노출
+  - 이전: `stock = 0` (품절) 도 "재고 부족"으로 분류
+  - 수정: 본인 셀러 한정 + `stock > 0` (실제 재고 부족만)
+- ✅ 테마 토글 정상화: default `'system'` 복원 (OS prefers-color-scheme), UserProfile (강제 다크) 에서 `<ThemeToggleSection />` 제거 ("버튼 안 먹어" 신고)
+
+**audit 결과 — 모두 이미 처리됨**:
+- ✅ TD-024 YouTube `maxresdefault.jpg` 404 fallback — `ReelCard`, `ProductListSheet`, `UpcomingLive`, `ShortsPage` 모두 `hqdefault.jpg` fallback 적용
+- ✅ TD-024 postMessage origin — 모든 사용처 `window.location.origin` 명시 (OBS extension 만 `'*'` 의도)
+- ✅ TD-024 라이브 WS 실패 — polling fallback 자동 전환 + 인앱 토스트 안내
+- ✅ TD-016 CRITICAL seller-transfer — agency endpoint `seller-approve` 410 deprecated + 셀러 전용 endpoint 별도 인증
+- ✅ TD-015 a11y 폼 라벨 — `NewAddressFormModal`, `AccountSettingsPage` 모두 `htmlFor` + `id` 매칭
+- ✅ 빈 catch 마이그레이션 — 1건만 남음 (swallow.ts 자체 주석)
+- ✅ XSS — `dangerouslySetInnerHTML` 모든 사용처 sanitize (`GuideViewer` DOMPurify, `BlogDetailPage` `escapeHtml`)
+- ✅ SQL injection — D1 prepared statement 전용. template literal 은 컬럼명/하드코딩만 (사용자 입력 0건)
+
+**종합 검증** (`bash scripts/quality-check.sh`): TypeScript 0 / 빌드 성공 / 깨진 링크 0 / 테스트 1477건 통과 / i18n 6언어 sync.
+
+### 📋 코드 자동 작업 가능 — 잔여 0건
+
+이번 세션 audit 결과 코드로 자동 처리 가능한 부채는 모두 처리됨.
+
+### 🔴 사용자 액션 필요 (코드 불가)
+
+1. **TD-001** — CF Dashboard → API Tokens → `Account > D1 > Edit` 권한 추가 → migrate.yml 수동 실행 (30분)
+2. **TD-003** — 유령 CF 프로젝트 (`ur-live-global`, `ur-live-cleanup-cron`) 정리 (1시간)
+3. **TD-008** — `INTERNAL_CRON_TOKEN` Pages Variables 등록 (5분)
+
+### 🟡 광범위 PR 권장 (코드 가능하나 별도 작업)
+
+- **TD-014** i18n 잔여 ~444건 (결제 모달 / 라이브 / Admin 우선)
+- **TD-006** 큰 파일 분할 — `RestaurantMapPage` 1111줄 등 (이미 54.8% 감소)
+- **TD-024** 라이브 영상 재생 안 됨 — IntersectionObserver 동작 의존 (실 환경 디버깅 필요)
+
+---
+
 ## 📊 2026-05-03 종료 시 상태
 
 ### 이번 세션 추가 처리 (i18n + PC 레이아웃 + 사이드바 + 테마 정책)
