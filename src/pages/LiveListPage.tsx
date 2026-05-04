@@ -199,7 +199,7 @@ export default function LiveListPage() {
                       )}
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.6), transparent 30%, transparent 60%, rgba(0,0,0,0.85))' }} />
                       <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                        <div className="inline-flex items-center gap-1 rounded-full" style={{ padding: '4px 8px 4px 6px', background: 'rgba(239,68,68,0.92)', backdropFilter: 'blur(10px)', boxShadow: '0 2px 8px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.25)' }}>
+                        <div className="inline-flex items-center gap-1 rounded-full" style={{ padding: '4px 8px 4px 6px', background: 'rgba(239,68,68,0.92)', backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", boxShadow: '0 2px 8px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.25)' }}>
                           <span className="rounded-full" style={{ width: 5, height: 5, background: '#fff', boxShadow: '0 0 6px #fff' }} />
                           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#fff' }}>LIVE</span>
                         </div>
