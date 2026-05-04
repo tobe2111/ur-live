@@ -194,7 +194,8 @@ export default function SellerLiveBroadcastPage() {
         }
       } catch { setPollFailures(c => c + 1) }
     }
-    const interval = setInterval(poll, 3000)
+    // 🛡️ 2026-05-04 (perf): 3s → 5s — 라이브 시작 감지 지연 +2s 허용. 셀러 부담 감소.
+    const interval = setInterval(poll, 5000)
     return () => clearInterval(interval)
   }, [step, currentStream, transitionCountdown])
 

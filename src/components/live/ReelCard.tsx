@@ -176,11 +176,15 @@ export default function ReelCard({
 
   const ytPageTokenRef = useRef('')
 
+  // 🛡️ 2026-05-04 (perf): isActive + visibility 가드 추가.
+  //   이전: 모든 ReelCard 가 mount 직후 6s 폴링 → N개 카드 = N requests/6s.
+  //   이후: 활성 카드 + tab visible 일 때만 폴링.
   useEffect(() => {
-    if (stream.status !== 'live') return
+    if (stream.status !== 'live' || !isActive) return
     let active = true
 
     const pollYouTubeChat = async () => {
+      if (document.hidden) return
       try {
         const url = `/api/youtube/chat/chat/${stream.id}${ytPageTokenRef.current ? `?pageToken=${ytPageTokenRef.current}` : ''}`
         const res = await api.get(url)
@@ -208,9 +212,9 @@ export default function ReelCard({
     }
 
     pollYouTubeChat()
-    const interval = setInterval(pollYouTubeChat, 6000) // 6초마다
+    const interval = setInterval(pollYouTubeChat, 6000)
     return () => { active = false; clearInterval(interval) }
-  }, [stream.id, stream.status])
+  }, [stream.id, stream.status, isActive])
   const {
     messages: chatMessages,
     isConnected: chatConnected,
@@ -885,7 +889,7 @@ export default function ReelCard({
       {/* YouTube Player Container */}
       <div
         id={`youtube-player-${stream.id}`}
-        className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[max(100vw,177.78vh)] [&_iframe]:!h-[max(100vh,56.25vw)]"
+        className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[max(100vw,177.78dvh)] [&_iframe]:!h-[max(100dvh,56.25vw)]"
       />
 
       {/* 예약 방송 UI */}

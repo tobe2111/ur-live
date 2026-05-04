@@ -101,23 +101,25 @@
       })();
     </script>
 
-    <script async src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js" crossorigin="anonymous"></script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-B1ST2L37CM"></script>
+    <!-- 🛡️ 2026-05-04 (perf): Kakao SDK / GTM / YouTube IFrame 초기 head 로드 제거.
+         초기 페이지 페이로드 ~270KB 절감 → iPhone Safari freeze 완화 + 모든 페이지 로딩 단축.
+         - Kakao SDK: 카카오 공유/메시지 사용 페이지 (셀러/공유 버튼) 에서 lazy import (@/lib/kakao-sdk)
+         - GTM: main.tsx 에서 React mount 후 deferred load
+         - YouTube IFrame: 라이브/쇼츠 페이지 (영상 로드 시점) 에서 lazy load -->
     <script>
+      // GTM dataLayer pre-init (실제 스크립트는 main.tsx 가 lazy 로드)
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-B1ST2L37CM');
     </script>
-
     <script>
+      // YouTube IFrame API callback shim — 실제 스크립트는 라이브/쇼츠 페이지 진입 시 lazy load
       window.youtubeCallbacks = [];
       window.onYouTubeIframeAPIReady = function() {
         window.youtubeCallbacks.forEach(function(cb) { cb(); });
         window.youtubeCallbacks = { push: function(cb) { cb(); } };
       };
     </script>
-    <script src="https://www.youtube.com/iframe_api" async></script>
   </head>
   <body><script>document.body.style.backgroundColor=window.__urInitialBg||'#ffffff';</script>
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[9999] focus:bg-white focus:p-4 focus:text-blue-600 focus:font-bold">본문 바로가기</a>

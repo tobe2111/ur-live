@@ -642,10 +642,11 @@ export default function RestaurantMapPage() {
   //   mid  = 60vh
   //   full = 92vh (거의 풀스크린)
   // 🛡️ 2026-04-30 v2: peek 18vh → 28vh — 결과 카드 안 보이던 문제 (사용자 신고).
+  // 🛡️ 2026-05-04 (iOS Safari fix): 100vh → 100dvh. iOS 주소창 토글 시 viewport 점프 회피.
   const sheetTopByState: Record<typeof sheetSnap, string> = {
-    peek: 'calc(100vh - 28vh)',
-    mid: 'calc(100vh - 60vh)',
-    full: 'calc(100vh - 92vh)',
+    peek: 'calc(100dvh - 28dvh)',
+    mid: 'calc(100dvh - 60dvh)',
+    full: 'calc(100dvh - 92dvh)',
   }
 
   return (

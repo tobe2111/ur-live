@@ -54,7 +54,7 @@ export default function StepLive({ stream, products, onChangeProduct, onEndStrea
       pipWin.document.body.style.background = '#0a0a0a'
       pipWin.document.body.style.color = 'white'
       pipWin.document.body.innerHTML = `
-        <div style="padding:12px;display:flex;flex-direction:column;gap:10px;height:100vh;box-sizing:border-box">
+        <div style="padding:12px;display:flex;flex-direction:column;gap:10px;height:100dvh;box-sizing:border-box">
           <div style="display:flex;align-items:center;gap:6px">
             <span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;animation:pulse 1s infinite"></span>
             <span style="font-size:11px;font-weight:700;color:#ef4444;letter-spacing:0.5px">LIVE</span>
