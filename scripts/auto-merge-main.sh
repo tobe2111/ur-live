@@ -51,9 +51,18 @@ if ! git checkout main 2>&1 | tee -a "$LOG_FILE"; then
   exit 1
 fi
 
-# main 최신화
-if ! git pull origin main --no-rebase --no-edit 2>&1 | tee -a "$LOG_FILE"; then
-  log "warn: pull 실패 (네트워크 또는 conflict) — 진행 시도"
+# main 최신화 — 분기되어 있으면 강제 reset (로컬 main 은 staging-only, 직접 작업 안 함)
+git fetch origin main 2>&1 | tee -a "$LOG_FILE"
+LOCAL_MAIN=$(git rev-parse main 2>/dev/null)
+REMOTE_MAIN=$(git rev-parse origin/main 2>/dev/null)
+if [ "$LOCAL_MAIN" != "$REMOTE_MAIN" ]; then
+  if git merge-base --is-ancestor "$LOCAL_MAIN" "$REMOTE_MAIN" 2>/dev/null; then
+    log "info: local main 이 origin/main 보다 뒤처짐 — fast-forward"
+    git reset --hard origin/main 2>&1 | tee -a "$LOG_FILE"
+  else
+    log "warn: local main 이 origin/main 과 분기됨 — origin/main 으로 강제 리셋"
+    git reset --hard origin/main 2>&1 | tee -a "$LOG_FILE"
+  fi
 fi
 
 # 머지 시도
@@ -85,12 +94,15 @@ fi
 git checkout "$CURRENT_BRANCH" 2>&1 | tee -a "$LOG_FILE"
 [ "$HAS_STASH" = "1" ] && git stash pop 2>&1 | tee -a "$LOG_FILE"
 
-# Verification — main 최상위에 내 마지막 commit 이 있는지 확인
+# Verification — origin 에서 다시 fetch 후 실제 main 에 포함되는지 확인
+git fetch origin main 2>&1 | tee -a "$LOG_FILE"
 LAST_FEATURE_COMMIT=$(git rev-parse "$CURRENT_BRANCH")
-if git merge-base --is-ancestor "$LAST_FEATURE_COMMIT" origin/main 2>/dev/null; then
-  log "✅ verified: $LAST_FEATURE_COMMIT 가 origin/main 에 포함됨"
+REMOTE_MAIN_TIP=$(git ls-remote origin main 2>/dev/null | awk '{print $1}')
+if [ -n "$REMOTE_MAIN_TIP" ] && git merge-base --is-ancestor "$LAST_FEATURE_COMMIT" "$REMOTE_MAIN_TIP" 2>/dev/null; then
+  log "✅ verified: $LAST_FEATURE_COMMIT 가 origin/main ($REMOTE_MAIN_TIP) 에 포함됨"
 else
-  log "❌ verification 실패: $LAST_FEATURE_COMMIT 가 origin/main 에 없음"
+  log "❌ verification 실패: $LAST_FEATURE_COMMIT 가 origin/main 에 없음 (remote tip: $REMOTE_MAIN_TIP)"
+  log "❌ 즉시 수동 확인 필요 — Cloudflare Pages 배포 안 됨"
   exit 1
 fi
 
