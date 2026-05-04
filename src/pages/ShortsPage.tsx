@@ -409,7 +409,7 @@ export default function ShortsPage() {
                   {hashtags.map((tag, i) => (
                     <span
                       key={i}
-                      className="px-3 py-1 rounded-full dark:bg-white/[0.18] backdrop-blur-sm text-white text-[11px] font-medium"
+                      className="px-3 py-1 rounded-full bg-white/[0.18] backdrop-blur-sm text-white text-[11px] font-medium"
                     >
                       {tag}
                     </span>
@@ -432,11 +432,14 @@ export default function ShortsPage() {
                 <div className="absolute bottom-14 left-3 right-3 z-20 animate-[slideUp_0.4s_ease-out]">
                   <div className="rounded-3xl overflow-hidden"
                     style={{ background: 'rgba(255,255,255,0.97)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}>
-                    {/* Label strip — Boutique: 옅은 그라데이션 배경 + 빨강 텍스트 */}
-                    <div className="flex items-center justify-between px-4 py-2"
-                      style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.08), rgba(236,72,153,0.08))' }}>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em' }}>FEATURED PRODUCT</span>
-                      <span style={{ fontSize: 10, color: '#6B7280' }}>{t('shorts.featuredProduct')}</span>
+                    {/* Label strip — Boutique: 그라데이션 배경 + 빨강→핑크 텍스트 */}
+                    <div className="flex items-center justify-between px-4 py-2.5"
+                      style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.10), rgba(236,72,153,0.10))' }}>
+                      <div className="flex items-center gap-1.5">
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg,#EF4444,#EC4899)', display: 'inline-block', flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, fontWeight: 800, background: 'linear-gradient(90deg,#EF4444,#EC4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '0.08em' }}>FEATURED DEAL</span>
+                      </div>
+                      <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 500 }}>{t('shorts.featuredProduct')}</span>
                     </div>
 
                     {/* Main row */}

@@ -53,13 +53,13 @@ export default function NotificationsPage() {
           <div className="text-center py-20">
             <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" aria-hidden="true" />
             <p className="text-gray-900 dark:text-white font-bold">{error}</p>
-            <p className="text-sm text-gray-500 mt-1">{t('notifications.retryLater')}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('notifications.retryLater')}</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="text-center py-20">
             <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" aria-hidden="true" />
             <p className="text-gray-900 dark:text-white font-bold">{t('notifications.empty')}</p>
-            <p className="text-sm text-gray-500 mt-1">{t('notifications.emptyDesc')}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('notifications.emptyDesc')}</p>
           </div>
         ) : (
           <div>
@@ -79,7 +79,7 @@ export default function NotificationsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{n.title}</p>
                   {n.message && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{n.message}</p>}
-                  <p className="text-[10px] text-gray-500 mt-1">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-500 mt-1">
                     {new Date(n.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>

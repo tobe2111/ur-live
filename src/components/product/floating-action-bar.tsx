@@ -25,7 +25,7 @@ export function FloatingActionBar({
 
   return (
     <div
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A]"
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] lg:max-w-screen-md bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A]"
       style={{
         paddingLeft: 14,
         paddingRight: 14,

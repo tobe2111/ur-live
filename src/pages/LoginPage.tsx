@@ -292,7 +292,7 @@ export default function LoginPage() {
             </svg>
             <span className="text-[28px] font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜</span>
           </div>
-          <p className="text-[14px] text-gray-500 mt-3 font-light">
+          <p className="text-[14px] text-gray-600 dark:text-gray-400 mt-3 font-light">
             {t('auth.tagline')}
           </p>
         </div>
@@ -380,7 +380,7 @@ export default function LoginPage() {
             <div className="text-center mt-8">
               <button
                 onClick={() => setShowEmailLogin(true)}
-                className="text-[13px] text-gray-500 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light transition-colors"
+                className="text-[13px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light transition-colors"
               >
                 {t('auth.loginWithEmail')}
               </button>
@@ -450,7 +450,7 @@ export default function LoginPage() {
                   setShowForgotPassword(true)
                   setShowEmailLogin(false)
                 }}
-                className="text-[12px] text-gray-500 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light"
+                className="text-[12px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light"
               >
                 {t('auth.forgotPassword')}
               </button>
