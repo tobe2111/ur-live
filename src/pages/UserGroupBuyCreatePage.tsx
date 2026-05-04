@@ -105,23 +105,23 @@ export default function UserGroupBuyCreatePage() {
   if (!isLoggedIn) return null
 
   return (
-    <div className="bg-white min-h-screen pb-24">
+    <div className="bg-white dark:bg-[#0A0A0A] min-h-screen pb-24">
       <SEO
         title="맛집 공구 시작"
         description="내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요."
         url="/community-group-buy/new"
       />
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
+      <header className="sticky top-0 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="flex items-center h-12 px-2">
           <button
             onClick={() => navigate(-1)}
             className="p-2 -ml-1"
             aria-label="뒤로"
           >
-            <ChevronLeft className="w-6 h-6 text-gray-900" />
+            <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[16px] font-extrabold text-gray-900 flex-1 text-center pr-8">
+          <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex-1 text-center pr-8">
             맛집 공구 시작하기
           </h1>
         </div>
@@ -130,8 +130,8 @@ export default function UserGroupBuyCreatePage() {
       <div className="px-4 pt-5 space-y-8">
         {/* ── Step 1: 맛집 선택 ── */}
         <section>
-          <h2 className="text-[15px] font-bold text-gray-900 mb-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 text-white text-[12px] font-bold mr-2">
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
               1
             </span>
             맛집 선택
@@ -154,17 +154,17 @@ export default function UserGroupBuyCreatePage() {
 
           {/* Selected restaurant card */}
           {restaurant && (
-            <div className="mt-3 p-4 border border-gray-200 rounded-xl bg-gray-50">
-              <p className="text-[14px] font-bold text-gray-900">
+            <div className="mt-3 p-4 border border-gray-200 dark:border-[#2A2A2A] rounded-xl bg-gray-50 dark:bg-[#1C1C1E]">
+              <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                 {restaurant.name}
               </p>
-              <p className="text-[12px] text-gray-600 mt-1 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+              <p className="text-[12px] text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                 {restaurant.address}
               </p>
               {restaurant.phone && (
-                <p className="text-[12px] text-gray-500 mt-0.5 flex items-center gap-1">
-                  <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
+                  <Phone className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                   {restaurant.phone}
                 </p>
               )}
@@ -174,8 +174,8 @@ export default function UserGroupBuyCreatePage() {
 
         {/* ── Step 2: 공구 설정 ── */}
         <section>
-          <h2 className="text-[15px] font-bold text-gray-900 mb-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 text-white text-[12px] font-bold mr-2">
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
               2
             </span>
             공구 설정
@@ -184,7 +184,7 @@ export default function UserGroupBuyCreatePage() {
           <div className="space-y-4">
             {/* 희망 식사권 가격 */}
             <div>
-              <label className="block text-[13px] font-semibold text-gray-700 mb-1">
+              <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
                 희망 식사권 가격
               </label>
               <div className="relative">
@@ -196,9 +196,9 @@ export default function UserGroupBuyCreatePage() {
                     setProposedPrice(e.target.value ? Number(e.target.value) : '')
                   }
                   placeholder="예: 20000"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none pr-10"
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
                   원
                 </span>
               </div>
@@ -206,7 +206,7 @@ export default function UserGroupBuyCreatePage() {
 
             {/* 1인당 딜 예치금 */}
             <div>
-              <label className="block text-[13px] font-semibold text-gray-700 mb-1">
+              <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
                 1인당 딜 예치금
               </label>
               <div className="relative">
@@ -216,9 +216,9 @@ export default function UserGroupBuyCreatePage() {
                   value={deposit}
                   onChange={(e) => setDeposit(Number(e.target.value) || 0)}
                   min={1000}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none pr-10"
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
                   딜
                 </span>
               </div>
@@ -231,7 +231,7 @@ export default function UserGroupBuyCreatePage() {
 
             {/* 목표 인원 */}
             <div>
-              <label className="block text-[13px] font-semibold text-gray-700 mb-1">
+              <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
                 목표 인원
               </label>
               <div className="relative">
@@ -241,9 +241,9 @@ export default function UserGroupBuyCreatePage() {
                   value={targetCount}
                   onChange={(e) => setTargetCount(Number(e.target.value) || 0)}
                   min={3}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none pr-10"
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
                   명
                 </span>
               </div>
@@ -256,8 +256,8 @@ export default function UserGroupBuyCreatePage() {
 
             {/* Calculation */}
             {step2Valid && (
-              <div className="bg-gray-50 rounded-xl p-3 text-center">
-                <p className="text-[13px] text-gray-600">
+              <div className="bg-gray-50 dark:bg-[#1C1C1E] rounded-xl p-3 text-center">
+                <p className="text-[13px] text-gray-600 dark:text-gray-400">
                   목표 달성 시 총{' '}
                   <span className="font-bold text-pink-500">
                     {formatNumber(totalRaised)}딜
@@ -272,41 +272,41 @@ export default function UserGroupBuyCreatePage() {
         {/* ── Step 3: 확인 & 시작 ── */}
         {restaurant && step2Valid && (
           <section>
-            <h2 className="text-[15px] font-bold text-gray-900 mb-3">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 text-white text-[12px] font-bold mr-2">
+            <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
                 3
               </span>
               확인 &amp; 시작
             </h2>
 
             {/* Summary card */}
-            <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 space-y-3 bg-white dark:bg-[#1C1C1E]">
               <div>
-                <p className="text-[11px] text-gray-500 mb-0.5">맛집</p>
-                <p className="text-[14px] font-bold text-gray-900">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">맛집</p>
+                <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                   {restaurant.name}
                 </p>
-                <p className="text-[12px] text-gray-500">{restaurant.address}</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">{restaurant.address}</p>
               </div>
 
-              <hr className="border-gray-100" />
+              <hr className="border-gray-100 dark:border-[#2A2A2A]" />
 
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
-                  <p className="text-[11px] text-gray-500">희망 가격</p>
-                  <p className="text-[14px] font-bold text-gray-900">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">희망 가격</p>
+                  <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                     {formatNumber(proposedPrice)}원
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-500">예치금</p>
-                  <p className="text-[14px] font-bold text-gray-900">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">예치금</p>
+                  <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                     {formatNumber(deposit)}딜
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-500">목표 인원</p>
-                  <p className="text-[14px] font-bold text-gray-900">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">목표 인원</p>
+                  <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                     {targetCount}명
                   </p>
                 </div>
@@ -315,7 +315,7 @@ export default function UserGroupBuyCreatePage() {
 
             {/* Balance */}
             <div className="mt-3 flex items-center justify-between px-1">
-              <span className="text-[13px] text-gray-600">내 딜 잔액</span>
+              <span className="text-[13px] text-gray-600 dark:text-gray-400">내 딜 잔액</span>
               <span className="text-[14px] font-bold text-pink-500">
                 {balance !== null
                   ? `${formatNumber(balance)}딜`
@@ -324,10 +324,10 @@ export default function UserGroupBuyCreatePage() {
             </div>
 
             {/* Warning */}
-            <div className="mt-3 flex gap-2 bg-gray-50 rounded-xl p-3">
-              <AlertCircle className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-              <p className="text-[12px] text-gray-500 leading-relaxed">
-                참여 시 <span className="font-semibold text-gray-700">{formatNumber(deposit)}딜</span>이
+            <div className="mt-3 flex gap-2 bg-gray-50 dark:bg-[#1C1C1E] rounded-xl p-3">
+              <AlertCircle className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0 mt-0.5" />
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                참여 시 <span className="font-semibold text-gray-700 dark:text-gray-300">{formatNumber(deposit)}딜</span>이
                 예치됩니다. 미달성 시 전액 환불됩니다.
               </p>
             </div>
@@ -337,11 +337,11 @@ export default function UserGroupBuyCreatePage() {
 
       {/* Bottom CTA */}
       {restaurant && step2Valid && (
-        <div className="fixed bottom-0 left-0 right-0 xl:left-56 bg-white border-t border-gray-100 px-4 py-3 z-50">
+        <div className="fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-50">
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="w-full py-3.5 bg-gray-900 text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
           >
             {submitting ? (
               <Loader2 className="w-5 h-5 animate-spin" />

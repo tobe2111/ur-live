@@ -19,6 +19,7 @@ import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 const communityGroupBuyRoutes = new Hono<{ Bindings: Env }>();
 
@@ -104,7 +105,7 @@ function generateInviteCode(): string {
 }
 
 // ── POST /create — 공동구매 생성 ──────────────────────────────────────
-communityGroupBuyRoutes.post('/create', requireAuth(), async (c) => {
+communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -124,6 +125,19 @@ communityGroupBuyRoutes.post('/create', requireAuth(), async (c) => {
 
   if (!body.restaurant_name || !body.proposed_price) {
     return c.json({ success: false, error: '식당 이름과 제안 가격은 필수입니다' }, 400);
+  }
+
+  if (typeof body.restaurant_name !== 'string' || body.restaurant_name.length > 200) {
+    return c.json({ success: false, error: '식당 이름은 200자 이하로 입력해주세요' }, 400);
+  }
+  if (!Number.isFinite(body.proposed_price) || body.proposed_price <= 0 || body.proposed_price >= 1_000_000_000) {
+    return c.json({ success: false, error: '제안 가격은 1원 이상 10억원 미만이어야 합니다' }, 400);
+  }
+  if (body.deposit_per_person !== undefined && (!Number.isFinite(body.deposit_per_person) || body.deposit_per_person < 0 || body.deposit_per_person > 1_000_000)) {
+    return c.json({ success: false, error: '보증금은 0~1,000,000딜 사이여야 합니다' }, 400);
+  }
+  if (body.target_count !== undefined && (!Number.isFinite(body.target_count) || body.target_count < 2 || body.target_count > 10_000)) {
+    return c.json({ success: false, error: '목표 인원은 2~10,000명 사이여야 합니다' }, 400);
   }
 
   const depositPerPerson = body.deposit_per_person || 5000;
@@ -204,7 +218,7 @@ communityGroupBuyRoutes.post('/create', requireAuth(), async (c) => {
 });
 
 // ── POST /join/:code — 초대코드로 참여 ────────────────────────────────
-communityGroupBuyRoutes.post('/join/:code', requireAuth(), async (c) => {
+communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -562,6 +576,10 @@ communityGroupBuyRoutes.post('/:id/refund', requireAuth(), async (c) => {
 
   if (group.status === 'achieved') {
     return c.json({ success: false, error: '달성된 공동구매는 환불할 수 없습니다' }, 400);
+  }
+
+  if (group.status === 'confirmed' && !isAdmin) {
+    return c.json({ success: false, error: '식당이 확정한 공동구매는 어드민만 환불할 수 있습니다' }, 403);
   }
 
   // 모든 deposited 상태 멤버에게 보증금 환불

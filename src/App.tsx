@@ -757,7 +757,7 @@ function AppContent() {
             } />
             <Route path="/auth/kakao/consent/callback" element={<KakaoConsentCallbackPage />} />
             <Route path="/auth/kakao/link/callback" element={<KakaoLinkCallbackPage />} />
-            <Route path="/admin/kakao-test/callback" element={<AdminKakaoTestCallbackPage />} />
+            <Route path="/admin/kakao-test/callback" element={<ProtectedRoute requireAdmin><AdminKakaoTestCallbackPage /></ProtectedRoute>} />
             <Route path="/admin/tiktok-discovery" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminTikTokDiscoveryPage /></ErrorBoundary>

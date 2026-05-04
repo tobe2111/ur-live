@@ -717,7 +717,7 @@ export default function RestaurantMapPage() {
                     <button
                       key={q}
                       onMouseDown={(e) => { e.preventDefault(); setSearch(q); pushSearchHistory(q) }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212] flex items-center gap-2"
+                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A1A1A] flex items-center gap-2"
                     >
                       <Search className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
                       <span className="truncate">{q}</span>
@@ -855,7 +855,7 @@ export default function RestaurantMapPage() {
                   className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
                     voucherType === t.key
                       ? 'bg-gray-900 text-white'
-                      : 'bg-gray-50 dark:bg-[#121212] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'
+                      : 'bg-gray-50 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'
                   }`}
                 >
                   <span>{t.emoji}</span>

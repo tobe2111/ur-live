@@ -9,6 +9,7 @@ import WishlistButton from '../components/WishlistButton'
 import { ArrowLeft, Heart } from 'lucide-react'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
+import { useTheme } from '@/shared/stores/useTheme'
 import { formatNumber } from '@/utils/format'
 
 interface WishlistItem {
@@ -110,8 +111,8 @@ const WishlistPage: React.FC = () => {
     }
   }
 
-  // 🛡️ 2026-04-30: CLAUDE.md 규칙 — /wishlist 는 화이트 테마 (쇼핑/결제 플로우)
-  const theme = 'light' as const
+  const { applied } = useTheme()
+  const theme = applied === 'dark' ? 'dark' : 'light'
   const tk = walletTokens[theme]
 
   if (loading) {

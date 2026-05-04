@@ -14,9 +14,10 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingCart, User, Radio, Gift, Utensils, Search, Bell, Play } from 'lucide-react'
+import { Home, ShoppingCart, User, Radio, Gift, Utensils, Search, Bell } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import { isLoggedInSync } from '@/utils/auth'
 
 export default function DesktopTopNav() {
@@ -73,16 +74,8 @@ export default function DesktopTopNav() {
     <header className="hidden lg:block xl:hidden sticky top-0 z-40 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
       <div className="ur-content-wide flex items-center gap-6 px-6 lg:px-8 h-14">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-1.5 shrink-0">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-            <Play className="h-3.5 w-3.5 text-white fill-white" />
-          </div>
-          <span
-            className="text-[16px] font-extrabold text-gray-900 dark:text-white"
-            style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}
-          >
-            UR·DEAL
-          </span>
+        <Link to="/" className="flex items-center shrink-0">
+          <UrDealLogo size={20} />
         </Link>
 
         {/* Center: Nav items */}

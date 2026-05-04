@@ -94,7 +94,7 @@ pointsRoutes.get('/balance', requireAuth(), async (c) => {
 });
 
 // ── POST /api/points/charge/init ─────────────────────────────────────
-pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
+pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -283,8 +283,11 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
   }>();
   const { stream_id, amount, message } = body;
 
-  if (!stream_id || !amount || amount < 500) {
-    return c.json({ success: false, error: '후원 금액은 최소 500딜입니다' }, 400);
+  if (!Number.isFinite(stream_id) || stream_id < 1) {
+    return c.json({ success: false, error: '유효하지 않은 방송입니다' }, 400);
+  }
+  if (!Number.isFinite(amount) || amount < 500 || amount > 10_000_000) {
+    return c.json({ success: false, error: '후원 금액은 500딜 이상 10,000,000딜 이하입니다' }, 400);
   }
 
   const { DB } = c.env;

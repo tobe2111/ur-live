@@ -23,20 +23,20 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
   useEscapeKey(onClose)
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose} role="presentation">
-      <div className="w-full max-w-sm bg-white rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
+      <div className="w-full max-w-sm bg-white dark:bg-[#1C1C1E] rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-            <p className="text-sm text-gray-500 mt-1">{message}</p>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{message}</p>
           </div>
-          <button onClick={onClose} aria-label="공유 프롬프트 닫기" className="p-1 text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} aria-label="공유 프롬프트 닫기" className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {reward && (
-          <div className="bg-pink-50 border border-pink-200 rounded-xl p-3 mb-4 text-center">
-            <p className="text-sm font-bold text-pink-600">{reward}</p>
+          <div className="bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800/40 rounded-xl p-3 mb-4 text-center">
+            <p className="text-sm font-bold text-pink-600 dark:text-pink-400">{reward}</p>
           </div>
         )}
 
@@ -48,7 +48,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
         />
 
 
-        <button onClick={onClose} className="w-full mt-2 py-2.5 text-sm text-gray-500 font-medium">
+        <button onClick={onClose} className="w-full mt-2 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium">
           다음에 하기
         </button>
       </div>
@@ -64,12 +64,12 @@ export function ShareBanner({ title, description, link, buttonText, className }:
   if (dismissed) return null
 
   return (
-    <div className={`bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 ${className || ''}`}>
+    <div className={`bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4 ${className || ''}`}>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold text-gray-900">{title}</p>
-        <button onClick={() => setDismissed(true)} aria-label="배너 닫기" className="text-gray-400"><X className="w-4 h-4" /></button>
+        <p className="text-sm font-bold text-gray-900 dark:text-white">{title}</p>
+        <button onClick={() => setDismissed(true)} aria-label="배너 닫기" className="text-gray-400 dark:text-gray-500"><X className="w-4 h-4" /></button>
       </div>
-      <p className="text-xs text-gray-500 mb-3">{description}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{description}</p>
       <KakaoShareButton title={title} description={description} link={link} buttonText={buttonText} />
     </div>
   )

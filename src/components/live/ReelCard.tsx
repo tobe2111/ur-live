@@ -904,8 +904,8 @@ export default function ReelCard({
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
             </svg>
           </div>
-          <p className="text-gray-900 dark:text-white text-lg font-bold mb-1">{t('live.player.errorTitle')}</p>
-          <p className="text-gray-900 dark:text-white/70 text-sm">{playerError}</p>
+          <p className="text-white text-lg font-bold mb-1">{t('live.player.errorTitle')}</p>
+          <p className="text-white/70 text-sm">{playerError}</p>
         </div>
       )}
 
@@ -924,20 +924,20 @@ export default function ReelCard({
           <div className="flex flex-col items-center gap-4">
             <div className="px-4 py-1.5 bg-red-600 rounded-full flex items-center gap-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              <span className="text-gray-900 dark:text-white text-sm font-bold">LIVE</span>
+              <span className="text-white text-sm font-bold">LIVE</span>
             </div>
 
             {autoplayFailed ? (
               <>
                 {/* 자동재생 실패 → 명확한 재생 버튼 */}
                 <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/40">
-                  <svg className="w-10 h-10 text-gray-900 dark:text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 </div>
                 <div className="text-center px-6">
-                  <p className="text-gray-900 dark:text-white text-xl font-bold mb-1">{t('live.tapToStart')}</p>
-                  <p className="text-gray-900 dark:text-white/50 text-xs">{t('live.tapToStartSub')}</p>
+                  <p className="text-white text-xl font-bold mb-1">{t('live.tapToStart')}</p>
+                  <p className="text-white/50 text-xs">{t('live.tapToStartSub')}</p>
                 </div>
               </>
             ) : (
@@ -950,8 +950,8 @@ export default function ReelCard({
                   </div>
                 </div>
                 <div className="text-center px-6">
-                  <p className="text-gray-900 dark:text-white text-xl font-bold mb-1.5">{t('live.entering')}</p>
-                  <p className="text-gray-900 dark:text-white/60 text-sm">{t('live.enteringSub')}</p>
+                  <p className="text-white text-xl font-bold mb-1.5">{t('live.entering')}</p>
+                  <p className="text-white/60 text-sm">{t('live.enteringSub')}</p>
                 </div>
               </>
             )}

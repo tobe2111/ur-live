@@ -292,27 +292,27 @@ export default function LoginPage() {
             </svg>
             <span className="text-[28px] font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜</span>
           </div>
-          <p className="text-[14px] text-gray-500 mt-3 font-light">
+          <p className="text-[14px] text-gray-600 dark:text-gray-400 mt-3 font-light">
             {t('auth.tagline')}
           </p>
         </div>
 
         {/* Error/Success Messages */}
         {error && (
-          <div className="mb-5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-600 text-center">
+          <div className="mb-5 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 rounded-xl text-[13px] text-red-600 dark:text-red-400 text-center">
             {error}
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-5 px-4 py-3 bg-green-50 border border-green-100 rounded-xl text-[13px] text-green-700 text-center">
+          <div className="mb-5 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/40 rounded-xl text-[13px] text-green-700 dark:text-green-400 text-center">
             {successMessage}
           </div>
         )}
 
         {/* 🛡️ 2026-05-01: ?switch=1 진입 시 안내 — 다른 사람 디바이스에서 본인 계정으로 로그인 */}
         {wantsSwitch && (
-          <div className="mb-5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-[13px] text-blue-700 text-center">
+          <div className="mb-5 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl text-[13px] text-blue-700 dark:text-blue-400 text-center">
             이전 사용자 데이터를 청소했어요. 본인 계정으로 로그인해주세요.
           </div>
         )}
@@ -380,7 +380,7 @@ export default function LoginPage() {
             <div className="text-center mt-8">
               <button
                 onClick={() => setShowEmailLogin(true)}
-                className="text-[13px] text-gray-500 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light transition-colors"
+                className="text-[13px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light transition-colors"
               >
                 {t('auth.loginWithEmail')}
               </button>
@@ -450,7 +450,7 @@ export default function LoginPage() {
                   setShowForgotPassword(true)
                   setShowEmailLogin(false)
                 }}
-                className="text-[12px] text-gray-500 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light"
+                className="text-[12px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light"
               >
                 {t('auth.forgotPassword')}
               </button>

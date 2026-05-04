@@ -71,8 +71,8 @@
   }
   
   body {
-    /* 다크 테마 배경 */
-    background-color: #020202 !important;
+    /* 🛡️ 2026-05-04: 라이트/다크 테마 토글 지원 — html.dark 클래스에 따라 결정. */
+    background-color: #ffffff;
     color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family:
@@ -125,6 +125,11 @@
     line-height: 1.47059;
     font-weight: 400;
     letter-spacing: -0.022em;
+  }
+
+  /* 🛡️ 2026-05-04: 다크 모드일 때만 body 배경 #020202. light 모드는 #ffffff (위 body 규칙). */
+  html.dark body {
+    background-color: #020202;
   }
 
   /* Footer tiny text override */
@@ -499,10 +504,15 @@ html.native-app nav {
   width: 100%;
   margin: 0 auto;
   min-height: 100dvh;
-  background-color: #020202;
+  background-color: #ffffff;
   position: relative;
   /* overflow-x 제거 — PC 에서 좌우 사이드바 사용 시 sticky/fixed 자손에 영향 없도록.
      PC viewport 보다 넓은 그리드는 의도적으로 가로 스크롤 (Vite/Tailwind 표준 동작). */
+}
+
+/* 🛡️ 2026-05-04: 다크 모드일 때만 .mobile-app-container 배경 #020202. */
+html.dark .mobile-app-container {
+  background-color: #020202;
 }
 
 /* 모바일 액자 모드: data-mobile-only 페이지 (라이브/쇼츠 등) — PC 에서도 430px 폭 유지 */

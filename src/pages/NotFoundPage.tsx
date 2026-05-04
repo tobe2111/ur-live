@@ -22,7 +22,7 @@ export default function NotFoundPage() {
         noindex
       />
 
-      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#fbfbfd] via-white to-[#f5f5f7] flex items-center justify-center px-4 py-12">
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#fbfbfd] via-white to-[#f5f5f7] dark:from-[#0A0A0A] dark:via-[#0A0A0A] dark:to-[#121212] flex items-center justify-center px-4 py-12">
         {/* Decorative floating orbs */}
         <div
           aria-hidden
@@ -59,12 +59,12 @@ export default function NotFoundPage() {
           </h1>
 
           {/* Subtitle */}
-          <h2 className="mt-2 text-2xl font-bold text-gray-900">
+          <h2 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
             {t('notFound.title')}
           </h2>
 
           {/* Description */}
-          <p className="mt-3 text-base text-gray-500">
+          <p className="mt-3 text-base text-gray-500 dark:text-gray-400">
             {t('notFound.description')}
           </p>
 
@@ -72,7 +72,7 @@ export default function NotFoundPage() {
           <div className="mt-10 grid grid-cols-2 gap-3">
             <Link
               to="/"
-              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-black text-white font-bold text-[15px] shadow-sm hover:bg-gray-900 hover:shadow-md transition-all duration-200 active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-black dark:bg-white text-white dark:text-gray-900 font-bold text-[15px] shadow-sm hover:bg-gray-900 dark:hover:bg-gray-100 hover:shadow-md transition-all duration-200 active:scale-[0.98]"
             >
               <Home className="h-4 w-4" />
               {t('notFound.goHome')}
@@ -80,7 +80,7 @@ export default function NotFoundPage() {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-gray-200 bg-white text-gray-700 font-bold text-[15px] hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1C1C1E] text-gray-700 dark:text-gray-300 font-bold text-[15px] hover:bg-gray-50 dark:hover:bg-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-all duration-200 active:scale-[0.98]"
             >
               <ArrowLeft className="h-4 w-4" />
               {t('notFound.goBack')}
@@ -88,8 +88,8 @@ export default function NotFoundPage() {
           </div>
 
           {/* Popular Links */}
-          <div className="mt-12 pt-8 border-t border-gray-200/70">
-            <p className="mb-4 text-sm font-medium text-gray-500">
+          <div className="mt-12 pt-8 border-t border-gray-200/70 dark:border-[#2A2A2A]">
+            <p className="mb-4 text-sm font-medium text-gray-500 dark:text-gray-400">
               {t('notFound.popularPages')}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
@@ -97,7 +97,7 @@ export default function NotFoundPage() {
                 <Link
                   key={to}
                   to={to}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 active:scale-[0.98] shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A2A2A] text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:bg-gray-50 dark:hover:bg-[#2A2A2A] hover:text-gray-900 dark:hover:text-white transition-all duration-200 active:scale-[0.98] shadow-sm"
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {label}

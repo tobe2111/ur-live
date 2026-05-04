@@ -142,17 +142,17 @@ export default function CouponClaimPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] flex items-center justify-center px-4">
       <SEO title={t('couponClaim.seoTitle')} description={t('couponClaim.seoDesc')} url={`/coupon/${code}`} />
       {status === 'success' && <ConfettiCanvas />}
 
       <div className="w-full max-w-sm text-center relative z-10">
         {status === 'loading' && (
           <div className="animate-pulse">
-            <div className="w-20 h-20 mx-auto bg-pink-100 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 mx-auto bg-pink-100 dark:bg-pink-900/20 rounded-full flex items-center justify-center mb-4">
               <Gift className="w-10 h-10 text-pink-400 animate-bounce" />
             </div>
-            <p className="text-gray-500 text-sm">{t('couponClaim.claiming')}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">{t('couponClaim.claiming')}</p>
           </div>
         )}
 
@@ -162,32 +162,32 @@ export default function CouponClaimPage() {
               <Gift className="w-12 h-12 text-white" />
             </div>
 
-            <h1 className="text-2xl font-extrabold text-gray-900 mb-1">{t('couponClaim.celebrate')}</h1>
-            <p className="text-sm text-gray-500 mb-6">{t('couponClaim.issuedHint')}</p>
+            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">{t('couponClaim.celebrate')}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('couponClaim.issuedHint')}</p>
 
-            <div className="relative bg-white rounded-3xl p-6 border-2 border-dashed border-pink-300 shadow-xl overflow-hidden">
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-pink-50 to-white rounded-full" />
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-pink-50 to-white rounded-full" />
+            <div className="relative bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 border-2 border-dashed border-pink-300 dark:border-pink-800/50 shadow-xl overflow-hidden">
+              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-pink-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] rounded-full" />
+              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-pink-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] rounded-full" />
 
               <p className="text-xs text-pink-500 font-medium mb-1">{t('couponClaim.couponLabel')}</p>
-              <p className="text-[15px] font-bold text-gray-900 mb-3">{coupon.name}</p>
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{coupon.name}</p>
               <p className="text-4xl font-black text-pink-500">
                 {coupon.type === 'percent' ? `${coupon.value}%` : `${formatNumber(coupon.value)}원`}
               </p>
-              <p className="text-lg font-bold text-gray-700 -mt-1">{t('couponClaim.discount')}</p>
-              <div className="mt-4 pt-4 border-t border-dashed border-pink-200">
-                <p className="text-[11px] text-gray-400">{t('couponClaim.footerNote')}</p>
+              <p className="text-lg font-bold text-gray-700 dark:text-gray-300 -mt-1">{t('couponClaim.discount')}</p>
+              <div className="mt-4 pt-4 border-t border-dashed border-pink-200 dark:border-pink-900/40">
+                <p className="text-[11px] text-gray-400 dark:text-gray-500">{t('couponClaim.footerNote')}</p>
               </div>
             </div>
 
             <button onClick={() => navigate('/')}
-              className="w-full mt-6 py-4 bg-gray-900 text-white font-bold rounded-2xl active:scale-[0.97] transition-transform flex items-center justify-center gap-2 shadow-lg">
+              className="w-full mt-6 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-2xl active:scale-[0.97] transition-transform flex items-center justify-center gap-2 shadow-lg">
               <ShoppingBag className="w-5 h-5" />
               {t('couponClaim.goShop')}
             </button>
 
             <button onClick={() => navigate('/browse')}
-              className="w-full mt-2 py-3 text-sm text-gray-500 font-medium">
+              className="w-full mt-2 py-3 text-sm text-gray-500 dark:text-gray-400 font-medium">
               {t('couponClaim.browseProducts')}
             </button>
           </div>
@@ -195,13 +195,13 @@ export default function CouponClaimPage() {
 
         {status === 'already' && (
           <div className="animate-fade-in">
-            <div className="w-20 h-20 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 mx-auto bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mb-4">
               <Gift className="w-10 h-10 text-amber-500" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">{t('couponClaim.alreadyTitle')}</h1>
-            <p className="text-sm text-gray-500">{t('couponClaim.alreadyHint')}</p>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('couponClaim.alreadyTitle')}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('couponClaim.alreadyHint')}</p>
             <button onClick={() => navigate('/')}
-              className="w-full mt-6 py-3.5 bg-gray-900 text-white font-bold rounded-xl active:scale-[0.98]">
+              className="w-full mt-6 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl active:scale-[0.98]">
               {t('couponClaim.goHome')}
             </button>
           </div>
@@ -209,13 +209,13 @@ export default function CouponClaimPage() {
 
         {status === 'error' && (
           <div className="animate-fade-in">
-            <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 mx-auto bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
               <XCircle className="w-10 h-10 text-red-500" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">{t('couponClaim.errorTitle')}</h1>
-            <p className="text-sm text-gray-500">{errorMsg}</p>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('couponClaim.errorTitle')}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{errorMsg}</p>
             <button onClick={() => navigate('/')}
-              className="w-full mt-6 py-3.5 bg-gray-900 text-white font-bold rounded-xl active:scale-[0.98]">
+              className="w-full mt-6 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl active:scale-[0.98]">
               {t('couponClaim.goHome')}
             </button>
           </div>

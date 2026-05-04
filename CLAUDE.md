@@ -206,9 +206,10 @@ auto-reference 섹션은 자동이므로 신경 안 써도 됨. narrative(개념
   - 페이지/컴포넌트에 `dark:` variant 추가 절대 금지
   - 향후 다크 모드가 다시 활성화되더라도 대시보드는 항상 화이트 유지
   - `scripts/check-dashboard-theme.sh` (pre-commit hook) 가 위반 차단
-- **현재 상태**: dark 모드 자체가 비활성 (2026-05-03 정책 복귀, useTheme.applyToDocument no-op)
-  → 모든 페이지에서 dark class 미적용. dark: variants 가 코드에 있어도 매칭 안 됨.
-- ❌ 절대 금지: `text-white` (컬러 버튼 위 제외), `dark:` variants (`dark:bg-...` 등)
+- **현재 상태**: dark 모드 활성 (2026-05-04 재활성). `useTheme.applyToDocument` 가 정상 동작.
+  → 쇼핑/결제 페이지는 사용자 토글에 따라 `html.dark` 적용. `dark:` variants 정상 매칭.
+  → 단, 대시보드(셀러/어드민/에이전시)는 아래 절대 금지 규칙에 의해 토글 무영향 유지.
+- ❌ 절대 금지: `text-white` (컬러 버튼 위 제외), `dark:` variants (`dark:bg-...` 등) — **대시보드에만 해당**
 
 ### 공통 규칙
 - `text-white`는 **컬러 배경 버튼** 위에서만 사용 (bg-pink-500, bg-red-500, bg-blue-600 등)

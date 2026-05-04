@@ -8,6 +8,7 @@ import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
 import { formatNumber } from '@/utils/format'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import RecentlyViewed from './main-home/RecentlyViewed'
 import InvitePrompt from './main-home/InvitePrompt'
 import { REGIONS, CATEGORIES } from './main-home/constants'
@@ -181,11 +182,8 @@ export default function MainHomePage() {
       {/* ═══ Sticky Top Bar ═══ — PC 풀너비 sticky, 콘텐츠는 centered */}
       <div className="sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md">
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-1.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-            <Play className="h-3 w-3 text-white fill-white" />
-          </div>
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}>UR·DEAL</span>
+        <Link to="/" className="flex items-center gap-2">
+          <UrDealLogo size={18} />
         </Link>
         <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200">
           <button onClick={() => navigate('/search')} className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
@@ -245,10 +243,11 @@ export default function MainHomePage() {
           <button
             onClick={() => setRegionModalOpen(true)}
             aria-label={t('mainHome.regionPickerAria', { defaultValue: '지역 선택' })}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-white/[0.12] backdrop-blur-md border border-white/20">
-            <MapPin className="w-3.5 h-3.5 text-white" />
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-white/[0.15] backdrop-blur-md border border-white/30 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24] animate-pulse shrink-0" />
+            <MapPin className="w-3 h-3 text-white/80" />
             <span className="text-[12px] font-bold text-white">{region}</span>
-            <ChevronDown className="w-2.5 h-2.5 text-white" />
+            <ChevronDown className="w-2.5 h-2.5 text-white/70" />
           </button>
           <p className="text-[11px] text-white/70 font-semibold tracking-widest mt-3">{t('mainHome.nowDeadline')}</p>
           <h1 className="text-[26px] font-black text-white mt-1" style={{ letterSpacing: '-0.04em', lineHeight: 1.1, textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>
@@ -315,8 +314,11 @@ export default function MainHomePage() {
         <div className="flex items-end justify-between mb-3">
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-[14px]">📍</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24] animate-pulse" />
               <span className="text-[10px] font-extrabold text-[#FBBF24] tracking-[0.14em]">{t('mainHome.nearbyTag')}</span>
+              <button onClick={() => setRegionModalOpen(true)} className="text-[9px] text-gray-500 dark:text-gray-400 underline underline-offset-2">
+                {region}
+              </button>
             </div>
             <p className="text-[18px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>{t('mainHome.nearbyTitle', { region: region.split(' ')[0] })}</p>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.nearbyCount', { count: displayMeals.length })}</p>
@@ -344,7 +346,7 @@ export default function MainHomePage() {
           <span className="text-[14px] text-[#FBBF24] shrink-0">→</span>
         </button>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2">
           {displayMeals.slice(0, 8).map((m, i) => {
             const current = m.group_buy_current || 0
             const d = disc(m.price, m.original_price)
@@ -360,7 +362,7 @@ export default function MainHomePage() {
                   <div className="flex items-center gap-1 mb-1 flex-wrap">
                     <span className="text-[9px] font-extrabold px-1 rounded bg-[#FDE68A] text-[#78350F]">🍽 {m.restaurant_address?.split(' ')[0] || t('mainHome.fallbackRestaurant')}</span>
                     {isHot && <span className="text-[9px] font-extrabold px-1 rounded bg-pink-500 text-white">{t('mainHome.tagHot')}</span>}
-                    {isClosing && <span className="text-[9px] font-extrabold px-1 rounded bg-[#EF4444] text-gray-900 dark:text-white">{t('mainHome.tagClosing')}</span>}
+                    {isClosing && <span className="text-[9px] font-extrabold px-1 rounded bg-[#EF4444] text-white">{t('mainHome.tagClosing')}</span>}
                   </div>
                   <p className="text-[12px] text-gray-900 dark:text-white font-bold leading-tight line-clamp-2">{m.name}</p>
                   <div className="flex items-baseline gap-1 mt-1">
@@ -411,8 +413,8 @@ export default function MainHomePage() {
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 right-2">
-                      <p className="text-[10px] text-gray-900 dark:text-white/80 font-semibold truncate">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
-                      <p className="text-[12px] text-gray-900 dark:text-white font-bold leading-tight line-clamp-2 mt-0.5">{s.title}</p>
+                      <p className="text-[10px] text-white/80 font-semibold truncate">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
+                      <p className="text-[12px] text-white font-bold leading-tight line-clamp-2 mt-0.5">{s.title}</p>
                     </div>
                   </div>
                   {s.current_product && (
@@ -452,8 +454,8 @@ export default function MainHomePage() {
                       <span className="text-[10px] font-bold text-white">{t('mainHome.scheduledBadge')}</span>
                     </div>
                     <div className="absolute bottom-2 left-2 right-2">
-                      {timeLabel && <p className="text-[18px] font-black text-gray-900 dark:text-white">{timeLabel}</p>}
-                      <p className="text-[10px] text-gray-900 dark:text-white/70 truncate">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
+                      {timeLabel && <p className="text-[18px] font-black text-white">{timeLabel}</p>}
+                      <p className="text-[10px] text-white/70 truncate">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
                     </div>
                   </button>
                   <p className="text-[11px] text-gray-700 dark:text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
@@ -472,7 +474,7 @@ export default function MainHomePage() {
         <div className="px-4 pt-6">
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-[10px] font-extrabold text-gray-500 tracking-[0.14em]">{t('mainHome.replayTag')}</p>
+              <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 tracking-[0.14em]">{t('mainHome.replayTag')}</p>
               <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-0.5">{t('mainHome.replayTitle')}</p>
             </div>
             <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
@@ -490,7 +492,7 @@ export default function MainHomePage() {
                     </div>
                   </div>
                   <p className="text-[11px] text-gray-700 dark:text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
-                  <p className="text-[9px] text-gray-500 mt-0.5">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
+                  <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
                 </button>
               )
             })}
@@ -511,7 +513,7 @@ export default function MainHomePage() {
             {CATEGORIES.map(c => (
               <button key={c.k} onClick={() => navigate(`/browse?category=${c.k}`)} className="flex flex-col items-center gap-1.5">
                 <div className="rounded-2xl flex items-center justify-center w-[52px] h-[52px] text-[22px]" style={{ background: c.bg }}>{c.i}</div>
-                <span className="text-[11px] text-gray-700 dark:text-gray-700 dark:text-gray-200 font-semibold">{c.l}</span>
+                <span className="text-[11px] text-gray-700 dark:text-gray-200 font-semibold">{c.l}</span>
               </button>
             ))}
           </div>
@@ -525,12 +527,12 @@ export default function MainHomePage() {
               {products.slice(0, 5).map((p, i) => {
                 const d = disc(p.price, p.original_price)
                 return (
-                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative">
-                    <div className="relative rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-[#1A1A1A]">
+                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative w-full block">
+                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
                       {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                       <span className="absolute top-1.5 left-1.5 rounded flex items-center justify-center w-[22px] h-[22px] bg-[#EF4444] text-[11px] font-black text-white">{i + 1}</span>
                     </div>
-                    <p className="text-[11px] text-gray-700 dark:text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
+                    <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
                     <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">
                       {d > 0 && <span className="text-red-500 dark:text-red-400 mr-1">{d}%</span>}{formatNumber(p.price)}원
                     </p>
@@ -549,21 +551,21 @@ export default function MainHomePage() {
               {products.slice(5).map(p => {
                 const d = disc(p.price, p.original_price)
                 return (
-                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left">
-                    <div className="relative rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-[#1A1A1A]">
+                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left w-full block">
+                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
                       {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
-                      {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-gray-900 dark:text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
+                      {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
                     </div>
                     <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
                     {p.original_price && p.original_price > p.price && (
-                      <p className="text-[10px] text-gray-500 line-through mt-0.5">{formatNumber(p.original_price)}원</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-600 line-through mt-0.5">{formatNumber(p.original_price)}원</p>
                     )}
                     <div className="flex items-baseline gap-1 mt-0.5">
                       {d > 0 && <span className="text-[12px] font-extrabold text-red-500">{d}%</span>}
                       <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}원</span>
                     </div>
                     {(p.avg_rating || p.sold_count) && (
-                      <p className="text-[10px] text-gray-500 mt-0.5">★ {(p.avg_rating || 4.5).toFixed(1)} · {formatNumber(p.sold_count || 0)} 구매</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">★ {(p.avg_rating || 4.5).toFixed(1)} · {formatNumber(p.sold_count || 0)} 구매</p>
                     )}
                   </button>
                 )

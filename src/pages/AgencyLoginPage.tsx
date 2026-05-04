@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, BarChart2, Users, TrendingUp } from 'lucide-react'
 import TurnstileWidget from '@/components/auth/TurnstileWidget'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function AgencyLoginPage() {
   const { t } = useTranslation()
@@ -55,7 +56,7 @@ export default function AgencyLoginPage() {
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
         <div className="px-10 pt-10">
           <div className="flex items-center gap-3">
-            <span className="text-2xl font-extrabold text-white tracking-tight">UR·DEAL</span>
+            <UrDealLogo size={22} forceDark />
             <span className="text-xs font-bold tracking-widest text-[#8B5CF6] uppercase">Agency Partner</span>
           </div>
         </div>
@@ -97,7 +98,7 @@ export default function AgencyLoginPage() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <span className="text-2xl font-extrabold text-gray-900 tracking-tight">UR·DEAL</span>
+            <UrDealLogo size={22} forceLight />
             <span className="text-xs font-bold tracking-widest text-[#8B5CF6] uppercase">Agency</span>
           </div>
 

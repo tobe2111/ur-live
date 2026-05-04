@@ -9,6 +9,7 @@ import {
 import { clearAuthData } from '@/utils/auth'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import DashboardNotificationBell from './DashboardNotificationBell'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 interface NavItem {
   path: string
@@ -130,12 +131,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       {/* Branding */}
       <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-2.5">
-          <span
-            className="font-extrabold italic text-white"
-            style={{ fontSize: '13px', letterSpacing: '-0.03em' }}
-          >
-            UR·DEAL
-          </span>
+          <UrDealLogo size={14} forceDark />
           <span
             className="font-bold uppercase text-white"
             style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#FCD34D' }}

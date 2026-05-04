@@ -125,6 +125,19 @@ export default function MyVouchersPage() {
     { key: 'refunded', label: t('voucher.groupRefunded'), items: vouchers.filter(v => v.status === 'refunded') },
   ].filter(g => g.items.length > 0)
 
+  // 가까운 만료일 (unused 식사권 중 가장 가까운)
+  const nearestExpiry = (() => {
+    const now = Date.now()
+    const candidates = vouchers
+      .filter(v => v.status === 'unused' && v.expires_at)
+      .map(v => new Date(v.expires_at!).getTime())
+      .filter(t => t > now)
+      .sort((a, b) => a - b)
+    if (!candidates[0]) return null
+    const days = Math.max(0, Math.ceil((candidates[0] - now) / (1000 * 60 * 60 * 24)))
+    return days
+  })()
+
   return (
     <WalletPageWrapper theme={theme}>
       <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" />
@@ -142,8 +155,26 @@ export default function MyVouchersPage() {
         </button>
       </div>
 
-      {/* Large Title */}
+      {/* Large Title + 메타 */}
       <LargeTitle theme={theme} title={t('voucher.myVouchers')} />
+      {vouchers.length > 0 && (
+        <div className="ur-content-narrow px-4 lg:px-8 -mt-2 mb-4 flex items-center gap-2 flex-wrap"
+          style={{ fontSize: 12, color: tk.secondary, letterSpacing: '-0.01em' }}>
+          <span style={{ fontWeight: 600, color: tk.label }}>
+            {vouchers.filter(v => v.status === 'unused').length}{t('voucher.activeCountSuffix', { defaultValue: '장 사용 가능' })}
+          </span>
+          {nearestExpiry !== null && (
+            <>
+              <span style={{ color: tk.tertiary }}>·</span>
+              <span>
+                {nearestExpiry === 0
+                  ? t('voucher.expiresToday', { defaultValue: '오늘 만료' })
+                  : t('voucher.expiresInDays', { count: nearestExpiry, defaultValue: `${nearestExpiry}일 뒤 만료` })}
+              </span>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (
@@ -167,77 +198,14 @@ export default function MyVouchersPage() {
           <>
             {groups.map(group => (
               <div key={group.key} className="mb-6">
-                <p className="px-1 mb-1.5 uppercase"
-                  style={{ fontSize: 12, color: tk.secondary, fontWeight: 500, letterSpacing: '-0.01em' }}>
+                <p className="px-1 mb-2 uppercase"
+                  style={{ fontSize: 11, color: tk.secondary, fontWeight: 700, letterSpacing: '0.06em' }}>
                   {group.label} <span style={{ color: tk.tertiary }}>· {group.items.length}</span>
                 </p>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {group.items.map(v => {
-                    const st = STATUS_MAP[v.status] || STATUS_MAP.unused
                     const muted = v.status !== 'unused'
-                    return (
-                      <div
-                        key={v.id}
-                        className="rounded-2xl overflow-hidden"
-                        style={{ background: tk.card, opacity: muted ? 0.6 : 1 }}
-                      >
-                        <div className="flex">
-                          {v.product_image && (
-                            <img src={v.product_image} alt="" loading="lazy" className="w-24 h-auto object-cover shrink-0" />
-                          )}
-                          <div className="flex-1 p-3.5 min-w-0">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                              style={{ background: tk.fillSoft, color: tk.label, fontSize: 10, fontWeight: 700 }}>
-                              <st.icon className="w-3 h-3" />
-                              {t(st.labelKey)}
-                            </span>
-                            <p style={{ fontSize: 14, fontWeight: 700, color: tk.label, marginTop: 6 }} className="line-clamp-2">{v.product_name}</p>
-                            {v.restaurant_name && (
-                              <p className="flex items-center gap-1 mt-1" style={{ fontSize: 11, color: tk.secondary }}>
-                                <MapPin className="w-3 h-3" /> {v.restaurant_name}
-                              </p>
-                            )}
-                            {/* 바우처 코드 row */}
-                            <div className="mt-2 rounded-lg px-3 py-2 flex items-center justify-between"
-                              style={{ background: tk.fillSoft }}>
-                              <code style={{ fontSize: 13, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontWeight: 700, color: tk.accent, letterSpacing: '-0.01em' }}>{v.code}</code>
-                              <div className="flex items-center gap-2">
-                                {v.status === 'unused' && (
-                                  <button
-                                    onClick={() => setQrVoucher(v)}
-                                    className="flex items-center gap-0.5"
-                                    style={{ fontSize: 11, color: tk.accent, fontWeight: 600 }}
-                                  >
-                                    <QrCode className="w-3 h-3" />
-                                    {t('voucher.scan')}
-                                  </button>
-                                )}
-                                {v.status === 'unused' && (
-                                  <button
-                                    onClick={() => {
-                                      navigator.clipboard?.writeText(v.code)
-                                      toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
-                                    }}
-                                    style={{ fontSize: 11, color: tk.secondary, fontWeight: 500 }}
-                                  >
-                                    {t('voucher.copy')}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            {/* 유효기간 */}
-                            {v.expires_at && (
-                              <p className="flex items-center gap-1 mt-1.5" style={{ fontSize: 10, color: tk.secondary }}>
-                                <Clock className="w-3 h-3" />
-                                {v.status === 'used' && v.used_at
-                                  ? `${t('voucher.usedAt')}: ${new Date(v.used_at).toLocaleDateString(locale)}`
-                                  : `${t('voucher.expiresAt')}: ${new Date(v.expires_at).toLocaleDateString(locale)}${t('voucher.until')}`}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
+                    return <VoucherTicket key={v.id} v={v} muted={muted} locale={locale} t={t} onShowQr={() => setQrVoucher(v)} />
                   })}
                 </div>
               </div>
@@ -250,4 +218,182 @@ export default function MyVouchersPage() {
       {qrVoucher && <QRModal voucher={qrVoucher} onClose={() => setQrVoucher(null)} />}
     </WalletPageWrapper>
   )
+}
+
+/**
+ * Ticket-style voucher card.
+ * Left: category dot + product name + restaurant + code.
+ * Right: perforation (notch + dotted line) + sub QR + use button.
+ *
+ * Visual:
+ *   ┌──────────────────────────────────┬─┬───────────┐
+ *   │ ●  KOREAN BEEF                   │ │  [QR]     │
+ *   │    한우 등심 1인 코스             │○│           │
+ *   │    @동래원                       │ │  사용하기  │
+ *   │    YD-30K-AC8F           D-7    │ │           │
+ *   └──────────────────────────────────┴─┴───────────┘
+ */
+function VoucherTicket({ v, muted, locale, t, onShowQr }: {
+  v: Voucher
+  muted: boolean
+  locale: string
+  t: (key: string, opts?: any) => string
+  onShowQr: () => void
+}) {
+  const expiresAt = v.expires_at ? new Date(v.expires_at) : null
+  const usedAt = v.used_at ? new Date(v.used_at) : null
+  const daysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null
+
+  // 카테고리 라벨 — 식당명/상품명에서 키워드 추출. 디자인 v4 톤에 맞춰 영문 대문자.
+  const categoryLabel = deriveCategoryLabel(v.product_name, v.restaurant_name)
+  const accentDot = '#EF4444'
+
+  const statusBadge = (() => {
+    if (v.status === 'unused') return null
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md"
+        style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+          background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.10)',
+          color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#D97706',
+        }}>
+        {t(`voucher.status.${v.status}`)}
+      </span>
+    )
+  })()
+
+  return (
+    <div
+      className="relative flex rounded-xl overflow-hidden bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F]"
+      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
+    >
+      {/* 좌측 본문 (~75%) */}
+      <div className="flex-1 p-4 pr-3 min-w-0">
+        {/* 카테고리 라벨 + 상태 뱃지 */}
+        <div className="flex items-center gap-1.5 mb-1">
+          <span
+            aria-hidden
+            style={{ width: 6, height: 6, borderRadius: '50%', background: accentDot, display: 'inline-block', flexShrink: 0 }}
+          />
+          <span style={{
+            fontSize: 9, fontWeight: 800, letterSpacing: '0.08em',
+            color: '#6B7280', textTransform: 'uppercase',
+          }}>
+            {categoryLabel}
+          </span>
+          {statusBadge && <span className="ml-auto">{statusBadge}</span>}
+        </div>
+
+        {/* 상품명 */}
+        <p className="line-clamp-2 mb-1" style={{ fontSize: 14, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', lineHeight: 1.3 }}>
+          {v.product_name}
+        </p>
+
+        {/* 식당명 */}
+        {v.restaurant_name && (
+          <p className="flex items-center gap-1 mb-2.5" style={{ fontSize: 11, color: '#6B7280' }}>
+            <MapPin className="w-3 h-3" style={{ flexShrink: 0 }} />
+            <span className="truncate">{v.restaurant_name}</span>
+          </p>
+        )}
+
+        {/* 코드 + D-day row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <code
+            onClick={(e) => {
+              e.stopPropagation()
+              if (v.status !== 'unused') return
+              navigator.clipboard?.writeText(v.code)
+              toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
+            }}
+            className={v.status === 'unused' ? 'cursor-pointer active:opacity-70' : ''}
+            style={{
+              fontSize: 11, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              fontWeight: 700, color: '#0A0A0A', letterSpacing: '0.02em',
+              background: 'rgba(0,0,0,0.04)', padding: '3px 6px', borderRadius: 4,
+            }}>
+            {v.code}
+          </code>
+          {v.status === 'unused' && daysLeft !== null && (
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              color: daysLeft <= 3 ? '#DC2626' : '#6B7280',
+              letterSpacing: '-0.01em',
+            }}>
+              {daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`}
+            </span>
+          )}
+          {v.status === 'used' && usedAt && (
+            <span style={{ fontSize: 10, color: '#9CA3AF' }}>
+              {t('voucher.usedAt')} · {usedAt.toLocaleDateString(locale)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* 절취선 노치 (top + bottom round cutouts) + 점선 */}
+      <div className="relative flex items-stretch" style={{ width: 1 }}>
+        <span aria-hidden style={{
+          position: 'absolute', left: -7, top: -7, width: 14, height: 14, borderRadius: '50%',
+          background: '#F2F2F7',
+        }} />
+        <span aria-hidden style={{
+          position: 'absolute', left: -7, bottom: -7, width: 14, height: 14, borderRadius: '50%',
+          background: '#F2F2F7',
+        }} />
+        <span aria-hidden style={{
+          width: 1, marginTop: 12, marginBottom: 12, alignSelf: 'stretch',
+          backgroundImage: 'linear-gradient(to bottom, transparent 0, transparent 3px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 6px)',
+          backgroundSize: '1px 6px',
+        }} />
+      </div>
+
+      {/* 우측 액션 (~25%) */}
+      <div className="w-[88px] flex flex-col items-center justify-center gap-1.5 px-2 py-3 shrink-0"
+        style={{ background: 'rgba(0,0,0,0.025)' }}>
+        {v.status === 'unused' ? (
+          <>
+            {/* 미니 QR placeholder */}
+            <button
+              onClick={onShowQr}
+              aria-label={t('voucher.scan')}
+              className="w-12 h-12 rounded-md flex items-center justify-center active:opacity-80"
+              style={{ background: '#0A0A0A', color: '#FFFFFF' }}
+            >
+              <QrCode className="w-6 h-6" strokeWidth={1.5} />
+            </button>
+            <span style={{ fontSize: 10, color: '#0A0A0A', fontWeight: 700, letterSpacing: '-0.01em' }}>
+              {t('voucher.use', { defaultValue: '사용' })}
+            </span>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-1 opacity-60">
+            <Ticket className="w-7 h-7" style={{ color: '#9CA3AF' }} strokeWidth={1.5} />
+            <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 600 }}>
+              {t(`voucher.status.${v.status}`)}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Derive a short uppercase English category from product name / restaurant.
+ * Heuristic — keeps the v4 design's editorial feel without requiring backend changes.
+ */
+function deriveCategoryLabel(productName: string, restaurantName?: string): string {
+  const text = `${productName} ${restaurantName || ''}`.toLowerCase()
+  if (/한우|소고기|등심|채끝|안심|beef/.test(text)) return 'KOREAN BEEF'
+  if (/오마카세|omakase|스시|sushi|초밥/.test(text)) return 'OMAKASE'
+  if (/그릴|grill|스테이크|steak/.test(text)) return 'GRILL'
+  if (/돼지|삼겹|pork|족발|보쌈/.test(text)) return 'PORK'
+  if (/치킨|chicken|닭/.test(text)) return 'CHICKEN'
+  if (/파스타|pasta|피자|pizza|이탈리|italian/.test(text)) return 'ITALIAN'
+  if (/중식|짜장|짬뽕|마라|chinese/.test(text)) return 'CHINESE'
+  if (/일식|라멘|돈카츠|japanese|udon|우동/.test(text)) return 'JAPANESE'
+  if (/카페|coffee|디저트|dessert|cafe/.test(text)) return 'CAFE'
+  if (/술|와인|맥주|bar|pub/.test(text)) return 'BAR'
+  return 'MEAL'
 }

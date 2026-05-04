@@ -82,39 +82,39 @@ export default function PaymentFailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
       <SEO title={t('paymentFail.title')} description={t('paymentFail.subtitle')} url="/payment/fail" noindex />
       <div className="max-w-2xl w-full">
-        <div className="bg-white rounded-2xl p-8 shadow-lg border border-[#e5e5e7]">
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A2A2A]">
           {/* 실패 아이콘 */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 mb-4">
-              <XCircle className="h-12 w-12 text-red-600" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+              <XCircle className="h-12 w-12 text-red-600 dark:text-red-400" />
             </div>
-            <h1 className="text-3xl font-bold text-[#1d1d1f] mb-2">{t('paymentFail.title')}</h1>
-            <p className="text-[#6e6e73]">{t('paymentFail.subtitle')}</p>
+            <h1 className="text-3xl font-bold text-[#1d1d1f] dark:text-white mb-2">{t('paymentFail.title')}</h1>
+            <p className="text-[#6e6e73] dark:text-gray-400">{t('paymentFail.subtitle')}</p>
           </div>
 
           {/* 오류 정보 */}
           <div className="space-y-4 mb-8">
             {/* 에러 메시지 */}
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-red-900 mb-2">{t('paymentFail.errorLabel')}</h3>
-              <p className="text-sm text-red-800">{getErrorMessage()}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-red-900 dark:text-red-300 mb-2">{t('paymentFail.errorLabel')}</h3>
+              <p className="text-sm text-red-800 dark:text-red-400">{getErrorMessage()}</p>
             </div>
 
             {/* 해결 방법 */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-blue-900 mb-2">{t('paymentFail.solutionLabel')}</h3>
-              <p className="text-sm text-blue-800">{getSolution()}</p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">{t('paymentFail.solutionLabel')}</h3>
+              <p className="text-sm text-blue-800 dark:text-blue-400">{getSolution()}</p>
             </div>
 
             {/* 주문번호 (있는 경우) */}
             {orderId && (
-              <div className="bg-[#f5f5f7] rounded-xl p-4">
+              <div className="bg-[#f5f5f7] dark:bg-[#1A1A1A] rounded-xl p-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#6e6e73]">{t('paymentFail.orderNumberLabel')}</span>
-                  <span className="text-sm font-semibold text-[#1d1d1f] font-mono">
+                  <span className="text-sm text-[#6e6e73] dark:text-gray-400">{t('paymentFail.orderNumberLabel')}</span>
+                  <span className="text-sm font-semibold text-[#1d1d1f] dark:text-white font-mono">
                     {orderId}
                   </span>
                 </div>
@@ -126,7 +126,7 @@ export default function PaymentFailPage() {
           <div className="flex gap-3 mb-6">
             <Button
               onClick={() => navigate('/')}
-              className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-12 flex items-center justify-center gap-2"
+              className="flex-1 bg-[#f5f5f7] dark:bg-[#2A2A2A] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-12 flex items-center justify-center gap-2"
             >
               <Home className="h-4 w-4" />
               {t('paymentFail.toHome')}
@@ -141,27 +141,27 @@ export default function PaymentFailPage() {
           </div>
 
           {/* 고객센터 정보 */}
-          <div className="text-center pt-6 border-t border-[#d2d2d7]">
-            <p className="text-xs text-[#86868b] mb-2">
+          <div className="text-center pt-6 border-t border-[#d2d2d7] dark:border-[#2A2A2A]">
+            <p className="text-xs text-[#86868b] dark:text-gray-500 mb-2">
               {t('paymentFail.helpHeader')}
             </p>
-            <p className="text-sm font-semibold text-[#1d1d1f] mb-1">
+            <p className="text-sm font-semibold text-[#1d1d1f] dark:text-white mb-1">
               {t('paymentFail.csTitle')}: 0507-0177-0432
             </p>
-            <p className="text-xs text-[#86868b]">
+            <p className="text-xs text-[#86868b] dark:text-gray-500">
               {t('paymentFail.csHours')}
             </p>
           </div>
 
           {/* 디버그 정보 (개발 환경에서만 표시) */}
           {import.meta.env.DEV && code && (
-            <div className="mt-6 p-4 bg-gray-100 rounded-lg">
-              <p className="text-xs text-gray-600 mb-1">디버그 정보 (개발 환경)</p>
-              <p className="text-xs font-mono text-gray-800">
+            <div className="mt-6 p-4 bg-gray-100 dark:bg-[#1A1A1A] rounded-lg">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">디버그 정보 (개발 환경)</p>
+              <p className="text-xs font-mono text-gray-800 dark:text-gray-300">
                 Code: {code}
               </p>
               {message && (
-                <p className="text-xs font-mono text-gray-800">
+                <p className="text-xs font-mono text-gray-800 dark:text-gray-300">
                   Message: {message}
                 </p>
               )}

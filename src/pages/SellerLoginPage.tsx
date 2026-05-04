@@ -7,6 +7,7 @@ import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Play, Package, TrendingUp, ArrowRight } from 'lucide-react'
 import TurnstileWidget from '@/components/auth/TurnstileWidget'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function SellerLoginPage() {
   const { t } = useTranslation()
@@ -88,9 +89,7 @@ export default function SellerLoginPage() {
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
         <div className="px-10 pt-10">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-extrabold italic text-white tracking-[-0.03em]">
-              UR·DEAL
-            </span>
+            <UrDealLogo size={14} forceDark />
             <span className="text-[9px] font-bold tracking-wider text-[#FF0033]">
               SELLER STUDIO
             </span>
@@ -133,9 +132,7 @@ export default function SellerLoginPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         {/* Mobile logo */}
         <div className="lg:hidden mb-8 flex items-center gap-2">
-          <span className="text-[13px] font-extrabold italic text-gray-900 tracking-[-0.03em]">
-            UR·DEAL
-          </span>
+          <UrDealLogo size={14} forceLight />
           <span className="text-[9px] font-bold tracking-wider text-[#FF0033]">
             SELLER STUDIO
           </span>

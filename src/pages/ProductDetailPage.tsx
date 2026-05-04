@@ -405,17 +405,17 @@ export default function ProductDetailPage() {
                 <div className="grid grid-cols-3 gap-2 pt-2">
                   <button type="button"
                     onClick={() => navigate(`/restaurant-map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
-                    className="py-2 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-gray-200 text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-gray-200 dark:hover:bg-[#2A2A2A] text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
                     🗺 지도
                   </button>
                   <a href={`https://map.naver.com/v5/search/${encodeURIComponent(product.restaurant_name || product.restaurant_address)}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="py-2 bg-green-50 hover:bg-green-100 text-green-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
                     네이버
                   </a>
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((product.restaurant_name || '') + ' ' + (product.restaurant_address || ''))}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
                     Google
                   </a>
                 </div>
@@ -553,7 +553,7 @@ export default function ProductDetailPage() {
            KakaoConsultButton 이 bottom-20 (80px) 에 위치하므로 그 위 (bottom-36 = 144px) 로
            배치해 겹침 방지. max-w-[430px] mx-auto 컨테이너로 모바일 정렬도 보존. */}
       <div className="fixed bottom-36 left-0 right-0 z-30 px-4 pr-5 pointer-events-none">
-        <div className="max-w-[430px] mx-auto flex justify-end">
+        <div className="ur-content-wide mx-auto flex justify-end">
           <button
             onClick={() => setGiftModalOpen(true)}
             className="pointer-events-auto w-12 h-12 rounded-full bg-pink-500 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"

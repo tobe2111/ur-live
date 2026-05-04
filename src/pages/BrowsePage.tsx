@@ -450,9 +450,9 @@ export default function BrowsePage() {
                   <button
                     key={product.id}
                     onClick={() => navigate(`/products/${product.id}`)}
-                    className="text-left active:scale-[0.98] transition-transform"
+                    className="text-left active:scale-[0.98] transition-transform w-full block"
                   >
-                    <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
+                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
                       {product.image_url ? (
                         <img src={product.image_url} alt={product.name || t('browse.altProduct')} className="w-full h-full object-cover" loading="lazy" />
                       ) : (

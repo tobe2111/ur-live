@@ -74,7 +74,7 @@ export default function InterestListPage() {
             <p className="text-gray-700 dark:text-gray-300 font-semibold text-[14px]">
               {t('interestList.empty')}
             </p>
-            <p className="text-gray-500 text-[12px] mt-1">
+            <p className="text-gray-600 dark:text-gray-400 text-[12px] mt-1">
               {t('interestList.emptyHint')}
             </p>
             <button
@@ -99,14 +99,14 @@ export default function InterestListPage() {
                     <p className="text-gray-900 dark:text-white text-[13px] font-medium truncate">
                       {item.restaurant_name || `상품 #${item.product_id}`}
                     </p>
-                    <p className="text-gray-500 text-[11px] mt-0.5">
+                    <p className="text-gray-500 dark:text-gray-400 text-[11px] mt-0.5">
                       {item.type === 'group_buy' ? t('interestList.tagGroupBuy') : t('interestList.tagVoucher')}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => handleRemove(item)}
-                  className="p-2 text-gray-500 hover:text-red-400 transition-colors flex-shrink-0"
+                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
                   aria-label={t('interestList.removeAria')}
                 >
                   <Trash2 className="w-4 h-4" />

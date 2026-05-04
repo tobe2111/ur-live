@@ -11,6 +11,7 @@
 import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 const authTokenRoutes = new Hono<{ Bindings: Env }>();
 
@@ -45,7 +46,7 @@ const authTokenRoutes = new Hono<{ Bindings: Env }>();
  *     }
  *   }
  */
-authTokenRoutes.post('/id-token', async (c) => {
+authTokenRoutes.post('/id-token', rateLimit({ action: 'auth_id_token', max: 20, windowSec: 60 }), async (c) => {
   try {
     // Parse request body
     const body = await c.req.json().catch(() => ({}));
@@ -83,7 +84,8 @@ authTokenRoutes.post('/id-token', async (c) => {
       if (authHeader?.startsWith('Bearer ')) {
         try {
           const { verifyFirebaseIdToken } = await import('../../lib/firebase-token-verify');
-          const firebaseProjectId = c.env.FIREBASE_PROJECT_ID || 'ur-live-prod';
+          const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
+          if (!firebaseProjectId) throw new Error('FIREBASE_PROJECT_ID not configured');
           const payload = await verifyFirebaseIdToken(authHeader.slice(7), firebaseProjectId);
           if (payload?.sub && String(payload.sub) === String(uid)) {
             authVerifiedUid = String(payload.sub);

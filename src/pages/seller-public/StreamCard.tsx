@@ -13,11 +13,11 @@ export default function StreamCard({ stream, onClick }: { stream: LiveStream; on
 
   return (
     <button onClick={onClick} className="text-left active:scale-[0.98] transition-transform">
-      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#1A1A1A]">
+      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
         {thumb ? <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />}
         {isLive ? (
           <span className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-            <span className="h-1.5 w-1.5 bg-[#020202] rounded-full animate-pulse" />LIVE
+            <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />LIVE
           </span>
         ) : stream.status === 'scheduled' ? (
           <span className="absolute top-2 left-2 bg-blue-500 text-white text-[9px] font-bold px-2 py-0.5 rounded">{t('seller.scheduledLabel')}</span>
@@ -28,8 +28,8 @@ export default function StreamCard({ stream, onClick }: { stream: LiveStream; on
           </span>
         )}
       </div>
-      <p className="text-[11px] text-gray-800 mt-1.5 line-clamp-2 font-medium">{stream.title}</p>
-      <p className="text-[10px] text-gray-400 mt-0.5">
+      <p className="text-[11px] text-gray-800 dark:text-gray-200 mt-1.5 line-clamp-2 font-medium">{stream.title}</p>
+      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
         {stream.viewer_count !== undefined ? `👁 ${formatNumber(stream.viewer_count || 0)}` : ''}
         {stream.created_at ? ` · ${new Date(stream.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}` : ''}
       </p>
