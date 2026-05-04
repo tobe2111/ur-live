@@ -45,7 +45,7 @@ export default function FollowingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#020202] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#020202] pb-20">
       <SEO
         title={t('following.seoTitle', { defaultValue: '팔로잉 - 유어딜' })}
         description={t('following.seoDesc', { defaultValue: '내가 팔로우한 셀러 목록' })}
@@ -54,16 +54,16 @@ export default function FollowingPage() {
       />
 
       {/* Sticky Header */}
-      <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
+      <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-gray-200 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button
             onClick={() => navigate(-1)}
             aria-label={t('common.back', { defaultValue: '뒤로' })}
-            className="text-white"
+            className="text-gray-900 dark:text-white"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-white font-bold text-[15px]">
+          <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">
             {t('following.title', { defaultValue: '팔로잉' })}
           </h1>
           <div className="w-6" />
@@ -74,27 +74,27 @@ export default function FollowingPage() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-[#121212] rounded-xl p-4 animate-pulse border border-[#2A2A2A] flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gray-700" />
+              <div key={i} className="bg-gray-100 dark:bg-[#121212] rounded-xl p-4 animate-pulse border border-gray-200 dark:border-[#2A2A2A] flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700" />
                 <div className="flex-1">
-                  <div className="h-4 bg-gray-700 rounded w-1/3 mb-2" />
-                  <div className="h-3 bg-gray-700 rounded w-2/3" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
                 </div>
               </div>
             ))}
           </div>
         ) : error ? (
           <div className="text-center py-20">
-            <Users className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-300 font-semibold text-[14px]">{error}</p>
+            <Users className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-900 dark:text-gray-300 font-semibold text-[14px]">{error}</p>
           </div>
         ) : sellers.length === 0 ? (
           <div className="text-center py-20">
-            <UserCheck className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-300 font-semibold text-[14px]">
+            <UserCheck className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-900 dark:text-gray-300 font-semibold text-[14px]">
               {t('following.empty', { defaultValue: '팔로우한 셀러가 없습니다' })}
             </p>
-            <p className="text-gray-500 text-[12px] mt-1">
+            <p className="text-gray-500 dark:text-gray-500 text-[12px] mt-1">
               {t('following.emptyHint', { defaultValue: '관심 있는 셀러를 팔로우해보세요' })}
             </p>
             <button
@@ -113,9 +113,9 @@ export default function FollowingPage() {
               <button
                 key={seller.id}
                 onClick={() => navigate(`/profile/${seller.id}`)}
-                className="w-full flex items-center gap-3 bg-[#121212] rounded-xl px-4 py-3.5 border border-[#2A2A2A] hover:bg-[#1A1A1A] transition-colors text-left"
+                className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#121212] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-100 dark:hover:bg-[#1A1A1A] transition-colors text-left"
               >
-                <div className="w-12 h-12 rounded-full bg-[#1A1A1A] overflow-hidden flex-shrink-0">
+                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden flex-shrink-0">
                   {seller.profile_image ? (
                     <img
                       src={seller.profile_image}
@@ -124,18 +124,18 @@ export default function FollowingPage() {
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-500">
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
                       <UserCheck className="w-6 h-6" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-[14px] font-bold truncate">{seller.name}</p>
+                  <p className="text-gray-900 dark:text-white text-[14px] font-bold truncate">{seller.name}</p>
                   {seller.bio && (
-                    <p className="text-gray-400 text-[12px] truncate mt-0.5">{seller.bio}</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-[12px] truncate mt-0.5">{seller.bio}</p>
                   )}
                 </div>
-                <span className="text-pink-400 text-[11px] font-semibold shrink-0">
+                <span className="text-pink-500 dark:text-pink-400 text-[11px] font-semibold shrink-0">
                   {t('following.followingBadge', { defaultValue: '팔로잉' })}
                 </span>
               </button>

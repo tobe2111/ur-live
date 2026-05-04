@@ -29,7 +29,7 @@ export default function FollowButton({ sellerId }: { sellerId: string }) {
       disabled={loading}
       className={`w-full py-3 rounded-xl text-sm font-bold mt-4 transition-all active:scale-[0.98] ${
         following
-          ? 'bg-[#1A1A1A] text-gray-400 border border-[#2A2A2A]'
+          ? 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-[#2A2A2A]'
           : 'bg-pink-500 text-white'
       }`}
     >

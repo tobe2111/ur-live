@@ -472,7 +472,7 @@ export default function MainHomePage() {
         <div className="px-4 pt-6">
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-[10px] font-extrabold text-gray-500 tracking-[0.14em]">{t('mainHome.replayTag')}</p>
+              <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 tracking-[0.14em]">{t('mainHome.replayTag')}</p>
               <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-0.5">{t('mainHome.replayTitle')}</p>
             </div>
             <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
@@ -490,7 +490,7 @@ export default function MainHomePage() {
                     </div>
                   </div>
                   <p className="text-[11px] text-gray-700 dark:text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
-                  <p className="text-[9px] text-gray-500 mt-0.5">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
+                  <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
                 </button>
               )
             })}
@@ -511,7 +511,7 @@ export default function MainHomePage() {
             {CATEGORIES.map(c => (
               <button key={c.k} onClick={() => navigate(`/browse?category=${c.k}`)} className="flex flex-col items-center gap-1.5">
                 <div className="rounded-2xl flex items-center justify-center w-[52px] h-[52px] text-[22px]" style={{ background: c.bg }}>{c.i}</div>
-                <span className="text-[11px] text-gray-700 dark:text-gray-700 dark:text-gray-200 font-semibold">{c.l}</span>
+                <span className="text-[11px] text-gray-700 dark:text-gray-200 font-semibold">{c.l}</span>
               </button>
             ))}
           </div>
@@ -525,12 +525,12 @@ export default function MainHomePage() {
               {products.slice(0, 5).map((p, i) => {
                 const d = disc(p.price, p.original_price)
                 return (
-                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative">
-                    <div className="relative rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-[#1A1A1A]">
+                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative w-full block">
+                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
                       {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                       <span className="absolute top-1.5 left-1.5 rounded flex items-center justify-center w-[22px] h-[22px] bg-[#EF4444] text-[11px] font-black text-white">{i + 1}</span>
                     </div>
-                    <p className="text-[11px] text-gray-700 dark:text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
+                    <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
                     <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">
                       {d > 0 && <span className="text-red-500 dark:text-red-400 mr-1">{d}%</span>}{formatNumber(p.price)}원
                     </p>
@@ -549,21 +549,21 @@ export default function MainHomePage() {
               {products.slice(5).map(p => {
                 const d = disc(p.price, p.original_price)
                 return (
-                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left">
-                    <div className="relative rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-[#1A1A1A]">
+                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left w-full block">
+                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
                       {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                       {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-gray-900 dark:text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
                     </div>
                     <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
                     {p.original_price && p.original_price > p.price && (
-                      <p className="text-[10px] text-gray-500 line-through mt-0.5">{formatNumber(p.original_price)}원</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-600 line-through mt-0.5">{formatNumber(p.original_price)}원</p>
                     )}
                     <div className="flex items-baseline gap-1 mt-0.5">
                       {d > 0 && <span className="text-[12px] font-extrabold text-red-500">{d}%</span>}
                       <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}원</span>
                     </div>
                     {(p.avg_rating || p.sold_count) && (
-                      <p className="text-[10px] text-gray-500 mt-0.5">★ {(p.avg_rating || 4.5).toFixed(1)} · {formatNumber(p.sold_count || 0)} 구매</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">★ {(p.avg_rating || 4.5).toFixed(1)} · {formatNumber(p.sold_count || 0)} 구매</p>
                     )}
                   </button>
                 )

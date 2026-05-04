@@ -11,7 +11,7 @@ export default function ServerErrorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center px-4">
       <SEO title={t('serverError.title')} description={t('serverError.seoDescription')} url="/500" noindex />
       <div className="max-w-lg w-full text-center">
         {/* Error Icon */}
@@ -31,26 +31,26 @@ export default function ServerErrorPage() {
         </div>
 
         {/* Title */}
-        <h1 className="mb-4 text-[32px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] smooth-appear" style={{ animationDelay: '0.2s' }}>
+        <h1 className="mb-4 text-[32px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] dark:text-white smooth-appear" style={{ animationDelay: '0.2s' }}>
           {t('serverError.heading')}
         </h1>
 
         {/* Description */}
-        <p className="mb-8 text-[17px] sm:text-[19px] leading-[1.47059] font-normal text-[#6e6e73] smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
+        <p className="mb-8 text-[17px] sm:text-[19px] leading-[1.47059] font-normal text-[#6e6e73] dark:text-gray-400 smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
           {t('serverError.description')}
         </p>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center smooth-appear" style={{ animationDelay: '0.4s' }}>
-          <Button 
+          <Button
             className="apple-button"
             onClick={handleRefresh}
           >
             <RefreshCw className="mr-2 h-4 w-4" />
             {t('serverError.refresh')}
           </Button>
-          
-          <Button className="apple-button border border-[#007aff] bg-white text-[#007aff] hover:bg-[#007aff] hover:text-white" asChild>
+
+          <Button className="apple-button border border-[#007aff] bg-white dark:bg-transparent text-[#007aff] hover:bg-[#007aff] hover:text-white" asChild>
             <Link to="/">
               <Home className="mr-2 h-4 w-4" />
               {t('serverError.goHome')}
@@ -59,8 +59,8 @@ export default function ServerErrorPage() {
         </div>
 
         {/* Customer Support */}
-        <div className="mt-12 pt-8 border-t border-black/5 smooth-appear" style={{ animationDelay: '0.5s' }}>
-          <p className="mb-4 text-[14px] font-normal text-[#6e6e73]">
+        <div className="mt-12 pt-8 border-t border-black/5 dark:border-white/10 smooth-appear" style={{ animationDelay: '0.5s' }}>
+          <p className="mb-4 text-[14px] font-normal text-[#6e6e73] dark:text-gray-400">
             {t('serverError.stillIssue')}
           </p>
           <a
@@ -75,11 +75,11 @@ export default function ServerErrorPage() {
 
         {/* Status Page Link */}
         <div className="mt-8 smooth-appear" style={{ animationDelay: '0.6s' }}>
-          <p className="text-[12px] font-normal text-[#6e6e73]">
+          <p className="text-[12px] font-normal text-[#6e6e73] dark:text-gray-500">
             {t('serverError.statusCheck')}{' '}
-            <a 
-              href="https://live.ur-team.com" 
-              target="_blank" rel="noopener noreferrer" 
+            <a
+              href="https://live.ur-team.com"
+              target="_blank" rel="noopener noreferrer"
               className="text-[#007aff] hover:text-[#0051d5] transition-colors"
             >
               live.ur-team.com

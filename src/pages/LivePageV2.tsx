@@ -299,18 +299,16 @@ export default function LivePageV2() {
   // ✅ 로딩 중 표시
   if (loading) {
     return (
-      <div className="absolute inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-white dark:bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            {/* Outer spinning ring */}
             <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
-            {/* Inner pulsing dot */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
             </div>
           </div>
-          <div className="text-white text-xl font-bold">라이브 입장 중...</div>
-          <div className="text-white/60 text-sm">잠시만 기다려주세요</div>
+          <div className="text-gray-900 dark:text-white text-xl font-bold">라이브 입장 중...</div>
+          <div className="text-gray-500 dark:text-white/60 text-sm">잠시만 기다려주세요</div>
         </div>
       </div>
     )
@@ -319,12 +317,12 @@ export default function LivePageV2() {
   // ✅ 데이터 없음 표시
   if (reels.length === 0) {
     return (
-      <div className="absolute inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-white dark:bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="text-white text-xl mb-2">진행 중인 라이브가 없습니다</div>
+          <div className="text-gray-900 dark:text-white text-xl mb-2">진행 중인 라이브가 없습니다</div>
           <button
             onClick={() => navigate('/')}
-            className="mt-4 px-6 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors"
+            className="mt-4 px-6 py-2 bg-gray-100 dark:bg-white/20 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-white/30 transition-colors"
           >
             홈으로 돌아가기
           </button>
@@ -337,7 +335,7 @@ export default function LivePageV2() {
   const currentReel = reels[activeIndex]
   if (!currentReel || !currentReel.stream) {
     return (
-      <div className="absolute inset-0 bg-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-white dark:bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
@@ -345,7 +343,7 @@ export default function LivePageV2() {
               <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
             </div>
           </div>
-          <div className="text-white text-xl font-bold">라이브 준비 중...</div>
+          <div className="text-gray-900 dark:text-white text-xl font-bold">라이브 준비 중...</div>
         </div>
       </div>
     )

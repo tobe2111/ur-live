@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy, Camera, Check, X, Phone, Sun, Moon } from 'lucide-react'
+import { useTheme } from '@/shared/stores/useTheme'
+import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy, Camera, Check, X, Phone } from 'lucide-react'
 import SupporterRanking from '@/components/live/SupporterRanking'
 import { toast } from '@/hooks/useToast'
 import { nativeShare } from '@/lib/native'
@@ -44,16 +45,9 @@ export default function SellerPublicPage() {
   const [editYoutube, setEditYoutube] = useState('')
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  // 🛡️ 2026-04-22: 테마 토글 영속성 — localStorage 저장. 새로고침해도 유지.
-  const [isDark, setIsDark] = useState(() => {
-    try {
-      const saved = localStorage.getItem('seller_public_theme')
-      return saved !== 'light' // 기본 dark, 명시적으로 light 일 때만 light
-    } catch { return true }
-  })
-  useEffect(() => {
-    try { localStorage.setItem('seller_public_theme', isDark ? 'dark' : 'light') } catch {}
-  }, [isDark])
+  // 전역 테마 토글 연동 (useTheme 스토어)
+  const { applied } = useTheme()
+  const isDark = applied === 'dark'
 
   // 테마별 클래스 매핑
   const T = isDark ? {
@@ -275,14 +269,6 @@ export default function SellerPublicPage() {
             <ArrowLeft className="w-4 h-4 text-white" aria-hidden="true" />
           </button>
           <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => setIsDark(!isDark)}
-              aria-label={isDark ? '라이트 모드' : '다크 모드'}
-              className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.08] backdrop-blur-md"
-            >
-              {isDark ? <Sun className="w-4 h-4 text-white" aria-hidden="true" /> : <Moon className="w-4 h-4 text-white" aria-hidden="true" />}
-            </button>
             <button
               type="button"
               onClick={() => {

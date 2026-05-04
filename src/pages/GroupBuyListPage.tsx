@@ -165,7 +165,7 @@ export default function GroupBuyListPage() {
   const isCurrentLoading = mainTab === 'seller' ? loading : communityLoading
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
         title="공동구매"
         description="인기 공동구매 상품을 한눈에. 맛집 식사권부터 공동구매 특가 상품까지"
@@ -173,16 +173,16 @@ export default function GroupBuyListPage() {
       />
 
       {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
+      <header className="sticky top-0 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-wide flex items-center h-12 px-2 lg:px-8">
           <button
             onClick={() => navigate(-1)}
             className="p-2 -ml-1"
             aria-label="뒤로"
           >
-            <ChevronLeft className="w-6 h-6 text-gray-900" />
+            <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[16px] font-extrabold text-gray-900 flex-1 text-center pr-8">
+          <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex-1 text-center pr-8">
             공동구매
           </h1>
         </div>
@@ -212,13 +212,13 @@ export default function GroupBuyListPage() {
 
       {/* 메인 탭: 셀러 공구 | 유저 공구 */}
       <div className="ur-content-wide px-4 lg:px-8 mt-4">
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-gray-200 dark:border-[#1A1A1A]">
           <button
             onClick={() => setMainTab('seller')}
             className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
               mainTab === 'seller'
-                ? 'text-gray-900 border-gray-900'
-                : 'text-gray-400 border-transparent'
+                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >
             셀러 공구
@@ -227,8 +227,8 @@ export default function GroupBuyListPage() {
             onClick={() => setMainTab('community')}
             className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
               mainTab === 'community'
-                ? 'text-gray-900 border-gray-900'
-                : 'text-gray-400 border-transparent'
+                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >
             유저 공구
@@ -250,8 +250,8 @@ export default function GroupBuyListPage() {
                 onClick={() => setCategory(t.key)}
                 className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
                   category === t.key
-                    ? 'bg-gray-900 text-white border-gray-900'
-                    : 'bg-white text-gray-700 border-gray-200'
+                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
+                    : 'bg-white dark:bg-transparent text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A]'
                 }`}
               >
                 {t.label}
@@ -263,14 +263,14 @@ export default function GroupBuyListPage() {
 
       {/* 정렬 pills */}
       <div className={`ur-content-wide px-4 lg:px-8 ${mainTab === 'seller' ? 'mt-3' : 'mt-4'} flex items-center justify-between`}>
-        <span className="text-[12px] text-gray-500">
-          총 <span className="font-semibold text-gray-900">{currentCount}</span>
+        <span className="text-[12px] text-gray-500 dark:text-gray-400">
+          총 <span className="font-semibold text-gray-900 dark:text-white">{currentCount}</span>
           개
         </span>
         <div className="relative" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => setShowSortDropdown((v) => !v)}
-            className="flex items-center gap-1 text-[13px] text-gray-700 font-semibold"
+            className="flex items-center gap-1 text-[13px] text-gray-700 dark:text-gray-300 font-semibold"
           >
             {SORT_LABELS[sortBy]}
             <ChevronDown
@@ -280,7 +280,7 @@ export default function GroupBuyListPage() {
             />
           </button>
           {showSortDropdown && (
-            <div className="absolute top-full right-0 mt-1 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
+            <div className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
               {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
                 <button
                   key={opt}
@@ -290,8 +290,8 @@ export default function GroupBuyListPage() {
                   }}
                   className={`w-full text-left px-3 py-2.5 text-[13px] ${
                     sortBy === opt
-                      ? 'bg-pink-50 text-pink-600 font-semibold'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 font-semibold'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]'
                   }`}
                 >
                   {SORT_LABELS[opt]}
@@ -315,9 +315,9 @@ export default function GroupBuyListPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {[...Array(4)].map((_, i) => (
                   <div key={i}>
-                    <div className="aspect-square bg-gray-100 animate-pulse rounded-xl" />
-                    <div className="mt-2 h-3 bg-gray-100 rounded animate-pulse" />
-                    <div className="mt-1 h-3 bg-gray-100 rounded animate-pulse w-2/3" />
+                    <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
+                    <div className="mt-2 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
+                    <div className="mt-1 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse w-2/3" />
                   </div>
                 ))}
               </div>
@@ -404,12 +404,12 @@ export default function GroupBuyListPage() {
 
                       {/* 정보 */}
                       <div className="mt-2">
-                        <p className="text-[12px] text-gray-900 leading-tight line-clamp-2">
+                        <p className="text-[12px] text-gray-900 dark:text-white leading-tight line-clamp-2">
                           {p.name}
                         </p>
 
                         {p.restaurant_name && (
-                          <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                             {p.restaurant_name}
                           </p>
                         )}
@@ -417,7 +417,7 @@ export default function GroupBuyListPage() {
                         {/* 가격 */}
                         <div className="flex items-baseline gap-1 mt-1">
                           {p.original_price && p.original_price > p.price && (
-                            <span className="text-[10px] text-gray-400 line-through">
+                            <span className="text-[10px] text-gray-400 dark:text-gray-600 line-through">
                               {formatPrice(p.original_price)}
                             </span>
                           )}
@@ -428,7 +428,7 @@ export default function GroupBuyListPage() {
                               {discount}%
                             </span>
                           )}
-                          <span className="text-[13px] font-extrabold text-gray-900">
+                          <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
                             {formatPrice(p.price)}
                           </span>
                         </div>
@@ -436,7 +436,7 @@ export default function GroupBuyListPage() {
                         {/* 진행률 */}
                         {target > 0 && (
                           <div className="mt-2">
-                            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="w-full h-1.5 bg-gray-100 dark:bg-[#2A2A2A] rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${
                                   achieved ? 'bg-emerald-500' : 'bg-pink-500'
@@ -518,7 +518,7 @@ export default function GroupBuyListPage() {
                     <button
                       key={g.id}
                       onClick={() => navigate(`/community-group-buy/${g.invite_code}`)}
-                      className="w-full text-left border border-gray-100 rounded-2xl p-4 active:scale-[0.98] transition-transform bg-white hover:border-gray-200"
+                      className="w-full text-left border border-gray-100 dark:border-[#2A2A2A] rounded-2xl p-4 active:scale-[0.98] transition-transform bg-white dark:bg-[#121212] hover:border-gray-200 dark:hover:border-[#3A3A3A]"
                     >
                       {/* 상단: 아이콘 + 식당명 + 상태 배지 */}
                       <div className="flex items-start justify-between gap-2">
@@ -527,11 +527,11 @@ export default function GroupBuyListPage() {
                             <span className="text-[18px]">🙋</span>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[14px] font-bold text-gray-900 truncate">
+                            <p className="text-[14px] font-bold text-gray-900 dark:text-white truncate">
                               {g.restaurant_name}
                             </p>
                             {g.restaurant_address && (
-                              <p className="text-[11px] text-gray-500 truncate flex items-center gap-0.5 mt-0.5">
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-0.5 mt-0.5">
                                 <MapPin className="w-3 h-3 flex-shrink-0" />
                                 {g.restaurant_address}
                               </p>
@@ -560,14 +560,14 @@ export default function GroupBuyListPage() {
                       <div className="flex items-center gap-3 mt-3">
                         <div className="flex items-center gap-1">
                           <HandCoins className="w-3.5 h-3.5 text-pink-500" />
-                          <span className="text-[12px] text-gray-600">제안가</span>
-                          <span className="text-[13px] font-extrabold text-gray-900">
+                          <span className="text-[12px] text-gray-600 dark:text-gray-400">제안가</span>
+                          <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
                             {formatPrice(g.proposed_price)}
                           </span>
                         </div>
-                        <div className="text-[11px] text-gray-400">|</div>
-                        <div className="text-[12px] text-gray-500">
-                          보증금 <span className="font-semibold text-gray-700">{formatPrice(g.deposit_per_person)}</span>
+                        <div className="text-[11px] text-gray-400 dark:text-gray-600">|</div>
+                        <div className="text-[12px] text-gray-500 dark:text-gray-400">
+                          보증금 <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
                         </div>
                       </div>
 
@@ -582,7 +582,7 @@ export default function GroupBuyListPage() {
                           />
                         </div>
                         <div className="flex items-center justify-between mt-1.5">
-                          <p className="text-[11px] text-gray-600 flex items-center gap-1">
+                          <p className="text-[11px] text-gray-600 dark:text-gray-400 flex items-center gap-1">
                             <Users className="w-3 h-3 text-gray-400" />
                             {achieved ? (
                               <span className="text-emerald-600 font-semibold">
@@ -599,7 +599,7 @@ export default function GroupBuyListPage() {
                             )}
                           </p>
                           {timeLeft && (
-                            <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
                               <Clock className="w-3 h-3" />
                               {timeLeft}
                             </p>

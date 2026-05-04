@@ -38,7 +38,7 @@ export default function ThemeToggleSection() {
                 role="radio"
                 aria-checked={active}
                 onClick={() => setMode(o.key)}
-                className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-semibold transition-colors ${
+                className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold transition-colors ${
                   active
                     ? 'bg-pink-500/15 dark:bg-pink-500/20 border border-pink-500/40 text-pink-600 dark:text-pink-300'
                     : 'bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.06] text-gray-700 dark:text-white/65 hover:bg-gray-50 dark:hover:bg-white/[0.08]'
