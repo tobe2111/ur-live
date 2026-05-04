@@ -272,9 +272,9 @@ export default function PointsChargePage() {
         )}
       </main>
 
-      {/* 하단 고정 CTA */}
+      {/* 하단 고정 CTA — 🛡️ PC xl+ 사이드바 (224px) 우측부터 시작 */}
       <div
-        className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] z-30"
+        className="fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] z-30"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <div className="ur-content-narrow px-4 pt-3">

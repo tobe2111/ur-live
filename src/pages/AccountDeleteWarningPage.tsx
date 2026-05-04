@@ -298,9 +298,9 @@ export default function AccountDeleteWarningPage() {
         </div>
       </main>
 
-      {/* 하단 고정 버튼 — AccountSettings 와 일관 */}
+      {/* 하단 고정 버튼 — AccountSettings 와 일관 / PC xl+ 사이드바 우측부터 */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 px-4 py-4"
+        className="fixed bottom-0 left-0 right-0 xl:left-56 z-40 px-4 py-4"
         style={{
           background: 'linear-gradient(to top, rgba(2,2,2,1) 60%, rgba(2,2,2,0.6))',
           backdropFilter: 'blur(20px)',

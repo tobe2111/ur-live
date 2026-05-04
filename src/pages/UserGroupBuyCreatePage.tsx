@@ -337,7 +337,7 @@ export default function UserGroupBuyCreatePage() {
 
       {/* Bottom CTA */}
       {restaurant && step2Valid && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 z-50">
+        <div className="fixed bottom-0 left-0 right-0 xl:left-56 bg-white border-t border-gray-100 px-4 py-3 z-50">
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}

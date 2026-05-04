@@ -515,7 +515,8 @@ function CartPageContent() {
           </main>
 
           {/* v4 Bottom fixed CTA: "N원 주문하기" (bg-gray-900 text-white rounded-xl) */}
-          <div className="fixed bottom-0 left-0 right-0 z-20 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] safe-bottom">
+          {/* 🛡️ 2026-05-04: PC xl+ 사이드바 (224px) 우측부터 시작하도록 xl:left-56 추가. */}
+          <div className="fixed bottom-0 left-0 right-0 xl:left-56 z-20 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] safe-bottom">
             <div className="ur-content-narrow px-4 py-3">
               <button
                 onClick={handleCheckout}
