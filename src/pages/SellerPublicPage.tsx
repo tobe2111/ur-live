@@ -456,7 +456,7 @@ export default function SellerPublicPage() {
                     const isAchieved = (p.group_buy_current || 0) > 0 && (p.group_buy_target || 0) > 0 && p.group_buy_current! >= p.group_buy_target!
                     return (
                       <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-44 text-left active:scale-[0.97]">
-                        <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
+                        <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1A1A1A]">
                           {p.image_url && <img src={p.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                           {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">-{disc}%</span>}
                           {isAchieved && <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{t('seller.publicPage.achieved')}</span>}
@@ -496,7 +496,7 @@ export default function SellerPublicPage() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                   {shorts.slice(0, 4).map(s => (
-                    <div key={s.id} className="rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
+                    <div key={s.id} className="rounded-xl overflow-hidden bg-[#1A1A1A]">
                       {s.youtube_video_id ? (
                         <div className="aspect-video">
                           <iframe
@@ -522,7 +522,7 @@ export default function SellerPublicPage() {
                   ))}
                 </div>
                 {shorts.length > 4 && (
-                  <button onClick={() => setTab('shorts')} className="w-full mt-3 py-2.5 text-sm text-gray-500 bg-gray-50 dark:bg-[#121212] rounded-xl font-medium">
+                  <button onClick={() => setTab('shorts')} className="w-full mt-3 py-2.5 text-sm text-gray-500 bg-[#121212] rounded-xl font-medium">
                     {t('seller.publicPage.moreVideos', { count: shorts.length })}
                   </button>
                 )}
@@ -559,7 +559,7 @@ export default function SellerPublicPage() {
                 const disc = p.original_price && p.original_price > 0 ? Math.round((1 - (p.price || 0) / p.original_price) * 100) : 0
                 const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / (p.group_buy_target || 1)) * 100) : 0
                 return (
-                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-gray-50 dark:bg-[#121212] rounded-xl text-left active:scale-[0.98]">
+                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-[#121212] rounded-xl text-left active:scale-[0.98]">
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-200 shrink-0">
                       {p.image_url && <img src={p.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                     </div>
@@ -603,7 +603,7 @@ export default function SellerPublicPage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {shorts.map(s => (
-                <div key={s.id} className="rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
+                <div key={s.id} className="rounded-xl overflow-hidden bg-[#1A1A1A]">
                   {s.youtube_video_id ? (
                     <div className="aspect-video">
                       <iframe
@@ -656,10 +656,10 @@ export default function SellerPublicPage() {
               {editingField === 'bio-info' ? (
                 <div>
                   <textarea autoFocus value={editBio} onChange={e => setEditBio(e.target.value)} rows={4}
-                    className="w-full text-sm bg-gray-50 dark:bg-[#121212] border border-pink-500 rounded-lg p-2 focus:outline-none resize-none text-gray-900 dark:text-white" />
+                    className="w-full text-sm bg-[#121212] border border-pink-500 rounded-lg p-2 focus:outline-none resize-none text-white" />
                   <div className="flex gap-2 mt-1">
                     <button onClick={() => { saveEdit('bio', editBio); setEditingField(null) }} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">{t('common.save')}</button>
-                    <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">{t('common.cancel')}</button>
+                    <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">{t('common.cancel')}</button>
                   </div>
                 </div>
               ) : (
@@ -675,9 +675,9 @@ export default function SellerPublicPage() {
                 {editingField === 'instagram' ? (
                   <div className="flex gap-2">
                     <input autoFocus value={editInsta} onChange={e => setEditInsta(e.target.value)} placeholder="https://instagram.com/..."
-                      className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white" />
+                      className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-[#121212] text-white" />
                     <button onClick={() => saveEdit('instagram', editInsta)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-[#1A1A1A] text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
                   </div>
                 ) : seller.sns_instagram ? (
                   <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('instagram')}>
@@ -692,9 +692,9 @@ export default function SellerPublicPage() {
                 {editingField === 'youtube' ? (
                   <div className="flex gap-2">
                     <input autoFocus value={editYoutube} onChange={e => setEditYoutube(e.target.value)} placeholder="https://youtube.com/..."
-                      className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white" />
+                      className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-[#121212] text-white" />
                     <button onClick={() => saveEdit('youtube', editYoutube)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-[#1A1A1A] text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
                   </div>
                 ) : seller.sns_youtube ? (
                   <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('youtube')}>
@@ -709,9 +709,9 @@ export default function SellerPublicPage() {
                 {editingField === 'kakao' ? (
                   <div className="flex gap-2">
                     <input autoFocus value={editKakao} onChange={e => setEditKakao(e.target.value)} placeholder="https://open.kakao.com/..."
-                      className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white" />
+                      className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-[#121212] text-white" />
                     <button onClick={() => saveEdit('kakao', editKakao)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-[#1A1A1A] text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
                   </div>
                 ) : isOwner && !seller.kakao_chat_link ? (
                   <button onClick={() => startEdit('kakao')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> {t('seller.publicPage.addKakaoChat')}</button>
@@ -719,7 +719,7 @@ export default function SellerPublicPage() {
               </div>
             </section>
             {/* 사업자 정보 + 연락처 (전자상거래법: 필수 표시 항목) */}
-            <section className="bg-gray-50 dark:bg-[#121212] rounded-xl p-4">
+            <section className="bg-[#121212] rounded-xl p-4">
               <h3 className={`text-sm font-bold ${T.text} mb-3`}>{t('seller.publicPage.sellerInfo')}</h3>
               <div className="text-sm text-gray-400 space-y-2">
                 <div className="flex">
@@ -757,7 +757,7 @@ export default function SellerPublicPage() {
                 )}
                 {seller.phone && (
                   <a href={`tel:${seller.phone}`}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-[#020202] border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#020202] border border-[#2A2A2A] text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
                     <Phone className="w-3.5 h-3.5" /> {t('seller.publicPage.phoneInquiry')}
                   </a>
                 )}

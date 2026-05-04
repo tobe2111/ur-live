@@ -67,10 +67,10 @@ export default function UserProfilePage() {
   // 🔄 로딩 중 (한국: localStorage 인증이므로 isAuthReady 무시)
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
+      <div className="min-h-screen bg-[#020202] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">로딩 중...</p>
+          <p className="text-gray-400">로딩 중...</p>
         </div>
       </div>
     )
@@ -95,7 +95,7 @@ export default function UserProfilePage() {
 
   // 🛡️ 2026-04-30 v4 Wallet 디자인 시안 매칭 — InsetGroup 형태로 정돈, 모든 기능 보존
   return (
-    <div className="bg-white dark:bg-[#020202] flex flex-col min-h-screen pb-7">
+    <div className="bg-[#020202] flex flex-col min-h-screen pb-7">
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className="sr-only">마이페이지</h1>
 
@@ -112,21 +112,21 @@ export default function UserProfilePage() {
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-[17px] font-extrabold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</p>
+              <p className="text-[17px] font-extrabold text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</p>
               <SellerSwitchInline />
             </div>
-            <p className="text-[11px] text-gray-900 dark:text-white/50 mt-0.5 truncate">{localStorage.getItem('user_email') || ''}</p>
-            <button onClick={() => navigate('/account/settings')} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-gray-100 dark:bg-white/[0.08] text-[10px] text-gray-900 dark:text-white/75 font-semibold">
+            <p className="text-[11px] text-white/50 mt-0.5 truncate">{localStorage.getItem('user_email') || ''}</p>
+            <button onClick={() => navigate('/account/settings')} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-white/[0.08] text-[10px] text-white/75 font-semibold">
               프로필 편집 <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
           </div>
           {/* 알림 / 설정 버튼 — 프로필 우측 */}
           <div className="flex items-center gap-1 flex-shrink-0 self-start pt-1">
-            <button onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
-              <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+            <button onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06] hover:bg-white/[0.12] transition-colors">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
             </button>
-            <button onClick={() => navigate('/account/settings')} aria-label={t('userProfile.ariaSettings')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
-              <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            <button onClick={() => navigate('/account/settings')} aria-label={t('userProfile.ariaSettings')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06] hover:bg-white/[0.12] transition-colors">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </button>
           </div>
         </div>
@@ -154,8 +154,8 @@ export default function UserProfilePage() {
 
       {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
-        <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('userProfile.moreSection')}</p>
-        <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
+        <p className="text-[12px] font-bold text-white mb-2">{t('userProfile.moreSection')}</p>
+        <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
           {[
             { icon: '📍', label: t('userProfile.addressManage'), path: '/mypage/addresses' },
             { icon: '📝', label: t('userProfile.myReviews'), path: '/my-reviews' },
@@ -168,8 +168,8 @@ export default function UserProfilePage() {
               style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
             >
               <span className="text-base" aria-hidden="true">{item.icon}</span>
-              <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{item.label}</span>
-              <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
+              <span className="flex-1 text-[13px] text-white">{item.label}</span>
+              <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
             </button>
           ))}
         </div>
@@ -180,8 +180,8 @@ export default function UserProfilePage() {
 
       {/* v4 도움말 InsetGroup */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
-        <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('userProfile.helpSection')}</p>
-        <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
+        <p className="text-[12px] font-bold text-white mb-2">{t('userProfile.helpSection')}</p>
+        <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
           {[
             { label: t('userProfile.customerCenter'), sub: '0507-0177-0432', action: () => window.open('tel:0507-0177-0432') },
             { label: t('userProfile.faq'), path: '/faq' },
@@ -196,10 +196,10 @@ export default function UserProfilePage() {
               style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
             >
               <div className="flex-1">
-                <p className="text-[13px] text-gray-900 dark:text-white">{item.label}</p>
-                {item.sub && <p className="text-[10px] text-gray-900 dark:text-white/45 mt-0.5">{item.sub}</p>}
+                <p className="text-[13px] text-white">{item.label}</p>
+                {item.sub && <p className="text-[10px] text-white/45 mt-0.5">{item.sub}</p>}
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
+              <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
             </button>
           ))}
         </div>
@@ -229,12 +229,12 @@ export default function UserProfilePage() {
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gray-100 dark:bg-white/[0.04] text-[13px] font-semibold text-gray-900 dark:text-white/75 active:bg-white/[0.08] transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/[0.04] text-[13px] font-semibold text-white/75 active:bg-white/[0.08] transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           {t('userProfile.logout')}
         </button>
-        <p className="text-[10px] text-gray-900 dark:text-white/25 text-center mt-3">
+        <p className="text-[10px] text-white/25 text-center mt-3">
           유어딜 v1.0.0
           {import.meta.env.VITE_APP_VERSION && (
             <span className="font-mono ml-1">· {String(import.meta.env.VITE_APP_VERSION).slice(0, 7)}</span>
