@@ -144,7 +144,8 @@ export function LiveStatsBar({ streamId }: { streamId: number }) {
       } catch { /* silent */ }
     }
     fetchStats()
-    const id = setInterval(fetchStats, 5000)
+    // 🛡️ 2026-05-04 (perf): 5s → 10s. 시청자 통계 — 10s 지연 허용.
+    const id = setInterval(fetchStats, 10000)
     return () => { active = false; clearInterval(id) }
   }, [streamId])
 

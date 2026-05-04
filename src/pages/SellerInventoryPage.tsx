@@ -398,7 +398,7 @@ export default function SellerInventoryPage() {
                         title.textContent = selectedProduct.name
                         head.appendChild(title)
                         const body = doc.createElement('body')
-                        body.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif'
+                        body.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100dvh;margin:0;font-family:sans-serif'
                         const h3 = doc.createElement('h3')
                         h3.textContent = selectedProduct.name
                         h3.style.marginBottom = '8px'

@@ -59,6 +59,23 @@ if (import.meta.env.PROD) {
   }, 1000)
 }
 
+// 🛡️ 2026-05-04 (perf): GTM lazy load — React mount 후 idle 시점에 로드해
+//   초기 페이로드 ~100KB 차단 회피 (iPhone Safari freeze 완화).
+if (import.meta.env.PROD) {
+  const loadGTM = () => {
+    const s = document.createElement('script')
+    s.async = true
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-B1ST2L37CM'
+    s.onload = () => { try { (window as any).gtag?.('config', 'G-B1ST2L37CM') } catch { /* */ } }
+    document.head.appendChild(s)
+  }
+  if ('requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(loadGTM, { timeout: 4000 })
+  } else {
+    setTimeout(loadGTM, 2500)
+  }
+}
+
 // 🚨 2026-04-27 (긴급 롤백): PWA SW 가 OAuth redirect 차단 → 모든 페이지 ERR_FAILED.
 //   "FetchEvent resulted in a network error: a redirected response was used for
 //   a request whose redirect mode is not 'follow'"
@@ -104,7 +121,7 @@ const rootElement = document.getElementById('root')
 if (!rootElement) {
   console.error('[App] ❌ Root element not found!')
   document.body.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fbfbfd;">
+    <div style="display: flex; align-items: center; justify-content: center; min-height: 100dvh; background: #fbfbfd;">
       <div style="text-align: center; padding: 2rem;">
         <h1 style="color: #dc2626; margin-bottom: 1rem;">앱 초기화 실패</h1>
         <p style="color: #6e6e73;">Root element를 찾을 수 없습니다.</p>
@@ -130,7 +147,7 @@ if (!rootElement) {
   } catch (error) {
     console.error('[App] ❌ React 렌더링 실패:', error)
     rootElement.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fbfbfd;">
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100dvh; background: #fbfbfd;">
         <div style="text-align: center; padding: 2rem;">
           <h1 style="color: #dc2626; margin-bottom: 1rem;">앱을 표시할 수 없어요</h1>
           <p style="color: #6e6e73; font-size: 14px; margin-bottom: 12px;">브라우저 환경이 호환되지 않을 수 있습니다.</p>

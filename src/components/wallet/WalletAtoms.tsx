@@ -202,7 +202,7 @@ export function WalletPageWrapper({ theme = 'dark', children, className = '' }: 
 }) {
   const t = tokens(theme)
   return (
-    <div className={className} style={{ background: t.bg, minHeight: '100vh', paddingBottom: 28, color: t.label }}>
+    <div className={className} style={{ background: t.bg, minHeight: '100dvh', paddingBottom: 28, color: t.label }}>
       {children}
     </div>
   )
