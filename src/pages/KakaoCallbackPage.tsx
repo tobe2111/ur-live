@@ -112,10 +112,10 @@ export default function KakaoCallbackPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#020202] flex items-center justify-center">
+    <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mx-auto mb-3" />
-        <p className="text-gray-400 text-sm">로그인 처리 중...</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">로그인 처리 중...</p>
       </div>
     </div>
   )

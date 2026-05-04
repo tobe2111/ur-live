@@ -70,7 +70,7 @@ export default function DesktopTopNav() {
   }
 
   return (
-    <header className="hidden lg:block xl:hidden sticky top-0 z-40 bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+    <header className="hidden lg:block xl:hidden sticky top-0 z-40 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
       <div className="ur-content-wide flex items-center gap-6 px-6 lg:px-8 h-14">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-1.5 shrink-0">

@@ -270,14 +270,14 @@ export default function LoginPage() {
   // 🔥 Early return: Prevent rendering while redirecting
   if (isLoggedIn && hasRedirected.current) {
     return (
-      <div className="min-h-screen bg-[#020202] flex items-center justify-center">
-        <div className="text-gray-400">Redirecting...</div>
+      <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
+        <div className="text-gray-500 dark:text-gray-400">Redirecting...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#020202] flex flex-col items-center justify-center px-5 py-12">
+    <div className="min-h-screen bg-white dark:bg-[#020202] flex flex-col items-center justify-center px-5 py-12">
       <SEO title="로그인 - 유어딜" description="유어딜에 로그인하세요." url="/login" noindex />
       <div className="w-full max-w-[360px]">
 
@@ -290,7 +290,7 @@ export default function LoginPage() {
               <circle cx="29" cy="31" r="2.5" fill="#EF4444"/>
               <path d="M19.5 13.5v8l6-4z" fill="#EF4444"/>
             </svg>
-            <span className="text-[28px] font-extrabold text-white tracking-tight">유어딜</span>
+            <span className="text-[28px] font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜</span>
           </div>
           <p className="text-[14px] text-gray-500 mt-3 font-light">
             {t('auth.tagline')}
@@ -389,7 +389,7 @@ export default function LoginPage() {
             {/* Sign Up Link */}
             <div className="text-center text-[13px] text-[#aaa] mt-5 font-light">
               {t('auth.noAccount')}{' '}
-              <Link to="/register" className="text-white font-medium hover:underline underline-offset-4 decoration-1">
+              <Link to="/register" className="text-gray-900 dark:text-white font-medium hover:underline underline-offset-4 decoration-1">
                 {t('common.signup')}
               </Link>
             </div>
@@ -478,7 +478,7 @@ export default function LoginPage() {
         {showForgotPassword && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <p className="text-[14px] text-gray-400 font-light leading-relaxed">
+              <p className="text-[14px] text-gray-500 dark:text-gray-400 font-light leading-relaxed">
                 {t('auth.resetPasswordDesc')}
               </p>
             </div>

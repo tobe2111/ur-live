@@ -21,22 +21,22 @@ export function RewardAdCard() {
   if (!isNative) {
     return (
       <div className="ur-content-medium px-5 lg:px-8 py-1">
-        <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
+        <div className="bg-gray-50 dark:bg-[#121212] rounded-2xl px-5 py-4 border border-gray-200 dark:border-[#2A2A2A]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center shrink-0">
               <span className="text-lg">📱</span>
             </div>
             <div className="flex-1">
-              <p className="text-[13px] font-bold text-white">앱 다운로드하고 추가 딜 받기!</p>
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">앱 다운로드하고 추가 딜 받기!</p>
               <p className="text-[11px] text-gray-500">광고 시청으로 매일 무료 딜 포인트 적립</p>
             </div>
           </div>
           <div className="flex gap-2 mt-3">
-            <button onClick={() => alert('앱이 준비 중입니다 🚀\n조금만 기다려주세요!')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white/10 rounded-xl text-xs font-bold text-white active:scale-95">
+            <button onClick={() => alert('앱이 준비 중입니다 🚀\n조금만 기다려주세요!')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white/10 rounded-xl text-xs font-bold text-gray-900 dark:text-white active:scale-95">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
               App Store
             </button>
-            <button onClick={() => alert('앱이 준비 중입니다 🚀\n조금만 기다려주세요!')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white/10 rounded-xl text-xs font-bold text-white active:scale-95">
+            <button onClick={() => alert('앱이 준비 중입니다 🚀\n조금만 기다려주세요!')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white/10 rounded-xl text-xs font-bold text-gray-900 dark:text-white active:scale-95">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.04L14.55 12 3.18.96C2.58 1.33 2.1 1.96 2.1 2.86v18.28c0 .9.48 1.53 1.08 1.9zm12.89-9.95l2.22-1.26L6.79.56l9.28 12.53zM6.79 23.44l11.5-5.27-2.22-1.26L6.79 23.44zM19.41 10.6l-2.52 1.44L19.41 13.4l2.59-1.4-2.59-1.4z"/></svg>
               Play Store
             </button>
@@ -135,14 +135,14 @@ export function RewardAdCard() {
 
   return (
     <div className="ur-content-medium px-5 lg:px-8 py-1">
-      <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
+      <div className="bg-gray-50 dark:bg-[#121212] rounded-2xl px-5 py-4 border border-gray-200 dark:border-[#2A2A2A]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center">
-              <Play className="w-5 h-5 text-white fill-white" />
+              <Play className="w-5 h-5 text-gray-900 dark:text-white fill-white" />
             </div>
             <div>
-              <p className="text-[13px] font-bold text-white">광고 보고 딜 받기</p>
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">광고 보고 딜 받기</p>
               <p className="text-[11px] text-gray-500">
                 {isMaxed
                   ? '내일 다시 시청 가능합니다'
@@ -156,7 +156,7 @@ export function RewardAdCard() {
             disabled={isMaxed || loading}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
               isMaxed
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-gray-200 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                 : loading
                 ? 'bg-indigo-300 text-white cursor-wait'
                 : 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30'
@@ -173,7 +173,7 @@ export function RewardAdCard() {
             style={{ width: `${status.dailyLimit > 0 ? (status.todayCount / status.dailyLimit) * 100 : 0}%` }}
           />
         </div>
-        <p className="text-[10px] text-gray-400 mt-1 text-right">
+        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 text-right">
           {status.todayCount}/{status.dailyLimit}회 시청
         </p>
 

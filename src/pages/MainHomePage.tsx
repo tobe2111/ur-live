@@ -179,7 +179,7 @@ export default function MainHomePage() {
       <SEO title={t('mainHome.seoTitle')} description={t('mainHome.seoDesc')} url="/" jsonLd={[organizationJsonLd, webSiteJsonLd]} />
 
       {/* ═══ Sticky Top Bar ═══ — PC 풀너비 sticky, 콘텐츠는 centered */}
-      <div className="sticky top-0 inset-x-0 z-30 bg-[#020202]/95 backdrop-blur-md">
+      <div className="sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md">
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-1.5">
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
@@ -187,7 +187,7 @@ export default function MainHomePage() {
           </div>
           <span className="text-[15px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}>UR·DEAL</span>
         </Link>
-        <div className="flex items-center gap-1 text-gray-200">
+        <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200">
           <button onClick={() => navigate('/search')} className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
           <button onClick={() => navigate('/notifications')} aria-label={unreadCount > 0 ? t('mainHome.ariaNotificationsCount', { count: unreadCount }) : t('mainHome.ariaNotifications')} className="p-1.5 relative">
             <Bell className="h-5 w-5" strokeWidth={1.5} />
@@ -245,20 +245,20 @@ export default function MainHomePage() {
           <button
             onClick={() => setRegionModalOpen(true)}
             aria-label={t('mainHome.regionPickerAria', { defaultValue: '지역 선택' })}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-gray-100 dark:bg-white/[0.12] backdrop-blur-md border border-white/20">
-            <MapPin className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
-            <span className="text-[12px] font-bold text-gray-900 dark:text-white">{region}</span>
-            <ChevronDown className="w-2.5 h-2.5 text-gray-900 dark:text-white" />
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-white/[0.12] backdrop-blur-md border border-white/20">
+            <MapPin className="w-3.5 h-3.5 text-white" />
+            <span className="text-[12px] font-bold text-white">{region}</span>
+            <ChevronDown className="w-2.5 h-2.5 text-white" />
           </button>
-          <p className="text-[11px] text-gray-900 dark:text-white/70 font-semibold tracking-widest mt-3">{t('mainHome.nowDeadline')}</p>
-          <h1 className="text-[26px] font-black text-gray-900 dark:text-white mt-1" style={{ letterSpacing: '-0.04em', lineHeight: 1.1, textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>
+          <p className="text-[11px] text-white/70 font-semibold tracking-widest mt-3">{t('mainHome.nowDeadline')}</p>
+          <h1 className="text-[26px] font-black text-white mt-1" style={{ letterSpacing: '-0.04em', lineHeight: 1.1, textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>
             {featured?.name || t('mainHome.fallbackProduct')}
           </h1>
           {featured && (
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-[12px] font-extrabold text-red-400">{featuredDisc}%</span>
-              <span className="text-[18px] font-black text-gray-900 dark:text-white">{formatNumber(featured.price)}원</span>
-              {featured.original_price && <span className="text-[10px] text-gray-900 dark:text-white/55 line-through">{formatNumber(featured.original_price)}</span>}
+              <span className="text-[18px] font-black text-white">{formatNumber(featured.price)}원</span>
+              {featured.original_price && <span className="text-[10px] text-white/55 line-through">{formatNumber(featured.original_price)}</span>}
             </div>
           )}
         </div>
@@ -268,7 +268,7 @@ export default function MainHomePage() {
           <div className="flex-1 rounded-xl p-2.5 flex items-center gap-2 bg-red-500/[0.18] backdrop-blur-md border border-red-500/40">
             <Clock className="w-3.5 h-3.5 text-red-300 shrink-0" />
             <div>
-              <p className="text-[11px] text-gray-900 dark:text-white font-bold leading-tight">{featured ? fmtEnd(featured.group_buy_deadline) : t('mainHome.ongoing')}</p>
+              <p className="text-[11px] text-white font-bold leading-tight">{featured ? fmtEnd(featured.group_buy_deadline) : t('mainHome.ongoing')}</p>
               <p className="text-[10px] text-red-300 font-semibold">
                 {featured && (featured.group_buy_current || 0) > 0
                   ? t('mainHome.buyersCount', { count: featured.group_buy_current }) + ' ' + t('mainHome.buyingNow')
@@ -351,7 +351,7 @@ export default function MainHomePage() {
             const isClosing = m.group_buy_deadline && (new Date(m.group_buy_deadline).getTime() - Date.now()) < 3600000
             const isHot = current >= 20 // 사회적 증명: 20명 이상 구매 시 인기 표시
             return (
-              <button key={m.id} onClick={() => navigate(`/products/${m.id}`)} className="w-full flex items-center gap-3 rounded-xl p-2.5 text-left bg-[#0B0B0B] border border-[#151515]">
+              <button key={m.id} onClick={() => navigate(`/products/${m.id}`)} className="w-full flex items-center gap-3 rounded-xl p-2.5 text-left bg-white dark:bg-[#0B0B0B] border border-gray-100 dark:border-[#151515]">
                 <span className="text-[20px] font-black w-[22px] shrink-0" style={{ color: i < 3 ? '#FBBF24' : '#6B7280', letterSpacing: '-0.03em' }}>{i + 1}</span>
                 <div className="rounded-lg overflow-hidden shrink-0 relative w-[68px] h-[68px] bg-gray-100 dark:bg-[#1A1A1A]">
                   {m.image_url && <img src={m.image_url} alt={m.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
@@ -369,7 +369,7 @@ export default function MainHomePage() {
                   </div>
                   {current > 0 && (
                     <p className="text-[10px] mt-1.5 text-gray-500 dark:text-gray-400">
-                      👥 <span className="font-semibold text-gray-200">{t('mainHome.buyersCount', { count: current })}</span> {t('mainHome.buyingNow')}
+                      👥 <span className="font-semibold text-gray-700 dark:text-gray-200">{t('mainHome.buyersCount', { count: current })}</span> {t('mainHome.buyingNow')}
                     </p>
                   )}
                 </div>
@@ -499,9 +499,9 @@ export default function MainHomePage() {
       )}
 
       {/* ═══ UR특가 ═══ */}
-      <div className="pt-8 mt-6" style={{ background: '#050505', borderTop: '8px solid #0A0A0A' }}>
+      <div className="pt-8 mt-6 bg-gray-50 dark:bg-[#050505] border-t-8 border-gray-100 dark:border-[#0A0A0A]">
         <div className="px-4 pt-5 pb-3">
-          <p className="text-[10px] text-blue-300 font-extrabold tracking-[0.14em]">{t('mainHome.specialTag')}</p>
+          <p className="text-[10px] text-blue-500 dark:text-blue-300 font-extrabold tracking-[0.14em]">{t('mainHome.specialTag')}</p>
           <p className="text-[22px] font-black text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.04em' }}>{t('mainHome.specialTitle')}</p>
         </div>
 
@@ -511,7 +511,7 @@ export default function MainHomePage() {
             {CATEGORIES.map(c => (
               <button key={c.k} onClick={() => navigate(`/browse?category=${c.k}`)} className="flex flex-col items-center gap-1.5">
                 <div className="rounded-2xl flex items-center justify-center w-[52px] h-[52px] text-[22px]" style={{ background: c.bg }}>{c.i}</div>
-                <span className="text-[11px] text-gray-200 font-semibold">{c.l}</span>
+                <span className="text-[11px] text-gray-700 dark:text-gray-700 dark:text-gray-200 font-semibold">{c.l}</span>
               </button>
             ))}
           </div>
@@ -528,11 +528,11 @@ export default function MainHomePage() {
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative">
                     <div className="relative rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-[#1A1A1A]">
                       {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
-                      <span className="absolute top-1.5 left-1.5 rounded flex items-center justify-center w-[22px] h-[22px] bg-[#EF4444] text-[11px] font-black text-gray-900 dark:text-white">{i + 1}</span>
+                      <span className="absolute top-1.5 left-1.5 rounded flex items-center justify-center w-[22px] h-[22px] bg-[#EF4444] text-[11px] font-black text-white">{i + 1}</span>
                     </div>
-                    <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
+                    <p className="text-[11px] text-gray-700 dark:text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
                     <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">
-                      {d > 0 && <span className="text-red-400 mr-1">{d}%</span>}{formatNumber(p.price)}원
+                      {d > 0 && <span className="text-red-500 dark:text-red-400 mr-1">{d}%</span>}{formatNumber(p.price)}원
                     </p>
                   </button>
                 )
@@ -554,7 +554,7 @@ export default function MainHomePage() {
                       {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                       {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-gray-900 dark:text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
                     </div>
-                    <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
+                    <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
                     {p.original_price && p.original_price > p.price && (
                       <p className="text-[10px] text-gray-500 line-through mt-0.5">{formatNumber(p.original_price)}원</p>
                     )}

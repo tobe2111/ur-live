@@ -84,7 +84,7 @@ export default function LiveListPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#020202] text-white pb-24">
+    <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-24">
       <SEO title={t('liveList.seoTitle')} description={t('liveList.seoDesc')} url="/live" />
 
       {/* 🛡️ 2026-04-29 v4 Film Strip 헤더 — UR·DEAL 로고 + 검색/알림/장바구니 */}
@@ -101,21 +101,21 @@ export default function LiveListPage() {
               className="p-1.5 rounded-full hover:bg-white/10"
               aria-label={t('liveList.ariaSearch')}
             >
-              <Search className="w-5 h-5 text-gray-400" />
+              <Search className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
             <button
               onClick={() => navigate('/notifications')}
               className="p-1.5 rounded-full hover:bg-white/10"
               aria-label={t('liveList.ariaNotifications')}
             >
-              <Bell className="w-5 h-5 text-gray-400" />
+              <Bell className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
             <button
               onClick={() => navigate('/cart')}
               className="p-1.5 rounded-full hover:bg-white/10"
               aria-label={t('liveList.ariaCart')}
             >
-              <ShoppingCart className="w-5 h-5 text-gray-400" />
+              <ShoppingCart className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function LiveListPage() {
                           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#fff' }}>LIVE</span>
                         </div>
                         <div className="rounded-full px-2 py-1 inline-flex items-center gap-1" style={glass.statsChip}>
-                          <Eye className="w-2.5 h-2.5 text-white/85" />
+                          <Eye className="w-2.5 h-2.5 text-gray-900 dark:text-white/85" />
                           <span style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{formatCount(s.viewer_count ?? 0)}</span>
                         </div>
                       </div>
@@ -287,7 +287,7 @@ export default function LiveListPage() {
           {(tab === 'all' || tab === 'replay') && filteredEnded.length > 0 && (
             <section className="px-4 pb-6">
               <div className="flex items-center gap-2 mb-3">
-                <Play className="w-3.5 h-3.5 text-gray-400" strokeWidth={2.5} fill="currentColor" />
+                <Play className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" strokeWidth={2.5} fill="currentColor" />
                 <span style={{ fontSize: 13, fontWeight: 700 }}>{t('liveList.replayLabel')}</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
@@ -314,7 +314,7 @@ export default function LiveListPage() {
                             border: '1px solid rgba(255,255,255,0.30)',
                             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(0,0,0,0.35)',
                           }}>
-                          <Play className="w-[18px] h-[18px] text-white" fill="currentColor" style={{ marginLeft: 2 }} />
+                          <Play className="w-[18px] h-[18px] text-gray-900 dark:text-white" fill="currentColor" style={{ marginLeft: 2 }} />
                         </div>
                       </div>
                       <div className="absolute top-2 right-2 rounded-full px-2 py-1"
@@ -351,7 +351,7 @@ function HeroCard({ stream, getThumb, onClick }: {
   return (
     <button
       onClick={onClick}
-      className="relative block w-full aspect-[16/10] rounded-2xl overflow-hidden bg-[#121212] active:scale-[0.99] transition-transform text-left group"
+      className="relative block w-full aspect-[16/10] rounded-2xl overflow-hidden bg-gray-50 dark:bg-[#121212] active:scale-[0.99] transition-transform text-left group"
     >
       {thumb ? (
         <img src={thumb} alt="" fetchPriority="high" decoding="async" className="w-full h-full object-cover" />
@@ -365,14 +365,14 @@ function HeroCard({ stream, getThumb, onClick }: {
       {/* LIVE badge */}
       <div className="absolute top-3 left-3 flex items-center gap-1 bg-red-500 px-2.5 py-1 rounded-full shadow-lg shadow-red-500/30">
         <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
-        <span className="text-[10px] font-extrabold text-white tracking-wide">LIVE</span>
+        <span className="text-[10px] font-extrabold text-gray-900 dark:text-white tracking-wide">LIVE</span>
       </div>
 
       {/* Viewers */}
       {stream.viewer_count !== undefined && (
         <div className="absolute top-3 right-3 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
-          <Eye className="h-3 w-3 text-white" />
-          <span className="text-[11px] text-white font-bold">
+          <Eye className="h-3 w-3 text-gray-900 dark:text-white" />
+          <span className="text-[11px] text-gray-900 dark:text-white font-bold">
             {formatNumber(stream.viewer_count)}
           </span>
         </div>
@@ -381,15 +381,15 @@ function HeroCard({ stream, getThumb, onClick }: {
       {/* Bottom info */}
       <div className="absolute bottom-0 left-0 right-0 p-4">
         {stream.seller_name && (
-          <p className="text-[11px] text-white/70 font-semibold mb-1">{stream.seller_name}</p>
+          <p className="text-[11px] text-gray-900 dark:text-white/70 font-semibold mb-1">{stream.seller_name}</p>
         )}
-        <p className="text-[17px] font-extrabold text-white line-clamp-2 leading-tight tracking-tight">
+        <p className="text-[17px] font-extrabold text-gray-900 dark:text-white line-clamp-2 leading-tight tracking-tight">
           {stream.title}
         </p>
         {stream.current_product && (
           <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
             <span className="text-[10px] font-bold text-pink-300">NOW</span>
-            <span className="text-[11px] text-white font-semibold line-clamp-1 max-w-[200px]">
+            <span className="text-[11px] text-gray-900 dark:text-white font-semibold line-clamp-1 max-w-[200px]">
               {stream.current_product.name}
             </span>
             <span className="text-[11px] font-extrabold text-pink-300">
@@ -420,7 +420,7 @@ function StreamCard({ stream, type, onClick, getThumb }: {
 
   return (
     <button onClick={onClick} className="text-left active:scale-[0.97] transition-transform w-full">
-      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#121212]">
+      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 dark:bg-[#121212]">
         {thumb ? (
           <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
         ) : (
@@ -435,43 +435,43 @@ function StreamCard({ stream, type, onClick, getThumb }: {
         {type === 'live' && (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-1.5 py-0.5 rounded shadow-md">
             <span className="h-1 w-1 bg-white rounded-full animate-pulse" />
-            <span className="text-[9px] font-extrabold text-white tracking-wide">LIVE</span>
+            <span className="text-[9px] font-extrabold text-gray-900 dark:text-white tracking-wide">LIVE</span>
           </div>
         )}
         {type === 'scheduled' && (
           <div className="absolute top-2 left-2 bg-blue-500 px-1.5 py-0.5 rounded">
-            <span className="text-[9px] font-extrabold text-white">예정</span>
+            <span className="text-[9px] font-extrabold text-gray-900 dark:text-white">예정</span>
           </div>
         )}
         {type === 'ended' && (
           <div className="absolute top-2 left-2 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-            <Play className="h-2.5 w-2.5 text-white" fill="currentColor" />
-            <span className="text-[9px] font-bold text-white">다시보기</span>
+            <Play className="h-2.5 w-2.5 text-gray-900 dark:text-white" fill="currentColor" />
+            <span className="text-[9px] font-bold text-gray-900 dark:text-white">다시보기</span>
           </div>
         )}
 
         {/* Viewers (live) or Views (ended) */}
         {type === 'live' && stream.viewer_count !== undefined && (
           <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-            <Eye className="h-2.5 w-2.5 text-white" />
-            <span className="text-[9px] text-white font-bold">{formatCount(stream.viewer_count)}</span>
+            <Eye className="h-2.5 w-2.5 text-gray-900 dark:text-white" />
+            <span className="text-[9px] text-gray-900 dark:text-white font-bold">{formatCount(stream.viewer_count)}</span>
           </div>
         )}
         {type === 'ended' && stream.total_views !== undefined && (
           <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-            <Eye className="h-2.5 w-2.5 text-white" />
-            <span className="text-[9px] text-white font-bold">{formatCount(stream.total_views)}</span>
+            <Eye className="h-2.5 w-2.5 text-gray-900 dark:text-white" />
+            <span className="text-[9px] text-gray-900 dark:text-white font-bold">{formatCount(stream.total_views)}</span>
           </div>
         )}
 
         {/* Bottom info */}
         <div className="absolute bottom-0 left-0 right-0 p-2.5">
           {stream.seller_name && (
-            <p className="text-[9px] text-white/60 font-semibold mb-0.5 line-clamp-1">
+            <p className="text-[9px] text-gray-900 dark:text-white/60 font-semibold mb-0.5 line-clamp-1">
               @{stream.seller_name}
             </p>
           )}
-          <p className="text-[11px] font-bold text-white line-clamp-2 leading-tight">
+          <p className="text-[11px] font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight">
             {stream.title}
           </p>
           {type === 'scheduled' && schedDate && (
@@ -480,7 +480,7 @@ function StreamCard({ stream, type, onClick, getThumb }: {
             </p>
           )}
           {type === 'ended' && timeAgo && (
-            <p className="text-[9px] text-gray-400 mt-0.5 font-medium">
+            <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
               {timeAgo}
             </p>
           )}
@@ -497,14 +497,14 @@ function EmptyState({ onExplore }: { onExplore: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center pt-20 pb-24 px-6 text-center">
       <div className="relative mb-5">
-        <div className="w-20 h-20 rounded-full bg-[#121212] flex items-center justify-center">
+        <div className="w-20 h-20 rounded-full bg-gray-50 dark:bg-[#121212] flex items-center justify-center">
           <Radio className="w-9 h-9 text-gray-600" strokeWidth={1.5} />
         </div>
         <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center">
           <span className="h-1.5 w-1.5 bg-red-500 rounded-full animate-pulse" />
         </span>
       </div>
-      <h2 className="text-[17px] font-bold text-white mb-1.5">{t('liveList.emptyTitle')}</h2>
+      <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1.5">{t('liveList.emptyTitle')}</h2>
       <p className="text-[13px] text-gray-500 mb-6">{t('liveList.emptyHint')}</p>
       <button
         onClick={onExplore}

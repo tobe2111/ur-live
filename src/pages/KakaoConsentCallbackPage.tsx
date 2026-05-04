@@ -59,8 +59,8 @@ export default function KakaoConsentCallbackPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#020202] flex items-center justify-center">
-      <p className="text-white text-sm">
+    <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
+      <p className="text-gray-900 dark:text-white text-sm">
         {status === 'processing' ? '동의 처리 중...' :
          status === 'done' ? '완료! 돌아갑니다...' :
          '오류가 발생했습니다'}
