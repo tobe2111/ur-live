@@ -132,7 +132,7 @@ export default function SellerBundlesPage() {
               <h3 className="text-sm font-bold text-gray-900">
                 {editId ? t('seller.bundleEdit', '번들 수정') : t('seller.bundleCreate', '번들 만들기')}
               </h3>
-              <button onClick={resetForm} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+              <button onClick={resetForm} aria-label="닫기" className="p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
             </div>
 
             <div>

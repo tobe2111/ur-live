@@ -373,7 +373,7 @@ export default function BrowsePage() {
         {/* v4 Editorial Grid — hero + 2열 */}
         {loading ? (
           <div className="space-y-4">
-            <div className="aspect-[4/3] bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-2xl" />
+            <div className="w-full lg:max-w-md aspect-[4/3] lg:aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-2xl" />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {[...Array(4)].map((_, i) => (
                 <div key={i}>
@@ -408,9 +408,12 @@ export default function BrowsePage() {
               return (
                 <button
                   onClick={() => navigate(`/products/${hero.id}`)}
-                  className="block w-full text-left mb-6"
+                  className="block w-full lg:max-w-md text-left mb-6"
                 >
-                  <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '4/3', background: '#F9FAFB' }}>
+                  <div
+                    className="relative rounded-2xl overflow-hidden aspect-[4/3] lg:aspect-square"
+                    style={{ background: '#F9FAFB' }}
+                  >
                     {hero.image_url && <img src={hero.image_url} alt={hero.name || t('browse.altProduct')} className="w-full h-full object-cover" fetchPriority="high" decoding="async" />}
                     <div className="absolute top-2 left-2 flex gap-1">
                       {heroDiscount > 0 && (
