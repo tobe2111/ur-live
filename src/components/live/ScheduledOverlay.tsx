@@ -45,34 +45,34 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-5 px-8">
         <div className="px-5 py-2 bg-blue-600 rounded-full flex items-center gap-2">
-          <svg className="w-4 h-4 text-gray-900 dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span className="text-gray-900 dark:text-white text-sm font-bold">방송 예정</span>
+          <span className="text-white text-sm font-bold">방송 예정</span>
         </div>
 
-        <h2 className="text-gray-900 dark:text-white text-xl font-bold text-center leading-tight">
+        <h2 className="text-white text-xl font-bold text-center leading-tight">
           {stream.title}
         </h2>
 
         {(stream.seller_name || stream.streamerName) && (
-          <p className="text-gray-900 dark:text-white/70 text-sm">
+          <p className="text-white/70 text-sm">
             @{stream.seller_name || stream.streamerName}
           </p>
         )}
 
         {stream.scheduled_at && (
           <div className="text-center">
-            <p className="text-gray-900 dark:text-white/60 text-xs mb-2">방송 시작까지</p>
-            <p className="text-gray-900 dark:text-white text-3xl font-bold font-mono tracking-wider">
+            <p className="text-white/60 text-xs mb-2">방송 시작까지</p>
+            <p className="text-white text-3xl font-bold font-mono tracking-wider">
               {countdown}
             </p>
-            <p className="text-gray-900 dark:text-white/50 text-sm mt-2">{formattedDate}</p>
+            <p className="text-white/50 text-sm mt-2">{formattedDate}</p>
           </div>
         )}
 
         {!stream.scheduled_at && (
-          <p className="text-gray-900 dark:text-white/60 text-sm">방송 시작 시간이 아직 정해지지 않았습니다</p>
+          <p className="text-white/60 text-sm">방송 시작 시간이 아직 정해지지 않았습니다</p>
         )}
 
         <div className="flex gap-3 mt-2">
@@ -85,7 +85,7 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
           />
           <button
             onClick={onGoHome}
-            className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-gray-900 dark:text-white/80 rounded-full text-sm font-medium transition-colors"
+            className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white/80 rounded-full text-sm font-medium transition-colors"
           >
             홈으로
           </button>

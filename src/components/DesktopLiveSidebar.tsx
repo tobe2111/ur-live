@@ -37,15 +37,15 @@ export default function DesktopLiveSidebar() {
 
   return (
     <aside
-      className="hidden xl:flex fixed left-0 top-0 bottom-0 w-56 z-40 flex-col py-6 px-3 bg-[#020202] border-r border-white/[0.06]"
+      className="hidden xl:flex fixed left-0 top-0 bottom-0 w-56 z-40 flex-col py-6 px-3 bg-white dark:bg-[#020202] border-r border-white/[0.06]"
       aria-label="PC 메인 메뉴"
     >
       {/* 로고 */}
       <Link to="/" className="flex items-center gap-2 px-3 mb-6">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-          <Radio className="h-4 w-4 text-white fill-white" />
+          <Radio className="h-4 w-4 text-gray-900 dark:text-white fill-white" />
         </div>
-        <span className="text-[16px] font-extrabold text-white" style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}>
+        <span className="text-[16px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}>
           UR·DEAL
         </span>
       </Link>
@@ -60,8 +60,8 @@ export default function DesktopLiveSidebar() {
               onClick={() => navigate(item.path)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
                 isActive
-                  ? 'bg-white/[0.08] text-white font-bold'
-                  : 'text-white/70 hover:bg-white/[0.04] hover:text-white'
+                  ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white font-bold'
+                  : 'text-gray-900 dark:text-white/70 hover:bg-gray-200 dark:hover:bg-white/[0.04] hover:text-white'
               }`}
             >
               <Icon className="w-5 h-5 shrink-0" />
@@ -71,7 +71,7 @@ export default function DesktopLiveSidebar() {
         })}
       </nav>
 
-      <p className="text-[10px] text-white/30 px-3 mt-auto">
+      <p className="text-[10px] text-gray-900 dark:text-white/30 px-3 mt-auto">
         © 2026 UR·DEAL
       </p>
     </aside>
