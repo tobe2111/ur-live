@@ -94,6 +94,9 @@
              window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (dark) document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');
+          // 🛡️ 2026-05-04: body / pre-react 배경도 테마에 맞춰 즉시 설정 (FOUC 방지).
+          window.__urInitialBg = dark ? '#020202' : '#ffffff';
+          window.__urInitialFg = dark ? '#ffffff' : '#1d1d1f';
         } catch (e) { /* private mode / SSR */ }
       })();
     </script>
@@ -116,7 +119,7 @@
     </script>
     <script src="https://www.youtube.com/iframe_api" async></script>
   </head>
-  <body style="background-color:#020202">
+  <body><script>document.body.style.backgroundColor=window.__urInitialBg||'#ffffff';</script>
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[9999] focus:bg-white focus:p-4 focus:text-blue-600 focus:font-bold">본문 바로가기</a>
 
     <!--
@@ -148,7 +151,7 @@
     </div>
 
     <div id="root" role="application" aria-label="유어딜 라이브 커머스">
-      <div id="ur-pre-react" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#020202;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div id="ur-pre-react" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"><script>(function(){var e=document.currentScript&&document.currentScript.parentElement;if(e){e.style.background=window.__urInitialBg||'#ffffff';e.style.color=window.__urInitialFg||'#1d1d1f';}})();</script>
         <div style="text-align:center;padding:24px;">
           <div style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin-bottom:10px;">유어딜</div>
           <div style="font-size:13px;color:#888;">로딩 중...</div>

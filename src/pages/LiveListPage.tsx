@@ -88,31 +88,31 @@ export default function LiveListPage() {
       <SEO title={t('liveList.seoTitle')} description={t('liveList.seoDesc')} url="/live" />
 
       {/* 🛡️ 2026-04-29 v4 Film Strip 헤더 — UR·DEAL 로고 + 검색/알림/장바구니 */}
-      <header className="sticky top-0 z-50" style={{ background: 'rgba(2,2,2,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <header className="sticky top-0 z-50 bg-white/85 dark:bg-[#020202]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-100 dark:border-white/[0.06]">
         <div className="flex items-center justify-between px-4 h-[52px]">
           {/* UR·DEAL 로고 (홈으로) */}
           <button onClick={() => navigate('/')} aria-label={t('liveList.ariaHome')} className="font-black tracking-tight">
-            <span style={{ fontSize: 18, color: '#EF4444', letterSpacing: '-0.04em' }}>UR·</span>
-            <span style={{ fontSize: 18, color: '#fff', letterSpacing: '-0.04em' }}>DEAL</span>
+            <span style={{ fontSize: 18, letterSpacing: '-0.04em' }} className="text-red-500">UR·</span>
+            <span style={{ fontSize: 18, letterSpacing: '-0.04em' }} className="text-gray-900 dark:text-white">DEAL</span>
           </button>
           <div className="flex items-center gap-0.5">
             <button
               onClick={() => navigate('/search?scope=live')}
-              className="p-1.5 rounded-full hover:bg-white/10"
+              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10"
               aria-label={t('liveList.ariaSearch')}
             >
               <Search className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
             <button
               onClick={() => navigate('/notifications')}
-              className="p-1.5 rounded-full hover:bg-white/10"
+              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10"
               aria-label={t('liveList.ariaNotifications')}
             >
               <Bell className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
             <button
               onClick={() => navigate('/cart')}
-              className="p-1.5 rounded-full hover:bg-white/10"
+              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10"
               aria-label={t('liveList.ariaCart')}
             >
               <ShoppingCart className="w-5 h-5 text-gray-500 dark:text-gray-400" />
@@ -122,31 +122,30 @@ export default function LiveListPage() {
 
         {/* 큰 "라이브" 제목 + 카운트 */}
         <div className="px-4 pt-2 flex items-end justify-between">
-          <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em' }}>{t('liveList.title')}</h1>
-          <p style={{ fontSize: 11, color: '#6B7280', paddingBottom: 4 }}>
-            <span style={{ color: '#EF4444', fontWeight: 700 }}>● {filteredLive.length}</span>
+          <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em' }} className="text-gray-900 dark:text-white">{t('liveList.title')}</h1>
+          <p className="text-gray-500 dark:text-gray-500" style={{ fontSize: 11, paddingBottom: 4 }}>
+            <span style={{ fontWeight: 700 }} className="text-red-500">● {filteredLive.length}</span>
             <span style={{ margin: '0 6px', opacity: 0.4 }}>·</span>
             예정 {filteredScheduled.length}
           </p>
         </div>
 
         {/* Underline 탭 + sliding indicator */}
-        <div className="relative mt-3 px-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="relative mt-3 px-4 border-b border-gray-100 dark:border-white/[0.06]">
           <div className="flex">
-            {tabs.map((t) => (
+            {tabs.map((tabItem) => (
               <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className="relative flex-1 pb-2.5 transition-colors"
-                style={{
-                  fontSize: 13,
-                  fontWeight: tab === t.key ? 800 : 600,
-                  color: tab === t.key ? '#fff' : '#6B7280',
-                  letterSpacing: '-0.01em',
-                }}
-                aria-pressed={tab === t.key}
+                key={tabItem.key}
+                onClick={() => setTab(tabItem.key)}
+                className={`relative flex-1 pb-2.5 transition-colors ${
+                  tab === tabItem.key
+                    ? 'text-gray-900 dark:text-white font-extrabold'
+                    : 'text-gray-500 dark:text-gray-500 font-semibold'
+                }`}
+                style={{ fontSize: 13, letterSpacing: '-0.01em' }}
+                aria-pressed={tab === tabItem.key}
               >
-                {t.label}
+                {tabItem.label}
               </button>
             ))}
           </div>
@@ -160,7 +159,7 @@ export default function LiveListPage() {
               padding: '0 18%',
             }}
           >
-            <div style={{ width: '100%', height: '100%', background: '#fff', borderRadius: 2 }} />
+            <div className="w-full h-full bg-gray-900 dark:bg-white rounded-sm" />
           </div>
         </div>
       </header>
@@ -182,7 +181,7 @@ export default function LiveListPage() {
                   <span className="rounded-full" style={{ width: 5, height: 5, background: '#fff', boxShadow: '0 0 6px #fff' }} />
                   <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#fff' }}>LIVE</span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t('liveList.nowLiveLabel')}</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }} className="text-gray-900 dark:text-white">{t('liveList.nowLiveLabel')}</span>
               </div>
               <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-2 lg:overflow-visible lg:grid lg:grid-cols-3 xl:grid-cols-4 lg:px-4">
                 {filteredLive.map(s => (
@@ -192,7 +191,7 @@ export default function LiveListPage() {
                     className="shrink-0 w-[280px] lg:w-full text-left active:scale-[0.99] transition-transform"
                     aria-label={t('liveList.ariaLiveJoin', { title: s.title })}
                   >
-                    <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '4/5', background: '#121212' }}>
+                    <div className="relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-[#121212]" style={{ aspectRatio: '4/5' }}>
                       {getThumb(s) ? (
                         <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" />
                       ) : (
@@ -233,7 +232,7 @@ export default function LiveListPage() {
             <section className="px-4 mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="w-3.5 h-3.5 text-blue-400" strokeWidth={2.5} />
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t('liveList.scheduledLabel')}</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }} className="text-gray-900 dark:text-white">{t('liveList.scheduledLabel')}</span>
               </div>
               <div className="space-y-2">
                 {filteredScheduled.map(s => {
@@ -245,11 +244,10 @@ export default function LiveListPage() {
                     <button
                       key={s.id}
                       onClick={() => navigate(`/live/${s.id}`)}
-                      className="w-full flex items-center gap-3 p-2 rounded-2xl active:scale-[0.99] transition-transform"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                      className="w-full flex items-center gap-3 p-2 rounded-2xl active:scale-[0.99] transition-transform bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.06]"
                       aria-label={t('liveList.ariaScheduled', { title: s.title })}
                     >
-                      <div className="shrink-0 rounded-xl overflow-hidden" style={{ width: 72, height: 72, background: '#1A1A1A' }}>
+                      <div className="shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={{ width: 72, height: 72 }}>
                         {getThumb(s) ? (
                           <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" />
                         ) : (
@@ -268,9 +266,9 @@ export default function LiveListPage() {
                             </span>
                           </div>
                         )}
-                        <p style={{ fontSize: 13, fontWeight: 600, color: '#fff' }} className="line-clamp-1">{s.title}</p>
+                        <p style={{ fontSize: 13, fontWeight: 600 }} className="line-clamp-1 text-gray-900 dark:text-white">{s.title}</p>
                         {s.seller_name && (
-                          <p style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>@{s.seller_name}</p>
+                          <p style={{ fontSize: 11, marginTop: 2 }} className="text-gray-500 dark:text-gray-500">@{s.seller_name}</p>
                         )}
                       </div>
                       <div onClick={(e) => e.stopPropagation()} className="shrink-0">
@@ -288,7 +286,7 @@ export default function LiveListPage() {
             <section className="px-4 pb-6">
               <div className="flex items-center gap-2 mb-3">
                 <Play className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" strokeWidth={2.5} fill="currentColor" />
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t('liveList.replayLabel')}</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }} className="text-gray-900 dark:text-white">{t('liveList.replayLabel')}</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
                 {filteredEnded.map(s => (
@@ -298,7 +296,7 @@ export default function LiveListPage() {
                     className="text-left active:scale-[0.99] transition-transform"
                     aria-label={t('liveList.ariaReplay', { title: s.title })}
                   >
-                    <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '3/4', background: '#1A1A1A' }}>
+                    <div className="relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={{ aspectRatio: '3/4' }}>
                       {getThumb(s) ? (
                         <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" style={{ filter: 'brightness(0.8) saturate(0.9)' }} />
                       ) : (
@@ -365,14 +363,14 @@ function HeroCard({ stream, getThumb, onClick }: {
       {/* LIVE badge */}
       <div className="absolute top-3 left-3 flex items-center gap-1 bg-red-500 px-2.5 py-1 rounded-full shadow-lg shadow-red-500/30">
         <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
-        <span className="text-[10px] font-extrabold text-gray-900 dark:text-white tracking-wide">LIVE</span>
+        <span className="text-[10px] font-extrabold text-white tracking-wide">LIVE</span>
       </div>
 
       {/* Viewers */}
       {stream.viewer_count !== undefined && (
         <div className="absolute top-3 right-3 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
-          <Eye className="h-3 w-3 text-gray-900 dark:text-white" />
-          <span className="text-[11px] text-gray-900 dark:text-white font-bold">
+          <Eye className="h-3 w-3 text-white" />
+          <span className="text-[11px] text-white font-bold">
             {formatNumber(stream.viewer_count)}
           </span>
         </div>
@@ -381,15 +379,15 @@ function HeroCard({ stream, getThumb, onClick }: {
       {/* Bottom info */}
       <div className="absolute bottom-0 left-0 right-0 p-4">
         {stream.seller_name && (
-          <p className="text-[11px] text-gray-900 dark:text-white/70 font-semibold mb-1">{stream.seller_name}</p>
+          <p className="text-[11px] text-white/70 font-semibold mb-1">{stream.seller_name}</p>
         )}
-        <p className="text-[17px] font-extrabold text-gray-900 dark:text-white line-clamp-2 leading-tight tracking-tight">
+        <p className="text-[17px] font-extrabold text-white line-clamp-2 leading-tight tracking-tight">
           {stream.title}
         </p>
         {stream.current_product && (
           <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
             <span className="text-[10px] font-bold text-pink-300">NOW</span>
-            <span className="text-[11px] text-gray-900 dark:text-white font-semibold line-clamp-1 max-w-[200px]">
+            <span className="text-[11px] text-white font-semibold line-clamp-1 max-w-[200px]">
               {stream.current_product.name}
             </span>
             <span className="text-[11px] font-extrabold text-pink-300">
@@ -505,10 +503,10 @@ function EmptyState({ onExplore }: { onExplore: () => void }) {
         </span>
       </div>
       <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1.5">{t('liveList.emptyTitle')}</h2>
-      <p className="text-[13px] text-gray-500 mb-6">{t('liveList.emptyHint')}</p>
+      <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-6">{t('liveList.emptyHint')}</p>
       <button
         onClick={onExplore}
-        className="px-5 py-2.5 bg-white text-black text-[13px] font-bold rounded-full hover:bg-gray-100 transition-colors"
+        className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-black text-[13px] font-bold rounded-full hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
       >
         {t('liveList.exploreSpecial')}
       </button>
