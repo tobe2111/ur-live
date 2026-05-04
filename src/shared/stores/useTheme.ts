@@ -41,15 +41,17 @@ function resolveApplied(mode: ThemeMode): AppliedTheme {
   return mode === 'system' ? detectSystemTheme() : mode
 }
 
-function applyToDocument(_applied: AppliedTheme) {
-  // 🛡️ 2026-05-03 (revert): 다크 모드 toggle 비활성화.
-  // 사용자 신고: 화이트/다크 테마 구별 모호 (화이트 테마 페이지가 dark 토글로 다크 렌더 → 다크 페이지와 구분 안 됨).
-  // 정책 복귀:
-  //   - 화이트 테마 페이지 (쇼핑/결제) = 항상 화이트
-  //   - 다크 테마 페이지 (홈/마이/라이브) = 항상 다크 (bg-[#020202] 명시 강제, 토글 무영향)
-  //   - dark class 항상 제거 → 화이트 페이지의 dark: variants 비활성
+function applyToDocument(applied: AppliedTheme) {
+  // 🛡️ 2026-05-03 (re-enable): 토글 복원 — 사용자 신고 "테마 변경하는게 없어".
+  // 정책 (CLAUDE.md A안):
+  //   - 화이트 테마 페이지 (쇼핑/결제/상세) = light 모드 → bg-white, dark 모드 → dark: variants 활성
+  //   - 다크 테마 페이지 (홈/마이/라이브) = bg-[#020202] 강제 → 토글 무영향 (의도)
+  //   - 셀러/어드민/에이전시 = #F4F5F7 강제 + dark: variants 절대 금지 (pre-commit hook 차단)
+  // 즉 토글은 쇼핑/결제 흐름에만 시각 적용. 사고 재발 방지를 위해 글로벌 CSS override 는 사용 안 함.
   try {
-    document.documentElement.classList.remove('dark')
+    const root = document.documentElement
+    if (applied === 'dark') root.classList.add('dark')
+    else root.classList.remove('dark')
   } catch { /* SSR */ }
 }
 

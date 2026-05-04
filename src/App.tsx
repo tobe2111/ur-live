@@ -61,6 +61,7 @@ const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
+const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const SellerGroupBuyPage = lazy(() => import('./pages/SellerGroupBuyPage'))
@@ -901,6 +902,11 @@ function AppContent() {
             <Route path="/wishlist" element={
               <ProtectedRoute requireUser>
                 <WishlistPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/following" element={
+              <ProtectedRoute requireUser>
+                <FollowingPage />
               </ProtectedRoute>
             } />
             <Route path="/interest-list" element={

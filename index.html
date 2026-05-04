@@ -77,15 +77,22 @@
     <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
     <meta property="og:image" content="https://live.ur-team.com/logo.png" />
 
-    <!-- 🛡️ 2026-05-03 (revert): 다크 모드 토글 비활성화.
-         사용자 신고: 화이트/다크 테마 구분 모호. 정책 복귀 — 화이트 페이지=항상 화이트, 다크 페이지=항상 다크.
-         (페이지별 명시 색상이 단일 진실 출처. dark class 절대 추가 안 함.)
-         만약 이전에 사용자가 다크 모드를 활성화했다면 잔존 dark class 정리. -->
+    <!-- 🛡️ 2026-05-03 (re-enable): 다크 모드 토글 복원 (FOUC 방지).
+         localStorage 'ur_theme_mode_v1' 가 'dark' 이거나 'system' + OS 다크 모드일 때 dark 클래스 추가.
+         이 inline script 가 React 마운트 전에 실행되어 첫 페인트부터 올바른 테마.
+         적용 범위: 화이트 테마 페이지 (쇼핑/결제/상세) — dark: variants 활성/비활성.
+         다크 페이지 (홈/마이/라이브) 는 bg-[#020202] 명시 강제라 토글 무영향. -->
     <script>
       (function () {
         try {
-          document.documentElement.classList.remove('dark');
-        } catch (e) { /* SSR */ }
+          var m = localStorage.getItem('ur_theme_mode_v1');
+          var dark = m === 'dark' ||
+            ((m === null || m === 'system') &&
+             window.matchMedia &&
+             window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+          else document.documentElement.classList.remove('dark');
+        } catch (e) { /* private mode / SSR */ }
       })();
     </script>
 
