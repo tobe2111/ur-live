@@ -59,12 +59,14 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { console.error('[Cron] pending_orders error:', e) }
 
-  // ── 3. 공동구매: 마감 지난 상품 자동 만료 ──
+  // ── 3. 공동구매: 마감 지난 상품 자동 만료 (6종 카테고리 전체) ──
+  // 🛡️ 2026-05-04: 이전엔 meal_voucher 만 → API request 시점에서도 UPDATE 했지만
+  //   매 요청 100-300ms 추가됐음. cron 으로 통일 + 6종 카테고리 모두 커버.
   try {
     const { meta } = await DB.prepare(`
       UPDATE products
       SET group_buy_status = 'expired', updated_at = datetime('now')
-      WHERE category = 'meal_voucher'
+      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
         AND group_buy_status = 'active'
         AND group_buy_deadline IS NOT NULL
         AND group_buy_deadline < datetime('now')
