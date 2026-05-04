@@ -50,13 +50,13 @@ function ProductCard({ product }: { product: Product }) {
         )}
         <button
           onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}`) }}
-          className="absolute bottom-2 right-2 p-1.5 bg-[#121212]/90 rounded-lg shadow-sm"
+          className="absolute bottom-2 right-2 p-1.5 bg-white/80 dark:bg-[#121212]/90 rounded-lg shadow-sm"
         >
           <ShoppingBag className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300" />
         </button>
       </div>
       <div className="mt-2 px-0.5">
-        <p className="text-[12px] text-gray-100 leading-snug line-clamp-2">
+        <p className="text-[12px] text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">
           {product.name}
         </p>
         <div className="mt-1 flex items-baseline gap-1.5">

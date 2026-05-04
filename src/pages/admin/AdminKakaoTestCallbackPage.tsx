@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 
-const TEST_REST_API_KEY = '594661da7d2be9005172fb9a252f8ca4'
+const TEST_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || ''
 const TEST_REDIRECT_URI = 'https://live.ur-team.com/admin/kakao-test/callback'
 
 export default function AdminKakaoTestCallbackPage() {

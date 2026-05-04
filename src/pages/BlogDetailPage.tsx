@@ -68,7 +68,7 @@ export default function BlogDetailPage() {
               <div key={i} className="overflow-x-auto my-4">
                 <table className="w-full text-sm border-collapse">
                   <thead>
-                    <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#121212] border-b border-gray-200 dark:border-[#2A2A2A] font-semibold text-gray-700 dark:text-gray-200">{h}</th>)}</tr>
+                    <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A1A1A] border-b border-gray-200 dark:border-[#2A2A2A] font-semibold text-gray-700 dark:text-gray-200">{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {rows.map((row, ri) => (
@@ -130,13 +130,13 @@ export default function BlogDetailPage() {
       />
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-6 py-3">
-          <button onClick={() => navigate('/blog')} className="p-2 rounded-full hover:bg-gray-100">
+          <button onClick={() => navigate('/blog')} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <button onClick={() => nativeShare({ title: post.title, url: `https://live.ur-team.com/blog/${post.slug}` })}
-            className="p-2 rounded-full hover:bg-gray-100">
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
             <Share2 className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
         </div>
@@ -148,7 +148,7 @@ export default function BlogDetailPage() {
         {tags.length > 0 && (
           <div className="flex gap-1.5 mb-4">
             {tags.map(t => (
-              <span key={t} className="text-xs bg-pink-50 text-pink-600 px-2.5 py-1 rounded-full font-medium">{t}</span>
+              <span key={t} className="text-xs bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 px-2.5 py-1 rounded-full font-medium">{t}</span>
             ))}
           </div>
         )}
@@ -177,7 +177,7 @@ export default function BlogDetailPage() {
         </div>
 
         {/* CTA */}
-        <div className="mt-12 bg-gradient-to-r from-pink-50 to-orange-50 rounded-2xl p-6 text-center">
+        <div className="mt-12 bg-gradient-to-r from-pink-50 to-orange-50 dark:from-pink-900/20 dark:to-orange-900/20 rounded-2xl p-6 text-center">
           <p className="text-lg font-bold text-gray-900 dark:text-white mb-2">유어딜에서 시작하세요</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">라이브 커머스의 새로운 기준, 수수료 5%</p>
           <div className="flex gap-3 justify-center">

@@ -14,6 +14,7 @@ import { KakaoAuthService } from '../services/KakaoAuthService';
 import { createSessionCookie, clearSessionCookie } from '@/worker/utils/session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 /**
  * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
@@ -538,7 +539,7 @@ kakaoRoutes.get('/sync/callback', async (c) => {
  * POST /api/auth/kakao/callback
  * 카카오 로그인 REST API 콜백
  */
-kakaoRoutes.post('/callback', cors(), async (c) => {
+kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max: 20, windowSec: 60 }), async (c) => {
   const { DB } = c.env;
   
   try {
