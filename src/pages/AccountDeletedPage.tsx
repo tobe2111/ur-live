@@ -18,10 +18,10 @@ export default function AccountDeletedPage() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center px-4">
       <SEO title="계정 삭제 완료" description="계정이 삭제되었습니다" url="/account/deleted" noindex />
       <div className="max-w-md w-full">
-        <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-lg p-8 text-center">
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-lg p-8 text-center">
           {/* 완료 아이콘 */}
           <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
             <CheckCircle className="w-12 h-12 text-green-600" />
@@ -33,7 +33,7 @@ export default function AccountDeletedPage() {
           </h1>
 
           {/* 안내 메시지 */}
-          <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-6 mb-6 text-left">
+          <div className="bg-gray-50 dark:bg-[#1A1A1A] rounded-xl p-6 mb-6 text-left">
             <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed mb-3">
               {t('accountDeleted.thanks')}
             </p>
