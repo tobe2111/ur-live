@@ -16,7 +16,6 @@ import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import { useMyCounts } from './user-profile/useMyCounts'
-import ThemeToggleSection from '@/components/settings/ThemeToggleSection'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -155,8 +154,9 @@ export default function UserProfilePage() {
       {/* v4 활동 InsetGroup — 채팅 이름 (셀러 전환은 상단 이름 옆으로 이동) */}
       <ChatNameSetting />
 
-      {/* 🛡️ 2026-05-02: 화면 테마 토글 — 사용자 요청. 마이페이지에서 직접 노출. */}
-      <ThemeToggleSection />
+      {/* 🛡️ 2026-05-04: 마이페이지는 강제 다크 (bg-[#020202]) → 토글 클릭해도 시각 변화 없어 사용자
+           "버튼 안 먹어" 신고. 토글은 화이트 테마 페이지(쇼핑/결제) 에서만 시각 효과 → /account/settings
+           로 이동. 마이페이지 더보기 메뉴에 "계정 설정" 진입점 이미 존재. */}
 
       {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">

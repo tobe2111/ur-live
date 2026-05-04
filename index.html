@@ -77,21 +77,19 @@
     <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
     <meta property="og:image" content="https://live.ur-team.com/logo.png" />
 
-    <!-- 🛡️ 2026-05-03 (re-enable): 다크 모드 토글 복원 (FOUC 방지).
-         localStorage 'ur_theme_mode_v1' 가 'dark' 이거나 'system' + OS 다크 모드일 때 dark 클래스 추가.
-         이 inline script 가 React 마운트 전에 실행되어 첫 페인트부터 올바른 테마.
-         적용 범위: 화이트 테마 페이지 (쇼핑/결제/상세) — dark: variants 활성/비활성.
-         다크 페이지 (홈/마이/라이브) 는 bg-[#020202] 명시 강제라 토글 무영향. -->
+    <!-- 🛡️ 2026-05-04: FOUC 방지 — 사용자가 명시적으로 'dark' 선택한 경우만 dark class 추가.
+         기본값은 'light' (cart/checkout 등 화이트 테마 페이지 default 라이트).
+         OS prefers-color-scheme 자동 추적 안 함 (이전 사고: OS=다크 사용자 cart 가 의도치 않게 다크).
+         useTheme.ts 의 readMode() default 'light' 와 동일 동작. -->
     <script>
       (function () {
         try {
-          var m = localStorage.getItem('ur_theme_mode_v1');
-          var dark = m === 'dark' ||
-            ((m === null || m === 'system') &&
-             window.matchMedia &&
-             window.matchMedia('(prefers-color-scheme: dark)').matches);
-          if (dark) document.documentElement.classList.add('dark');
-          else document.documentElement.classList.remove('dark');
+          var v = localStorage.getItem('ur_theme_mode_v1');
+          if (v === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
         } catch (e) { /* private mode / SSR */ }
       })();
     </script>

@@ -26,7 +26,10 @@ function readMode(): ThemeMode {
     const v = localStorage.getItem(STORAGE_KEY)
     if (v === 'light' || v === 'dark' || v === 'system') return v
   } catch { /* SSR / private mode */ }
-  return 'system'
+  // 🛡️ 2026-05-04: 사용자 신고 "cart 가 다크로 떠" 후 default 'system' → 'light' 변경.
+  // 이전엔 OS prefers-color-scheme 자동 추적 → OS 다크인 사용자 cart/checkout 이 갑자기 다크로 렌더.
+  // 신규 사용자는 라이트 default, 다크 원하면 /account/settings 에서 명시 선택.
+  return 'light'
 }
 
 function detectSystemTheme(): AppliedTheme {
