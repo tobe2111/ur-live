@@ -202,20 +202,20 @@ export default function GiftClaimPage() {
                 value={postalCode}
                 onChange={e => setPostalCode(e.target.value)}
                 placeholder={t('giftClaim.postalCode')}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0A0A0A]"
               />
               <input
                 value={address}
                 onChange={e => setAddress(e.target.value)}
                 placeholder={t('giftClaim.addressMain')}
                 required
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0A0A0A]"
               />
               <input
                 value={addressDetail}
                 onChange={e => setAddressDetail(e.target.value)}
                 placeholder={t('giftClaim.addressDetail')}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0A0A0A]"
               />
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -224,7 +224,7 @@ export default function GiftClaimPage() {
                   onChange={e => setPhone(e.target.value)}
                   placeholder={t('giftClaim.phone')}
                   type="tel"
-                  className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white"
+                  className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0A0A0A]"
                 />
               </div>
             </div>

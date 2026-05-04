@@ -41,7 +41,7 @@ export default function ReferralIndexPage() {
         {/* 이용 방법 */}
         <section className="mb-8">
           <h3 className="text-[13px] font-bold text-gray-900 dark:text-white mb-3 px-1">이용 방법</h3>
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] divide-y divide-gray-100">
+          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] divide-y divide-gray-100 dark:divide-[#1A1A1A]">
             {[
               {
                 icon: ShoppingBag,

@@ -71,7 +71,7 @@ export default function FAQPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="궁금한 내용을 검색해보세요"
-            className="w-full pl-9 pr-4 py-3 bg-gray-100 dark:bg-[#1A1A1A] rounded-xl text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:bg-white focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all"
+            className="w-full pl-9 pr-4 py-3 bg-gray-100 dark:bg-[#1A1A1A] rounded-xl text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:bg-white dark:focus:bg-[#0A0A0A] focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all"
           />
         </div>
 
