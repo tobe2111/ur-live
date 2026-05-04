@@ -12,7 +12,7 @@ export default function TermsOfServicePage() {
       <SEO title="이용약관 - 유어딜" description="유어딜 서비스 이용약관입니다." url="/terms" />
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />

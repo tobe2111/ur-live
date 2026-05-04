@@ -130,7 +130,7 @@ export default function PointsChargePage() {
       <SEO title="딜 충전 - 유어딜" description="딜 포인트를 충전하세요" url="/points/charge" noindex />
 
       {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button
             onClick={() => navigate(-1)}
@@ -282,7 +282,7 @@ export default function PointsChargePage() {
             <div className="flex gap-2">
               <button
                 onClick={() => { setShowWidget(false); widgetsRef.current = null; orderRef.current = null }}
-                className="w-24 py-3.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 text-[14px] font-bold rounded-full hover:bg-gray-200 transition-colors"
+                className="w-24 py-3.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 text-[14px] font-bold rounded-full hover:bg-gray-200 dark:hover:bg-[#2A2A2A] transition-colors"
               >
                 이전
               </button>

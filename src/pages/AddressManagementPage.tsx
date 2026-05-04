@@ -225,7 +225,7 @@ export default function AddressManagementPage() {
       {/* ✅ UX H15 FIX: Daum Postcode script는 useEffect에서 1회만 로드 */}
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} aria-label={t('address.back')} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -320,14 +320,14 @@ export default function AddressManagementPage() {
                     <button
                       onClick={() => openEditForm(address)}
                       aria-label={t('address.ariaEdit')}
-                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white transition-colors rounded-xl hover:bg-gray-50 dark:bg-[#121212]"
+                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white transition-colors rounded-xl hover:bg-gray-50 dark:hover:bg-[#121212]"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteAddress(address.id)}
                       aria-label={t('address.ariaDelete')}
-                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors rounded-xl hover:bg-gray-50 dark:bg-[#121212]"
+                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors rounded-xl hover:bg-gray-50 dark:hover:bg-[#121212]"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -392,7 +392,7 @@ export default function AddressManagementPage() {
               <button
                 type="button"
                 onClick={() => setShowPostcodePopup(true)}
-                className="px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212] transition-all whitespace-nowrap"
+                className="px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212] transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>
@@ -447,7 +447,7 @@ export default function AddressManagementPage() {
                   className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
                     formData.label === preset
                       ? 'bg-pink-500 text-white border-pink-500'
-                      : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:bg-[#121212]'
+                      : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#121212]'
                   }`}
                 >
                   {preset}
@@ -479,7 +479,7 @@ export default function AddressManagementPage() {
                   className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold border transition-colors ${
                     formData.entry_method === opt.value
                       ? 'bg-pink-50 text-pink-600 border-pink-500'
-                      : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:bg-[#121212]'
+                      : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#121212]'
                   }`}
                 >
                   {opt.label}
@@ -523,7 +523,7 @@ export default function AddressManagementPage() {
                   className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
                     formData.delivery_note === preset
                       ? 'bg-gray-900 text-white border-gray-900'
-                      : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:bg-[#121212]'
+                      : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#121212]'
                   }`}
                 >
                   {preset}
