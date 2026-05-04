@@ -299,20 +299,20 @@ export default function LoginPage() {
 
         {/* Error/Success Messages */}
         {error && (
-          <div className="mb-5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-600 text-center">
+          <div className="mb-5 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 rounded-xl text-[13px] text-red-600 dark:text-red-400 text-center">
             {error}
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-5 px-4 py-3 bg-green-50 border border-green-100 rounded-xl text-[13px] text-green-700 text-center">
+          <div className="mb-5 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/40 rounded-xl text-[13px] text-green-700 dark:text-green-400 text-center">
             {successMessage}
           </div>
         )}
 
         {/* 🛡️ 2026-05-01: ?switch=1 진입 시 안내 — 다른 사람 디바이스에서 본인 계정으로 로그인 */}
         {wantsSwitch && (
-          <div className="mb-5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-[13px] text-blue-700 text-center">
+          <div className="mb-5 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl text-[13px] text-blue-700 dark:text-blue-400 text-center">
             이전 사용자 데이터를 청소했어요. 본인 계정으로 로그인해주세요.
           </div>
         )}

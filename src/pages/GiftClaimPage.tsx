@@ -155,7 +155,7 @@ export default function GiftClaimPage() {
           </div>
 
           {gift.message && (
-            <div className="bg-pink-50 rounded-xl p-4 border border-pink-100">
+            <div className="bg-pink-50 dark:bg-pink-900/20 rounded-xl p-4 border border-pink-100 dark:border-pink-800/40">
               <div className="flex items-center gap-1 text-xs font-bold text-pink-600 mb-2">
                 <Sparkles className="w-3 h-3" /> {t('giftClaim.messageLabel')}
               </div>
@@ -174,7 +174,7 @@ export default function GiftClaimPage() {
         )}
 
         {isPending && (
-          <div className="bg-yellow-50 rounded-2xl p-5 text-center border border-yellow-100">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl p-5 text-center border border-yellow-100 dark:border-yellow-800/40">
             <Loader2 className="w-6 h-6 text-yellow-600 mx-auto mb-2 animate-spin" />
             <p className="text-sm font-semibold text-yellow-800">{t('giftClaim.pendingTitle')}</p>
             <p className="text-xs text-yellow-700 mt-1">{t('giftClaim.pendingHint')}</p>
@@ -182,7 +182,7 @@ export default function GiftClaimPage() {
         )}
 
         {isClaimed && (
-          <div className="bg-green-50 rounded-2xl p-5 text-center border border-green-100">
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-5 text-center border border-green-100 dark:border-green-800/40">
             <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
             <p className="text-sm font-semibold text-green-700">
               {gift.status === 'claimed' && t('giftClaim.statusClaimed')}
