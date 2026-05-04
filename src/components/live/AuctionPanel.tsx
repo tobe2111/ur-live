@@ -122,11 +122,11 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
       <div className="bg-white/20 rounded-xl p-3 mb-3">
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-[10px] text-white/70">현재 최고가</p>
+            <p className="text-[10px] text-gray-900 dark:text-white/70">현재 최고가</p>
             <p className="text-2xl font-bold">{formatNumber(auction.current_price)}원</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-white/70">입찰 {auction.bid_count}회</p>
+            <p className="text-[10px] text-gray-900 dark:text-white/70">입찰 {auction.bid_count}회</p>
             {auction.winner_name && (
               <div className="flex items-center gap-1 text-xs">
                 <Crown className="w-3 h-3 text-yellow-300" />
@@ -174,7 +174,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
       </div>
 
       {/* 최소 입찰 안내 */}
-      <p className="text-[10px] text-white/60 mt-2 text-center">
+      <p className="text-[10px] text-gray-900 dark:text-white/60 mt-2 text-center">
         최소 입찰: {formatNumber(auction.current_price + auction.min_increment)}원 (+{formatNumber(auction.min_increment)}원)
       </p>
     </div>

@@ -37,14 +37,14 @@ export default function OrderStatusBar() {
 
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-3">
-      <p className="text-[12px] font-bold text-white mb-3">주문 현황</p>
-      <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-white/[0.04]">
+      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-3">주문 현황</p>
+      <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-gray-100 dark:bg-white/[0.04]">
         {items.map(o => (
           <button key={o.label} onClick={() => navigate(o.path)} className="flex-1 text-center">
-            <p className={`text-[18px] font-extrabold ${counts[o.key] ? 'text-pink-400' : 'text-white/20'}`} style={{ letterSpacing: '-0.02em' }}>
+            <p className={`text-[18px] font-extrabold ${counts[o.key] ? 'text-pink-400' : 'text-gray-900 dark:text-white/20'}`} style={{ letterSpacing: '-0.02em' }}>
               {counts[o.key] || 0}
             </p>
-            <p className="text-[9px] text-white/55 mt-0.5">{o.label}</p>
+            <p className="text-[9px] text-gray-900 dark:text-white/55 mt-0.5">{o.label}</p>
           </button>
         ))}
       </div>

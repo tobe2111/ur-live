@@ -5,7 +5,7 @@ export default function TopNav() {
   const navigate = useNavigate()
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#020202] border-b border-[#0A0A0A]">
+    <header className="sticky top-0 z-50 w-full bg-white dark:bg-[#020202] border-b border-[#0A0A0A]">
       <div className="flex items-center justify-between h-12 px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-1.5">
@@ -18,16 +18,16 @@ export default function TopNav() {
             {/* Play triangle */}
             <path d="M19.5 13.5v8l6-4z" fill="#EF4444"/>
           </svg>
-          <span className="text-[15px] font-extrabold text-white tracking-tight">유어딜</span>
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜</span>
         </Link>
 
         {/* Right actions */}
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/search')} className="p-1" aria-label="검색">
-            <Search className="h-5 w-5 text-gray-300" strokeWidth={1.5} />
+            <Search className="h-5 w-5 text-gray-700 dark:text-gray-300" strokeWidth={1.5} />
           </button>
           <button onClick={() => navigate('/cart')} className="p-1 relative" aria-label="장바구니">
-            <ShoppingCart className="h-5 w-5 text-gray-300" strokeWidth={1.5} />
+            <ShoppingCart className="h-5 w-5 text-gray-700 dark:text-gray-300" strokeWidth={1.5} />
             {(() => {
               const cartData = localStorage.getItem('cart')
               let count = 0

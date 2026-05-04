@@ -22,10 +22,10 @@ export default function ChatNameSetting() {
 
   return (
     <div className="ur-content-medium px-5 lg:px-8 py-1.5">
-      <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
+      <div className="bg-gray-50 dark:bg-[#121212] rounded-2xl px-5 py-4 border border-gray-200 dark:border-[#2A2A2A]">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-bold text-white">채팅 이름 표시</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white">채팅 이름 표시</p>
             <p className="text-[11px] text-gray-500 mt-0.5">
               라이브 채팅에서 내 이름: <span className="text-pink-400 font-medium">{preview}</span>
             </p>

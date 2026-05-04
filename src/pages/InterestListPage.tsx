@@ -44,16 +44,16 @@ export default function InterestListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020202] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#020202] pb-20">
       <SEO title="관심 맛집 - 유어딜" description="관심 등록한 맛집과 공동구매 알림 목록" url="/interest-list" />
 
       {/* 헤더 */}
-      <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-[#1A1A1A]">
+      <div className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} className="text-white">
+          <button onClick={() => navigate(-1)} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-white font-bold text-[15px]">{t('interestList.title')}</h1>
+          <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">{t('interestList.title')}</h1>
           <div className="w-6" />
         </div>
       </div>
@@ -62,7 +62,7 @@ export default function InterestListPage() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-[#121212] rounded-xl p-4 animate-pulse border border-[#2A2A2A]">
+              <div key={i} className="bg-gray-50 dark:bg-[#121212] rounded-xl p-4 animate-pulse border border-gray-200 dark:border-[#2A2A2A]">
                 <div className="h-4 bg-gray-700 rounded w-2/3 mb-2" />
                 <div className="h-3 bg-gray-700 rounded w-1/3" />
               </div>
@@ -71,7 +71,7 @@ export default function InterestListPage() {
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <Bell className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-300 font-semibold text-[14px]">
+            <p className="text-gray-700 dark:text-gray-300 font-semibold text-[14px]">
               {t('interestList.empty')}
             </p>
             <p className="text-gray-500 text-[12px] mt-1">
@@ -89,14 +89,14 @@ export default function InterestListPage() {
             {items.map(item => (
               <div
                 key={item.id}
-                className="flex items-center justify-between bg-[#121212] rounded-xl px-4 py-3.5 border border-[#2A2A2A]"
+                className="flex items-center justify-between bg-gray-50 dark:bg-[#121212] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2A2A2A]"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-pink-500/10 flex items-center justify-center flex-shrink-0">
                     <Bell className="w-4 h-4 text-pink-400" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-white text-[13px] font-medium truncate">
+                    <p className="text-gray-900 dark:text-white text-[13px] font-medium truncate">
                       {item.restaurant_name || `상품 #${item.product_id}`}
                     </p>
                     <p className="text-gray-500 text-[11px] mt-0.5">

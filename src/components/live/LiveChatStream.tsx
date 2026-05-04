@@ -47,8 +47,8 @@ export default function LiveChatStream({ messages, onChatClick }: LiveChatStream
               </p>
             ) : (
               <p className="text-[11px] leading-[1.3]" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)' }}>
-                <span className="font-bold text-white/90">{msg.userName}</span>
-                <span className="text-white/70"> {msg.message}</span>
+                <span className="font-bold text-gray-900 dark:text-white/90">{msg.userName}</span>
+                <span className="text-gray-900 dark:text-white/70"> {msg.message}</span>
               </p>
             )}
           </div>

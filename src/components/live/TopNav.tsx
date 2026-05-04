@@ -21,11 +21,11 @@ export function TopNav({ viewers, sellerLinks }: {
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 rounded-lg bg-red-500/90 backdrop-blur-sm px-2.5 py-1.5 shadow-lg shadow-red-500/30">
           <span className="h-2 w-2 rounded-full bg-white animate-blink-live" />
-          <span className="text-xs font-extrabold tracking-wider text-white">LIVE</span>
+          <span className="text-xs font-extrabold tracking-wider text-gray-900 dark:text-white">LIVE</span>
         </div>
         <div className="flex items-center gap-1 rounded-lg bg-black/40 backdrop-blur-md px-2.5 py-1.5">
-          <Eye className="h-3.5 w-3.5 text-white/80" />
-          <span className="text-xs font-semibold text-white/90">
+          <Eye className="h-3.5 w-3.5 text-gray-900 dark:text-white/80" />
+          <span className="text-xs font-semibold text-gray-900 dark:text-white/90">
             {formatViewers(viewers)}
           </span>
         </div>
@@ -41,7 +41,7 @@ export function TopNav({ viewers, sellerLinks }: {
               className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-600/80 backdrop-blur-sm hover:bg-red-600 transition-all active:scale-95"
               aria-label="YouTube"
             >
-              <YouTubeIcon className="h-4 w-4 text-white" />
+              <YouTubeIcon className="h-4 w-4 text-gray-900 dark:text-white" />
             </a>
           )}
           {sellerLinks?.instagram && (
@@ -51,7 +51,7 @@ export function TopNav({ viewers, sellerLinks }: {
               className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/80 to-pink-500/80 backdrop-blur-sm hover:from-purple-500 hover:to-pink-500 transition-all active:scale-95"
               aria-label="Instagram"
             >
-              <InstagramIcon className="h-4 w-4 text-white" />
+              <InstagramIcon className="h-4 w-4 text-gray-900 dark:text-white" />
             </a>
           )}
           {sellerLinks?.tiktok && (
@@ -61,7 +61,7 @@ export function TopNav({ viewers, sellerLinks }: {
               className="flex items-center justify-center w-8 h-8 rounded-lg bg-black/80 backdrop-blur-sm hover:bg-black transition-all active:scale-95"
               aria-label="TikTok"
             >
-              <TikTokIcon className="h-4 w-4 text-white" />
+              <TikTokIcon className="h-4 w-4 text-gray-900 dark:text-white" />
             </a>
           )}
         </div>

@@ -16,7 +16,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-red-100 to-pink-100 flex items-center justify-center">
             <Radio className="w-7 h-7 text-red-500" />
           </div>
-          <p className="text-sm text-gray-300 leading-relaxed">
+          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
             등록된 셀러 계정이 있습니다<br />
             <span className="text-gray-500 text-xs">셀러 대시보드로 전환합니다</span>
           </p>
@@ -35,7 +35,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
         {!hasAgencyToken && (
           <button
             onClick={() => { onDone(); navigate('/agency/register/business') }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-[13px] rounded-xl"
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
           >
             에이전시로도 등록하기 →
           </button>
@@ -50,7 +50,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
         <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-red-100 to-pink-100 flex items-center justify-center">
           <Radio className="w-7 h-7 text-red-500" />
         </div>
-        <p className="text-sm text-gray-300 leading-relaxed">
+        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
           지금 카카오 계정에 셀러 권한을 추가합니다<br />
           <span className="text-gray-500 text-xs">별도 가입·로그인 없이 한 번에</span>
         </p>
@@ -67,7 +67,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
       {!hasAgencyToken && (
         <button
           onClick={() => { onDone(); navigate('/agency/register/business') }}
-          className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-[13px] rounded-xl"
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
         >
           에이전시로 등록하기 →
         </button>
@@ -151,12 +151,12 @@ export default function BottomNav() {
         ) : (
           <Icon
             size={22}
-            className={active ? 'text-white' : 'text-gray-500'}
+            className={active ? 'text-gray-900 dark:text-white' : 'text-gray-500'}
             strokeWidth={active ? 2 : 1.5}
           />
         )}
         <span className={`text-[9px] mt-0.5 ${
-          active ? 'font-bold text-white' : 'text-gray-500'
+          active ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-500'
         }`}>
           {label}
         </span>
@@ -170,7 +170,7 @@ export default function BottomNav() {
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[9999] pointer-events-none hide-on-keyboard lg:hidden">
         <div className="pointer-events-auto">
           <nav
-            className="bg-[#020202] border-t border-[#0A0A0A]"
+            className="bg-white dark:bg-[#020202] border-t border-[#0A0A0A]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <div className="flex items-center h-14">
@@ -183,7 +183,7 @@ export default function BottomNav() {
                   className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-500 shadow-lg shadow-red-500/30 active:scale-90 transition-transform"
                   aria-label="라이브 시작"
                 >
-                  <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
+                  <Plus className="w-6 h-6 text-gray-900 dark:text-white" strokeWidth={2.5} />
                 </button>
               </div>
 
@@ -206,7 +206,7 @@ export default function BottomNav() {
           <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[10001] animate-sheet-up">
             <div>
               <div
-                className="bg-[#121212] rounded-t-3xl"
+                className="bg-gray-50 dark:bg-[#121212] rounded-t-3xl"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
               >
                 {/* Handle */}
@@ -217,7 +217,7 @@ export default function BottomNav() {
                 <div className="px-6 pb-6">
                   {/* Close */}
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-white">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                       {/* 🛡️ 2026-05-01: linked seller 있는 user 는 "전환" 으로 안내 (등록 X) */}
                       {isSeller
                         ? '라이브 방송'
@@ -242,11 +242,11 @@ export default function BottomNav() {
                         className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Radio className="w-6 h-6 text-white" />
+                          <Radio className="w-6 h-6 text-gray-900 dark:text-white" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">라이브 방송 시작하기</p>
-                          <p className="text-[12px] text-white/70 mt-0.5">YouTube 연동으로 바로 방송 시작</p>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">라이브 방송 시작하기</p>
+                          <p className="text-[12px] text-gray-900 dark:text-white/70 mt-0.5">YouTube 연동으로 바로 방송 시작</p>
                         </div>
                       </button>
 
@@ -255,23 +255,23 @@ export default function BottomNav() {
                         className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Utensils className="w-6 h-6 text-white" />
+                          <Utensils className="w-6 h-6 text-gray-900 dark:text-white" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">식사권 상품 등록</p>
-                          <p className="text-[12px] text-white/80 mt-0.5">맛집 식사권을 공구 상품으로 올리기</p>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">식사권 상품 등록</p>
+                          <p className="text-[12px] text-gray-900 dark:text-white/80 mt-0.5">맛집 식사권을 공구 상품으로 올리기</p>
                         </div>
                       </button>
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller') }}
-                        className="w-full flex items-center gap-4 p-4 bg-[#1A1A1A] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gray-100 dark:bg-[#1A1A1A] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-[#333] flex items-center justify-center">
                           <LayoutDashboard className="w-6 h-6 text-gray-600" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">셀러 대시보드</p>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">셀러 대시보드</p>
                           <p className="text-[12px] text-gray-500 mt-0.5">상품 관리, 주문, 매출 확인</p>
                         </div>
                       </button>
@@ -282,13 +282,13 @@ export default function BottomNav() {
                   {isSeller && isAgency && (
                     <button
                       onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                      className="w-full mt-2 flex items-center gap-3 p-3 bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
+                      className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
                     >
                       <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
                         <span className="text-lg">💼</span>
                       </div>
                       <div className="text-left flex-1">
-                        <p className="text-[13px] font-bold text-white">에이전시 대시보드</p>
+                        <p className="text-[13px] font-bold text-gray-900 dark:text-white">에이전시 대시보드</p>
                         <p className="text-[11px] text-gray-500 mt-0.5">소속 셀러 관리</p>
                       </div>
                     </button>
@@ -305,8 +305,8 @@ export default function BottomNav() {
                           <span className="text-xl">💼</span>
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">에이전시 대시보드</p>
-                          <p className="text-[12px] text-white/70 mt-0.5">소속 셀러 관리, 계약, 정산</p>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">에이전시 대시보드</p>
+                          <p className="text-[12px] text-gray-900 dark:text-white/70 mt-0.5">소속 셀러 관리, 계약, 정산</p>
                         </div>
                       </button>
                     </div>
@@ -322,7 +322,7 @@ export default function BottomNav() {
                   {/* Not logged in — 셀러 전용 */}
                   {!isLoggedIn && (
                     <div className="space-y-3">
-                      <p className="text-sm text-gray-400 mb-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                         셀러 계정으로 로그인하세요.
                       </p>
 
@@ -336,7 +336,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/register') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#1A1A1A] text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <UserPlus className="w-5 h-5" />
                         셀러 회원가입

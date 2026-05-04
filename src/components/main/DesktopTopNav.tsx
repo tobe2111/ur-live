@@ -9,7 +9,7 @@
  *   - 라이브 시작 버튼은 + 아이콘 → "라이브 시작" CTA 텍스트
  *
  * 디자인:
- *   - bg-[#020202] (다크), 좌측 로고, 중앙 메뉴, 우측 검색·알림·장바구니
+ *   - bg-white dark:bg-[#020202] (다크), 좌측 로고, 중앙 메뉴, 우측 검색·알림·장바구니
  *   - active 항목은 핑크 underline + bold
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
@@ -70,15 +70,15 @@ export default function DesktopTopNav() {
   }
 
   return (
-    <header className="hidden lg:block xl:hidden sticky top-0 z-40 bg-[#020202]/95 backdrop-blur-md border-b border-[#1A1A1A]">
+    <header className="hidden lg:block xl:hidden sticky top-0 z-40 bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
       <div className="ur-content-wide flex items-center gap-6 px-6 lg:px-8 h-14">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-1.5 shrink-0">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-            <Play className="h-3.5 w-3.5 text-white fill-white" />
+            <Play className="h-3.5 w-3.5 text-gray-900 dark:text-white fill-white" />
           </div>
           <span
-            className="text-[16px] font-extrabold text-white"
+            className="text-[16px] font-extrabold text-gray-900 dark:text-white"
             style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}
           >
             UR·DEAL
@@ -97,8 +97,8 @@ export default function DesktopTopNav() {
                 aria-current={active ? 'page' : undefined}
                 className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
                   active
-                    ? 'text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
+                    ? 'text-gray-900 dark:text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-white hover:bg-gray-200 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${active ? 'text-pink-400' : ''}`} strokeWidth={active ? 2 : 1.5} />
@@ -116,7 +116,7 @@ export default function DesktopTopNav() {
           <button
             onClick={() => navigate('/search')}
             aria-label={t('liveList.ariaSearch', { defaultValue: '검색' })}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/[0.06] text-gray-300 hover:text-white"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-white"
           >
             <Search className="w-5 h-5" strokeWidth={1.75} />
           </button>
@@ -127,7 +127,7 @@ export default function DesktopTopNav() {
                 ? t('mainHome.ariaNotificationsCount', { count: unreadCount })
                 : t('mainHome.ariaNotifications')
             }
-            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/[0.06] text-gray-300 hover:text-white"
+            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-white"
           >
             <Bell className="w-5 h-5" strokeWidth={1.75} />
             {unreadCount > 0 && (
@@ -139,7 +139,7 @@ export default function DesktopTopNav() {
           <button
             onClick={() => navigate('/cart')}
             aria-label={t('liveList.ariaCart', { defaultValue: '장바구니' })}
-            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/[0.06] text-gray-300 hover:text-white"
+            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-white"
           >
             <ShoppingCart className="w-5 h-5" strokeWidth={1.75} />
             {cartCount > 0 && (
@@ -151,8 +151,8 @@ export default function DesktopTopNav() {
           <button
             onClick={() => navigate('/user/profile')}
             aria-label={t('nav.my', { defaultValue: '마이' })}
-            className={`w-9 h-9 flex items-center justify-center rounded-full text-gray-300 hover:text-white hover:bg-white/[0.06] ${
-              isActivePath('/user/profile') ? 'bg-white/[0.08] text-white' : ''
+            className={`w-9 h-9 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:text-white hover:bg-gray-200 dark:hover:bg-white/[0.06] ${
+              isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
             }`}
           >
             <User className="w-5 h-5" strokeWidth={1.75} />

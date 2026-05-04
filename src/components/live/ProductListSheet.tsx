@@ -64,7 +64,7 @@ export function ProductListSheet({
             </div>
           ) : safeProducts.length === 0 ? (
             <div className="text-center py-12">
-              <ShoppingBag className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <ShoppingBag className="h-12 w-12 mx-auto text-gray-700 dark:text-gray-300 mb-3" />
               <p className="text-gray-500">등록된 상품이 없습니다</p>
             </div>
           ) : (
@@ -99,7 +99,7 @@ export function ProductListSheet({
                     {isCurrentProduct && !isOutOfStock && (
                       <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-red-600 px-2.5 py-1 rounded-full shadow-lg">
                         <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                        <span className="text-white font-bold text-[10px] tracking-wider">LIVE</span>
+                        <span className="text-gray-900 dark:text-white font-bold text-[10px] tracking-wider">LIVE</span>
                       </div>
                     )}
 
@@ -137,7 +137,7 @@ export function ProductListSheet({
                           ₩{formatNumber(product.price || 0)}
                         </span>
                         {product.original_price && product.original_price > product.price && (
-                          <span className="text-sm text-gray-400 line-through">
+                          <span className="text-sm text-gray-500 dark:text-gray-400 line-through">
                             ₩{formatNumber(product.original_price)}
                           </span>
                         )}

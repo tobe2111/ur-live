@@ -47,7 +47,7 @@ export function TeamPointsBadge({ streamId }: TeamPointsBadgeProps) {
     <div className="flex flex-col gap-1 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md min-w-[100px]">
       <div className="flex items-center gap-1.5">
         <span className="text-xs">🎁</span>
-        <span className="text-[11px] font-bold text-white/90">
+        <span className="text-[11px] font-bold text-gray-900 dark:text-white/90">
           {formatNumber(donated)}/{formatNumber(DONATION_GOAL)}딜
         </span>
       </div>

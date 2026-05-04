@@ -13,27 +13,27 @@ export default function CouponVoucherStats({ counts }: { counts: MyCounts }) {
         <button
           type="button"
           onClick={() => navigate('/my-coupons')}
-          className="rounded-2xl px-4 py-3.5 bg-white/[0.04] active:bg-white/[0.08] transition-colors text-left"
+          className="rounded-2xl px-4 py-3.5 bg-gray-100 dark:bg-white/[0.04] active:bg-white/[0.08] transition-colors text-left"
         >
-          <p className="text-[10px] text-white/55">쿠폰</p>
+          <p className="text-[10px] text-gray-900 dark:text-white/55">쿠폰</p>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-[20px] font-extrabold text-white" style={{ letterSpacing: '-0.02em' }}>
+            <span className="text-[20px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.02em' }}>
               {counts.coupon ?? '-'}
             </span>
-            <span className="text-[11px] text-white/55">장</span>
+            <span className="text-[11px] text-gray-900 dark:text-white/55">장</span>
           </div>
         </button>
         <button
           type="button"
           onClick={() => navigate('/my-vouchers')}
-          className="rounded-2xl px-4 py-3.5 bg-white/[0.04] active:bg-white/[0.08] transition-colors text-left"
+          className="rounded-2xl px-4 py-3.5 bg-gray-100 dark:bg-white/[0.04] active:bg-white/[0.08] transition-colors text-left"
         >
-          <p className="text-[10px] text-white/55">바우처</p>
+          <p className="text-[10px] text-gray-900 dark:text-white/55">바우처</p>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-[20px] font-extrabold text-white" style={{ letterSpacing: '-0.02em' }}>
+            <span className="text-[20px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.02em' }}>
               {counts.voucher ?? '-'}
             </span>
-            <span className="text-[11px] text-white/55">장</span>
+            <span className="text-[11px] text-gray-900 dark:text-white/55">장</span>
           </div>
         </button>
       </div>

@@ -54,7 +54,7 @@ export default function SupporterRanking({ sellerId, compact = false }: Props) {
           )
         })}
         {stats.supporter_count > 3 && (
-          <span className="text-[10px] text-gray-400">+{stats.supporter_count - 3}</span>
+          <span className="text-[10px] text-gray-500 dark:text-gray-400">+{stats.supporter_count - 3}</span>
         )}
       </div>
     )
@@ -81,7 +81,7 @@ export default function SupporterRanking({ sellerId, compact = false }: Props) {
 
       {/* 랭킹 리스트 */}
       {supporters.length === 0 ? (
-        <div className="text-center py-8 text-gray-400 text-sm">
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
           아직 서포터가 없습니다
         </div>
       ) : (
@@ -96,20 +96,20 @@ export default function SupporterRanking({ sellerId, compact = false }: Props) {
                   {BadgeIcon ? (
                     <BadgeIcon className={`w-4 h-4 ${badge.color}`} />
                   ) : (
-                    <span className="text-xs font-bold text-gray-400">{s.rank}</span>
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{s.rank}</span>
                   )}
                 </div>
 
                 {/* 이름 */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{s.donor_name}</p>
-                  <p className="text-[10px] text-gray-400">{s.donation_count}회 후원</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">{s.donation_count}회 후원</p>
                 </div>
 
                 {/* 총액 */}
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-pink-500">{formatNumber(s.total_amount)}</p>
-                  <p className="text-[10px] text-gray-400">딜</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">딜</p>
                 </div>
               </div>
             )

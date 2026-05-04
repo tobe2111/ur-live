@@ -309,8 +309,8 @@ export default function LivePageV2() {
               <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
             </div>
           </div>
-          <div className="text-white text-xl font-bold">라이브 입장 중...</div>
-          <div className="text-white/60 text-sm">잠시만 기다려주세요</div>
+          <div className="text-gray-900 dark:text-white text-xl font-bold">라이브 입장 중...</div>
+          <div className="text-gray-900 dark:text-white/60 text-sm">잠시만 기다려주세요</div>
         </div>
       </div>
     )
@@ -321,10 +321,10 @@ export default function LivePageV2() {
     return (
       <div className="absolute inset-0 bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="text-white text-xl mb-2">진행 중인 라이브가 없습니다</div>
+          <div className="text-gray-900 dark:text-white text-xl mb-2">진행 중인 라이브가 없습니다</div>
           <button
             onClick={() => navigate('/')}
-            className="mt-4 px-6 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors"
+            className="mt-4 px-6 py-2 bg-white/20 text-gray-900 dark:text-white rounded-lg hover:bg-white/30 transition-colors"
           >
             홈으로 돌아가기
           </button>
@@ -345,7 +345,7 @@ export default function LivePageV2() {
               <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
             </div>
           </div>
-          <div className="text-white text-xl font-bold">라이브 준비 중...</div>
+          <div className="text-gray-900 dark:text-white text-xl font-bold">라이브 준비 중...</div>
         </div>
       </div>
     )

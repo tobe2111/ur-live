@@ -31,13 +31,13 @@ export default function TeamPointsCard() {
       <button
         type="button"
         onClick={() => navigate('/points/charge')}
-        className="w-full text-left flex items-center justify-between bg-[#121212] rounded-2xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all border border-[#2A2A2A]"
+        className="w-full text-left flex items-center justify-between bg-gray-50 dark:bg-[#121212] rounded-2xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all border border-gray-200 dark:border-[#2A2A2A]"
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">🎁</span>
           <div>
             <p className="text-[11px] text-gray-500 font-medium">내 딜 잔액</p>
-            <p className="text-lg font-bold text-white">
+            <p className="text-lg font-bold text-gray-900 dark:text-white">
               {loading ? <span className="inline-block w-16 h-5 bg-gray-700 rounded animate-pulse" /> : `${formatNumber(balance)}딜`}
             </p>
           </div>

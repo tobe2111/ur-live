@@ -17,8 +17,8 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
 
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <p className="text-[12px] font-bold text-white mb-2">쇼핑</p>
-      <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
+      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">쇼핑</p>
+      <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
         {items.map((item, i) => (
           <button
             key={item.label}
@@ -29,13 +29,13 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
           >
             <span className="text-lg" aria-hidden="true">{item.icon}</span>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] text-white font-medium">{item.label}</p>
-              {item.sub && <p className="text-[10px] text-white/45 mt-0.5">{item.sub}</p>}
+              <p className="text-[13px] text-gray-900 dark:text-white font-medium">{item.label}</p>
+              {item.sub && <p className="text-[10px] text-gray-900 dark:text-white/45 mt-0.5">{item.sub}</p>}
             </div>
             {item.count !== undefined && item.count !== null && (
-              <span className="text-[12px] text-white/55 font-semibold">{item.count}</span>
+              <span className="text-[12px] text-gray-900 dark:text-white/55 font-semibold">{item.count}</span>
             )}
-            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
+            <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
           </button>
         ))}
       </div>

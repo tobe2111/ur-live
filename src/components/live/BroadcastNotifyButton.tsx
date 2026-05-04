@@ -137,7 +137,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
           className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all active:scale-95 ${
             subscribed
               ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
-              : 'bg-white/10 text-white border border-white/20'
+              : 'bg-white/10 text-gray-900 dark:text-white border border-white/20'
           }`}
         >
           {subscribed ? '🔔 알림 ON' : '🔔 알림'}
@@ -161,7 +161,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
         className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.97] ${
           subscribed
             ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
-            : 'bg-white/15 text-white border border-white/20'
+            : 'bg-white/15 text-gray-900 dark:text-white border border-white/20'
         }`}
       >
         {loading ? '처리 중...' : subscribed ? '🔔 알림 설정됨' : '🔔 방송 알림 받기'}

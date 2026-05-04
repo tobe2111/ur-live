@@ -84,7 +84,7 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
         </div>
         <button
           onClick={onToggle}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-gray-500 dark:text-gray-400 hover:text-gray-600 transition-colors"
         >
           <X size={20} />
         </button>
@@ -93,7 +93,7 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
       {/* 메시지 목록 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[500px]">
         {messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400">
+          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
             <div className="text-center">
               <MessageCircle size={48} className="mx-auto mb-2 opacity-50" />
               <p>첫 번째 메시지를 남겨보세요!</p>
@@ -112,7 +112,7 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
                       {maskUserName(msg.username)}
                     </span>
                     {msg.timestamp && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         {new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
                           hour: '2-digit',
                           minute: '2-digit'

@@ -175,7 +175,7 @@ export default function LiveNow() {
           </h3>
           <span className="flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-            <span className="text-[10px] font-bold text-white uppercase">
+            <span className="text-[10px] font-bold text-gray-900 dark:text-white uppercase">
               Live
             </span>
           </span>
@@ -225,29 +225,29 @@ export default function LiveNow() {
               {/* LIVE badge */}
               <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-sm">
                 <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                <span className="text-[10px] font-bold text-white uppercase">
+                <span className="text-[10px] font-bold text-gray-900 dark:text-white uppercase">
                   Live
                 </span>
               </div>
 
               {/* Viewers */}
               <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 px-1.5 py-0.5 rounded-sm">
-                <Eye className="h-3 w-3 text-white" strokeWidth={2} />
-                <span className="text-[10px] font-semibold text-white">
+                <Eye className="h-3 w-3 text-gray-900 dark:text-white" strokeWidth={2} />
+                <span className="text-[10px] font-semibold text-gray-900 dark:text-white">
                   {formatViewers(stream.viewer_count)}
                 </span>
               </div>
 
               {/* Bottom info */}
               <div className="absolute bottom-0 left-0 right-0 p-2.5">
-                <p className="text-xs font-bold text-white leading-tight line-clamp-1">
+                <p className="text-xs font-bold text-gray-900 dark:text-white leading-tight line-clamp-1">
                   {stream.title}
                 </p>
-                <p className="text-[10px] text-white/70 mt-0.5">
+                <p className="text-[10px] text-gray-900 dark:text-white/70 mt-0.5">
                   @{stream.seller_name || 'seller'}
                 </p>
                 {stream.current_product && (
-                  <p className="text-sm font-extrabold text-white mt-1">
+                  <p className="text-sm font-extrabold text-gray-900 dark:text-white mt-1">
                     ₩{formatNumber(stream.current_product.price)}
                   </p>
                 )}

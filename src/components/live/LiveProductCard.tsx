@@ -89,7 +89,7 @@ export const LiveProductCard = React.memo(function LiveProductCard({
         {/* 가격 */}
         <div className="mb-3">
           {product.originalPrice && product.originalPrice > product.price && (
-            <div className="text-sm text-gray-400 line-through">
+            <div className="text-sm text-gray-500 dark:text-gray-400 line-through">
               {formatPrice(product.originalPrice)}원
             </div>
           )}
@@ -113,7 +113,7 @@ export const LiveProductCard = React.memo(function LiveProductCard({
         <button
           onClick={() => onAddToCart(product.id)}
           disabled={isAddingToCart || isOutOfStock}
-          className={`w-full py-3 rounded-lg font-bold text-white flex items-center justify-center gap-2 transition-colors ${
+          className={`w-full py-3 rounded-lg font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2 transition-colors ${
             isOutOfStock
               ? 'bg-gray-300 cursor-not-allowed'
               : isAddingToCart

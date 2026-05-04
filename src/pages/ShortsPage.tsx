@@ -292,12 +292,12 @@ export default function ShortsPage() {
                     {item.seller_avatar ? (
                       <img src={item.seller_avatar} alt={t('shortsPage.altSellerProfile', { name: item.seller_name || t('shortsPage.fallbackSeller') })} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     ) : (
-                      <span className="text-[10px] font-bold text-white">{(item.seller_name || '?').charAt(0)}</span>
+                      <span className="text-[10px] font-bold text-gray-900 dark:text-white">{(item.seller_name || '?').charAt(0)}</span>
                     )}
                   </div>
                   <div className="text-left">
-                    <p className="text-white text-[12px] font-bold leading-tight">{item.seller_name || t('shortsPage.fallbackSeller')}</p>
-                    <p className="text-white/60 text-[10px] leading-tight">{item.view_count || 0} 조회</p>
+                    <p className="text-gray-900 dark:text-white text-[12px] font-bold leading-tight">{item.seller_name || t('shortsPage.fallbackSeller')}</p>
+                    <p className="text-gray-900 dark:text-white/60 text-[10px] leading-tight">{item.view_count || 0} 조회</p>
                   </div>
                 </button>
 
@@ -310,10 +310,10 @@ export default function ShortsPage() {
                     팔로우
                   </button>
                   <button onClick={() => setMuted(!muted)} aria-label={muted ? t('shortsPage.ariaUnmute') : t('shortsPage.ariaMute')} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
-                    {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
+                    {muted ? <VolumeX className="w-4 h-4 text-gray-900 dark:text-white" /> : <Volume2 className="w-4 h-4 text-gray-900 dark:text-white" />}
                   </button>
                   <button onClick={() => navigate(-1)} aria-label={t('shortsPage.ariaClose')} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
-                    <X className="w-4 h-4 text-white" />
+                    <X className="w-4 h-4 text-gray-900 dark:text-white" />
                   </button>
                 </div>
               </div>
@@ -338,7 +338,7 @@ export default function ShortsPage() {
                   ))}
                   {remainingCount > 0 && (
                     <div className="w-12 h-7 rounded-lg bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                      <span className="text-white text-[10px] font-bold">+{remainingCount}</span>
+                      <span className="text-gray-900 dark:text-white text-[10px] font-bold">+{remainingCount}</span>
                     </div>
                   )}
                 </div>
@@ -349,17 +349,17 @@ export default function ShortsPage() {
                 {/* Like */}
                 <button onClick={() => handleLike(item)} className="flex flex-col items-center gap-1">
                   <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
-                    <Heart className="w-5 h-5 text-white" />
+                    <Heart className="w-5 h-5 text-gray-900 dark:text-white" />
                   </div>
-                  <span className="text-[10px] text-white font-medium">{item.like_count || 0}</span>
+                  <span className="text-[10px] text-gray-900 dark:text-white font-medium">{item.like_count || 0}</span>
                 </button>
 
                 {/* Comment */}
                 <button onClick={() => toast.info(t('common.comingSoon'))} className="flex flex-col items-center gap-1">
                   <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
-                    <MessageCircle className="w-5 h-5 text-white" />
+                    <MessageCircle className="w-5 h-5 text-gray-900 dark:text-white" />
                   </div>
-                  <span className="text-[10px] text-white font-medium">댓글</span>
+                  <span className="text-[10px] text-gray-900 dark:text-white font-medium">댓글</span>
                 </button>
 
                 {/* Share (Kakao) */}
@@ -374,9 +374,9 @@ export default function ShortsPage() {
                 {/* Wishlist */}
                 <button onClick={() => toast.info(t('common.comingSoon'))} className="flex flex-col items-center gap-1">
                   <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
-                    <Bookmark className="w-5 h-5 text-white" />
+                    <Bookmark className="w-5 h-5 text-gray-900 dark:text-white" />
                   </div>
-                  <span className="text-[10px] text-white font-medium">저장</span>
+                  <span className="text-[10px] text-gray-900 dark:text-white font-medium">저장</span>
                 </button>
               </div>
 
@@ -390,17 +390,17 @@ export default function ShortsPage() {
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 bg-white rounded-full animate-pulse" />
-                      <span className="text-xs font-bold text-white">LIVE</span>
+                      <span className="text-xs font-bold text-gray-900 dark:text-white">LIVE</span>
                     </div>
-                    <span className="text-xs text-white/80 flex-1 text-left">{t('shorts.toLive')}</span>
+                    <span className="text-xs text-gray-900 dark:text-white/80 flex-1 text-left">{t('shorts.toLive')}</span>
                     {item.viewer_count != null && item.viewer_count > 0 && (
-                      <span className="text-[10px] text-white/70">{item.viewer_count}명 시청</span>
+                      <span className="text-[10px] text-gray-900 dark:text-white/70">{item.viewer_count}명 시청</span>
                     )}
                   </button>
                 )}
 
                 {/* Title */}
-                <p className="text-white text-[15px] font-semibold leading-snug line-clamp-2 mb-2.5 drop-shadow-lg">
+                <p className="text-gray-900 dark:text-white text-[15px] font-semibold leading-snug line-clamp-2 mb-2.5 drop-shadow-lg">
                   {item.title}
                 </p>
 
@@ -409,7 +409,7 @@ export default function ShortsPage() {
                   {hashtags.map((tag, i) => (
                     <span
                       key={i}
-                      className="px-3 py-1 rounded-full bg-white/[0.18] backdrop-blur-sm text-white text-[11px] font-medium"
+                      className="px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.18] backdrop-blur-sm text-gray-900 dark:text-white text-[11px] font-medium"
                     >
                       {tag}
                     </span>
@@ -448,7 +448,7 @@ export default function ShortsPage() {
                           <img src={item.product_image} alt={item.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                            <ShoppingCart className="w-6 h-6 text-gray-300" />
+                            <ShoppingCart className="w-6 h-6 text-gray-700 dark:text-gray-300" />
                           </div>
                         )}
                         {discountRate > 0 && (
@@ -525,8 +525,8 @@ export default function ShortsPage() {
 
               {/* === SWIPE HINT === */}
               <div className="absolute bottom-3 left-0 right-0 z-20 flex flex-col items-center gap-1">
-                <ChevronUp className="w-4 h-4 text-white/50 animate-bounce" />
-                <span className="text-[11px] text-white/40 font-medium">{t('shorts.swipeNext')}</span>
+                <ChevronUp className="w-4 h-4 text-gray-900 dark:text-white/50 animate-bounce" />
+                <span className="text-[11px] text-gray-900 dark:text-white/40 font-medium">{t('shorts.swipeNext')}</span>
               </div>
             </div>
           )

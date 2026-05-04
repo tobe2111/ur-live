@@ -122,7 +122,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
 
   return (
     <div className="fixed inset-x-0 bottom-24 z-[60] flex justify-center px-4 animate-in slide-in-from-bottom duration-300">
-      <div className={`w-full max-w-md ${containerGradient} rounded-2xl p-4 text-white shadow-2xl relative overflow-hidden`}>
+      <div className={`w-full max-w-md ${containerGradient} rounded-2xl p-4 text-gray-900 dark:text-white shadow-2xl relative overflow-hidden`}>
         {/* 배경 효과 */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full" />
@@ -134,7 +134,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               {isGroupBuy ? (
-                <Users className="w-5 h-5 text-white" />
+                <Users className="w-5 h-5 text-gray-900 dark:text-white" />
               ) : (
                 <Zap className="w-5 h-5 text-yellow-300 fill-yellow-300" />
               )}
@@ -150,7 +150,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
           <p className="text-sm font-semibold line-clamp-1 mb-1">{deal.product_name}</p>
 
           <div className="flex items-end gap-2 mb-2">
-            <span className="text-[10px] line-through text-white/60">{formatNumber(deal.original_price)}원</span>
+            <span className="text-[10px] line-through text-gray-900 dark:text-white/60">{formatNumber(deal.original_price)}원</span>
             <span className="text-xl font-bold">{formatNumber(isGroupBuy ? effectivePrice : deal.deal_price)}원</span>
             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isGroupBuy ? 'bg-white text-pink-600' : 'bg-yellow-400 text-red-700'}`}>
               -{isGroupBuy ? effectiveDiscount : deal.discount_percent}%
@@ -160,7 +160,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
           {/* 진행 바: 공구 vs 타임딜 */}
           {isGroupBuy ? (
             <div className="mb-3">
-              <div className="flex items-center justify-between text-[11px] text-white/90 mb-1">
+              <div className="flex items-center justify-between text-[11px] text-gray-900 dark:text-white/90 mb-1">
                 <div className="flex items-center gap-1 font-semibold">
                   <Users className="w-3 h-3" />
                   <span>{currentParticipants}/{targetParticipants}명 참여중</span>
@@ -179,7 +179,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
                     🎉 목표 달성! {effectiveDiscount}% 할인 적용!
                   </span>
                 ) : (
-                  <span className="text-white/90 flex items-center gap-1">
+                  <span className="text-gray-900 dark:text-white/90 flex items-center gap-1">
                     <Gift className="w-3 h-3" />
                     {needMore}명 더 모이면 -{bonusDiscount}% 추가 할인!
                   </span>
@@ -188,7 +188,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
             </div>
           ) : (
             <div className="mb-3">
-              <div className="flex justify-between text-[10px] text-white/70 mb-1">
+              <div className="flex justify-between text-[10px] text-gray-900 dark:text-white/70 mb-1">
                 <span>남은 수량 {remaining}개</span>
                 <span>{deal.claimed_count}/{deal.max_claims}</span>
               </div>

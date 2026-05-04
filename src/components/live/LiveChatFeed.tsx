@@ -74,12 +74,12 @@ export function LiveChat({
               }}
             >
               <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-white/90 bg-white/20 px-1.5 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-gray-900 dark:text-white/90 bg-white/20 px-1.5 py-0.5 rounded-full">
                   🎙 셀러
                 </span>
-                <span className="text-[10px] font-bold text-white">{msg.userName}</span>
+                <span className="text-[10px] font-bold text-gray-900 dark:text-white">{msg.userName}</span>
               </div>
-              <p className="text-[12px] leading-[1.4] text-white font-medium">
+              <p className="text-[12px] leading-[1.4] text-gray-900 dark:text-white font-medium">
                 {msg.message}
               </p>
             </div>
@@ -110,8 +110,8 @@ export function LiveChat({
               textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)',
             }}
           >
-            <span className="font-bold text-white/90">{msg.userName}</span>
-            <span className="text-white/70"> {msg.message}</span>
+            <span className="font-bold text-gray-900 dark:text-white/90">{msg.userName}</span>
+            <span className="text-gray-900 dark:text-white/70"> {msg.message}</span>
           </p>
         )
       })}

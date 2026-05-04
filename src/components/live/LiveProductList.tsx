@@ -33,7 +33,7 @@ export const LiveProductList = React.memo(function LiveProductList({
   if (products.length === 0) {
     return (
       <div className={`bg-white p-8 text-center ${className}`}>
-        <div className="text-gray-400 mb-2">
+        <div className="text-gray-500 dark:text-gray-400 mb-2">
           <svg
             className="mx-auto h-16 w-16"
             fill="none"

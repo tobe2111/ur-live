@@ -71,7 +71,7 @@ export default function HeroBanner() {
           onClick={() => navigate('/browse')}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 flex items-center justify-center">
-            <div className="text-center text-white px-6">
+            <div className="text-center text-gray-900 dark:text-white px-6">
               <h2 className="text-2xl sm:text-4xl font-bold mb-2">UR LIVE</h2>
               <p className="text-sm sm:text-lg opacity-80">라이브 쇼핑의 새로운 경험</p>
             </div>
@@ -105,7 +105,7 @@ export default function HeroBanner() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
             {banner.description && (
               <div className="absolute bottom-8 left-6 right-6 sm:bottom-10 sm:left-10">
-                <p className="text-white text-base sm:text-xl font-bold drop-shadow-lg line-clamp-2">
+                <p className="text-gray-900 dark:text-white text-base sm:text-xl font-bold drop-shadow-lg line-clamp-2">
                   {banner.description}
                 </p>
               </div>
@@ -142,7 +142,7 @@ export default function HeroBanner() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                   {banner.description && (
                     <div className="absolute bottom-8 left-6 right-6 sm:bottom-10 sm:left-10">
-                      <p className="text-white text-base sm:text-xl font-bold drop-shadow-lg line-clamp-2">
+                      <p className="text-gray-900 dark:text-white text-base sm:text-xl font-bold drop-shadow-lg line-clamp-2">
                         {banner.description}
                       </p>
                     </div>
@@ -178,7 +178,7 @@ export default function HeroBanner() {
             onClick={() => emblaApi?.scrollTo(idx)}
             className={`rounded-full transition-all duration-300 ${
               idx === selectedIndex
-                ? 'w-5 h-1.5 bg-[#121212]'
+                ? 'w-5 h-1.5 bg-gray-50 dark:bg-[#121212]'
                 : 'w-1.5 h-1.5 bg-[#121212]/50 hover:bg-[#121212]/80'
             }`}
             aria-label={`배너 ${idx + 1}`}

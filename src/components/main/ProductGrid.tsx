@@ -29,7 +29,7 @@ function ProductCard({ product }: { product: Product }) {
       onClick={() => navigate(`/products/${product.id}`)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/products/${product.id}`) } }}
     >
-      <div className="relative aspect-square overflow-hidden bg-[#1A1A1A] rounded-xl">
+      <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -40,7 +40,7 @@ function ProductCard({ product }: { product: Product }) {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-            <span className="text-gray-400 text-xs">No Image</span>
+            <span className="text-gray-500 dark:text-gray-400 text-xs">No Image</span>
           </div>
         )}
         {discountRate > 0 && (
@@ -52,7 +52,7 @@ function ProductCard({ product }: { product: Product }) {
           onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}`) }}
           className="absolute bottom-2 right-2 p-1.5 bg-[#121212]/90 rounded-lg shadow-sm"
         >
-          <ShoppingBag className="h-3.5 w-3.5 text-gray-300" />
+          <ShoppingBag className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300" />
         </button>
       </div>
       <div className="mt-2 px-0.5">
@@ -63,12 +63,12 @@ function ProductCard({ product }: { product: Product }) {
           {discountRate > 0 && (
             <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
           )}
-          <span className="text-[13px] font-extrabold text-white">
+          <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
             {formatNumber(product.price)}원
           </span>
         </div>
         {product.original_price && product.original_price > product.price && (
-          <span className="text-[11px] text-gray-400 line-through">
+          <span className="text-[11px] text-gray-500 dark:text-gray-400 line-through">
             {formatNumber(product.original_price)}원
           </span>
         )}
@@ -99,9 +99,9 @@ export default function ProductGrid() {
         <div className="grid grid-cols-3 gap-3">
           {[...Array(6)].map((_, i) => (
             <div key={i}>
-              <div className="aspect-square bg-[#1A1A1A] animate-pulse rounded-xl" />
-              <div className="mt-2 h-3 bg-[#1A1A1A] animate-pulse rounded w-full" />
-              <div className="mt-1 h-3 bg-[#1A1A1A] animate-pulse rounded w-2/3" />
+              <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
+              <div className="mt-2 h-3 bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded w-full" />
+              <div className="mt-1 h-3 bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded w-2/3" />
             </div>
           ))}
         </div>
@@ -113,8 +113,8 @@ export default function ProductGrid() {
     <section className="px-4 py-5">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-[16px] font-extrabold text-white">UR 특가 🔥</h3>
-          <p className="text-[11px] text-gray-400 mt-0.5">지금 가장 인기있는 상품</p>
+          <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">UR 특가 🔥</h3>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">지금 가장 인기있는 상품</p>
         </div>
         <a href="/browse" className="flex items-center text-[12px] text-gray-500 font-medium">
           전체보기 <ChevronRight className="w-3.5 h-3.5" />

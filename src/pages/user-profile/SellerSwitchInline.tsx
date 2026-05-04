@@ -95,7 +95,7 @@ export default function SellerSwitchInline() {
       <button
         onClick={() => setShowModal(true)}
         aria-label="셀러로 활동하기"
-        className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-white/[0.08] border border-white/[0.12] text-[10px] text-white/85 font-semibold active:scale-95 transition-all"
+        className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-gray-100 dark:bg-white/[0.08] border border-white/[0.12] text-[10px] text-gray-900 dark:text-white/85 font-semibold active:scale-95 transition-all"
       >
         <Store className="w-2.5 h-2.5" aria-hidden="true" /> 셀러로 활동하기
       </button>

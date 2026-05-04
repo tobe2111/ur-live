@@ -65,29 +65,29 @@ function AppVersionSection() {
 
   return (
     <div className="mb-2">
-      <p className="text-[12px] font-bold text-white mb-2 px-1">{t('accountSettings.appInfo')}</p>
-      <div className="rounded-2xl overflow-hidden bg-white/[0.04]">
+      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2 px-1">{t('accountSettings.appInfo')}</p>
+      <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
         <div className="flex items-center justify-between px-4 py-3.5">
-          <span className="text-[13px] text-white/75">{t('accountSettings.currentVersion')}</span>
-          <span className="text-[12px] font-medium text-white">v{APP_VERSION}</span>
+          <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.currentVersion')}</span>
+          <span className="text-[12px] font-medium text-gray-900 dark:text-white">v{APP_VERSION}</span>
         </div>
         {BUILD_HASH && (
           <div className="flex items-center justify-between px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <span className="text-[13px] text-white/75">{t('accountSettings.build')}</span>
-            <span className="text-[11px] font-mono text-white/55">{BUILD_HASH}</span>
+            <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.build')}</span>
+            <span className="text-[11px] font-mono text-gray-900 dark:text-white/55">{BUILD_HASH}</span>
           </div>
         )}
         <div className="flex items-center justify-between px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <span className="text-[13px] text-white/75">{t('accountSettings.checkLatest')}</span>
+          <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.checkLatest')}</span>
           {loading ? (
-            <span className="flex items-center gap-1.5 text-[12px] text-white/45">
+            <span className="flex items-center gap-1.5 text-[12px] text-gray-900 dark:text-white/45">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> 확인 중
             </span>
           ) : !serverVersion ? (
             <button
               type="button"
               onClick={handleCheck}
-              className="flex items-center gap-1 text-[12px] text-white/55 hover:text-white transition-colors"
+              className="flex items-center gap-1 text-[12px] text-gray-900 dark:text-white/55 hover:text-white transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
               다시 시도
@@ -108,7 +108,7 @@ function AppVersionSection() {
             <button
               type="button"
               onClick={handleCheck}
-              className="flex items-center gap-1 text-[12px] text-white/55 hover:text-white transition-colors"
+              className="flex items-center gap-1 text-[12px] text-gray-900 dark:text-white/55 hover:text-white transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
               확인
@@ -184,7 +184,7 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020202] pb-7">
+    <div className="min-h-screen bg-white dark:bg-[#020202] pb-7">
       <SEO
         title={t('accountSettings.seoTitle')}
         description={t('accountSettings.seoDesc')}
@@ -194,8 +194,8 @@ export default function AccountSettingsPage() {
       {/* 🛡️ 2026-04-30 v4 Wallet sticky chrome */}
       <div className="sticky top-0 z-50" style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(84,84,88,0.34)' }}>
         <div className="ur-content-narrow flex items-center px-2 lg:px-8 py-3 gap-1">
-          <button type="button" onClick={() => navigate(-1)} aria-label={t('accountSettings.back')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.06]">
-            <ChevronLeft className="w-4 h-4 text-white" aria-hidden="true" />
+          <button type="button" onClick={() => navigate(-1)} aria-label={t('accountSettings.back')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06]">
+            <ChevronLeft className="w-4 h-4 text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -209,8 +209,8 @@ export default function AccountSettingsPage() {
         {/* 프로필 카드 (v4 그라데이션 톤) */}
         <div className="rounded-2xl p-5 mb-5 relative" style={{ background: 'radial-gradient(ellipse at top, rgba(236,72,153,0.18), transparent 70%), rgba(255,255,255,0.04)' }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[15px] font-bold text-white">{t('accountSettings.myProfile')}</h2>
-            <button type="button" onClick={openEdit} aria-label={t('accountSettings.editProfileAria')} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.08] text-[11px] font-semibold text-white/80 hover:bg-white/[0.12] transition-colors">
+            <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('accountSettings.myProfile')}</h2>
+            <button type="button" onClick={openEdit} aria-label={t('accountSettings.editProfileAria')} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/[0.08] text-[11px] font-semibold text-gray-900 dark:text-white/80 hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
               <Edit className="w-3 h-3" aria-hidden="true" />수정
             </button>
           </div>
@@ -220,11 +220,11 @@ export default function AccountSettingsPage() {
               { icon: <Mail className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: t('accountSettings.labelEmail'), value: user.email },
               { icon: <Phone className="w-4 h-4 text-pink-400" aria-hidden="true" />, label: t('accountSettings.labelPhone'), value: user.phone || t('accountSettings.phoneNotRegistered') },
             ].map(({ icon, label, value }) => (
-              <div key={label} className="flex items-center gap-3 bg-white/[0.04] rounded-xl px-3 py-2.5">
+              <div key={label} className="flex items-center gap-3 bg-gray-100 dark:bg-white/[0.04] rounded-xl px-3 py-2.5">
                 {icon}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-white/45">{label}</p>
-                  <p className="text-[13px] font-medium text-white truncate">{value}</p>
+                  <p className="text-[10px] text-gray-900 dark:text-white/45">{label}</p>
+                  <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{value}</p>
                 </div>
               </div>
             ))}
@@ -241,38 +241,38 @@ export default function AccountSettingsPage() {
 
         <Section title={t('accountSettings.sectionPaymentShipping')}>
           <Link to="/mypage/addresses" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
-            <MapPin className="w-4 h-4 text-white/55" aria-hidden="true" />
-            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.addresses')}</span>
-            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
+            <MapPin className="w-4 h-4 text-gray-900 dark:text-white/55" aria-hidden="true" />
+            <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.addresses')}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
           </Link>
           <Item icon={<CreditCard className="w-4 h-4" aria-hidden="true" />} label={t('accountSettings.paymentMethod')} onClick={() => toast.info(t('accountSettings.preparingFeature'))} badge={t('accountSettings.comingSoonBadge')} />
         </Section>
 
         <Section title={t('accountSettings.sectionOther')}>
           <div className="flex items-center gap-3 px-3.5 py-3">
-            <Globe className="w-4 h-4 text-white/55" aria-hidden="true" />
-            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.language')}</span>
-            <span className="text-[12px] text-white/45">{t('accountSettings.menu.languageValue')}</span>
+            <Globe className="w-4 h-4 text-gray-900 dark:text-white/55" aria-hidden="true" />
+            <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.language')}</span>
+            <span className="text-[12px] text-gray-900 dark:text-white/45">{t('accountSettings.menu.languageValue')}</span>
           </div>
           <Link to="/faq" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <HelpCircle className="w-4 h-4 text-white/55" aria-hidden="true" />
-            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.support')}</span>
-            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
+            <HelpCircle className="w-4 h-4 text-gray-900 dark:text-white/55" aria-hidden="true" />
+            <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.support')}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
           </Link>
         </Section>
 
         <Section title={t('accountSettings.sectionPolicies')}>
           <Link to="/privacy" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
-            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.privacy')}</span>
-            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
+            <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.privacy')}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
           </Link>
           <Link to="/terms" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.terms')}</span>
-            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
+            <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.terms')}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
           </Link>
           <Link to="/refund" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <span className="flex-1 text-[13px] text-white">{t('accountSettings.menu.refund')}</span>
-            <ChevronRight className="w-3.5 h-3.5 text-white/30" aria-hidden="true" />
+            <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.refund')}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
           </Link>
         </Section>
 
@@ -296,7 +296,7 @@ export default function AccountSettingsPage() {
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('accountSettings.modalEditAria')}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-gray-900">{t('accountSettings.editProfile')}</h3>
-              <button onClick={() => setEditModal(false)}><X className="w-5 h-5 text-gray-400" /></button>
+              <button onClick={() => setEditModal(false)}><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
             </div>
             <div className="space-y-4">
               <div>
@@ -339,8 +339,8 @@ export default function AccountSettingsPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <p className="text-[12px] font-bold text-white mb-2 px-1">{title}</p>
-      <div className="rounded-2xl overflow-hidden bg-white/[0.04]">{children}</div>
+      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2 px-1">{title}</p>
+      <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">{children}</div>
     </div>
   );
 }
@@ -348,10 +348,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Item({ icon, label, onClick, badge }: { icon: React.ReactNode; label: string; onClick: () => void; badge?: string }) {
   return (
     <button type="button" onClick={onClick} className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors text-left" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-      <span className="text-white/55">{icon}</span>
-      <span className="flex-1 text-[13px] text-white">{label}</span>
-      {badge && <span className="text-[10px] bg-white/[0.08] text-white/55 px-2 py-0.5 rounded-full">{badge}</span>}
-      <ChevronRight className="w-3.5 h-3.5 text-white/30 flex-shrink-0" aria-hidden="true" />
+      <span className="text-gray-900 dark:text-white/55">{icon}</span>
+      <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{label}</span>
+      {badge && <span className="text-[10px] bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white/55 px-2 py-0.5 rounded-full">{badge}</span>}
+      <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30 flex-shrink-0" aria-hidden="true" />
     </button>
   );
 }
@@ -363,14 +363,14 @@ function ToggleItem({ icon, label, value, onChange }: { icon: React.ReactNode; l
   const { t } = useTranslation();
   return (
     <div className="flex items-center gap-3 px-3.5 py-3" style={{ borderTop: 'var(--toggle-border, none)' }}>
-      <span className="text-white/55">{icon}</span>
-      <span className="flex-1 text-[13px] text-white">{label}</span>
+      <span className="text-gray-900 dark:text-white/55">{icon}</span>
+      <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{label}</span>
       <button
         type="button"
         onClick={onChange}
         aria-label={value ? t('accountSettings.ariaToggleOff', { label }) : t('accountSettings.ariaToggleOn', { label })}
         aria-pressed={value}
-        className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-pink-500' : 'bg-white/[0.15]'}`}
+        className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-pink-500' : 'bg-gray-100 dark:bg-white/[0.15]'}`}
       >
         <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
       </button>

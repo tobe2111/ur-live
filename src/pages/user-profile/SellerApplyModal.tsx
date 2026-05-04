@@ -66,26 +66,26 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
     >
       <div
         ref={dialogRef}
-        className="w-full max-w-[430px] bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8 max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-[430px] bg-gray-50 dark:bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="셀러 전환 신청"
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold text-white">셀러로 활동하기</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">셀러로 활동하기</h2>
           <button onClick={onClose} aria-label="닫기" className="p-1 rounded-full hover:bg-white/10">
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
-        <p className="text-xs text-gray-400 mb-5">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">
           현재 계정으로 셀러 활동을 시작하세요. 관리자 승인 후 셀러 대시보드에 접근할 수 있습니다.
         </p>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">셀러 유형</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">셀러 유형</label>
             <div className="grid grid-cols-3 gap-2">
               {sellerTypes.map(t => (
                 <button
@@ -95,7 +95,7 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
                   className={`py-2.5 px-2 rounded-xl text-center transition-all ${
                     form.seller_type === t.value
                       ? 'bg-pink-500/20 border border-pink-500/50 text-pink-400'
-                      : 'bg-[#1A1A1A] border border-[#2A2A2A] text-gray-400'
+                      : 'bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400'
                   }`}
                 >
                   <p className="text-[11px] font-bold">{t.label}</p>
@@ -106,54 +106,54 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">사업자명 (상호) *</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">사업자명 (상호) *</label>
             <input
               value={form.business_name}
               onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))}
-              className="w-full px-3.5 py-2.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl text-sm text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
               placeholder="예: 유어딜 스튜디오"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">사업자번호 *</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">사업자번호 *</label>
             <input
               value={form.business_number}
               onChange={e => setForm(f => ({ ...f, business_number: e.target.value }))}
-              className="w-full px-3.5 py-2.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl text-sm text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
               placeholder="123-45-67890"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">연락처 *</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">연락처 *</label>
             <input
               value={form.phone}
               onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-              className="w-full px-3.5 py-2.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl text-sm text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
               placeholder="010-1234-5678"
             />
           </div>
 
           {form.seller_type !== 'store_owner' && (
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">유튜브 구글 이메일</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">유튜브 구글 이메일</label>
               <input
                 value={form.youtube_email}
                 onChange={e => setForm(f => ({ ...f, youtube_email: e.target.value }))}
-                className="w-full px-3.5 py-2.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl text-sm text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
+                className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
                 placeholder="라이브 방송에 사용할 구글 계정"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">소개 (선택)</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">소개 (선택)</label>
             <textarea
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2}
-              className="w-full px-3.5 py-2.5 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl text-sm text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none resize-none"
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none resize-none"
               placeholder="채널 소개나 매장 설명을 간단히 적어주세요"
             />
           </div>
