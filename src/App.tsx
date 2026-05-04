@@ -427,6 +427,7 @@ function AppContent() {
           <ScrollToTop />
           <PushNotificationSetup />
           <main id="main-content">
+          <ErrorBoundary>
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
@@ -1009,6 +1010,7 @@ function AppContent() {
             <Route path="/500" element={<ServerErrorPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </ErrorBoundary>
           </main>
           </div>
           {!hideBottomNav && <BottomNav />}
