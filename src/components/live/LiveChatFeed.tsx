@@ -70,6 +70,7 @@ export function LiveChat({
               style={{
                 background: 'linear-gradient(135deg, rgba(99,102,241,0.85) 0%, rgba(168,85,247,0.85) 100%)',
                 backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
                 boxShadow: '0 2px 12px rgba(99,102,241,0.4)',
               }}
             >
