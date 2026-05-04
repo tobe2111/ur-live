@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
@@ -41,6 +42,7 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 }
 
 export default function AgencyPromoteBoostsPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<Boost[]>([])
   const [sellers, setSellers] = useState<Seller[]>([])
   const [loading, setLoading] = useState(true)

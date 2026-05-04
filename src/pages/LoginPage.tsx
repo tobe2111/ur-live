@@ -67,7 +67,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-  const [kakaoReady, setKakaoReady] = useState(false)
   const [showEmailLogin, setShowEmailLogin] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -111,54 +110,35 @@ export default function LoginPage() {
     }
   }, [isLoggedIn, navigate, wantsSwitch])
 
-  // ✅ Kakao SDK 초기화 및 returnUrl 저장 (KR만)
+  // ✅ returnUrl 저장 (KR만)
+  // 🛡️ 2026-05-04: Kakao SDK pre-load 제거 — 로그인은 server-side OAuth redirect 만 사용해 SDK 불필요.
+  //   iOS Safari 가 외부 t1.kakaocdn.net 스크립트 로드 중 메모리 압박으로 freeze 되는 사례 회피.
   useEffect(() => {
     const urlParam = searchParams.get('returnUrl')
     if (urlParam) {
       sessionStorage.setItem('returnUrl', urlParam)
     }
-
-    if (!isKR) return
-
-    import('@/lib/kakao-sdk').then(({ ensureKakaoSdk }) => {
-      ensureKakaoSdk()
-        .then(() => setKakaoReady(true))
-        .catch((e) => { if (import.meta.env.DEV) console.error('[LoginPage] Kakao SDK init failed:', e) })
-    })
-  }, [searchParams, isKR])
+  }, [searchParams])
 
   // ✅ Kakao 로그인 핸들러
-  async function handleKakaoLogin() {
-    if (!kakaoReady) {
-      toast.error(t('auth.kakaoSdkNotReady'))
-      return
-    }
-
-    setLoading(true)
-    setError('')
-
+  // 🛡️ 2026-05-04 (iOS Safari fix): SDK ready gate + state update 제거 →
+  //   navigation 즉시 실행. 이전: setLoading/setError → React re-render → iOS Safari 가
+  //   navigation 을 큐잉하고 freeze. 카카오 로그인은 server-side OAuth redirect 만 사용 →
+  //   Kakao JS SDK 불필요. 동기 navigation 으로 단순화.
+  function handleKakaoLogin() {
     try {
-      // 🛡️ 2026-05-01: Firebase 100% 제거 — 항상 server-side OAuth redirect 만 사용.
-      //   기존엔 Kakao SDK accessToken 이 있으면 /api/auth/kakao/firebase 로 우회했지만,
-      //   Firebase 의존성을 완전히 제거하기 위해 server-side flow 로 통일.
-      //   /auth/kakao/start → 카카오 authorize → /auth/kakao/callback → 세션 쿠키 발급.
       const rawReturnUrl = searchParams.get('returnUrl')
         || sessionStorage.getItem('returnUrl')
         || '/'
       const currentReturnUrl = safeInternalPath(rawReturnUrl, '/')
       const params = new URLSearchParams({ redirect: currentReturnUrl })
-      // 🛡️ 2026-05-01: ?switch=1 진입 (다른 계정 전환) 시 prompt=login 강제로 전달 →
-      //   Kakao 가 매번 인증 화면 표시 (silent auto-approve 차단).
-      //   일반 로그인은 빠른 흐름 유지.
       if (wantsSwitch) {
         params.set('force_account', '1')
       }
       window.location.href = `/auth/kakao/start?${params.toString()}`
-
     } catch (err: unknown) {
       if (import.meta.env.DEV) console.error('[Kakao Login] ❌ 오류 발생:', err)
-      setError(t('auth.kakaoLoginError'))
-      setLoading(false)
+      toast.error(t('auth.kakaoLoginError'))
     }
   }
 
@@ -327,7 +307,7 @@ export default function LoginPage() {
                 onClick={() => {
                   handleKakaoLogin()
                 }}
-                disabled={loading || !kakaoReady}
+                disabled={loading}
                 className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 border border-[#F5DC00]"
               >
                 {loading ? (
