@@ -195,7 +195,7 @@ export default function LiveListPage() {
                       {getThumb(s) ? (
                         <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #1A1A1A, #0A0A0A)' }} />
+                        <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
                       )}
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.6), transparent 30%, transparent 60%, rgba(0,0,0,0.85))' }} />
                       <div className="absolute top-3 left-3 flex items-center gap-1.5">
@@ -204,7 +204,7 @@ export default function LiveListPage() {
                           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#fff' }}>LIVE</span>
                         </div>
                         <div className="rounded-full px-2 py-1 inline-flex items-center gap-1" style={glass.statsChip}>
-                          <Eye className="w-2.5 h-2.5 text-gray-900 dark:text-white/85" />
+                          <Eye className="w-2.5 h-2.5 text-white/85" />
                           <span style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{formatCount(s.viewer_count ?? 0)}</span>
                         </div>
                       </div>
@@ -251,7 +251,7 @@ export default function LiveListPage() {
                         {getThumb(s) ? (
                           <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #1A1A1A, #0A0A0A)' }} />
+                          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0 text-left">
@@ -300,7 +300,7 @@ export default function LiveListPage() {
                       {getThumb(s) ? (
                         <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" style={{ filter: 'brightness(0.8) saturate(0.9)' }} />
                       ) : (
-                        <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #1A1A1A, #0A0A0A)' }} />
+                        <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
                       )}
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="rounded-full flex items-center justify-center"
@@ -312,7 +312,7 @@ export default function LiveListPage() {
                             border: '1px solid rgba(255,255,255,0.30)',
                             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(0,0,0,0.35)',
                           }}>
-                          <Play className="w-[18px] h-[18px] text-gray-900 dark:text-white" fill="currentColor" style={{ marginLeft: 2 }} />
+                          <Play className="w-[18px] h-[18px] text-white" fill="currentColor" style={{ marginLeft: 2 }} />
                         </div>
                       </div>
                       <div className="absolute top-2 right-2 rounded-full px-2 py-1"
@@ -422,8 +422,8 @@ function StreamCard({ stream, type, onClick, getThumb }: {
         {thumb ? (
           <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-            <Play className="w-7 h-7 text-gray-700" />
+          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
+            <Play className="w-7 h-7 text-gray-400 dark:text-gray-700" />
           </div>
         )}
 
@@ -433,43 +433,43 @@ function StreamCard({ stream, type, onClick, getThumb }: {
         {type === 'live' && (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-1.5 py-0.5 rounded shadow-md">
             <span className="h-1 w-1 bg-white rounded-full animate-pulse" />
-            <span className="text-[9px] font-extrabold text-gray-900 dark:text-white tracking-wide">LIVE</span>
+            <span className="text-[9px] font-extrabold text-white tracking-wide">LIVE</span>
           </div>
         )}
         {type === 'scheduled' && (
           <div className="absolute top-2 left-2 bg-blue-500 px-1.5 py-0.5 rounded">
-            <span className="text-[9px] font-extrabold text-gray-900 dark:text-white">예정</span>
+            <span className="text-[9px] font-extrabold text-white">예정</span>
           </div>
         )}
         {type === 'ended' && (
           <div className="absolute top-2 left-2 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-            <Play className="h-2.5 w-2.5 text-gray-900 dark:text-white" fill="currentColor" />
-            <span className="text-[9px] font-bold text-gray-900 dark:text-white">다시보기</span>
+            <Play className="h-2.5 w-2.5 text-white" fill="currentColor" />
+            <span className="text-[9px] font-bold text-white">다시보기</span>
           </div>
         )}
 
         {/* Viewers (live) or Views (ended) */}
         {type === 'live' && stream.viewer_count !== undefined && (
           <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-            <Eye className="h-2.5 w-2.5 text-gray-900 dark:text-white" />
-            <span className="text-[9px] text-gray-900 dark:text-white font-bold">{formatCount(stream.viewer_count)}</span>
+            <Eye className="h-2.5 w-2.5 text-white" />
+            <span className="text-[9px] text-white font-bold">{formatCount(stream.viewer_count)}</span>
           </div>
         )}
         {type === 'ended' && stream.total_views !== undefined && (
           <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-            <Eye className="h-2.5 w-2.5 text-gray-900 dark:text-white" />
-            <span className="text-[9px] text-gray-900 dark:text-white font-bold">{formatCount(stream.total_views)}</span>
+            <Eye className="h-2.5 w-2.5 text-white" />
+            <span className="text-[9px] text-white font-bold">{formatCount(stream.total_views)}</span>
           </div>
         )}
 
         {/* Bottom info */}
         <div className="absolute bottom-0 left-0 right-0 p-2.5">
           {stream.seller_name && (
-            <p className="text-[9px] text-gray-900 dark:text-white/60 font-semibold mb-0.5 line-clamp-1">
+            <p className="text-[9px] text-white/60 font-semibold mb-0.5 line-clamp-1">
               @{stream.seller_name}
             </p>
           )}
-          <p className="text-[11px] font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight">
+          <p className="text-[11px] font-bold text-white line-clamp-2 leading-tight">
             {stream.title}
           </p>
           {type === 'scheduled' && schedDate && (
@@ -478,7 +478,7 @@ function StreamCard({ stream, type, onClick, getThumb }: {
             </p>
           )}
           {type === 'ended' && timeAgo && (
-            <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
+            <p className="text-[9px] text-white/60 mt-0.5 font-medium">
               {timeAgo}
             </p>
           )}
