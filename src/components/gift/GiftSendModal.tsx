@@ -90,66 +90,66 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
     >
       <div
         ref={dialogRef}
-        className="bg-white w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#0A0A0A] w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={`${productName} 선물 보내기`}
       >
         {/* 헤더 */}
-        <div className="sticky top-0 bg-white px-5 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 z-10">
+        <div className="sticky top-0 bg-white dark:bg-[#0A0A0A] px-5 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A] z-10">
           <div className="flex items-center gap-2">
             <Gift className="w-5 h-5 text-pink-500" />
-            <h2 className="font-bold text-gray-900">선물하기</h2>
+            <h2 className="font-bold text-gray-900 dark:text-white">선물하기</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full">
-            <X className="w-5 h-5 text-gray-600" />
+            <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* 상품 미리보기 */}
-          <div className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+          <div className="flex gap-3 p-3 bg-gray-50 dark:bg-[#121212] rounded-xl">
             {productThumbnail ? (
               <img src={productThumbnail} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" loading="lazy" />
             ) : (
-              <div className="w-14 h-14 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-                <Gift className="w-6 h-6 text-gray-300" />
+              <div className="w-14 h-14 rounded-lg bg-white dark:bg-[#0A0A0A] flex items-center justify-center flex-shrink-0">
+                <Gift className="w-6 h-6 text-gray-300 dark:text-gray-600" />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm truncate">{productName}</p>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{productName}</p>
               <p className="text-pink-500 font-bold text-sm mt-0.5">{formatNumber(productPrice)}원</p>
             </div>
           </div>
 
           {/* 수신자 정보 */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5">받는 사람 휴대폰 *</label>
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5">받는 사람 휴대폰 *</label>
             <input
               value={recipientPhone}
               onChange={e => setRecipientPhone(e.target.value)}
               placeholder="010-1234-5678"
               type="tel"
               required
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
             />
-            <p className="text-[10px] text-gray-400 mt-1">카카오톡 알림으로 선물 링크가 발송됩니다</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">카카오톡 알림으로 선물 링크가 발송됩니다</p>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5">받는 사람 이름 (선택)</label>
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5">받는 사람 이름 (선택)</label>
             <input
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
               placeholder={t('gift.placeholders.recipientName')}
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
             />
           </div>
 
           {/* 메시지 */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1">
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-pink-500" /> 메시지 (선택)
             </label>
             <textarea
@@ -158,10 +158,10 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               placeholder={t('gift.placeholders.message')}
               rows={3}
               maxLength={MAX_MESSAGE}
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300 resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300 resize-none"
             />
             <div className="flex justify-end mt-1">
-              <span className={`text-[10px] ${message.length > MAX_MESSAGE ? 'text-red-500' : 'text-gray-400'}`}>
+              <span className={`text-[10px] ${message.length > MAX_MESSAGE ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
                 {message.length}/{MAX_MESSAGE}
               </span>
             </div>

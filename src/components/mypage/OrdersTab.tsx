@@ -22,7 +22,7 @@ const StatusButton = ({
     className={`px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-colors border ${
       active
         ? 'bg-gray-900 text-white border-gray-900'
-        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+        : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50'
     }`}
   >
     {label}
@@ -45,7 +45,7 @@ const getStatusBadge = (status: string) => {
     case 'preparing':
       return { cls: 'bg-amber-50 text-amber-700 border border-amber-100', label: '상품준비중' }
     default:
-      return { cls: 'bg-gray-50 text-gray-700 border border-gray-200', label: '결제완료' }
+      return { cls: 'bg-gray-50 dark:bg-[#121212] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A2A2A]', label: '결제완료' }
   }
 }
 
@@ -114,7 +114,7 @@ function Stepper({
             <div className="flex flex-col items-center flex-1 min-w-0">
               <div
                 className={`w-5 h-5 rounded-full flex items-center justify-center mb-1 ${
-                  done ? doneBg : 'bg-gray-200'
+                  done ? doneBg : 'bg-gray-200 dark:bg-[#2A2A2A]'
                 }`}
                 aria-hidden="true"
               >
@@ -126,7 +126,7 @@ function Stepper({
               </div>
               <span
                 className={`text-[10px] font-semibold text-center leading-tight ${
-                  done ? doneText : 'text-gray-400'
+                  done ? doneText : 'text-gray-400 dark:text-gray-500'
                 }`}
               >
                 {step.label}
@@ -135,7 +135,7 @@ function Stepper({
             {!isLast && (
               <div
                 className={`h-[2px] flex-1 mx-1 rounded-full -mt-[14px] ${
-                  stepNum < currentIdx ? doneLine : 'bg-gray-200'
+                  stepNum < currentIdx ? doneLine : 'bg-gray-200 dark:bg-[#2A2A2A]'
                 }`}
                 aria-hidden="true"
               />
@@ -213,12 +213,12 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
 
       {/* 주문 목록 */}
       {filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5">
-            <Package className="h-10 w-10 text-gray-400" strokeWidth={1.5} />
+        <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-12 text-center">
+          <div className="w-20 h-20 bg-gray-50 dark:bg-[#121212] rounded-full flex items-center justify-center mx-auto mb-5">
+            <Package className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
           </div>
-          <h2 className="text-[18px] font-bold text-gray-900 mb-2">주문 내역이 없습니다</h2>
-          <p className="text-[14px] text-gray-500 mb-6">라이브에서 마음에 드는 상품을 구매해보세요</p>
+          <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">주문 내역이 없습니다</h2>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6">라이브에서 마음에 드는 상품을 구매해보세요</p>
           <Link
             to="/"
             className="inline-flex items-center justify-center px-6 py-3 bg-gray-900 text-white text-[14px] font-semibold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
@@ -240,13 +240,13 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
             return (
               <article
                 key={order.id}
-                className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden"
               >
                 {/* 헤더: 주문일 + 상태 */}
                 <div className="flex items-center justify-between px-4 pt-4 pb-3">
                   <div className="min-w-0">
-                    <p className="text-[12px] text-gray-500">{dateStr}</p>
-                    <p className="text-[13px] font-semibold text-gray-900 mt-0.5 truncate">
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400">{dateStr}</p>
+                    <p className="text-[13px] font-semibold text-gray-900 dark:text-white mt-0.5 truncate">
                       #{orderNum}
                     </p>
                   </div>
@@ -267,29 +267,29 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                 <div className="px-4 pb-3 space-y-2">
                   {order.items?.slice(0, 2).map((item, idx) => (
                     <div key={idx} className="py-0.5">
-                      <p className="text-[14px] font-medium text-gray-900 line-clamp-1">
+                      <p className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-1">
                         {item.product_name}
                       </p>
-                      <p className="text-[12px] text-gray-500 mt-0.5">
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
                         {item.option_value && <span>{item.option_value} · </span>}
                         {item.quantity}개 · {formatNumber(item.price_snapshot * item.quantity)}원
                       </p>
                     </div>
                   ))}
                   {order.items && order.items.length > 2 && (
-                    <p className="text-[12px] text-gray-500">외 {order.items.length - 2}개</p>
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400">외 {order.items.length - 2}개</p>
                   )}
                 </div>
 
                 {/* 배송지 + 송장 */}
-                <div className="mx-4 mb-4 p-3 bg-gray-50 rounded-xl">
+                <div className="mx-4 mb-4 p-3 bg-gray-50 dark:bg-[#121212] rounded-xl">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <MapPin className="h-3.5 w-3.5 text-gray-500" strokeWidth={2} />
-                    <span className="text-[13px] font-semibold text-gray-900">
+                    <MapPin className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" strokeWidth={2} />
+                    <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
                       {order.shipping_name ?? '-'}
                     </span>
                   </div>
-                  <p className="text-[12px] text-gray-600 pl-5 line-clamp-2">
+                  <p className="text-[12px] text-gray-600 dark:text-gray-300 pl-5 line-clamp-2">
                     {(() => {
                       const addr = order.shipping_address
                       if (typeof addr === 'object' && addr !== null) {
@@ -301,12 +301,12 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                   </p>
 
                   {order.courier && order.tracking_number && (
-                    <div className="mt-2.5 pt-2.5 border-t border-gray-200 flex items-center justify-between">
+                    <div className="mt-2.5 pt-2.5 border-t border-gray-200 dark:border-[#2A2A2A] flex items-center justify-between">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <Truck className="h-3.5 w-3.5 text-blue-500 shrink-0" strokeWidth={2} />
                         <div className="text-[12px] min-w-0 truncate">
-                          <span className="text-gray-500">{order.courier} · </span>
-                          <span className="font-semibold text-gray-900">{order.tracking_number}</span>
+                          <span className="text-gray-500 dark:text-gray-400">{order.courier} · </span>
+                          <span className="font-semibold text-gray-900 dark:text-white">{order.tracking_number}</span>
                         </div>
                       </div>
                       <a
@@ -322,18 +322,18 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                 </div>
 
                 {/* 하단: 금액 + 액션 */}
-                <div className="px-4 pb-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                <div className="px-4 pb-4 flex items-center justify-between border-t border-gray-100 dark:border-[#1A1A1A] pt-3">
                   <div>
-                    <p className="text-[11px] text-gray-500 mb-0.5">결제금액</p>
-                    <p className="text-[17px] font-extrabold text-gray-900">
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">결제금액</p>
+                    <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">
                       {formatNumber(order.total_amount ?? order.amount ?? 0)}
-                      <span className="text-[13px] font-semibold text-gray-600 ml-0.5">원</span>
+                      <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">원</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleSellerContact(order)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors"
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-full hover:bg-gray-50 transition-colors"
                       aria-label="판매자 문의"
                     >
                       <MessageCircle className="h-3 w-3" strokeWidth={2} />
@@ -342,7 +342,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                     {canCancel && (
                       <button
                         onClick={() => onCancelOrder(order.id, orderNum)}
-                        className="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 bg-white border border-red-100 rounded-full hover:bg-red-50 transition-colors"
+                        className="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#0A0A0A] border border-red-100 rounded-full hover:bg-red-50 transition-colors"
                       >
                         취소
                       </button>
@@ -357,7 +357,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                     )}
                     <button
                       onClick={() => onSelectOrder(order)}
-                      className="flex items-center text-[13px] font-bold text-gray-900 hover:text-gray-700 transition-colors ml-0.5"
+                      className="flex items-center text-[13px] font-bold text-gray-900 dark:text-white hover:text-gray-700 transition-colors ml-0.5"
                     >
                       상세
                       <ChevronRight className="h-3.5 w-3.5" />

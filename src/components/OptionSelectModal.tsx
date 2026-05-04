@@ -103,26 +103,26 @@ export default function OptionSelectModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-fadeIn" onClick={onClose} role="presentation">
       <div
         ref={dialogRef}
-        className="bg-white rounded-t-3xl shadow-2xl max-w-md w-full max-h-[80vh] flex flex-col animate-slideUp"
+        className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-2xl max-w-md w-full max-h-[80vh] flex flex-col animate-slideUp"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={`${productName} 옵션 선택`}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-3xl">
+        <div className="sticky top-0 bg-white dark:bg-[#0A0A0A] border-b border-gray-200 dark:border-[#2A2A2A] px-6 py-4 rounded-t-3xl">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-gray-900 truncate">
+              <h3 className="text-base font-bold text-gray-900 dark:text-white truncate">
                 {productName}
               </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 옵션 선택
               </p>
             </div>
             <button
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center text-gray-400 hover:text-gray-900 transition-colors ml-2"
+              className="flex h-8 w-8 items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-900 transition-colors ml-2"
               aria-label="옵션 선택 닫기"
             >
               <X className="h-5 w-5" strokeWidth={1.5} />
@@ -138,14 +138,14 @@ export default function OptionSelectModal({
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <AlertCircle className="h-12 w-12 text-gray-400 mb-3" strokeWidth={1.5} />
-              <p className="text-sm text-gray-600">{error}</p>
+              <AlertCircle className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" strokeWidth={1.5} />
+              <p className="text-sm text-gray-600 dark:text-gray-300">{error}</p>
             </div>
           ) : (
             <div className="space-y-6">
               {Object.entries(optionsByType).map(([type, optionsForType]) => (
                 <div key={type}>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 mb-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white mb-3">
                     {type}
                   </h4>
                   <div className="grid grid-cols-3 gap-2">
@@ -164,10 +164,10 @@ export default function OptionSelectModal({
                             border-2 rounded-lg py-3 px-2
                             transition-all duration-200
                             ${isSelected 
-                              ? 'border-gray-900 bg-gray-50' 
+                              ? 'border-gray-900 bg-gray-50 dark:bg-[#121212]' 
                               : isOutOfStock
-                                ? 'border-gray-200 bg-gray-50 opacity-40 cursor-not-allowed'
-                                : 'border-gray-200 hover:border-gray-400'
+                                ? 'border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212] opacity-40 cursor-not-allowed'
+                                : 'border-gray-200 dark:border-[#2A2A2A] hover:border-gray-400'
                             }
                           `}
                         >
@@ -188,13 +188,13 @@ export default function OptionSelectModal({
                           )}
 
                           <span className={`text-xs font-medium text-center line-clamp-2 ${
-                            isOutOfStock ? 'text-gray-400' : 'text-gray-900'
+                            isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'
                           }`}>
                             {option.option_value}
                           </span>
                           
                           {option.price_adjustment !== 0 && (
-                            <span className="text-[10px] text-gray-500 mt-1">
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                               {(option.price_adjustment || 0) > 0 ? '+' : ''}{formatNumber(option.price_adjustment || 0)}원
                             </span>
                           )}
@@ -225,7 +225,7 @@ export default function OptionSelectModal({
 
         {/* Footer */}
         {!loading && !error && (
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
+          <div className="sticky bottom-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-200 dark:border-[#2A2A2A] px-6 py-4">
             <button
               onClick={handleConfirm}
               disabled={!selectedOptionId}

@@ -80,14 +80,14 @@ export function CustomModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`bg-white rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp relative`}
+        className={`bg-white dark:bg-[#0A0A0A] rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp relative`}
         onClick={(e) => e.stopPropagation()}
       >
         {isCustom ? (
           <>
             {/* Custom Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-              <h3 id="modal-title" className="text-[17px] font-bold text-gray-900">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-[#2A2A2A]">
+              <h3 id="modal-title" className="text-[17px] font-bold text-gray-900 dark:text-white">
                 {title}
               </h3>
               <button
@@ -95,7 +95,7 @@ export function CustomModal({
                 aria-label="닫기"
                 className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               </button>
             </div>
             {/* Custom Modal Content */}
@@ -114,7 +114,7 @@ export function CustomModal({
 
             {/* Title */}
             {title && (
-              <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">
                 {title}
               </h3>
             )}
@@ -125,7 +125,7 @@ export function CustomModal({
                 {children}
               </div>
             ) : message ? (
-              <p className="text-sm text-gray-600 text-center mb-6 leading-relaxed whitespace-pre-line">
+              <p className="text-sm text-gray-600 dark:text-gray-300 text-center mb-6 leading-relaxed whitespace-pre-line">
                 {message}
               </p>
             ) : null}
@@ -136,7 +136,7 @@ export function CustomModal({
                 <>
                   <button
                     onClick={onClose}
-                    className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-medium rounded-full hover:bg-gray-200 transition-colors text-sm"
+                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 font-medium rounded-full hover:bg-gray-200 transition-colors text-sm"
                   >
                     취소
                   </button>

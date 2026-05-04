@@ -227,10 +227,10 @@ export function TossPaymentWidget({
   return (
     <div className="space-y-6">
       {/* 결제 수단 선택 */}
-      <div id="payment-method" className="min-h-[300px] bg-white rounded-lg border border-gray-200 p-4" />
+      <div id="payment-method" className="min-h-[300px] bg-white dark:bg-[#0A0A0A] rounded-lg border border-gray-200 dark:border-[#2A2A2A] p-4" />
 
       {/* 이용약관 동의 */}
-      <div id="agreement" className="min-h-[100px] bg-white rounded-lg border border-gray-200 p-4" />
+      <div id="agreement" className="min-h-[100px] bg-white dark:bg-[#0A0A0A] rounded-lg border border-gray-200 dark:border-[#2A2A2A] p-4" />
 
       {/* 결제하기 버튼 */}
       <button

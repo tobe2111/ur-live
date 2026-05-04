@@ -69,7 +69,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
       role="presentation"
     >
       <div
-        className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pt-5 max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pt-5 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -80,17 +80,17 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
             <span className="inline-block px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px] font-bold mb-2 border border-amber-200">
               ⚠️ {inAppLabel} 인앱 브라우저
             </span>
-            <h2 id="iafm-title" className="text-[18px] font-extrabold text-gray-900 leading-tight">
+            <h2 id="iafm-title" className="text-[18px] font-extrabold text-gray-900 dark:text-white leading-tight">
               <span className="mr-1.5">{info.icon}</span>
               {info.title}
             </h2>
           </div>
           <button onClick={onClose} aria-label="닫기" className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
-        <p className="text-sm text-gray-600 leading-relaxed mb-5">
+        <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
           {info.desc}
         </p>
 
@@ -111,7 +111,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
 
           <button
             onClick={handleCopy}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-2xl font-semibold text-[13px]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-2xl font-semibold text-[13px]"
           >
             {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
             {copied ? 'URL 복사됨!' : 'URL 복사'}
@@ -128,7 +128,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
 
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 text-gray-500 text-[13px]"
+            className="w-full px-4 py-2.5 text-gray-500 dark:text-gray-400 text-[13px]"
           >
             나중에 하기
           </button>

@@ -153,13 +153,13 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
       {/* 검색창 */}
       <div className="flex gap-2">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search() } }}
             placeholder="매장 이름 또는 주소 (예: 광화문 김밥천국)"
-            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
           />
         </div>
         <button
@@ -173,18 +173,18 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
       </div>
 
       {/* 카카오맵 */}
-      <div className="relative rounded-xl overflow-hidden border border-gray-200">
-        <div ref={mapContainerRef} className="w-full h-[320px] bg-gray-100" />
+      <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A]">
+        <div ref={mapContainerRef} className="w-full h-[320px] bg-gray-100 dark:bg-[#1A1A1A]" />
         {!mapReady && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-[#1A1A1A]">
+            <Loader2 className="w-5 h-5 animate-spin text-gray-400 dark:text-gray-500" />
           </div>
         )}
       </div>
 
       {/* 검색 결과 리스트 (지도 + 리스트 병행) */}
       {results.length > 0 && (
-        <div className="max-h-64 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-100">
+        <div className="max-h-64 overflow-y-auto border border-gray-100 dark:border-[#1A1A1A] rounded-lg divide-y divide-gray-100">
           {results.map((p, i) => (
             <button
               key={p.id || i}
@@ -192,13 +192,13 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
               onClick={() => handleSelect(p)}
               className="w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-gray-50"
             >
-              <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+              <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-gray-900 truncate">{p.place_name}</p>
-                <p className="text-[11px] text-gray-500 truncate">{p.road_address_name || p.address_name}</p>
-                {p.category_name && <p className="text-[10px] text-gray-400 truncate">{p.category_name}</p>}
+                <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{p.place_name}</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{p.road_address_name || p.address_name}</p>
+                {p.category_name && <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{p.category_name}</p>}
               </div>
-              {p.phone && <span className="text-[10px] text-gray-400 shrink-0">{p.phone}</span>}
+              {p.phone && <span className="text-[10px] text-gray-400 dark:text-gray-500 shrink-0">{p.phone}</span>}
             </button>
           ))}
         </div>

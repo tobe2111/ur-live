@@ -74,14 +74,14 @@ export default function SearchHeader({
   }
 
   return (
-    <div className="sticky top-0 z-50 bg-white">
+    <div className="sticky top-0 z-50 bg-white dark:bg-[#0A0A0A]">
       <div className="flex items-center gap-2 px-3 py-2.5">
         <button onClick={() => navigate(-1)} className="shrink-0 p-1">
-          <ChevronLeft className="w-6 h-6 text-gray-900" />
+          <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
         </button>
         <div className="flex-1 relative" ref={searchRef}>
           <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               value={inputValue}
@@ -89,26 +89,26 @@ export default function SearchHeader({
               onFocus={() => { setIsFocused(true); if (suggestions.length > 0) setShowSuggestions(true) }}
               onBlur={() => setIsFocused(false)}
               placeholder="상품명, 브랜드, 셀러 검색"
-              className={`w-full pl-10 pr-9 py-2.5 bg-gray-50 rounded-full text-[14px] text-gray-900 font-medium transition-all focus:outline-none ${
-                isFocused ? 'border-2 border-gray-900 bg-white' : 'border-2 border-transparent'
+              className={`w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#121212] rounded-full text-[14px] text-gray-900 dark:text-white font-medium transition-all focus:outline-none ${
+                isFocused ? 'border-2 border-gray-900 bg-white dark:bg-[#0A0A0A]' : 'border-2 border-transparent'
               }`}
             />
             {inputValue && (
               <button type="button" onClick={() => { setInputValue(''); setShowSuggestions(false) }} className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                <X className="w-4 h-4 text-gray-400" />
+                <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               </button>
             )}
           </form>
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#0A0A0A] rounded-xl shadow-lg border border-gray-200 dark:border-[#2A2A2A] overflow-hidden z-50">
               {suggestions.map((suggestion, index) => (
                 <button
                   key={`${suggestion.type}-${suggestion.text}-${index}`}
                   onClick={() => handleSuggestionClick(suggestion.text)}
                   className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-50 last:border-b-0"
                 >
-                  <Search className="w-4 h-4 text-gray-400" />
-                  <span className="text-[14px] text-gray-900 flex-1">{suggestion.text}</span>
+                  <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                  <span className="text-[14px] text-gray-900 dark:text-white flex-1">{suggestion.text}</span>
                   {suggestion.type === 'seller' && (
                     <span className="rounded-full px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-semibold">브랜드</span>
                   )}
@@ -118,7 +118,7 @@ export default function SearchHeader({
           )}
         </div>
         <button onClick={() => navigate('/cart')} className="shrink-0 p-1">
-          <ShoppingBag className="w-5 h-5 text-gray-900" />
+          <ShoppingBag className="w-5 h-5 text-gray-900 dark:text-white" />
         </button>
       </div>
     </div>

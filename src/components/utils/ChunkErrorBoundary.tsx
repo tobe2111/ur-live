@@ -103,7 +103,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
       // 청크 로딩 실패 에러 UI
       if (this.state.isChunkError) {
         return (
-          <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+          <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#121212] px-4">
             <div className="max-w-md w-full text-center">
               <div className="mb-4">
                 <svg
@@ -120,10 +120,10 @@ export class ChunkErrorBoundary extends Component<Props, State> {
                   />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 페이지 로딩 중 오류가 발생했습니다
               </h1>
-              <p className="text-gray-600 mb-6">
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
                 새로운 버전이 배포되어 페이지를 다시 불러와야 합니다.
                 <br />
                 아래 버튼을 클릭해주세요.
@@ -147,7 +147,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
                 </svg>
                 페이지 새로고침
               </button>
-              <p className="mt-4 text-sm text-gray-500">
+              <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
                 문제가 계속되면 브라우저 캐시를 삭제해주세요.
                 <br />
                 (Ctrl+Shift+Del 또는 Cmd+Shift+Del)
@@ -159,7 +159,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
 
       // 일반 에러 UI
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#121212] px-4">
           <div className="max-w-md w-full text-center">
             <div className="mb-4">
               <svg
@@ -176,15 +176,15 @@ export class ChunkErrorBoundary extends Component<Props, State> {
                 />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">오류가 발생했습니다</h1>
-            <p className="text-gray-600 mb-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">오류가 발생했습니다</h1>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
               페이지를 불러오는 중 예상치 못한 오류가 발생했습니다.
             </p>
-            <details className="text-left bg-gray-100 p-4 rounded-md mb-6">
-              <summary className="cursor-pointer text-sm font-medium text-gray-700">
+            <details className="text-left bg-gray-100 dark:bg-[#1A1A1A] p-4 rounded-md mb-6">
+              <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-200">
                 오류 상세 정보
               </summary>
-              <pre className="mt-2 text-xs text-gray-600 overflow-auto">
+              <pre className="mt-2 text-xs text-gray-600 dark:text-gray-300 overflow-auto">
                 {this.state.error?.message}
               </pre>
             </details>

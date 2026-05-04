@@ -157,19 +157,19 @@ export default function PWAInstallPrompt() {
   if (show && deferredPrompt) {
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4">
+        <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-2xl border border-gray-100 dark:border-[#1A1A1A] p-4">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 shadow-md">
               <Smartphone className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900">
+              <p className="text-sm font-bold text-gray-900 dark:text-white">
                 🎁 설치하면 환영 쿠폰!
               </p>
-              <p className="text-[12px] text-gray-500 mt-0.5">홈 화면에 설치하고 5,000원 쿠폰 받기</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">홈 화면에 설치하고 5,000원 쿠폰 받기</p>
             </div>
             <button onClick={handleDismiss} aria-label="닫기" className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
-              <X className="w-4 h-4 text-gray-400" />
+              <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
           <div className="flex gap-2 mt-3">
@@ -180,7 +180,7 @@ export default function PWAInstallPrompt() {
               <Plus className="w-4 h-4" />
               설치하기
             </button>
-            <button onClick={handleDismiss} className="px-4 py-2.5 text-gray-500 text-sm font-medium">
+            <button onClick={handleDismiss} className="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-sm font-medium">
               나중에
             </button>
           </div>
@@ -195,20 +195,20 @@ export default function PWAInstallPrompt() {
     const isIOSDevice = isIOS()
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-white rounded-2xl shadow-2xl border-2 border-pink-200 p-4">
+        <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-2xl border-2 border-pink-200 p-4">
           <div className="flex items-start gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 shadow-md">
               <Smartphone className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900">🎁 설치하면 환영 쿠폰!</p>
-              <p className="text-[12px] text-gray-500 mt-0.5">홈 화면에 추가하고 5,000원 받기</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">🎁 설치하면 환영 쿠폰!</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">홈 화면에 추가하고 5,000원 받기</p>
             </div>
             <button onClick={handleDismiss} aria-label="닫기" className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
-              <X className="w-4 h-4 text-gray-400" />
+              <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
-          <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-100 rounded-xl p-3 text-[12px] text-gray-700 leading-relaxed">
+          <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-100 rounded-xl p-3 text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
             {isIOSDevice ? (
               <>
                 <div className="flex items-center gap-1.5 mb-1.5">

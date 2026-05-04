@@ -52,8 +52,8 @@ class ErrorBoundary extends Component<Props, State> {
 
       // 기본 폴백 UI
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#121212] px-4">
+          <div className="max-w-md w-full bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-lg p-8 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
                 className="w-8 h-8 text-red-600"
@@ -70,20 +70,20 @@ class ErrorBoundary extends Component<Props, State> {
               </svg>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               문제가 발생했습니다
             </h2>
 
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
               일시적인 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
             </p>
 
             {import.meta.env.DEV && this.state.error && (
               <details className="text-left mb-6">
-                <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
+                <summary className="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700">
                   개발자 정보 (Dev Only)
                 </summary>
-                <pre className="mt-2 text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40">
+                <pre className="mt-2 text-xs bg-gray-100 dark:bg-[#1A1A1A] p-3 rounded overflow-auto max-h-40">
                   {this.state.error.toString()}
                 </pre>
               </details>
@@ -98,7 +98,7 @@ class ErrorBoundary extends Component<Props, State> {
               </button>
               <button
                 onClick={() => window.location.href = '/'}
-                className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-full font-medium hover:bg-gray-200 transition-colors"
+                className="flex-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 py-3 px-4 rounded-full font-medium hover:bg-gray-200 transition-colors"
               >
                 홈으로
               </button>

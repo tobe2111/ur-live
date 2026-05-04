@@ -129,7 +129,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
       role="presentation"
     >
       <div
-        className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92vh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-title"
@@ -141,12 +141,12 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
               <div
                 key={s}
                 className={`h-1.5 rounded-full transition-all ${
-                  s === step ? 'w-6 bg-pink-500' : s < step ? 'w-3 bg-pink-300' : 'w-3 bg-gray-200'
+                  s === step ? 'w-6 bg-pink-500' : s < step ? 'w-3 bg-pink-300' : 'w-3 bg-gray-200 dark:bg-[#2A2A2A]'
                 }`}
               />
             ))}
           </div>
-          <button onClick={handleSkipAll} aria-label="건너뛰기" className="text-[12px] text-gray-400 px-2 py-1">
+          <button onClick={handleSkipAll} aria-label="건너뛰기" className="text-[12px] text-gray-400 dark:text-gray-500 px-2 py-1">
             건너뛰기
           </button>
         </div>
@@ -158,12 +158,12 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
               <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center mb-4">
                 <Sparkles className="w-9 h-9 text-white" />
               </div>
-              <h2 id="welcome-title" className="text-[22px] font-extrabold text-gray-900 mb-1.5">
+              <h2 id="welcome-title" className="text-[22px] font-extrabold text-gray-900 dark:text-white mb-1.5">
                 {userName ? `${userName}님, 환영해요!` : '유어딜에 오신 걸 환영해요!'}
               </h2>
-              <p className="text-[14px] text-gray-500 leading-relaxed">
+              <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
                 라이브 방송으로 보고 바로 사는<br />
-                <strong className="text-gray-900">한국 1위 라이브 커머스</strong>
+                <strong className="text-gray-900 dark:text-white">한국 1위 라이브 커머스</strong>
               </p>
 
               <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-2xl p-5 mt-6 text-left">
@@ -173,12 +173,12 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                   </div>
                   <div className="flex-1">
                     <p className="text-[13px] font-bold text-pink-700">신규 환영 쿠폰</p>
-                    <p className="text-[20px] font-extrabold text-gray-900 mt-0.5">5,000원 할인</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">10,000원 이상 구매 시 사용 가능 · 7일 유효</p>
+                    <p className="text-[20px] font-extrabold text-gray-900 dark:text-white mt-0.5">5,000원 할인</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">10,000원 이상 구매 시 사용 가능 · 7일 유효</p>
                   </div>
                 </div>
                 {couponClaimed ? (
-                  <div className="mt-3 px-3 py-2 bg-white rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
+                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#0A0A0A] rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
                     <Check className="w-4 h-4" /> 발급 완료!
                   </div>
                 ) : (
@@ -200,8 +200,8 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                 <div className="mx-auto w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mb-3">
                   <Heart className="w-8 h-8 text-pink-500" />
                 </div>
-                <h2 className="text-[20px] font-extrabold text-gray-900 mb-1">관심 분야를 알려주세요</h2>
-                <p className="text-[13px] text-gray-500">맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)</p>
+                <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white mb-1">관심 분야를 알려주세요</h2>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400">맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)</p>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -214,18 +214,18 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                       className={`flex flex-col items-center gap-1 px-2 py-3 rounded-2xl border-2 transition-all ${
                         selected
                           ? 'bg-pink-50 border-pink-500 shadow-sm'
-                          : 'bg-white border-gray-200'
+                          : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#2A2A2A]'
                       }`}
                     >
                       <span className="text-2xl">{c.emoji}</span>
-                      <span className={`text-[11px] font-bold ${selected ? 'text-pink-600' : 'text-gray-700'}`}>
+                      <span className={`text-[11px] font-bold ${selected ? 'text-pink-600' : 'text-gray-700 dark:text-gray-200'}`}>
                         {c.label}
                       </span>
                     </button>
                   )
                 })}
               </div>
-              <p className="text-[11px] text-gray-400 mt-3 text-center">
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3 text-center">
                 선택한 카테고리: <strong className="text-pink-500">{selectedCats.length}개</strong>
               </p>
             </div>
@@ -237,28 +237,28 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                 <div className="mx-auto w-16 h-16 rounded-full bg-yellow-50 flex items-center justify-center mb-3">
                   <Bell className="w-8 h-8 text-yellow-600" />
                 </div>
-                <h2 className="text-[20px] font-extrabold text-gray-900 mb-1">알림 받기</h2>
-                <p className="text-[13px] text-gray-500">놓치면 아쉬운 핫딜·라이브 소식을 알려드려요</p>
+                <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white mb-1">알림 받기</h2>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400">놓치면 아쉬운 핫딜·라이브 소식을 알려드려요</p>
               </div>
 
               <button
                 onClick={() => setAlimtalkOptIn(!alimtalkOptIn)}
                 className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
-                  alimtalkOptIn ? 'bg-yellow-50 border-yellow-400' : 'bg-white border-gray-200'
+                  alimtalkOptIn ? 'bg-yellow-50 border-yellow-400' : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#2A2A2A]'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                    alimtalkOptIn ? 'bg-yellow-400' : 'bg-gray-100'
+                    alimtalkOptIn ? 'bg-yellow-400' : 'bg-gray-100 dark:bg-[#1A1A1A]'
                   }`}>
                     <span className="text-xl">💬</span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-[14px] font-bold text-gray-900 flex items-center gap-1.5">
+                    <p className="text-[14px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                       카카오 알림톡으로 받기
                       {alimtalkOptIn && <Check className="w-4 h-4 text-yellow-600" />}
                     </p>
-                    <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
                       라이브 시작 / 핫딜 / 주문 상태 등<br />
                       카톡으로 무료 알림 (광고성 정보 제외)
                     </p>
@@ -266,7 +266,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                 </div>
               </button>
 
-              <p className="text-[11px] text-gray-400 mt-3 text-center leading-relaxed">
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3 text-center leading-relaxed">
                 마이페이지 → 알림 설정에서<br />
                 언제든지 변경 가능합니다.
               </p>
@@ -275,7 +275,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
         </div>
 
         {/* 하단 버튼 */}
-        <div className="px-5 pb-5 pt-2 border-t border-gray-100">
+        <div className="px-5 pb-5 pt-2 border-t border-gray-100 dark:border-[#1A1A1A]">
           {step === 1 && (
             <button
               onClick={() => setStep(2)}
@@ -289,7 +289,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
             <div className="flex gap-2">
               <button
                 onClick={() => setStep(1)}
-                className="px-5 py-3 text-gray-600 font-semibold text-sm"
+                className="px-5 py-3 text-gray-600 dark:text-gray-300 font-semibold text-sm"
               >
                 이전
               </button>

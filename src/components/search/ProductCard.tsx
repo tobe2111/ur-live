@@ -27,7 +27,7 @@ function highlightText(text: string, query: string) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === query.toLowerCase() ? (
-          <mark key={i} className="bg-yellow-100 text-gray-900 rounded-sm px-0.5">{part}</mark>
+          <mark key={i} className="bg-yellow-100 text-gray-900 dark:text-white rounded-sm px-0.5">{part}</mark>
         ) : (
           <span key={i}>{part}</span>
         )
@@ -44,7 +44,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
 
   return (
     <Link to={`/products/${product.id}`} className="block text-left group">
-      <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
+      <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -54,8 +54,8 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
             decoding="async"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100">
-            <span className="text-gray-300 text-2xl">📦</span>
+          <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-[#1A1A1A]">
+            <span className="text-gray-300 dark:text-gray-600 text-2xl">📦</span>
           </div>
         )}
 
@@ -78,24 +78,24 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
           className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
           onClick={(e) => e.preventDefault()}
         >
-          <Heart className="w-4 h-4 text-gray-400" />
+          <Heart className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         </button>
       </div>
 
       <div className="mt-2.5 px-0.5">
         {/* Seller name */}
-        <p className="text-[11px] text-gray-400 mb-0.5">
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-0.5">
           @{product.seller_name || product.seller_username}
         </p>
 
         {/* Product name with keyword highlight */}
-        <p className="text-[13px] text-gray-900 leading-[1.35] line-clamp-2 mb-1.5">
+        <p className="text-[13px] text-gray-900 dark:text-white leading-[1.35] line-clamp-2 mb-1.5">
           {highlightQuery ? highlightText(product.name, highlightQuery) : product.name}
         </p>
 
         {/* Original price (strikethrough) */}
         {product.price > discountedPrice && (
-          <p className="text-[11px] text-gray-400 line-through">
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 line-through">
             {formatNumber(product.price)}원
           </p>
         )}
@@ -105,7 +105,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
           {discount > 0 && (
             <span className="text-[14px] font-extrabold text-red-500">{discount}%</span>
           )}
-          <span className="text-[14px] font-extrabold text-gray-900">
+          <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">
             {formatNumber(discountedPrice)}원
           </span>
         </div>

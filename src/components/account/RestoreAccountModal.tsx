@@ -99,7 +99,7 @@ export default function RestoreAccountModal() {
       role="presentation"
     >
       <div
-        className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+        className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="restore-title"
@@ -111,16 +111,16 @@ export default function RestoreAccountModal() {
             aria-label="닫기"
             className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </button>
           <div className="w-14 h-14 mb-4 rounded-2xl bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center">
             <RotateCcw className="w-7 h-7 text-pink-500" />
           </div>
-          <h2 id="restore-title" className="text-[18px] font-bold text-gray-900">
+          <h2 id="restore-title" className="text-[18px] font-bold text-gray-900 dark:text-white">
             이전에 가입했던 계정이 있어요
           </h2>
-          <p className="text-[13px] text-gray-600 mt-2 leading-relaxed">
-            {originalName ? <><strong className="text-gray-900">{originalName}</strong> 님으로 </> : '같은 카카오 계정으로 '}
+          <p className="text-[13px] text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
+            {originalName ? <><strong className="text-gray-900 dark:text-white">{originalName}</strong> 님으로 </> : '같은 카카오 계정으로 '}
             가입했던 기록이 있어요.<br />
             이전 계정을 복원하시겠어요? 30일 내 탈퇴한 계정만 복원할 수 있어요.
           </p>
@@ -128,11 +128,11 @@ export default function RestoreAccountModal() {
 
         {/* 안내 박스 */}
         <div className="mx-6 my-3 p-3 bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-100 rounded-xl">
-          <p className="text-[12px] text-gray-700 leading-relaxed">
+          <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
             <strong className="text-pink-600">복원 시</strong>: 이전 주문 내역, 쿠폰, 딜 포인트, 위시리스트 등 모든 데이터가 다시 살아나요.
           </p>
-          <p className="text-[12px] text-gray-700 leading-relaxed mt-1.5">
-            <strong className="text-gray-500">신규 계정 선택 시</strong>: 새로 시작합니다. 이전 데이터는 30일 후 영구 삭제돼요.
+          <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed mt-1.5">
+            <strong className="text-gray-500 dark:text-gray-400">신규 계정 선택 시</strong>: 새로 시작합니다. 이전 데이터는 30일 후 영구 삭제돼요.
           </p>
         </div>
 
@@ -148,7 +148,7 @@ export default function RestoreAccountModal() {
           <button
             onClick={handleSkip}
             disabled={restoring}
-            className="w-full h-11 text-gray-500 hover:text-gray-700 text-[13px] font-medium"
+            className="w-full h-11 text-gray-500 dark:text-gray-400 hover:text-gray-700 text-[13px] font-medium"
           >
             새 계정으로 시작
           </button>
