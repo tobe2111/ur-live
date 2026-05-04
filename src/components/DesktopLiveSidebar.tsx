@@ -38,7 +38,7 @@ export default function DesktopLiveSidebar() {
 
   return (
     <aside
-      className="hidden xl:flex fixed left-0 top-0 bottom-0 w-56 z-40 flex-col py-6 px-3 bg-white dark:bg-[#020202] border-r border-white/[0.06]"
+      className="hidden xl:flex fixed left-0 top-0 bottom-0 w-56 z-40 flex-col py-6 px-3 bg-white dark:bg-[#020202] border-r border-gray-200 dark:border-white/[0.06]"
       aria-label="PC 메인 메뉴"
     >
       {/* 로고 */}
@@ -67,7 +67,7 @@ export default function DesktopLiveSidebar() {
         })}
       </nav>
 
-      <p className="text-[10px] text-gray-900 dark:text-white/30 px-3 mt-auto">
+      <p className="text-[10px] text-gray-400 dark:text-white/30 px-3 mt-auto">
         © 2026 UR·DEAL
       </p>
     </aside>

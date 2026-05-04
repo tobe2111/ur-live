@@ -14,7 +14,7 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingCart, User, Radio, Gift, Utensils, Search, Bell, Play } from 'lucide-react'
+import { Home, ShoppingCart, User, Radio, Gift, Utensils, Search, Bell } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import UrDealLogo from '@/components/brand/UrDealLogo'
