@@ -99,25 +99,22 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
     setIsOpen(false)
   }
 
-  // 초기 로드
+  // 초기 로드 + visibility 기반 즉시 갱신
   useEffect(() => {
     loadNotifications()
+    const onVisible = () => { if (!document.hidden) loadNotifications() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
-  // 5초마다 자동 갱신 (단, 3번 이상 연속 에러 시 중지)
+  // 30s 폴링 — hidden 탭 skip, 연속 에러 3회 시 중지
   useEffect(() => {
-    // 🔧 에러가 3번 이상이면 polling 중지
-    if (errorCount >= 3) {
-      if (import.meta.env.DEV) console.warn('[Notifications] ⚠️ Polling disabled due to repeated errors')
-      return
-    }
-    
+    if (errorCount >= 3) return
     const interval = setInterval(() => {
-      loadNotifications()
-    }, 5000)
-
+      if (!document.hidden) loadNotifications()
+    }, 30000)
     return () => clearInterval(interval)
-  }, [errorCount]) // 🔧 errorCount 의존성 추가
+  }, [errorCount])
 
   // 외부 클릭 감지
   useEffect(() => {
