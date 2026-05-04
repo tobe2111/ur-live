@@ -66,7 +66,7 @@ export default function AdminPage() {
           if (target) setSalesTarget(Number(target.value) || 1000000)
         }
       })
-      .catch(() => { toast.error('설정 데이터를 불러오지 못했습니다') })
+      .catch(() => { toast.error(t('admin.settings.fetchFailed', { defaultValue: '설정 데이터를 불러오지 못했습니다' })) })
   }, [])
 
   // 매출 목표 달성 알림
@@ -89,7 +89,7 @@ export default function AdminPage() {
         toast.success(res.data.message)
         setCommissionSettings(prev => prev.map(s => s.key === key ? { ...s, value: newValue } : s))
       }
-    } catch { toast.error('수수료 변경 실패') }
+    } catch { toast.error(t('admin.commission.updateFailed', { defaultValue: '수수료 변경 실패' })) }
   }
   const [liveStreams, setLiveStreams] = useState<Stream[]>([])
 
@@ -123,7 +123,7 @@ export default function AdminPage() {
     } catch { /* 파싱 실패 무시 */ }
     loadData()
     loadDashboardStats()
-    const interval = setInterval(loadDashboardStats, 5000)
+    const interval = setInterval(loadDashboardStats, 30000)
     return () => clearInterval(interval)
   }, [navigate])
 
@@ -382,11 +382,21 @@ export default function AdminPage() {
   return (
     <AdminLayout title={t('admin.pages.dashboard')} pendingCount={pendingSellers.length}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-        <DashboardPageHeader
-          title={t('admin.pages.dashboard')}
-          subtitle="유어딜 전체 운영 현황 — 셀러 승인·매출·주문·정산"
-          icon={<LayoutDashboard className="h-5 w-5" />}
-        />
+        <div className="flex items-start justify-between gap-4">
+          <DashboardPageHeader
+            title={t('admin.pages.dashboard')}
+            subtitle="유어딜 전체 운영 현황 — 셀러 승인·매출·주문·정산"
+            icon={<LayoutDashboard className="h-5 w-5" />}
+          />
+          <button
+            onClick={() => { loadData(); loadDashboardStats() }}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-semibold transition-colors"
+            title="수동 새로고침 (자동: 30초)"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            새로고침
+          </button>
+        </div>
       {/* Rejection Modal */}
       {rejectModalOpen && selectedSeller && (
         <RejectionModal

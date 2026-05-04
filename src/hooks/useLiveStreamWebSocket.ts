@@ -28,6 +28,14 @@ export interface DonationEvent {
   creditAmount: number
 }
 
+export interface FlashSaleEvent {
+  id: number
+  product_id: number
+  discount_rate: number
+  ends_at: string
+  [key: string]: unknown
+}
+
 export interface UseLiveStreamWebSocketReturn {
   // Chat (useFirebaseChat 동일 인터페이스)
   messages: ChatMessage[]
@@ -49,7 +57,7 @@ export interface UseLiveStreamWebSocketReturn {
   lastDonation: DonationEvent | null
 
   // Flash Sales
-  activeFlashSale: any
+  activeFlashSale: FlashSaleEvent | null
 }
 
 export function useLiveStreamWebSocket(
@@ -62,7 +70,7 @@ export function useLiveStreamWebSocket(
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastDonation, setLastDonation] = useState<DonationEvent | null>(null)
-  const [activeFlashSale, setActiveFlashSale] = useState<any>(null)
+  const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleEvent | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectAttemptsRef = useRef(0)
@@ -111,9 +119,9 @@ export function useLiveStreamWebSocket(
       const replayParam = replay ? '?replay=true' : ''
       const res = await fetch(`/api/live/${streamId}/chat/messages${replayParam}`)
       if (!res.ok) return
-      const json = await res.json() as any
+      const json = await res.json() as { success: boolean; data: { id: number; user_id: number; user_name: string; message: string; user_type: string; created_at: string }[] }
       if (json.success && Array.isArray(json.data)) {
-        const formatted: ChatMessage[] = json.data.map((msg: any) => ({
+        const formatted: ChatMessage[] = json.data.map((msg) => ({
           id: String(msg.id),
           userId: msg.user_id,
           userName: msg.user_name,

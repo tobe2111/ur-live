@@ -317,14 +317,20 @@ export default function LivePageV2() {
   // ✅ 데이터 없음 표시
   if (reels.length === 0) {
     return (
-      <div className="absolute inset-0 bg-white dark:bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-gray-900 dark:text-white text-xl mb-2">진행 중인 라이브가 없습니다</div>
-          <button
-            onClick={() => navigate('/')}
-            className="mt-4 px-6 py-2 bg-gray-100 dark:bg-white/20 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-white/30 transition-colors"
-          >
-            홈으로 돌아가기
+      <div className="absolute inset-0 bg-[#020202] flex flex-col items-center justify-center px-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-white/[0.06] flex items-center justify-center mb-5">
+          <svg className="w-7 h-7 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+          </svg>
+        </div>
+        <p className="text-white font-bold text-[17px] mb-1">진행 중인 라이브가 없어요</p>
+        <p className="text-white/50 text-[13px] mb-6">라이브 방송이 시작되면 알림을 보내드릴게요</p>
+        <div className="flex gap-2">
+          <button onClick={() => navigate('/live')} className="px-5 py-2.5 bg-white/[0.08] text-white text-[13px] font-semibold rounded-full hover:bg-white/[0.14] transition-colors">
+            방송 목록 보기
+          </button>
+          <button onClick={() => navigate('/')} className="px-5 py-2.5 bg-[#EF4444] text-white text-[13px] font-semibold rounded-full hover:bg-[#DC2626] transition-colors">
+            홈으로
           </button>
         </div>
       </div>

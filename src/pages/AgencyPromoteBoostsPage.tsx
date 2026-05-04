@@ -61,24 +61,24 @@ export default function AgencyPromoteBoostsPage() {
       if (boostRes.data?.success) setItems(boostRes.data.data)
       if ((sellerRes as any)?.data?.data) setSellers((sellerRes as any).data.data)
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || '불러오기 실패')
+      toast.error(err?.response?.data?.error || t('common.fetchFailed', { defaultValue: '불러오기 실패' }))
     } finally { setLoading(false) }
   }
 
   useEffect(() => { fetchAll() }, [])
 
   async function issueBoost() {
-    if (!sellerId) return toast.error('셀러 선택')
+    if (!sellerId) return toast.error(t('agency.promoteBoosts.selectSeller', { defaultValue: '셀러를 선택해주세요' }))
     try {
       const token = localStorage.getItem('agency_token')
       await api.post('/api/agency/promote-boosts',
         { seller_id: Number(sellerId), tier, note },
         { headers: { Authorization: `Bearer ${token}` } })
-      toast.success('부스팅 쿠폰 발급 완료')
+      toast.success(t('agency.promoteBoosts.issueSuccess', { defaultValue: '부스팅 쿠폰 발급 완료' }))
       setSellerId(''); setTier('silver'); setNote(''); setCreating(false)
       fetchAll()
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || '발급 실패')
+      toast.error(err?.response?.data?.error || t('common.issueFailed', { defaultValue: '발급 실패' }))
     }
   }
 

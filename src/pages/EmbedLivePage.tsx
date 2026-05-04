@@ -79,7 +79,7 @@ export default function EmbedLivePage() {
       {stream.current_product && (
         <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/80 to-transparent pt-12 pb-3 px-3">
           <a
-            href={`https://live.ur-team.com/products/${stream.current_product.id}`}
+            href={`${window.location.origin}/products/${stream.current_product.id}`}
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-3 bg-white/95 backdrop-blur rounded-xl p-2.5"
           >
@@ -105,7 +105,7 @@ export default function EmbedLivePage() {
       {/* ur-live 로고 */}
       <div className="absolute top-3 right-3 z-10">
         <a
-          href={`https://live.ur-team.com/live/${streamId}`}
+          href={`${window.location.origin}/live/${streamId}`}
           target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm"
         >
