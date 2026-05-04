@@ -132,15 +132,17 @@ sellerAnalyticsRoutes.post('/orders/bulk-tracking', requireAuth(), async (c) => 
   const { items } = await c.req.json<{ items: { order_id: number; courier: string; tracking_number: string }[] }>()
   if (!items?.length) return c.json({ success: false, error: '데이터가 없습니다' }, 400)
 
-  let updated = 0
-  for (const item of items) {
-    if (!item.tracking_number) continue
-    const { meta } = await c.env.DB.prepare(`
-      UPDATE orders SET tracking_number = ?, courier = ?, status = 'SHIPPING', updated_at = datetime('now')
-      WHERE id = ? AND seller_id = ? AND status IN ('PAID', 'DONE')
-    `).bind(item.tracking_number, item.courier || null, item.order_id, sellerId).run()
-    updated += meta.changes ?? 0
-  }
+  const stmts = items
+    .filter(item => item.tracking_number)
+    .map(item =>
+      c.env.DB.prepare(`
+        UPDATE orders SET tracking_number = ?, courier = ?, status = 'SHIPPING', updated_at = datetime('now')
+        WHERE id = ? AND seller_id = ? AND status IN ('PAID', 'DONE')
+      `).bind(item.tracking_number, item.courier || null, item.order_id, sellerId)
+    )
+  if (!stmts.length) return c.json({ success: true, message: '0건 송장 등록 완료' })
+  const batchResults = await c.env.DB.batch(stmts)
+  const updated = batchResults.reduce((acc, r) => acc + (r.meta?.changes ?? 0), 0)
 
   return c.json({ success: true, message: `${updated}건 송장 등록 완료` })
 })

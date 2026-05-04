@@ -55,7 +55,13 @@ export default function AdminLiveMonitorPage() {
 
   useEffect(() => {
     if (autoRefresh) {
-      intervalRef.current = setInterval(loadLive, 10000)
+      intervalRef.current = setInterval(() => { if (!document.hidden) loadLive() }, 10000)
+      const onVisible = () => { if (!document.hidden && autoRefresh) loadLive() }
+      document.addEventListener('visibilitychange', onVisible)
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current)
+        document.removeEventListener('visibilitychange', onVisible)
+      }
     } else if (intervalRef.current) {
       clearInterval(intervalRef.current)
     }

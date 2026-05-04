@@ -21,6 +21,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
 
   useEffect(() => {
     const poll = () => {
+      if (document.hidden) return
       api.get(`/api/auction/stream/${streamId}`).then(r => {
         if (r.data.success && r.data.data) {
           setAuction(r.data.data)
@@ -35,9 +36,10 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
       }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     }
     poll()
-    // 🛡️ 2026-04-29 perf audit: 3초 → 5초 폴링 완화 (서버 부하 ↓)
     const iv = setInterval(poll, 5000)
-    return () => clearInterval(iv)
+    const onVisible = () => { if (!document.hidden) poll() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(iv); document.removeEventListener('visibilitychange', onVisible) }
   }, [streamId])
 
   useEffect(() => {
