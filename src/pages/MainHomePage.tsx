@@ -176,16 +176,16 @@ export default function MainHomePage() {
   const featuredDisc = featured ? disc(featured.price, featured.original_price) : 0
 
   return (
-    <div className="bg-white dark:bg-[#020202] min-h-screen pb-16">
+    <div className="bg-[#020202] min-h-screen pb-16">
       <SEO title={t('mainHome.seoTitle')} description={t('mainHome.seoDesc')} url="/" jsonLd={[organizationJsonLd, webSiteJsonLd]} />
 
       {/* ═══ Sticky Top Bar ═══ — PC 풀너비 sticky, 콘텐츠는 centered */}
-      <div className="sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md">
+      <div className="sticky top-0 inset-x-0 z-30 bg-[#020202]/95 backdrop-blur-md">
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <UrDealLogo size={18} />
         </Link>
-        <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200">
+        <div className="flex items-center gap-1 text-gray-200">
           <button onClick={() => navigate('/search')} className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
           <button onClick={() => navigate('/notifications')} aria-label={unreadCount > 0 ? t('mainHome.ariaNotificationsCount', { count: unreadCount }) : t('mainHome.ariaNotifications')} className="p-1.5 relative">
             <Bell className="h-5 w-5" strokeWidth={1.5} />
@@ -287,24 +287,24 @@ export default function MainHomePage() {
               <span className="w-1.5 h-1.5 bg-[#EF4444] rounded-full animate-pulse" />
               <span className="text-[9px] text-red-300 font-extrabold tracking-widest">LIVE</span>
             </div>
-            <p className="text-[12px] text-gray-900 dark:text-white font-extrabold">{t('mainHome.quickLiveTitle')}</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.quickLiveSub', { count: liveStreams.length })}</p>
+            <p className="text-[12px] text-white font-extrabold">{t('mainHome.quickLiveTitle')}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{t('mainHome.quickLiveSub', { count: liveStreams.length })}</p>
           </button>
           <button onClick={() => navigate('/browse?category=meal_voucher')} className="rounded-xl p-2.5 text-left bg-yellow-400/[0.08] border border-yellow-400/25">
             <div className="flex items-center gap-1 mb-0.5">
               <span className="text-[10px]">🍽</span>
               <span className="text-[9px] text-yellow-200 font-extrabold tracking-widest">MEAL</span>
             </div>
-            <p className="text-[12px] text-gray-900 dark:text-white font-extrabold">{t('mainHome.quickMealTitle')}</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.quickMealSub', { count: displayMeals.length })}</p>
+            <p className="text-[12px] text-white font-extrabold">{t('mainHome.quickMealTitle')}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{t('mainHome.quickMealSub', { count: displayMeals.length })}</p>
           </button>
           <button onClick={() => navigate('/browse')} className="rounded-xl p-2.5 text-left bg-blue-400/[0.08] border border-blue-400/25">
             <div className="flex items-center gap-1 mb-0.5">
               <span className="text-[10px]">🛍</span>
               <span className="text-[9px] text-blue-300 font-extrabold tracking-widest">SPECIAL</span>
             </div>
-            <p className="text-[12px] text-gray-900 dark:text-white font-extrabold">{t('mainHome.quickSpecialTitle')}</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.quickSpecialSub')}</p>
+            <p className="text-[12px] text-white font-extrabold">{t('mainHome.quickSpecialTitle')}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{t('mainHome.quickSpecialSub')}</p>
           </button>
         </div>
       </div>
@@ -316,18 +316,18 @@ export default function MainHomePage() {
             <div className="flex items-center gap-1.5 mb-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24] animate-pulse" />
               <span className="text-[10px] font-extrabold text-[#FBBF24] tracking-[0.14em]">{t('mainHome.nearbyTag')}</span>
-              <button onClick={() => setRegionModalOpen(true)} className="text-[9px] text-gray-500 dark:text-gray-400 underline underline-offset-2">
+              <button onClick={() => setRegionModalOpen(true)} className="text-[9px] text-gray-400 underline underline-offset-2">
                 {region}
               </button>
             </div>
-            <p className="text-[18px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>{t('mainHome.nearbyTitle', { region: region.split(' ')[0] })}</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.nearbyCount', { count: displayMeals.length })}</p>
+            <p className="text-[18px] font-extrabold text-white" style={{ letterSpacing: '-0.03em' }}>{t('mainHome.nearbyTitle', { region: region.split(' ')[0] })}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{t('mainHome.nearbyCount', { count: displayMeals.length })}</p>
           </div>
           <div className="flex items-center gap-2 pb-1">
             <button onClick={() => navigate('/restaurant-map')} className="flex items-center gap-1 text-[11px] text-[#FBBF24] font-bold">
               <Map className="w-3.5 h-3.5" /> {t('mainHome.mapShortcut')}
             </button>
-            <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
+            <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[11px] text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
         </div>
 
@@ -340,8 +340,8 @@ export default function MainHomePage() {
             <Map className="w-5 h-5 text-[#FBBF24]" />
           </div>
           <div className="flex-1 text-left min-w-0">
-            <p className="text-[13px] font-extrabold text-gray-900 dark:text-white leading-tight">{t('mainHome.mapBannerTitle')}</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{t('mainHome.mapBannerSub')}</p>
+            <p className="text-[13px] font-extrabold text-white leading-tight">{t('mainHome.mapBannerTitle')}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5 truncate">{t('mainHome.mapBannerSub')}</p>
           </div>
           <span className="text-[14px] text-[#FBBF24] shrink-0">→</span>
         </button>
@@ -353,9 +353,9 @@ export default function MainHomePage() {
             const isClosing = m.group_buy_deadline && (new Date(m.group_buy_deadline).getTime() - Date.now()) < 3600000
             const isHot = current >= 20 // 사회적 증명: 20명 이상 구매 시 인기 표시
             return (
-              <button key={m.id} onClick={() => navigate(`/products/${m.id}`)} className="w-full flex items-center gap-3 rounded-xl p-2.5 text-left bg-white dark:bg-[#0B0B0B] border border-gray-100 dark:border-[#151515]">
+              <button key={m.id} onClick={() => navigate(`/products/${m.id}`)} className="w-full flex items-center gap-3 rounded-xl p-2.5 text-left bg-[#0B0B0B] border border-[#151515]">
                 <span className="text-[20px] font-black w-[22px] shrink-0" style={{ color: i < 3 ? '#FBBF24' : '#6B7280', letterSpacing: '-0.03em' }}>{i + 1}</span>
-                <div className="rounded-lg overflow-hidden shrink-0 relative w-[68px] h-[68px] bg-gray-100 dark:bg-[#1A1A1A]">
+                <div className="rounded-lg overflow-hidden shrink-0 relative w-[68px] h-[68px] bg-[#1A1A1A]">
                   {m.image_url && <img src={m.image_url} alt={m.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -364,14 +364,14 @@ export default function MainHomePage() {
                     {isHot && <span className="text-[9px] font-extrabold px-1 rounded bg-pink-500 text-white">{t('mainHome.tagHot')}</span>}
                     {isClosing && <span className="text-[9px] font-extrabold px-1 rounded bg-[#EF4444] text-white">{t('mainHome.tagClosing')}</span>}
                   </div>
-                  <p className="text-[12px] text-gray-900 dark:text-white font-bold leading-tight line-clamp-2">{m.name}</p>
+                  <p className="text-[12px] text-white font-bold leading-tight line-clamp-2">{m.name}</p>
                   <div className="flex items-baseline gap-1 mt-1">
                     {d > 0 && <span className="text-[11px] font-extrabold text-red-400">{d}%</span>}
-                    <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{formatNumber(m.price)}원</span>
+                    <span className="text-[12px] font-extrabold text-white">{formatNumber(m.price)}원</span>
                   </div>
                   {current > 0 && (
-                    <p className="text-[10px] mt-1.5 text-gray-500 dark:text-gray-400">
-                      👥 <span className="font-semibold text-gray-700 dark:text-gray-200">{t('mainHome.buyersCount', { count: current })}</span> {t('mainHome.buyingNow')}
+                    <p className="text-[10px] mt-1.5 text-gray-400">
+                      👥 <span className="font-semibold text-gray-200">{t('mainHome.buyersCount', { count: current })}</span> {t('mainHome.buyingNow')}
                     </p>
                   )}
                 </div>
@@ -390,16 +390,16 @@ export default function MainHomePage() {
                 <span className="w-2 h-2 bg-[#EF4444] rounded-full animate-pulse" />
                 <span className="text-[10px] font-extrabold text-red-400 tracking-[0.14em]">{t('mainHome.nowLiveTag')}</span>
               </div>
-              <p className="text-[18px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>{t('mainHome.quickLiveTitle')}</p>
+              <p className="text-[18px] font-extrabold text-white" style={{ letterSpacing: '-0.03em' }}>{t('mainHome.quickLiveTitle')}</p>
             </div>
-            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400 pb-1">{t('mainHome.seeAll')}</button>
+            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400 pb-1">{t('mainHome.seeAll')}</button>
           </div>
           <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
             {liveStreams.map(s => {
               const thumb = getThumb(s)
               return (
                 <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] lg:w-auto text-left active:scale-[0.98] transition-transform">
-                  <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#1A1A1A]">
+                  <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-[#1A1A1A]">
                     {thumb && <img src={thumb} alt={s.title || t('mainHome.altLiveStream')} loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 35%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
@@ -435,9 +435,9 @@ export default function MainHomePage() {
           <div className="flex items-end justify-between mb-3">
             <div>
               <p className="text-[10px] font-extrabold text-blue-400 tracking-[0.14em]">{t('mainHome.scheduledTag')}</p>
-              <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-0.5">{t('mainHome.scheduledTitle')}</p>
+              <p className="text-[15px] font-extrabold text-white mt-0.5">{t('mainHome.scheduledTitle')}</p>
             </div>
-            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
+            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
           <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
             {scheduledStreams.slice(0, 10).map(s => {
@@ -446,7 +446,7 @@ export default function MainHomePage() {
               const timeLabel = schedDate ? schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
               return (
                 <div key={s.id} className="shrink-0 w-[170px] lg:w-auto text-left">
-                  <button type="button" onClick={() => navigate(`/live/${s.id}`)} className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] cursor-pointer text-left">
+                  <button type="button" onClick={() => navigate(`/live/${s.id}`)} className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-[#1A1A1A] cursor-pointer text-left">
                     {thumb && <img src={thumb} alt={s.title || t('mainHome.altScheduled')} loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-500 px-2 py-0.5 rounded-md">
@@ -458,7 +458,7 @@ export default function MainHomePage() {
                       <p className="text-[10px] text-white/70 truncate">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
                     </div>
                   </button>
-                  <p className="text-[11px] text-gray-700 dark:text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
+                  <p className="text-[11px] text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
                   <div className="mt-1.5">
                     <BroadcastNotifyButton streamId={s.id} compact />
                   </div>
@@ -474,25 +474,25 @@ export default function MainHomePage() {
         <div className="px-4 pt-6">
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 tracking-[0.14em]">{t('mainHome.replayTag')}</p>
-              <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-0.5">{t('mainHome.replayTitle')}</p>
+              <p className="text-[10px] font-extrabold text-gray-400 tracking-[0.14em]">{t('mainHome.replayTag')}</p>
+              <p className="text-[15px] font-extrabold text-white mt-0.5">{t('mainHome.replayTitle')}</p>
             </div>
-            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
+            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
           <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
             {endedStreams.slice(0, 10).map(s => {
               const thumb = getThumb(s)
               return (
                 <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[150px] lg:w-auto text-left">
-                  <div className="relative rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={{ aspectRatio: '16/9' }}>
+                  <div className="relative rounded-xl overflow-hidden bg-[#1A1A1A]" style={{ aspectRatio: '16/9' }}>
                     {thumb && <img src={thumb} alt={s.title || t('mainHome.altReplay')} loading="lazy" className="w-full h-full object-cover brightness-[0.85]" />}
                     <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
                       <Play className="h-2.5 w-2.5 text-white" />
                       <span className="text-[9px] font-bold text-white">{t('mainHome.replayBadge')}</span>
                     </div>
                   </div>
-                  <p className="text-[11px] text-gray-700 dark:text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
+                  <p className="text-[11px] text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
+                  <p className="text-[9px] text-gray-400 mt-0.5">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
                 </button>
               )
             })}
@@ -501,10 +501,10 @@ export default function MainHomePage() {
       )}
 
       {/* ═══ UR특가 ═══ */}
-      <div className="pt-8 mt-6 bg-gray-50 dark:bg-[#050505] border-t-8 border-gray-100 dark:border-[#0A0A0A]">
+      <div className="pt-8 mt-6 bg-[#050505] border-t-8 border-[#0A0A0A]">
         <div className="px-4 pt-5 pb-3">
           <p className="text-[10px] text-blue-500 dark:text-blue-300 font-extrabold tracking-[0.14em]">{t('mainHome.specialTag')}</p>
-          <p className="text-[22px] font-black text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.04em' }}>{t('mainHome.specialTitle')}</p>
+          <p className="text-[22px] font-black text-white mt-0.5" style={{ letterSpacing: '-0.04em' }}>{t('mainHome.specialTitle')}</p>
         </div>
 
         {/* Category grid */}
@@ -513,7 +513,7 @@ export default function MainHomePage() {
             {CATEGORIES.map(c => (
               <button key={c.k} onClick={() => navigate(`/browse?category=${c.k}`)} className="flex flex-col items-center gap-1.5">
                 <div className="rounded-2xl flex items-center justify-center w-[52px] h-[52px] text-[22px]" style={{ background: c.bg }}>{c.i}</div>
-                <span className="text-[11px] text-gray-700 dark:text-gray-200 font-semibold">{c.l}</span>
+                <span className="text-[11px] text-gray-200 font-semibold">{c.l}</span>
               </button>
             ))}
           </div>
@@ -522,18 +522,18 @@ export default function MainHomePage() {
         {/* 실시간 랭킹 */}
         {products.length > 0 && (
           <div className="px-4 pb-5">
-            <p className="text-[14px] font-extrabold text-gray-900 dark:text-white mb-3">{t('mainHome.rankingTitle')}</p>
+            <p className="text-[14px] font-extrabold text-white mb-3">{t('mainHome.rankingTitle')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {products.slice(0, 5).map((p, i) => {
                 const d = disc(p.price, p.original_price)
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative w-full block">
-                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
+                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-[#1A1A1A]">
                       {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                       <span className="absolute top-1.5 left-1.5 rounded flex items-center justify-center w-[22px] h-[22px] bg-[#EF4444] text-[11px] font-black text-white">{i + 1}</span>
                     </div>
-                    <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
-                    <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">
+                    <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
+                    <p className="text-[12px] font-extrabold text-white mt-1">
                       {d > 0 && <span className="text-red-500 dark:text-red-400 mr-1">{d}%</span>}{formatNumber(p.price)}원
                     </p>
                   </button>
@@ -546,26 +546,26 @@ export default function MainHomePage() {
         {/* 추천 상품 */}
         {products.length > 4 && (
           <div className="px-4 pb-5">
-            <p className="text-[14px] font-extrabold text-gray-900 dark:text-white mb-3">{t('mainHome.recommendTitle')}</p>
+            <p className="text-[14px] font-extrabold text-white mb-3">{t('mainHome.recommendTitle')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-5">
               {products.slice(5).map(p => {
                 const d = disc(p.price, p.original_price)
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left w-full block">
-                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
+                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-[#1A1A1A]">
                       {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
                       {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
                     </div>
-                    <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
+                    <p className="text-[11px] text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
                     {p.original_price && p.original_price > p.price && (
                       <p className="text-[10px] text-gray-500 dark:text-gray-600 line-through mt-0.5">{formatNumber(p.original_price)}원</p>
                     )}
                     <div className="flex items-baseline gap-1 mt-0.5">
                       {d > 0 && <span className="text-[12px] font-extrabold text-red-500">{d}%</span>}
-                      <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}원</span>
+                      <span className="text-[12px] font-extrabold text-white">{formatNumber(p.price)}원</span>
                     </div>
                     {(p.avg_rating || p.sold_count) && (
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">★ {(p.avg_rating || 4.5).toFixed(1)} · {formatNumber(p.sold_count || 0)} 구매</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">★ {(p.avg_rating || 4.5).toFixed(1)} · {formatNumber(p.sold_count || 0)} 구매</p>
                     )}
                   </button>
                 )
@@ -589,22 +589,22 @@ export default function MainHomePage() {
           role="presentation"
         >
           <div
-            className="bg-white dark:bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-200 dark:border-[#2A2A2A] overflow-hidden"
+            className="bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-[#2A2A2A] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label={t('mainHome.regionPickerAria', { defaultValue: '지역 선택' })}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A]">
-              <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#1A1A1A]">
+              <h3 className="text-[15px] font-bold text-white">
                 {t('mainHome.regionPickerTitle', { defaultValue: '지역 선택' })}
               </h3>
               <button
                 onClick={() => setRegionModalOpen(false)}
                 aria-label={t('common.close', { defaultValue: '닫기' })}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/[0.06]"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/[0.06]"
               >
-                <span className="text-gray-900 dark:text-white/70 text-lg leading-none">×</span>
+                <span className="text-white/70 text-lg leading-none">×</span>
               </button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto">
@@ -615,11 +615,11 @@ export default function MainHomePage() {
                     key={r}
                     onClick={() => { handleRegionChange(r); setRegionModalOpen(false) }}
                     className={`w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors ${
-                      active ? 'bg-pink-500/[0.12]' : 'hover:bg-gray-200 dark:hover:bg-white/[0.04]'
+                      active ? 'bg-pink-500/[0.12]' : 'hover:bg-white/[0.04]'
                     }`}
                   >
-                    <MapPin className={`w-4 h-4 ${active ? 'text-pink-400' : 'text-gray-900 dark:text-white/40'}`} />
-                    <span className={`flex-1 text-[14px] ${active ? 'text-pink-300 font-bold' : 'text-gray-900 dark:text-white'}`}>
+                    <MapPin className={`w-4 h-4 ${active ? 'text-pink-400' : 'text-white/40'}`} />
+                    <span className={`flex-1 text-[14px] ${active ? 'text-pink-300 font-bold' : 'text-white'}`}>
                       {r}
                     </span>
                     {active && (
