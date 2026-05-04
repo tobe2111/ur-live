@@ -8,6 +8,7 @@ import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
 import { formatNumber } from '@/utils/format'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import RecentlyViewed from './main-home/RecentlyViewed'
 import InvitePrompt from './main-home/InvitePrompt'
 import { REGIONS, CATEGORIES } from './main-home/constants'
@@ -181,11 +182,8 @@ export default function MainHomePage() {
       {/* ═══ Sticky Top Bar ═══ — PC 풀너비 sticky, 콘텐츠는 centered */}
       <div className="sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md">
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-1.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-            <Play className="h-3 w-3 text-white fill-white" />
-          </div>
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}>UR·DEAL</span>
+        <Link to="/" className="flex items-center gap-2">
+          <UrDealLogo size={18} />
         </Link>
         <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200">
           <button onClick={() => navigate('/search')} className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>

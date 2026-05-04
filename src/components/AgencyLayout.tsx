@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import DashboardNotificationBell from './DashboardNotificationBell'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import {
   LayoutDashboard, Users, ShoppingBag, BarChart2, LogOut, Menu, X,
   Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
@@ -157,12 +158,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
       {/* Branding */}
       <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-2.5">
-          <span
-            className="font-extrabold italic text-white"
-            style={{ fontSize: '13px', letterSpacing: '-0.03em' }}
-          >
-            UR·DEAL
-          </span>
+          <UrDealLogo size={14} forceDark />
           <span
             className="font-bold uppercase"
             style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#8B5CF6' }}

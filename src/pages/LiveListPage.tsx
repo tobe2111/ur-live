@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
 import { glass } from '@/components/glass/glassTokens'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import { formatNumber } from '@/utils/format'
 
 interface LiveStream {
@@ -91,9 +92,8 @@ export default function LiveListPage() {
       <header className="sticky top-0 z-50 bg-white/85 dark:bg-[#020202]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-100 dark:border-white/[0.06]">
         <div className="flex items-center justify-between px-4 h-[52px]">
           {/* UR·DEAL 로고 (홈으로) */}
-          <button onClick={() => navigate('/')} aria-label={t('liveList.ariaHome')} className="font-black tracking-tight">
-            <span style={{ fontSize: 18, letterSpacing: '-0.04em' }} className="text-red-500">UR·</span>
-            <span style={{ fontSize: 18, letterSpacing: '-0.04em' }} className="text-gray-900 dark:text-white">DEAL</span>
+          <button onClick={() => navigate('/')} aria-label={t('liveList.ariaHome')}>
+            <UrDealLogo size={18} />
           </button>
           <div className="flex items-center gap-0.5">
             <button

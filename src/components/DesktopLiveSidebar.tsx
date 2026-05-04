@@ -13,6 +13,7 @@
  */
 import { useNavigate, Link } from 'react-router-dom'
 import { Home, Compass, UserCheck, Radio, ShoppingBag, Search, User } from 'lucide-react'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 interface NavItem {
   label: string
@@ -41,13 +42,8 @@ export default function DesktopLiveSidebar() {
       aria-label="PC 메인 메뉴"
     >
       {/* 로고 */}
-      <Link to="/" className="flex items-center gap-2 px-3 mb-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-          <Radio className="h-4 w-4 text-white fill-white" />
-        </div>
-        <span className="text-[16px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}>
-          UR·DEAL
-        </span>
+      <Link to="/" className="flex items-center px-3 mb-6">
+        <UrDealLogo size={20} />
       </Link>
 
       <nav className="flex-1 flex flex-col gap-1">

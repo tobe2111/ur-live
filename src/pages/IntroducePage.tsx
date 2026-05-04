@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Play, ChevronRight, Check, Star, Users } from 'lucide-react'
 import SEO from '@/components/SEO'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import api from '@/lib/api'
 
 interface LiveStream { id: number; title: string; seller_name?: string; viewer_count?: number; thumbnail_url?: string; image_url?: string; youtube_video_id?: string }
@@ -31,11 +32,8 @@ export default function IntroducePage() {
       {/* ═══ NAV ═══ */}
       <header className="sticky top-0 z-50 bg-white/85 dark:bg-[#0A0A0A]/90 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between px-6 h-16">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-              <Play className="h-3.5 w-3.5 text-white fill-white" />
-            </div>
-            <span className="text-[20px] font-black italic text-gray-900 dark:text-white" style={{ letterSpacing: '-0.04em' }}>UR·DEAL</span>
+          <button onClick={() => navigate('/')} className="flex items-center">
+            <UrDealLogo size={20} />
           </button>
           <nav className="hidden md:flex items-center gap-1">
             {['지금 라이브', '어떻게 쓰나요', '셀러 입점'].map(t => (
@@ -233,11 +231,8 @@ export default function IntroducePage() {
       {/* ═══ FOOTER ═══ */}
       <footer className="bg-gray-900 text-white mt-16">
         <div className="max-w-[1280px] mx-auto px-6 py-16">
-          <div className="flex items-center gap-2 mb-5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-              <Play className="h-3.5 w-3.5 text-white fill-white" />
-            </div>
-            <span className="text-[22px] font-black italic text-white" style={{ letterSpacing: '-0.04em' }}>UR·DEAL</span>
+          <div className="flex items-center mb-5">
+            <UrDealLogo size={22} forceDark />
           </div>
           <p className="text-[13px] text-white/50 leading-relaxed mb-8 max-w-[360px]">사장님이 직접 켜는 라이브커머스. 우리 동네 맛집을 특가로 만나는 가장 빠른 방법.</p>
           <div className="pt-8 text-[11px] text-white/40 leading-relaxed border-t border-white/10">

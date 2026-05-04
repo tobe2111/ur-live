@@ -7,6 +7,7 @@ import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Shield, BarChart2, Settings } from 'lucide-react'
 import TurnstileWidget from '@/components/auth/TurnstileWidget'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function AdminLoginPage() {
   const { t } = useTranslation()
@@ -110,7 +111,7 @@ export default function AdminLoginPage() {
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
         <div className="px-10 pt-10">
           <div className="flex items-center gap-3">
-            <span className="text-2xl font-extrabold text-white tracking-tight">UR·DEAL</span>
+            <UrDealLogo size={22} forceDark />
             <span className="text-xs font-bold tracking-widest text-[#FCD34D] uppercase">Admin Console</span>
           </div>
         </div>
@@ -152,7 +153,7 @@ export default function AdminLoginPage() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <span className="text-2xl font-extrabold text-gray-900 tracking-tight">UR·DEAL</span>
+            <UrDealLogo size={22} forceLight />
             <span className="text-xs font-bold tracking-widest text-[#F59E0B] uppercase">Admin</span>
           </div>
 
