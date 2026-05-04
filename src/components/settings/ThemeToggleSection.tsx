@@ -66,24 +66,6 @@ export default function ThemeToggleSection() {
             })}
           </p>
         )}
-        {/* 🛡️ 2026-05-04: 마이페이지 강제 다크라 토글 효과 안 보여 사용자 신고. 미리보기 카드로 즉각 시각 피드백. */}
-        <div
-          className={`mt-3 rounded-xl p-3 border transition-colors ${
-            applied === 'dark'
-              ? 'bg-[#0A0A0A] border-[#2A2A2A]'
-              : 'bg-white border-gray-200'
-          }`}
-          aria-live="polite"
-        >
-          <p className={`text-[11px] font-bold mb-0.5 ${applied === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t('theme.previewTitle', { defaultValue: '미리보기' })}
-          </p>
-          <p className={`text-[10px] ${applied === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            {applied === 'dark'
-              ? t('theme.previewDark', { defaultValue: '다크 모드 — 쇼핑/결제 페이지가 어두운 테마로 표시됩니다.' })
-              : t('theme.previewLight', { defaultValue: '라이트 모드 — 쇼핑/결제 페이지가 밝은 테마로 표시됩니다.' })}
-          </p>
-        </div>
       </div>
     </div>
   )
