@@ -38,7 +38,7 @@ export default function DesktopLiveSidebar() {
 
   return (
     <aside
-      className="hidden xl:flex fixed left-0 top-0 bottom-0 w-56 z-40 flex-col py-6 px-3 bg-[#020202] border-r border-white/[0.06]"
+      className="hidden xl:flex fixed left-0 top-0 bottom-0 w-56 z-40 flex-col py-6 px-3 bg-white dark:bg-[#020202] border-r border-gray-200 dark:border-white/[0.06]"
       aria-label="PC 메인 메뉴"
     >
       {/* 로고 */}
@@ -56,8 +56,8 @@ export default function DesktopLiveSidebar() {
               onClick={() => navigate(item.path)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
                 isActive
-                  ? 'bg-white/[0.08] text-white font-bold'
-                  : 'text-white/70 hover:bg-white/[0.04] hover:text-white'
+                  ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white font-bold'
+                  : 'text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <Icon className="w-5 h-5 shrink-0" />

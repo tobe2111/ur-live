@@ -119,7 +119,7 @@ export function useLiveStreamWebSocket(
       const replayParam = replay ? '?replay=true' : ''
       const res = await fetch(`/api/live/${streamId}/chat/messages${replayParam}`)
       if (!res.ok) return
-      const json = await res.json() as { success: boolean; data: { id: number; user_id: number; user_name: string; message: string; user_type: string; created_at: string; is_seller?: boolean; is_admin?: boolean }[] }
+      const json = await res.json() as { success: boolean; data: { id: number; user_id: number; user_name: string; message: string; user_type: string; created_at: string }[] }
       if (json.success && Array.isArray(json.data)) {
         const formatted: ChatMessage[] = json.data.map((msg) => ({
           id: String(msg.id),
