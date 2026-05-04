@@ -183,7 +183,7 @@ export default function BottomNav() {
                   className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-500 shadow-lg shadow-red-500/30 active:scale-90 transition-transform"
                   aria-label="라이브 시작"
                 >
-                  <Plus className="w-6 h-6 text-gray-900 dark:text-white" strokeWidth={2.5} />
+                  <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
                 </button>
               </div>
 
@@ -242,11 +242,11 @@ export default function BottomNav() {
                         className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Radio className="w-6 h-6 text-gray-900 dark:text-white" />
+                          <Radio className="w-6 h-6 text-white" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">라이브 방송 시작하기</p>
-                          <p className="text-[12px] text-gray-900 dark:text-white/70 mt-0.5">YouTube 연동으로 바로 방송 시작</p>
+                          <p className="text-[15px] font-bold text-white">라이브 방송 시작하기</p>
+                          <p className="text-[12px] text-white/70 mt-0.5">YouTube 연동으로 바로 방송 시작</p>
                         </div>
                       </button>
 
@@ -255,11 +255,11 @@ export default function BottomNav() {
                         className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Utensils className="w-6 h-6 text-gray-900 dark:text-white" />
+                          <Utensils className="w-6 h-6 text-white" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">식사권 상품 등록</p>
-                          <p className="text-[12px] text-gray-900 dark:text-white/80 mt-0.5">맛집 식사권을 공구 상품으로 올리기</p>
+                          <p className="text-[15px] font-bold text-white">식사권 상품 등록</p>
+                          <p className="text-[12px] text-white/80 mt-0.5">맛집 식사권을 공구 상품으로 올리기</p>
                         </div>
                       </button>
 

@@ -67,7 +67,7 @@ export const LiveStreamPlayer = React.memo(function LiveStreamPlayer({
   if (!youtubeVideoId) {
     return (
       <div className={`flex items-center justify-center bg-gray-900 ${className}`}>
-        <div className="text-center text-gray-900 dark:text-white">
+        <div className="text-center text-white">
           <div className="mb-4 text-6xl">📹</div>
           <p className="text-lg">스트림을 불러오는 중...</p>
         </div>

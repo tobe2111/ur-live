@@ -183,7 +183,7 @@ export default function MainHomePage() {
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-1.5">
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-            <Play className="h-3 w-3 text-gray-900 dark:text-white fill-white" />
+            <Play className="h-3 w-3 text-white fill-white" />
           </div>
           <span className="text-[15px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.04em', fontStyle: 'italic' }}>UR·DEAL</span>
         </Link>
@@ -402,12 +402,12 @@ export default function MainHomePage() {
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 35%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
                       <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
-                      <span className="text-[10px] font-bold text-gray-900 dark:text-white">LIVE</span>
+                      <span className="text-[10px] font-bold text-white">LIVE</span>
                     </div>
                     {s.viewer_count != null && (
                       <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-md">
-                        <Eye className="h-3 w-3 text-gray-900 dark:text-white" />
-                        <span className="text-[9px] font-bold text-gray-900 dark:text-white">{s.viewer_count >= 1000 ? `${(s.viewer_count / 1000).toFixed(1)}K` : s.viewer_count}</span>
+                        <Eye className="h-3 w-3 text-white" />
+                        <span className="text-[9px] font-bold text-white">{s.viewer_count >= 1000 ? `${(s.viewer_count / 1000).toFixed(1)}K` : s.viewer_count}</span>
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 right-2">
@@ -448,8 +448,8 @@ export default function MainHomePage() {
                     {thumb && <img src={thumb} alt={s.title || t('mainHome.altScheduled')} loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-500 px-2 py-0.5 rounded-md">
-                      <Clock className="h-2.5 w-2.5 text-gray-900 dark:text-white" />
-                      <span className="text-[10px] font-bold text-gray-900 dark:text-white">{t('mainHome.scheduledBadge')}</span>
+                      <Clock className="h-2.5 w-2.5 text-white" />
+                      <span className="text-[10px] font-bold text-white">{t('mainHome.scheduledBadge')}</span>
                     </div>
                     <div className="absolute bottom-2 left-2 right-2">
                       {timeLabel && <p className="text-[18px] font-black text-gray-900 dark:text-white">{timeLabel}</p>}
@@ -485,8 +485,8 @@ export default function MainHomePage() {
                   <div className="relative rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={{ aspectRatio: '16/9' }}>
                     {thumb && <img src={thumb} alt={s.title || t('mainHome.altReplay')} loading="lazy" className="w-full h-full object-cover brightness-[0.85]" />}
                     <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-                      <Play className="h-2.5 w-2.5 text-gray-900 dark:text-white" />
-                      <span className="text-[9px] font-bold text-gray-900 dark:text-white">{t('mainHome.replayBadge')}</span>
+                      <Play className="h-2.5 w-2.5 text-white" />
+                      <span className="text-[9px] font-bold text-white">{t('mainHome.replayBadge')}</span>
                     </div>
                   </div>
                   <p className="text-[11px] text-gray-700 dark:text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>

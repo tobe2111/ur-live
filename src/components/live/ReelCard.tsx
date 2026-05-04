@@ -856,7 +856,7 @@ export default function ReelCard({
       {isCurrentProduct && isSeller && (
         <div className="absolute top-24 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-          <span className="text-gray-900 dark:text-white font-bold text-[11px] tracking-wide">{t('live.intro')}</span>
+          <span className="text-white font-bold text-[11px] tracking-wide">{t('live.intro')}</span>
         </div>
       )}
       

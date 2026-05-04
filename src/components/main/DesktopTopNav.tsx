@@ -75,7 +75,7 @@ export default function DesktopTopNav() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-1.5 shrink-0">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
-            <Play className="h-3.5 w-3.5 text-gray-900 dark:text-white fill-white" />
+            <Play className="h-3.5 w-3.5 text-white fill-white" />
           </div>
           <span
             className="text-[16px] font-extrabold text-gray-900 dark:text-white"

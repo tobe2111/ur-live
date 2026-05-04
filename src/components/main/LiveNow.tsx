@@ -232,8 +232,8 @@ export default function LiveNow() {
 
               {/* Viewers */}
               <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 px-1.5 py-0.5 rounded-sm">
-                <Eye className="h-3 w-3 text-gray-900 dark:text-white" strokeWidth={2} />
-                <span className="text-[10px] font-semibold text-gray-900 dark:text-white">
+                <Eye className="h-3 w-3 text-white" strokeWidth={2} />
+                <span className="text-[10px] font-semibold text-white">
                   {formatViewers(stream.viewer_count)}
                 </span>
               </div>
