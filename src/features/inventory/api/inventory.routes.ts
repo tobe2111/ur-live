@@ -272,7 +272,7 @@ inventoryRoutes.get('/stock/history/:productId', requireAuth(), async (c) => {
   return c.json({ success: true, data: results ?? [] });
 });
 
-// GET /api/inventory/stock/alerts — 재고 부족 상품 목록
+// GET /api/inventory/stock/alerts — 재고 부족 상품 목록 (본인 셀러 한정)
 inventoryRoutes.get('/stock/alerts', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
@@ -280,12 +280,24 @@ inventoryRoutes.get('/stock/alerts', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const { results } = await DB.prepare(`
-    SELECT id, name, stock, barcode, min_stock_alert, image_url, seller_id
-    FROM products
-    WHERE is_active = 1 AND stock <= COALESCE(min_stock_alert, 5)
-    ORDER BY stock ASC
-  `).all();
+  // 🛡️ 2026-05-04: 사용자 신고 "재고 부족인 상품 없는데 1로 표시".
+  // - 이전엔 WHERE seller_id 필터 없어 다른 셀러의 재고 부족 상품도 포함 (IDOR + 카운트 오염).
+  // - stock = 0 (품절) 도 "재고 부족"으로 카운트되어 부정확. stock > 0 으로 진짜 부족만 카운트.
+  // admin 은 전체 상품 (운영 모니터링), 그 외 (셀러) 는 본인 상품만.
+  const isAdmin = user.type === 'admin';
+  const { results } = isAdmin
+    ? await DB.prepare(`
+        SELECT id, name, stock, barcode, min_stock_alert, image_url, seller_id
+        FROM products
+        WHERE is_active = 1 AND stock > 0 AND stock <= COALESCE(min_stock_alert, 5)
+        ORDER BY stock ASC
+      `).all()
+    : await DB.prepare(`
+        SELECT id, name, stock, barcode, min_stock_alert, image_url, seller_id
+        FROM products
+        WHERE seller_id = ? AND is_active = 1 AND stock > 0 AND stock <= COALESCE(min_stock_alert, 5)
+        ORDER BY stock ASC
+      `).bind(user.id).all();
 
   return c.json({ success: true, data: results ?? [] });
 });
