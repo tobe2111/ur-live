@@ -98,7 +98,7 @@ export default function DesktopTopNav() {
                 className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
                   active
                     ? 'text-gray-900 dark:text-white'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-white hover:bg-gray-200 dark:hover:bg-white/[0.04]'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${active ? 'text-pink-400' : ''}`} strokeWidth={active ? 2 : 1.5} />
@@ -116,7 +116,7 @@ export default function DesktopTopNav() {
           <button
             onClick={() => navigate('/search')}
             aria-label={t('liveList.ariaSearch', { defaultValue: '검색' })}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-white"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
           >
             <Search className="w-5 h-5" strokeWidth={1.75} />
           </button>
@@ -127,7 +127,7 @@ export default function DesktopTopNav() {
                 ? t('mainHome.ariaNotificationsCount', { count: unreadCount })
                 : t('mainHome.ariaNotifications')
             }
-            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-white"
+            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
           >
             <Bell className="w-5 h-5" strokeWidth={1.75} />
             {unreadCount > 0 && (
@@ -139,7 +139,7 @@ export default function DesktopTopNav() {
           <button
             onClick={() => navigate('/cart')}
             aria-label={t('liveList.ariaCart', { defaultValue: '장바구니' })}
-            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-white"
+            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
           >
             <ShoppingCart className="w-5 h-5" strokeWidth={1.75} />
             {cartCount > 0 && (
@@ -151,7 +151,7 @@ export default function DesktopTopNav() {
           <button
             onClick={() => navigate('/user/profile')}
             aria-label={t('nav.my', { defaultValue: '마이' })}
-            className={`w-9 h-9 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:text-white hover:bg-gray-200 dark:hover:bg-white/[0.06] ${
+            className={`w-9 h-9 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.06] ${
               isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
             }`}
           >

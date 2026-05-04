@@ -87,7 +87,7 @@ function AppVersionSection() {
             <button
               type="button"
               onClick={handleCheck}
-              className="flex items-center gap-1 text-[12px] text-gray-900 dark:text-white/55 hover:text-white transition-colors"
+              className="flex items-center gap-1 text-[12px] text-gray-900 dark:text-white/55 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
               다시 시도
@@ -108,7 +108,7 @@ function AppVersionSection() {
             <button
               type="button"
               onClick={handleCheck}
-              className="flex items-center gap-1 text-[12px] text-gray-900 dark:text-white/55 hover:text-white transition-colors"
+              className="flex items-center gap-1 text-[12px] text-gray-900 dark:text-white/55 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
               확인
