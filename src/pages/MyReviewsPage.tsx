@@ -118,7 +118,7 @@ export default function MyReviewsPage() {
                   )}
                   <button
                     onClick={() => navigate(`/products/${item.product_id}#review`)}
-                    className="w-full mt-2 py-2.5 bg-amber-50 text-amber-700 text-[13px] font-semibold rounded-xl border border-amber-100 hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full mt-2 py-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[13px] font-semibold rounded-xl border border-amber-100 dark:border-amber-800/40 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Star className="h-3.5 w-3.5" fill="currentColor" />
                     {t('myReviews.writeReview')}

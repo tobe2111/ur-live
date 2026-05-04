@@ -273,7 +273,7 @@ export default function AddressManagementPage() {
                       )}
                       <p className="text-[15px] font-semibold text-gray-900 dark:text-white">{address.recipient_name}</p>
                       {address.is_default === 1 && (
-                        <span className="rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-semibold text-pink-500">
+                        <span className="rounded-full bg-pink-50 dark:bg-pink-900/20 px-2 py-0.5 text-[11px] font-semibold text-pink-500 dark:text-pink-400">
                           기본
                         </span>
                       )}
