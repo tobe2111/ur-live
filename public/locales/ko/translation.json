@@ -2961,7 +2961,10 @@
     "maxed": "완료",
     "watch": "시청하기",
     "progress": "{{today}}/{{limit}}회 시청",
-    "rewardEarned": "+{{amount}}딜 적립 완료! (잔액: {{balance}}딜)"
+    "rewardEarned": "+{{amount}}딜 적립 완료! (잔액: {{balance}}딜)",
+    "rewardFailed": "리워드 지급에 실패했습니다",
+    "dailyLimitReached": "오늘 광고 시청 한도에 도달했습니다",
+    "watchError": "광고 시청 중 오류가 발생했습니다"
   },
   "tierBadge": {
     "currentTier": "현재 등급",

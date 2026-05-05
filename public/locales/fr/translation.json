@@ -2365,7 +2365,10 @@
     "maxed": "Terminé",
     "watch": "Regarder",
     "progress": "{{today}}/{{limit}} visionnés",
-    "rewardEarned": "+{{amount}} deals gagnés ! (Solde : {{balance}} deals)"
+    "rewardEarned": "+{{amount}} deals gagnés ! (Solde : {{balance}} deals)",
+    "rewardFailed": "Échec de l'attribution de la récompense",
+    "dailyLimitReached": "Limite quotidienne de visionnage de publicités atteinte",
+    "watchError": "Une erreur s'est produite lors de la visualisation de la publicité"
   },
   "tierBadge": {
     "currentTier": "Niveau actuel",
