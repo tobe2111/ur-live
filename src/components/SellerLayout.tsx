@@ -132,7 +132,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     ? 'Store Owner'
     : 'Influencer + Store'
 
-  const Sidebar = () => (
+  // 🛡️ 사이드바를 함수 컴포넌트가 아닌 JSX 변수로 정의 — 부모 re-render 시 함수 참조가
+  // 매번 새로 만들어져 React 가 unmount/remount → <nav> 의 scroll 위치가 reset 되던 버그.
+  const sidebar = (
     <aside className="w-[232px] flex-shrink-0 flex flex-col h-full" style={{ background: '#0A0A0B' }}>
       {/* Branding */}
       <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -269,13 +271,13 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       )}
 
       <div className="hidden lg:flex">
-        <Sidebar />
+        {sidebar}
       </div>
 
       <div className={`fixed inset-y-0 left-0 z-50 lg:hidden transition-transform duration-300 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        <Sidebar />
+        {sidebar}
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

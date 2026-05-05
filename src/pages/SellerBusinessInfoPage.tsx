@@ -89,7 +89,7 @@ export default function SellerBusinessInfoPage() {
     }
     setBankSubmitting(true)
     try {
-      const response = await api.post('/api/seller/profile', {
+      const response = await api.put('/api/seller/profile', {
         bank_name: bankInfo.bank_name.trim(),
         bank_account: bankInfo.bank_account.trim(),
         account_holder: bankInfo.account_holder.trim(),
