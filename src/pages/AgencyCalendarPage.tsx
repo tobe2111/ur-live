@@ -35,11 +35,11 @@ interface Note {
   created_at: string
 }
 
-const NOTE_TYPE_LABEL: Record<Note['type'], string> = {
-  guidance: '가이드',
-  issue: '이슈',
-  highlight: '하이라이트',
-  reminder: '리마인더',
+const NOTE_TYPE_LABEL_KEYS: Record<Note['type'], string> = {
+  guidance: 'agency.calendar.noteTypeGuidance',
+  issue: 'agency.calendar.noteTypeIssue',
+  highlight: 'agency.calendar.noteTypeHighlight',
+  reminder: 'agency.calendar.noteTypeReminder',
 }
 
 const NOTE_TYPE_ICON: Record<Note['type'], any> = {
@@ -56,10 +56,10 @@ const NOTE_TYPE_COLOR: Record<Note['type'], string> = {
   reminder: 'bg-purple-100 text-purple-700',
 }
 
-const STATUS_LABEL: Record<CalendarStream['status'], string> = {
-  scheduled: '예정',
-  live: '🔴 진행 중',
-  ended: '종료',
+const STATUS_LABEL_KEYS: Record<CalendarStream['status'], string> = {
+  scheduled: 'agency.calendar.statusScheduled',
+  live: 'agency.calendar.statusLive',
+  ended: 'agency.calendar.statusEnded',
 }
 
 const STATUS_COLOR: Record<CalendarStream['status'], string> = {
@@ -215,9 +215,9 @@ export default function AgencyCalendarPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                            <p className="text-sm font-bold truncate">{s.title || '제목 없음'}</p>
+                            <p className="text-sm font-bold truncate">{s.title || t('agency.calendar.noTitle', { defaultValue: '제목 없음' })}</p>
                             <span className="text-[10px] font-bold">
-                              {STATUS_LABEL[s.status]}
+                              {t(STATUS_LABEL_KEYS[s.status], { defaultValue: s.status })}
                             </span>
                           </div>
                           <p className="text-xs text-gray-500">
@@ -256,7 +256,7 @@ export default function AgencyCalendarPage() {
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold text-gray-900 truncate">{selectedStream.title}</h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {selectedStream.seller_business_name || selectedStream.seller_name} · {STATUS_LABEL[selectedStream.status]}
+                  {selectedStream.seller_business_name || selectedStream.seller_name} · {t(STATUS_LABEL_KEYS[selectedStream.status], { defaultValue: selectedStream.status })}
                 </p>
                 {streamDetail && (streamDetail.peak_viewers ?? 0) > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
@@ -288,7 +288,7 @@ export default function AgencyCalendarPage() {
                 </select>
                 <textarea value={noteForm.content}
                   onChange={e => setNoteForm({ ...noteForm, content: e.target.value })}
-                  placeholder="노트 내용 (예: '상품 클로즈업 시간 늘리세요', '시청자 질문 답변 누락')"
+                  placeholder={t('agency.calendar.notePlaceholder', { defaultValue: "노트 내용 (예: '상품 클로즈업 시간 늘리세요', '시청자 질문 답변 누락')" })}
                   rows={3} maxLength={2000}
                   className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900 resize-none" />
                 <label className="flex items-center gap-2 text-xs text-gray-700">
@@ -317,7 +317,7 @@ export default function AgencyCalendarPage() {
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${NOTE_TYPE_COLOR[n.type]}`}>
                             <Icon className="w-3 h-3" />
-                            {NOTE_TYPE_LABEL[n.type]}
+                            {t(NOTE_TYPE_LABEL_KEYS[n.type], { defaultValue: n.type })}
                           </span>
                           {n.visible_to_seller === 1 && (
                             <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">

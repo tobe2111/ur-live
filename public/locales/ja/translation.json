@@ -2498,7 +2498,21 @@
     "cameraPreviewOn": "カメラプレビューをオンにする",
     "cameraPreviewDesc": "配信前に自分の画面を確認（ローカルプレビュー、配信には影響なし）",
     "cameraDefault": "カメラ",
-    "cameraLocalPreview": "🔒 ローカルプレビュー"
+    "cameraLocalPreview": "🔒 ローカルプレビュー",
+    "liveGuideItem_intro_title": "自己紹介10〜20秒準備",
+    "liveGuideItem_intro_desc": "ニックネーム + 今日のライブテーマ + 応援歓迎メッセージ",
+    "liveGuideItem_background_title": "背景を整える",
+    "liveGuideItem_background_desc": "スッキリと整理された空間。散らかったものを片付ける",
+    "liveGuideItem_lighting_title": "照明確認",
+    "liveGuideItem_lighting_desc": "顔が暗くならないように — 正面光源またはリングライト推奨",
+    "liveGuideItem_mic_title": "マイク/音声チェック",
+    "liveGuideItem_mic_desc": "エコー・ノイズがないか5秒テスト",
+    "liveGuideItem_title_title": "魅力的なタイトル",
+    "liveGuideItem_title_desc": "視聴者の好奇心を刺激するキーワード + 絵文字",
+    "liveGuideItem_product_title": "販売商品を整理",
+    "liveGuideItem_product_desc": "今日紹介する商品を事前登録 + 在庫確認",
+    "liveGuideItem_response_title": "視聴者対応メッセージ",
+    "liveGuideItem_response_desc": "入室時「○○さんようこそ！」のように名前を呼ぶ"
   },
   "admin": {
     "login": {
@@ -3421,6 +3435,7 @@
     "restoreWhenNewDesc": "新たに始まります。以前のデータは30日後に完全削除されます。",
     "restoring": "復元中...",
     "restoreBtn": "以前のアカウントを復元",
-    "newAccountBtn": "新しいアカウントで始める"
+    "newAccountBtn": "新しいアカウントで始める",
+    "restoreFailed": "復元失敗"
   }
 }

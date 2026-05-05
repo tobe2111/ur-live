@@ -24,10 +24,10 @@ interface SelfEvent {
   created_at: string
 }
 
-const METRIC_ICON: Record<string, { icon: React.ElementType; suffix: string }> = {
-  revenue: { icon: TrendingUp, suffix: '딜' },
-  live_count: { icon: Users, suffix: '회' },
-  viewer_peak: { icon: Eye, suffix: '명' },
+const METRIC_ICON: Record<string, { icon: React.ElementType; suffixKey: string; suffixDefault: string }> = {
+  revenue: { icon: TrendingUp, suffixKey: 'common.deal', suffixDefault: '딜' },
+  live_count: { icon: Users, suffixKey: 'agency.selfEvents.countUnit', suffixDefault: '회' },
+  viewer_peak: { icon: Eye, suffixKey: 'agency.selfEvents.personUnit', suffixDefault: '명' },
 }
 
 const STATUS_CLS_SE: Record<string, string> = {
@@ -213,7 +213,7 @@ export default function AgencySelfEventsPage() {
                           <Icon className="w-3 h-3" /> {t('agency.selfEvents.goal', { defaultValue: '목표' })}
                         </div>
                         <div className="font-bold text-gray-900">
-                          {formatNumber(e.target_value)}{meta.suffix}
+                          {formatNumber(e.target_value)}{t(meta.suffixKey, { defaultValue: meta.suffixDefault })}
                         </div>
                       </div>
                       <div className="bg-purple-50 rounded p-2">

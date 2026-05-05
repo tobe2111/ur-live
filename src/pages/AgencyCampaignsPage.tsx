@@ -42,12 +42,12 @@ interface SellerOption {
   email?: string
 }
 
-const STATUS_TABS: Array<{ key: 'all' | Campaign['status']; label: string }> = [
-  { key: 'all', label: '전체' },
-  { key: 'scheduled', label: '예정' },
-  { key: 'active', label: '진행 중' },
-  { key: 'ended', label: '종료' },
-  { key: 'cancelled', label: '취소' },
+const STATUS_TAB_KEYS: Array<{ key: 'all' | Campaign['status']; labelKey: string; labelDefault: string }> = [
+  { key: 'all', labelKey: 'common.all', labelDefault: '전체' },
+  { key: 'scheduled', labelKey: 'agency.campaigns.statusScheduled', labelDefault: '예정' },
+  { key: 'active', labelKey: 'agency.campaigns.statusActive', labelDefault: '진행 중' },
+  { key: 'ended', labelKey: 'agency.campaigns.statusEnded', labelDefault: '종료' },
+  { key: 'cancelled', labelKey: 'agency.campaigns.statusCancelled', labelDefault: '취소' },
 ]
 
 const STATUS_BADGE: Record<Campaign['status'], string> = {
@@ -57,15 +57,18 @@ const STATUS_BADGE: Record<Campaign['status'], string> = {
   cancelled: 'bg-red-100 text-red-600',
 }
 
-const STATUS_LABEL: Record<Campaign['status'], string> = {
-  scheduled: '예정', active: '진행 중', ended: '종료', cancelled: '취소',
+const STATUS_LABEL_KEYS: Record<Campaign['status'], { key: string; default: string }> = {
+  scheduled: { key: 'agency.campaigns.statusScheduled', default: '예정' },
+  active: { key: 'agency.campaigns.statusActive', default: '진행 중' },
+  ended: { key: 'agency.campaigns.statusEnded', default: '종료' },
+  cancelled: { key: 'agency.campaigns.statusCancelled', default: '취소' },
 }
 
 export default function AgencyCampaignsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [tab, setTab] = useState<typeof STATUS_TABS[number]['key']>('all')
+  const [tab, setTab] = useState<typeof STATUS_TAB_KEYS[number]['key']>('all')
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
@@ -189,7 +192,7 @@ export default function AgencyCampaignsPage() {
 
         {/* 탭 */}
         <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
-          {STATUS_TABS.map(({ key, label }) => (
+          {STATUS_TAB_KEYS.map(({ key, labelKey, labelDefault }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
@@ -197,7 +200,7 @@ export default function AgencyCampaignsPage() {
                 tab === key ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {label}
+              {t(labelKey, { defaultValue: labelDefault })}
             </button>
           ))}
         </div>
@@ -219,7 +222,7 @@ export default function AgencyCampaignsPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-sm font-bold text-gray-900 truncate">{c.name}</p>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${STATUS_BADGE[c.status]}`}>
-                        {STATUS_LABEL[c.status]}
+                        {t(STATUS_LABEL_KEYS[c.status].key, { defaultValue: STATUS_LABEL_KEYS[c.status].default })}
                       </span>
                     </div>
                     {c.description && <p className="text-xs text-gray-500 line-clamp-1">{c.description}</p>}

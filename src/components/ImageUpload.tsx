@@ -96,7 +96,7 @@ export default function ImageUpload({
 
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('Image upload error:', err)
-      setError(err.message || '이미지 업로드에 실패했습니다.')
+      setError(err.message || t('common.imageUploadFailed', { defaultValue: '이미지 업로드에 실패했습니다.' }))
       setUploading(false)
     }
   }

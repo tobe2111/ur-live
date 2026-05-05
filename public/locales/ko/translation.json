@@ -2498,7 +2498,21 @@
     "cameraPreviewOn": "카메라 미리보기 켜기",
     "cameraPreviewDesc": "방송 전 내 화면 확인 (로컬 미리보기, 방송에 영향 없음)",
     "cameraDefault": "카메라",
-    "cameraLocalPreview": "🔒 로컬 미리보기"
+    "cameraLocalPreview": "🔒 로컬 미리보기",
+    "liveGuideItem_intro_title": "자기소개 10~20초 준비",
+    "liveGuideItem_intro_desc": "간단한 닉네임 + 오늘 라이브 주제 + 응원 환영 멘트",
+    "liveGuideItem_background_title": "배경 정리",
+    "liveGuideItem_background_desc": "깔끔하고 정리된 공간. 산만한 물건 치우기",
+    "liveGuideItem_lighting_title": "조명 확인",
+    "liveGuideItem_lighting_desc": "얼굴이 어둡지 않게 — 정면 광원 또는 링라이트 권장",
+    "liveGuideItem_mic_title": "마이크/소리 점검",
+    "liveGuideItem_mic_desc": "에코·잡음 없는지 5초 테스트",
+    "liveGuideItem_title_title": "매력적인 제목",
+    "liveGuideItem_title_desc": "시청자의 호기심을 자극하는 키워드 + 이모지",
+    "liveGuideItem_product_title": "판매 상품 정리",
+    "liveGuideItem_product_desc": "오늘 노출할 상품 미리 등록 + 재고 확인",
+    "liveGuideItem_response_title": "시청자 응대 멘트",
+    "liveGuideItem_response_desc": "입장 시 \"○○님 환영해요!\" 처럼 이름 부르기"
   },
   "admin": {
     "login": {
@@ -3421,6 +3435,7 @@
     "restoreWhenNewDesc": "새로 시작합니다. 이전 데이터는 30일 후 영구 삭제돼요.",
     "restoring": "복원 중...",
     "restoreBtn": "이전 계정 복원하기",
-    "newAccountBtn": "새 계정으로 시작"
+    "newAccountBtn": "새 계정으로 시작",
+    "restoreFailed": "복원 실패"
   }
 }

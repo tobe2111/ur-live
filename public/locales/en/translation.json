@@ -2498,7 +2498,21 @@
     "cameraPreviewOn": "Turn on Camera Preview",
     "cameraPreviewDesc": "Check your screen before broadcast (local preview, no effect on broadcast)",
     "cameraDefault": "Camera",
-    "cameraLocalPreview": "🔒 Local Preview"
+    "cameraLocalPreview": "🔒 Local Preview",
+    "liveGuideItem_intro_title": "10-20 second self-introduction",
+    "liveGuideItem_intro_desc": "Nickname + today's live topic + welcome message",
+    "liveGuideItem_background_title": "Clean background",
+    "liveGuideItem_background_desc": "Tidy, organized space. Remove distracting items",
+    "liveGuideItem_lighting_title": "Check lighting",
+    "liveGuideItem_lighting_desc": "Make sure your face isn't dark — front light or ring light recommended",
+    "liveGuideItem_mic_title": "Check mic/sound",
+    "liveGuideItem_mic_desc": "5-second test for echo or noise",
+    "liveGuideItem_title_title": "Attractive title",
+    "liveGuideItem_title_desc": "Keywords + emoji to capture viewer curiosity",
+    "liveGuideItem_product_title": "Organize products",
+    "liveGuideItem_product_desc": "Pre-register products for today's show + check stock",
+    "liveGuideItem_response_title": "Viewer greeting script",
+    "liveGuideItem_response_desc": "Call out names like \"Welcome, ○○!\""
   },
   "admin": {
     "login": {
@@ -3421,6 +3435,7 @@
     "restoreWhenNewDesc": "You'll start fresh. Previous data will be permanently deleted after 30 days.",
     "restoring": "Restoring...",
     "restoreBtn": "Restore Previous Account",
-    "newAccountBtn": "Start with New Account"
+    "newAccountBtn": "Start with New Account",
+    "restoreFailed": "Restore failed"
   }
 }

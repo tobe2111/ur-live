@@ -71,14 +71,14 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
 
   const handleDonate = useCallback(async () => {
     if (!userId) {
-      toast.error('로그인이 필요합니다.')
+      toast.error(t('common.loginRequired', { defaultValue: '로그인이 필요합니다.' }))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       window.location.href = '/login'
       return
     }
 
     if (balance !== null && balance < selectedAmount.amount) {
-      toast.error(`딜이 부족합니다. 충전 후 이용해주세요.`)
+      toast.error(t('live.donationInsufficientAlert', { defaultValue: '딜이 부족합니다. 충전 후 이용해주세요.' }))
       return
     }
 
@@ -91,12 +91,12 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
       })
 
       if (res.data.success) {
-        toast.success(res.data.message || `${formatNumber(selectedAmount.amount)}딜을 후원했습니다!`)
+        toast.success(res.data.message || t('live.donationSuccessMsg', { amount: formatNumber(selectedAmount.amount), defaultValue: '{{amount}}딜을 후원했습니다!' }))
         setBalance(res.data.data.balance)
         setShowSheet(false)
 
         // Show center-screen donation alert
-        const donorName = localStorage.getItem('user_name') || '후원자'
+        const donorName = localStorage.getItem('user_name') || t('live.donationDonorDefault', { defaultValue: '후원자' })
         setCenterAlert({
           emoji: selectedAmount.emoji,
           donorName,
@@ -114,11 +114,11 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
         if (res.data.code === 'INSUFFICIENT_POINTS') {
           toast.error(res.data.error)
         } else {
-          toast.error(res.data.error || '후원에 실패했습니다.')
+          toast.error(res.data.error || t('live.donationFailed', { defaultValue: '후원에 실패했습니다.' }))
         }
       }
     } catch (err: any) {
-      const errMsg = err.response?.data?.error || '후원에 실패했습니다.'
+      const errMsg = err.response?.data?.error || t('live.donationFailed', { defaultValue: '후원에 실패했습니다.' })
       toast.error(errMsg)
     } finally {
       setProcessing(false)
@@ -145,7 +145,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
           <div className="animate-donation-center-alert fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-pink-500/90 to-red-500/90 backdrop-blur-xl rounded-3xl px-8 py-6 shadow-2xl border border-white/20 text-center">
             <div className="text-5xl mb-2">{centerAlert.emoji}</div>
             <p className="text-white text-lg font-bold whitespace-nowrap">
-              {centerAlert.donorName}님이 {formatNumber(centerAlert.amount)}딜 후원!
+              {t('live.donationCenterAlert', { name: centerAlert.donorName, amount: formatNumber(centerAlert.amount), defaultValue: '{{name}}님이 {{amount}}딜 후원!' })}
             </p>
           </div>
         </div>
@@ -195,7 +195,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                   ) : (
                     <span className="text-lg font-bold text-pink-600">
-                      {formatNumber(balance ?? 0)}딜
+                      {t('live.donationBalance', { amount: formatNumber(balance ?? 0), defaultValue: '{{amount}}딜' })}
                     </span>
                   )}
                   <button
@@ -273,6 +273,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
  * 후원 이펙트 오버레이 — 후원 발생 시 화면에 표시
  */
 export function DonationEffect({ donations }: { donations: DonationEffect[] }) {
+  const { t } = useTranslation()
   if (donations.length === 0) return null
 
   return (
@@ -286,7 +287,7 @@ export function DonationEffect({ donations }: { donations: DonationEffect[] }) {
             <Heart className="w-5 h-5 text-yellow-300 fill-yellow-300 flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-sm font-bold truncate">
-                {d.donorName}님이 {formatNumber(d.amount)}딜 후원!
+                {t('live.donationCenterAlert', { name: d.donorName, amount: formatNumber(d.amount), defaultValue: '{{name}}님이 {{amount}}딜 후원!' })}
               </p>
               {d.message && (
                 <p className="text-xs text-white/80 truncate mt-0.5">{d.message}</p>
