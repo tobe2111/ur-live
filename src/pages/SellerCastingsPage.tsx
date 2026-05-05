@@ -76,6 +76,7 @@ export default function SellerCastingsPage() {
     rejectionReason: t('seller.castings.rejectionReason', { defaultValue: '거절 사유' }),
     acceptBtn: t('seller.castings.acceptBtn', { defaultValue: '수락' }),
     rejectBtn: t('seller.castings.rejectBtn', { defaultValue: '거절' }),
+    priceUnit: t('common.won', { defaultValue: '원' }),
   }
 
   return (
@@ -152,7 +153,7 @@ function CastingCard(props: {
           <div className="text-[10px] text-gray-500 flex items-center gap-1">
             <DollarSign className="w-3 h-3" /> {labels.proposedFee}
           </div>
-          <div className="text-sm font-bold text-gray-900 mt-0.5">{formatNumber(c.proposed_fee)}원</div>
+          <div className="text-sm font-bold text-gray-900 mt-0.5">{formatNumber(c.proposed_fee)}{labels.priceUnit}</div>
         </div>
         {c.proposed_live_date && (
           <div className="bg-gray-50 rounded-lg p-2">

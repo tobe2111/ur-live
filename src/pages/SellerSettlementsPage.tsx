@@ -344,21 +344,21 @@ export default function SellerSettlementsPage() {
             <DashboardStatCard
               label={t('common.pending')}
               value={`₩${formatNumber(stats.pending_amount)}`}
-              hint={`${stats.total_pending}건`}
+              hint={`${stats.total_pending}${t('seller.ordersUnit', { defaultValue: '건' })}`}
               icon={<Clock className="h-4 w-4" />}
               accent="amber"
             />
             <DashboardStatCard
               label={t('common.completed')}
               value={`₩${formatNumber(stats.approved_amount)}`}
-              hint={`${stats.total_approved}건`}
+              hint={`${stats.total_approved}${t('seller.ordersUnit', { defaultValue: '건' })}`}
               icon={<CheckCircle className="h-4 w-4" />}
               accent="blue"
             />
             <DashboardStatCard
               label={t('common.paid')}
               value={`₩${formatNumber(stats.paid_amount)}`}
-              hint={`${stats.total_paid}건`}
+              hint={`${stats.total_paid}${t('seller.ordersUnit', { defaultValue: '건' })}`}
               icon={<DollarSign className="h-4 w-4" />}
               accent="green"
             />

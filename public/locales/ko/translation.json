@@ -1870,6 +1870,8 @@
     "settlementRequestFailed2": "정산 신청에 실패했습니다.",
     "settlementDownloadFailed": "정산서 다운로드에 실패했습니다.",
     "settlementLoadingText": "정산 내역을 불러오는 중...",
+    "newOrderNotifTitle": "🛒 새 주문이 들어왔어요!",
+    "newOrderNotifBody": "{{count}}건의 새 주문을 확인하세요",
     "allPeriod": "전체 기간 누적",
     "periodSelect": "기간 선택",
     "recent1Month": "최근 1개월",

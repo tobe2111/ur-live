@@ -1308,6 +1308,8 @@
     "settlementRequestFailed2": "Echec de la demande.",
     "settlementDownloadFailed": "Echec du telechargement du rapport.",
     "settlementLoadingText": "Chargement des reglements...",
+    "newOrderNotifTitle": "🛒 Nouvelle commande reçue !",
+    "newOrderNotifBody": "{{count}} nouvelle(s) commande(s) à vérifier",
     "allPeriod": "Total cumule",
     "periodSelect": "Periode",
     "recent1Month": "Dernier mois",

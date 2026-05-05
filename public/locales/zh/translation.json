@@ -1864,6 +1864,8 @@
     "settlementRequestFailed2": "结算申请失败。",
     "settlementDownloadFailed": "结算报告下载失败。",
     "settlementLoadingText": "加载结算记录中...",
+    "newOrderNotifTitle": "🛒 有新订单！",
+    "newOrderNotifBody": "请确认{{count}}件新订单",
     "allPeriod": "全部累计",
     "periodSelect": "期间选择",
     "recent1Month": "最近1个月",

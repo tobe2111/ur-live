@@ -130,8 +130,8 @@ export default function SellerPage() {
             // 🛡️ 2026-04-23 배치 170: 신규 주문 알림 (브라우저 Notification + 사운드)
             try {
               if (Notification.permission === 'granted') {
-                new Notification('🛒 새 주문이 들어왔어요!', {
-                  body: `${newIds.size}건의 새 주문을 확인하세요`,
+                new Notification(t('seller.newOrderNotifTitle', { defaultValue: '🛒 새 주문이 들어왔어요!' }), {
+                  body: t('seller.newOrderNotifBody', { defaultValue: '{{count}}건의 새 주문을 확인하세요', count: newIds.size }),
                   icon: '/favicon.ico',
                 })
               } else if (Notification.permission === 'default') {

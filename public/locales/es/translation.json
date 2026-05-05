@@ -1308,6 +1308,8 @@
     "settlementRequestFailed2": "Error en solicitud.",
     "settlementDownloadFailed": "Error al descargar reporte.",
     "settlementLoadingText": "Cargando liquidaciones...",
+    "newOrderNotifTitle": "🛒 ¡Nuevo pedido recibido!",
+    "newOrderNotifBody": "{{count}} nuevo(s) pedido(s) por revisar",
     "allPeriod": "Total acumulado",
     "periodSelect": "Periodo",
     "recent1Month": "Ultimo mes",

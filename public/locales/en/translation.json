@@ -1865,6 +1865,8 @@
     "settlementRequestFailed2": "Settlement request failed.",
     "settlementDownloadFailed": "Failed to download settlement report.",
     "settlementLoadingText": "Loading settlements...",
+    "newOrderNotifTitle": "🛒 New order received!",
+    "newOrderNotifBody": "{{count}} new order(s) to check",
     "allPeriod": "All Time Total",
     "periodSelect": "Period",
     "recent1Month": "Last 1 month",
