@@ -15,6 +15,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
+import { isPinVerified } from './seller-pin.routes'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SellerProfileUpdate {
@@ -113,7 +114,6 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
 
     // 🛡️ 계좌 변경은 민감 액션 — 최근 15분 내 PIN 인증 필수
     if (bankChanged) {
-      const { isPinVerified } = await import('./seller-pin.routes');
       const pinOk = await isPinVerified(c.req.header('Cookie'), sellerId, c.env.JWT_SECRET);
       if (!pinOk) {
         return c.json({ success: false, error: '계좌 변경은 PIN 인증이 필요합니다', code: 'PIN_REQUIRED' }, 412);
