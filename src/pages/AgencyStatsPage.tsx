@@ -71,7 +71,7 @@ export default function AgencyStatsPage() {
     if (!token) { navigate('/agency/login', { replace: true }); return }
     api.get('/api/agency/sellers', { headers })
       .then(r => setSellers(r.data.data || []))
-      .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
+      .catch(() => { toast.error(t('agency.stats.sessionExpired', { defaultValue: '세션이 만료되었습니다. 다시 로그인해주세요.' })); navigate('/agency/login', { replace: true }) })
     // Fetch agency profile for commission rate
     api.get('/api/agency/profile', { headers })
       .then(r => {
@@ -165,7 +165,7 @@ export default function AgencyStatsPage() {
               period === p ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
-            {p === '7d' ? '최근 7일' : p === '30d' ? '최근 30일' : '최근 90일'}
+            {p === '7d' ? t('agency.stats.last7d', { defaultValue: '최근 7일' }) : p === '30d' ? t('agency.stats.last30d', { defaultValue: '최근 30일' }) : t('agency.stats.last90d', { defaultValue: '최근 90일' })}
           </button>
         ))}
       </div>
@@ -173,11 +173,11 @@ export default function AgencyStatsPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { label: '총 매출', value: `${(totals.revenue / 10000).toFixed(0)}만원`, icon: TrendingUp, color: 'bg-blue-600' },
-          { label: '수수료 수익', value: `${Math.round(totals.revenue * commissionRate / 100)}원`, icon: DollarSign, color: 'bg-indigo-600' },
-          { label: '총 주문', value: `${totals.orders}건`, icon: ShoppingBag, color: 'bg-emerald-500' },
-          { label: '총 라이브', value: `${totals.streams}회`, icon: Play, color: 'bg-rose-500' },
-          { label: '총 시청자', value: `${formatNumber(totals.viewers)}명`, icon: Users, color: 'bg-violet-500' },
+          { label: t('agency.stats.totalRevenue', { defaultValue: '총 매출' }), value: `${(totals.revenue / 10000).toFixed(0)}만원`, icon: TrendingUp, color: 'bg-blue-600' },
+          { label: t('agency.stats.commissionRevenue', { defaultValue: '수수료 수익' }), value: `${Math.round(totals.revenue * commissionRate / 100)}원`, icon: DollarSign, color: 'bg-indigo-600' },
+          { label: t('agency.stats.totalOrders', { defaultValue: '총 주문' }), value: `${totals.orders}건`, icon: ShoppingBag, color: 'bg-emerald-500' },
+          { label: t('agency.stats.totalLives', { defaultValue: '총 라이브' }), value: `${totals.streams}회`, icon: Play, color: 'bg-rose-500' },
+          { label: t('agency.stats.totalViewers', { defaultValue: '총 시청자' }), value: `${formatNumber(totals.viewers)}명`, icon: Users, color: 'bg-violet-500' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-start justify-between">
@@ -197,13 +197,13 @@ export default function AgencyStatsPage() {
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-gray-900">셀러별 성과 비교</h2>
+            <h2 className="text-sm font-semibold text-gray-900">{t('agency.stats.sellerComparison', { defaultValue: '셀러별 성과 비교' })}</h2>
             <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">
-              수수료율 {commissionRate}%
+              {t('agency.stats.commissionRate', { defaultValue: '수수료율' })} {commissionRate}%
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-400 mr-2">정렬:</span>
+            <span className="text-xs text-gray-400 mr-2">{t('common.sort', { defaultValue: '정렬' })}:</span>
             {(['revenue', 'orders', 'streams'] as const).map(s => (
               <button
                 key={s}
@@ -212,22 +212,31 @@ export default function AgencyStatsPage() {
                   sort === s ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                {s === 'revenue' ? '매출' : s === 'orders' ? '주문' : '라이브'}
+                {s === 'revenue' ? t('agency.stats.sortRevenue', { defaultValue: '매출' }) : s === 'orders' ? t('agency.stats.sortOrders', { defaultValue: '주문' }) : t('agency.stats.sortLive', { defaultValue: '라이브' })}
               </button>
             ))}
           </div>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-sm text-gray-400">불러오는 중...</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('agency.stats.loading', { defaultValue: '불러오는 중...' })}</div>
         ) : sorted.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">소속 셀러가 없습니다.</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('agency.stats.noSellers', { defaultValue: '소속 셀러가 없습니다.' })}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  {['순위', '셀러', '매출', '주문', '수수료 수익', '셀러수익', '라이브', '시청자'].map(h => (
+                  {[
+                    t('agency.stats.colRank', { defaultValue: '순위' }),
+                    t('agency.stats.colSeller', { defaultValue: '셀러' }),
+                    t('agency.stats.sortRevenue', { defaultValue: '매출' }),
+                    t('agency.stats.sortOrders', { defaultValue: '주문' }),
+                    t('agency.stats.commissionRevenue', { defaultValue: '수수료 수익' }),
+                    t('agency.stats.colSellerRevenue', { defaultValue: '셀러수익' }),
+                    t('agency.stats.sortLive', { defaultValue: '라이브' }),
+                    t('agency.stats.colViewers', { defaultValue: '시청자' }),
+                  ].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                   ))}
                 </tr>
@@ -293,25 +302,25 @@ export default function AgencyStatsPage() {
       {/* Restaurant Comparison Table */}
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">식당별 성과 비교</h2>
-          <p className="text-xs text-gray-400">열 클릭으로 정렬</p>
+          <h2 className="text-sm font-semibold text-gray-900">{t('agency.stats.restaurantComparison', { defaultValue: '식당별 성과 비교' })}</h2>
+          <p className="text-xs text-gray-400">{t('agency.stats.clickToSort', { defaultValue: '열 클릭으로 정렬' })}</p>
         </div>
 
         {comparisonLoading ? (
-          <div className="p-8 text-center text-sm text-gray-400">불러오는 중...</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('agency.stats.loading', { defaultValue: '불러오는 중...' })}</div>
         ) : sortedComparison.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">비교할 식당이 없습니다.</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('agency.stats.noRestaurants', { defaultValue: '비교할 식당이 없습니다.' })}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">식당명</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">{t('agency.stats.colRestaurant', { defaultValue: '식당명' })}</th>
                   {([
-                    { key: 'revenue' as ComparisonSortKey, label: '매출' },
-                    { key: 'order_count' as ComparisonSortKey, label: '주문수' },
-                    { key: 'voucher_usage_rate' as ComparisonSortKey, label: '바우처 사용률' },
-                    { key: 'group_buy_success_rate' as ComparisonSortKey, label: '공구 참여율' },
+                    { key: 'revenue' as ComparisonSortKey, label: t('agency.stats.sortRevenue', { defaultValue: '매출' }) },
+                    { key: 'order_count' as ComparisonSortKey, label: t('agency.stats.colOrderCount', { defaultValue: '주문수' }) },
+                    { key: 'voucher_usage_rate' as ComparisonSortKey, label: t('agency.stats.colVoucherUsage', { defaultValue: '바우처 사용률' }) },
+                    { key: 'group_buy_success_rate' as ComparisonSortKey, label: t('agency.stats.colGroupBuyRate', { defaultValue: '공구 참여율' }) },
                   ]).map(col => (
                     <th
                       key={col.key}

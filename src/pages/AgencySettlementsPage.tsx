@@ -32,16 +32,16 @@ export default function AgencySettlementsPage() {
   const confirmedCount = summary.confirmed || 0
 
   async function requestPayout() {
-    if (confirmedCount === 0) { toast.error('정산 가능한 주문이 없습니다'); return }
-    if (!confirm(`${formatNumber(payableAmount)}원 정산을 신청하시겠습니까?`)) return
+    if (confirmedCount === 0) { toast.error(t('agency.settlements.noPayableOrders', { defaultValue: '정산 가능한 주문이 없습니다' })); return }
+    if (!confirm(`${formatNumber(payableAmount)}${t('agency.settlements.confirmPayout', { defaultValue: '원 정산을 신청하시겠습니까?' })}`)) return
     setRequesting(true)
     try {
       const res = await api.post('/api/agency/settlements/request')
       if (res.data.success) {
-        toast.success(`정산 신청 완료! ${formatNumber(res.data.data.commission_amount)}원`)
+        toast.success(`${t('agency.settlements.requestDone', { defaultValue: '정산 신청 완료!' })} ${formatNumber(res.data.data.commission_amount)}원`)
         load()
       } else {
-        toast.error(res.data.error || '정산 신청 실패')
+        toast.error(res.data.error || t('agency.settlements.requestFailed', { defaultValue: '정산 신청 실패' }))
       }
     } catch (e: any) {
       const code = e?.response?.data?.code
@@ -50,11 +50,11 @@ export default function AgencySettlementsPage() {
         return
       }
       if (code === 'PIN_NOT_SET') {
-        toast.error('보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.')
+        toast.error(t('agency.settlements.pinNotSet', { defaultValue: '보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.' }))
         navigate('/agency/profile')
         return
       }
-      toast.error(e?.response?.data?.error || '정산 신청에 실패했습니다')
+      toast.error(e?.response?.data?.error || t('agency.settlements.requestFailed', { defaultValue: '정산 신청에 실패했습니다' }))
     } finally { setRequesting(false) }
   }
 
@@ -72,9 +72,9 @@ export default function AgencySettlementsPage() {
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 mb-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm opacity-80">정산 가능 금액</p>
+              <p className="text-sm opacity-80">{t('agency.settlements.payableAmount', { defaultValue: '정산 가능 금액' })}</p>
               <p className="text-3xl font-extrabold mt-1">{formatNumber(payableAmount)}원</p>
-              <p className="text-xs opacity-70 mt-2">확정 주문 {confirmedCount}건 · 수수료율 {summary.agency_commission_rate || 2}%</p>
+              <p className="text-xs opacity-70 mt-2">{t('agency.settlements.confirmedOrders', { defaultValue: '확정 주문' })} {confirmedCount}{t('agency.settlements.countUnit', { defaultValue: '건' })} · {t('agency.settlements.commissionRate', { defaultValue: '수수료율' })} {summary.agency_commission_rate || 2}%</p>
             </div>
             <button
               onClick={requestPayout}
@@ -82,7 +82,7 @@ export default function AgencySettlementsPage() {
               className="flex items-center gap-2 px-6 py-3 bg-white text-blue-700 font-bold rounded-xl text-sm disabled:opacity-50 active:scale-95 transition-all"
             >
               <Banknote className="w-5 h-5" />
-              {requesting ? '신청 중...' : '정산 신청'}
+              {requesting ? t('agency.settlements.requesting', { defaultValue: '신청 중...' }) : t('agency.settlements.requestPayout', { defaultValue: '정산 신청' })}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -91,10 +91,10 @@ export default function AgencySettlementsPage() {
         {/* 통계 카드 */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
-            { label: '전체', value: summary.total || 0, icon: DollarSign, color: 'text-gray-700', bg: 'bg-gray-50' },
-            { label: '대기', value: summary.pending || 0, icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-            { label: '확정', value: summary.confirmed || 0, icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: '완료', value: summary.completed || 0, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+            { label: t('common.all', { defaultValue: '전체' }), value: summary.total || 0, icon: DollarSign, color: 'text-gray-700', bg: 'bg-gray-50' },
+            { label: t('agency.settlements.statusPending', { defaultValue: '대기' }), value: summary.pending || 0, icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+            { label: t('agency.settlements.statusConfirmed', { defaultValue: '확정' }), value: summary.confirmed || 0, icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: t('agency.settlements.statusCompleted', { defaultValue: '완료' }), value: summary.completed || 0, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
           ].map(s => (
             <div key={s.label} className={`${s.bg} rounded-xl p-4`}>
               <s.icon className={`w-5 h-5 ${s.color} mb-2`} />
@@ -111,11 +111,11 @@ export default function AgencySettlementsPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">주문번호</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">셀러</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-700">금액</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-700">정산상태</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">날짜</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">{t('agency.settlements.colOrderNum', { defaultValue: '주문번호' })}</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">{t('agency.settlements.colSeller', { defaultValue: '셀러' })}</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-700">{t('agency.settlements.colAmount', { defaultValue: '금액' })}</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-700">{t('agency.settlements.colSettlementStatus', { defaultValue: '정산상태' })}</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">{t('common.date', { defaultValue: '날짜' })}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -129,7 +129,7 @@ export default function AgencySettlementsPage() {
                         r.settlement_status === 'completed' ? 'bg-green-100 text-green-700' :
                         r.settlement_status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
                         'bg-yellow-100 text-yellow-700'
-                      }`}>{r.settlement_status === 'completed' ? '완료' : r.settlement_status === 'confirmed' ? '확정' : '대기'}</span>
+                      }`}>{r.settlement_status === 'completed' ? t('agency.settlements.statusCompleted', { defaultValue: '완료' }) : r.settlement_status === 'confirmed' ? t('agency.settlements.statusConfirmed', { defaultValue: '확정' }) : t('agency.settlements.statusPending', { defaultValue: '대기' })}</span>
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString('ko-KR')}</td>
                   </tr>
@@ -171,6 +171,7 @@ interface InvoiceRow {
 }
 
 function SettlementInvoicesSection() {
+  const { t } = useTranslation()
   const [invoices, setInvoices] = useState<InvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
   const token = localStorage.getItem('agency_token')
@@ -193,7 +194,7 @@ function SettlementInvoicesSection() {
         window.open(blobUrl, '_blank')
         setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
       })
-      .catch(() => toast.error('송장 다운로드 실패'))
+      .catch(() => toast.error(t('agency.settlements.invoiceDownloadFailed', { defaultValue: '송장 다운로드 실패' })))
   }
 
   if (loading) return null
@@ -201,25 +202,25 @@ function SettlementInvoicesSection() {
   return (
     <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5">
       <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-        📋 월별 정산 명세서
-        <span className="text-[10px] text-gray-400 font-normal">매월 1일 자동 발행</span>
+        📋 {t('agency.settlements.monthlyInvoices', { defaultValue: '월별 정산 명세서' })}
+        <span className="text-[10px] text-gray-400 font-normal">{t('agency.settlements.autoIssued', { defaultValue: '매월 1일 자동 발행' })}</span>
       </h3>
       {invoices.length === 0 ? (
         <p className="text-xs text-gray-400 text-center py-6">
-          아직 발행된 송장 없음 — 매월 1일 09:00 KST 이후 자동 발행됩니다.
+          {t('agency.settlements.noInvoices', { defaultValue: '아직 발행된 송장 없음 — 매월 1일 09:00 KST 이후 자동 발행됩니다.' })}
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
               <tr>
-                <th className="px-3 py-2 text-left">월</th>
-                <th className="px-3 py-2 text-left">송장번호</th>
-                <th className="px-3 py-2 text-right">총 매출</th>
-                <th className="px-3 py-2 text-right">수수료</th>
-                <th className="px-3 py-2 text-right">실수령</th>
-                <th className="px-3 py-2 text-center">상태</th>
-                <th className="px-3 py-2 text-center">다운로드</th>
+                <th className="px-3 py-2 text-left">{t('agency.settlements.colMonth', { defaultValue: '월' })}</th>
+                <th className="px-3 py-2 text-left">{t('agency.settlements.colInvoiceNum', { defaultValue: '송장번호' })}</th>
+                <th className="px-3 py-2 text-right">{t('agency.settlements.colTotalRevenue', { defaultValue: '총 매출' })}</th>
+                <th className="px-3 py-2 text-right">{t('agency.settlements.colCommission', { defaultValue: '수수료' })}</th>
+                <th className="px-3 py-2 text-right">{t('agency.settlements.colNetAmount', { defaultValue: '실수령' })}</th>
+                <th className="px-3 py-2 text-center">{t('common.status', { defaultValue: '상태' })}</th>
+                <th className="px-3 py-2 text-center">{t('agency.settlements.colDownload', { defaultValue: '다운로드' })}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -236,13 +237,13 @@ function SettlementInvoicesSection() {
                       inv.status === 'issued' ? 'bg-blue-100 text-blue-700' :
                       'bg-gray-100 text-gray-600'
                     }`}>
-                      {inv.status === 'paid' ? '지급완료' : inv.status === 'issued' ? '발행됨' : inv.status}
+                      {inv.status === 'paid' ? t('agency.settlements.invoicePaid', { defaultValue: '지급완료' }) : inv.status === 'issued' ? t('agency.settlements.invoiceIssued', { defaultValue: '발행됨' }) : inv.status}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-center">
                     <button onClick={() => downloadInvoice(inv)}
                       className="text-xs text-blue-600 hover:underline font-bold">
-                      열기
+                      {t('agency.settlements.openInvoice', { defaultValue: '열기' })}
                     </button>
                   </td>
                 </tr>

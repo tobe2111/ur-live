@@ -48,16 +48,12 @@ function StatCard({ label, value, icon: Icon, color, sub }: {
   )
 }
 
-function statusBadge(status: string) {
-  const map: Record<string, { label: string; cls: string }> = {
-    proposed:    { label: '제안됨',  cls: 'bg-blue-100 text-blue-700' },
-    negotiating: { label: '협상 중', cls: 'bg-amber-100 text-amber-700' },
-    confirmed:   { label: '확정',   cls: 'bg-green-100 text-green-700' },
-    achieved:    { label: '달성',   cls: 'bg-emerald-100 text-emerald-700' },
-    failed:      { label: '실패',   cls: 'bg-red-100 text-red-700' },
-  }
-  const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-600' }
-  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
+const STATUS_CLS_GB: Record<string, string> = {
+  proposed:    'bg-blue-100 text-blue-700',
+  negotiating: 'bg-amber-100 text-amber-700',
+  confirmed:   'bg-green-100 text-green-700',
+  achieved:    'bg-emerald-100 text-emerald-700',
+  failed:      'bg-red-100 text-red-700',
 }
 
 function ConfirmModal({ groupBuy, onClose, onConfirm }: {
@@ -65,6 +61,7 @@ function ConfirmModal({ groupBuy, onClose, onConfirm }: {
   onClose: () => void
   onConfirm: (price: number, discount: number) => void
 }) {
+  const { t } = useTranslation()
   const [price, setPrice] = useState('')
   const [discount, setDiscount] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -72,8 +69,8 @@ function ConfirmModal({ groupBuy, onClose, onConfirm }: {
   const handleSubmit = async () => {
     const p = Number(price)
     const d = Number(discount)
-    if (!p || p <= 0) { toast.error('확정 가격을 입력해주세요.'); return }
-    if (!d || d <= 0 || d > 100) { toast.error('할인율을 1~100% 범위로 입력해주세요.'); return }
+    if (!p || p <= 0) { toast.error(t('agency.groupBuy.confirmPriceRequired', { defaultValue: '확정 가격을 입력해주세요.' })); return }
+    if (!d || d <= 0 || d > 100) { toast.error(t('agency.groupBuy.discountRateRange', { defaultValue: '할인율을 1~100% 범위로 입력해주세요.' })); return }
     setSubmitting(true)
     try {
       await onConfirm(p, d)
@@ -88,19 +85,19 @@ function ConfirmModal({ groupBuy, onClose, onConfirm }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold text-gray-900">딜 확정</h3>
+          <h3 className="text-base font-bold text-gray-900">{t('agency.groupBuy.confirmDeal', { defaultValue: '딜 확정' })}</h3>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
             <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
-          <span className="font-semibold text-gray-900">{groupBuy.restaurant_name}</span> 공구를 확정합니다.
+          <span className="font-semibold text-gray-900">{groupBuy.restaurant_name}</span> {t('agency.groupBuy.confirmDesc', { defaultValue: '공구를 확정합니다.' })}
         </p>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">확정 가격 (원)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.groupBuy.confirmedPrice', { defaultValue: '확정 가격 (원)' })}</label>
             <input
               type="number"
               value={price}
@@ -110,7 +107,7 @@ function ConfirmModal({ groupBuy, onClose, onConfirm }: {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">할인율 (%)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.groupBuy.discountRate', { defaultValue: '할인율 (%)' })}</label>
             <input
               type="number"
               value={discount}
@@ -128,14 +125,14 @@ function ConfirmModal({ groupBuy, onClose, onConfirm }: {
             onClick={onClose}
             className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
           >
-            취소
+            {t('common.cancel', { defaultValue: '취소' })}
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitting}
             className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
           >
-            {submitting ? '처리 중...' : '확정'}
+            {submitting ? t('common.processing', { defaultValue: '처리 중...' }) : t('agency.groupBuy.confirmAction', { defaultValue: '확정' })}
           </button>
         </div>
       </div>
@@ -217,7 +214,7 @@ export default function AgencyGroupBuyPage() {
         })
       })
       .catch(() => {
-        toast.error('데이터를 불러오는데 실패했습니다.')
+        toast.error(t('agency.groupBuy.loadFailed', { defaultValue: '데이터를 불러오는데 실패했습니다.' }))
       })
       .finally(() => setLoading(false))
   }
@@ -230,28 +227,28 @@ export default function AgencyGroupBuyPage() {
     if (!token) return
     api.patch(`/api/community-group-buy/${id}/status`, { status }, { headers })
       .then(() => {
-        toast.success(status === 'negotiating' ? '협상이 시작되었습니다.' : '상태가 변경되었습니다.')
+        toast.success(status === 'negotiating' ? t('agency.groupBuy.negotiationStarted', { defaultValue: '협상이 시작되었습니다.' }) : t('agency.groupBuy.statusChanged', { defaultValue: '상태가 변경되었습니다.' }))
         fetchData(tab)
       })
-      .catch(() => toast.error('상태 변경에 실패했습니다.'))
+      .catch(() => toast.error(t('agency.groupBuy.statusChangeFailed', { defaultValue: '상태 변경에 실패했습니다.' })))
   }
 
   const confirmDeal = (id: number, confirmed_price: number, confirmed_discount_percent: number) => {
     if (!token) return
     return api.patch(`/api/community-group-buy/${id}/confirm`, { confirmed_price, confirmed_discount_percent }, { headers })
       .then(() => {
-        toast.success('딜이 확정되었습니다!')
+        toast.success(t('agency.groupBuy.dealConfirmed', { defaultValue: '딜이 확정되었습니다!' }))
         setConfirmTarget(null)
         fetchData(tab)
       })
-      .catch(() => toast.error('딜 확정에 실패했습니다.'))
+      .catch(() => toast.error(t('agency.groupBuy.dealConfirmFailed', { defaultValue: '딜 확정에 실패했습니다.' })))
   }
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: 'popular', label: '인기 공구 (50+)' },
-    { key: 'all', label: '전체' },
-    { key: 'negotiating', label: '협상 중' },
-    { key: 'confirmed', label: '확정' },
+    { key: 'popular', label: t('agency.groupBuy.tabPopular', { defaultValue: '인기 공구 (50+)' }) },
+    { key: 'all', label: t('agency.groupBuy.tabAll', { defaultValue: '전체' }) },
+    { key: 'negotiating', label: t('agency.groupBuy.tabNegotiating', { defaultValue: '협상 중' }) },
+    { key: 'confirmed', label: t('agency.groupBuy.tabConfirmed', { defaultValue: '확정' }) },
   ]
 
   return (
@@ -265,27 +262,27 @@ export default function AgencyGroupBuyPage() {
         />
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-        <StatCard label="진행중 공구 수" value={String(stats.active)} icon={ShoppingBag} color="bg-blue-600" />
-        <StatCard label="총 참여자 수" value={formatNumber(stats.total_participants)} icon={Users} color="bg-emerald-500" sub="명" />
-        <StatCard label="협상 중" value={String(stats.negotiating)} icon={Handshake} color="bg-amber-500" />
-        <StatCard label="확정된 딜" value={String(stats.confirmed)} icon={CheckCircle} color="bg-green-600" />
+        <StatCard label={t('agency.groupBuy.statActive', { defaultValue: '진행중 공구 수' })} value={String(stats.active)} icon={ShoppingBag} color="bg-blue-600" />
+        <StatCard label={t('agency.groupBuy.statParticipants', { defaultValue: '총 참여자 수' })} value={formatNumber(stats.total_participants)} icon={Users} color="bg-emerald-500" sub={t('agency.groupBuy.personUnit', { defaultValue: '명' })} />
+        <StatCard label={t('agency.groupBuy.tabNegotiating', { defaultValue: '협상 중' })} value={String(stats.negotiating)} icon={Handshake} color="bg-amber-500" />
+        <StatCard label={t('agency.groupBuy.statConfirmed', { defaultValue: '확정된 딜' })} value={String(stats.confirmed)} icon={CheckCircle} color="bg-green-600" />
       </div>
 
       {/* Tabs + Table */}
       <div className="bg-white rounded-xl border border-gray-200">
         {/* Tabs */}
         <div className="flex items-center gap-1 px-4 pt-4 pb-0 border-b border-gray-100">
-          {tabs.map(t => (
+          {tabs.map(tab_ => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+              key={tab_.key}
+              onClick={() => setTab(tab_.key)}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
-                tab === t.key
+                tab === tab_.key
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t.label}
+              {tab_.label}
             </button>
           ))}
         </div>
@@ -295,16 +292,24 @@ export default function AgencyGroupBuyPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                {['맛집', '주소', '참여자', '총 예치 딜', '상태', '만료일', '액션'].map(h => (
+                {[
+                  t('agency.groupBuy.colRestaurant', { defaultValue: '맛집' }),
+                  t('agency.groupBuy.colAddress', { defaultValue: '주소' }),
+                  t('agency.groupBuy.colParticipants', { defaultValue: '참여자' }),
+                  t('agency.groupBuy.colTotalDeposit', { defaultValue: '총 예치 딜' }),
+                  t('common.status', { defaultValue: '상태' }),
+                  t('agency.groupBuy.colExpiry', { defaultValue: '만료일' }),
+                  t('common.action', { defaultValue: '액션' }),
+                ].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">불러오는 중...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.loading', { defaultValue: '불러오는 중...' })}</td></tr>
               ) : groupBuys.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">해당하는 공구가 없습니다.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.empty', { defaultValue: '해당하는 공구가 없습니다.' })}</td></tr>
               ) : groupBuys.map(g => (
                 <tr key={g.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{g.restaurant_name}</td>
@@ -313,8 +318,8 @@ export default function AgencyGroupBuyPage() {
                     <span className="font-semibold">{g.participant_count}</span>
                     <span className="text-gray-400"> / {g.target_participants}</span>
                   </td>
-                  <td className="px-4 py-3 font-semibold text-gray-900">{formatNumber(g.total_deposit_deals || 0)} 딜</td>
-                  <td className="px-4 py-3">{statusBadge(g.status)}</td>
+                  <td className="px-4 py-3 font-semibold text-gray-900">{formatNumber(g.total_deposit_deals || 0)} {t('common.deal', { defaultValue: '딜' })}</td>
+                  <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_CLS_GB[g.status] || 'bg-gray-100 text-gray-600'}`}>{t(`agency.groupBuy.status.${g.status}`, { defaultValue: g.status })}</span></td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {g.expires_at
                       ? new Date(g.expires_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
@@ -327,7 +332,7 @@ export default function AgencyGroupBuyPage() {
                           onClick={() => changeStatus(g.id, 'negotiating')}
                           className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200"
                         >
-                          협상 시작
+                          {t('agency.groupBuy.startNegotiation', { defaultValue: '협상 시작' })}
                         </button>
                       )}
                       {(g.status === 'proposed' || g.status === 'negotiating') && (
@@ -335,19 +340,19 @@ export default function AgencyGroupBuyPage() {
                           onClick={() => setConfirmTarget(g)}
                           className="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-medium hover:bg-green-200"
                         >
-                          딜 확정
+                          {t('agency.groupBuy.confirmDeal', { defaultValue: '딜 확정' })}
                         </button>
                       )}
                       {(g.status === 'proposed' || g.status === 'negotiating') && (
                         <button
                           onClick={() => {
-                            if (window.confirm('이 공구를 실패 처리하시겠습니까?')) {
+                            if (window.confirm(t('agency.groupBuy.confirmFail', { defaultValue: '이 공구를 실패 처리하시겠습니까?' }))) {
                               changeStatus(g.id, 'failed')
                             }
                           }}
                           className="px-2.5 py-1 bg-red-100 text-red-600 rounded-lg text-xs font-medium hover:bg-red-200"
                         >
-                          실패 처리
+                          {t('agency.groupBuy.markFailed', { defaultValue: '실패 처리' })}
                         </button>
                       )}
                       {g.status === 'confirmed' && (
@@ -356,7 +361,7 @@ export default function AgencyGroupBuyPage() {
                           className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-200 flex items-center gap-1"
                         >
                           <FileDown className="w-3 h-3" />
-                          계약서 다운로드
+                          {t('agency.groupBuy.downloadContract', { defaultValue: '계약서 다운로드' })}
                         </button>
                       )}
                       {(g.status === 'achieved' || g.status === 'failed') && (
