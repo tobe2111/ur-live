@@ -150,7 +150,7 @@ export default function UserProfilePage() {
       {/* 🛡️ 2026-05-04 (재추가): 사용자 신고 "테마 버튼 또 없어졌어".
            마이페이지 자체는 강제 다크라 시각 변화 없지만, 토글은 다른 화이트 페이지
            (쇼핑/결제/마이리뷰 등) 에 즉시 반영됨. 사용자 접근성 위해 마이페이지에 노출. */}
-      <ThemeToggleSection />
+      <ThemeToggleSection variant="dark" className="ur-content-medium px-4 lg:px-8 pt-5" />
 
       {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
