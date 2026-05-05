@@ -115,7 +115,8 @@ SCRAPER_URL = "https://live.ur-team.com"
 # 19:00 UTC: reconciliation
 # 일요일 20:00 UTC (KST 월요일 05:00): D1 백업 → R2 (BACKUP_BUCKET 바인딩 있어야 동작)
 # 월요일 00:00 UTC (KST 09:00): 에이전시 자동 정산 + 인센티브 재계산 + 등급 평가
-crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "0 20 * * 0", "0 0 * * 1"]
+crons = ["*/5 * * * *", "0 * * * *", "0 18 * * *", "0 19 * * *", "0 20 * * 0", "0 0 * * 1"]
+# "0 * * * *" — 매시간 정각: 어뷰징/이상치 탐지 (anomaly-detect cron)
 
 # ============================================================
 # Production Secrets — NEVER add actual secrets here!

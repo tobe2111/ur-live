@@ -182,6 +182,46 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
 //   → src/features/seller/api/seller-profile.routes.ts
 
 /**
+ * GET /api/seller/tier (2026-05-05)
+ * 셀러 등급 + score + exposure_weight + commission_rate.
+ * Migration 0244 의 sellers.tier 컬럼을 노출.
+ */
+sellerManagementRoutes.get('/tier', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const row = await c.env.DB.prepare(`
+      SELECT
+        COALESCE(tier, 'new') AS tier,
+        COALESCE(tier_score, 0) AS tier_score,
+        COALESCE(exposure_weight, 1.0) AS exposure_weight,
+        COALESCE(commission_rate, 5) AS commission_rate,
+        tier_updated_at
+      FROM sellers WHERE id = ?
+    `).bind(sellerId).first<{
+      tier: string; tier_score: number; exposure_weight: number;
+      commission_rate: number; tier_updated_at: string | null;
+    }>();
+
+    if (!row) return c.json({ success: false, error: '셀러 정보 없음' }, 404);
+
+    // 최근 등급 변경 이력 (최근 5건)
+    const history = await c.env.DB.prepare(`
+      SELECT prev_tier, new_tier, prev_score, new_score, changed_at
+      FROM seller_tier_history
+      WHERE seller_id = ?
+      ORDER BY changed_at DESC LIMIT 5
+    `).bind(sellerId).all().catch(() => ({ results: [] }));
+
+    return c.json({ success: true, data: { ...row, history: history.results || [] } });
+  } catch (err) {
+    if (import.meta.env?.DEV) console.error('[seller/tier]', err);
+    return c.json({ success: false, error: '등급 조회 실패' }, 500);
+  }
+});
+
+/**
  * GET /api/seller/stats
  * 셀러 통계 조회
  */

@@ -34,6 +34,7 @@ import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
 import { handlePkBattlesTick } from './cron/pk-battles-tick';
 import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
+import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleSellerDailyReport } from './cron/seller-daily-report';
 import { handleD1Backup } from './cron/d1-backup';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
@@ -67,6 +68,11 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('scheduled-cleanup', () => handleScheduled(env)));
     // Phase 2-7: PK 이벤트 매출 집계 + 종료 처리
     ctx.waitUntil(safeCron('pk-battles-tick', () => handlePkBattlesTick(env)));
+  }
+
+  // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
+  if (cron === '0 * * * *') {
+    ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
   }
 
   if (cron === '0 18 * * *') {
