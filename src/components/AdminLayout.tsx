@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
@@ -93,6 +94,7 @@ interface AdminLayoutProps {
 export default function AdminLayout({ title, children, headerRight, pendingCount = 0 }: AdminLayoutProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // 🛡️ 2026-04-30: admin 세션 만료 5분 전 자동 refresh
@@ -277,7 +279,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
         <header className="bg-white border-b border-gray-200 px-4 lg:px-6 h-14 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
-              aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
+              aria-label={sidebarOpen ? t('common.closeSidebar', { defaultValue: '사이드바 닫기' }) : t('common.openSidebar', { defaultValue: '사이드바 열기' })}
               aria-expanded={sidebarOpen}
               className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"
               onClick={() => setSidebarOpen(!sidebarOpen)}

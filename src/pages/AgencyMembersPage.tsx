@@ -137,12 +137,12 @@ export default function AgencyMembersPage() {
   }
 
   const remove = async (m: Member) => {
-    if (!confirm(`${m.email} 을 제거하시겠습니까?`)) return
+    if (!confirm(`${m.email} ${t('agency.members.confirmRemove', { defaultValue: '을 제거하시겠습니까?' })}`)) return
     try {
       await api.delete(`/api/agency/members/${m.id}`, { headers })
-      toast.info('제거됨')
+      toast.info(t('agency.members.removed', { defaultValue: '제거됨' }))
       load()
-    } catch (e: any) { toast.error(e?.response?.data?.error || '실패') }
+    } catch (e: any) { toast.error(e?.response?.data?.error || t('common.failed', { defaultValue: '실패' })) }
   }
 
   const copyInviteLink = () => {
@@ -155,16 +155,16 @@ export default function AgencyMembersPage() {
   }
 
   return (
-    <AgencyLayout title="팀 멤버">
+    <AgencyLayout title={t('agency.members.title', { defaultValue: '팀 멤버' })}>
       <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="팀 멤버"
-          subtitle="에이전시 운영 팀원 — owner/manager/agent/analyst 역할 분리"
+          title={t('agency.members.title', { defaultValue: '팀 멤버' })}
+          subtitle={t('agency.members.subtitle', { defaultValue: '에이전시 운영 팀원 — owner/manager/agent/analyst 역할 분리' })}
           icon={<Users className="h-5 w-5" />}
           actions={
             <button onClick={() => setInviting(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">
-              <UserPlus className="w-4 h-4" /> 멤버 초대
+              <UserPlus className="w-4 h-4" /> {t('agency.members.inviteMember', { defaultValue: '멤버 초대' })}
             </button>
           }
         />
@@ -172,7 +172,7 @@ export default function AgencyMembersPage() {
         {loading ? (
           <DashboardLoading />
         ) : members.length === 0 ? (
-          <DashboardEmptyState icon={<Users className="h-7 w-7" />} title="멤버 없음" />
+          <DashboardEmptyState icon={<Users className="h-7 w-7" />} title={t('agency.members.noMembers', { defaultValue: '멤버 없음' })} />
         ) : (
           <div className="space-y-2">
             {members.map(m => (
@@ -194,17 +194,17 @@ export default function AgencyMembersPage() {
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-gray-500">
-                      {m.effective_permissions.invite && <span>✓ 영입</span>}
-                      {m.effective_permissions.campaign && <span>✓ 캠페인</span>}
-                      {m.effective_permissions.message && <span>✓ 메시지</span>}
-                      {m.effective_permissions.coupon && <span>✓ 쿠폰</span>}
-                      {m.effective_permissions.settle && <span>✓ 정산</span>}
-                      {m.effective_permissions.contract && <span>✓ 계약</span>}
-                      {m.effective_permissions.members && <span>✓ 멤버관리</span>}
+                      {m.effective_permissions.invite && <span>✓ {t('agency.members.permInvite', { defaultValue: '영입' })}</span>}
+                      {m.effective_permissions.campaign && <span>✓ {t('agency.members.permCampaign', { defaultValue: '캠페인' })}</span>}
+                      {m.effective_permissions.message && <span>✓ {t('agency.members.permMessage', { defaultValue: '메시지' })}</span>}
+                      {m.effective_permissions.coupon && <span>✓ {t('agency.members.permCoupon', { defaultValue: '쿠폰' })}</span>}
+                      {m.effective_permissions.settle && <span>✓ {t('agency.members.permSettle', { defaultValue: '정산' })}</span>}
+                      {m.effective_permissions.contract && <span>✓ {t('agency.members.permContract', { defaultValue: '계약' })}</span>}
+                      {m.effective_permissions.members && <span>✓ {t('agency.members.permMembers', { defaultValue: '멤버관리' })}</span>}
                     </div>
                     <p className="text-[10px] text-gray-400 mt-1">
-                      초대: {new Date(m.invited_at).toLocaleDateString('ko-KR')}
-                      {m.joined_at && ` · 가입: ${new Date(m.joined_at).toLocaleDateString('ko-KR')}`}
+                      {t('agency.members.invited', { defaultValue: '초대' })}: {new Date(m.invited_at).toLocaleDateString('ko-KR')}
+                      {m.joined_at && ` · ${t('agency.members.joined', { defaultValue: '가입' })}: ${new Date(m.joined_at).toLocaleDateString('ko-KR')}`}
                     </p>
                   </div>
 
@@ -215,9 +215,9 @@ export default function AgencyMembersPage() {
                         onChange={(e) => changeRole(m, e.target.value as Role)}
                         className="text-xs bg-white border border-gray-200 rounded px-2 py-1 cursor-pointer hover:border-gray-300"
                       >
-                        <option value="manager">매니저</option>
-                        <option value="agent">에이전트</option>
-                        <option value="analyst">분석가</option>
+                        <option value="manager">{t('agency.members.roleManager', { defaultValue: '매니저' })}</option>
+                        <option value="agent">{t('agency.members.roleAgent', { defaultValue: '에이전트' })}</option>
+                        <option value="analyst">{t('agency.members.roleAnalyst', { defaultValue: '분석가' })}</option>
                       </select>
                       {m.status === 'active' ? (
                         <button onClick={() => suspend(m)} className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded" title="일시 정지">
@@ -245,7 +245,7 @@ export default function AgencyMembersPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setInviting(false); setInviteResult(null) }}>
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">멤버 초대</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('agency.members.inviteMember', { defaultValue: '멤버 초대' })}</h2>
               <button onClick={() => { setInviting(false); setInviteResult(null) }}>
                 <X className="w-5 h-5 text-gray-500" />
               </button>
@@ -254,10 +254,10 @@ export default function AgencyMembersPage() {
             {inviteResult ? (
               <div className="space-y-3">
                 <div className="bg-green-50 rounded-xl p-3 text-sm text-green-800">
-                  ✅ {inviteResult.email} 초대 완료
+                  ✅ {inviteResult.email} {t('agency.members.inviteComplete', { defaultValue: '초대 완료' })}
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-gray-700 mb-2">초대 링크 — 이메일/카톡으로 전달</p>
+                  <p className="text-xs font-bold text-gray-700 mb-2">{t('agency.members.inviteLinkHint', { defaultValue: '초대 링크 — 이메일/카톡으로 전달' })}</p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-[10px] bg-gray-100 px-3 py-2 rounded text-gray-700 font-mono break-all">
                       {window.location.origin}/agency/accept-invite?token={inviteResult.token}
@@ -268,35 +268,35 @@ export default function AgencyMembersPage() {
                   </div>
                 </div>
                 <p className="text-[11px] text-gray-500">
-                  💡 초대 받은 사람은 같은 이메일로 회원가입 후 이 링크로 멤버십을 활성화합니다.
+                  💡 {t('agency.members.inviteNote', { defaultValue: '초대 받은 사람은 같은 이메일로 회원가입 후 이 링크로 멤버십을 활성화합니다.' })}
                 </p>
                 <button onClick={() => { setInviting(false); setInviteResult(null) }}
                   className="w-full py-2 bg-gray-900 text-white text-sm font-bold rounded-lg">
-                  완료
+                  {t('common.done', { defaultValue: '완료' })}
                 </button>
               </div>
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-700">이메일 *</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.members.fieldEmail', { defaultValue: '이메일' })} *</label>
                   <input type="email" value={form.email}
                     onChange={e => setForm({ ...form, email: e.target.value })}
                     placeholder="example@company.com"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700">역할 *</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.members.fieldRole', { defaultValue: '역할' })} *</label>
                   <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as Role })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900">
-                    <option value="manager">매니저 — 영입/캠페인/메시지/쿠폰 + 정산 신청</option>
-                    <option value="agent">에이전트 — 영입/메시지/쿠폰 (정산/캠페인 X)</option>
-                    <option value="analyst">분석가 — 조회만</option>
+                    <option value="manager">{t('agency.members.roleManagerDesc', { defaultValue: '매니저 — 영입/캠페인/메시지/쿠폰 + 정산 신청' })}</option>
+                    <option value="agent">{t('agency.members.roleAgentDesc', { defaultValue: '에이전트 — 영입/메시지/쿠폰 (정산/캠페인 X)' })}</option>
+                    <option value="analyst">{t('agency.members.roleAnalystDesc', { defaultValue: '분석가 — 조회만' })}</option>
                   </select>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <button onClick={() => setInviting(false)} className="px-4 py-2 text-gray-600 text-sm font-bold">취소</button>
+                  <button onClick={() => setInviting(false)} className="px-4 py-2 text-gray-600 text-sm font-bold">{t('common.cancel', { defaultValue: '취소' })}</button>
                   <button onClick={submit} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">
-                    초대
+                    {t('agency.members.invite', { defaultValue: '초대' })}
                   </button>
                 </div>
               </div>

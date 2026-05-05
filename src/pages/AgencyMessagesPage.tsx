@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -54,6 +55,7 @@ const CATEGORY_BADGE: Record<Category, string> = {
 }
 
 export default function AgencyMessagesPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [tab, setTab] = useState<'templates' | 'sends'>('templates')
   const [templates, setTemplates] = useState<Template[]>([])
@@ -82,7 +84,7 @@ export default function AgencyMessagesPage() {
     setLoading(true)
     api.get('/api/agency/messages/templates', { headers })
       .then(r => { if (r.data?.success) setTemplates(r.data.data || []) })
-      .catch(() => toast.error('템플릿 조회 실패'))
+      .catch(() => toast.error(t('agency.messages.loadTemplatesFailed', { defaultValue: '템플릿 조회 실패' })))
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -91,7 +93,7 @@ export default function AgencyMessagesPage() {
     setLoading(true)
     api.get('/api/agency/messages/sends?limit=50', { headers })
       .then(r => { if (r.data?.success) setSends(r.data.data || []) })
-      .catch(() => toast.error('이력 조회 실패'))
+      .catch(() => toast.error(t('agency.messages.loadHistoryFailed', { defaultValue: '이력 조회 실패' })))
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -109,30 +111,30 @@ export default function AgencyMessagesPage() {
   }, [tab])
 
   const submit = async () => {
-    if (!form.name || !form.body) { toast.error('이름/본문 필수'); return }
+    if (!form.name || !form.body) { toast.error(t('agency.messages.nameBodyRequired', { defaultValue: '이름/본문 필수' })); return }
     try {
       await api.post('/api/agency/messages/templates', form, { headers })
-      toast.success('템플릿 추가됨')
+      toast.success(t('agency.messages.templateAdded', { defaultValue: '템플릿 추가됨' }))
       setCreating(false)
       setForm({ name: '', body: '', category: 'general' })
       loadTemplates()
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '생성 실패')
+      toast.error(e?.response?.data?.error || t('agency.messages.createFailed', { defaultValue: '생성 실패' }))
     }
   }
 
   const deleteTemplate = async (id: number) => {
-    if (!confirm('이 템플릿을 비활성화하시겠습니까?')) return
+    if (!confirm(t('agency.messages.confirmDeactivate', { defaultValue: '이 템플릿을 비활성화하시겠습니까?' }))) return
     try {
       await api.delete(`/api/agency/messages/templates/${id}`, { headers })
-      toast.info('비활성화됨')
+      toast.info(t('agency.messages.deactivated', { defaultValue: '비활성화됨' }))
       loadTemplates()
-    } catch { toast.error('삭제 실패') }
+    } catch { toast.error(t('agency.messages.deleteFailed', { defaultValue: '삭제 실패' })) }
   }
 
   const send = async () => {
     if (!sendingTemplate) return
-    if (selectedSellerIds.length === 0) { toast.error('받을 셀러 선택 필수'); return }
+    if (selectedSellerIds.length === 0) { toast.error(t('agency.messages.sellerRequired', { defaultValue: '받을 셀러 선택 필수' })); return }
     try {
       const r = await api.post('/api/agency/messages/send', {
         template_id: sendingTemplate.id,
@@ -140,13 +142,13 @@ export default function AgencyMessagesPage() {
       }, { headers })
       if (r.data?.success) {
         const d = r.data.data
-        toast.success(`${d.sent}명 발송됨 (요청 ${d.requested}, 자격 ${d.eligible})`)
+        toast.success(t('agency.messages.sentCount', { defaultValue: '{{sent}}명 발송됨 (요청 {{requested}}, 자격 {{eligible}})', sent: d.sent, requested: d.requested, eligible: d.eligible }))
         setSendingTemplate(null)
         setSelectedSellerIds([])
         loadTemplates()  // usage_count 갱신
       }
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '발송 실패')
+      toast.error(e?.response?.data?.error || t('agency.messages.sendFailed', { defaultValue: '발송 실패' }))
     }
   }
 
@@ -157,16 +159,16 @@ export default function AgencyMessagesPage() {
   }
 
   return (
-    <AgencyLayout title="메시지 템플릿">
+    <AgencyLayout title={t('agency.messages.title', { defaultValue: '메시지 템플릿' })}>
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="메시지 템플릿"
-          subtitle="셀러에게 일괄 발송할 수 있는 메시지 템플릿. 변수: {{seller_name}}, {{agency_name}}, {{commission_rate}}"
+          title={t('agency.messages.title', { defaultValue: '메시지 템플릿' })}
+          subtitle={t('agency.messages.subtitle', { defaultValue: '셀러에게 일괄 발송할 수 있는 메시지 템플릿. 변수: {{seller_name}}, {{agency_name}}, {{commission_rate}}' })}
           icon={<MessageSquare className="h-5 w-5" />}
           actions={tab === 'templates' && (
             <button onClick={() => setCreating(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">
-              <Plus className="w-4 h-4" /> 템플릿 추가
+              <Plus className="w-4 h-4" /> {t('agency.messages.addTemplate', { defaultValue: '템플릿 추가' })}
             </button>
           )}
         />
@@ -174,11 +176,11 @@ export default function AgencyMessagesPage() {
         <div className="flex gap-2 border-b border-gray-200">
           <button onClick={() => setTab('templates')}
             className={`px-4 py-2 text-sm font-bold ${tab === 'templates' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
-            템플릿
+            {t('agency.messages.tabTemplates', { defaultValue: '템플릿' })}
           </button>
           <button onClick={() => setTab('sends')}
             className={`px-4 py-2 text-sm font-bold ${tab === 'sends' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
-            발송 이력
+            {t('agency.messages.tabHistory', { defaultValue: '발송 이력' })}
           </button>
         </div>
 
