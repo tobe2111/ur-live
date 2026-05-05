@@ -49,8 +49,10 @@ export default function DesktopTopNav() {
       } catch { if (!cancelled) setCartCount(0) }
     }
     fetchCounts()
-    const id = setInterval(fetchCounts, 60_000)
-    return () => { cancelled = true; clearInterval(id) }
+    const id = setInterval(() => { if (!document.hidden) fetchCounts() }, 60_000)
+    const onVisible = () => { if (!document.hidden) fetchCounts() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { cancelled = true; clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
   }, [])
 
   const navItems = [

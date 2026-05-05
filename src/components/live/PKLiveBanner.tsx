@@ -44,7 +44,7 @@ export default function PKLiveBanner({ liveStreamId }: Props) {
     fetchPk()
     const interval = setInterval(() => {
       setNow(Date.now())
-      fetchPk()
+      if (!document.hidden) fetchPk()
     }, 15_000)
     return () => clearInterval(interval)
   }, [liveStreamId])

@@ -94,6 +94,10 @@ export default defineConfig({
           if (id.includes('node_modules/axios/')) return 'axios'
           if (id.includes('node_modules/zustand/')) return 'zustand'
           if (id.includes('react-helmet-async')) return 'helmet'
+          // Capacitor (native SDK — 웹에선 no-op이지만 main chunk에서 분리해 캐싱 개선)
+          if (id.includes('@capacitor/')) return 'capacitor'
+          // Image compression (seller upload pages만 사용 — 지연 캐싱)
+          if (id.includes('browser-image-compression')) return 'img-utils'
         },
       },
     },

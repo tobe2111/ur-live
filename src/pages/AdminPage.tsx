@@ -123,8 +123,10 @@ export default function AdminPage() {
     } catch { /* 파싱 실패 무시 */ }
     loadData()
     loadDashboardStats()
-    const interval = setInterval(loadDashboardStats, 30000)
-    return () => clearInterval(interval)
+    const interval = setInterval(() => { if (!document.hidden) loadDashboardStats() }, 30000)
+    const onVisible = () => { if (!document.hidden) loadDashboardStats() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
   }, [navigate])
 
   async function loadData() {

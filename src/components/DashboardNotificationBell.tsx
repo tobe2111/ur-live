@@ -48,8 +48,10 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
 
   useEffect(() => {
     fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
+    const interval = setInterval(() => { if (!document.hidden) fetchNotifications() }, 30000)
+    const onVisible = () => { if (!document.hidden) fetchNotifications() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
   }, [fetchNotifications])
 
   // Close dropdown on outside click

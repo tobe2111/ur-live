@@ -269,8 +269,8 @@ export default function LivePageV2() {
     joinViewer()
     fetchViewerCount()
 
-    // 30초마다 Heartbeat 전송 (heartbeat TTL 120초)
-    const heartbeatInterval = setInterval(joinViewer, 30000)
+    // 30초마다 Heartbeat 전송 (heartbeat TTL 120초) — 백그라운드 탭 skip
+    const heartbeatInterval = setInterval(() => { if (!document.hidden) joinViewer() }, 30000)
 
     // 🛡️ 2026-04-23 배치 164: 페이지 이탈 시 leave beacon (P1 분석 정확도)
     //   sendBeacon 은 페이지 언로드에도 안정적으로 전송. watch_duration 계산용.
