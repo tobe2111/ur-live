@@ -36,6 +36,7 @@ import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleSellerDailyReport } from './cron/seller-daily-report';
+import { handleAgencySellerMatch } from './cron/agency-seller-match';
 import { handleD1Backup } from './cron/d1-backup';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -101,6 +102,8 @@ export async function handleCronScheduled(
       await handleAgencySelfEventsTick(env).catch(e => console.error('[cron] self-events:', e));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
       await handleSellerDailyReport(env).catch(e => console.error('[cron] seller-daily-report:', e));
+      // 2026-05-05: 신규 셀러 ↔ 에이전시 자동 매칭 제안
+      await handleAgencySellerMatch(env).catch(e => console.error('[cron] agency-seller-match:', e));
     }));
   }
 
