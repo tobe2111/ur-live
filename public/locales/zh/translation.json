@@ -182,7 +182,9 @@
     "wishlistRemoved": "已从心愿单中删除。",
     "genericError": "发生错误。请重试。",
     "wishlistCancel": "取消收藏",
-    "wishlistAdd": "加入心愿单"
+    "wishlistAdd": "加入心愿单",
+    "imageUploadFailed": "图片上传失败。",
+    "unitMan": "万"
   },
   "auth": {
     "email": "邮箱",
@@ -2512,7 +2514,19 @@
     "liveGuideItem_product_title": "整理销售商品",
     "liveGuideItem_product_desc": "提前注册今天要展示的商品 + 确认库存",
     "liveGuideItem_response_title": "观众接待台词",
-    "liveGuideItem_response_desc": "入场时像\"欢迎○○！\"这样叫出名字"
+    "liveGuideItem_response_desc": "入场时像\"欢迎○○！\"这样叫出名字",
+    "boosterConfirm": "激活{{multiplier}}x匹配助推器{{minutes}}分钟？每次直播只能使用一次。",
+    "boosterActivated": "🚀 {{multiplier}}x助推器激活！",
+    "boosterActivateFailed": "助推器激活失败",
+    "boosterCancelConfirm": "是否提前结束助推器？",
+    "boosterCancelled": "助推器已结束",
+    "boosterActive": "{{multiplier}}x匹配进行中",
+    "boosterAmountMan": "{{amount}}万",
+    "boosterMin": "{{min}}分钟",
+    "cameraAccessFailed": "摄像头访问失败",
+    "cameraAudioToggle": "切换音频",
+    "cameraOff": "关闭摄像头",
+    "cameraOffTitle": "关闭"
   },
   "admin": {
     "login": {
@@ -2990,6 +3004,30 @@
     "sellerLogin": "卖家登录",
     "sellerSignup": "卖家注册"
   },
+  "broadcastNotify": {
+    "loginRequired": "需要登录",
+    "unsubscribed": "通知已取消",
+    "subscribeSuccess": "直播开始时会通知您！",
+    "subscribeFailed": "通知设置失败",
+    "consentHint": "请同意KakaoTalk权限后再试",
+    "calendarAdded": "已添加到Kakao日历！",
+    "calendarIcsDesc": "直播时间表尚未设置",
+    "calendarDownloadSuccess": "📆 正在下载日历文件",
+    "calendarDownloadFailed": "日历下载失败",
+    "googleCalendarOpened": "Google日历已打开",
+    "reauth": "Kakao认证已过期，请重新登录。",
+    "notifyOn": "🔔 通知已开启",
+    "notify": "🔔 通知",
+    "processing": "处理中...",
+    "notifySet": "🔔 通知已设置",
+    "notifyRequest": "🔔 接收直播通知",
+    "adding": "添加中...",
+    "kakaoCalendar": "📅 添加到Kakao日历",
+    "googleCalendar": "📅 添加到日历",
+    "calendarKr": "📅 日历",
+    "calendarEn": "📅 Calendar",
+    "googleCalendarTitle": "UrDeal直播"
+  },
   "voucher": {
     "myVouchers": "我的餐券",
     "empty": "暂无餐券",
@@ -3206,7 +3244,14 @@
     "donationInsufficient": "Deal不足。",
     "donationChargeNow": "去充值",
     "donationProcessing": "赞助中...",
-    "donationBtn": "赞助{{amount}}Deal"
+    "donationBtn": "赞助{{amount}}Deal",
+    "donationInsufficientAlert": "Deal不足。请充值后使用。",
+    "donationSuccessMsg": "赞助了{{amount}}Deal！",
+    "donationDonorDefault": "赞助者",
+    "donationFailed": "赞助失败。",
+    "donationCenterAlert": "{{name}}赞助了{{amount}}Deal！",
+    "donationBalance": "{{amount}}Deal",
+    "timeDealJoinFailed": "参与失败"
   },
   "paymentFail": {
     "title": "支付失败",

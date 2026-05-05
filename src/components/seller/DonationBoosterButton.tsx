@@ -105,11 +105,11 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="bg-white/20 rounded p-1.5">
             <div className="opacity-80">{t('seller.boosterReceived', { defaultValue: '받은 후원' })}</div>
-            <div className="font-bold">{(active.total_donation_amount / 10_000).toFixed(1)}만</div>
+            <div className="font-bold">{(active.total_donation_amount / 10_000).toFixed(1)}{t('common.unitMan', { defaultValue: '만' })}</div>
           </div>
           <div className="bg-white/20 rounded p-1.5">
             <div className="opacity-80">{t('seller.boosterMatched', { defaultValue: '매칭 추가' })}</div>
-            <div className="font-bold">+{(active.total_matched_amount / 10_000).toFixed(1)}만</div>
+            <div className="font-bold">+{(active.total_matched_amount / 10_000).toFixed(1)}{t('common.unitMan', { defaultValue: '만' })}</div>
           </div>
         </div>
       </div>
@@ -128,9 +128,9 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { mul: 1.5, dur: 900, label: '1.5x', sub: '15분' },
-            { mul: 2.0, dur: 600, label: '2x', sub: '10분' },
-            { mul: 3.0, dur: 300, label: '3x', sub: '5분' },
+            { mul: 1.5, dur: 900, label: '1.5x', sub: t('seller.boosterMin', { min: 15, defaultValue: '15분' }) },
+            { mul: 2.0, dur: 600, label: '2x',   sub: t('seller.boosterMin', { min: 10, defaultValue: '10분' }) },
+            { mul: 3.0, dur: 300, label: '3x',   sub: t('seller.boosterMin', { min: 5,  defaultValue: '5분' }) },
           ].map(opt => (
             <button
               key={opt.mul}

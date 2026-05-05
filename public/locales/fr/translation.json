@@ -182,7 +182,9 @@
     "wishlistRemoved": "Retiré de la liste de souhaits.",
     "genericError": "Une erreur s'est produite. Veuillez réessayer.",
     "wishlistCancel": "Retirer des favoris",
-    "wishlistAdd": "Ajouter aux favoris"
+    "wishlistAdd": "Ajouter aux favoris",
+    "imageUploadFailed": "Échec du téléchargement de l'image.",
+    "unitMan": ""
   },
   "seller": {
     "dashboard": "Tableau de bord",
@@ -1916,7 +1918,19 @@
     "liveGuideItem_product_title": "Organiser les produits",
     "liveGuideItem_product_desc": "Pré-enregistrez les produits d'aujourd'hui + vérifiez le stock",
     "liveGuideItem_response_title": "Message d'accueil",
-    "liveGuideItem_response_desc": "Appelez les spectateurs par leur nom comme \"Bienvenue, ○○ !\""
+    "liveGuideItem_response_desc": "Appelez les spectateurs par leur nom comme \"Bienvenue, ○○ !\"",
+    "boosterConfirm": "Activer le booster {{multiplier}}x pendant {{minutes}} minutes ? Utilisable une seule fois par live.",
+    "boosterActivated": "🚀 Booster {{multiplier}}x activé !",
+    "boosterActivateFailed": "Échec de l'activation du booster",
+    "boosterCancelConfirm": "Terminer le booster prématurément ?",
+    "boosterCancelled": "Booster terminé",
+    "boosterActive": "{{multiplier}}x Correspondance en cours",
+    "boosterAmountMan": "{{amount}}",
+    "boosterMin": "{{min}}min",
+    "cameraAccessFailed": "Échec de l'accès à la caméra",
+    "cameraAudioToggle": "Basculer l'audio",
+    "cameraOff": "Éteindre la caméra",
+    "cameraOffTitle": "Éteindre"
   },
   "admin": {
     "login": {
@@ -2393,6 +2407,30 @@
     "loginDesc": "Connectez-vous avec un compte vendeur.",
     "sellerLogin": "Connexion vendeur",
     "sellerSignup": "Inscription vendeur"
+  },
+  "broadcastNotify": {
+    "loginRequired": "Connexion requise",
+    "unsubscribed": "Notification annulée",
+    "subscribeSuccess": "Nous vous préviendrons quand la diffusion commencera !",
+    "subscribeFailed": "Échec de la configuration de la notification",
+    "consentHint": "Veuillez accepter les permissions Kakao et réessayer",
+    "calendarAdded": "Ajouté au calendrier Kakao !",
+    "calendarIcsDesc": "Le planning de diffusion n'est pas encore défini",
+    "calendarDownloadSuccess": "📆 Téléchargement du fichier calendrier",
+    "calendarDownloadFailed": "Échec du téléchargement du calendrier",
+    "googleCalendarOpened": "Google Agenda s'ouvre",
+    "reauth": "L'authentification Kakao a expiré. Veuillez vous reconnecter.",
+    "notifyOn": "🔔 Notif ON",
+    "notify": "🔔 Notifier",
+    "processing": "En cours...",
+    "notifySet": "🔔 Notification configurée",
+    "notifyRequest": "🔔 Recevoir les notifications",
+    "adding": "Ajout en cours...",
+    "kakaoCalendar": "📅 Ajouter au calendrier Kakao",
+    "googleCalendar": "📅 Ajouter au calendrier",
+    "calendarKr": "📅 Agenda",
+    "calendarEn": "📅 Calendar",
+    "googleCalendarTitle": "Diffusion en direct UrDeal"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -3206,7 +3244,14 @@
     "donationInsufficient": "Deals insuffisants.",
     "donationChargeNow": "Recharger maintenant",
     "donationProcessing": "Donation en cours...",
-    "donationBtn": "Donner {{amount}} Deals"
+    "donationBtn": "Donner {{amount}} Deals",
+    "donationInsufficientAlert": "Deals insuffisants. Veuillez recharger et réessayer.",
+    "donationSuccessMsg": "Vous avez donné {{amount}} deals !",
+    "donationDonorDefault": "Donateur",
+    "donationFailed": "Échec de la donation.",
+    "donationCenterAlert": "{{name}} a donné {{amount}} deals !",
+    "donationBalance": "{{amount}} Deals",
+    "timeDealJoinFailed": "Échec de la participation"
   },
   "paymentFail": {
     "title": "Paiement échoué",

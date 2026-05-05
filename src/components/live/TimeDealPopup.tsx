@@ -90,7 +90,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
       } else {
         toast.error(res.data.error)
       }
-    } catch (err: any) { toast.error(err?.response?.data?.error || '참여 실패') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || t('live.timeDealJoinFailed', { defaultValue: '참여 실패' })) }
     finally { setClaiming(false) }
   }
 
@@ -154,8 +154,8 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
           <p className="text-sm font-semibold line-clamp-1 mb-1">{deal.product_name}</p>
 
           <div className="flex items-end gap-2 mb-2">
-            <span className="text-[10px] line-through text-gray-900 dark:text-white/60">{formatNumber(deal.original_price)}원</span>
-            <span className="text-xl font-bold">{formatNumber(isGroupBuy ? effectivePrice : deal.deal_price)}원</span>
+            <span className="text-[10px] line-through text-gray-900 dark:text-white/60">{formatNumber(deal.original_price)}{t('common.won', { defaultValue: '원' })}</span>
+            <span className="text-xl font-bold">{formatNumber(isGroupBuy ? effectivePrice : deal.deal_price)}{t('common.won', { defaultValue: '원' })}</span>
             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isGroupBuy ? 'bg-white text-pink-600' : 'bg-yellow-400 text-red-700'}`}>
               -{isGroupBuy ? effectiveDiscount : deal.discount_percent}%
             </span>
