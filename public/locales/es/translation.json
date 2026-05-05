@@ -155,7 +155,8 @@
     "uploadComplete": "Carga completa",
     "dismiss": "Cerrar",
     "closeSidebar": "Cerrar barra lateral",
-    "openSidebar": "Abrir barra lateral"
+    "openSidebar": "Abrir barra lateral",
+    "appName": "UrDeal"
   },
   "seller": {
     "dashboard": "Panel",
@@ -3010,7 +3011,8 @@
     "lowStock": "⚠️ ¡Solo quedan {{count}} de {{name}}!",
     "anonymous": "Anónimo",
     "systemUser": "🎉 Sistema",
-    "cartSystemMsg": "{{name}} añadió {{product}} al carrito!"
+    "cartSystemMsg": "{{name}} añadió {{product}} al carrito!",
+    "broadcastInProgress": "Transmisión en vivo"
   },
   "paymentFail": {
     "title": "Pago fallido",

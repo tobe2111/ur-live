@@ -155,7 +155,8 @@
     "uploadComplete": "上传完成",
     "dismiss": "关闭",
     "closeSidebar": "关闭侧边栏",
-    "openSidebar": "打开侧边栏"
+    "openSidebar": "打开侧边栏",
+    "appName": "UrDeal"
   },
   "auth": {
     "email": "邮箱",
@@ -3010,7 +3011,8 @@
     "lowStock": "⚠️ {{name}}只剩{{count}}件！",
     "anonymous": "匿名",
     "systemUser": "🎉 系统",
-    "cartSystemMsg": "{{name}}将{{product}}加入了购物车！"
+    "cartSystemMsg": "{{name}}将{{product}}加入了购物车！",
+    "broadcastInProgress": "直播进行中"
   },
   "paymentFail": {
     "title": "支付失败",

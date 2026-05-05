@@ -155,7 +155,8 @@
     "dismiss": "Close",
     "uploadComplete": "Upload complete",
     "closeSidebar": "Close Sidebar",
-    "openSidebar": "Open Sidebar"
+    "openSidebar": "Open Sidebar",
+    "appName": "UrDeal"
   },
   "auth": {
     "email": "Email",
@@ -3010,7 +3011,8 @@
     "lowStock": "⚠️ {{name}} has {{count}} left!",
     "anonymous": "Anonymous",
     "systemUser": "🎉 System",
-    "cartSystemMsg": "{{name}} added {{product}} to cart!"
+    "cartSystemMsg": "{{name}} added {{product}} to cart!",
+    "broadcastInProgress": "Live broadcast in progress"
   },
   "paymentFail": {
     "title": "Payment Failed",

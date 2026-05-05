@@ -155,7 +155,8 @@
     "uploadComplete": "Téléchargement terminé",
     "dismiss": "Fermer",
     "closeSidebar": "Fermer la barre latérale",
-    "openSidebar": "Ouvrir la barre latérale"
+    "openSidebar": "Ouvrir la barre latérale",
+    "appName": "UrDeal"
   },
   "seller": {
     "dashboard": "Tableau de bord",
@@ -3010,7 +3011,8 @@
     "lowStock": "⚠️ Il ne reste que {{count}} de {{name}} !",
     "anonymous": "Anonyme",
     "systemUser": "🎉 Système",
-    "cartSystemMsg": "{{name}} a ajouté {{product}} au panier !"
+    "cartSystemMsg": "{{name}} a ajouté {{product}} au panier !",
+    "broadcastInProgress": "Diffusion en direct"
   },
   "paymentFail": {
     "title": "Paiement échoué",

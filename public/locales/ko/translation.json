@@ -155,7 +155,8 @@
     "dismiss": "닫기",
     "uploadComplete": "업로드 완료",
     "closeSidebar": "사이드바 닫기",
-    "openSidebar": "사이드바 열기"
+    "openSidebar": "사이드바 열기",
+    "appName": "유어딜"
   },
   "auth": {
     "email": "이메일",
@@ -3010,7 +3011,8 @@
     "lowStock": "⚠️ {{name}} 재고가 {{count}}개 남았습니다!",
     "anonymous": "익명",
     "systemUser": "🎉 시스템",
-    "cartSystemMsg": "{{name}}님이 {{product}}을(를) 담았습니다!"
+    "cartSystemMsg": "{{name}}님이 {{product}}을(를) 담았습니다!",
+    "broadcastInProgress": "라이브 방송 중"
   },
   "paymentFail": {
     "title": "결제 실패",

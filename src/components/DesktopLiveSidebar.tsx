@@ -12,34 +12,37 @@
  *   - 메뉴: 추천/탐색/팔로잉/라이브/마이/검색
  */
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Home, Compass, UserCheck, Radio, ShoppingBag, Search, User } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 interface NavItem {
-  label: string
+  labelKey: string
+  labelDefault: string
   icon: React.ComponentType<{ className?: string }>
   path: string
   active?: (pathname: string) => boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: '추천',   icon: Home,       path: '/',          active: (p) => p === '/' },
-  { label: '탐색',   icon: Compass,    path: '/browse',    active: (p) => p.startsWith('/browse') },
-  { label: '팔로잉', icon: UserCheck,  path: '/following', active: (p) => p.startsWith('/following') },
-  { label: '라이브', icon: Radio,      path: '/live',      active: (p) => p.startsWith('/live') },
-  { label: '쇼핑',   icon: ShoppingBag, path: '/cart',     active: (p) => p === '/cart' },
-  { label: '검색',   icon: Search,     path: '/search',    active: (p) => p === '/search' },
-  { label: '프로필', icon: User,       path: '/user/profile', active: (p) => p.startsWith('/user/profile') },
+  { labelKey: 'common.navRecommend',  labelDefault: '추천',   icon: Home,       path: '/',             active: (p) => p === '/' },
+  { labelKey: 'common.navBrowse',     labelDefault: '탐색',   icon: Compass,    path: '/browse',       active: (p) => p.startsWith('/browse') },
+  { labelKey: 'common.navFollowing',  labelDefault: '팔로잉', icon: UserCheck,  path: '/following',    active: (p) => p.startsWith('/following') },
+  { labelKey: 'common.navLive',       labelDefault: '라이브', icon: Radio,      path: '/live',         active: (p) => p.startsWith('/live') },
+  { labelKey: 'common.navShopping',   labelDefault: '쇼핑',   icon: ShoppingBag, path: '/cart',        active: (p) => p === '/cart' },
+  { labelKey: 'common.navSearch',     labelDefault: '검색',   icon: Search,     path: '/search',       active: (p) => p === '/search' },
+  { labelKey: 'common.navProfile',    labelDefault: '프로필', icon: User,       path: '/user/profile', active: (p) => p.startsWith('/user/profile') },
 ]
 
 export default function DesktopLiveSidebar() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '/'
 
   return (
     <aside
       className="hidden xl:flex fixed left-0 top-0 bottom-0 w-56 z-40 flex-col py-6 px-3 bg-white dark:bg-[#020202] border-r border-gray-200 dark:border-white/[0.06]"
-      aria-label="PC 메인 메뉴"
+      aria-label={t('common.pcMainMenu', { defaultValue: 'PC 메인 메뉴' })}
     >
       {/* 로고 */}
       <Link to="/" className="flex items-center px-3 mb-6">
@@ -61,7 +64,7 @@ export default function DesktopLiveSidebar() {
               }`}
             >
               <Icon className="w-5 h-5 shrink-0" />
-              <span className="text-[14px]">{item.label}</span>
+              <span className="text-[14px]">{t(item.labelKey, { defaultValue: item.labelDefault })}</span>
             </button>
           )
         })}

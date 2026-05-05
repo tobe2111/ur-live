@@ -155,7 +155,8 @@
     "uploadComplete": "アップロード完了",
     "dismiss": "閉じる",
     "closeSidebar": "サイドバーを閉じる",
-    "openSidebar": "サイドバーを開く"
+    "openSidebar": "サイドバーを開く",
+    "appName": "UrDeal"
   },
   "auth": {
     "email": "メールアドレス",
@@ -3010,7 +3011,8 @@
     "lowStock": "⚠️ {{name}}の在庫が{{count}}個残っています！",
     "anonymous": "匿名",
     "systemUser": "🎉 システム",
-    "cartSystemMsg": "{{name}}さんが{{product}}をカートに追加しました！"
+    "cartSystemMsg": "{{name}}さんが{{product}}をカートに追加しました！",
+    "broadcastInProgress": "ライブ配信中"
   },
   "paymentFail": {
     "title": "決済失敗",
