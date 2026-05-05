@@ -117,6 +117,8 @@ streamsRouter.get('/', async (c) => {
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+      // 🛡️ 2026-05-05: 셀러 등급별 exposure_weight 반영 — diamond=4×, gold=2.5×, silver=1.5×, bronze=1×, new=0.7×
+      // status priority 가 1순위, 그 다음 가중치 × recency.
       const query = `
         SELECT
           ls.id,
@@ -131,6 +133,8 @@ streamsRouter.get('/', async (c) => {
           ls.seller_instagram,
           ls.seller_youtube,
           s.name             AS seller_name,
+          s.tier             AS seller_tier,
+          COALESCE(s.exposure_weight, 1.0) AS exposure_weight,
           cp.id              AS current_product_id,
           cp.name            AS current_product_name,
           cp.price           AS current_product_price,
@@ -145,6 +149,9 @@ streamsRouter.get('/', async (c) => {
         ${whereClause}
         ORDER BY
           CASE ls.status WHEN 'live' THEN 0 WHEN 'scheduled' THEN 1 ELSE 2 END,
+          (COALESCE(s.exposure_weight, 1.0) *
+            (1.0 / (1 + (julianday('now') - julianday(ls.created_at)) * 0.5))
+          ) DESC,
           ls.created_at DESC
         LIMIT ? OFFSET ?
       `;
