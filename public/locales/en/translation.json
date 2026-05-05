@@ -2961,7 +2961,10 @@
     "maxed": "Done",
     "watch": "Watch",
     "progress": "{{today}}/{{limit}} watched",
-    "rewardEarned": "+{{amount}} deals earned! (Balance: {{balance}} deals)"
+    "rewardEarned": "+{{amount}} deals earned! (Balance: {{balance}} deals)",
+    "rewardFailed": "Failed to grant reward",
+    "dailyLimitReached": "Daily ad watch limit reached",
+    "watchError": "An error occurred while watching the ad"
   },
   "tierBadge": {
     "currentTier": "Current Tier",

@@ -117,13 +117,13 @@ export function RewardAdCard() {
         // 잔액 갱신 이벤트 발생
         window.dispatchEvent(new CustomEvent('pointsBalanceChanged'))
       } else {
-        alert(res.data.error || '리워드 지급에 실패했습니다')
+        alert(res.data.error || t('rewardAd.rewardFailed', { defaultValue: '리워드 지급에 실패했습니다' }))
       }
     } catch (err: any) {
       if (err?.response?.status === 429) {
-        alert(err.response.data?.error || '오늘 광고 시청 한도에 도달했습니다')
+        alert(err.response.data?.error || t('rewardAd.dailyLimitReached', { defaultValue: '오늘 광고 시청 한도에 도달했습니다' }))
       } else {
-        alert('광고 시청 중 오류가 발생했습니다')
+        alert(t('rewardAd.watchError', { defaultValue: '광고 시청 중 오류가 발생했습니다' }))
       }
     } finally {
       setLoading(false)

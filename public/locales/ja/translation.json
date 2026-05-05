@@ -2961,7 +2961,10 @@
     "maxed": "完了",
     "watch": "視聴する",
     "progress": "{{today}}/{{limit}}回視聴",
-    "rewardEarned": "+{{amount}}ディール獲得！ (残高: {{balance}}ディール)"
+    "rewardEarned": "+{{amount}}ディール獲得！ (残高: {{balance}}ディール)",
+    "rewardFailed": "報酬の付与に失敗しました",
+    "dailyLimitReached": "本日の広告視聴上限に達しました",
+    "watchError": "広告視聴中にエラーが発生しました"
   },
   "tierBadge": {
     "currentTier": "現在のティア",

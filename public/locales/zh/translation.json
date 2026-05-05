@@ -2961,7 +2961,10 @@
     "maxed": "完成",
     "watch": "观看",
     "progress": "{{today}}/{{limit}}次已观看",
-    "rewardEarned": "+{{amount}}积分到账！（余额: {{balance}}积分）"
+    "rewardEarned": "+{{amount}}积分到账！（余额: {{balance}}积分）",
+    "rewardFailed": "奖励发放失败",
+    "dailyLimitReached": "今日广告观看次数已达上限",
+    "watchError": "观看广告时发生错误"
   },
   "tierBadge": {
     "currentTier": "当前等级",

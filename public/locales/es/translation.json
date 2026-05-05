@@ -2365,7 +2365,10 @@
     "maxed": "Hecho",
     "watch": "Ver",
     "progress": "{{today}}/{{limit}} vistos",
-    "rewardEarned": "+{{amount}} deals ganados! (Saldo: {{balance}} deals)"
+    "rewardEarned": "+{{amount}} deals ganados! (Saldo: {{balance}} deals)",
+    "rewardFailed": "Error al otorgar la recompensa",
+    "dailyLimitReached": "Límite diario de visualización de anuncios alcanzado",
+    "watchError": "Ocurrió un error al ver el anuncio"
   },
   "tierBadge": {
     "currentTier": "Nivel actual",
