@@ -76,9 +76,9 @@ adminStreamsRoutes.post('/streams/replay', cors(), async (c) => {
         await DB.prepare(`CREATE TABLE IF NOT EXISTS stream_products (id INTEGER PRIMARY KEY AUTOINCREMENT, stream_id INTEGER NOT NULL, product_id INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(stream_id, product_id))`).run();
       } catch {}
 
-      for (const pid of product_ids) {
-        await DB.prepare('INSERT OR IGNORE INTO stream_products (stream_id, product_id) VALUES (?, ?)').bind(streamId, pid).run();
-      }
+      await DB.batch(product_ids.map(pid =>
+        DB.prepare('INSERT OR IGNORE INTO stream_products (stream_id, product_id) VALUES (?, ?)').bind(streamId, pid)
+      ));
     }
 
     return c.json({ success: true, data: { id: streamId, youtube_video_id: videoId } }, 201);
@@ -123,8 +123,10 @@ adminStreamsRoutes.put('/streams/:id', cors(), async (c) => {
 
     if (body.product_ids) {
       await DB.prepare('DELETE FROM stream_products WHERE stream_id = ?').bind(id).run();
-      for (const pid of body.product_ids) {
-        await DB.prepare('INSERT OR IGNORE INTO stream_products (stream_id, product_id) VALUES (?, ?)').bind(id, pid).run();
+      if (body.product_ids.length > 0) {
+        await DB.batch(body.product_ids.map(pid =>
+          DB.prepare('INSERT OR IGNORE INTO stream_products (stream_id, product_id) VALUES (?, ?)').bind(id, pid)
+        ));
       }
     }
 
