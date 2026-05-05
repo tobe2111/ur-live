@@ -345,7 +345,7 @@ export default function SellerInventoryPage() {
       {showModal && selectedProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowModal(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85dvh] overflow-y-auto">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">{selectedProduct.name}</h3>
               <button onClick={() => setShowModal(false)} aria-label={t('common.close')} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>

@@ -129,7 +129,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-title"

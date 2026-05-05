@@ -210,7 +210,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90dvh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">

@@ -331,7 +331,7 @@ export default function SellerAlimtalkPage() {
       {chargeModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setChargeModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[85vh] overflow-y-auto p-5">
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[85dvh] overflow-y-auto p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.creditChargeTitle')}</h3>
             <p className="text-xs text-gray-400 mb-4">{t('seller.creditChargeDesc')}</p>
 

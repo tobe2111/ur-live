@@ -99,7 +99,7 @@ export function CustomModal({
               </button>
             </div>
             {/* Custom Modal Content */}
-            <div className="px-5 py-4 max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 max-h-[70dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               {children}
             </div>
           </>

@@ -86,13 +86,13 @@ async function ensureTable(db: D1Database) {
     ['inactive_seller',        1, 1, 0, 0, '[어드민] 부진 셀러 detect'],
     ['inactive_agency',        1, 1, 0, 0, '[어드민] 부진 에이전시 detect'],
   ] as const
-  for (const [type, dash, email, alim, push, desc] of seeds) {
-    await db.prepare(
+  await db.batch(seeds.map(([type, dash, email, alim, push, desc]) =>
+    db.prepare(
       `INSERT OR IGNORE INTO notification_channel_settings
        (notification_type, dashboard_enabled, email_enabled, alimtalk_enabled, push_enabled, description)
        VALUES (?, ?, ?, ?, ?, ?)`
-    ).bind(type, dash, email, alim, push, desc).run().catch(swallow('admin-notification-settings:upsert'))
-  }
+    ).bind(type, dash, email, alim, push, desc)
+  )).catch(swallow('admin-notification-settings:upsert-batch'))
 }
 
 app.get('/', async (c) => {

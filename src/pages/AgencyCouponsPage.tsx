@@ -175,7 +175,7 @@ export default function AgencyCouponsPage() {
       {/* 배포 모달 */}
       {creating && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCreating(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-lg w-full max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">쿠폰 배포</h2>
               <button onClick={() => setCreating(false)}><X className="w-5 h-5 text-gray-500" /></button>
@@ -269,7 +269,7 @@ export default function AgencyCouponsPage() {
       {/* 통계 모달 */}
       {statsParentId !== null && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setStatsParentId(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-blue-600" />

@@ -163,10 +163,11 @@ bundleSellerRoutes.post('/', async (c) => {
     ).bind(body.name.trim(), body.description?.trim() || null, sellerId, body.discount_type, body.discount_value, body.image_url || null).run()
 
     const bundleId = result.meta.last_row_id
-    for (const item of body.items) {
-      await DB.prepare(
-        `INSERT INTO product_bundle_items (bundle_id, product_id, quantity) VALUES (?, ?, ?)`
-      ).bind(bundleId, item.product_id, Math.max(1, item.quantity)).run()
+    if (body.items.length > 0) {
+      await DB.batch(body.items.map(item =>
+        DB.prepare(`INSERT INTO product_bundle_items (bundle_id, product_id, quantity) VALUES (?, ?, ?)`)
+          .bind(bundleId, item.product_id, Math.max(1, item.quantity))
+      ))
     }
 
     return c.json({ success: true, data: { id: bundleId }, message: '번들이 생성되었습니다' }, 201)
@@ -206,11 +207,10 @@ bundleSellerRoutes.patch('/:id', async (c) => {
 
     if (body.items && body.items.length >= 2) {
       await c.env.DB.prepare('DELETE FROM product_bundle_items WHERE bundle_id = ?').bind(bundleId).run()
-      for (const item of body.items) {
-        await c.env.DB.prepare(
-          'INSERT INTO product_bundle_items (bundle_id, product_id, quantity) VALUES (?, ?, ?)'
-        ).bind(bundleId, item.product_id, Math.max(1, item.quantity)).run()
-      }
+      await c.env.DB.batch(body.items.map(item =>
+        c.env.DB.prepare('INSERT INTO product_bundle_items (bundle_id, product_id, quantity) VALUES (?, ?, ?)')
+          .bind(bundleId, item.product_id, Math.max(1, item.quantity))
+      ))
     }
 
     return c.json({ success: true, message: '번들이 수정되었습니다' })

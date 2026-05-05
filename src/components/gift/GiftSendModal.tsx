@@ -90,7 +90,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
     >
       <div
         ref={dialogRef}
-        className="bg-white dark:bg-[#0A0A0A] w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#0A0A0A] w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

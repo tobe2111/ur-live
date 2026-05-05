@@ -247,7 +247,7 @@ export default function AgencyCampaignsPage() {
       {/* 생성 모달 */}
       {creating && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCreating(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">캠페인 만들기</h2>
               <button onClick={() => setCreating(false)} className="p-1 hover:bg-gray-100 rounded">
@@ -326,7 +326,7 @@ export default function AgencyCampaignsPage() {
       {/* 상세 모달 */}
       {selectedCampaign && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedCampaign(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-3xl w-full max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">{selectedCampaign.name}</h2>

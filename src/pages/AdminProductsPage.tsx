@@ -503,7 +503,7 @@ export default function AdminProductsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]) }} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">{editingProduct ? '상품 수정' : '상품 등록'}</h2>
               <button onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]) }} className="p-1.5 rounded-lg hover:bg-gray-100">

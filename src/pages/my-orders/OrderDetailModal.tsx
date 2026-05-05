@@ -22,7 +22,7 @@ export default function OrderDetailModal({ order, onClose, onCancel }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="주문 상세">
+      <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl w-full max-h-[80dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="주문 상세">
         <div className="sticky top-0 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] p-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">주문 상세</h3>
           <button

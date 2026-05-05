@@ -121,7 +121,7 @@ export function BroadcastDiagnostic({ streamId, method, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="broadcast-diagnostic-title"
-        className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto"
+        className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl max-h-[85dvh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         <div>
