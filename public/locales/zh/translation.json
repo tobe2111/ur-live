@@ -153,7 +153,9 @@
     "copyFailed": "复制失败。",
     "home": "首页",
     "uploadComplete": "上传完成",
-    "dismiss": "关闭"
+    "dismiss": "关闭",
+    "closeSidebar": "关闭侧边栏",
+    "openSidebar": "打开侧边栏"
   },
   "auth": {
     "email": "邮箱",
@@ -2660,11 +2662,19 @@
       "contracts": "合同管理",
       "notices": "卖家公告",
       "guide": "运营指南",
-      "profile": "档案设置"
+      "profile": "个人设置",
+      "invites": "卖家招募",
+      "matchSuggestions": "自动匹配建议",
+      "pk": "PK活动",
+      "events": "品牌挑战",
+      "promoteBoosts": "曝光提升",
+      "transfers": "卖家转移"
     },
     "guide": "运营指南",
     "guideSubtitle": "代理运营核心指南",
-    "guideTitle": "代理指南"
+    "guideTitle": "代理指南",
+    "verifiedPartner": "认证合作伙伴",
+    "partner": "合作伙伴"
   },
   "nav": {
     "home": "首页",
