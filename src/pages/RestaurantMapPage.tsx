@@ -8,7 +8,6 @@ import SEO from '@/components/SEO'
 import { isKorea } from '@/shared/config/region'
 import { storage } from '@/shared/utils/storage'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
-import { escapeHtml } from '@/shared/utils/html'
 import { formatNumber } from '@/utils/format'
 
 // 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
@@ -16,6 +15,7 @@ import { CATEGORIES, REGIONS } from './restaurant-map/constants'
 import FilterSheet from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
+import { useKakaoMap } from './restaurant-map/useKakaoMap'
 import { kakaoDirectionsUrl, distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 
@@ -27,17 +27,11 @@ export type { KakaoPlace }
 export default function RestaurantMapPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstance = useRef<any>(null)
-  const markersRef = useRef<any[]>([])
-  const overlaysRef = useRef<any[]>([])
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [selected, setSelected] = useState<Restaurant | null>(null)
   const [loading, setLoading] = useState(true)
   const [region, setRegion] = useState('')
   const [search, setSearch] = useState('')
-  const [sdkLoaded, setSdkLoaded] = useState(false)
-  const [sdkError, setSdkError] = useState(false)
   const [mapView, setMapView] = useState(true)
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
@@ -55,7 +49,6 @@ export default function RestaurantMapPage() {
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const activeFilterCount = (region ? 1 : 0) + (category ? 1 : 0)
-  // 🛡️ 2026-04-30: bottom-sheet 3-snap (peek=결과만 / mid=절반 / full=거의 풀스크린)
   const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('mid')
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 모드 (GPS 권한 요청 + 거리순 자동)
   const [nearMeMode, setNearMeMode] = useState(false)
@@ -64,42 +57,8 @@ export default function RestaurantMapPage() {
     storage.getJSON<string[]>('restaurant_search_history', [])
   )
   const [searchFocused, setSearchFocused] = useState(false)
-  // 🛡️ 2026-04-30 Phase 5: zoom-aware clustering
-  const [mapLevel, setMapLevel] = useState<number>(7)
   const dragStartY = useRef<number | null>(null)
   const dragStartSnap = useRef<'peek' | 'mid' | 'full'>('mid')
-
-  // 🛡️ 2026-04-30 Phase 5: '내 주변' 클릭 — GPS 요청 + 거리순 + 위치로 pan
-  const requestNearMe = useCallback(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      toast.error(t('restaurantMap.geoNotSupported'))
-      return
-    }
-    if (userLoc) {
-      // 이미 위치 있음 — 즉시 적용
-      setNearMeMode(true)
-      setSortBy('distance')
-      if (mapInstance.current && window.kakao?.maps) {
-        mapInstance.current.panTo(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
-        mapInstance.current.setLevel(5)
-      }
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-        setUserLoc(loc)
-        setNearMeMode(true)
-        setSortBy('distance')
-        if (mapInstance.current && window.kakao?.maps) {
-          mapInstance.current.panTo(new window.kakao.maps.LatLng(loc.lat, loc.lng))
-          mapInstance.current.setLevel(5)
-        }
-      },
-      () => toast.error(t('restaurantMap.geoPermissionDenied')),
-      { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
-    )
-  }, [userLoc])
 
   // 🛡️ 2026-04-30 Phase 5: 검색어 확정 시 히스토리 저장
   function pushSearchHistory(query: string) {
@@ -207,25 +166,6 @@ export default function RestaurantMapPage() {
       { timeout: 5000, enableHighAccuracy: false, maximumAge: 600000 }
     )
   }, [])
-
-  // 지도 SDK 로드 (한국: 카카오맵 / 글로벌: 목록만)
-  useEffect(() => {
-    if (!kr) {
-      setSdkLoaded(false)
-      setMapView(false)
-      return
-    }
-    import('@/lib/kakao-sdk').then(({ ensureKakaoMaps }) => {
-      ensureKakaoMaps()
-        .then(() => setSdkLoaded(true))
-        .catch((e) => {
-          if (import.meta.env.DEV) console.error('[RestaurantMap] Kakao Maps load failed:', e)
-          setSdkLoaded(false)
-          setSdkError(true)
-          setMapView(false)
-        })
-    })
-  }, [kr])
 
   // 데이터 로드 — voucherType 으로 카테고리 필터 (all / meal / beauty / health)
   useEffect(() => {
@@ -366,266 +306,50 @@ export default function RestaurantMapPage() {
     return map
   }, [filtered])
 
-  // 지도 초기화 + 마커
-  const initMap = useCallback(() => {
-    if (!sdkLoaded || !mapRef.current || !window.kakao?.maps) return
+  const { mapRef, mapInstance, sdkLoaded, sdkError } = useKakaoMap({
+    kr,
+    withCoords,
+    coordGroupSize,
+    selected,
+    setSelected,
+    kakaoPlaces,
+    setSuggestionFor,
+    userLoc,
+    liveSellerIds,
+    favorites,
+  })
 
-    const center = withCoords.length > 0
-      ? new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng)
-      : new window.kakao.maps.LatLng(37.5665, 126.978)
-
-    if (!mapInstance.current) {
-      mapInstance.current = new window.kakao.maps.Map(mapRef.current, {
-        center,
-        level: 7,
-      })
-      // 줌 컨트롤
-      const zoomControl = new window.kakao.maps.ZoomControl()
-      mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT)
-      // 🛡️ 2026-04-30 Phase 5: zoom 변경 리스너 → 클러스터링 재계산
-      window.kakao.maps.event.addListener(mapInstance.current, 'zoom_changed', () => {
-        if (mapInstance.current) setMapLevel(mapInstance.current.getLevel())
-      })
+  // 🛡️ 2026-04-30 Phase 5: '내 주변' 클릭 — GPS 요청 + 거리순 + 위치로 pan
+  const requestNearMe = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      toast.error(t('restaurantMap.geoNotSupported'))
+      return
     }
-
-    // 기존 마커/오버레이 제거
-    markersRef.current.forEach(m => m.setMap(null))
-    markersRef.current = []
-    overlaysRef.current.forEach(o => o.setMap(null))
-    overlaysRef.current = []
-
-    // 🛡️ 2026-04-30 Phase 5: zoom-aware grid clustering
-    //   level 1-3 (가까이): 클러스터 없음 (개별 핀)
-    //   level 4-5: 0.001° (~100m)
-    //   level 6-7: 0.005° (~500m)
-    //   level 8+ (멀리): 0.02° (~2km)
-    const gridSize = mapLevel <= 3 ? 0 : mapLevel <= 5 ? 0.001 : mapLevel <= 7 ? 0.005 : 0.02
-    const clusters = new Map<string, Restaurant[]>()
-    if (gridSize > 0) {
-      withCoords.forEach(r => {
-        const gx = Math.floor(r.restaurant_lng / gridSize)
-        const gy = Math.floor(r.restaurant_lat / gridSize)
-        const key = `${gx}_${gy}`
-        if (!clusters.has(key)) clusters.set(key, [])
-        clusters.get(key)!.push(r)
-      })
-    }
-
-    // 클러스터 핀 렌더 (2+ 개) — gridSize > 0 일 때만
-    if (gridSize > 0) {
-      clusters.forEach((items) => {
-        if (items.length < 2) return // 1개면 individual 렌더로 떨어짐 (아래)
-        // centroid
-        const sumLat = items.reduce((s, x) => s + x.restaurant_lat, 0)
-        const sumLng = items.reduce((s, x) => s + x.restaurant_lng, 0)
-        const cx = sumLat / items.length
-        const cy = sumLng / items.length
-        const minPrice = Math.min(...items.map(x => x.price || 0))
-        const cPos = new window.kakao.maps.LatLng(cx, cy)
-        const cContent = document.createElement('div')
-        cContent.innerHTML = `
-          <div style="
-            background: linear-gradient(135deg,#ec4899,#f43f5e);
-            color: #fff;
-            border: 3px solid #fff;
-            border-radius: 999px;
-            min-width: 44px;
-            height: 44px;
-            padding: 0 12px;
-            font-size: 13px;
-            font-weight: 800;
-            white-space: nowrap;
-            box-shadow: 0 4px 14px rgba(236,72,153,0.4);
-            cursor: pointer;
-            transform: translate(-50%, -50%);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-          ">
-            <span>${items.length}</span>
-            <span style="font-size:9px;opacity:0.9;font-weight:600;">${formatNumber(minPrice)}원~</span>
-          </div>
-        `
-        cContent.addEventListener('click', () => {
-          if (mapInstance.current) {
-            mapInstance.current.panTo(cPos)
-            // 줌 인 — 한 단계당 큰 변화이므로 -2 로 한 번에 더 가까이
-            const newLevel = Math.max(1, mapInstance.current.getLevel() - 2)
-            mapInstance.current.setLevel(newLevel)
-          }
-        })
-        const cOverlay = new window.kakao.maps.CustomOverlay({
-          position: cPos,
-          content: cContent,
-          yAnchor: 0.5,
-          xAnchor: 0.5,
-          zIndex: 5,
-          map: mapInstance.current,
-        })
-        overlaysRef.current.push(cOverlay)
-      })
-    }
-
-    // 개별 핀 렌더 — 클러스터 멤버 (2+) 는 skip
-    const clusteredKeys = new Set<string>()
-    if (gridSize > 0) {
-      clusters.forEach((items, key) => {
-        if (items.length >= 2) clusteredKeys.add(key)
-      })
-    }
-
-    withCoords.forEach(r => {
-      // 클러스터에 속한 핀이면 skip
-      if (gridSize > 0) {
-        const gx = Math.floor(r.restaurant_lng / gridSize)
-        const gy = Math.floor(r.restaurant_lat / gridSize)
-        if (clusteredKeys.has(`${gx}_${gy}`)) return
+    if (userLoc) {
+      // 이미 위치 있음 — 즉시 적용
+      setNearMeMode(true)
+      setSortBy('distance')
+      if (mapInstance.current && window.kakao?.maps) {
+        mapInstance.current.panTo(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
+        mapInstance.current.setLevel(5)
       }
-      const pos = new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)
-
-      // 🛡️ 2026-04-30 v2: 가격 라벨 → 카테고리 이모지 동그란 핀 (사용자 신고 — 가격 라벨이 시각적으로 부담)
-      //   기본 핀: 음식/뷰티/헬스 등 카테고리 emoji + 작은 동그라미. 선택 시 큰 카드로 가격 표시.
-      //   할인/LIVE/즐겨찾기 등은 작은 dot/badge 로만 표시.
-      const hasDiscount = r.original_price > r.price
-      const isLive = r.seller_id ? liveSellerIds.has(r.seller_id) : false
-      const isFav = favorites.includes(r.id)
-      const isSelected = selected?.id === r.id
-
-      // 카테고리 → 이모지 매핑 (간단)
-      const cat = (r.category || '').toLowerCase()
-      const emoji = cat.includes('beauty') ? '💇'
-        : cat.includes('health') ? '💪'
-        : cat.includes('pet') ? '🐶'
-        : cat.includes('stay') ? '🏨'
-        : cat.includes('activity') ? '🎯'
-        : '🍽️' // default: 식사
-
-      const groupKey = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
-      const groupSize = coordGroupSize.get(groupKey) || 1
-      // 동그라미 핀 우상단에 작은 배지 (LIVE > 할인 > 즐겨찾기 > 그룹 +N 우선순위)
-      const cornerBadge = isLive
-        ? `<span style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
-        : hasDiscount
-        ? `<span style="position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
-        : isFav
-        ? `<span style="position:absolute;top:-3px;right:-3px;color:#ef4444;font-size:11px;line-height:1;">❤</span>`
-        : groupSize > 1
-        ? `<span style="position:absolute;top:-4px;right:-6px;background:#3b82f6;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
-        : ''
-
-      // 색상: 선택됨 > LIVE > 일반
-      const bg = isSelected ? '#ec4899' : isLive ? '#fff5f5' : '#ffffff'
-      const borderColor = isSelected ? '#ec4899' : isLive ? '#ef4444' : '#e5e7eb'
-      const size = isSelected ? 36 : 32
-
-      const content = document.createElement('div')
-      content.innerHTML = `
-        <div style="
-          background: ${bg};
-          border: 2px solid ${borderColor};
-          border-radius: 50%;
-          width: ${size}px;
-          height: ${size}px;
-          font-size: ${isSelected ? 18 : 16}px;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-          cursor: pointer;
-          transform: translate(-50%, -50%) scale(${isSelected ? 1.05 : 1});
-          transition: transform 0.15s, background 0.15s;
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          line-height: 1;
-        ">
-          <span style="filter:${isSelected ? 'brightness(0) invert(1)' : 'none'};">${emoji}</span>
-          ${cornerBadge}
-        </div>
-      `
-      content.addEventListener('click', () => {
-        setSelected(r)
-        mapInstance.current.panTo(pos)
-      })
-
-      const overlay = new window.kakao.maps.CustomOverlay({
-        position: pos,
-        content,
-        yAnchor: 0.5,
-        xAnchor: 0.5,
-        map: mapInstance.current,
-      })
-      overlaysRef.current.push(overlay)
-    })
-
-    // 🛡️ 2026-04-28: 옵션 B — 카카오 일반 맛집 회색 핀 (식사권 미출시 표시)
-    kakaoPlaces.forEach(p => {
-      const lat = Number(p.y), lng = Number(p.x)
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
-      const safeName = escapeHtml(p.place_name || '')
-      const grayContent = document.createElement('div')
-      grayContent.innerHTML = `
-        <div style="
-          background: rgba(255,255,255,0.92);
-          color: #6b7280;
-          border: 1.5px dashed #d1d5db;
-          border-radius: 10px;
-          padding: 3px 8px;
-          font-size: 10px;
-          font-weight: 600;
-          white-space: nowrap;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-          cursor: pointer;
-          transform: translateY(-50%);
-        ">
-          ${safeName}
-          <span style="color:#9ca3af; margin-left:3px; font-size:9px;">+</span>
-        </div>
-      `
-      grayContent.addEventListener('click', () => setSuggestionFor(p))
-      const overlay = new window.kakao.maps.CustomOverlay({
-        position: new window.kakao.maps.LatLng(lat, lng),
-        content: grayContent,
-        yAnchor: 1.3,
-        zIndex: 1, // 식사권 핀 (default 2) 보다 아래
-        map: mapInstance.current,
-      })
-      overlaysRef.current.push(overlay)
-    })
-
-    // 범위 맞추기 (식사권 우선, 없으면 일반 맛집)
-    if (withCoords.length > 1) {
-      const bounds = new window.kakao.maps.LatLngBounds()
-      withCoords.forEach(r => bounds.extend(new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)))
-      mapInstance.current.setBounds(bounds)
-    } else if (withCoords.length === 1) {
-      mapInstance.current.setCenter(new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng))
-      mapInstance.current.setLevel(5)
-    } else if (kakaoPlaces.length > 0 && userLoc) {
-      // 식사권 0건 → 사용자 위치 중심으로
-      mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
-      mapInstance.current.setLevel(4)
+      return
     }
-  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, mapLevel])
-
-  useEffect(() => { initMap() }, [initMap])
-
-  // 🛡️ 2026-04-30: Kakao 맵 인스턴스 cleanup — 페이지 unmount 시 오버레이 / 줌 리스너 해제.
-  //   memory leak 방지 (Kakao SDK global 이 React 컴포넌트 closure 를 잡고 있음).
-  useEffect(() => {
-    return () => {
-      try {
-        overlaysRef.current.forEach(o => o.setMap?.(null))
-        overlaysRef.current = []
-        markersRef.current.forEach(m => m.setMap?.(null))
-        markersRef.current = []
-        if (mapInstance.current && window.kakao?.maps?.event) {
-          // Kakao 는 listener 해제용 ref 가 없어 removeListener(target, type) 패턴
-          //   타겟 자체를 GC 가능하게 mapInstance.current = null 만으로도 충분
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLoc(loc)
+        setNearMeMode(true)
+        setSortBy('distance')
+        if (mapInstance.current && window.kakao?.maps) {
+          mapInstance.current.panTo(new window.kakao.maps.LatLng(loc.lat, loc.lng))
+          mapInstance.current.setLevel(5)
         }
-        mapInstance.current = null
-      } catch { /* ignore */ }
-    }
-  }, [])
+      },
+      () => toast.error(t('restaurantMap.geoPermissionDenied')),
+      { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
+    )
+  }, [userLoc])
 
   const selectAndPan = (r: Restaurant) => {
     setSelected(r)
