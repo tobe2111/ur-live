@@ -37,6 +37,7 @@ import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleSellerDailyReport } from './cron/seller-daily-report';
 import { handleAgencySellerMatch } from './cron/agency-seller-match';
+import { handleAdSlotsAward } from './cron/ad-slots-award';
 import { handleD1Backup } from './cron/d1-backup';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -104,6 +105,8 @@ export async function handleCronScheduled(
       await handleSellerDailyReport(env).catch(e => console.error('[cron] seller-daily-report:', e));
       // 2026-05-05: 신규 셀러 ↔ 에이전시 자동 매칭 제안
       await handleAgencySellerMatch(env).catch(e => console.error('[cron] agency-seller-match:', e));
+      // 2026-05-05: 광고 슬롯 낙찰 처리
+      await handleAdSlotsAward(env).catch(e => console.error('[cron] ad-slots-award:', e));
     }));
   }
 

@@ -64,6 +64,7 @@ import { ordersRoutes as featureOrdersRoutes } from '../features/orders/api/orde
 import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
 import { pushRoutes } from '../features/push/api/push.routes';
 import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
+import { sellerAdSlotsRoutes } from '../features/seller/api/seller-ad-slots.routes';
 import { sellerKakaoLinkRoutes } from '../features/seller/api/seller-kakao-link.routes';
 import { sellerAlimtalkMgmtRoutes } from '../features/seller/api/seller-alimtalk-mgmt.routes';
 import { sellerRegistrationRoutes } from '../features/seller/api/seller-registration.routes';
@@ -738,6 +739,8 @@ app.route('/api/sellers', sellersRouter);
 
 // Feature seller management (see /api/seller routing note above — non-overlapping sub-routes)
 app.route('/api/seller', sellerManagementRoutes);
+// 2026-05-05: 광고 슬롯 입찰 (/ad-slots, /ad-slots/my-bids, /ad-slots/:id/bid)
+app.route('/api/seller', sellerAdSlotsRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /register, /register-from-user, /my-seller-status, /switch-to-*
 app.route('/api/seller', sellerRegistrationRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /profile (GET/PUT/PATCH) + /business-info (GET/POST/PUT/PATCH)

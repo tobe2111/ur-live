@@ -440,6 +440,20 @@ export default function SellerPage() {
         {/* 🛡️ 2026-05-05: 등급 배지 — diamond/gold/silver/bronze/new */}
         <TierBadge />
 
+        {/* 2026-05-05: 광고 슬롯 입찰 진입 배너 */}
+        <button
+          type="button"
+          onClick={() => navigate('/seller/ad-slots')}
+          className="w-full mx-0 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-100 rounded-2xl text-left hover:from-pink-100 hover:to-purple-100 transition-colors"
+        >
+          <span className="text-xl" aria-hidden="true">📢</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-bold text-gray-900">{t('seller.adSlotsTitle', { defaultValue: '광고 슬롯 입찰' })}</p>
+            <p className="text-[11px] text-gray-500">{t('seller.adSlotsDesc', { defaultValue: '메인·라이브 상단 24시간 우선 노출 — 매일 18시 낙찰' })}</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+        </button>
+
         {/* 🛡️ 2026-04-23 배치 170: 셀러 온보딩 가이드 (신규 셀러만 표시) */}
         <OnboardingChecklist stats={stats} hasBank={hasBank} />
 
