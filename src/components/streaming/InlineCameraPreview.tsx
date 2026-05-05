@@ -7,11 +7,13 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { VideoIcon, MicOff, Mic, CameraOff, RefreshCw } from 'lucide-react'
 import { isFeatureBlocked } from '@/lib/in-app-warning'
 import InAppFeatureBlockedModal from '@/components/InAppFeatureBlockedModal'
 
 export function InlineCameraPreview() {
+  const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [active, setActive] = useState(false)
@@ -49,7 +51,7 @@ export function InlineCameraPreview() {
           return
         }
         // 일반 브라우저인데 사용자가 권한 거부한 케이스
-        setErr('카메라 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.')
+        setErr(t('seller.cameraDenied', { defaultValue: '카메라 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.' }))
       } else {
         setErr(err.message || '카메라 접근 실패')
       }
@@ -79,8 +81,8 @@ export function InlineCameraPreview() {
             <VideoIcon className="w-5 h-5 text-blue-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900">카메라 미리보기 켜기</p>
-            <p className="text-xs text-gray-500">방송 전 내 화면 확인 (로컬 미리보기, 방송에 영향 없음)</p>
+            <p className="text-sm font-semibold text-gray-900">{t('seller.cameraPreviewOn', { defaultValue: '카메라 미리보기 켜기' })}</p>
+            <p className="text-xs text-gray-500">{t('seller.cameraPreviewDesc', { defaultValue: '방송 전 내 화면 확인 (로컬 미리보기, 방송에 영향 없음)' })}</p>
           </div>
           {err && <span className="text-[10px] text-red-500 shrink-0">{err}</span>}
         </button>
@@ -98,7 +100,7 @@ export function InlineCameraPreview() {
           <select value={selectedCam}
             onChange={e => { setSelectedCam(e.target.value); stop(); start(e.target.value) }}
             className="bg-black/60 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm">
-            {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || '카메라'}</option>)}
+            {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || t('seller.cameraDefault', { defaultValue: '카메라' })}</option>)}
           </select>
         )}
         <button onClick={() => setMuted(m => !m)}
@@ -119,7 +121,7 @@ export function InlineCameraPreview() {
         </button>
       </div>
       <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm">
-        🔒 로컬 미리보기
+        {t('seller.cameraLocalPreview', { defaultValue: '🔒 로컬 미리보기' })}
       </div>
     </div>
   )

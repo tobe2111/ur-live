@@ -88,7 +88,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
         setWishlistId(null)
         
         // 토스트 알림 (선택)
-        showToast('찜 목록에서 삭제되었습니다.')
+        showToast(t('common.wishlistRemoved', { defaultValue: '찜 목록에서 삭제되었습니다.' }))
       } else {
         // 찜하기
         const response = await api.post('/api/wishlists', {
@@ -101,7 +101,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
           setWishlistId(response.data.data.id)
           
           // 토스트 알림 (선택)
-          showToast('찜 목록에 추가되었습니다.')
+          showToast(t('common.wishlistAdded', { defaultValue: '찜 목록에 추가되었습니다.' }))
         }
       }
 
@@ -116,7 +116,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
       if (error.response?.data?.error) {
         toast.error(error.response.data.error)
       } else {
-        toast.error('오류가 발생했습니다. 다시 시도해주세요.')
+        toast.error(t('common.genericError', { defaultValue: '오류가 발생했습니다. 다시 시도해주세요.' }))
       }
     } finally {
       setIsLoading(false)
@@ -155,7 +155,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
         ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 active:scale-95'}
         ${className}
       `}
-      aria-label={isWishlisted ? '찜 취소' : '찜하기'}
+      aria-label={isWishlisted ? t('common.wishlistCancel', { defaultValue: '찜 취소' }) : t('common.wishlistAdd', { defaultValue: '찜하기' })}
     >
       {isWishlisted ? (
         // 찜된 상태 (빨간 하트)

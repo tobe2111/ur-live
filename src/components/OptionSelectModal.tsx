@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, Check, AlertCircle } from 'lucide-react'
 import api from '@/lib/api'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
@@ -32,6 +33,7 @@ export default function OptionSelectModal({
   currentOptionValue,
   onOptionSelected,
 }: OptionSelectModalProps) {
+  const { t } = useTranslation()
   const [options, setOptions] = useState<ProductOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -70,14 +72,14 @@ export default function OptionSelectModal({
       if (response.data.success) {
         setOptions(response.data.data || [])
         if (response.data.data.length === 0) {
-          setError('사용 가능한 옵션이 없습니다.')
+          setError(t('product.optionNone', { defaultValue: '사용 가능한 옵션이 없습니다.' }))
         }
       } else {
-        setError('옵션을 불러올 수 없습니다.')
+        setError(t('product.optionLoadFail', { defaultValue: '옵션을 불러올 수 없습니다.' }))
       }
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('Failed to load options:', err)
-      setError('옵션 조회 중 오류가 발생했습니다.')
+      setError(t('product.optionLoadError', { defaultValue: '옵션 조회 중 오류가 발생했습니다.' }))
     } finally {
       setLoading(false)
     }
@@ -107,7 +109,7 @@ export default function OptionSelectModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={`${productName} 옵션 선택`}
+        aria-label={t('product.optionSelectAria', { name: productName, defaultValue: '{{name}} 옵션 선택' })}
       >
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-[#0A0A0A] border-b border-gray-200 dark:border-[#2A2A2A] px-6 py-4 rounded-t-3xl">
@@ -117,13 +119,13 @@ export default function OptionSelectModal({
                 {productName}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                옵션 선택
+                {t('product.optionSelect', { defaultValue: '옵션 선택' })}
               </p>
             </div>
             <button
               onClick={onClose}
               className="flex h-8 w-8 items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-900 transition-colors ml-2"
-              aria-label="옵션 선택 닫기"
+              aria-label={t('product.optionCloseAria', { defaultValue: '옵션 선택 닫기' })}
             >
               <X className="h-5 w-5" strokeWidth={1.5} />
             </button>
@@ -182,7 +184,7 @@ export default function OptionSelectModal({
                           {isCurrent && !isSelected && (
                             <div className="absolute top-1.5 right-1.5">
                               <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500">
-                                <span className="text-[8px] text-white font-bold">현재</span>
+                                <span className="text-[8px] text-white font-bold">{t('product.optionCurrent', { defaultValue: '현재' })}</span>
                               </div>
                             </div>
                           )}
@@ -201,7 +203,7 @@ export default function OptionSelectModal({
                           
                           {isOutOfStock && (
                             <span className="text-[10px] text-red-500 font-medium mt-1">
-                              품절
+                              {t('product.optionSoldOut', { defaultValue: '품절' })}
                             </span>
                           )}
                         </button>
@@ -215,7 +217,7 @@ export default function OptionSelectModal({
               {currentOptionValue && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-xs text-blue-900">
-                    <span className="font-bold">현재 선택:</span> {currentOptionValue}
+                    <span className="font-bold">{t('product.optionCurrentLabel', { defaultValue: '현재 선택:' })}</span> {currentOptionValue}
                   </p>
                 </div>
               )}
@@ -231,7 +233,7 @@ export default function OptionSelectModal({
               disabled={!selectedOptionId}
               className="w-full rounded-lg bg-gray-900 py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {selectedOptionId === currentOptionId ? '확인' : '옵션 변경'}
+              {selectedOptionId === currentOptionId ? t('common.confirm', { defaultValue: '확인' }) : t('product.optionChange', { defaultValue: '옵션 변경' })}
             </button>
           </div>
         )}

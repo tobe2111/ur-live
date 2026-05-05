@@ -328,7 +328,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
               onClick={handleClose}
               className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
             >
-              닫기
+              {t('bulkUpload.close', { defaultValue: '닫기' })}
             </button>
             <button
               type="button"
@@ -339,12 +339,12 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
               {uploading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  업로드 중...
+                  {t('bulkUpload.uploading', { defaultValue: '업로드 중...' })}
                 </>
               ) : (
                 <>
                   <Upload className="w-4 h-4" />
-                  등록하기 ({parsedProducts.length}개)
+                  {t('bulkUpload.register', { count: parsedProducts.length, defaultValue: `등록하기 (${parsedProducts.length}개)` })}
                 </>
               )}
             </button>

@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { Heart, X, Loader2, Zap, Plus, Gift } from 'lucide-react'
@@ -39,6 +40,7 @@ const DONATION_AMOUNTS = [
 ]
 
 export default function LiveDonation({ streamId }: LiveDonationProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [showSheet, setShowSheet] = useState(false)
   const [selectedAmount, setSelectedAmount] = useState(DONATION_AMOUNTS[0])
@@ -132,7 +134,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
         onClick={() => setShowSheet(true)}
         className="flex items-center justify-center rounded-full transition-all active:scale-90"
         style={{ width: 40, height: 40, ...glass.actionRail }}
-        aria-label="선물하기"
+        aria-label={t('live.donationGift', { defaultValue: '선물하기' })}
       >
         <Gift style={{ width: 18, height: 18, color: '#fff' }} />
       </button>
@@ -169,13 +171,13 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 id="donation-sheet-title" className="text-lg font-bold text-gray-900">딜 후원</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">셀러에게 응원을 보내세요!</p>
+                  <h3 id="donation-sheet-title" className="text-lg font-bold text-gray-900">{t('live.donationTitle', { defaultValue: '딜 후원' })}</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">{t('live.donationSubtitle', { defaultValue: '셀러에게 응원을 보내세요!' })}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => !processing && setShowSheet(false)}
-                  aria-label="닫기"
+                  aria-label={t('common.close', { defaultValue: '닫기' })}
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100"
                 >
                   <X className="h-4 w-4 text-gray-600" aria-hidden="true" />
@@ -186,7 +188,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
               <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-pink-500" />
-                  <span className="text-sm font-medium text-gray-700">내 딜</span>
+                  <span className="text-sm font-medium text-gray-700">{t('live.donationMyDeal', { defaultValue: '내 딜' })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {loadingBalance ? (
@@ -200,7 +202,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                     onClick={() => navigate('/points/charge')}
                     className="flex items-center gap-0.5 px-2 py-1 text-xs font-semibold text-pink-600 bg-white rounded-lg border border-pink-200 hover:bg-pink-50"
                   >
-                    <Plus className="w-3 h-3" />충전
+                    <Plus className="w-3 h-3" />{t('live.donationCharge', { defaultValue: '충전' })}
                   </button>
                 </div>
               </div>
@@ -228,7 +230,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                 type="text"
                 value={message}
                 onChange={e => setMessage(e.target.value)}
-                placeholder="응원 메시지를 남겨보세요 (선택)"
+                placeholder={t('live.donationMsgPlaceholder', { defaultValue: '응원 메시지를 남겨보세요 (선택)' })}
                 maxLength={100}
                 className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:border-pink-500 focus:outline-none mb-4"
                 disabled={processing}
@@ -238,10 +240,10 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
               {isInsufficient && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-center">
                   <p className="text-xs text-amber-800">
-                    딜이 부족합니다.
+                    {t('live.donationInsufficient', { defaultValue: '딜이 부족합니다.' })}
                   </p>
                   <button onClick={() => navigate('/points/charge')} className="mt-1 text-xs font-bold text-amber-900 underline">
-                    충전하기
+                    {t('live.donationChargeNow', { defaultValue: '충전하기' })}
                   </button>
                 </div>
               )}
@@ -257,7 +259,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                 ) : (
                   <Heart className="w-5 h-5" />
                 )}
-                {processing ? '후원 중...' : `${formatNumber(selectedAmount.amount)}딜 후원하기`}
+                {processing ? t('live.donationProcessing', { defaultValue: '후원 중...' }) : t('live.donationBtn', { amount: formatNumber(selectedAmount.amount), defaultValue: '{{amount}}딜 후원하기' })}
               </button>
             </div>
           </div>

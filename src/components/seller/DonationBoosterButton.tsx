@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Zap, X } from 'lucide-react'
@@ -23,6 +24,7 @@ interface Props {
  * 활성 부스터가 있으면 카운트다운 + 매칭 실시간 표시.
  */
 export default function DonationBoosterButton({ liveStreamId }: Props) {
+  const { t } = useTranslation()
   const [active, setActive] = useState<BoosterStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [showOptions, setShowOptions] = useState(false)
@@ -102,11 +104,11 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="bg-white/20 rounded p-1.5">
-            <div className="opacity-80">받은 후원</div>
+            <div className="opacity-80">{t('seller.boosterReceived', { defaultValue: '받은 후원' })}</div>
             <div className="font-bold">{(active.total_donation_amount / 10_000).toFixed(1)}만</div>
           </div>
           <div className="bg-white/20 rounded p-1.5">
-            <div className="opacity-80">매칭 추가</div>
+            <div className="opacity-80">{t('seller.boosterMatched', { defaultValue: '매칭 추가' })}</div>
             <div className="font-bold">+{(active.total_matched_amount / 10_000).toFixed(1)}만</div>
           </div>
         </div>
@@ -119,7 +121,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
     return (
       <div className="bg-white border border-purple-200 rounded-xl p-3 shadow">
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-bold text-gray-900">⚡ 후원 부스터 옵션</h4>
+          <h4 className="text-sm font-bold text-gray-900">{t('seller.boosterOptions', { defaultValue: '⚡ 후원 부스터 옵션' })}</h4>
           <button onClick={() => setShowOptions(false)} className="text-gray-400 hover:text-gray-600">
             <X className="w-4 h-4" />
           </button>
@@ -141,7 +143,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
           ))}
         </div>
         <p className="text-[10px] text-gray-500 mt-2 italic">
-          ⚠️ 라이브 1회당 1번만 사용 가능. 매칭 금액은 시청자 결제와 별개로 시스템이 즉시 가산 처리합니다.
+          {t('seller.boosterNotice', { defaultValue: '⚠️ 라이브 1회당 1번만 사용 가능. 매칭 금액은 시청자 결제와 별개로 시스템이 즉시 가산 처리합니다.' })}
         </p>
       </div>
     )
@@ -153,7 +155,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
       className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-xs font-bold rounded-lg shadow"
     >
       <Zap className="w-4 h-4" />
-      후원 부스터 발동
+      {t('seller.boosterActivate', { defaultValue: '후원 부스터 발동' })}
     </button>
   )
 }
