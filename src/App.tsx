@@ -63,6 +63,7 @@ const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
+const MyDigitalLibraryPage = lazy(() => import('./pages/MyDigitalLibraryPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const SellerGroupBuyPage = lazy(() => import('./pages/SellerGroupBuyPage'))
 const SellerBundlesPage = lazy(() => import('./pages/SellerBundlesPage'))
@@ -918,6 +919,11 @@ function AppContent() {
             <Route path="/my-vouchers" element={
               <ProtectedRoute requireUser>
                 <MyVouchersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my/digital" element={
+              <ProtectedRoute requireUser>
+                <MyDigitalLibraryPage />
               </ProtectedRoute>
             } />
             <Route path="/my-orders" element={

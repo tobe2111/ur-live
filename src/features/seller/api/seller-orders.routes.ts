@@ -525,6 +525,13 @@ sellerOrdersRoutes.post('/products', async (c) => {
       group_buy_target?: number;
       group_buy_deadline?: string;
       store_verify_pin?: string;
+      // 🛡️ 2026-05-05: 디지털 상품 필드
+      product_kind?: string;
+      delivery_type?: string;
+      content_url?: string | null;
+      content_format?: string | null;
+      access_duration_days?: number | null;
+      preview_url?: string | null;
     }>();
 
     const { name, description, price, stock, image_url, category } = body;
@@ -579,6 +586,22 @@ sellerOrdersRoutes.post('/products', async (c) => {
 
     // 식사권/공동구매 필드 저장 (별도 UPDATE — INSERT fallback 구조 유지)
     const productId = result.meta.last_row_id;
+
+    // 🛡️ 2026-05-05: 디지털 상품 필드 저장 (UPDATE — migration 0243 후 컬럼 존재)
+    if (body.product_kind && body.product_kind !== 'physical') {
+      const digitalFields: Array<['product_kind' | 'delivery_type' | 'content_url' | 'content_format' | 'access_duration_days' | 'preview_url', unknown]> = [
+        ['product_kind', body.product_kind],
+        ['delivery_type', body.delivery_type || 'instant_url'],
+        ['content_url', body.content_url || null],
+        ['content_format', body.content_format || null],
+        ['access_duration_days', body.access_duration_days ?? null],
+        ['preview_url', body.preview_url || null],
+      ];
+      for (const [field, val] of digitalFields) {
+        try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
+      }
+    }
+
     if (category === 'meal_voucher') {
       const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin'] as const;
       for (const field of mealFields) {
