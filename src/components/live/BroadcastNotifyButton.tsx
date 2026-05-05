@@ -166,14 +166,14 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
             : 'bg-white/15 text-gray-900 dark:text-white border border-white/20'
         }`}
       >
-        {loading ? '처리 중...' : subscribed ? '🔔 알림 설정됨' : '🔔 방송 알림 받기'}
+        {loading ? t('broadcastNotify.processing', { defaultValue: '처리 중...' }) : subscribed ? t('broadcastNotify.notifySet', { defaultValue: '🔔 알림 설정됨' }) : t('broadcastNotify.notifyRequest', { defaultValue: '🔔 방송 알림 받기' })}
       </button>
       <button
         onClick={handleAddCalendar}
         disabled={calLoading}
         className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold active:scale-[0.97] disabled:opacity-50"
       >
-        {calLoading ? '추가 중...' : kr ? '📅 카카오 캘린더에 추가' : '📅 Add to Calendar'}
+        {calLoading ? t('broadcastNotify.adding', { defaultValue: '추가 중...' }) : kr ? t('broadcastNotify.kakaoCalendar', { defaultValue: '📅 카카오 캘린더에 추가' }) : t('broadcastNotify.googleCalendar', { defaultValue: '📅 Add to Calendar' })}
       </button>
     </div>
   )
