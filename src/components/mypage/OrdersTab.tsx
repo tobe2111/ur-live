@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Package, MapPin, Truck, ChevronRight, Check, MessageCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { toast } from '@/hooks/useToast'
 import type { Order } from '@/types/order'
 import { formatNumber } from '@/utils/format'
@@ -31,21 +33,21 @@ const StatusButton = ({
 
 // ─── 상태 배지 ────────────────────────────────────────────────────────────────
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string, t: TFunction) => {
   const s = status.toLowerCase()
   switch (s) {
     case 'delivered':
     case 'done':
-      return { cls: 'bg-emerald-50 text-emerald-700 border border-emerald-100', label: '배송완료' }
+      return { cls: 'bg-emerald-50 text-emerald-700 border border-emerald-100', label: t('ordersTab.statusDelivered', { defaultValue: '배송완료' }) }
     case 'shipping':
-      return { cls: 'bg-blue-50 text-blue-700 border border-blue-100', label: '배송중' }
+      return { cls: 'bg-blue-50 text-blue-700 border border-blue-100', label: t('ordersTab.statusShipping', { defaultValue: '배송중' }) }
     case 'cancelled':
     case 'refunded':
-      return { cls: 'bg-rose-50 text-rose-700 border border-rose-100', label: '취소/환불' }
+      return { cls: 'bg-rose-50 text-rose-700 border border-rose-100', label: t('ordersTab.statusCancelled', { defaultValue: '취소/환불' }) }
     case 'preparing':
-      return { cls: 'bg-amber-50 text-amber-700 border border-amber-100', label: '상품준비중' }
+      return { cls: 'bg-amber-50 text-amber-700 border border-amber-100', label: t('ordersTab.statusPreparing', { defaultValue: '상품준비중' }) }
     default:
-      return { cls: 'bg-gray-50 dark:bg-[#121212] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A2A2A]', label: '결제완료' }
+      return { cls: 'bg-gray-50 dark:bg-[#121212] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A2A2A]', label: t('ordersTab.statusPaid', { defaultValue: '결제완료' }) }
   }
 }
 
@@ -69,22 +71,11 @@ export function getTrackingUrl(courier?: string, trackingNumber?: string): strin
 
 // ─── 구매 플로우 스텝퍼 ───────────────────────────────────────────────────────
 
-const FLOW_STEPS = [
-  { key: 'paid',      label: '결제완료' },
-  { key: 'preparing', label: '상품준비중' },
-  { key: 'shipping',  label: '배송중' },
-  { key: 'delivered', label: '배송완료' },
-]
+// Note: FLOW_STEPS and REFUND_STEPS are built inside the component to access t()
 
 const STATUS_ORDER: Record<string, number> = {
   pending: 1, paid: 1, preparing: 2, shipping: 3, delivered: 4, done: 4,
 }
-
-const REFUND_STEPS = [
-  { key: 'requested',  label: '취소요청' },
-  { key: 'processing', label: '처리중' },
-  { key: 'completed',  label: '환불완료' },
-]
 
 function getRefundStepIndex(status: string, refundStatus?: string): number {
   if (status === 'refunded' || refundStatus === 'completed') return 3
@@ -147,47 +138,59 @@ function Stepper({
   )
 }
 
-function OrderFlowStepper({ status }: { status: string }) {
+function OrderFlowStepper({ status, t }: { status: string; t: TFunction }) {
   const s = status.toLowerCase()
   if (s === 'cancelled' || s === 'refunded') return null
   const currentIdx = STATUS_ORDER[s] ?? 1
+  const FLOW_STEPS = [
+    { key: 'paid',      label: t('ordersTab.stepPaid', { defaultValue: '결제완료' }) },
+    { key: 'preparing', label: t('ordersTab.stepPreparing', { defaultValue: '상품준비중' }) },
+    { key: 'shipping',  label: t('ordersTab.stepShipping', { defaultValue: '배송중' }) },
+    { key: 'delivered', label: t('ordersTab.stepDelivered', { defaultValue: '배송완료' }) },
+  ]
   return <Stepper steps={FLOW_STEPS} currentIdx={currentIdx} activeColor="pink" />
 }
 
-function RefundFlowStepper({ status, refundStatus }: { status: string; refundStatus?: string }) {
+function RefundFlowStepper({ status, refundStatus, t }: { status: string; refundStatus?: string; t: TFunction }) {
   const s = status.toLowerCase()
   if (s !== 'cancelled' && s !== 'refunded') return null
   const currentIdx = getRefundStepIndex(s, refundStatus)
+  const REFUND_STEPS = [
+    { key: 'requested',  label: t('ordersTab.refundStepRequested', { defaultValue: '취소요청' }) },
+    { key: 'processing', label: t('ordersTab.refundStepProcessing', { defaultValue: '처리중' }) },
+    { key: 'completed',  label: t('ordersTab.refundStepCompleted', { defaultValue: '환불완료' }) },
+  ]
   return <Stepper steps={REFUND_STEPS} currentIdx={currentIdx} activeColor="rose" />
 }
 
 // ─── OrdersTab 메인 ───────────────────────────────────────────────────────────
 
-function handleSellerContact(order: Order) {
-  const kakao = order.seller_kakao_chat_url as string | undefined
-  const phone = order.seller_phone as string | undefined
-  if (kakao) {
-    window.open(kakao, '_blank', 'noopener,noreferrer')
-  } else if (phone) {
-    toast.info(`판매자 연락처: ${phone}`)
-  } else {
-    toast.info('판매자 연락처가 등록되지 않았습니다')
-  }
-}
-
 type StatusFilter = 'all' | 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled'
 
-const FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: 'all',        label: '전체' },
-  { key: 'pending',    label: '결제완료' },
-  { key: 'preparing',  label: '준비중' },
-  { key: 'shipping',   label: '배송중' },
-  { key: 'delivered',  label: '배송완료' },
-  { key: 'cancelled',  label: '취소/환불' },
-]
-
 export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder }: OrdersTabProps) {
+  const { t } = useTranslation()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+
+  function handleSellerContact(order: Order) {
+    const kakao = order.seller_kakao_chat_url as string | undefined
+    const phone = order.seller_phone as string | undefined
+    if (kakao) {
+      window.open(kakao, '_blank', 'noopener,noreferrer')
+    } else if (phone) {
+      toast.info(t('ordersTab.sellerContact', { phone, defaultValue: `판매자 연락처: ${phone}` }))
+    } else {
+      toast.info(t('ordersTab.sellerNoContact', { defaultValue: '판매자 연락처가 등록되지 않았습니다' }))
+    }
+  }
+
+  const FILTERS: { key: StatusFilter; label: string }[] = [
+    { key: 'all',        label: t('ordersTab.filterAll', { defaultValue: '전체' }) },
+    { key: 'pending',    label: t('ordersTab.filterPending', { defaultValue: '결제완료' }) },
+    { key: 'preparing',  label: t('ordersTab.filterPreparing', { defaultValue: '준비중' }) },
+    { key: 'shipping',   label: t('ordersTab.filterShipping', { defaultValue: '배송중' }) },
+    { key: 'delivered',  label: t('ordersTab.filterDelivered', { defaultValue: '배송완료' }) },
+    { key: 'cancelled',  label: t('ordersTab.filterCancelled', { defaultValue: '취소/환불' }) },
+  ]
 
   const filteredOrders = orders.filter(order => {
     if (statusFilter === 'all') return true
@@ -217,19 +220,19 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           <div className="w-20 h-20 bg-gray-50 dark:bg-[#121212] rounded-full flex items-center justify-center mx-auto mb-5">
             <Package className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
           </div>
-          <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">주문 내역이 없습니다</h2>
-          <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6">라이브에서 마음에 드는 상품을 구매해보세요</p>
+          <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">{t('ordersTab.emptyTitle', { defaultValue: '주문 내역이 없습니다' })}</h2>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6">{t('ordersTab.emptyDesc', { defaultValue: '라이브에서 마음에 드는 상품을 구매해보세요' })}</p>
           <Link
             to="/"
             className="inline-flex items-center justify-center px-6 py-3 bg-gray-900 text-white text-[14px] font-semibold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
           >
-            라이브 보러가기
+            {t('ordersTab.goToLive', { defaultValue: '라이브 보러가기' })}
           </Link>
         </div>
       ) : (
         <div className="space-y-3">
           {filteredOrders.map(order => {
-            const badge = getStatusBadge(order.status)
+            const badge = getStatusBadge(order.status, t)
             const canCancel  = ['pending', 'paid', 'confirmed', 'done'].includes(order.status.toLowerCase())
             const canConfirm = order.status === 'shipping' && !!onConfirmOrder
             const orderNum = order.order_number ?? String(order.id)
@@ -259,8 +262,8 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
 
                 {/* 플로우 스텝퍼 */}
                 <div className="px-4 pb-4">
-                  <OrderFlowStepper status={order.status} />
-                  <RefundFlowStepper status={order.status} refundStatus={order.refund_status} />
+                  <OrderFlowStepper status={order.status} t={t} />
+                  <RefundFlowStepper status={order.status} refundStatus={order.refund_status} t={t} />
                 </div>
 
                 {/* 상품 목록 */}
@@ -272,12 +275,12 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                       </p>
                       <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
                         {item.option_value && <span>{item.option_value} · </span>}
-                        {item.quantity}개 · {formatNumber(item.price_snapshot * item.quantity)}원
+                        {t('ordersTab.itemQtyPrice', { qty: item.quantity, price: formatNumber(item.price_snapshot * item.quantity), defaultValue: `${item.quantity}개 · ${formatNumber(item.price_snapshot * item.quantity)}원` })}
                       </p>
                     </div>
                   ))}
                   {order.items && order.items.length > 2 && (
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400">외 {order.items.length - 2}개</p>
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('ordersTab.moreItems', { count: order.items.length - 2, defaultValue: `외 ${order.items.length - 2}개` })}</p>
                   )}
                 </div>
 
@@ -314,7 +317,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                         target="_blank" rel="noopener noreferrer"
                         className="shrink-0 text-[12px] font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-0.5"
                       >
-                        배송조회
+                        {t('ordersTab.trackingLink', { defaultValue: '배송조회' })}
                         <ChevronRight className="h-3 w-3" />
                       </a>
                     </div>
@@ -324,27 +327,27 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                 {/* 하단: 금액 + 액션 */}
                 <div className="px-4 pb-4 flex items-center justify-between border-t border-gray-100 dark:border-[#1A1A1A] pt-3">
                   <div>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">결제금액</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
                     <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">
                       {formatNumber(order.total_amount ?? order.amount ?? 0)}
-                      <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">원</span>
+                      <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleSellerContact(order)}
                       className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-full hover:bg-gray-50 transition-colors"
-                      aria-label="판매자 문의"
+                      aria-label={t('ordersTab.inquiry', { defaultValue: '판매자 문의' })}
                     >
                       <MessageCircle className="h-3 w-3" strokeWidth={2} />
-                      문의
+                      {t('ordersTab.inquiry', { defaultValue: '문의' })}
                     </button>
                     {canCancel && (
                       <button
                         onClick={() => onCancelOrder(order.id, orderNum)}
                         className="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#0A0A0A] border border-red-100 rounded-full hover:bg-red-50 transition-colors"
                       >
-                        취소
+                        {t('ordersTab.cancelOrder', { defaultValue: '취소' })}
                       </button>
                     )}
                     {canConfirm && onConfirmOrder && (
@@ -352,14 +355,14 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                         onClick={() => onConfirmOrder(order.id, orderNum)}
                         className="px-2.5 py-1.5 text-[12px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full hover:bg-emerald-100 transition-colors"
                       >
-                        구매확정
+                        {t('ordersTab.confirmOrder', { defaultValue: '구매확정' })}
                       </button>
                     )}
                     <button
                       onClick={() => onSelectOrder(order)}
                       className="flex items-center text-[13px] font-bold text-gray-900 dark:text-white hover:text-gray-700 transition-colors ml-0.5"
                     >
-                      상세
+                      {t('ordersTab.detail', { defaultValue: '상세' })}
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
