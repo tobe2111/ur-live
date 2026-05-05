@@ -35,12 +35,7 @@ interface Partnership {
   owner_seller_name: string | null
 }
 
-const STATUS_LABEL: Record<Partnership['status'], string> = {
-  pending: '승인 대기',
-  active: '진행 중',
-  paused: '일시정지',
-  ended: '종료됨',
-}
+// STATUS_LABEL is built dynamically using t() in the component
 
 const STATUS_COLOR: Record<Partnership['status'], string> = {
   pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -51,6 +46,14 @@ const STATUS_COLOR: Record<Partnership['status'], string> = {
 
 export default function SellerConsignmentPage() {
   const { t } = useTranslation()
+
+  const STATUS_LABEL: Record<Partnership['status'], string> = {
+    pending: t('seller.consignment.statusPending', { defaultValue: '승인 대기' }),
+    active: t('seller.consignment.statusActive', { defaultValue: '진행 중' }),
+    paused: t('seller.consignment.statusPaused', { defaultValue: '일시정지' }),
+    ended: t('seller.consignment.statusEnded', { defaultValue: '종료됨' }),
+  }
+
   const [partnerships, setPartnerships] = useState<Partnership[]>([])
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState<'all' | 'host' | 'owner'>('all')
@@ -87,7 +90,7 @@ export default function SellerConsignmentPage() {
       reload()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e.response?.data?.error || '승인 실패')
+      toast.error(e.response?.data?.error || t('seller.consignment.approveBtn', { defaultValue: '승인 실패' }))
     } finally {
       setActingId(null)
     }
@@ -102,28 +105,28 @@ export default function SellerConsignmentPage() {
       reload()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e.response?.data?.error || '종료 실패')
+      toast.error(e.response?.data?.error || t('seller.consignment.terminateBtn', { defaultValue: '종료 실패' }))
     } finally {
       setActingId(null)
     }
   }
 
   return (
-    <SellerLayout title="MD 위탁 판매">
+    <SellerLayout title={t('seller.consignment.title', { defaultValue: 'MD 위탁 판매' })}>
       <DashboardPageHeader
-        title="MD 위탁 판매"
-        subtitle="다른 셀러의 상품을 내 라이브에서 판매하거나, 내 상품을 다른 셀러에게 위탁할 수 있어요"
+        title={t('seller.consignment.title', { defaultValue: 'MD 위탁 판매' })}
+        subtitle={t('seller.consignment.subtitle', { defaultValue: '다른 셀러의 상품을 내 라이브에서 판매하거나, 내 상품을 다른 셀러에게 위탁할 수 있어요' })}
         icon={<Handshake className="w-5 h-5 text-pink-500" />}
       />
 
       {/* 필터 칩 */}
       <DashboardCard>
         <div className="flex flex-wrap gap-2 mb-3">
-          <span className="text-xs font-semibold text-gray-700 self-center mr-2">입장:</span>
+          <span className="text-xs font-semibold text-gray-700 self-center mr-2">{t('seller.consignment.roleLabel', { defaultValue: '입장' })}:</span>
           {[
-            { key: 'all' as const, label: '전체' },
-            { key: 'host' as const, label: '내가 host (받은 상품)' },
-            { key: 'owner' as const, label: '내가 owner (빌려준 상품)' },
+            { key: 'all' as const, label: t('seller.consignment.all', { defaultValue: '전체' }) },
+            { key: 'host' as const, label: t('seller.consignment.receivedProduct', { defaultValue: '내가 host (받은 상품)' }) },
+            { key: 'owner' as const, label: t('seller.consignment.lentProduct', { defaultValue: '내가 owner (빌려준 상품)' }) },
           ].map(f => (
             <button
               key={f.key}
@@ -137,7 +140,7 @@ export default function SellerConsignmentPage() {
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          <span className="text-xs font-semibold text-gray-700 self-center mr-2">상태:</span>
+          <span className="text-xs font-semibold text-gray-700 self-center mr-2">{t('seller.consignment.statusLabel', { defaultValue: '상태' })}:</span>
           {(['all', 'pending', 'active', 'paused', 'ended'] as const).map(s => (
             <button
               key={s}
@@ -147,7 +150,7 @@ export default function SellerConsignmentPage() {
                   ? 'bg-gray-900 text-white border-gray-900'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
               }`}
-            >{s === 'all' ? '전체' : STATUS_LABEL[s as Partnership['status']]}</button>
+            >{s === 'all' ? t('seller.consignment.all', { defaultValue: '전체' }) : STATUS_LABEL[s as Partnership['status']]}</button>
           ))}
         </div>
       </DashboardCard>
@@ -155,14 +158,14 @@ export default function SellerConsignmentPage() {
       {/* 목록 */}
       {loading ? (
         <div className="flex items-center justify-center py-16 text-gray-500">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" /> 불러오는 중...
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('seller.consignment.loading', { defaultValue: '불러오는 중...' })}
         </div>
       ) : partnerships.length === 0 ? (
         <DashboardCard>
           <div className="text-center py-12">
             <Handshake className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">위탁 파트너십이 없습니다.</p>
-            <p className="text-xs text-gray-400 mt-1">다른 셀러와 협업을 시작해보세요.</p>
+            <p className="text-sm text-gray-500">{t('seller.consignment.noPartnerships', { defaultValue: '위탁 파트너십이 없습니다.' })}</p>
+            <p className="text-xs text-gray-400 mt-1">{t('seller.consignment.startPartnership', { defaultValue: '다른 셀러와 협업을 시작해보세요.' })}</p>
           </div>
         </DashboardCard>
       ) : (
@@ -191,19 +194,19 @@ export default function SellerConsignmentPage() {
                         {STATUS_LABEL[p.status]}
                       </span>
                       <span className="text-[10px] text-gray-500 font-medium">
-                        {iAmHost ? <><ArrowDown className="w-3 h-3 inline" /> 받은 상품</> : <><ArrowUp className="w-3 h-3 inline" /> 빌려준 상품</>}
+                        {iAmHost ? <><ArrowDown className="w-3 h-3 inline" /> {t('seller.consignment.receivedProduct', { defaultValue: '받은 상품' })}</> : <><ArrowUp className="w-3 h-3 inline" /> {t('seller.consignment.lentProduct', { defaultValue: '빌려준 상품' })}</>}
                       </span>
                     </div>
                     <h3 className="font-semibold text-gray-900 text-sm truncate">{p.product_name || `상품 #${p.product_id}`}</h3>
                     <div className="text-xs text-gray-500 mt-1 space-y-0.5">
                       <div>
-                        <span className="text-gray-400">파트너:</span>{' '}
+                        <span className="text-gray-400">{t('seller.consignment.partner', { defaultValue: '파트너' })}:</span>{' '}
                         <span className="font-medium text-gray-700">
                           {iAmHost ? p.owner_seller_name : p.host_seller_name}
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-400">host 수수료율:</span>{' '}
+                        <span className="text-gray-400">{t('seller.consignment.commissionRate', { defaultValue: 'host 수수료율' })}:</span>{' '}
                         <span className="font-bold text-pink-600">{p.host_commission_rate}%</span>
                       </div>
                       {p.message && (
@@ -222,7 +225,7 @@ export default function SellerConsignmentPage() {
                         className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 disabled:opacity-50"
                       >
                         {actingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                        승인
+                        {t('seller.consignment.approveBtn', { defaultValue: '승인' })}
                       </button>
                     )}
                     {canTerminate && (
@@ -231,7 +234,7 @@ export default function SellerConsignmentPage() {
                         disabled={actingId === p.id}
                         className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-red-300 text-red-600 rounded-lg text-xs font-bold hover:bg-red-50 disabled:opacity-50"
                       >
-                        <XCircle className="w-3 h-3" /> 종료
+                        <XCircle className="w-3 h-3" /> {t('seller.consignment.terminateBtn', { defaultValue: '종료' })}
                       </button>
                     )}
                   </div>

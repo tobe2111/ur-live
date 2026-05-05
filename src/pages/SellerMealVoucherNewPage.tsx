@@ -173,12 +173,12 @@ export default function SellerMealVoucherNewPage() {
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { key: 'meal_voucher' as const, emoji: '🍽️', label: '식사 공구권', desc: '맛집·카페' },
-                { key: 'beauty_voucher' as const, emoji: '💇', label: '뷰티 공구권', desc: '헤어·네일·피부' },
-                { key: 'health_voucher' as const, emoji: '💪', label: '헬스 공구권', desc: 'PT·요가·필라테스' },
-                { key: 'pet_voucher' as const, emoji: '🐶', label: '반려 공구권', desc: '미용·호텔·병원' },
-                { key: 'stay_voucher' as const, emoji: '🏨', label: '숙박 공구권', desc: '펜션·호텔·모텔' },
-                { key: 'activity_voucher' as const, emoji: '🎯', label: '액티비티 공구권', desc: '방탈출·볼링·클래스' },
+                { key: 'meal_voucher' as const, emoji: '🍽️', label: t('seller.voucher.categoryMeal', { defaultValue: '식사 공구권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
+                { key: 'beauty_voucher' as const, emoji: '💇', label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 공구권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
+                { key: 'health_voucher' as const, emoji: '💪', label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 공구권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
+                { key: 'pet_voucher' as const, emoji: '🐶', label: t('seller.voucher.categoryPet', { defaultValue: '반려 공구권' }), desc: t('seller.voucher.categoryPetDesc', { defaultValue: '미용·호텔·병원' }) },
+                { key: 'stay_voucher' as const, emoji: '🏨', label: t('seller.voucher.categoryStay', { defaultValue: '숙박 공구권' }), desc: t('seller.voucher.categoryStayDesc', { defaultValue: '펜션·호텔·모텔' }) },
+                { key: 'activity_voucher' as const, emoji: '🎯', label: t('seller.voucher.categoryActivity', { defaultValue: '액티비티 공구권' }), desc: t('seller.voucher.categoryActivityDesc', { defaultValue: '방탈출·볼링·클래스' }) },
               ].map(c => (
                 <button
                   type="button"
@@ -289,7 +289,7 @@ export default function SellerMealVoucherNewPage() {
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   />
                   <p className="text-[10px] text-gray-400 mt-1">
-                    💡 식당 전화번호를 입력하시면 사장님께 통계 페이지 링크가 알림톡으로 자동 발송됩니다 (PIN 불필요).
+                    {t('seller.mealVoucher.pinHint', { defaultValue: '💡 식당 전화번호를 입력하시면 사장님께 통계 페이지 링크가 알림톡으로 자동 발송됩니다 (PIN 불필요).' })}
                   </p>
                 </div>
               </div>
@@ -303,17 +303,17 @@ export default function SellerMealVoucherNewPage() {
                 <span className="text-lg">📸</span>
                 <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.mainImage')}</h2>
               </div>
-              <p className="text-[11px] text-gray-500 mb-4">AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.</p>
+              <p className="text-[11px] text-gray-500 mb-4">{t('seller.mealVoucher.imageAiNotice', { defaultValue: 'AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.' })}</p>
 
               <div className="space-y-3">
                 {/* 미리보기 */}
                 {form.image_url && (
                   <div className="relative inline-block">
-                    <img src={form.image_url} alt="대표 이미지" className="w-full max-w-[240px] h-48 rounded-lg object-cover border border-gray-200" loading="lazy" />
+                    <img src={form.image_url} alt={t('seller.mealVoucher.mainImage', { defaultValue: '대표 이미지' })} className="w-full max-w-[240px] h-48 rounded-lg object-cover border border-gray-200" loading="lazy" />
                     <button
                       type="button"
                       onClick={() => update('image_url', '')}
-                      aria-label="이미지 제거"
+                      aria-label={t('common.removeImage', { defaultValue: '이미지 제거' })}
                       className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white text-xs hover:bg-black/80"
                     >✕</button>
                   </div>
@@ -330,7 +330,7 @@ export default function SellerMealVoucherNewPage() {
                 {/* 직접 업로드 + 직접 검색 */}
                 <div className="flex gap-2 flex-wrap">
                   <label className="cursor-pointer flex items-center gap-1.5 px-3 py-2 bg-pink-50 border border-pink-200 text-pink-600 text-xs font-semibold rounded-lg hover:bg-pink-100">
-                    📁 내 사진 업로드
+                    {t('seller.mealVoucher.uploadPhoto', { defaultValue: '📁 내 사진 업로드' })}
                     <input
                       type="file"
                       accept="image/*"
@@ -346,7 +346,7 @@ export default function SellerMealVoucherNewPage() {
                     />
                   </label>
                   <input
-                    placeholder="다른 키워드로 이미지 재검색 (예: 가게 인테리어, 대표 메뉴 이름)"
+                    placeholder={t('seller.mealVoucher.imageSearchPlaceholder', { defaultValue: '다른 키워드로 이미지 재검색 (예: 가게 인테리어, 대표 메뉴 이름)' })}
                     className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900 focus:border-pink-500 focus:outline-none"
                     onKeyDown={async (e) => {
                       if (e.key !== 'Enter') return
