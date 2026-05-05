@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Zap, Clock, Users, Gift } from 'lucide-react'
@@ -23,6 +24,7 @@ interface TimeDeal {
 }
 
 export default function TimeDealPopup({ streamId }: { streamId: string | number }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [deal, setDeal] = useState<TimeDeal | null>(null)
   const [timeLeft, setTimeLeft] = useState(0)
@@ -79,11 +81,11 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
         // Detect if target was just reached with this claim
         const newTargetReached = res.data.data?.target_reached ?? res.data.target_reached
         if (isGroupBuy && !wasTargetReached && newTargetReached) {
-          toast.success('🎉 목표 달성! 추가 할인이 적용됐어요!')
+          toast.success(t('live.timeDealGroupTargetReached', { defaultValue: '🎉 목표 달성! 추가 할인이 적용됐어요!' }))
         } else if (isGroupBuy) {
-          toast.success('공구 참여 완료! 장바구니에서 확인하세요')
+          toast.success(t('live.timeDealGroupJoined', { defaultValue: '공구 참여 완료! 장바구니에서 확인하세요' }))
         } else {
-          toast.success('타임딜 획득! 장바구니에서 할인가로 구매하세요')
+          toast.success(t('live.timeDealClaimed', { defaultValue: '타임딜 획득! 장바구니에서 할인가로 구매하세요' }))
         }
       } else {
         toast.error(res.data.error)
@@ -113,12 +115,12 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
     : 'bg-gradient-to-r from-red-500 to-pink-600'
 
   const ctaLabel = claimed
-    ? '✓ 획득 완료'
+    ? t('live.timeDealClaimedLabel', { defaultValue: '✓ 획득 완료' })
     : remaining <= 0
-      ? '매진'
+      ? t('live.timeDealSoldOut', { defaultValue: '매진' })
       : claiming
-        ? '처리 중...'
-        : isGroupBuy ? '참여하기' : '지금 구매하기'
+        ? t('live.timeDealProcessing', { defaultValue: '처리 중...' })
+        : isGroupBuy ? t('live.timeDealJoin', { defaultValue: '참여하기' }) : t('live.timeDealBuy', { defaultValue: '지금 구매하기' })
 
   const ctaColorClass = isGroupBuy ? 'bg-white text-pink-600' : 'bg-white text-red-600'
 
@@ -140,11 +142,11 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
               ) : (
                 <Zap className="w-5 h-5 text-yellow-300 fill-yellow-300" />
               )}
-              <span className="font-bold">{isGroupBuy ? '🎁 라이브 공구!' : '타임딜!'}</span>
+              <span className="font-bold">{isGroupBuy ? t('live.timeDealGroupBuyLabel', { defaultValue: '🎁 라이브 공구!' }) : t('live.timeDealLabel', { defaultValue: '타임딜!' })}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-black/30 rounded-full px-3 py-1">
               <Clock className="w-3.5 h-3.5" />
-              <span className="font-mono font-bold text-sm">{timeLeft}초</span>
+              <span className="font-mono font-bold text-sm">{t('live.timeDealSeconds', { timeLeft, defaultValue: '{{timeLeft}}초' })}</span>
             </div>
           </div>
 
@@ -165,7 +167,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
               <div className="flex items-center justify-between text-[11px] text-gray-900 dark:text-white/90 mb-1">
                 <div className="flex items-center gap-1 font-semibold">
                   <Users className="w-3 h-3" />
-                  <span>{currentParticipants}/{targetParticipants}명 참여중</span>
+                  <span>{t('live.timeDealParticipants', { current: currentParticipants, target: targetParticipants, defaultValue: '{{current}}/{{target}}명 참여중' })}</span>
                 </div>
                 <span className="font-mono">{Math.floor(groupProgressPct)}%</span>
               </div>
@@ -178,12 +180,12 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
               <div className="mt-1.5 text-[11px] flex items-center gap-1">
                 {targetReached ? (
                   <span className="font-bold text-yellow-200">
-                    🎉 목표 달성! {effectiveDiscount}% 할인 적용!
+                    {t('live.timeDealGroupTargetAchieved', { discount: effectiveDiscount, defaultValue: '🎉 목표 달성! {{discount}}% 할인 적용!' })}
                   </span>
                 ) : (
                   <span className="text-gray-900 dark:text-white/90 flex items-center gap-1">
                     <Gift className="w-3 h-3" />
-                    {needMore}명 더 모이면 -{bonusDiscount}% 추가 할인!
+                    {t('live.timeDealGroupNeedMore', { needMore, bonusDiscount, defaultValue: '{{needMore}}명 더 모이면 -{{bonusDiscount}}% 추가 할인!' })}
                   </span>
                 )}
               </div>
@@ -191,7 +193,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
           ) : (
             <div className="mb-3">
               <div className="flex justify-between text-[10px] text-gray-900 dark:text-white/70 mb-1">
-                <span>남은 수량 {remaining}개</span>
+                <span>{t('live.timeDealRemaining', { remaining, defaultValue: '남은 수량 {{remaining}}개' })}</span>
                 <span>{deal.claimed_count}/{deal.max_claims}</span>
               </div>
               <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
@@ -220,7 +222,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
               onClick={() => setShow(false)}
               className="px-4 py-3 bg-white/20 rounded-xl text-sm font-medium"
             >
-              닫기
+              {t('common.close', { defaultValue: '닫기' })}
             </button>
           </div>
         </div>

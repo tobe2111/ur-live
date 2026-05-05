@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 
 interface BulkUploadModalProps {
@@ -100,6 +101,7 @@ function mapRowToProduct(headers: string[], row: string[]): ParsedProduct {
 }
 
 export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: BulkUploadModalProps) {
+  const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState('')
   const [headers, setHeaders] = useState<string[]>([])
@@ -140,7 +142,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
     if (!file) return
 
     if (!file.name.endsWith('.csv')) {
-      setParseError('CSV 파일만 업로드 가능합니다.')
+      setParseError(t('bulkUpload.csvOnly', { defaultValue: 'CSV 파일만 업로드 가능합니다.' }))
       return
     }
 
@@ -153,7 +155,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
         const { headers: csvHeaders, rows } = parseCsv(text)
 
         if (csvHeaders.length === 0 || rows.length === 0) {
-          setParseError('CSV 파일에 데이터가 없습니다.')
+          setParseError(t('bulkUpload.emptyFile', { defaultValue: 'CSV 파일에 데이터가 없습니다.' }))
           return
         }
 
@@ -164,7 +166,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
         const products = rows.map(row => mapRowToProduct(csvHeaders, row))
         setParsedProducts(products)
       } catch {
-        setParseError('CSV 파일 파싱에 실패했습니다.')
+        setParseError(t('bulkUpload.parseFailed', { defaultValue: 'CSV 파일 파싱에 실패했습니다.' }))
       }
     }
     reader.readAsText(file, 'UTF-8')
@@ -196,7 +198,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
       setResult({
         success_count: 0,
         fail_count: parsedProducts.length,
-        errors: [err.response?.data?.error || '업로드에 실패했습니다.'],
+        errors: [err.response?.data?.error || t('bulkUpload.uploadFailed', { defaultValue: '업로드에 실패했습니다.' })],
       })
     } finally {
       setUploading(false)
@@ -215,9 +217,9 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
             <Upload className="w-4 h-4" />
-            상품 대량등록
+            {t('bulkUpload.title', { defaultValue: '상품 대량등록' })}
           </h2>
-          <button onClick={handleClose} aria-label="모달 닫기" className="p-1.5 rounded-lg hover:bg-gray-100">
+          <button onClick={handleClose} aria-label={t('bulkUpload.closeAria', { defaultValue: '모달 닫기' })} className="p-1.5 rounded-lg hover:bg-gray-100">
             <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
@@ -225,7 +227,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
         <div className="p-6 space-y-5">
           {/* File Input */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">CSV 파일 선택</label>
+            <label className="block text-xs font-medium text-gray-700 mb-2">{t('bulkUpload.csvLabel', { defaultValue: 'CSV 파일 선택' })}</label>
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -233,10 +235,10 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
                 className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <FileText className="w-4 h-4" />
-                파일 선택
+                {t('bulkUpload.selectFile', { defaultValue: '파일 선택' })}
               </button>
               <span className="text-sm text-gray-500">
-                {fileName || '선택된 파일 없음'}
+                {fileName || t('bulkUpload.noFile', { defaultValue: '선택된 파일 없음' })}
               </span>
               <input
                 ref={fileInputRef}
@@ -256,7 +258,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-medium text-gray-700">
-                  미리보기 (총 {parsedProducts.length}개 상품 중 최대 5개)
+                  {t('bulkUpload.preview', { total: parsedProducts.length, defaultValue: `미리보기 (총 ${parsedProducts.length}개 상품 중 최대 5개)` })}
                 </label>
               </div>
               <div className="border border-gray-200 rounded-lg overflow-x-auto">
@@ -284,7 +286,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
                 </table>
               </div>
               {parsedProducts.length > 5 && (
-                <p className="mt-1 text-xs text-gray-400">... 외 {parsedProducts.length - 5}개 행</p>
+                <p className="mt-1 text-xs text-gray-400">{t('bulkUpload.moreRows', { count: parsedProducts.length - 5, defaultValue: `... 외 ${parsedProducts.length - 5}개 행` })}</p>
               )}
             </div>
           )}
@@ -296,13 +298,13 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
                 {result.success_count > 0 && (
                   <div className="flex items-center gap-1.5 text-green-700">
                     <CheckCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">성공: {result.success_count}개</span>
+                    <span className="text-sm font-medium">{t('bulkUpload.successCount', { count: result.success_count, defaultValue: `성공: ${result.success_count}개` })}</span>
                   </div>
                 )}
                 {result.fail_count > 0 && (
                   <div className="flex items-center gap-1.5 text-red-700">
                     <XCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">실패: {result.fail_count}개</span>
+                    <span className="text-sm font-medium">{t('bulkUpload.failCount', { count: result.fail_count, defaultValue: `실패: ${result.fail_count}개` })}</span>
                   </div>
                 )}
               </div>
@@ -312,7 +314,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
                     <p key={i} className="text-xs text-red-600">- {err}</p>
                   ))}
                   {result.errors.length > 10 && (
-                    <p className="text-xs text-red-500">... 외 {result.errors.length - 10}개 오류</p>
+                    <p className="text-xs text-red-500">{t('bulkUpload.moreErrors', { count: result.errors.length - 10, defaultValue: `... 외 ${result.errors.length - 10}개 오류` })}</p>
                   )}
                 </div>
               )}

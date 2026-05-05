@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -72,6 +73,7 @@ function ymToString(d: Date): string {
 }
 
 export default function AgencyCalendarPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [month, setMonth] = useState(ymToString(new Date()))
   const [streams, setStreams] = useState<CalendarStream[]>([])
@@ -99,7 +101,7 @@ export default function AgencyCalendarPage() {
     setLoading(true)
     api.get(`/api/agency/calendar?month=${month}`, { headers })
       .then(r => { if (r.data?.success) setStreams(r.data.data || []) })
-      .catch(() => toast.error('캘린더 조회 실패'))
+      .catch(() => toast.error(t('agency.calendar.loadFailed', { defaultValue: '캘린더 조회 실패' })))
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month])
@@ -115,33 +117,33 @@ export default function AgencyCalendarPage() {
         setStreamNotes(r.data.data.notes || [])
       }
     } catch {
-      toast.error('상세 조회 실패')
+      toast.error(t('agency.calendar.detailLoadFailed', { defaultValue: '상세 조회 실패' }))
     }
   }
 
   const submitNote = async () => {
     if (!selectedStream) return
-    if (!noteForm.content.trim()) { toast.error('내용 필수'); return }
+    if (!noteForm.content.trim()) { toast.error(t('agency.calendar.contentRequired', { defaultValue: '내용 필수' })); return }
     try {
       await api.post(`/api/agency/calendar/streams/${selectedStream.id}/notes`,
         noteForm, { headers })
-      toast.success('노트 추가됨')
+      toast.success(t('agency.calendar.noteAdded', { defaultValue: '노트 추가됨' }))
       setAddingNote(false)
       setNoteForm({ type: 'guidance', content: '', visible_to_seller: false })
       openStream(selectedStream)
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '추가 실패')
+      toast.error(e?.response?.data?.error || t('agency.calendar.addFailed', { defaultValue: '추가 실패' }))
     }
   }
 
   const deleteNote = async (id: number) => {
-    if (!confirm('이 노트를 삭제하시겠습니까?')) return
+    if (!confirm(t('agency.calendar.confirmDeleteNote', { defaultValue: '이 노트를 삭제하시겠습니까?' }))) return
     try {
       await api.delete(`/api/agency/calendar/notes/${id}`, { headers })
-      toast.info('삭제됨')
+      toast.info(t('agency.calendar.noteDeleted', { defaultValue: '삭제됨' }))
       if (selectedStream) openStream(selectedStream)
     } catch {
-      toast.error('삭제 실패')
+      toast.error(t('agency.calendar.deleteFailed', { defaultValue: '삭제 실패' }))
     }
   }
 
@@ -168,33 +170,33 @@ export default function AgencyCalendarPage() {
   const dates = Object.keys(byDate).sort()
 
   return (
-    <AgencyLayout title="라이브 캘린더">
+    <AgencyLayout title={t('agency.calendar.title', { defaultValue: '라이브 캘린더' })}>
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="라이브 캘린더"
-          subtitle="소속 셀러 라이브 일정 — 진행 중 가이드 / 종료 후 피드백 노트 작성"
+          title={t('agency.calendar.title', { defaultValue: '라이브 캘린더' })}
+          subtitle={t('agency.calendar.subtitle', { defaultValue: '소속 셀러 라이브 일정 — 진행 중 가이드 / 종료 후 피드백 노트 작성' })}
           icon={<CalendarIcon className="h-5 w-5" />}
         />
 
         {/* 월 네비게이터 */}
         <div className="flex items-center justify-center gap-3">
-          <button onClick={prevMonth} aria-label="이전 달" className="p-2 hover:bg-gray-100 rounded">
+          <button onClick={prevMonth} aria-label={t('agency.calendar.prevMonth', { defaultValue: '이전 달' })} className="p-2 hover:bg-gray-100 rounded">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <h2 className="text-lg font-bold text-gray-900 min-w-[120px] text-center">
             {month.replace('-', '. ')}
           </h2>
-          <button onClick={nextMonth} aria-label="다음 달" className="p-2 hover:bg-gray-100 rounded">
+          <button onClick={nextMonth} aria-label={t('agency.calendar.nextMonth', { defaultValue: '다음 달' })} className="p-2 hover:bg-gray-100 rounded">
             <ChevronRight className="w-5 h-5" />
           </button>
           <button onClick={() => setMonth(ymToString(new Date()))}
-            className="ml-2 text-xs text-blue-600 hover:underline">오늘</button>
+            className="ml-2 text-xs text-blue-600 hover:underline">{t('agency.today', { defaultValue: '오늘' })}</button>
         </div>
 
         {loading ? (
           <DashboardLoading />
         ) : streams.length === 0 ? (
-          <DashboardEmptyState icon={<CalendarIcon className="h-7 w-7" />} title={`${month} 라이브 일정 없음`} />
+          <DashboardEmptyState icon={<CalendarIcon className="h-7 w-7" />} title={`${month} ${t('agency.calendar.noStreams', { defaultValue: '라이브 일정 없음' })}`} />
         ) : (
           <div className="space-y-4">
             {dates.map(date => (
@@ -221,7 +223,7 @@ export default function AgencyCalendarPage() {
                           <p className="text-xs text-gray-500">
                             {s.seller_business_name || s.seller_name}
                             {s.scheduled_at && ` · ${new Date(s.scheduled_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`}
-                            {s.peak_viewers > 0 && ` · 피크 ${s.peak_viewers}명`}
+                            {s.peak_viewers > 0 && ` · ${t('agency.calendar.peak', { defaultValue: '피크' })} ${s.peak_viewers}${t('agency.calendar.viewers', { defaultValue: '명' })}`}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -258,7 +260,7 @@ export default function AgencyCalendarPage() {
                 </p>
                 {streamDetail && (streamDetail.peak_viewers ?? 0) > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    현재 {streamDetail.current_viewers ?? 0}명 / 피크 {streamDetail.peak_viewers ?? 0}명
+                    {t('agency.calendar.current', { defaultValue: '현재' })} {streamDetail.current_viewers ?? 0}{t('agency.calendar.viewers', { defaultValue: '명' })} / {t('agency.calendar.peak', { defaultValue: '피크' })} {streamDetail.peak_viewers ?? 0}{t('agency.calendar.viewers', { defaultValue: '명' })}
                   </p>
                 )}
               </div>

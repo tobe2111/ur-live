@@ -93,7 +93,7 @@ export default function AgencyCampaignsPage() {
       .then(r => { if (r.data?.success) setCampaigns(r.data.data || []) })
       .catch((e: any) => {
         if (e?.response?.status === 401) { navigate('/agency/login', { replace: true }); return }
-        toast.error('캠페인 조회 실패')
+        toast.error(t('agency.campaigns.loadFailed', { defaultValue: '캠페인 조회 실패' }))
       })
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -113,17 +113,17 @@ export default function AgencyCampaignsPage() {
       const r = await api.get(`/api/agency/campaigns/${c.id}`, { headers })
       if (r.data?.success) setParticipants(r.data.data.participants || [])
     } catch {
-      toast.error('상세 조회 실패')
+      toast.error(t('agency.campaigns.detailLoadFailed', { defaultValue: '상세 조회 실패' }))
     }
   }
 
   const submit = async () => {
     if (!form.name || !form.start_date || !form.end_date) {
-      toast.error('이름/시작일/종료일은 필수')
+      toast.error(t('agency.campaigns.requiredFields', { defaultValue: '이름/시작일/종료일은 필수' }))
       return
     }
     if (form.end_date < form.start_date) {
-      toast.error('종료일이 시작일보다 빠를 수 없음')
+      toast.error(t('agency.campaigns.endDateError', { defaultValue: '종료일이 시작일보다 빠를 수 없음' }))
       return
     }
     try {
@@ -138,51 +138,51 @@ export default function AgencyCampaignsPage() {
         seller_ids: form.selectedSellerIds.length > 0 ? form.selectedSellerIds : undefined,
       }, { headers })
       if (r.data?.success) {
-        toast.success(`캠페인 생성됨 (id: ${r.data.data.id})`)
+        toast.success(t('agency.campaigns.created', { defaultValue: '캠페인 생성됨 (id: {{id}})', id: r.data.data.id }))
         setCreating(false)
         setForm({ name: '', description: '', start_date: '', end_date: '', base_incentive_rate: 0, target_amount: 0, category: '', selectedSellerIds: [] })
         load()
       }
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '생성 실패')
+      toast.error(e?.response?.data?.error || t('agency.campaigns.createFailed', { defaultValue: '생성 실패' }))
     }
   }
 
   const cancel = async (id: number) => {
-    if (!confirm('이 캠페인을 취소하시겠습니까?')) return
+    if (!confirm(t('agency.campaigns.confirmCancel', { defaultValue: '이 캠페인을 취소하시겠습니까?' }))) return
     try {
       await api.post(`/api/agency/campaigns/${id}/cancel`, {}, { headers })
-      toast.info('취소됨')
+      toast.info(t('agency.campaigns.cancelled', { defaultValue: '취소됨' }))
       setSelectedCampaign(null)
       load()
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '취소 실패')
+      toast.error(e?.response?.data?.error || t('agency.campaigns.cancelFailed', { defaultValue: '취소 실패' }))
     }
   }
 
   const refresh = async (id: number) => {
     try {
       await api.post(`/api/agency/campaigns/${id}/refresh`, {}, { headers })
-      toast.success('재집계 완료')
+      toast.success(t('agency.campaigns.refreshed', { defaultValue: '재집계 완료' }))
       if (selectedCampaign?.id === id) openCampaignDetail(selectedCampaign)
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '재집계 실패')
+      toast.error(e?.response?.data?.error || t('agency.campaigns.refreshFailed', { defaultValue: '재집계 실패' }))
     }
   }
 
   return (
-    <AgencyLayout title="캠페인">
+    <AgencyLayout title={t('agency.campaigns.title', { defaultValue: '캠페인' })}>
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="캠페인"
-          subtitle="에이전시 주도의 매출 캠페인 — 셀러별 KPI/보너스 설정"
+          title={t('agency.campaigns.title', { defaultValue: '캠페인' })}
+          subtitle={t('agency.campaigns.subtitle', { defaultValue: '에이전시 주도의 매출 캠페인 — 셀러별 KPI/보너스 설정' })}
           icon={<Megaphone className="h-5 w-5" />}
           actions={
             <button
               onClick={() => { loadSellers(); setCreating(true) }}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg"
             >
-              <Plus className="w-4 h-4" /> 캠페인 만들기
+              <Plus className="w-4 h-4" /> {t('agency.campaigns.create', { defaultValue: '캠페인 만들기' })}
             </button>
           }
         />
@@ -205,7 +205,7 @@ export default function AgencyCampaignsPage() {
         {loading ? (
           <DashboardLoading />
         ) : campaigns.length === 0 ? (
-          <DashboardEmptyState icon={<Megaphone className="h-7 w-7" />} title="캠페인이 없습니다" />
+          <DashboardEmptyState icon={<Megaphone className="h-7 w-7" />} title={t('agency.campaigns.noCampaigns', { defaultValue: '캠페인이 없습니다' })} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {campaigns.map(c => (
@@ -229,7 +229,7 @@ export default function AgencyCampaignsPage() {
 
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-2">
                   <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{c.start_date} ~ {c.end_date}</span>
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.participant_count ?? 0}명 참여</span>
+                  <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.participant_count ?? 0}{t('agency.campaigns.participants', { defaultValue: '명 참여' })}</span>
                   {c.base_incentive_rate ? <span className="flex items-center gap-1"><Target className="w-3 h-3" />{c.base_incentive_rate}%</span> : null}
                 </div>
 
@@ -249,53 +249,53 @@ export default function AgencyCampaignsPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCreating(false)}>
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">캠페인 만들기</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('agency.campaigns.create', { defaultValue: '캠페인 만들기' })}</h2>
               <button onClick={() => setCreating(false)} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-gray-700">이름 *</label>
+                <label className="text-xs font-bold text-gray-700">{t('agency.campaigns.fieldName', { defaultValue: '이름' })} *</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" maxLength={100} />
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-700">설명</label>
+                <label className="text-xs font-bold text-gray-700">{t('agency.campaigns.fieldDesc', { defaultValue: '설명' })}</label>
                 <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" rows={2} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-700">시작일 *</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.campaigns.fieldStartDate', { defaultValue: '시작일' })} *</label>
                   <input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700">종료일 *</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.campaigns.fieldEndDate', { defaultValue: '종료일' })} *</label>
                   <input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-700">기본 인센티브율 (%)</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.campaigns.fieldIncentiveRate', { defaultValue: '기본 인센티브율 (%)' })}</label>
                   <input type="number" value={form.base_incentive_rate} min={0} max={100} step={0.1}
                     onChange={e => setForm({ ...form, base_incentive_rate: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700">목표 금액 (원)</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.campaigns.fieldTargetAmount', { defaultValue: '목표 금액 (원)' })}</label>
                   <input type="number" value={form.target_amount} min={0}
                     onChange={e => setForm({ ...form, target_amount: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-700">참여 셀러 (옵션 — 나중에 추가 가능)</label>
+                <label className="text-xs font-bold text-gray-700">{t('agency.campaigns.fieldSellers', { defaultValue: '참여 셀러 (옵션 — 나중에 추가 가능)' })}</label>
                 <div className="border border-gray-200 rounded-lg max-h-40 overflow-y-auto p-2 space-y-1">
                   {sellers.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center py-3">소속 셀러 없음</p>
+                    <p className="text-xs text-gray-400 text-center py-3">{t('agency.campaigns.noAffiliateSellers', { defaultValue: '소속 셀러 없음' })}</p>
                   ) : sellers.map(s => (
                     <label key={s.id} className="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
                       <input type="checkbox"
@@ -312,11 +312,11 @@ export default function AgencyCampaignsPage() {
                     </label>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1">{form.selectedSellerIds.length}명 선택</p>
+                <p className="text-[10px] text-gray-400 mt-1">{t('agency.campaigns.selectedSellers', { defaultValue: '{{count}}명 선택', count: form.selectedSellerIds.length })}</p>
               </div>
               <div className="flex justify-end gap-2 pt-3">
-                <button onClick={() => setCreating(false)} className="px-4 py-2 text-gray-600 text-sm font-bold">취소</button>
-                <button onClick={submit} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">생성</button>
+                <button onClick={() => setCreating(false)} className="px-4 py-2 text-gray-600 text-sm font-bold">{t('common.cancel', { defaultValue: '취소' })}</button>
+                <button onClick={submit} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">{t('common.create', { defaultValue: '생성' })}</button>
               </div>
             </div>
           </div>
@@ -340,7 +340,7 @@ export default function AgencyCampaignsPage() {
                 {(selectedCampaign.status === 'scheduled' || selectedCampaign.status === 'active') && (
                   <button onClick={() => cancel(selectedCampaign.id)}
                     className="px-3 py-1.5 bg-red-100 text-red-600 text-xs font-bold rounded-lg hover:bg-red-200">
-                    캠페인 취소
+                    {t('agency.campaigns.cancelAction', { defaultValue: '캠페인 취소' })}
                   </button>
                 )}
                 <button onClick={() => setSelectedCampaign(null)} className="p-1 hover:bg-gray-100 rounded">
@@ -353,9 +353,9 @@ export default function AgencyCampaignsPage() {
               <p className="text-sm text-gray-600 mb-4">{selectedCampaign.description}</p>
             )}
 
-            <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">참여 셀러 ({participants.length}명)</h3>
+            <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">{t('agency.campaigns.participantSellers', { defaultValue: '참여 셀러' })} ({participants.length}{t('agency.campaigns.personCount', { defaultValue: '명' })})</h3>
             {participants.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-6">참여 셀러 없음</p>
+              <p className="text-xs text-gray-400 text-center py-6">{t('agency.campaigns.noParticipants', { defaultValue: '참여 셀러 없음' })}</p>
             ) : (
               <div className="space-y-2">
                 {participants.map(p => {
