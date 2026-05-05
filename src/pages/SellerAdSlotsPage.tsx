@@ -250,11 +250,11 @@ function BidModal({
         <div className="grid grid-cols-2 gap-3 mb-4 text-center">
           <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] text-gray-500">{labels.basePriceLabel}</p>
-            <p className="text-[13px] font-bold text-gray-900">{slot.base_price.toLocaleString('ko-KR')}원</p>
+            <p className="text-[13px] font-bold text-gray-900">{slot.base_price.toLocaleString('ko-KR')}{labels.priceUnit}</p>
           </div>
           <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] text-gray-500">{labels.minBidLabel}</p>
-            <p className="text-[13px] font-bold text-pink-600">{slot.min_bid.toLocaleString('ko-KR')}원</p>
+            <p className="text-[13px] font-bold text-pink-600">{slot.min_bid.toLocaleString('ko-KR')}{labels.priceUnit}</p>
           </div>
         </div>
 
@@ -266,7 +266,7 @@ function BidModal({
           min={slot.min_bid}
           step={1000}
           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500/30 focus:border-pink-400"
-          placeholder={`${labels.minBidLabel} ${slot.min_bid.toLocaleString('ko-KR')}원`}
+          placeholder={`${labels.minBidLabel} ${slot.min_bid.toLocaleString('ko-KR')}${labels.priceUnit}`}
         />
         {error && <p className="text-[11px] text-red-500 mt-1.5">{error}</p>}
 
@@ -334,6 +334,7 @@ export default function SellerAdSlotsPage() {
     cancelBtn: t('seller.adSlots.bidModal.cancelBtn', { defaultValue: '취소' }),
     submitBtn: t('seller.adSlots.bidModal.submitBtn', { defaultValue: '입찰하기' }),
     submitting: t('seller.adSlots.bidModal.submitting', { defaultValue: '처리 중...' }),
+    priceUnit: t('seller.adSlots.priceUnit', { defaultValue: '원' }),
     minBidError: (amount) => t('seller.adSlots.bidModal.minBidError', { defaultValue: `최소 입찰가는 {{amount}}원입니다.`, amount }),
     networkError: t('seller.adSlots.bidModal.networkError', { defaultValue: '네트워크 오류가 발생했습니다.' }),
     bidFailed: t('seller.adSlots.bidModal.bidFailed', { defaultValue: '입찰에 실패했습니다.' }),
