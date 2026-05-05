@@ -2,23 +2,25 @@
  * 🛡️ 2026-05-01: TD-018 분할 — UserProfilePage 쇼핑 InsetGroup (찜/바우처/쿠폰함/주문).
  */
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
 import type { MyCounts } from './types'
 
 export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   const items = [
-    { icon: '❤️', label: '찜한 상품', count: counts.wish, path: '/wishlist' },
-    { icon: '🎟️', label: '내 바우처', sub: '식사권·이용권', count: counts.voucher, path: '/my-vouchers' },
-    { icon: '📚', label: '디지털 보관함', sub: '전자책·강의·가이드', path: '/my/digital' },
-    { icon: '🎫', label: '쿠폰함', count: counts.coupon, path: '/my-coupons' },
-    { icon: '📦', label: '주문 내역', sub: '최근 3개월', path: '/my-orders' },
+    { icon: '❤️', label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish, path: '/wishlist' },
+    { icon: '🎟️', label: t('shopping.voucher', { defaultValue: '내 바우처' }), sub: t('shopping.voucherSub', { defaultValue: '식사권·이용권' }), count: counts.voucher, path: '/my-vouchers' },
+    { icon: '📚', label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },
+    { icon: '🎫', label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
+    { icon: '📦', label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
   ]
 
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">쇼핑</p>
+      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('shopping.sectionTitle', { defaultValue: '쇼핑' })}</p>
       <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
         {items.map((item, i) => (
           <button

@@ -3513,5 +3513,11 @@
     "restoreBtn": "恢复上一个账户",
     "newAccountBtn": "使用新账户开始",
     "restoreFailed": "恢复失败"
+  },
+  "faq": {
+    "catAll": "全部"
+  },
+  "introduce": {
+    "navStart": "开始"
   }
 }
