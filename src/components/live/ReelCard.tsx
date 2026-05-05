@@ -162,7 +162,7 @@ function ReelCardImpl({
   
   // Handle null product case
   const safeProduct = (product || {
-    name: stream.title || '상품 정보 없음',
+    name: stream.title || t('live.noProductInfo', { defaultValue: '상품 정보 없음' }),
     // ✅ 이미지 없을 때: undefined로 두어 배경 이미지 비활성화
     image: undefined,
     price: 0,
@@ -257,12 +257,12 @@ function ReelCardImpl({
       const detail = (e as CustomEvent).detail
       if (!detail) return
       const msg = detail.message
-        ? `🎉 ${detail.donorName}님이 ${formatNumber(detail.amount)}딜 후원! "${detail.message}"`
-        : `🎉 ${detail.donorName}님이 ${formatNumber(detail.amount)}딜 후원!`
+        ? t('live.donationMsg', { name: detail.donorName, amount: formatNumber(detail.amount), message: detail.message, defaultValue: `🎉 ${detail.donorName}님이 ${formatNumber(detail.amount)}딜 후원! "${detail.message}"` })
+        : t('live.donationMsgNoText', { name: detail.donorName, amount: formatNumber(detail.amount), defaultValue: `🎉 ${detail.donorName}님이 ${formatNumber(detail.amount)}딜 후원!` })
       addLocalMessage({
         id: `donation-alert-${Date.now()}`,
         userId: 0,
-        userName: '시스템',
+        userName: t('live.donationSystem', { defaultValue: '시스템' }),
         userType: 'system',
         message: msg,
         timestamp: Date.now(),
@@ -510,7 +510,7 @@ function ReelCardImpl({
             setCurrentProduct(newProduct)
 
             if (!isSeller && newProduct?.name) {
-              setProductChangeToast(`🎁 새로운 상품: ${newProduct.name}`)
+              setProductChangeToast(t('live.newProduct', { name: newProduct.name, defaultValue: `🎁 새로운 상품: ${newProduct.name}` }))
             }
 
           }
@@ -535,9 +535,9 @@ function ReelCardImpl({
 
 
       if (polledProduct.stock === 0) {
-        setProductChangeToast(`🔴 ${polledProduct.name}이(가) 품절되었습니다!`)
+        setProductChangeToast(t('live.soldOut', { name: polledProduct.name, defaultValue: `🔴 ${polledProduct.name}이(가) 품절되었습니다!` }))
       } else if (polledProduct.stock <= 5 && polledProduct.stock > 0) {
-        setProductChangeToast(`⚠️ ${polledProduct.name} 재고가 ${polledProduct.stock}개 남았습니다!`)
+        setProductChangeToast(t('live.lowStock', { name: polledProduct.name, count: polledProduct.stock, defaultValue: `⚠️ ${polledProduct.name} 재고가 ${polledProduct.stock}개 남았습니다!` }))
       }
     }
   }, [polledProduct?.stock, currentProduct?.id])
@@ -573,7 +573,7 @@ function ReelCardImpl({
       navigate('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
     } catch (error) {
       if (import.meta.env.DEV) console.error('[Login] Exception:', error)
-      showAlert('로그인 페이지로 이동 중 오류가 발생했습니다.', 'error', '오류 발생')
+      showAlert(t('live.loginErrorMsg', { defaultValue: '로그인 페이지로 이동 중 오류가 발생했습니다.' }), 'error', t('live.loginErrorTitle', { defaultValue: '오류 발생' }))
     }
   }
 
@@ -586,7 +586,7 @@ function ReelCardImpl({
     
     // Check stock
     if (currentProduct.stock === 0) {
-      setNotificationText('품절된 상품입니다')
+      setNotificationText(t('live.outOfStock', { defaultValue: '품절된 상품입니다' }))
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
       return
@@ -606,7 +606,7 @@ function ReelCardImpl({
       localStorage.setItem('tempCartItem', JSON.stringify(tempCart))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       
-      showAlert('로그인이 필요합니다!', 'warning', '로그인 필요')
+      showAlert(t('live.loginRequired', { defaultValue: '로그인이 필요합니다!' }), 'warning', t('live.loginRequiredTitle', { defaultValue: '로그인 필요' }))
       handleKakaoLogin()
       return
     }
@@ -623,7 +623,7 @@ function ReelCardImpl({
       localStorage.setItem('hasCartItems', 'true')
       
       window.dispatchEvent(new CustomEvent('cartItemAdded'))
-      setNotificationText('장바구니에 추가되었습니다')
+      setNotificationText(t('live.addedToCart', { defaultValue: '장바구니에 추가되었습니다' }))
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
       try {
@@ -638,12 +638,12 @@ function ReelCardImpl({
       } catch {}
 
       // 🔥 시스템 메시지 전송 (채팅창에 표시)
-      const userName = localStorage.getItem('user_name') || '익명'
+      const userName = localStorage.getItem('user_name') || t('live.anonymous', { defaultValue: '익명' })
       const maskedName = maskUserName(userName)
-      const systemMsg = `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`
+      const systemMsg = t('live.cartSystemMsg', { name: maskedName, product: currentProduct.name, defaultValue: `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!` })
 
       try {
-        await sendChatMessage(systemMsg, 0, '🎉 시스템', 'system')
+        await sendChatMessage(systemMsg, 0, t('live.systemUser', { defaultValue: '🎉 시스템' }), 'system')
       } catch {
         // 시스템 메시지 전송 실패는 무시
       }
@@ -656,15 +656,15 @@ function ReelCardImpl({
         data: apiErr?.response?.data,
         message: apiErr?.message
       })
-      const errorMessage = apiErr?.response?.data?.error || apiErr?.message || '장바구니 추가에 실패했습니다.'
+      const errorMessage = apiErr?.response?.data?.error || apiErr?.message || t('live.cartAddFailed', { defaultValue: '장바구니 추가에 실패했습니다.' })
       const errorString = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
       
       if (errorString.includes('Insufficient stock') || errorString.includes('재고가 부족')) {
-        setNotificationText('재고가 부족합니다')
+        setNotificationText(t('live.stockInsufficient', { defaultValue: '재고가 부족합니다' }))
         setShowNotification(true)
         setTimeout(() => setShowNotification(false), 2500)
       } else {
-        showAlert(errorString, 'error', '장바구니 추가 실패')
+        showAlert(errorString, 'error', t('live.cartAddFailTitle', { defaultValue: '장바구니 추가 실패' }))
       }
     } finally {
       setAddingToCart(false)
@@ -679,14 +679,14 @@ function ReelCardImpl({
     
     // Check login FIRST
     if (!isLoggedIn) {
-      showAlert('로그인이 필요합니다!', 'warning', '로그인 필요')
+      showAlert(t('live.loginRequired', { defaultValue: '로그인이 필요합니다!' }), 'warning', t('live.loginRequiredTitle', { defaultValue: '로그인 필요' }))
       handleKakaoLogin()
       return
     }
-    
+
     // ✅ 현재 상품이 없으면 담기 불가
     if (!currentProduct) {
-      showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
+      showAlert(t('live.noProductForSale', { defaultValue: '판매 중인 상품이 없습니다.' }), 'info', t('live.noProductTitle', { defaultValue: '상품 없음' }))
       return
     }
     
@@ -721,8 +721,8 @@ function ReelCardImpl({
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to add product to cart:', error)
       const apiErr = isApiError(error) ? error : undefined
-      const errorMessage = apiErr?.response?.data?.error || apiErr?.message || '상품 담기에 실패했습니다.'
-      showAlert(errorMessage, 'error', '결제 실패')
+      const errorMessage = apiErr?.response?.data?.error || apiErr?.message || t('live.checkoutFailed', { defaultValue: '상품 담기에 실패했습니다.' })
+      showAlert(errorMessage, 'error', t('live.checkoutFailTitle', { defaultValue: '결제 실패' }))
     } finally {
       setCheckingOut(false)
     }
@@ -782,14 +782,14 @@ function ReelCardImpl({
       })
 
       // Show success notification
-      setNotificationText('✅ 이 상품을 지금 소개 중입니다!')
+      setNotificationText(t('live.productIntroducing', { defaultValue: '✅ 이 상품을 지금 소개 중입니다!' }))
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
 
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('[Seller] Failed to change product:', error)
       const apiErr = isApiError(error) ? error : undefined
-      showAlert(apiErr?.response?.data?.error || '상품 전환에 실패했습니다.', 'error', '전환 실패')
+      showAlert(apiErr?.response?.data?.error || t('live.productChangeFailed', { defaultValue: '상품 전환에 실패했습니다.' }), 'error', t('live.productChangeFailTitle', { defaultValue: '전환 실패' }))
     } finally {
       setChangingProduct(false)
     }
@@ -805,7 +805,7 @@ function ReelCardImpl({
     // 도배 방지: 1초에 1회 제한
     const now = Date.now()
     if (now - lastMessageTime < 1000) {
-      showAlert('메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 시도해주세요.', 'warning', '도배 방지')
+      showAlert(t('live.spamWarning', { defaultValue: '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 시도해주세요.' }), 'warning', t('live.spamWarningTitle', { defaultValue: '도배 방지' }))
       return
     }
 
@@ -813,12 +813,12 @@ function ReelCardImpl({
     try {
       const userId = getUserId()
       if (!userId) {
-        showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
+        showAlert(t('live.loginRequiredForChat', { defaultValue: '로그인이 필요합니다.' }), 'warning', t('live.loginRequiredTitle', { defaultValue: '로그인 필요' }))
         setSendingMessage(false)
         return
       }
 
-      const rawUserName = localStorage.getItem('user_name') || '익명'
+      const rawUserName = localStorage.getItem('user_name') || t('live.anonymous', { defaultValue: '익명' })
       const maskedChatName = maskUserName(rawUserName)
 
       // 호환성: claims.userId (숫자 ID) 사용, 없으면 0 (Anonymous)
@@ -838,7 +838,7 @@ function ReelCardImpl({
       setChatModalOpen(false)
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to send message:', error)
-      showAlert('메시지 전송에 실패했습니다.', 'error', '전송 실패')
+      showAlert(t('live.messageSendFailed', { defaultValue: '메시지 전송에 실패했습니다.' }), 'error', t('live.messageSendFailTitle', { defaultValue: '전송 실패' }))
     } finally {
       setSendingMessage(false)
     }
@@ -850,7 +850,7 @@ function ReelCardImpl({
       {productChangeToast && (
         <div className="absolute inset-x-0 top-1/3 z-[100] flex justify-center pointer-events-none animate-bounce-in">
           <div className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl shadow-pink-500/30 max-w-[85%]">
-            <p className="text-center text-sm font-bold">🔥 지금 이 상품!</p>
+            <p className="text-center text-sm font-bold">{t('live.productHotNow', { defaultValue: '🔥 지금 이 상품!' })}</p>
             <p className="text-center text-xs opacity-90 mt-0.5">{productChangeToast}</p>
           </div>
         </div>
@@ -922,7 +922,7 @@ function ReelCardImpl({
               ? 'bg-black/50 cursor-pointer'
               : 'bg-black/60 cursor-default'
           }`}
-          aria-label="방송 입장하기"
+          aria-label={t('live.enterAria', { defaultValue: '방송 입장하기' })}
           disabled={!playerReady}
         >
           <div className="flex flex-col items-center gap-4">
@@ -1023,7 +1023,7 @@ function ReelCardImpl({
               {/* 1) 좋아요 (Heart) — 핑크 fill 활성화 */}
               <div className="flex flex-col items-center gap-0.5">
                 <HeartReaction />
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>좋아요</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{t('live.actionLike', { defaultValue: '좋아요' })}</span>
               </div>
 
               {/* 2) 상품 목록 */}
@@ -1035,12 +1035,12 @@ function ReelCardImpl({
                     width: 40, height: 40,
                     ...glass.actionRail,
                   }}
-                  aria-label="상품 목록"
+                  aria-label={t('live.productAriaLabel', { defaultValue: '상품 목록' })}
                 >
                   <ShoppingBag style={{ width: 18, height: 18, color: '#fff' }} />
                 </button>
                 <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
-                  상품 {streamProducts?.length ?? 0}
+                  {t('live.productCountLabel', { count: streamProducts?.length ?? 0, defaultValue: `상품 ${streamProducts?.length ?? 0}` })}
                 </span>
               </div>
 
@@ -1048,7 +1048,7 @@ function ReelCardImpl({
               {!isSeller && stream?.id && (
                 <div className="flex flex-col items-center gap-0.5">
                   <LiveDonation streamId={stream.id} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>선물</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{t('live.actionGift', { defaultValue: '선물' })}</span>
                 </div>
               )}
 
@@ -1061,18 +1061,18 @@ function ReelCardImpl({
                     width: 40, height: 40,
                     ...glass.actionRail,
                   }}
-                  aria-label="채팅 열기"
+                  aria-label={t('live.chatOpenAria', { defaultValue: '채팅 열기' })}
                 >
                   <MessageCircle style={{ width: 18, height: 18, color: '#fff' }} />
                 </button>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>채팅</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{t('live.actionChat', { defaultValue: '채팅' })}</span>
               </div>
 
               {/* 5) 공유 */}
               <div className="flex flex-col items-center gap-0.5">
                 <KakaoShareButton
-                  title={stream?.title || '유어딜 라이브'}
-                  description={safeProduct?.name || '라이브 방송 중'}
+                  title={stream?.title || t('common.appName', { defaultValue: '유어딜 라이브' })}
+                  description={safeProduct?.name || t('live.broadcastInProgress', { defaultValue: '라이브 방송 중' })}
                   imageUrl={safeProduct?.image_url}
                   link={`/live/${stream?.id}`}
                   compact
@@ -1082,7 +1082,7 @@ function ReelCardImpl({
                     ...glass.actionRail,
                   }}
                 />
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>공유</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{t('live.actionShare', { defaultValue: '공유' })}</span>
               </div>
             </div>
           </div>
@@ -1143,17 +1143,17 @@ function ReelCardImpl({
                   style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.08), rgba(236,72,153,0.08))' }}>
                   <div className="flex items-center gap-1.5">
                     <span className="rounded-full" style={{ width: 5, height: 5, background: '#EF4444', boxShadow: '0 0 6px #EF4444' }} />
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em' }}>NOW · 지금 소개</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em' }}>{t('live.nowLabel', { defaultValue: 'NOW · 지금 소개' })}</span>
                   </div>
                   {typeof stock === 'number' && stock > 0 && (
-                    <span style={{ fontSize: 10, color: '#6B7280' }}>재고 {stock}개</span>
+                    <span style={{ fontSize: 10, color: '#6B7280' }}>{t('live.stockCount', { count: stock, defaultValue: `재고 ${stock}개` })}</span>
                   )}
                 </div>
                 {/* Main row — 썸네일 60x60, padding 축소 */}
                 <div className="flex items-center gap-2.5 px-3 py-2">
                   <div className="relative rounded-2xl overflow-hidden shrink-0" style={{ width: 60, height: 60 }}>
                     {(safeProduct.image_url || safeProduct.image) ? (
-                      <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || '상품'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                      <img src={safeProduct.image_url || safeProduct.image} alt={safeProduct.name || t('live.actionProducts', { defaultValue: '상품' })} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-gray-200" />
                     )}
@@ -1172,7 +1172,7 @@ function ReelCardImpl({
                     <div className="flex items-baseline gap-1">
                       {discountRate > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{discountRate}%</span>}
                       <span style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>{formatNumber(safeProduct.price || 0)}</span>
-                      <span style={{ fontSize: 11, color: '#6B7280' }}>원</span>
+                      <span style={{ fontSize: 11, color: '#6B7280' }}>{t('ordersTab.won', { defaultValue: '원' })}</span>
                     </div>
                   </div>
                 </div>
@@ -1188,10 +1188,10 @@ function ReelCardImpl({
                     disabled={!currentProduct || addingToCart}
                     className="py-2.5 flex flex-col items-center gap-0.5 disabled:opacity-50"
                     style={{ borderRight: '1px solid #F3F4F6' }}
-                    aria-label="장바구니에 담기"
+                    aria-label={t('live.addToCart', { defaultValue: '장바구니에 담기' })}
                   >
                     <ShoppingBag style={{ width: 16, height: 16, color: '#6B7280' }} />
-                    <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>{addingToCart ? '담는 중…' : '장바구니'}</span>
+                    <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>{addingToCart ? t('live.addingToCart', { defaultValue: '담는 중…' }) : t('live.addToCart', { defaultValue: '장바구니' })}</span>
                   </button>
                   {/* 바로구매 — 셀러는 "변경"으로 분기 */}
                   {isSeller && product ? (
@@ -1200,10 +1200,10 @@ function ReelCardImpl({
                       disabled={changingProduct || isCurrentProduct}
                       className="py-2.5 flex flex-col items-center gap-0.5 disabled:opacity-50"
                       style={boutiqueCTA}
-                      aria-label={isCurrentProduct ? '소개 중' : '상품 변경'}
+                      aria-label={isCurrentProduct ? t('live.sellerIntroducing', { defaultValue: '소개 중' }) : t('live.sellerChangeProduct', { defaultValue: '상품 변경' })}
                     >
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>
-                        {changingProduct ? '전환 중…' : isCurrentProduct ? '소개 중' : '변경'}
+                        {changingProduct ? t('live.sellerChanging', { defaultValue: '전환 중…' }) : isCurrentProduct ? t('live.sellerIntroducing', { defaultValue: '소개 중' }) : t('live.sellerChangeProduct', { defaultValue: '변경' })}
                       </span>
                       <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>{isCurrentProduct ? '✅' : '🔄'}</span>
                     </button>
@@ -1211,15 +1211,15 @@ function ReelCardImpl({
                     <button
                       onClick={() => {
                         if (currentProduct) handleCheckout()
-                        else showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
+                        else showAlert(t('live.noProductForSale', { defaultValue: '판매 중인 상품이 없습니다.' }), 'info', t('live.noProductTitle', { defaultValue: '상품 없음' }))
                       }}
                       disabled={!currentProduct}
                       className="py-2.5 flex flex-col items-center gap-0.5 disabled:opacity-50"
                       style={boutiqueCTA}
-                      aria-label="바로 구매"
+                      aria-label={t('live.buyNow', { defaultValue: '바로 구매' })}
                     >
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>바로구매</span>
-                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>무료배송</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>{t('live.buyNow', { defaultValue: '바로구매' })}</span>
+                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>{t('live.freeShipping', { defaultValue: '무료배송' })}</span>
                     </button>
                   )}
                 </div>
@@ -1271,9 +1271,9 @@ function ReelCardImpl({
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-gray-900">메시지 보내기</h3>
+                  <h3 className="text-lg font-bold text-gray-900">{t('live.sendMessageTitle', { defaultValue: '메시지 보내기' })}</h3>
                   {isSeller && (
-                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">🎙 셀러</span>
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">🎙 {t('live.sellerBadge', { defaultValue: '셀러' })}</span>
                   )}
                 </div>
                 <button
@@ -1289,7 +1289,7 @@ function ReelCardImpl({
                   type="text"
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
-                  placeholder={isSeller ? "셀러 메시지를 입력하세요..." : "메시지를 입력하세요..."}
+                  placeholder={isSeller ? t('live.chatPlaceholderSeller', { defaultValue: '셀러 메시지를 입력하세요...' }) : t('live.chatPlaceholderViewer', { defaultValue: '메시지를 입력하세요...' })}
                   className={`flex-1 rounded-xl border px-4 py-3 text-sm text-gray-900 focus:outline-none ${
                     isSeller
                       ? 'border-indigo-300 focus:border-indigo-500 bg-indigo-50/50'

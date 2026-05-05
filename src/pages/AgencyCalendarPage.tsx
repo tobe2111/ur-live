@@ -270,10 +270,10 @@ export default function AgencyCalendarPage() {
             </div>
 
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold text-gray-500 uppercase">에이전트 노트 ({streamNotes.length})</h3>
+              <h3 className="text-xs font-bold text-gray-500 uppercase">{t('agency.calendar.agentNotes', { defaultValue: '에이전트 노트' })} ({streamNotes.length})</h3>
               <button onClick={() => setAddingNote(true)}
                 className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded">
-                <Plus className="w-3.5 h-3.5" /> 노트 추가
+                <Plus className="w-3.5 h-3.5" /> {t('agency.calendar.addNote', { defaultValue: '노트 추가' })}
               </button>
             </div>
 
@@ -281,10 +281,10 @@ export default function AgencyCalendarPage() {
               <div className="bg-blue-50 rounded-xl p-3 mb-3 space-y-2">
                 <select value={noteForm.type} onChange={e => setNoteForm({ ...noteForm, type: e.target.value as Note['type'] })}
                   className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-gray-900 bg-white">
-                  <option value="guidance">가이드</option>
-                  <option value="issue">이슈</option>
-                  <option value="highlight">하이라이트</option>
-                  <option value="reminder">리마인더</option>
+                  <option value="guidance">{t('agency.calendar.noteTypeGuidance', { defaultValue: '가이드' })}</option>
+                  <option value="issue">{t('agency.calendar.noteTypeIssue', { defaultValue: '이슈' })}</option>
+                  <option value="highlight">{t('agency.calendar.noteTypeHighlight', { defaultValue: '하이라이트' })}</option>
+                  <option value="reminder">{t('agency.calendar.noteTypeReminder', { defaultValue: '리마인더' })}</option>
                 </select>
                 <textarea value={noteForm.content}
                   onChange={e => setNoteForm({ ...noteForm, content: e.target.value })}
@@ -294,19 +294,19 @@ export default function AgencyCalendarPage() {
                 <label className="flex items-center gap-2 text-xs text-gray-700">
                   <input type="checkbox" checked={noteForm.visible_to_seller}
                     onChange={e => setNoteForm({ ...noteForm, visible_to_seller: e.target.checked })} />
-                  셀러에게 표시 (대시보드 알림 발송)
+                  {t('agency.calendar.showToSeller', { defaultValue: '셀러에게 표시 (대시보드 알림 발송)' })}
                 </label>
                 <div className="flex justify-end gap-2">
                   <button onClick={() => { setAddingNote(false); setNoteForm({ type: 'guidance', content: '', visible_to_seller: false }) }}
-                    className="px-3 py-1 text-gray-600 text-xs font-bold">취소</button>
+                    className="px-3 py-1 text-gray-600 text-xs font-bold">{t('common.cancel', { defaultValue: '취소' })}</button>
                   <button onClick={submitNote}
-                    className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded">추가</button>
+                    className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded">{t('agency.calendar.addNoteAction', { defaultValue: '추가' })}</button>
                 </div>
               </div>
             )}
 
             {streamNotes.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-6">아직 노트 없음</p>
+              <p className="text-xs text-gray-400 text-center py-6">{t('agency.calendar.noNotes', { defaultValue: '아직 노트 없음' })}</p>
             ) : (
               <div className="space-y-2">
                 {streamNotes.map(n => {
@@ -321,12 +321,12 @@ export default function AgencyCalendarPage() {
                           </span>
                           {n.visible_to_seller === 1 && (
                             <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
-                              👁️ 셀러 공개
-                              {n.read_by_seller_at && ' · 읽음'}
+                              👁️ {t('agency.calendar.sellerPublic', { defaultValue: '셀러 공개' })}
+                              {n.read_by_seller_at && ` · ${t('agency.calendar.read', { defaultValue: '읽음' })}`}
                             </span>
                           )}
                         </div>
-                        <button onClick={() => deleteNote(n.id)} className="text-[10px] text-red-500 hover:underline">삭제</button>
+                        <button onClick={() => deleteNote(n.id)} className="text-[10px] text-red-500 hover:underline">{t('common.delete', { defaultValue: '삭제' })}</button>
                       </div>
                       <p className="text-xs text-gray-700 whitespace-pre-wrap">{n.content}</p>
                       <p className="text-[10px] text-gray-400 mt-1">

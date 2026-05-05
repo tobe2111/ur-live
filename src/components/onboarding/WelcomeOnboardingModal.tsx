@@ -14,6 +14,7 @@
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { X, Gift, Heart, Bell, Check, ChevronRight, Sparkles } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -26,20 +27,21 @@ interface Props {
 
 const ONBOARDING_DONE_KEY = 'ur_onboarding_done'
 
-const CATEGORIES = [
-  { key: 'meal_voucher', label: '맛집 식사권', emoji: '🍽️' },
-  { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
-  { key: 'health_voucher', label: '헬스·웰니스', emoji: '💪' },
-  { key: 'fashion', label: '패션', emoji: '👗' },
-  { key: 'beauty_product', label: '화장품', emoji: '💄' },
-  { key: 'food_product', label: '식품·간식', emoji: '🍰' },
-  { key: 'home', label: '리빙', emoji: '🏠' },
-  { key: 'pet', label: '반려동물', emoji: '🐶' },
-  { key: 'kids', label: '유아·아동', emoji: '👶' },
-]
-
 export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
+
+  const CATEGORIES = [
+    { key: 'meal_voucher', label: t('welcomeOnboarding.catMealVoucher', { defaultValue: '맛집 식사권' }), emoji: '🍽️' },
+    { key: 'beauty_voucher', label: t('welcomeOnboarding.catBeautyVoucher', { defaultValue: '뷰티' }), emoji: '💇' },
+    { key: 'health_voucher', label: t('welcomeOnboarding.catHealthVoucher', { defaultValue: '헬스·웰니스' }), emoji: '💪' },
+    { key: 'fashion', label: t('welcomeOnboarding.catFashion', { defaultValue: '패션' }), emoji: '👗' },
+    { key: 'beauty_product', label: t('welcomeOnboarding.catBeautyProduct', { defaultValue: '화장품' }), emoji: '💄' },
+    { key: 'food_product', label: t('welcomeOnboarding.catFoodProduct', { defaultValue: '식품·간식' }), emoji: '🍰' },
+    { key: 'home', label: t('welcomeOnboarding.catHome', { defaultValue: '리빙' }), emoji: '🏠' },
+    { key: 'pet', label: t('welcomeOnboarding.catPet', { defaultValue: '반려동물' }), emoji: '🐶' },
+    { key: 'kids', label: t('welcomeOnboarding.catKids', { defaultValue: '유아·아동' }), emoji: '👶' },
+  ]
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [selectedCats, setSelectedCats] = useState<string[]>([])
   const [couponClaimed, setCouponClaimed] = useState(false)
@@ -74,7 +76,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
       clearTimeout(timeoutId)
       if (res?.data?.success) {
         setCouponClaimed(true)
-        toast.success('환영 쿠폰이 발급됐어요! 🎉')
+        toast.success(t('welcomeOnboarding.couponToast', { defaultValue: '환영 쿠폰이 발급됐어요! 🎉' }))
       } else {
         // 백엔드에 WELCOME 코드 없으면 silent — UI 는 어쨌든 넘어감
         setCouponClaimed(true)
@@ -111,7 +113,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
 
       clearTimeout(timeoutId)
       markDone()
-      toast.success('설정이 저장됐어요!')
+      toast.success(t('welcomeOnboarding.settingsSaved', { defaultValue: '설정이 저장됐어요!' }))
       onClose()
     } finally {
       clearTimeout(timeoutId)
@@ -146,8 +148,8 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
               />
             ))}
           </div>
-          <button onClick={handleSkipAll} aria-label="건너뛰기" className="text-[12px] text-gray-400 dark:text-gray-500 px-2 py-1">
-            건너뛰기
+          <button onClick={handleSkipAll} aria-label={t('welcomeOnboarding.skip', { defaultValue: '건너뛰기' })} className="text-[12px] text-gray-400 dark:text-gray-500 px-2 py-1">
+            {t('welcomeOnboarding.skip', { defaultValue: '건너뛰기' })}
           </button>
         </div>
 
@@ -159,11 +161,11 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                 <Sparkles className="w-9 h-9 text-white" />
               </div>
               <h2 id="welcome-title" className="text-[22px] font-extrabold text-gray-900 dark:text-white mb-1.5">
-                {userName ? `${userName}님, 환영해요!` : '유어딜에 오신 걸 환영해요!'}
+                {userName ? t('welcomeOnboarding.welcomeTitle', { name: userName, defaultValue: `${userName}님, 환영해요!` }) : t('welcomeOnboarding.welcomeTitleDefault', { defaultValue: '유어딜에 오신 걸 환영해요!' })}
               </h2>
               <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                라이브 방송으로 보고 바로 사는<br />
-                <strong className="text-gray-900 dark:text-white">한국 1위 라이브 커머스</strong>
+                {t('welcomeOnboarding.welcomeDesc1', { defaultValue: '라이브 방송으로 보고 바로 사는' })}<br />
+                <strong className="text-gray-900 dark:text-white">{t('welcomeOnboarding.welcomeDesc2', { defaultValue: '한국 1위 라이브 커머스' })}</strong>
               </p>
 
               <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-2xl p-5 mt-6 text-left">
@@ -172,14 +174,14 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                     <Gift className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-[13px] font-bold text-pink-700">신규 환영 쿠폰</p>
-                    <p className="text-[20px] font-extrabold text-gray-900 dark:text-white mt-0.5">5,000원 할인</p>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">10,000원 이상 구매 시 사용 가능 · 7일 유효</p>
+                    <p className="text-[13px] font-bold text-pink-700">{t('welcomeOnboarding.couponBadge', { defaultValue: '신규 환영 쿠폰' })}</p>
+                    <p className="text-[20px] font-extrabold text-gray-900 dark:text-white mt-0.5">{t('welcomeOnboarding.couponAmount', { defaultValue: '5,000원 할인' })}</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t('welcomeOnboarding.couponDesc', { defaultValue: '10,000원 이상 구매 시 사용 가능 · 7일 유효' })}</p>
                   </div>
                 </div>
                 {couponClaimed ? (
                   <div className="mt-3 px-3 py-2 bg-white dark:bg-[#0A0A0A] rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
-                    <Check className="w-4 h-4" /> 발급 완료!
+                    <Check className="w-4 h-4" /> {t('welcomeOnboarding.couponClaimed', { defaultValue: '발급 완료!' })}
                   </div>
                 ) : (
                   <button
@@ -187,7 +189,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                     disabled={claimingCoupon}
                     className="mt-3 w-full py-2.5 bg-pink-500 text-white rounded-xl font-bold text-sm active:scale-95 disabled:opacity-50"
                   >
-                    {claimingCoupon ? '발급 중...' : '쿠폰 받기'}
+                    {claimingCoupon ? t('welcomeOnboarding.couponClaiming', { defaultValue: '발급 중...' }) : t('welcomeOnboarding.couponClaim', { defaultValue: '쿠폰 받기' })}
                   </button>
                 )}
               </div>
@@ -200,8 +202,8 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                 <div className="mx-auto w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mb-3">
                   <Heart className="w-8 h-8 text-pink-500" />
                 </div>
-                <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white mb-1">관심 분야를 알려주세요</h2>
-                <p className="text-[13px] text-gray-500 dark:text-gray-400">맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)</p>
+                <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step2Title', { defaultValue: '관심 분야를 알려주세요' })}</h2>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step2Desc', { defaultValue: '맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)' })}</p>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -226,7 +228,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                 })}
               </div>
               <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3 text-center">
-                선택한 카테고리: <strong className="text-pink-500">{selectedCats.length}개</strong>
+                {t('welcomeOnboarding.selectedCount', { count: selectedCats.length, defaultValue: `선택한 카테고리: ${selectedCats.length}개` })}
               </p>
             </div>
           )}
@@ -237,8 +239,8 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                 <div className="mx-auto w-16 h-16 rounded-full bg-yellow-50 flex items-center justify-center mb-3">
                   <Bell className="w-8 h-8 text-yellow-600" />
                 </div>
-                <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white mb-1">알림 받기</h2>
-                <p className="text-[13px] text-gray-500 dark:text-gray-400">놓치면 아쉬운 핫딜·라이브 소식을 알려드려요</p>
+                <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step3Title', { defaultValue: '알림 받기' })}</h2>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step3Desc', { defaultValue: '놓치면 아쉬운 핫딜·라이브 소식을 알려드려요' })}</p>
               </div>
 
               <button
@@ -255,20 +257,20 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                   </div>
                   <div className="flex-1">
                     <p className="text-[14px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                      카카오 알림톡으로 받기
+                      {t('welcomeOnboarding.alimtalkLabel', { defaultValue: '카카오 알림톡으로 받기' })}
                       {alimtalkOptIn && <Check className="w-4 h-4 text-yellow-600" />}
                     </p>
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-                      라이브 시작 / 핫딜 / 주문 상태 등<br />
-                      카톡으로 무료 알림 (광고성 정보 제외)
+                      {t('welcomeOnboarding.alimtalkDesc1', { defaultValue: '라이브 시작 / 핫딜 / 주문 상태 등' })}<br />
+                      {t('welcomeOnboarding.alimtalkDesc2', { defaultValue: '카톡으로 무료 알림 (광고성 정보 제외)' })}
                     </p>
                   </div>
                 </div>
               </button>
 
               <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3 text-center leading-relaxed">
-                마이페이지 → 알림 설정에서<br />
-                언제든지 변경 가능합니다.
+                {t('welcomeOnboarding.alimtalkNote1', { defaultValue: '마이페이지 → 알림 설정에서' })}<br />
+                {t('welcomeOnboarding.alimtalkNote2', { defaultValue: '언제든지 변경 가능합니다.' })}
               </p>
             </div>
           )}
@@ -281,7 +283,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
               onClick={() => setStep(2)}
               className="w-full py-3.5 bg-gray-900 text-white rounded-2xl font-bold text-[14px] flex items-center justify-center gap-1 active:scale-[0.98]"
             >
-              다음
+              {t('welcomeOnboarding.next', { defaultValue: '다음' })}
               <ChevronRight className="w-4 h-4" />
             </button>
           )}
@@ -291,14 +293,14 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                 onClick={() => setStep(1)}
                 className="px-5 py-3 text-gray-600 dark:text-gray-300 font-semibold text-sm"
               >
-                이전
+                {t('welcomeOnboarding.prev', { defaultValue: '이전' })}
               </button>
               <button
                 onClick={() => setStep(3)}
                 disabled={selectedCats.length === 0}
                 className="flex-1 py-3.5 bg-gray-900 text-white rounded-2xl font-bold text-[14px] flex items-center justify-center gap-1 active:scale-[0.98] disabled:opacity-50"
               >
-                다음
+                {t('welcomeOnboarding.next', { defaultValue: '다음' })}
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -309,7 +311,7 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
               disabled={submitting}
               className="w-full py-3.5 bg-pink-500 text-white rounded-2xl font-bold text-[14px] active:scale-[0.98] disabled:opacity-50"
             >
-              {submitting ? '저장 중...' : '시작하기 🎉'}
+              {submitting ? t('welcomeOnboarding.saving', { defaultValue: '저장 중...' }) : t('welcomeOnboarding.finish', { defaultValue: '시작하기 🎉' })}
             </button>
           )}
         </div>
