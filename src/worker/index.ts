@@ -138,6 +138,7 @@ import { agencyMembersRoutes } from '../features/agency/api/agency-members.route
 import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.routes';
 import { agencyInvitesRoutes, inviteCodePublicRoutes } from '../features/agency/api/agency-invites.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
+import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
@@ -1080,6 +1081,8 @@ app.route('/api/agency/kpi', agencyKpiRoutes);
 // 🛡️ 2026-04-27 Phase 1-7: 에이전시 공개 브랜딩 페이지
 app.route('/api/agency-public', agencyPublicRoutes);          // 공개 (인증 X)
 app.route('/api/agency/public-profile', agencyPublicEditRoutes); // 본인 편집 (인증)
+// 2026-05-05: 신규 셀러 자동 매칭 제안 (수락/거절)
+app.route('/api/agency', agencyMatchSuggestionsRoutes);
 // adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
