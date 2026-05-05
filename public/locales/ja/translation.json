@@ -153,7 +153,9 @@
     "copyFailed": "コピーに失敗しました。",
     "home": "ホーム",
     "uploadComplete": "アップロード完了",
-    "dismiss": "閉じる"
+    "dismiss": "閉じる",
+    "closeSidebar": "サイドバーを閉じる",
+    "openSidebar": "サイドバーを開く"
   },
   "auth": {
     "email": "メールアドレス",
@@ -2649,7 +2651,7 @@
       "targets": "売上目標",
       "campaignSales": "キャンペーン・営業",
       "campaigns": "キャンペーン",
-      "incentives": "インセンティブ規則",
+      "incentives": "インセンティブルール",
       "messages": "メッセージテンプレート",
       "coupons": "クーポン配布",
       "calendar": "ライブカレンダー",
@@ -2660,11 +2662,19 @@
       "contracts": "契約管理",
       "notices": "セラー告知",
       "guide": "運営ガイド",
-      "profile": "プロフィール設定"
+      "profile": "プロフィール設定",
+      "invites": "セラー採用",
+      "matchSuggestions": "自動マッチング提案",
+      "pk": "PKイベント",
+      "events": "ブランドチャレンジ",
+      "promoteBoosts": "露出ブースティング",
+      "transfers": "セラー移転"
     },
     "guide": "運営ガイド",
     "guideSubtitle": "エージェンシー運営の核心ガイド",
-    "guideTitle": "エージェンシーガイド"
+    "guideTitle": "エージェンシーガイド",
+    "verifiedPartner": "認証パートナー",
+    "partner": "パートナー"
   },
   "nav": {
     "home": "ホーム",

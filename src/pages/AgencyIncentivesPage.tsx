@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -67,6 +68,7 @@ const ymNow = () => {
 }
 
 export default function AgencyIncentivesPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [tab, setTab] = useState<'rules' | 'payouts' | 'preview'>('rules')
   const [rules, setRules] = useState<Rule[]>([])
@@ -96,7 +98,7 @@ export default function AgencyIncentivesPage() {
     setLoading(true)
     api.get('/api/agency/incentives/rules', { headers })
       .then(r => { if (r.data?.success) setRules(r.data.data || []) })
-      .catch(() => toast.error('규칙 조회 실패'))
+      .catch(() => toast.error(t('agency.incentives.loadRulesFailed', { defaultValue: '규칙 조회 실패' })))
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -106,7 +108,7 @@ export default function AgencyIncentivesPage() {
     const url = month ? `/api/agency/incentives/payouts?month=${month}` : '/api/agency/incentives/payouts'
     api.get(url, { headers })
       .then(r => { if (r.data?.success) setPayouts(r.data.data || []) })
-      .catch(() => toast.error('지급 이력 조회 실패'))
+      .catch(() => toast.error(t('agency.incentives.loadPayoutsFailed', { defaultValue: '지급 이력 조회 실패' })))
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -115,7 +117,7 @@ export default function AgencyIncentivesPage() {
     setLoading(true)
     api.get(`/api/agency/incentives/preview?month=${month}`, { headers })
       .then(r => { if (r.data?.success) setPreview(r.data.data) })
-      .catch(() => toast.error('Preview 실패'))
+      .catch(() => toast.error(t('agency.incentives.previewFailed', { defaultValue: 'Preview 실패' })))
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -128,16 +130,16 @@ export default function AgencyIncentivesPage() {
   }, [tab])
 
   const submit = async () => {
-    if (!form.name) { toast.error('이름 필수'); return }
-    if (form.bonus_rate < 0 || form.bonus_rate > 100) { toast.error('보너스율 0~100'); return }
+    if (!form.name) { toast.error(t('agency.incentives.nameRequired', { defaultValue: '이름 필수' })); return }
+    if (form.bonus_rate < 0 || form.bonus_rate > 100) { toast.error(t('agency.incentives.bonusRateRange', { defaultValue: '보너스율 0~100' })); return }
     try {
       await api.post('/api/agency/incentives/rules', form, { headers })
-      toast.success('규칙 추가됨')
+      toast.success(t('agency.incentives.ruleAdded', { defaultValue: '규칙 추가됨' }))
       setCreating(false)
       setForm({ name: '', metric: 'sales', threshold: 0, bonus_rate: 0, priority: 0 })
       loadRules()
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '생성 실패')
+      toast.error(e?.response?.data?.error || t('agency.incentives.createFailed', { defaultValue: '생성 실패' }))
     }
   }
 
@@ -146,33 +148,33 @@ export default function AgencyIncentivesPage() {
       await api.patch(`/api/agency/incentives/rules/${rule.id}`, { is_active: !rule.is_active }, { headers })
       loadRules()
     } catch {
-      toast.error('상태 변경 실패')
+      toast.error(t('agency.incentives.statusChangeFailed', { defaultValue: '상태 변경 실패' }))
     }
   }
 
   const deleteRule = async (id: number) => {
-    if (!confirm('이 규칙을 비활성화하시겠습니까?')) return
+    if (!confirm(t('agency.incentives.confirmDeactivate', { defaultValue: '이 규칙을 비활성화하시겠습니까?' }))) return
     try {
       await api.delete(`/api/agency/incentives/rules/${id}`, { headers })
-      toast.info('비활성화됨')
+      toast.info(t('agency.incentives.deactivated', { defaultValue: '비활성화됨' }))
       loadRules()
-    } catch { toast.error('삭제 실패') }
+    } catch { toast.error(t('agency.incentives.deleteFailed', { defaultValue: '삭제 실패' })) }
   }
 
   return (
-    <AgencyLayout title="인센티브 규칙">
+    <AgencyLayout title={t('agency.incentives.title', { defaultValue: '인센티브 규칙' })}>
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="인센티브 규칙 엔진"
-          subtitle="매출/평점/라이브 등 KPI 기반 셀러 보너스 자동 계산"
+          title={t('agency.incentives.engineTitle', { defaultValue: '인센티브 규칙 엔진' })}
+          subtitle={t('agency.incentives.engineSubtitle', { defaultValue: '매출/평점/라이브 등 KPI 기반 셀러 보너스 자동 계산' })}
           icon={<Award className="h-5 w-5" />}
         />
 
         <div className="flex gap-2 border-b border-gray-200">
           {[
-            { key: 'rules', label: '규칙' },
-            { key: 'payouts', label: '지급 이력' },
-            { key: 'preview', label: 'Preview (시뮬레이션)' },
+            { key: 'rules', label: t('agency.incentives.tabRules', { defaultValue: '규칙' }) },
+            { key: 'payouts', label: t('agency.incentives.tabPayouts', { defaultValue: '지급 이력' }) },
+            { key: 'preview', label: t('agency.incentives.tabPreview', { defaultValue: 'Preview (시뮬레이션)' }) },
           ].map(({ key, label }) => (
             <button key={key} onClick={() => setTab(key as any)}
               className={`px-4 py-2 text-sm font-bold ${tab === key ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
@@ -187,11 +189,11 @@ export default function AgencyIncentivesPage() {
             <div className="flex justify-end">
               <button onClick={() => setCreating(true)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">
-                <Plus className="w-4 h-4" /> 규칙 추가
+                <Plus className="w-4 h-4" /> {t('agency.incentives.addRule', { defaultValue: '규칙 추가' })}
               </button>
             </div>
             {loading ? <DashboardLoading /> : rules.length === 0 ? (
-              <DashboardEmptyState icon={<Award className="h-7 w-7" />} title="규칙이 없습니다 — 추가해보세요" />
+              <DashboardEmptyState icon={<Award className="h-7 w-7" />} title={t('agency.incentives.noRules', { defaultValue: '규칙이 없습니다 — 추가해보세요' })} />
             ) : (
               <div className="space-y-2">
                 {rules.map(r => (
@@ -204,19 +206,19 @@ export default function AgencyIncentivesPage() {
                         </span>
                         {r.priority > 0 && (
                           <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">
-                            우선순위 {r.priority}
+                            {t('agency.incentives.priority', { defaultValue: '우선순위' })} {r.priority}
                           </span>
                         )}
                       </div>
                       <p className="text-xs text-gray-500">
-                        {METRIC_LABEL[r.metric as Metric]} <strong className="text-gray-700">{formatNumber(r.threshold)}</strong> 이상
-                        →  보너스 <strong className="text-emerald-600">+{r.bonus_rate}%</strong>
+                        {METRIC_LABEL[r.metric as Metric]} <strong className="text-gray-700">{formatNumber(r.threshold)}</strong> {t('agency.incentives.orMore', { defaultValue: '이상' })}
+                        →  {t('agency.incentives.bonus', { defaultValue: '보너스' })} <strong className="text-emerald-600">+{r.bonus_rate}%</strong>
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => toggleActive(r)}
                         className={`px-3 py-1.5 text-xs font-bold rounded-lg ${r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {r.is_active ? '활성' : '비활성'}
+                        {r.is_active ? t('agency.incentives.active', { defaultValue: '활성' }) : t('agency.incentives.inactive', { defaultValue: '비활성' })}
                       </button>
                       <button onClick={() => deleteRule(r.id)} className="p-2 text-red-500 hover:bg-red-50 rounded">
                         <Trash2 className="w-4 h-4" />
@@ -238,19 +240,19 @@ export default function AgencyIncentivesPage() {
                 className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
             </div>
             {loading ? <DashboardLoading /> : payouts.length === 0 ? (
-              <DashboardEmptyState icon={<BarChart3 className="h-7 w-7" />} title="지급 이력 없음" />
+              <DashboardEmptyState icon={<BarChart3 className="h-7 w-7" />} title={t('agency.incentives.noPayouts', { defaultValue: '지급 이력 없음' })} />
             ) : (
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                     <tr>
-                      <th className="px-4 py-2 text-left">월</th>
-                      <th className="px-4 py-2 text-left">셀러</th>
-                      <th className="px-4 py-2 text-left">규칙</th>
-                      <th className="px-4 py-2 text-right">기본</th>
-                      <th className="px-4 py-2 text-right">보너스</th>
-                      <th className="px-4 py-2 text-right">합계</th>
-                      <th className="px-4 py-2 text-center">상태</th>
+                      <th className="px-4 py-2 text-left">{t('agency.incentives.colMonth', { defaultValue: '월' })}</th>
+                      <th className="px-4 py-2 text-left">{t('agency.incentives.colSeller', { defaultValue: '셀러' })}</th>
+                      <th className="px-4 py-2 text-left">{t('agency.incentives.colRule', { defaultValue: '규칙' })}</th>
+                      <th className="px-4 py-2 text-right">{t('agency.incentives.colBase', { defaultValue: '기본' })}</th>
+                      <th className="px-4 py-2 text-right">{t('agency.incentives.colBonus', { defaultValue: '보너스' })}</th>
+                      <th className="px-4 py-2 text-right">{t('agency.incentives.colTotal', { defaultValue: '합계' })}</th>
+                      <th className="px-4 py-2 text-center">{t('agency.incentives.colStatus', { defaultValue: '상태' })}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -268,7 +270,7 @@ export default function AgencyIncentivesPage() {
                             p.status === 'cancelled' ? 'bg-red-100 text-red-600' :
                             'bg-blue-100 text-blue-700'
                           }`}>
-                            {p.status === 'paid' ? '지급완료' : p.status === 'cancelled' ? '취소' : '계산됨'}
+                            {p.status === 'paid' ? t('agency.incentives.statusPaid', { defaultValue: '지급완료' }) : p.status === 'cancelled' ? t('common.cancel', { defaultValue: '취소' }) : t('agency.incentives.statusCalculated', { defaultValue: '계산됨' })}
                           </span>
                         </td>
                       </tr>
@@ -289,27 +291,27 @@ export default function AgencyIncentivesPage() {
                 className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
               <button onClick={() => loadPreview(previewMonth)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">
-                <Eye className="w-4 h-4" /> 시뮬레이션
+                <Eye className="w-4 h-4" /> {t('agency.incentives.simulate', { defaultValue: '시뮬레이션' })}
               </button>
             </div>
             {loading ? <DashboardLoading /> : preview && (
               <>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-blue-50 rounded-xl p-4">
-                    <p className="text-xs text-blue-700 font-bold uppercase">평가 셀러</p>
+                    <p className="text-xs text-blue-700 font-bold uppercase">{t('agency.incentives.evaluatedSellers', { defaultValue: '평가 셀러' })}</p>
                     <p className="text-2xl font-extrabold text-gray-900">{preview.evaluated}</p>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-4">
-                    <p className="text-xs text-gray-600 font-bold uppercase">기본 수수료 합계</p>
-                    <p className="text-2xl font-extrabold text-gray-900">{formatNumber(preview.total_base)}원</p>
+                    <p className="text-xs text-gray-600 font-bold uppercase">{t('agency.incentives.totalBaseCommission', { defaultValue: '기본 수수료 합계' })}</p>
+                    <p className="text-2xl font-extrabold text-gray-900">{formatNumber(preview.total_base)}{t('common.won', { defaultValue: '원' })}</p>
                   </div>
                   <div className="bg-emerald-50 rounded-xl p-4">
-                    <p className="text-xs text-emerald-700 font-bold uppercase">보너스 합계</p>
-                    <p className="text-2xl font-extrabold text-emerald-600">+{formatNumber(preview.total_bonus)}원</p>
+                    <p className="text-xs text-emerald-700 font-bold uppercase">{t('agency.incentives.totalBonus', { defaultValue: '보너스 합계' })}</p>
+                    <p className="text-2xl font-extrabold text-emerald-600">+{formatNumber(preview.total_bonus)}{t('common.won', { defaultValue: '원' })}</p>
                   </div>
                 </div>
                 <div className="text-xs text-gray-500">
-                  💡 이 화면은 시뮬레이션입니다. 실제 지급은 매월 첫 월요일 cron 으로 자동 계산됩니다.
+                  💡 {t('agency.incentives.simulationNote', { defaultValue: '이 화면은 시뮬레이션입니다. 실제 지급은 매월 첫 월요일 cron 으로 자동 계산됩니다.' })}
                 </div>
               </>
             )}
@@ -322,17 +324,17 @@ export default function AgencyIncentivesPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCreating(false)}>
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">인센티브 규칙 추가</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('agency.incentives.addRuleTitle', { defaultValue: '인센티브 규칙 추가' })}</h2>
               <button onClick={() => setCreating(false)}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-gray-700">이름 *</label>
+                <label className="text-xs font-bold text-gray-700">{t('agency.incentives.fieldName', { defaultValue: '이름' })} *</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-700">평가 metric *</label>
+                <label className="text-xs font-bold text-gray-700">{t('agency.incentives.fieldMetric', { defaultValue: '평가 metric' })} *</label>
                 <select value={form.metric} onChange={e => setForm({ ...form, metric: e.target.value as Metric })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900">
                   {METRIC_OPTIONS.map(m => <option key={m} value={m}>{METRIC_LABEL[m]}</option>)}
@@ -340,27 +342,27 @@ export default function AgencyIncentivesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-700">임계값 (이상)</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.incentives.fieldThreshold', { defaultValue: '임계값 (이상)' })}</label>
                   <input type="number" value={form.threshold} step="any"
                     onChange={e => setForm({ ...form, threshold: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700">보너스율 (%)</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.incentives.fieldBonusRate', { defaultValue: '보너스율 (%)' })}</label>
                   <input type="number" value={form.bonus_rate} min={0} max={100} step={0.1}
                     onChange={e => setForm({ ...form, bonus_rate: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-700">우선순위 (높은 순으로 매칭)</label>
+                <label className="text-xs font-bold text-gray-700">{t('agency.incentives.fieldPriority', { defaultValue: '우선순위 (높은 순으로 매칭)' })}</label>
                 <input type="number" value={form.priority} min={0}
                   onChange={e => setForm({ ...form, priority: Number(e.target.value) })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setCreating(false)} className="px-4 py-2 text-gray-600 text-sm font-bold">취소</button>
-                <button onClick={submit} className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg">생성</button>
+                <button onClick={() => setCreating(false)} className="px-4 py-2 text-gray-600 text-sm font-bold">{t('common.cancel', { defaultValue: '취소' })}</button>
+                <button onClick={submit} className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg">{t('common.create', { defaultValue: '생성' })}</button>
               </div>
             </div>
           </div>

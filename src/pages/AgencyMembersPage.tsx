@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -52,6 +53,7 @@ const STATUS_LABEL: Record<Member['status'], string> = {
 }
 
 export default function AgencyMembersPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,7 +80,7 @@ export default function AgencyMembersPage() {
       .then(r => { if (r.data?.success) setMembers(r.data.data || []) })
       .catch((e: any) => {
         if (e?.response?.status === 401) navigate('/agency/login', { replace: true })
-        else toast.error('멤버 조회 실패')
+        else toast.error(t('agency.members.loadFailed', { defaultValue: '멤버 조회 실패' }))
       })
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,8 +89,8 @@ export default function AgencyMembersPage() {
   useEffect(() => { load() }, [load])
 
   const submit = async () => {
-    if (!form.email) { toast.error('이메일 필수'); return }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { toast.error('유효한 이메일'); return }
+    if (!form.email) { toast.error(t('agency.members.emailRequired', { defaultValue: '이메일 필수' })); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { toast.error(t('agency.members.invalidEmail', { defaultValue: '유효한 이메일' })); return }
 
     try {
       const r = await api.post('/api/agency/members/invite', {
@@ -101,37 +103,37 @@ export default function AgencyMembersPage() {
         load()
       }
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '초대 실패')
+      toast.error(e?.response?.data?.error || t('agency.members.inviteFailed', { defaultValue: '초대 실패' }))
     }
   }
 
   const changeRole = async (m: Member, newRole: Role) => {
     if (m.role === newRole) return
-    if (m.role === 'owner') { toast.error('owner 변경 불가'); return }
+    if (m.role === 'owner') { toast.error(t('agency.members.ownerCannotChange', { defaultValue: 'owner 변경 불가' })); return }
     try {
       await api.patch(`/api/agency/members/${m.id}`, { role: newRole }, { headers })
       toast.success(`${m.email} → ${ROLE_LABEL[newRole]}`)
       load()
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '변경 실패')
+      toast.error(e?.response?.data?.error || t('agency.members.changeFailed', { defaultValue: '변경 실패' }))
     }
   }
 
   const suspend = async (m: Member) => {
-    if (!confirm(`${m.email} 을 일시 정지하시겠습니까?`)) return
+    if (!confirm(`${m.email} ${t('agency.members.confirmSuspend', { defaultValue: '을 일시 정지하시겠습니까?' })}`)) return
     try {
       await api.post(`/api/agency/members/${m.id}/suspend`, {}, { headers })
-      toast.info('정지됨')
+      toast.info(t('agency.members.suspended', { defaultValue: '정지됨' }))
       load()
-    } catch (e: any) { toast.error(e?.response?.data?.error || '실패') }
+    } catch (e: any) { toast.error(e?.response?.data?.error || t('common.failed', { defaultValue: '실패' })) }
   }
 
   const reactivate = async (m: Member) => {
     try {
       await api.post(`/api/agency/members/${m.id}/reactivate`, {}, { headers })
-      toast.success('재활성화됨')
+      toast.success(t('agency.members.reactivated', { defaultValue: '재활성화됨' }))
       load()
-    } catch (e: any) { toast.error(e?.response?.data?.error || '실패') }
+    } catch (e: any) { toast.error(e?.response?.data?.error || t('common.failed', { defaultValue: '실패' })) }
   }
 
   const remove = async (m: Member) => {

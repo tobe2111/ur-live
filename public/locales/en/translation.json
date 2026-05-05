@@ -153,7 +153,9 @@
     "copyFailed": "Failed to copy.",
     "home": "Home",
     "dismiss": "Close",
-    "uploadComplete": "Upload complete"
+    "uploadComplete": "Upload complete",
+    "closeSidebar": "Close Sidebar",
+    "openSidebar": "Open Sidebar"
   },
   "auth": {
     "email": "Email",
@@ -2647,24 +2649,32 @@
       "ranking": "Seller Ranking",
       "compare": "Compare Sellers",
       "targets": "Revenue Targets",
-      "campaignSales": "Campaigns & Sales",
+      "campaignSales": "Campaign & Sales",
       "campaigns": "Campaigns",
       "incentives": "Incentive Rules",
       "messages": "Message Templates",
       "coupons": "Coupon Distribution",
       "calendar": "Live Calendar",
-      "teamOps": "Team",
+      "teamOps": "Team Operations",
       "members": "Team Members",
       "finance": "Finance & Settings",
-      "settlements": "Settlements",
-      "contracts": "Contracts",
+      "settlements": "Settlement Mgmt",
+      "contracts": "Contract Mgmt",
       "notices": "Seller Notices",
       "guide": "Operations Guide",
-      "profile": "Profile Settings"
+      "profile": "Profile Settings",
+      "invites": "Seller Recruitment",
+      "matchSuggestions": "Auto Match Suggestions",
+      "pk": "PK Events",
+      "events": "Brand Challenges",
+      "promoteBoosts": "Exposure Boosting",
+      "transfers": "Seller Transfer"
     },
     "guide": "Guide",
     "guideSubtitle": "Core agency operations guide",
-    "guideTitle": "Agency Guide"
+    "guideTitle": "Agency Guide",
+    "verifiedPartner": "Verified Partner",
+    "partner": "Partner"
   },
   "nav": {
     "home": "Home",

@@ -183,7 +183,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
           <div className="min-w-0 flex-1">
             <p className="text-[12px] font-extrabold text-white truncate">{agencyName}</p>
             <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              {isVerifiedPartner ? '인증 파트너' : '파트너'}
+              {isVerifiedPartner ? t('agency.verifiedPartner', { defaultValue: '인증 파트너' }) : t('agency.partner', { defaultValue: '파트너' })}
             </p>
           </div>
         </div>
@@ -316,7 +316,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         <header className="bg-white border-b border-gray-200 px-4 lg:px-6 h-14 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
-              aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
+              aria-label={sidebarOpen ? t('common.closeSidebar', { defaultValue: '사이드바 닫기' }) : t('common.openSidebar', { defaultValue: '사이드바 열기' })}
               aria-expanded={sidebarOpen}
               className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"
               onClick={() => setSidebarOpen(!sidebarOpen)}
