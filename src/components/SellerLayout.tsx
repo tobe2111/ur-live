@@ -284,7 +284,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         <header className="bg-white border-b border-gray-200 px-4 lg:px-6 h-14 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
-              aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
+              aria-label={sidebarOpen ? t('common.closeSidebar', { defaultValue: '사이드바 닫기' }) : t('common.openSidebar', { defaultValue: '사이드바 열기' })}
               aria-expanded={sidebarOpen}
               className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"
               onClick={() => setSidebarOpen(!sidebarOpen)}
