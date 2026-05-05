@@ -197,7 +197,7 @@ export default function OptionSelectModal({
                           
                           {option.price_adjustment !== 0 && (
                             <span className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                              {(option.price_adjustment || 0) > 0 ? '+' : ''}{formatNumber(option.price_adjustment || 0)}원
+                              {(option.price_adjustment || 0) > 0 ? '+' : ''}{formatNumber(option.price_adjustment || 0)}{t('common.won', { defaultValue: '원' })}
                             </span>
                           )}
                           

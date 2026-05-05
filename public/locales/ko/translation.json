@@ -182,7 +182,9 @@
     "wishlistRemoved": "찜 목록에서 삭제되었습니다.",
     "genericError": "오류가 발생했습니다. 다시 시도해주세요.",
     "wishlistCancel": "찜 취소",
-    "wishlistAdd": "찜하기"
+    "wishlistAdd": "찜하기",
+    "imageUploadFailed": "이미지 업로드에 실패했습니다.",
+    "unitMan": "만"
   },
   "auth": {
     "email": "이메일",
@@ -2512,7 +2514,19 @@
     "liveGuideItem_product_title": "판매 상품 정리",
     "liveGuideItem_product_desc": "오늘 노출할 상품 미리 등록 + 재고 확인",
     "liveGuideItem_response_title": "시청자 응대 멘트",
-    "liveGuideItem_response_desc": "입장 시 \"○○님 환영해요!\" 처럼 이름 부르기"
+    "liveGuideItem_response_desc": "입장 시 \"○○님 환영해요!\" 처럼 이름 부르기",
+    "boosterConfirm": "{{multiplier}}x 매칭 부스터를 {{minutes}}분 동안 발동하시겠습니까? 라이브 1회당 1번만 사용 가능합니다.",
+    "boosterActivated": "🚀 {{multiplier}}x 부스터 발동!",
+    "boosterActivateFailed": "부스터 발동 실패",
+    "boosterCancelConfirm": "부스터를 조기 종료하시겠습니까?",
+    "boosterCancelled": "부스터 종료됨",
+    "boosterActive": "{{multiplier}}x 매칭 진행 중",
+    "boosterAmountMan": "{{amount}}만",
+    "boosterMin": "{{min}}분",
+    "cameraAccessFailed": "카메라 접근 실패",
+    "cameraAudioToggle": "소리 토글",
+    "cameraOff": "카메라 끄기",
+    "cameraOffTitle": "끄기"
   },
   "admin": {
     "login": {
@@ -2990,6 +3004,30 @@
     "sellerLogin": "셀러 로그인",
     "sellerSignup": "셀러 회원가입"
   },
+  "broadcastNotify": {
+    "loginRequired": "로그인이 필요합니다",
+    "unsubscribed": "알림이 취소되었습니다",
+    "subscribeSuccess": "방송 시작 시 알림을 보내드릴게요!",
+    "subscribeFailed": "알림 설정에 실패했습니다",
+    "consentHint": "카카오 권한 동의 후 다시 시도해주세요",
+    "calendarAdded": "카카오 캘린더에 등록되었습니다!",
+    "calendarIcsDesc": "방송 일정이 아직 설정되지 않았습니다",
+    "calendarDownloadSuccess": "📆 캘린더 파일을 다운로드합니다",
+    "calendarDownloadFailed": "캘린더 다운로드에 실패했습니다",
+    "googleCalendarOpened": "Google 캘린더가 열립니다",
+    "reauth": "카카오 인증이 만료되었습니다. 다시 로그인해주세요.",
+    "notifyOn": "🔔 알림 ON",
+    "notify": "🔔 알림",
+    "processing": "처리 중...",
+    "notifySet": "🔔 알림 설정됨",
+    "notifyRequest": "🔔 방송 알림 받기",
+    "adding": "추가 중...",
+    "kakaoCalendar": "📅 카카오 캘린더에 추가",
+    "googleCalendar": "📅 Add to Calendar",
+    "calendarKr": "📅 캘린더",
+    "calendarEn": "📅 Calendar",
+    "googleCalendarTitle": "유어딜 라이브 방송"
+  },
   "voucher": {
     "myVouchers": "내 식사권",
     "empty": "아직 식사권이 없습니다",
@@ -3206,7 +3244,14 @@
     "donationInsufficient": "딜이 부족합니다.",
     "donationChargeNow": "충전하기",
     "donationProcessing": "후원 중...",
-    "donationBtn": "{{amount}}딜 후원하기"
+    "donationBtn": "{{amount}}딜 후원하기",
+    "donationInsufficientAlert": "딜이 부족합니다. 충전 후 이용해주세요.",
+    "donationSuccessMsg": "{{amount}}딜을 후원했습니다!",
+    "donationDonorDefault": "후원자",
+    "donationFailed": "후원에 실패했습니다.",
+    "donationCenterAlert": "{{name}}님이 {{amount}}딜 후원!",
+    "donationBalance": "{{amount}}딜",
+    "timeDealJoinFailed": "참여 실패"
   },
   "paymentFail": {
     "title": "결제 실패",

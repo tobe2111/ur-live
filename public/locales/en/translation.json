@@ -182,7 +182,9 @@
     "wishlistRemoved": "Removed from wishlist.",
     "genericError": "An error occurred. Please try again.",
     "wishlistCancel": "Remove from Wishlist",
-    "wishlistAdd": "Add to Wishlist"
+    "wishlistAdd": "Add to Wishlist",
+    "imageUploadFailed": "Image upload failed.",
+    "unitMan": ""
   },
   "auth": {
     "email": "Email",
@@ -2512,7 +2514,19 @@
     "liveGuideItem_product_title": "Organize products",
     "liveGuideItem_product_desc": "Pre-register products for today's show + check stock",
     "liveGuideItem_response_title": "Viewer greeting script",
-    "liveGuideItem_response_desc": "Call out names like \"Welcome, ○○!\""
+    "liveGuideItem_response_desc": "Call out names like \"Welcome, ○○!\"",
+    "boosterConfirm": "Activate {{multiplier}}x matching booster for {{minutes}} minutes? Can only be used once per live.",
+    "boosterActivated": "🚀 {{multiplier}}x Booster activated!",
+    "boosterActivateFailed": "Booster activation failed",
+    "boosterCancelConfirm": "Would you like to end the booster early?",
+    "boosterCancelled": "Booster ended",
+    "boosterActive": "{{multiplier}}x Matching in progress",
+    "boosterAmountMan": "{{amount}}",
+    "boosterMin": "{{min}}min",
+    "cameraAccessFailed": "Camera access failed",
+    "cameraAudioToggle": "Toggle audio",
+    "cameraOff": "Turn off camera",
+    "cameraOffTitle": "Off"
   },
   "admin": {
     "login": {
@@ -2990,6 +3004,30 @@
     "sellerLogin": "Seller Login",
     "sellerSignup": "Seller Sign Up"
   },
+  "broadcastNotify": {
+    "loginRequired": "Login required",
+    "unsubscribed": "Notification cancelled",
+    "subscribeSuccess": "We'll notify you when the broadcast starts!",
+    "subscribeFailed": "Failed to set notification",
+    "consentHint": "Please agree to Kakao permissions and try again",
+    "calendarAdded": "Added to Kakao Calendar!",
+    "calendarIcsDesc": "Broadcast schedule is not set yet",
+    "calendarDownloadSuccess": "📆 Downloading calendar file",
+    "calendarDownloadFailed": "Failed to download calendar",
+    "googleCalendarOpened": "Google Calendar is opening",
+    "reauth": "Kakao authentication expired. Please login again.",
+    "notifyOn": "🔔 Notify ON",
+    "notify": "🔔 Notify",
+    "processing": "Processing...",
+    "notifySet": "🔔 Notification set",
+    "notifyRequest": "🔔 Get broadcast notifications",
+    "adding": "Adding...",
+    "kakaoCalendar": "📅 Add to Kakao Calendar",
+    "googleCalendar": "📅 Add to Calendar",
+    "calendarKr": "📅 Calendar",
+    "calendarEn": "📅 Calendar",
+    "googleCalendarTitle": "UrDeal Live Broadcast"
+  },
   "voucher": {
     "myVouchers": "My Vouchers",
     "empty": "No vouchers yet",
@@ -3206,7 +3244,14 @@
     "donationInsufficient": "Not enough deals.",
     "donationChargeNow": "Charge Now",
     "donationProcessing": "Donating...",
-    "donationBtn": "Donate {{amount}} Deals"
+    "donationBtn": "Donate {{amount}} Deals",
+    "donationInsufficientAlert": "Not enough deals. Please charge and try again.",
+    "donationSuccessMsg": "Donated {{amount}} deals!",
+    "donationDonorDefault": "Donor",
+    "donationFailed": "Donation failed.",
+    "donationCenterAlert": "{{name}} donated {{amount}} deals!",
+    "donationBalance": "{{amount}} Deals",
+    "timeDealJoinFailed": "Join failed"
   },
   "paymentFail": {
     "title": "Payment Failed",

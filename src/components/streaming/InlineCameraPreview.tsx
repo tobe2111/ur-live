@@ -53,7 +53,7 @@ export function InlineCameraPreview() {
         // 일반 브라우저인데 사용자가 권한 거부한 케이스
         setErr(t('seller.cameraDenied', { defaultValue: '카메라 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.' }))
       } else {
-        setErr(err.message || '카메라 접근 실패')
+        setErr(err.message || t('seller.cameraAccessFailed', { defaultValue: '카메라 접근 실패' }))
       }
       setActive(false)
     }
@@ -105,18 +105,18 @@ export function InlineCameraPreview() {
         )}
         <button onClick={() => setMuted(m => !m)}
           className="bg-black/60 hover:bg-black/80 text-white p-1.5 rounded-md backdrop-blur-sm"
-          title="소리 토글">
+          title={t('seller.cameraAudioToggle', { defaultValue: '소리 토글' })}>
           {muted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
         </button>
         <button onClick={() => { stop(); start(selectedCam) }}
           className="bg-black/60 hover:bg-black/80 text-white p-1.5 rounded-md backdrop-blur-sm"
-          title="새로고침">
+          title={t('common.refresh', { defaultValue: '새로고침' })}>
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
         <button onClick={stop}
-          aria-label="카메라 끄기"
+          aria-label={t('seller.cameraOff', { defaultValue: '카메라 끄기' })}
           className="bg-black/60 hover:bg-black/80 text-white p-1.5 rounded-md backdrop-blur-sm"
-          title="끄기">
+          title={t('seller.cameraOffTitle', { defaultValue: '끄기' })}>
           <CameraOff className="w-3.5 h-3.5" />
         </button>
       </div>

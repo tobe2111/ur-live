@@ -182,7 +182,9 @@
     "wishlistRemoved": "お気に入りから削除しました。",
     "genericError": "エラーが発生しました。もう一度お試しください。",
     "wishlistCancel": "お気に入り解除",
-    "wishlistAdd": "お気に入りに追加"
+    "wishlistAdd": "お気に入りに追加",
+    "imageUploadFailed": "画像のアップロードに失敗しました。",
+    "unitMan": "万"
   },
   "auth": {
     "email": "メールアドレス",
@@ -2512,7 +2514,19 @@
     "liveGuideItem_product_title": "販売商品を整理",
     "liveGuideItem_product_desc": "今日紹介する商品を事前登録 + 在庫確認",
     "liveGuideItem_response_title": "視聴者対応メッセージ",
-    "liveGuideItem_response_desc": "入室時「○○さんようこそ！」のように名前を呼ぶ"
+    "liveGuideItem_response_desc": "入室時「○○さんようこそ！」のように名前を呼ぶ",
+    "boosterConfirm": "{{multiplier}}xマッチングブースターを{{minutes}}分間発動しますか？ライブ1回につき1回のみ使用可能です。",
+    "boosterActivated": "🚀 {{multiplier}}xブースター発動！",
+    "boosterActivateFailed": "ブースター発動失敗",
+    "boosterCancelConfirm": "ブースターを早期終了しますか？",
+    "boosterCancelled": "ブースター終了",
+    "boosterActive": "{{multiplier}}xマッチング進行中",
+    "boosterAmountMan": "{{amount}}万",
+    "boosterMin": "{{min}}分",
+    "cameraAccessFailed": "カメラアクセス失敗",
+    "cameraAudioToggle": "音声トグル",
+    "cameraOff": "カメラをオフにする",
+    "cameraOffTitle": "オフ"
   },
   "admin": {
     "login": {
@@ -2990,6 +3004,30 @@
     "sellerLogin": "セラーログイン",
     "sellerSignup": "セラー会員登録"
   },
+  "broadcastNotify": {
+    "loginRequired": "ログインが必要です",
+    "unsubscribed": "通知がキャンセルされました",
+    "subscribeSuccess": "配信開始時にお知らせします！",
+    "subscribeFailed": "通知設定に失敗しました",
+    "consentHint": "カカオ権限に同意してから再試行してください",
+    "calendarAdded": "カカオカレンダーに登録されました！",
+    "calendarIcsDesc": "配信スケジュールはまだ設定されていません",
+    "calendarDownloadSuccess": "📆 カレンダーファイルをダウンロードします",
+    "calendarDownloadFailed": "カレンダーのダウンロードに失敗しました",
+    "googleCalendarOpened": "Googleカレンダーが開きます",
+    "reauth": "カカオ認証が期限切れです。再度ログインしてください。",
+    "notifyOn": "🔔 通知 ON",
+    "notify": "🔔 通知",
+    "processing": "処理中...",
+    "notifySet": "🔔 通知設定済み",
+    "notifyRequest": "🔔 配信通知を受け取る",
+    "adding": "追加中...",
+    "kakaoCalendar": "📅 カカオカレンダーに追加",
+    "googleCalendar": "📅 カレンダーに追加",
+    "calendarKr": "📅 カレンダー",
+    "calendarEn": "📅 Calendar",
+    "googleCalendarTitle": "UrDealライブ配信"
+  },
   "voucher": {
     "myVouchers": "マイクーポン",
     "empty": "クーポンがまだありません",
@@ -3206,7 +3244,14 @@
     "donationInsufficient": "ディールが不足しています。",
     "donationChargeNow": "チャージする",
     "donationProcessing": "後援中...",
-    "donationBtn": "{{amount}}ディール後援する"
+    "donationBtn": "{{amount}}ディール後援する",
+    "donationInsufficientAlert": "ディールが不足しています。チャージ後にご利用ください。",
+    "donationSuccessMsg": "{{amount}}ディールを後援しました！",
+    "donationDonorDefault": "後援者",
+    "donationFailed": "後援に失敗しました。",
+    "donationCenterAlert": "{{name}}さんが{{amount}}ディール後援！",
+    "donationBalance": "{{amount}}ディール",
+    "timeDealJoinFailed": "参加失敗"
   },
   "paymentFail": {
     "title": "決済失敗",

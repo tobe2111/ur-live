@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
@@ -12,6 +13,7 @@ interface Props {
 
 export default function BroadcastNotifyButton({ streamId, compact = false }: Props) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [calLoading, setCalLoading] = useState(false)
   const [subscribed, setSubscribed] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -20,7 +22,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
   const handleSubscribe = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!userId) {
-      toast.error('로그인이 필요합니다')
+      toast.error(t('broadcastNotify.loginRequired', { defaultValue: '로그인이 필요합니다' }))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
@@ -30,16 +32,16 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
       if (subscribed) {
         await api.delete(`/api/broadcast-notify/subscribe/${streamId}`)
         setSubscribed(false)
-        toast.info('알림이 취소되었습니다')
+        toast.info(t('broadcastNotify.unsubscribed', { defaultValue: '알림이 취소되었습니다' }))
       } else {
         const res = await api.post(`/api/broadcast-notify/subscribe/${streamId}`, {})
         if (res.data.success) {
           setSubscribed(true)
-          toast.success('방송 시작 시 알림을 보내드릴게요!')
+          toast.success(t('broadcastNotify.subscribeSuccess', { defaultValue: '방송 시작 시 알림을 보내드릴게요!' }))
         }
       }
     } catch {
-      toast.error('알림 설정에 실패했습니다')
+      toast.error(t('broadcastNotify.subscribeFailed', { defaultValue: '알림 설정에 실패했습니다' }))
     } finally { setLoading(false) }
   }
 
@@ -55,7 +57,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     const url = `/auth/kakao/consent/start?${params.toString()}`
     const popup = window.open(url, 'kakao_consent', 'width=480,height=700,scrollbars=yes')
     if (!popup) { window.location.href = url; return }
-    toast.info('카카오 권한 동의 후 다시 시도해주세요')
+    toast.info(t('broadcastNotify.consentHint', { defaultValue: '카카오 권한 동의 후 다시 시도해주세요' }))
   }
 
   const fallbackToIcs = async () => {
@@ -63,7 +65,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
       const res = await fetch(`/api/kakao-social/calendar/ics/${streamId}`)
       if (!res.ok) {
         const data = await res.json().catch(() => null) as { error?: string } | null
-        toast.error(data?.error || '방송 일정이 아직 설정되지 않았습니다')
+        toast.error(data?.error || t('broadcastNotify.calendarIcsDesc', { defaultValue: '방송 일정이 아직 설정되지 않았습니다' }))
         return
       }
       const blob = await res.blob()
@@ -73,9 +75,9 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
       a.download = `live-${streamId}.ics`
       a.click()
       URL.revokeObjectURL(url)
-      toast.success('📆 캘린더 파일을 다운로드합니다')
+      toast.success(t('broadcastNotify.calendarDownloadSuccess', { defaultValue: '📆 캘린더 파일을 다운로드합니다' }))
     } catch {
-      toast.error('캘린더 다운로드에 실패했습니다')
+      toast.error(t('broadcastNotify.calendarDownloadFailed', { defaultValue: '캘린더 다운로드에 실패했습니다' }))
     }
   }
 
@@ -83,7 +85,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     e.stopPropagation()
     if (!kr) { openGoogleCalendar(); return }
     if (!userId) {
-      toast.error('로그인이 필요합니다')
+      toast.error(t('broadcastNotify.loginRequired', { defaultValue: '로그인이 필요합니다' }))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
@@ -93,7 +95,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     try {
       const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
       if (res.data.success) {
-        toast.success('카카오 캘린더에 등록되었습니다!')
+        toast.success(t('broadcastNotify.calendarAdded', { defaultValue: '카카오 캘린더에 등록되었습니다!' }))
       } else {
         // success: false인데 throw 안 된 경우
         fallbackToIcs()
@@ -101,7 +103,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     } catch (err: any) {
       const code = err?.response?.data?.code
       if (code === 'KAKAO_REAUTH_REQUIRED') {
-        toast.error('카카오 인증이 만료되었습니다. 다시 로그인해주세요.')
+        toast.error(t('broadcastNotify.reauth', { defaultValue: '카카오 인증이 만료되었습니다. 다시 로그인해주세요.' }))
         localStorage.setItem('loginReturnUrl', window.location.pathname)
         navigate('/login')
       } else if (code === 'KAKAO_SCOPE_REQUIRED') {
@@ -119,7 +121,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
 
   const openGoogleCalendar = () => {
     // Google Calendar URL 생성 (API 키 불필요)
-    const title = encodeURIComponent(`유어딜 라이브 방송`)
+    const title = encodeURIComponent(t('broadcastNotify.googleCalendarTitle', { defaultValue: '유어딜 라이브 방송' }))
     const details = encodeURIComponent(`https://live.ur-team.com/live/${streamId}`)
     const now = new Date(Date.now() + 3600000)
     const start = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'

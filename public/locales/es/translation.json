@@ -182,7 +182,9 @@
     "wishlistRemoved": "Eliminado de la lista de deseos.",
     "genericError": "Ocurrió un error. Inténtalo de nuevo.",
     "wishlistCancel": "Eliminar de favoritos",
-    "wishlistAdd": "Añadir a favoritos"
+    "wishlistAdd": "Añadir a favoritos",
+    "imageUploadFailed": "Error al subir imagen.",
+    "unitMan": ""
   },
   "seller": {
     "dashboard": "Panel",
@@ -1916,7 +1918,19 @@
     "liveGuideItem_product_title": "Organizar productos",
     "liveGuideItem_product_desc": "Pre-registra productos de hoy + verifica stock",
     "liveGuideItem_response_title": "Saludo a espectadores",
-    "liveGuideItem_response_desc": "Nombra a los espectadores como \"¡Bienvenido/a, ○○!\""
+    "liveGuideItem_response_desc": "Nombra a los espectadores como \"¡Bienvenido/a, ○○!\"",
+    "boosterConfirm": "¿Activar impulso {{multiplier}}x por {{minutes}} minutos? Solo se puede usar una vez por en vivo.",
+    "boosterActivated": "🚀 ¡Impulso {{multiplier}}x activado!",
+    "boosterActivateFailed": "Error al activar el impulso",
+    "boosterCancelConfirm": "¿Terminar el impulso anticipadamente?",
+    "boosterCancelled": "Impulso terminado",
+    "boosterActive": "{{multiplier}}x Igualación en progreso",
+    "boosterAmountMan": "{{amount}}",
+    "boosterMin": "{{min}}min",
+    "cameraAccessFailed": "Error al acceder a la cámara",
+    "cameraAudioToggle": "Alternar audio",
+    "cameraOff": "Apagar cámara",
+    "cameraOffTitle": "Apagar"
   },
   "admin": {
     "login": {
@@ -2393,6 +2407,30 @@
     "loginDesc": "Inicia sesión con una cuenta de vendedor.",
     "sellerLogin": "Inicio de sesión vendedor",
     "sellerSignup": "Registro de vendedor"
+  },
+  "broadcastNotify": {
+    "loginRequired": "Inicio de sesión requerido",
+    "unsubscribed": "Notificación cancelada",
+    "subscribeSuccess": "¡Te avisaremos cuando empiece la transmisión!",
+    "subscribeFailed": "Error al configurar la notificación",
+    "consentHint": "Por favor acepta los permisos de Kakao e inténtalo de nuevo",
+    "calendarAdded": "¡Añadido al calendario de Kakao!",
+    "calendarIcsDesc": "El horario de transmisión aún no está configurado",
+    "calendarDownloadSuccess": "📆 Descargando archivo de calendario",
+    "calendarDownloadFailed": "Error al descargar el calendario",
+    "googleCalendarOpened": "Se abre Google Calendar",
+    "reauth": "La autenticación de Kakao expiró. Por favor inicia sesión de nuevo.",
+    "notifyOn": "🔔 Notificación ON",
+    "notify": "🔔 Notificar",
+    "processing": "Procesando...",
+    "notifySet": "🔔 Notificación configurada",
+    "notifyRequest": "🔔 Recibir notificaciones",
+    "adding": "Añadiendo...",
+    "kakaoCalendar": "📅 Añadir al calendario de Kakao",
+    "googleCalendar": "📅 Añadir al calendario",
+    "calendarKr": "📅 Calendario",
+    "calendarEn": "📅 Calendar",
+    "googleCalendarTitle": "Transmisión en vivo de UrDeal"
   },
   "auth": {
     "alreadyHaveAccount": "Already have an account?",
@@ -3206,7 +3244,14 @@
     "donationInsufficient": "Deals insuficientes.",
     "donationChargeNow": "Recargar Ahora",
     "donationProcessing": "Donando...",
-    "donationBtn": "Donar {{amount}} Deals"
+    "donationBtn": "Donar {{amount}} Deals",
+    "donationInsufficientAlert": "Deals insuficientes. Por favor recarga e intenta de nuevo.",
+    "donationSuccessMsg": "¡Donaste {{amount}} deals!",
+    "donationDonorDefault": "Donador",
+    "donationFailed": "La donación falló.",
+    "donationCenterAlert": "¡{{name}} donó {{amount}} deals!",
+    "donationBalance": "{{amount}} Deals",
+    "timeDealJoinFailed": "Error al unirse"
   },
   "paymentFail": {
     "title": "Pago fallido",
