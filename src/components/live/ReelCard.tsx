@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ShoppingBag, MessageCircle, X, Send } from 'lucide-react'
@@ -101,14 +101,14 @@ import { ProductListSheet } from '@/components/live/ProductListSheet'
 import { formatNumber } from '@/utils/format'
 export type { Stream, Product, ReelData, YTPlayer, YTPlayerEvent, ApiError }
 
-export default function ReelCard({ 
-  reel, 
-  isActive, 
-  isCurrentProduct = false 
-}: { 
+function ReelCardImpl({
+  reel,
+  isActive,
+  isCurrentProduct = false
+}: {
   reel: ReelData
   isActive: boolean
-  isCurrentProduct?: boolean 
+  isCurrentProduct?: boolean
 }) {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -1315,3 +1315,7 @@ export default function ReelCard({
     </div>
   )
 }
+
+// React.memo: reel 객체 동일 참조 + isActive/isCurrentProduct 동일 시 재렌더링 skip.
+// 무한 스크롤 카드 다수 마운트 시 비활성 카드의 불필요한 re-render 차단 (LivePageV2 activeIndex 변경 → 모든 카드 재렌더링 방지).
+export default memo(ReelCardImpl)

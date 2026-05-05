@@ -59,6 +59,29 @@ if (import.meta.env.PROD) {
   }, 1000)
 }
 
+// 🛡️ iOS Safari web: visualViewport API 로 키보드 감지 → body.keyboard-open 클래스 토글.
+//   기존 Capacitor 핸들러는 native 앱 전용. 웹 Safari/Chrome 모바일 에서도 동일 동작 필요.
+//   100px threshold = 키보드 외 다른 viewport 변화(주소창 등) 와 구분.
+try {
+  if (typeof window !== 'undefined' && 'visualViewport' in window) {
+    const vv = window.visualViewport!
+    let isOpen = false
+    const handler = () => {
+      const opened = vv.height < window.innerHeight - 100
+      if (opened !== isOpen) {
+        isOpen = opened
+        document.body.classList.toggle('keyboard-open', opened)
+        document.documentElement.style.setProperty(
+          '--keyboard-height',
+          opened ? `${window.innerHeight - vv.height}px` : '0px'
+        )
+      }
+    }
+    vv.addEventListener('resize', handler)
+    vv.addEventListener('scroll', handler)
+  }
+} catch { /* noop */ }
+
 // 🛡️ 2026-05-04 (perf): GTM lazy load — React mount 후 idle 시점에 로드해
 //   초기 페이로드 ~100KB 차단 회피 (iPhone Safari freeze 완화).
 if (import.meta.env.PROD) {

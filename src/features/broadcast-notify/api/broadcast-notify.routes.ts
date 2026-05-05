@@ -153,62 +153,55 @@ broadcastNotifyRoutes.post('/send/:streamId', requireAuth(), async (c) => {
 
   if (!subs || subs.length === 0) return c.json({ success: true, data: { sent: 0 } });
 
-  let sentCount = 0;
+  // 테이블 보장 (1회)
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS user_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL,
+      title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run().catch(swallow('broadcast-notify:api:broadcast-notify'));
 
+  const sellerName = seller?.name || '셀러';
+
+  // 1. 인앱 알림 batch + 발송완료 마킹 batch — 단일 트랜잭션으로 처리
+  const dbStmts = [];
   for (const sub of subs) {
-    // 1. 인앱 알림 (user_notifications 테이블)
     if (sub.notify_inapp) {
-      try {
-        await DB.prepare(`
-          CREATE TABLE IF NOT EXISTS user_notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL,
-            title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-          )
-        `).run().catch(swallow('broadcast-notify:api:broadcast-notify'));
-
-        await DB.prepare(`
-          INSERT INTO user_notifications (user_id, type, title, message, link)
-          VALUES (?, 'broadcast_start', ?, ?, ?)
-        `).bind(
-          sub.user_id,
-          `🔴 ${seller?.name || '셀러'} 라이브 시작!`,
-          stream.title,
-          `/live/${stream.id}`
-        ).run();
-      } catch {}
+      dbStmts.push(DB.prepare(`
+        INSERT INTO user_notifications (user_id, type, title, message, link)
+        VALUES (?, 'broadcast_start', ?, ?, ?)
+      `).bind(sub.user_id, `🔴 ${sellerName} 라이브 시작!`, stream.title, `/live/${stream.id}`));
     }
-
-    // 2. 알림톡 (전화번호 있는 경우)
-    if (sub.notify_alimtalk && sub.user_phone) {
-      try {
-        const { sendAlimtalk } = await import('../../../features/alimtalk/aligo');
-        const aligoApiKey = (c.env as any).ALIGO_API_KEY;
-        const aligoUserId = (c.env as any).ALIGO_USER_ID;
-        const aligoSenderKey = (c.env as any).ALIGO_SENDER_KEY;
-
-        if (aligoApiKey && aligoUserId && aligoSenderKey) {
-          await sendAlimtalk({
-            apikey: aligoApiKey,
-            userid: aligoUserId,
-            senderkey: aligoSenderKey,
-            tpl_code: (c.env as any).ALIMTALK_BROADCAST_TPL || 'TBD',
-            sender: (c.env as any).ALIGO_SENDER_PHONE || '',
-            receiver_1: sub.user_phone,
-            recvname_1: sub.user_name || '고객',
-            subject_1: '라이브 방송 시작 알림',
-            message_1: `${seller?.name || '셀러'}님의 라이브 방송이 시작되었습니다!\n\n📺 ${stream.title}\n\n👉 지금 바로 시청하기\nhttps://live.ur-team.com/live/${stream.id}`,
-          }).catch(swallow('broadcast-notify:api:broadcast-notify'));
-        }
-      } catch {}
-    }
-
-    // 발송 완료 마킹
-    await DB.prepare('UPDATE broadcast_subscriptions SET notified = 1 WHERE id = ?').bind(sub.id).run();
-    sentCount++;
+    dbStmts.push(DB.prepare('UPDATE broadcast_subscriptions SET notified = 1 WHERE id = ?').bind(sub.id));
+  }
+  if (dbStmts.length > 0) {
+    await DB.batch(dbStmts).catch(swallow('broadcast-notify:api:broadcast-notify-batch'));
   }
 
-  return c.json({ success: true, data: { sent: sentCount, total: subs.length } });
+  // 2. 알림톡 — 외부 API 병렬 호출 (Promise.allSettled)
+  const aligoApiKey = (c.env as any).ALIGO_API_KEY;
+  const aligoUserId = (c.env as any).ALIGO_USER_ID;
+  const aligoSenderKey = (c.env as any).ALIGO_SENDER_KEY;
+  const alimtalkSubs = subs.filter(s => s.notify_alimtalk && s.user_phone);
+  if (alimtalkSubs.length > 0 && aligoApiKey && aligoUserId && aligoSenderKey) {
+    try {
+      const { sendAlimtalk } = await import('../../../features/alimtalk/aligo');
+      await Promise.allSettled(alimtalkSubs.map(sub => sendAlimtalk({
+        apikey: aligoApiKey,
+        userid: aligoUserId,
+        senderkey: aligoSenderKey,
+        tpl_code: (c.env as any).ALIMTALK_BROADCAST_TPL || 'TBD',
+        sender: (c.env as any).ALIGO_SENDER_PHONE || '',
+        receiver_1: sub.user_phone,
+        recvname_1: sub.user_name || '고객',
+        subject_1: '라이브 방송 시작 알림',
+        message_1: `${sellerName}님의 라이브 방송이 시작되었습니다!\n\n📺 ${stream.title}\n\n👉 지금 바로 시청하기\nhttps://live.ur-team.com/live/${stream.id}`,
+      }).catch(swallow('broadcast-notify:api:broadcast-notify-alimtalk'))));
+    } catch {}
+  }
+
+  return c.json({ success: true, data: { sent: subs.length, total: subs.length } });
 });
 
 export { broadcastNotifyRoutes };
