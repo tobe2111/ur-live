@@ -369,7 +369,7 @@ export default function ProductDetailPage() {
                 <span>{product.group_buy_current || 0}명 참여 · {product.group_buy_target}명 목표</span>
                 {product.group_buy_deadline && <GroupBuyCountdown deadline={product.group_buy_deadline} />}
               </div>
-              <div className="w-full rounded-full overflow-hidden h-1 bg-white/15">
+              <div className="w-full rounded-full overflow-hidden h-1 bg-white dark:bg-[#0A0A0A]/15">
                 <div className="h-full rounded-full bg-gradient-to-r from-red-500 to-pink-500 transition-all duration-500"
                   style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }} />
               </div>

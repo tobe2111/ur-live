@@ -133,6 +133,21 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
     return c.json({ success: false, error: '현재 라이브 중인 방송에만 후원할 수 있습니다' }, 400);
   }
 
+  // 🛡️ 2026-05-05 P0: 자기 자신에게 후원 차단 (셀러 = 후원자 = 어뷰징 패턴)
+  try {
+    const sellerOwner = await DB.prepare('SELECT user_id FROM sellers WHERE id = ?')
+      .bind(stream.seller_id).first<{ user_id: string }>();
+    if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(userId)) {
+      try {
+        await DB.prepare(
+          `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
+           VALUES ('self_donation', ?, 'donation', ?, ?, 'high')`
+        ).bind(String(userId), `stream-${body.stream_id}`, JSON.stringify({ amount: body.amount, sellerId: stream.seller_id })).run();
+      } catch { /* abuse_detections may not exist yet */ }
+      return c.json({ success: false, error: '본인 라이브에 후원할 수 없습니다' }, 400);
+    }
+  } catch { /* sellers row missing — skip check */ }
+
   const orderId = `DON-${userId}-${stream.id}-${Date.now()}`;
   const commissionAmount = Math.round(body.amount * stream.commission_rate / 100);
   const creditAmount = body.amount - commissionAmount;

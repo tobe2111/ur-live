@@ -420,6 +420,50 @@ export function requireAdmin() {
 }
 
 /**
+ * Admin sub-roles (2026-05-05 P0):
+ *   - 'super':   전권 (default for legacy admins)
+ *   - 'ops':     운영 (settlement/refund 제외)
+ *   - 'cs':      CS — 조회 + 환불 승인
+ *   - 'finance': 정산/환불/수수료 변경 전권
+ *
+ * Migration 0242: admin_users.role 컬럼 추가됨. 'super' 가 fallback.
+ * 사용:
+ *   adminSettlementRoutes.post('/approve', requireAdminRole('finance'), handler)
+ *   adminRefundRoutes.post('/refund', requireAdminRole('cs', 'finance'), handler)
+ */
+export type AdminRole = 'super' | 'ops' | 'cs' | 'finance';
+export function requireAdminRole(...allowed: AdminRole[]) {
+  return async (c: Context, next: Next) => {
+    // 1) admin 인증 확인
+    const inner = requireUserType('admin');
+    let blocked = false;
+    await inner(c, async () => {});
+    if (c.res.status === 401 || c.res.status === 403) blocked = true;
+    if (blocked) return c.res;
+
+    const user = (c as Context & { get: (k: string) => unknown }).get('user') as { id?: string | number } | undefined;
+    if (!user?.id) return c.json(forbiddenResponse('관리자 인증 필요'), 403);
+
+    try {
+      const row = await (c.env as { DB: D1Database }).DB
+        .prepare('SELECT role FROM admins WHERE id = ?')
+        .bind(String(user.id))
+        .first<{ role?: string }>();
+      // 기존 'super_admin' 값과 신규 'super' 둘 다 전권으로 인정
+      const rawRole = row?.role || 'super';
+      const role = (rawRole === 'super_admin' ? 'super' : rawRole) as AdminRole;
+      // super 는 모든 권한
+      if (role === 'super') { await next(); return; }
+      if (allowed.includes(role)) { await next(); return; }
+      return c.json(forbiddenResponse(`이 작업은 ${allowed.join('/')} 권한이 필요합니다 (현재: ${role})`), 403);
+    } catch (err) {
+      // role 컬럼 없거나 조회 실패 — 기본은 super 로 fallback (역호환)
+      await next();
+    }
+  };
+}
+
+/**
  * Require user (buyer) authentication
  */
 export function requireUser() {

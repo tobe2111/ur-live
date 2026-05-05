@@ -183,6 +183,35 @@ export async function calculateMultiTierCommission(
 
   if (!buyerNode || !buyerNode.parent_id) return []
 
+  // 🛡️ 2026-05-05 P0: 셀프 추천 / 셀프 구매 차단 (어뷰징 방지)
+  //   - parent_id / grandparent_id 가 자기 자신 = 자기 추천
+  //   - 주문의 seller user_id == buyer = 셀프 구매 (커미션 미지급)
+  if (buyerNode.parent_id === buyerUserId || buyerNode.grandparent_id === buyerUserId) {
+    try {
+      await DB.prepare(
+        `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
+         VALUES ('self_referral', ?, 'order', ?, ?, 'high')`
+      ).bind(buyerUserId, String(orderId), JSON.stringify({ buyerNode })).run()
+    } catch { /* abuse_detections may not exist yet */ }
+    return []
+  }
+  try {
+    const sellerOwner = await queryFirst<{ user_id: string }>(
+      DB,
+      `SELECT s.user_id FROM orders o JOIN sellers s ON o.seller_id = s.id WHERE o.id = ? LIMIT 1`,
+      [orderId],
+    )
+    if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(buyerUserId)) {
+      try {
+        await DB.prepare(
+          `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
+           VALUES ('self_purchase', ?, 'order', ?, ?, 'high')`
+        ).bind(buyerUserId, String(orderId), JSON.stringify({ sellerOwner })).run()
+      } catch { /* */ }
+      return []
+    }
+  } catch { /* */ }
+
   // 2. Prevent duplicate commissions for the same order
   const existing = await queryFirst<{ id: number }>(
     DB,
@@ -248,13 +277,18 @@ export async function calculateMultiTierCommission(
     }
   }
 
-  // Tier 3 — great-grandparent
-  if (buyerNode.great_grandparent_id) {
-    const amount = Math.round(orderAmount * rates.tier3 / 100)
-    if (amount > 0) {
-      commissions.push({ tier: 3, beneficiary_id: buyerNode.great_grandparent_id, rate: rates.tier3, amount })
-    }
-  }
+  // 🛡️ 2026-05-05: Tier 3 (great-grandparent) 커미션 비활성화.
+  //   한국 「방문판매 등에 관한 법률」 다단계 판매 적용 기준 회피:
+  //   - 3단계 이상 + 하위 거래실적 비례 보상 = 다단계 판매업 등록 의무 대상
+  //   - 본 서비스는 2단계까지만 보상 (parent / grandparent) → 다단계 미해당
+  //   재활성화 필요 시 변호사 의견서 + 다단계 판매업 등록 후.
+  // const TIER3_ENABLED = false
+  // if (TIER3_ENABLED && buyerNode.great_grandparent_id) {
+  //   const amount = Math.round(orderAmount * rates.tier3 / 100)
+  //   if (amount > 0) {
+  //     commissions.push({ tier: 3, beneficiary_id: buyerNode.great_grandparent_id, rate: rates.tier3, amount })
+  //   }
+  // }
 
   if (commissions.length === 0) return []
 

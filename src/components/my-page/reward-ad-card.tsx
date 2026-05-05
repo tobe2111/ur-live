@@ -28,7 +28,7 @@ export function RewardAdCard() {
             </div>
             <div className="flex-1">
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">앱 다운로드하고 추가 딜 받기!</p>
-              <p className="text-[11px] text-gray-500">광고 시청으로 매일 무료 딜 포인트 적립</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">광고 시청으로 매일 무료 딜 포인트 적립</p>
             </div>
           </div>
           <div className="flex gap-2 mt-3">
@@ -143,7 +143,7 @@ export function RewardAdCard() {
             </div>
             <div>
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">광고 보고 딜 받기</p>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
                 {isMaxed
                   ? '내일 다시 시청 가능합니다'
                   : `오늘 ${remaining}회 남음 · 1회 ${status.rewardPerAd}딜`}
@@ -167,7 +167,7 @@ export function RewardAdCard() {
         </div>
 
         {/* 진행 바 */}
-        <div className="mt-3 bg-white/10 rounded-full h-1.5 overflow-hidden">
+        <div className="mt-3 bg-white dark:bg-[#0A0A0A]/10 rounded-full h-1.5 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500"
             style={{ width: `${status.dailyLimit > 0 ? (status.todayCount / status.dailyLimit) * 100 : 0}%` }}

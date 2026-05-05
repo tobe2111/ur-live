@@ -420,7 +420,7 @@ export default function BrowsePage() {
                         <span className="rounded-md px-2 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">-{heroDiscount}%</span>
                       )}
                     </div>
-                    <div className="absolute bottom-2 right-2 rounded-full p-2 bg-white/90 backdrop-blur-sm">
+                    <div className="absolute bottom-2 right-2 rounded-full p-2 bg-white dark:bg-[#0A0A0A]/90 backdrop-blur-sm">
                       <Heart className="w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
                     </div>
                   </div>
@@ -463,7 +463,7 @@ export default function BrowsePage() {
                           -{discountRate}%
                         </span>
                       )}
-                      <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white/85 backdrop-blur-sm">
+                      <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
                         {isMealVoucher ? (
                           <Bell
                             onClick={(e: React.MouseEvent) => toggleInterest(e, product.id, product.name)}

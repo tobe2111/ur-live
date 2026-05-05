@@ -680,7 +680,7 @@ export default function RestaurantMapPage() {
           <button
             onClick={() => navigate(-1)}
             aria-label="뒤로가기"
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/95 backdrop-blur-md shadow-md shrink-0"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md shrink-0"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
@@ -822,7 +822,7 @@ export default function RestaurantMapPage() {
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
               {activeFilterCount > 0 && (
-                <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white/25 text-[10px] font-bold">
+                <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#0A0A0A]/25 text-[10px] font-bold">
                   {activeFilterCount}
                 </span>
               )}
@@ -908,7 +908,7 @@ export default function RestaurantMapPage() {
           {selected && (
             /* 선택된 맛집 디테일 카드 (sheet mid/full 일 때 list 위에 표시) */
             <div className="bg-pink-50 border-2 border-pink-300 rounded-2xl p-4 mb-3 relative">
-              <button onClick={() => setSelected(null)} aria-label="선택 해제" className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white/80">
+              <button onClick={() => setSelected(null)} aria-label="선택 해제" className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/80">
                 <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
               </button>
               <div className="flex gap-3 pr-6">
