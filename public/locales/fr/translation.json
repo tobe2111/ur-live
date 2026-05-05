@@ -1902,7 +1902,21 @@
     "cameraPreviewOn": "Activer l'aperçu caméra",
     "cameraPreviewDesc": "Vérifiez votre écran avant la diffusion (aperçu local, sans effet sur la diffusion)",
     "cameraDefault": "Caméra",
-    "cameraLocalPreview": "🔒 Aperçu local"
+    "cameraLocalPreview": "🔒 Aperçu local",
+    "liveGuideItem_intro_title": "Présentation de 10-20 secondes",
+    "liveGuideItem_intro_desc": "Pseudo + thème du live d'aujourd'hui + message de bienvenue",
+    "liveGuideItem_background_title": "Arrière-plan propre",
+    "liveGuideItem_background_desc": "Espace rangé et organisé. Retirez les éléments distrayants",
+    "liveGuideItem_lighting_title": "Vérifier l'éclairage",
+    "liveGuideItem_lighting_desc": "Assurez-vous que votre visage n'est pas dans l'ombre — lumière frontale ou anneau lumineux recommandé",
+    "liveGuideItem_mic_title": "Vérifier micro/son",
+    "liveGuideItem_mic_desc": "Test de 5 secondes pour l'écho ou le bruit",
+    "liveGuideItem_title_title": "Titre attractif",
+    "liveGuideItem_title_desc": "Mots-clés + emoji pour captiver la curiosité des spectateurs",
+    "liveGuideItem_product_title": "Organiser les produits",
+    "liveGuideItem_product_desc": "Pré-enregistrez les produits d'aujourd'hui + vérifiez le stock",
+    "liveGuideItem_response_title": "Message d'accueil",
+    "liveGuideItem_response_desc": "Appelez les spectateurs par leur nom comme \"Bienvenue, ○○ !\""
   },
   "admin": {
     "login": {
@@ -3421,6 +3435,7 @@
     "restoreWhenNewDesc": "Vous recommencez à zéro. Les données précédentes seront définitivement supprimées après 30 jours.",
     "restoring": "Restauration...",
     "restoreBtn": "Restaurer le Compte Précédent",
-    "newAccountBtn": "Commencer avec un Nouveau Compte"
+    "newAccountBtn": "Commencer avec un Nouveau Compte",
+    "restoreFailed": "Échec de la restauration"
   }
 }

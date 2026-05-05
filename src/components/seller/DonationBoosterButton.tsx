@@ -48,7 +48,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
   }, [liveStreamId])
 
   async function startBooster(multiplier: number, durationSec: number) {
-    if (!confirm(`${multiplier}x 매칭 부스터를 ${Math.floor(durationSec / 60)}분 동안 발동하시겠습니까? 라이브 1회당 1번만 사용 가능합니다.`)) return
+    if (!confirm(t('seller.boosterConfirm', { multiplier, minutes: Math.floor(durationSec / 60), defaultValue: `${multiplier}x 매칭 부스터를 ${Math.floor(durationSec / 60)}분 동안 발동하시겠습니까? 라이브 1회당 1번만 사용 가능합니다.` }))) return
     try {
       const token = localStorage.getItem('seller_token')
       const r = await api.post('/api/donation-boosters', {
@@ -57,26 +57,26 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
         duration_seconds: durationSec,
       }, { headers: { Authorization: `Bearer ${token}` } })
       if (r.data.success) {
-        toast.success(`🚀 ${multiplier}x 부스터 발동!`)
+        toast.success(t('seller.boosterActivated', { multiplier, defaultValue: `🚀 ${multiplier}x 부스터 발동!` }))
         setShowOptions(false)
         fetchActive()
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || '부스터 발동 실패')
+      toast.error(err?.response?.data?.error || t('seller.boosterActivateFailed', { defaultValue: '부스터 발동 실패' }))
     }
   }
 
   async function cancelBooster() {
     if (!active) return
-    if (!confirm('부스터를 조기 종료하시겠습니까?')) return
+    if (!confirm(t('seller.boosterCancelConfirm', { defaultValue: '부스터를 조기 종료하시겠습니까?' }))) return
     try {
       const token = localStorage.getItem('seller_token')
       await api.post(`/api/donation-boosters/${active.id}/cancel`, {},
         { headers: { Authorization: `Bearer ${token}` } })
-      toast.info('부스터 종료됨')
+      toast.info(t('seller.boosterCancelled', { defaultValue: '부스터 종료됨' }))
       fetchActive()
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || '실패')
+      toast.error(err?.response?.data?.error || t('common.error', { defaultValue: '실패' }))
     }
   }
 
@@ -93,7 +93,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5 text-sm font-bold">
             <Zap className="w-4 h-4 fill-white" />
-            <span>{active.multiplier}x 매칭 진행 중</span>
+            <span>{t('seller.boosterActive', { multiplier: active.multiplier, defaultValue: '{{multiplier}}x 매칭 진행 중' })}</span>
           </div>
           <button onClick={cancelBooster} className="text-white/80 hover:text-white">
             <X className="w-4 h-4" />

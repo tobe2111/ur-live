@@ -1902,7 +1902,21 @@
     "cameraPreviewOn": "Activar Vista Previa de Cámara",
     "cameraPreviewDesc": "Verifica tu pantalla antes de transmitir (vista previa local, sin efecto en la transmisión)",
     "cameraDefault": "Cámara",
-    "cameraLocalPreview": "🔒 Vista previa local"
+    "cameraLocalPreview": "🔒 Vista previa local",
+    "liveGuideItem_intro_title": "Presentación de 10-20 segundos",
+    "liveGuideItem_intro_desc": "Apodo + tema del live de hoy + mensaje de bienvenida",
+    "liveGuideItem_background_title": "Fondo limpio",
+    "liveGuideItem_background_desc": "Espacio ordenado. Quita objetos que distraigan",
+    "liveGuideItem_lighting_title": "Verificar iluminación",
+    "liveGuideItem_lighting_desc": "Asegúrate que tu cara no esté oscura — luz frontal o aro de luz recomendado",
+    "liveGuideItem_mic_title": "Verificar mic/sonido",
+    "liveGuideItem_mic_desc": "Prueba de 5 segundos para eco o ruido",
+    "liveGuideItem_title_title": "Título atractivo",
+    "liveGuideItem_title_desc": "Palabras clave + emoji para captar la curiosidad del espectador",
+    "liveGuideItem_product_title": "Organizar productos",
+    "liveGuideItem_product_desc": "Pre-registra productos de hoy + verifica stock",
+    "liveGuideItem_response_title": "Saludo a espectadores",
+    "liveGuideItem_response_desc": "Nombra a los espectadores como \"¡Bienvenido/a, ○○!\""
   },
   "admin": {
     "login": {
@@ -3421,6 +3435,7 @@
     "restoreWhenNewDesc": "Comenzarás de nuevo. Los datos anteriores se eliminarán permanentemente después de 30 días.",
     "restoring": "Restaurando...",
     "restoreBtn": "Restaurar Cuenta Anterior",
-    "newAccountBtn": "Comenzar con Cuenta Nueva"
+    "newAccountBtn": "Comenzar con Cuenta Nueva",
+    "restoreFailed": "Error al restaurar"
   }
 }

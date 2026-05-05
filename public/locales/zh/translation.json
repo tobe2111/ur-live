@@ -2498,7 +2498,21 @@
     "cameraPreviewOn": "开启摄像头预览",
     "cameraPreviewDesc": "播出前确认自己的画面（本地预览，不影响播出）",
     "cameraDefault": "摄像头",
-    "cameraLocalPreview": "🔒 本地预览"
+    "cameraLocalPreview": "🔒 本地预览",
+    "liveGuideItem_intro_title": "10-20秒自我介绍准备",
+    "liveGuideItem_intro_desc": "简单昵称 + 今天直播主题 + 欢迎加油留言",
+    "liveGuideItem_background_title": "整理背景",
+    "liveGuideItem_background_desc": "整洁有序的空间。清除杂乱物品",
+    "liveGuideItem_lighting_title": "检查照明",
+    "liveGuideItem_lighting_desc": "确保面部不暗 — 推荐正面光源或环形灯",
+    "liveGuideItem_mic_title": "检查麦克风/声音",
+    "liveGuideItem_mic_desc": "5秒测试是否有回声或杂音",
+    "liveGuideItem_title_title": "吸引人的标题",
+    "liveGuideItem_title_desc": "激发观众好奇心的关键词 + 表情符号",
+    "liveGuideItem_product_title": "整理销售商品",
+    "liveGuideItem_product_desc": "提前注册今天要展示的商品 + 确认库存",
+    "liveGuideItem_response_title": "观众接待台词",
+    "liveGuideItem_response_desc": "入场时像\"欢迎○○！\"这样叫出名字"
   },
   "admin": {
     "login": {
@@ -3421,6 +3435,7 @@
     "restoreWhenNewDesc": "重新开始。之前的数据将在30天后永久删除。",
     "restoring": "恢复中...",
     "restoreBtn": "恢复上一个账户",
-    "newAccountBtn": "使用新账户开始"
+    "newAccountBtn": "使用新账户开始",
+    "restoreFailed": "恢复失败"
   }
 }
