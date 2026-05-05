@@ -33,6 +33,7 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
 
   useEffect(() => {
     const poll = () => {
+      if (document.hidden) return
       api.get(`/api/timedeal/stream/${streamId}`).then(r => {
         if (r.data.success && r.data.data && r.data.data.status === 'active') {
           const d = r.data.data
@@ -50,9 +51,10 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
       }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     }
     poll()
-    // 🛡️ 2026-04-29 perf audit: 2초 → 5초 폴링 완화 (서버 부하 ↓ 다중 사용자 × 라이브 페이지)
     const iv = setInterval(poll, 5000)
-    return () => clearInterval(iv)
+    const onVisible = () => { if (!document.hidden) poll() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(iv); document.removeEventListener('visibilitychange', onVisible) }
   }, [streamId])
 
   useEffect(() => {

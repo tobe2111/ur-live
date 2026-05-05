@@ -49,11 +49,14 @@ export function useProductStock(productId: number | null): {
     }
 
     poll()
-    const interval = setInterval(poll, POLL_INTERVAL_MS)
+    const interval = setInterval(() => { if (!document.hidden) poll() }, POLL_INTERVAL_MS)
+    const onVisible = () => { if (!document.hidden) poll() }
+    document.addEventListener('visibilitychange', onVisible)
 
     return () => {
       cancelled = true
       clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [productId])
 

@@ -155,9 +155,12 @@ export default function SellerPage() {
     pollOrders()
     // 10s polling interval for near real-time order updates
     // (SSE upgrade deferred due to Cloudflare Workers CPU/duration limits)
-    const interval = setInterval(() => pollOrders(), 10000)
+    const interval = setInterval(() => { if (!document.hidden) pollOrders() }, 10000)
+    const onVisible = () => { if (!document.hidden) pollOrders() }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
       if (newOrderTimerRef.current) clearTimeout(newOrderTimerRef.current)
     }
   }, [pollOrders])
