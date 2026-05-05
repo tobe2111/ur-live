@@ -8,6 +8,7 @@ import SEO from '@/components/SEO'
 import { isKorea } from '@/shared/config/region'
 import { storage } from '@/shared/utils/storage'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { formatNumber } from '@/utils/format'
 
 // 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
 // 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.

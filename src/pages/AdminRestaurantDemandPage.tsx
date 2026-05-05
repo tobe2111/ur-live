@@ -7,6 +7,7 @@
  * 🛡️ 2026-04-28: restaurant-map 옵션 B 의 admin 대시보드.
  */
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { TrendingUp, MapPin, Phone, Bell, Handshake, RefreshCw, Navigation } from 'lucide-react'

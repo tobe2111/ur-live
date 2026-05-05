@@ -128,7 +128,9 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     return exact ? location.pathname === path : location.pathname.startsWith(path)
   }
 
-  const Sidebar = () => (
+  // 🛡️ 사이드바를 함수 컴포넌트가 아닌 JSX 변수로 — re-render 시 새 함수 참조 방지
+  // (이전엔 navigation 마다 unmount/remount → <nav> 스크롤 reset 버그 발생).
+  const sidebar = (
     <aside className="w-[232px] flex-shrink-0 flex flex-col h-full" style={{ background: '#0A0A0B' }}>
       {/* Branding */}
       <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -262,13 +264,13 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       )}
 
       <div className="hidden lg:flex">
-        <Sidebar />
+        {sidebar}
       </div>
 
       <div className={`fixed inset-y-0 left-0 z-50 lg:hidden transition-transform duration-300 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        <Sidebar />
+        {sidebar}
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
