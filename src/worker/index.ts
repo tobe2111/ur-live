@@ -51,6 +51,7 @@ import { adminAnalyticsRoutes } from '../features/admin/api/admin-analytics.rout
 import { adminModerationRoutes } from '../features/admin/api/admin-moderation.routes';
 import { adminUsersRoutes } from '../features/admin/api/admin-users.routes';
 import { adminMiscRoutes } from '../features/admin/api/admin-misc.routes';
+import { adminAbuseRoutes } from '../features/admin/api/admin-abuse.routes';
 import { adminReviewGeneratorRoutes } from '../features/admin/api/admin-review-generator.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
@@ -906,6 +907,8 @@ adminApp.route('/', adminModerationRoutes);
 adminApp.route('/', adminUsersRoutes);
 // 🛡️ 2026-04-22 배치 155 (TD-006 부분): admin-misc (donations/deals/commission/audit) 분리
 adminApp.route('/', adminMiscRoutes);
+// 2026-05-05: 어뷰징 탐지 + 광고 슬롯 관리
+adminApp.route('/', adminAbuseRoutes);
 // 🛡️ 2026-04-22 배치 156 (TD-006 부분): admin-review-generator 분리
 adminApp.route('/', adminReviewGeneratorRoutes);
 adminApp.route('/banners', adminBannersRoutes);

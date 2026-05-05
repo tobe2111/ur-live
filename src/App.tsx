@@ -156,6 +156,8 @@ const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
 const AdminReplayPage = lazy(() => import('./pages/AdminReplayPage'))
 const AdminCouponsPage = lazy(() => import('./pages/AdminCouponsPage'))
 const AdminAuditLogPage = lazy(() => import('./pages/AdminAuditLogPage'))
+const AdminAbusePage = lazy(() => import('./pages/AdminAbusePage'))
+const AdminAdSlotsPage = lazy(() => import('./pages/AdminAdSlotsPage'))
 const AdminRevenueAnalyticsPage = lazy(() => import('./pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('./pages/AdminAccountsPage'))
 const AdminLiveMonitorPage = lazy(() => import('./pages/AdminLiveMonitorPage'))
@@ -191,6 +193,7 @@ const AgencyInvitesPage = lazy(() => import('./pages/AgencyInvitesPage'))
 const AgencyPublicPage = lazy(() => import('./pages/AgencyPublicPage'))
 const AgencyPKBattlesPage = lazy(() => import('./pages/AgencyPKBattlesPage'))
 const AgencyTransfersPage = lazy(() => import('./pages/AgencyTransfersPage'))
+const AgencyMatchSuggestionsPage = lazy(() => import('./pages/AgencyMatchSuggestionsPage'))
 const SellerCastingsPage = lazy(() => import('./pages/SellerCastingsPage'))
 const AdminTikTokDiscoveryPage = lazy(() => import('./pages/AdminTikTokDiscoveryPage'))
 const AdminRestaurantDemandPage = lazy(() => import('./pages/AdminRestaurantDemandPage'))
@@ -797,6 +800,16 @@ function AppContent() {
               </ProtectedRoute>
             } />
 
+            <Route path="/admin/abuse" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminAbusePage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/ad-slots" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminAdSlotsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
             <Route path="/admin/audit-log" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminAuditLogPage /></ErrorBoundary>
@@ -864,6 +877,7 @@ function AppContent() {
             <Route path="/agency/invites" element={<AgencyAuthGuard><AgencyInvitesPage /></AgencyAuthGuard>} />
             <Route path="/agency/pk" element={<AgencyAuthGuard><AgencyPKBattlesPage /></AgencyAuthGuard>} />
             <Route path="/agency/transfers" element={<AgencyAuthGuard><AgencyTransfersPage /></AgencyAuthGuard>} />
+            <Route path="/agency/match-suggestions" element={<AgencyAuthGuard><AgencyMatchSuggestionsPage /></AgencyAuthGuard>} />
             <Route path="/agency/events" element={<AgencyAuthGuard><AgencySelfEventsPage /></AgencyAuthGuard>} />
             <Route path="/agency/promote-boosts" element={<AgencyAuthGuard><AgencyPromoteBoostsPage /></AgencyAuthGuard>} />
             <Route path="/a/:slug" element={<AgencyPublicPage />} />
