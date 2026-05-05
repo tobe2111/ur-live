@@ -4,10 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Home, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type TFn = (key: string, opts?: Record<string, any>) => string
-
-function SellerUpgradePanel({ onDone, t }: { onDone: () => void; t: TFn }) {
+function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-05-01: 이미 셀러로 등록된 user 면 "전환" UX, 아니면 "등록" UX.
   const hasSellerToken = !!localStorage.getItem('seller_token')
@@ -321,7 +319,6 @@ export default function BottomNav() {
                   {isLoggedIn && !isSeller && !isAgency && (
                     <SellerUpgradePanel
                       onDone={() => { setSheetOpen(false) }}
-                      t={t}
                     />
                   )}
 

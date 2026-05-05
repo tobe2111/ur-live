@@ -38,12 +38,12 @@ interface SellerOption {
   email?: string
 }
 
-const CATEGORY_LABEL: Record<Category, string> = {
-  invite: '초대',
-  follow_up: '팔로우업',
-  reactivation: '재활성화',
-  announcement: '공지',
-  general: '일반',
+const CATEGORY_LABEL_KEYS: Record<Category, string> = {
+  invite: 'agency.messages.categoryInvite',
+  follow_up: 'agency.messages.categoryFollowUp',
+  reactivation: 'agency.messages.categoryReactivation',
+  announcement: 'agency.messages.categoryAnnouncement',
+  general: 'agency.messages.categoryGeneral',
 }
 
 const CATEGORY_BADGE: Record<Category, string> = {
@@ -197,7 +197,7 @@ export default function AgencyMessagesPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <p className="text-sm font-bold text-gray-900">{tpl.name}</p>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${CATEGORY_BADGE[tpl.category]}`}>
-                          {CATEGORY_LABEL[tpl.category]}
+                          {t(CATEGORY_LABEL_KEYS[tpl.category], { defaultValue: tpl.category })}
                         </span>
                         {tpl.usage_count > 0 && (
                           <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold">
@@ -266,7 +266,7 @@ export default function AgencyMessagesPage() {
                 <label className="text-xs font-bold text-gray-700">{t('agency.messages.fieldCategory', { defaultValue: '카테고리' })}</label>
                 <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value as Category })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900">
-                  {Object.entries(CATEGORY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  {(Object.keys(CATEGORY_LABEL_KEYS) as Category[]).map(k => <option key={k} value={k}>{t(CATEGORY_LABEL_KEYS[k], { defaultValue: k })}</option>)}
                 </select>
               </div>
               <div>

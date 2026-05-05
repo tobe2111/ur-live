@@ -87,7 +87,7 @@
     "invalidPhone": "올바른 전화번호를 입력해주세요.",
     "addressRequired": "배송지를 선택해주세요.",
     "couponApplyFailed": "쿠폰 적용에 실패했습니다.",
-    "wishlistAdded": "위시리스트에 추가했습니다",
+    "wishlistAdded": "찜 목록에 추가되었습니다.",
     "comingSoon": "준비 중입니다",
     "loadFailed": "불러오지 못했습니다",
     "outOfStock": "품절된 상품입니다",
@@ -178,7 +178,11 @@
     "create": "생성",
     "sort": "정렬",
     "action": "액션",
-    "failed": "실패"
+    "failed": "실패",
+    "wishlistRemoved": "찜 목록에서 삭제되었습니다.",
+    "genericError": "오류가 발생했습니다. 다시 시도해주세요.",
+    "wishlistCancel": "찜 취소",
+    "wishlistAdd": "찜하기"
   },
   "auth": {
     "email": "이메일",
@@ -341,7 +345,23 @@
     "inStock": "재고 있음",
     "selectOption": "옵션 선택",
     "quantity": "수량",
-    "seller": "판매자"
+    "seller": "판매자",
+    "noticeInspectionTitle": "검수 포함",
+    "noticeInspectionDesc": "모든 상품은 철저한 검수 과정을 거칩니다",
+    "noticeShippingTitle": "배송 기간 5-7 영업일",
+    "noticeShippingDesc": "판매자 발송 및 검수 완료 후 배송됩니다",
+    "noticeReturnTitle": "교환/반품 안내",
+    "noticeReturnDesc": "상품 수령 후 7일 이내 교환/반품 가능합니다",
+    "optionNone": "사용 가능한 옵션이 없습니다.",
+    "optionLoadFail": "옵션을 불러올 수 없습니다.",
+    "optionLoadError": "옵션 조회 중 오류가 발생했습니다.",
+    "optionSelectAria": "{{name}} 옵션 선택",
+    "optionSelect": "옵션 선택",
+    "optionCloseAria": "옵션 선택 닫기",
+    "optionCurrent": "현재",
+    "optionSoldOut": "품절",
+    "optionCurrentLabel": "현재 선택:",
+    "optionChange": "옵션 변경"
   },
   "accountDeleteWarning": {
     "loginRequired": "로그인이 필요합니다.",
@@ -555,7 +575,19 @@
     "priceUnder30": "3만원 미만",
     "priceUnder50": "5만원 미만",
     "priceOver50": "5만원 이상",
-    "altProduct": "상품 이미지"
+    "altProduct": "상품 이미지",
+    "filterCategory": "카테고리",
+    "filterPrice30k": "3만원 이하",
+    "filterFreeShip": "무료배송",
+    "filterBrand": "브랜드",
+    "filterRating": "평점 4★↑",
+    "totalResultsPrefix": "총",
+    "totalResultsSuffix": "개",
+    "filterApplied": "필터 {{count}}개 적용",
+    "sortRelevance": "관련도순",
+    "sortPriceLow": "낮은가격",
+    "sortPriceHigh": "높은가격",
+    "sortNewest": "최신순"
   },
   "userProfile": {
     "docTitle": "마이페이지 - 유어딜",
@@ -2456,7 +2488,17 @@
     "liveGuideReady": "✨ 준비 완료!",
     "liveGuideTip": "💡 시청자 심리 팁: 시청자가 선물을 보내는 이유는 콘텐츠가 좋고 / 자신이 소중하다고 느끼고 / 셀러와 친해지고 싶어서 입니다. 이름 부르고 응대하는 것만으로 매출이 올라갑니다.",
     "liveGuideDontShow": "다시 표시하지 않기",
-    "liveGuideStart": "라이브 시작 →"
+    "liveGuideStart": "라이브 시작 →",
+    "boosterReceived": "받은 후원",
+    "boosterMatched": "매칭 추가",
+    "boosterOptions": "⚡ 후원 부스터 옵션",
+    "boosterNotice": "⚠️ 라이브 1회당 1번만 사용 가능. 매칭 금액은 시청자 결제와 별개로 시스템이 즉시 가산 처리합니다.",
+    "boosterActivate": "후원 부스터 발동",
+    "cameraDenied": "카메라 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.",
+    "cameraPreviewOn": "카메라 미리보기 켜기",
+    "cameraPreviewDesc": "방송 전 내 화면 확인 (로컬 미리보기, 방송에 영향 없음)",
+    "cameraDefault": "카메라",
+    "cameraLocalPreview": "🔒 로컬 미리보기"
   },
   "admin": {
     "login": {
@@ -2898,7 +2940,12 @@
     "scoreInfo": "점수 {{score}} · 수수료 {{rate}}% · 노출 {{weight}}×",
     "untilNext": "다음 등급까지",
     "pointsNeeded": "{{points}}점",
-    "viewDetail": "등급 자세히 보기"
+    "viewDetail": "등급 자세히 보기",
+    "tierDiamond": "다이아몬드",
+    "tierGold": "골드",
+    "tierSilver": "실버",
+    "tierBronze": "브론즈",
+    "tierNew": "신규"
   },
   "bottomNav": {
     "liveStartAria": "라이브 시작",
@@ -3135,7 +3182,17 @@
     "timeDealParticipants": "{{current}}/{{target}}명 참여중",
     "timeDealGroupTargetAchieved": "🎉 목표 달성! {{discount}}% 할인 적용!",
     "timeDealGroupNeedMore": "{{needMore}}명 더 모이면 -{{bonusDiscount}}% 추가 할인!",
-    "timeDealRemaining": "남은 수량 {{remaining}}개"
+    "timeDealRemaining": "남은 수량 {{remaining}}개",
+    "donationGift": "선물하기",
+    "donationTitle": "딜 후원",
+    "donationSubtitle": "셀러에게 응원을 보내세요!",
+    "donationMyDeal": "내 딜",
+    "donationCharge": "충전",
+    "donationMsgPlaceholder": "응원 메시지를 남겨보세요 (선택)",
+    "donationInsufficient": "딜이 부족합니다.",
+    "donationChargeNow": "충전하기",
+    "donationProcessing": "후원 중...",
+    "donationBtn": "{{amount}}딜 후원하기"
   },
   "paymentFail": {
     "title": "결제 실패",
