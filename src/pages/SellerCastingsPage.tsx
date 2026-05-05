@@ -76,6 +76,7 @@ export default function SellerCastingsPage() {
     rejectionReason: t('seller.castings.rejectionReason', { defaultValue: '거절 사유' }),
     acceptBtn: t('seller.castings.acceptBtn', { defaultValue: '수락' }),
     rejectBtn: t('seller.castings.rejectBtn', { defaultValue: '거절' }),
+    priceUnit: t('common.won', { defaultValue: '원' }),
   }
 
   return (
