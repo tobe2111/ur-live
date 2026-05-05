@@ -592,7 +592,7 @@ export default function SellerBusinessInfoPage() {
                 onChange={e => setBankInfo(prev => ({ ...prev, bank_name: e.target.value }))}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">은행을 선택해주세요</option>
+                <option value="">{t('seller.bankNameSelect', { defaultValue: '은행을 선택해주세요' })}</option>
                 {['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','SC제일은행','한국씨티은행','케이뱅크','카카오뱅크','토스뱅크','새마을금고','신협','우체국','부산은행','경남은행','대구은행','광주은행','전북은행','제주은행','수협은행','산업은행'].map(b => (
                   <option key={b} value={b}>{b}</option>
                 ))}
@@ -619,14 +619,14 @@ export default function SellerBusinessInfoPage() {
                   type="text"
                   value={bankInfo.account_holder}
                   onChange={e => setBankInfo(prev => ({ ...prev, account_holder: e.target.value }))}
-                  placeholder="홍길동"
+                  placeholder={t('seller.bizInfo.holderPlaceholder', { defaultValue: '홍길동' })}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
             <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
               <CreditCard className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-              <p>정산 요청 시 이 계좌로 입금됩니다. 계좌 정보가 정확한지 확인해주세요.</p>
+              <p>{t('seller.bankInfoNotice', { defaultValue: '정산 요청 시 이 계좌로 입금됩니다. 계좌 정보가 정확한지 확인해주세요.' })}</p>
             </div>
             <Button
               type="submit"

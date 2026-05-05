@@ -132,20 +132,20 @@ export default function SellerBundlesPage() {
               <h3 className="text-sm font-bold text-gray-900">
                 {editId ? t('seller.bundleEdit', '번들 수정') : t('seller.bundleCreate', '번들 만들기')}
               </h3>
-              <button onClick={resetForm} aria-label="닫기" className="p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+              <button onClick={resetForm} aria-label={t('common.close', { defaultValue: '닫기' })} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">{t('seller.bundleName', '번들 이름')}</label>
               <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="예) 맛집 세트 A" maxLength={80}
+                placeholder={t('seller.bundles.namePlaceholder', { defaultValue: '예) 맛집 세트 A' })} maxLength={80}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">{t('common.description', '설명')}</label>
               <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="번들 설명 (선택)" rows={2} maxLength={300}
+                placeholder={t('seller.bundles.descPlaceholder', { defaultValue: '번들 설명 (선택)' })} rows={2} maxLength={300}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none" />
             </div>
 
@@ -155,8 +155,8 @@ export default function SellerBundlesPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('seller.discountType', '할인 방식')}</label>
                 <select value={form.discount_type} onChange={e => setForm(f => ({ ...f, discount_type: e.target.value as 'percent' | 'fixed' }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900">
-                  <option value="percent">% 할인</option>
-                  <option value="fixed">원 할인</option>
+                  <option value="percent">{t('seller.bundles.discountPercent', { defaultValue: '% 할인' })}</option>
+                  <option value="fixed">{t('seller.bundles.discountFixed', { defaultValue: '원 할인' })}</option>
                 </select>
               </div>
               <div className="flex-1">
@@ -174,7 +174,7 @@ export default function SellerBundlesPage() {
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 {t('seller.bundleProducts', '상품 선택')} <span className="text-red-500">*</span>
-                {form.items.length > 0 && <span className="ml-1 text-blue-600 font-normal">{form.items.length}개 선택</span>}
+                {form.items.length > 0 && <span className="ml-1 text-blue-600 font-normal">{t('seller.bundles.selectedCount', { defaultValue: '{{count}}개 선택', count: form.items.length })}</span>}
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                 {products.filter(p => p.stock > 0).map(p => {
@@ -187,7 +187,7 @@ export default function SellerBundlesPage() {
                       {p.image_url && <img src={p.image_url} alt={p.name} className="w-8 h-8 rounded object-cover shrink-0" loading="lazy" />}
                       <div className="flex-1 min-w-0">
                         <p className="truncate font-medium text-gray-900">{p.name}</p>
-                        <p className="text-gray-500">{formatNumber(p.price)}원</p>
+                        <p className="text-gray-500">{formatNumber(p.price)}{t('common.won', { defaultValue: '원' })}</p>
                       </div>
                       {selected && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
                     </button>
@@ -200,12 +200,14 @@ export default function SellerBundlesPage() {
             {form.items.length >= 2 && (
               <div className="bg-blue-50 rounded-lg p-3 flex items-center justify-between">
                 <div className="text-xs text-gray-600">
-                  <span className="line-through">{formatNumber(selectedTotal)}원</span>
+                  <span className="line-through">{formatNumber(selectedTotal)}{t('common.won', { defaultValue: '원' })}</span>
                   <span className="mx-1.5">→</span>
-                  <span className="text-lg font-bold text-blue-700">{formatNumber(discountedTotal)}원</span>
+                  <span className="text-lg font-bold text-blue-700">{formatNumber(discountedTotal)}{t('common.won', { defaultValue: '원' })}</span>
                 </div>
                 <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                  {form.discount_type === 'percent' ? `${form.discount_value}% OFF` : `${formatNumber(form.discount_value)}원 할인`}
+                  {form.discount_type === 'percent'
+                    ? t('seller.bundles.discountBadgePercent', { defaultValue: '{{value}}% OFF', value: form.discount_value })
+                    : t('seller.bundles.discountBadgeFixed', { defaultValue: '{{value}}원 할인', value: formatNumber(form.discount_value) })}
                 </span>
               </div>
             )}
@@ -238,12 +240,14 @@ export default function SellerBundlesPage() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-500">
-                    {b.item_count}개 상품 · {b.discount_type === 'percent' ? `${b.discount_value}% 할인` : `${formatNumber(b.discount_value)}원 할인`}
+                    {t('seller.bundles.itemCount', { defaultValue: '{{count}}개 상품', count: b.item_count })} · {b.discount_type === 'percent'
+                      ? t('seller.bundles.discountBadgePercent', { defaultValue: '{{value}}% OFF', value: b.discount_value })
+                      : t('seller.bundles.discountBadgeFixed', { defaultValue: '{{value}}원 할인', value: formatNumber(b.discount_value) })}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button onClick={() => toggleActive(b.id, b.is_active)}
-                    className="p-2 rounded-lg hover:bg-gray-100" title={b.is_active ? '비활성화' : '활성화'}>
+                    className="p-2 rounded-lg hover:bg-gray-100" title={b.is_active ? t('seller.bundles.deactivateTitle', { defaultValue: '비활성화' }) : t('seller.bundles.activateTitle', { defaultValue: '활성화' })}>
                     {b.is_active ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
                   </button>
                   <button onClick={() => deleteBundle(b.id)}
