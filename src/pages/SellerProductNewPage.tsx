@@ -40,8 +40,15 @@ export default function SellerProductNewPage() {
     live_stream_id: '',
     live_only_price: '',
     live_price_enabled: false,
-    product_type: 'live', // 판매자는 'live' 전용 상품만 등록 가능
-    category: 'lifestyle' // 카테고리 기본값
+    product_type: 'live',
+    category: 'lifestyle',
+    // 🛡️ 2026-05-05: 디지털/정보 상품 (운동/뷰티/전자책/강의)
+    product_kind: 'physical' as 'physical' | 'digital' | 'video_course' | 'pdf_guide' | 'live_class',
+    delivery_type: 'shipping' as 'shipping' | 'instant_url' | 'email' | 'unlock',
+    content_url: '',
+    content_format: '' as '' | 'pdf' | 'video' | 'zip' | 'epub' | 'html' | 'audio' | 'image',
+    access_duration_days: '',
+    preview_url: '',
   })
   
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
@@ -89,7 +96,10 @@ export default function SellerProductNewPage() {
     if (!formData.name?.trim()) { setError(t('seller.products.enterProductName')); return }
     if (!formData.price || Number(formData.price) <= 0) { setError(t('seller.products.priceAboveZero')); return }
     if (Number(formData.price) > 100000000) { setError(t('seller.products.priceTooHigh')); return }
-    if (Number(formData.stock) < 0) { setError(t('seller.products.stockAboveZero')); return }
+    // 디지털 상품은 stock/배송 검증 skip — 무한 재고
+    const isDigital = formData.product_kind !== 'physical'
+    if (!isDigital && Number(formData.stock) < 0) { setError(t('seller.products.stockAboveZero')); return }
+    if (isDigital && !formData.content_url?.trim()) { setError('디지털 상품의 콘텐츠 URL을 입력해주세요'); return }
 
     setLoading(true)
 
@@ -107,13 +117,20 @@ export default function SellerProductNewPage() {
         description: formData.description,
         long_description: formData.long_description || undefined,
         price: Number(formData.price),
-        stock: Number(formData.stock),
+        stock: isDigital ? 999999 : Number(formData.stock),
         image_url: formData.image_url,
         live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null,
         live_only_price: formData.live_only_price ? Number(formData.live_only_price) : null,
         live_price_enabled: formData.live_price_enabled,
         product_type: formData.product_type,
         category: formData.category,
+        // 🛡️ 2026-05-05: 디지털 상품 필드
+        product_kind: formData.product_kind,
+        delivery_type: isDigital ? formData.delivery_type : 'shipping',
+        content_url: isDigital ? formData.content_url : null,
+        content_format: isDigital ? formData.content_format : null,
+        access_duration_days: isDigital && formData.access_duration_days ? Number(formData.access_duration_days) : null,
+        preview_url: isDigital ? formData.preview_url || null : null,
         // 식사권/공동구매 필드 (category가 meal_voucher일 때만 유효)
         ...(formData.category === 'meal_voucher' ? {
           restaurant_name: extra.restaurant_name || null,
@@ -332,25 +349,133 @@ export default function SellerProductNewPage() {
               <p className="text-xs text-gray-500 mt-1">{t('common.enterInWon')}</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('seller.stockQuantity')} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleChange}
-                  placeholder="100"
-                  required
-                  min="0"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+            {formData.product_kind === 'physical' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('seller.stockQuantity')} <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="number"
+                    name="stock"
+                    value={formData.stock}
+                    onChange={handleChange}
+                    placeholder="100"
+                    required
+                    min="0"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{t('common.enterInUnits')}</p>
               </div>
-              <p className="text-xs text-gray-500 mt-1">{t('common.enterInUnits')}</p>
+            )}
+            {formData.product_kind !== 'physical' && (
+              <div className="flex items-center px-4 py-3 bg-blue-50 border border-blue-100 rounded-lg">
+                <span className="text-xs text-blue-700">📦 디지털 상품 — 무한 재고 (자동 999,999)</span>
+              </div>
+            )}
+          </div>
+
+          {/* 🛡️ 2026-05-05: 상품 유형 (실물 / 디지털) */}
+          <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 space-y-3">
+            <div>
+              <label className="block text-sm font-bold text-purple-900 mb-2">
+                상품 유형 <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: 'physical', label: '📦 실물 배송', desc: '의류·식품·생활용품' },
+                  { value: 'digital', label: '📄 디지털 파일', desc: 'PDF·이미지·전자책' },
+                  { value: 'video_course', label: '🎬 영상 강의', desc: '운동·뷰티·노하우' },
+                  { value: 'pdf_guide', label: '📚 정보 가이드', desc: '가이드·노하우 문서' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData(p => ({
+                      ...p,
+                      product_kind: opt.value as typeof formData.product_kind,
+                      delivery_type: opt.value === 'physical' ? 'shipping' : (opt.value === 'video_course' ? 'unlock' : 'instant_url'),
+                      content_format: opt.value === 'video_course' ? 'video' : opt.value === 'digital' ? 'pdf' : opt.value === 'pdf_guide' ? 'pdf' : '',
+                    }))}
+                    className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                      formData.product_kind === opt.value
+                        ? 'bg-white border-purple-500 ring-2 ring-purple-200'
+                        : 'bg-white border-gray-200 hover:border-purple-300'
+                    }`}
+                  >
+                    <div className="text-sm font-bold text-gray-900">{opt.label}</div>
+                    <div className="text-[11px] text-gray-500 mt-0.5">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {formData.product_kind !== 'physical' && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-purple-900 mb-1.5">
+                    콘텐츠 URL <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="url"
+                    name="content_url"
+                    value={formData.content_url}
+                    onChange={handleChange}
+                    placeholder="https://r2.ur-team.com/digital/abc.pdf 또는 YouTube/Vimeo 링크"
+                    className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 bg-white"
+                  />
+                  <p className="text-[11px] text-purple-700 mt-1">⚠️ R2 또는 외부 CDN URL. 구매자만 접근 가능한 signed URL이 자동 발급됩니다.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-purple-900 mb-1.5">파일 형식</label>
+                    <select
+                      name="content_format"
+                      value={formData.content_format}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 bg-white"
+                    >
+                      <option value="">선택</option>
+                      <option value="pdf">PDF (전자책/가이드)</option>
+                      <option value="video">동영상</option>
+                      <option value="zip">ZIP (다중 파일)</option>
+                      <option value="audio">음성/팟캐스트</option>
+                      <option value="image">이미지/그래픽</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-purple-900 mb-1.5">접근 기간 (일)</label>
+                    <input
+                      type="number"
+                      name="access_duration_days"
+                      value={formData.access_duration_days}
+                      onChange={handleChange}
+                      placeholder="비워두면 영구"
+                      min="1"
+                      className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 bg-white"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-purple-900 mb-1.5">
+                    미리보기 URL (선택)
+                  </label>
+                  <input
+                    type="url"
+                    name="preview_url"
+                    value={formData.preview_url}
+                    onChange={handleChange}
+                    placeholder="무료 샘플 PDF 또는 강의 첫 강 (구매 전 노출)"
+                    className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 bg-white"
+                  />
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[11px] text-amber-800">
+                  📌 디지털 상품은 「전자상거래법」상 청약철회 제한 가능. 약관에 명시되며, 구매자는 결제 즉시 마이페이지 → 디지털 보관함에서 다운로드 가능합니다.
+                </div>
+              </>
+            )}
           </div>
 
           {/* 라이브 전용 특가 */}

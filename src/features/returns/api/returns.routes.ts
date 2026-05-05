@@ -493,18 +493,29 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   }
 
   // 3. 재고 복구 — transition이 성공한 경우에만 실행 (이중 복구 방지)
+  // 🛡️ 2026-05-05: 디지털 상품은 stock 복구 skip (무한 재고) + access revoke
   try {
-    const items = await DB.prepare(
-      "SELECT product_id, quantity FROM order_items WHERE order_id = ? AND (status IS NULL OR status != 'CANCELLED')"
-    ).bind(returnRecord.order_id).all<{ product_id: number; quantity: number }>();
+    const items = await DB.prepare(`
+      SELECT oi.product_id, oi.quantity, p.product_kind
+      FROM order_items oi
+      LEFT JOIN products p ON p.id = oi.product_id
+      WHERE oi.order_id = ? AND (oi.status IS NULL OR oi.status != 'CANCELLED')
+    `).bind(returnRecord.order_id).all<{ product_id: number; quantity: number; product_kind: string | null }>();
 
     if (items.results && items.results.length > 0) {
-      await DB.batch(
-        items.results.map((item) =>
-          DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
-            .bind(item.quantity, item.product_id)
-        )
-      );
+      const physicalItems = items.results.filter(it => !it.product_kind || it.product_kind === 'physical');
+      if (physicalItems.length > 0) {
+        await DB.batch(
+          physicalItems.map((item) =>
+            DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
+              .bind(item.quantity, item.product_id)
+          )
+        );
+      }
+      // 디지털 상품 — access revoke
+      await DB.prepare(
+        "UPDATE digital_product_access SET status = 'revoked' WHERE order_id = ? AND status = 'active'"
+      ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns:digital-revoke'));
       await DB.prepare("UPDATE order_items SET status = 'CANCELLED' WHERE order_id = ?")
         .bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
     }

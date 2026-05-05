@@ -163,6 +163,7 @@ import { pointsRoutes } from '../features/points/api/points.routes';
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 import { couponRoutes } from '../features/coupons/api/coupons.routes';
+import { digitalRoutes } from '../features/digital/api/digital.routes';
 import { socialRoutes } from '../features/social/api/social.routes';
 import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
 import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
@@ -958,6 +959,9 @@ app.route('/api/vouchers', groupBuyRoutes);
 
 // ── 쿠폰 ──
 app.route('/api/coupons', couponRoutes);
+
+// ── 디지털 상품 (2026-05-05): 전자책/강의/가이드/영상 ──
+app.route('/api/digital', digitalRoutes);
 
 // ── 소셜 (팔로우 + 알림) ──
 app.route('/api/social', socialRoutes);

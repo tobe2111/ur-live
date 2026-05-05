@@ -397,6 +397,51 @@ async function handlePaymentConfirmed(
     ordersUpdated: result.confirmed,
   });
 
+  // 🛡️ 2026-05-05: 디지털 상품 access_token 발급 (Phase 1)
+  //   주문에 product_kind != 'physical' 인 항목이 있으면 digital_product_access 발급.
+  //   best-effort — 실패해도 결제는 성공 (수동 복구 가능).
+  if (DB && result.confirmed > 0) {
+    try {
+      const digitalItems = await DB.prepare(`
+        SELECT oi.id AS order_item_id, oi.order_id, oi.product_id, o.user_id,
+               p.product_kind, p.access_duration_days
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN products p ON p.id = oi.product_id
+        WHERE o.order_number = ?
+          AND p.product_kind IS NOT NULL
+          AND p.product_kind != 'physical'
+      `).bind(orderNumber).all<{
+        order_item_id: number; order_id: string; product_id: number;
+        user_id: string; product_kind: string; access_duration_days: number | null;
+      }>();
+
+      if (digitalItems.results && digitalItems.results.length > 0) {
+        const stmts = digitalItems.results.map(item => {
+          // crypto.randomUUID() — Cloudflare Workers 지원
+          const token = crypto.randomUUID();
+          const expiresAt = item.access_duration_days
+            ? `datetime('now', '+${Number(item.access_duration_days)} days')`
+            : 'NULL';
+          return DB.prepare(`
+            INSERT OR IGNORE INTO digital_product_access
+            (user_id, product_id, order_id, order_item_id, access_token, expires_at, status)
+            VALUES (?, ?, ?, ?, ?, ${expiresAt}, 'active')
+          `).bind(item.user_id, item.product_id, item.order_id, item.order_item_id, token);
+        });
+        await DB.batch(stmts);
+        // 알림 발송 — 디지털 상품 구매 후 마이페이지 접근 안내
+        const userId = digitalItems.results[0].user_id;
+        await DB.prepare(`
+          INSERT INTO notifications (user_id, user_type, type, title, message, link)
+          VALUES (?, 'user', 'digital_purchase', ?, ?, '/my/digital')
+        `).bind(userId, '디지털 상품 구매 완료', '마이페이지 → 디지털 보관함에서 다운로드/시청 가능합니다').run().catch(() => {});
+      }
+    } catch (err) {
+      if (DB) console.error('[WEBHOOK] digital access grant failed:', err);
+    }
+  }
+
   // 🛡️ 2026-04-28 (TD-007 자동화): auction winner-paid 자동 처리.
   //   결제한 user 가 낙찰한 ended auction 이 있고 current_price 가 결제 amount 와
   //   같으면 해당 auction_holds 를 'consumed' 마킹. best-effort (실패해도 결제는 성공).

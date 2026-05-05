@@ -11,6 +11,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
   const items = [
     { icon: '❤️', label: '찜한 상품', count: counts.wish, path: '/wishlist' },
     { icon: '🎟️', label: '내 바우처', sub: '식사권·이용권', count: counts.voucher, path: '/my-vouchers' },
+    { icon: '📚', label: '디지털 보관함', sub: '전자책·강의·가이드', path: '/my/digital' },
     { icon: '🎫', label: '쿠폰함', count: counts.coupon, path: '/my-coupons' },
     { icon: '📦', label: '주문 내역', sub: '최근 3개월', path: '/my-orders' },
   ]
