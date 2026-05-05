@@ -8,15 +8,17 @@ interface Props {
   onContinue: () => void
 }
 
-const CHECKLIST = [
-  { key: 'intro', title: '자기소개 10~20초 준비', desc: '간단한 닉네임 + 오늘 라이브 주제 + 응원 환영 멘트' },
-  { key: 'background', title: '배경 정리', desc: '깔끔하고 정리된 공간. 산만한 물건 치우기' },
-  { key: 'lighting', title: '조명 확인', desc: '얼굴이 어둡지 않게 — 정면 광원 또는 링라이트 권장' },
-  { key: 'mic', title: '마이크/소리 점검', desc: '에코·잡음 없는지 5초 테스트' },
-  { key: 'title', title: '매력적인 제목', desc: '시청자의 호기심을 자극하는 키워드 + 이모지' },
-  { key: 'product', title: '판매 상품 정리', desc: '오늘 노출할 상품 미리 등록 + 재고 확인' },
-  { key: 'response', title: '시청자 응대 멘트', desc: '입장 시 "○○님 환영해요!" 처럼 이름 부르기' },
-] as const
+const CHECKLIST_KEYS = ['intro', 'background', 'lighting', 'mic', 'title', 'product', 'response'] as const
+
+const CHECKLIST_DEFAULTS: Record<string, { title: string; desc: string }> = {
+  intro:      { title: '자기소개 10~20초 준비', desc: '간단한 닉네임 + 오늘 라이브 주제 + 응원 환영 멘트' },
+  background: { title: '배경 정리',           desc: '깔끔하고 정리된 공간. 산만한 물건 치우기' },
+  lighting:   { title: '조명 확인',           desc: '얼굴이 어둡지 않게 — 정면 광원 또는 링라이트 권장' },
+  mic:        { title: '마이크/소리 점검',     desc: '에코·잡음 없는지 5초 테스트' },
+  title:      { title: '매력적인 제목',        desc: '시청자의 호기심을 자극하는 키워드 + 이모지' },
+  product:    { title: '판매 상품 정리',       desc: '오늘 노출할 상품 미리 등록 + 재고 확인' },
+  response:   { title: '시청자 응대 멘트',     desc: '입장 시 "○○님 환영해요!" 처럼 이름 부르기' },
+}
 
 export default function LiveStartGuideModal({ open, onClose, onContinue }: Props) {
   const { t } = useTranslation()
@@ -24,6 +26,12 @@ export default function LiveStartGuideModal({ open, onClose, onContinue }: Props
   const [dontShow, setDontShow] = useState(false)
 
   if (!open) return null
+
+  const CHECKLIST = CHECKLIST_KEYS.map(key => ({
+    key,
+    title: t(`seller.liveGuideItem_${key}_title`, { defaultValue: CHECKLIST_DEFAULTS[key].title }),
+    desc:  t(`seller.liveGuideItem_${key}_desc`,  { defaultValue: CHECKLIST_DEFAULTS[key].desc }),
+  }))
 
   const allChecked = CHECKLIST.every((c) => checked[c.key])
   const checkedCount = CHECKLIST.filter((c) => checked[c.key]).length

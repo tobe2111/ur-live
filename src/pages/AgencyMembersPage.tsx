@@ -31,11 +31,11 @@ interface Member {
   }
 }
 
-const ROLE_LABEL: Record<Role, string> = {
-  owner: '소유자',
-  manager: '매니저',
-  agent: '에이전트',
-  analyst: '분석가',
+const ROLE_LABEL_KEYS: Record<Role, string> = {
+  owner: 'agency.members.roleOwner',
+  manager: 'agency.members.roleManager',
+  agent: 'agency.members.roleAgent',
+  analyst: 'agency.members.roleAnalyst',
 }
 
 const ROLE_COLOR: Record<Role, string> = {
@@ -45,11 +45,11 @@ const ROLE_COLOR: Record<Role, string> = {
   analyst: 'bg-gray-100 text-gray-600',
 }
 
-const STATUS_LABEL: Record<Member['status'], string> = {
-  invited: '초대됨',
-  active: '활성',
-  suspended: '정지',
-  removed: '제거됨',
+const STATUS_LABEL_KEYS: Record<Member['status'], string> = {
+  invited: 'agency.members.statusInvited',
+  active: 'agency.members.statusActive',
+  suspended: 'agency.members.statusSuspended',
+  removed: 'agency.members.statusRemoved',
 }
 
 export default function AgencyMembersPage() {
@@ -112,7 +112,7 @@ export default function AgencyMembersPage() {
     if (m.role === 'owner') { toast.error(t('agency.members.ownerCannotChange', { defaultValue: 'owner 변경 불가' })); return }
     try {
       await api.patch(`/api/agency/members/${m.id}`, { role: newRole }, { headers })
-      toast.success(`${m.email} → ${ROLE_LABEL[newRole]}`)
+      toast.success(`${m.email} → ${t(ROLE_LABEL_KEYS[newRole], { defaultValue: newRole })}`)
       load()
     } catch (e: any) {
       toast.error(e?.response?.data?.error || t('agency.members.changeFailed', { defaultValue: '변경 실패' }))
@@ -182,7 +182,7 @@ export default function AgencyMembersPage() {
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <p className="text-sm font-bold text-gray-900">{m.email}</p>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${ROLE_COLOR[m.role]}`}>
-                        {ROLE_LABEL[m.role]}
+                        {t(ROLE_LABEL_KEYS[m.role], { defaultValue: m.role })}
                       </span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
                         m.status === 'active' ? 'bg-green-50 text-green-700' :
@@ -190,7 +190,7 @@ export default function AgencyMembersPage() {
                         m.status === 'suspended' ? 'bg-yellow-50 text-yellow-700' :
                         'bg-red-50 text-red-700'
                       }`}>
-                        {STATUS_LABEL[m.status]}
+                        {t(STATUS_LABEL_KEYS[m.status], { defaultValue: m.status })}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-gray-500">
@@ -220,15 +220,15 @@ export default function AgencyMembersPage() {
                         <option value="analyst">{t('agency.members.roleAnalyst', { defaultValue: '분석가' })}</option>
                       </select>
                       {m.status === 'active' ? (
-                        <button onClick={() => suspend(m)} className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded" title="일시 정지">
+                        <button onClick={() => suspend(m)} className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded" title={t('agency.members.suspend', { defaultValue: '일시 정지' })}>
                           <Pause className="w-3.5 h-3.5" />
                         </button>
                       ) : m.status === 'suspended' ? (
-                        <button onClick={() => reactivate(m)} className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="재활성화">
+                        <button onClick={() => reactivate(m)} className="p-1.5 text-green-600 hover:bg-green-50 rounded" title={t('agency.members.reactivate', { defaultValue: '재활성화' })}>
                           <Play className="w-3.5 h-3.5" />
                         </button>
                       ) : null}
-                      <button onClick={() => remove(m)} className="p-1.5 text-red-500 hover:bg-red-50 rounded" title="제거">
+                      <button onClick={() => remove(m)} className="p-1.5 text-red-500 hover:bg-red-50 rounded" title={t('agency.members.remove', { defaultValue: '제거' })}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>

@@ -87,7 +87,7 @@
     "invalidPhone": "正しい電話番号を入力してください。",
     "addressRequired": "配送先を選択してください。",
     "couponApplyFailed": "クーポンの適用に失敗しました。",
-    "wishlistAdded": "ウィッシュリストに追加しました",
+    "wishlistAdded": "お気に入りに追加しました。",
     "comingSoon": "準備中です",
     "loadFailed": "読み込みに失敗しました",
     "outOfStock": "品切れの商品です",
@@ -178,7 +178,11 @@
     "create": "作成",
     "sort": "並び替え",
     "action": "アクション",
-    "failed": "失敗"
+    "failed": "失敗",
+    "wishlistRemoved": "お気に入りから削除しました。",
+    "genericError": "エラーが発生しました。もう一度お試しください。",
+    "wishlistCancel": "お気に入り解除",
+    "wishlistAdd": "お気に入りに追加"
   },
   "auth": {
     "email": "メールアドレス",
@@ -341,7 +345,23 @@
     "relatedProducts": "Related Products",
     "reviews": "Reviews",
     "selectOption": "Select Option",
-    "seller": "Seller"
+    "seller": "Seller",
+    "noticeInspectionTitle": "検品あり",
+    "noticeInspectionDesc": "すべての商品は厳格な検品プロセスを経ています",
+    "noticeShippingTitle": "配送期間5〜7営業日",
+    "noticeShippingDesc": "出荷・検品完了後に配送されます",
+    "noticeReturnTitle": "交換・返品について",
+    "noticeReturnDesc": "商品受取後7日以内に交換・返品可能です",
+    "optionNone": "利用可能なオプションがありません。",
+    "optionLoadFail": "オプションを読み込めません。",
+    "optionLoadError": "オプション読み込み中にエラーが発生しました。",
+    "optionSelectAria": "{{name}}オプション選択",
+    "optionSelect": "オプション選択",
+    "optionCloseAria": "オプション選択を閉じる",
+    "optionCurrent": "現在",
+    "optionSoldOut": "売り切れ",
+    "optionCurrentLabel": "現在選択中:",
+    "optionChange": "オプション変更"
   },
   "accountDeleteWarning": {
     "loginRequired": "ログインが必要です。",
@@ -555,7 +575,19 @@
     "priceUnder30": "3万ウォン未満",
     "priceUnder50": "5万ウォン未満",
     "priceOver50": "5万ウォン以上",
-    "altProduct": "商品画像"
+    "altProduct": "商品画像",
+    "filterCategory": "カテゴリ",
+    "filterPrice30k": "3万ウォン以下",
+    "filterFreeShip": "送料無料",
+    "filterBrand": "ブランド",
+    "filterRating": "評価4★以上",
+    "totalResultsPrefix": "計",
+    "totalResultsSuffix": "件",
+    "filterApplied": "フィルター{{count}}個適用中",
+    "sortRelevance": "関連度順",
+    "sortPriceLow": "価格の安い順",
+    "sortPriceHigh": "価格の高い順",
+    "sortNewest": "新着順"
   },
   "userProfile": {
     "docTitle": "マイページ - ユアディール",
@@ -2456,7 +2488,17 @@
     "liveGuideReady": "✨ 準備完了！",
     "liveGuideTip": "💡 視聴者心理のヒント：視聴者がギフトを送る理由はコンテンツが良い / 大切にされていると感じる / セラーと仲良くなりたいからです。名前を呼ぶだけで売上が上がります。",
     "liveGuideDontShow": "次回から表示しない",
-    "liveGuideStart": "ライブ開始 →"
+    "liveGuideStart": "ライブ開始 →",
+    "boosterReceived": "受けた後援",
+    "boosterMatched": "マッチング追加",
+    "boosterOptions": "⚡ 後援ブースターオプション",
+    "boosterNotice": "⚠️ ライブ1回につき1回のみ使用可能。マッチング金額は視聴者決済とは別にシステムが即時加算処理します。",
+    "boosterActivate": "後援ブースター発動",
+    "cameraDenied": "カメラの権限が拒否されました。ブラウザの設定で許可してください。",
+    "cameraPreviewOn": "カメラプレビューをオンにする",
+    "cameraPreviewDesc": "配信前に自分の画面を確認（ローカルプレビュー、配信には影響なし）",
+    "cameraDefault": "カメラ",
+    "cameraLocalPreview": "🔒 ローカルプレビュー"
   },
   "admin": {
     "login": {
@@ -2898,7 +2940,12 @@
     "scoreInfo": "スコア {{score}} · 手数料 {{rate}}% · 露出 {{weight}}×",
     "untilNext": "次のティアまで",
     "pointsNeeded": "{{points}}点",
-    "viewDetail": "ティア詳細を見る"
+    "viewDetail": "ティア詳細を見る",
+    "tierDiamond": "ダイヤモンド",
+    "tierGold": "ゴールド",
+    "tierSilver": "シルバー",
+    "tierBronze": "ブロンズ",
+    "tierNew": "新規"
   },
   "bottomNav": {
     "liveStartAria": "ライブ開始",
@@ -3135,7 +3182,17 @@
     "timeDealParticipants": "{{current}}/{{target}}人参加中",
     "timeDealGroupTargetAchieved": "🎉 目標達成！{{discount}}%割引適用！",
     "timeDealGroupNeedMore": "あと{{needMore}}人で-{{bonusDiscount}}%追加割引！",
-    "timeDealRemaining": "残り{{remaining}}個"
+    "timeDealRemaining": "残り{{remaining}}個",
+    "donationGift": "ギフト",
+    "donationTitle": "ディール後援",
+    "donationSubtitle": "セラーに応援を送りましょう！",
+    "donationMyDeal": "私のディール",
+    "donationCharge": "チャージ",
+    "donationMsgPlaceholder": "応援メッセージを残してください（任意）",
+    "donationInsufficient": "ディールが不足しています。",
+    "donationChargeNow": "チャージする",
+    "donationProcessing": "後援中...",
+    "donationBtn": "{{amount}}ディール後援する"
   },
   "paymentFail": {
     "title": "決済失敗",

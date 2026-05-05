@@ -87,7 +87,7 @@
     "invalidPhone": "Por favor, introduce un número de teléfono válido.",
     "addressRequired": "Por favor, selecciona una dirección de envío.",
     "couponApplyFailed": "Error al aplicar el cupón.",
-    "wishlistAdded": "Añadido a la lista de deseos",
+    "wishlistAdded": "Añadido a la lista de deseos.",
     "comingSoon": "Próximamente",
     "loadFailed": "Error al cargar",
     "outOfStock": "Agotado",
@@ -178,7 +178,11 @@
     "create": "Crear",
     "sort": "Ordenar",
     "action": "Acción",
-    "failed": "Fallido"
+    "failed": "Fallido",
+    "wishlistRemoved": "Eliminado de la lista de deseos.",
+    "genericError": "Ocurrió un error. Inténtalo de nuevo.",
+    "wishlistCancel": "Eliminar de favoritos",
+    "wishlistAdd": "Añadir a favoritos"
   },
   "seller": {
     "dashboard": "Panel",
@@ -1888,7 +1892,17 @@
     "liveGuideReady": "✨ ¡Listo!",
     "liveGuideTip": "💡 Consejo de psicología de audiencia: Los espectadores envían regalos porque el contenido es bueno / se sienten valorados / quieren conectar con el vendedor. Solo llamar por su nombre aumenta las ventas.",
     "liveGuideDontShow": "No mostrar de nuevo",
-    "liveGuideStart": "Iniciar en vivo →"
+    "liveGuideStart": "Iniciar en vivo →",
+    "boosterReceived": "Donaciones",
+    "boosterMatched": "Igualado",
+    "boosterOptions": "⚡ Opciones de Impulso",
+    "boosterNotice": "⚠️ Solo se puede usar una vez por en vivo. El monto igualado se agrega por separado de los pagos del espectador.",
+    "boosterActivate": "Activar Impulso de Donación",
+    "cameraDenied": "Permiso de cámara denegado. Permítalo en la configuración del navegador.",
+    "cameraPreviewOn": "Activar Vista Previa de Cámara",
+    "cameraPreviewDesc": "Verifica tu pantalla antes de transmitir (vista previa local, sin efecto en la transmisión)",
+    "cameraDefault": "Cámara",
+    "cameraLocalPreview": "🔒 Vista previa local"
   },
   "admin": {
     "login": {
@@ -2330,7 +2344,12 @@
     "scoreInfo": "Puntos {{score}} · Comisión {{rate}}% · Exposición {{weight}}×",
     "untilNext": "Hasta el siguiente nivel",
     "pointsNeeded": "{{points}} pts",
-    "viewDetail": "Ver detalles del nivel"
+    "viewDetail": "Ver detalles del nivel",
+    "tierDiamond": "Diamante",
+    "tierGold": "Oro",
+    "tierSilver": "Plata",
+    "tierBronze": "Bronce",
+    "tierNew": "Nuevo"
   },
   "bottomNav": {
     "liveStartAria": "Iniciar en vivo",
@@ -2522,7 +2541,23 @@
     "relatedProducts": "Related Products",
     "reviews": "Reviews",
     "selectOption": "Select Option",
-    "seller": "Seller"
+    "seller": "Seller",
+    "noticeInspectionTitle": "Inspección Incluida",
+    "noticeInspectionDesc": "Todos los productos pasan por un proceso de inspección riguroso",
+    "noticeShippingTitle": "Envío 5-7 días hábiles",
+    "noticeShippingDesc": "Enviado después del despacho e inspección del vendedor",
+    "noticeReturnTitle": "Política de Cambio/Devolución",
+    "noticeReturnDesc": "Cambio/devolución disponible dentro de 7 días de recibido",
+    "optionNone": "No hay opciones disponibles.",
+    "optionLoadFail": "No se pueden cargar las opciones.",
+    "optionLoadError": "Ocurrió un error al cargar las opciones.",
+    "optionSelectAria": "Selección de opción {{name}}",
+    "optionSelect": "Seleccionar Opción",
+    "optionCloseAria": "Cerrar selección de opción",
+    "optionCurrent": "Actual",
+    "optionSoldOut": "Agotado",
+    "optionCurrentLabel": "Selección actual:",
+    "optionChange": "Cambiar Opción"
   },
   "accountDeleteWarning": {
     "loginRequired": "Inicio de sesión requerido.",
@@ -2736,7 +2771,19 @@
     "priceUnder30": "Menos de 30K",
     "priceUnder50": "Menos de 50K",
     "priceOver50": "Más de 50K",
-    "altProduct": "Imagen del producto"
+    "altProduct": "Imagen del producto",
+    "filterCategory": "Categoría",
+    "filterPrice30k": "Menos de ₩30k",
+    "filterFreeShip": "Envío gratis",
+    "filterBrand": "Marca",
+    "filterRating": "Calificación 4★+",
+    "totalResultsPrefix": "Total",
+    "totalResultsSuffix": "resultados",
+    "filterApplied": "{{count}} filtros aplicados",
+    "sortRelevance": "Relevancia",
+    "sortPriceLow": "Precio: Menor",
+    "sortPriceHigh": "Precio: Mayor",
+    "sortNewest": "Más recientes"
   },
   "userProfile": {
     "docTitle": "Mi página - YourDeal",
@@ -3135,7 +3182,17 @@
     "timeDealParticipants": "{{current}}/{{target}} unidos",
     "timeDealGroupTargetAchieved": "🎉 ¡Meta alcanzada! ¡Aplicado {{discount}}% de descuento!",
     "timeDealGroupNeedMore": "¡{{needMore}} más para -{{bonusDiscount}}% adicional!",
-    "timeDealRemaining": "{{remaining}} restantes"
+    "timeDealRemaining": "{{remaining}} restantes",
+    "donationGift": "Regalo",
+    "donationTitle": "Donación Deal",
+    "donationSubtitle": "¡Envía apoyo al vendedor!",
+    "donationMyDeal": "Mis Deals",
+    "donationCharge": "Recargar",
+    "donationMsgPlaceholder": "Deja un mensaje de apoyo (opcional)",
+    "donationInsufficient": "Deals insuficientes.",
+    "donationChargeNow": "Recargar Ahora",
+    "donationProcessing": "Donando...",
+    "donationBtn": "Donar {{amount}} Deals"
   },
   "paymentFail": {
     "title": "Pago fallido",

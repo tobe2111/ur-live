@@ -52,12 +52,12 @@ interface Preview {
   }>
 }
 
-const METRIC_LABEL: Record<Metric, string> = {
-  sales: '매출 (원)',
-  rating: '평균 별점',
-  streams: '라이브 횟수',
-  orders: '주문 수',
-  viewers: '누적 시청자',
+const METRIC_LABEL_KEYS: Record<Metric, string> = {
+  sales: 'agency.incentives.metricSales',
+  rating: 'agency.incentives.metricRating',
+  streams: 'agency.incentives.metricStreams',
+  orders: 'agency.incentives.metricOrders',
+  viewers: 'agency.incentives.metricViewers',
 }
 
 const METRIC_OPTIONS: Metric[] = ['sales', 'rating', 'streams', 'orders', 'viewers']
@@ -202,7 +202,7 @@ export default function AgencyIncentivesPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <p className="text-sm font-bold text-gray-900">{r.name}</p>
                         <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">
-                          {METRIC_LABEL[r.metric as Metric]}
+                          {t(METRIC_LABEL_KEYS[r.metric as Metric], { defaultValue: r.metric })}
                         </span>
                         {r.priority > 0 && (
                           <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">
@@ -211,7 +211,7 @@ export default function AgencyIncentivesPage() {
                         )}
                       </div>
                       <p className="text-xs text-gray-500">
-                        {METRIC_LABEL[r.metric as Metric]} <strong className="text-gray-700">{formatNumber(r.threshold)}</strong> {t('agency.incentives.orMore', { defaultValue: '이상' })}
+                        {t(METRIC_LABEL_KEYS[r.metric as Metric], { defaultValue: r.metric })} <strong className="text-gray-700">{formatNumber(r.threshold)}</strong> {t('agency.incentives.orMore', { defaultValue: '이상' })}
                         →  {t('agency.incentives.bonus', { defaultValue: '보너스' })} <strong className="text-emerald-600">+{r.bonus_rate}%</strong>
                       </p>
                     </div>
@@ -337,7 +337,7 @@ export default function AgencyIncentivesPage() {
                 <label className="text-xs font-bold text-gray-700">{t('agency.incentives.fieldMetric', { defaultValue: '평가 metric' })} *</label>
                 <select value={form.metric} onChange={e => setForm({ ...form, metric: e.target.value as Metric })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900">
-                  {METRIC_OPTIONS.map(m => <option key={m} value={m}>{METRIC_LABEL[m]}</option>)}
+                  {METRIC_OPTIONS.map(m => <option key={m} value={m}>{t(METRIC_LABEL_KEYS[m], { defaultValue: m })}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">

@@ -87,7 +87,7 @@
     "invalidPhone": "Please enter a valid phone number.",
     "addressRequired": "Please select a delivery address.",
     "couponApplyFailed": "Failed to apply coupon.",
-    "wishlistAdded": "Added to wishlist",
+    "wishlistAdded": "Added to wishlist.",
     "comingSoon": "Coming soon",
     "loadFailed": "Failed to load",
     "outOfStock": "Out of stock",
@@ -178,7 +178,11 @@
     "create": "Create",
     "sort": "Sort",
     "action": "Action",
-    "failed": "Failed"
+    "failed": "Failed",
+    "wishlistRemoved": "Removed from wishlist.",
+    "genericError": "An error occurred. Please try again.",
+    "wishlistCancel": "Remove from Wishlist",
+    "wishlistAdd": "Add to Wishlist"
   },
   "auth": {
     "email": "Email",
@@ -341,7 +345,23 @@
     "inStock": "In Stock",
     "selectOption": "Select Option",
     "quantity": "Quantity",
-    "seller": "Seller"
+    "seller": "Seller",
+    "noticeInspectionTitle": "Inspection Included",
+    "noticeInspectionDesc": "All products go through a thorough inspection process",
+    "noticeShippingTitle": "Shipping 5-7 Business Days",
+    "noticeShippingDesc": "Shipped after seller dispatch and inspection",
+    "noticeReturnTitle": "Exchange/Return Policy",
+    "noticeReturnDesc": "Exchange/return available within 7 days of receipt",
+    "optionNone": "No options available.",
+    "optionLoadFail": "Unable to load options.",
+    "optionLoadError": "An error occurred while loading options.",
+    "optionSelectAria": "{{name}} option selection",
+    "optionSelect": "Select Option",
+    "optionCloseAria": "Close option selection",
+    "optionCurrent": "Current",
+    "optionSoldOut": "Sold Out",
+    "optionCurrentLabel": "Current:",
+    "optionChange": "Change Option"
   },
   "accountDeleteWarning": {
     "loginRequired": "Login required.",
@@ -555,7 +575,19 @@
     "priceUnder30": "Under 30K",
     "priceUnder50": "Under 50K",
     "priceOver50": "Over 50K",
-    "altProduct": "Product image"
+    "altProduct": "Product image",
+    "filterCategory": "Category",
+    "filterPrice30k": "Under ₩30k",
+    "filterFreeShip": "Free Shipping",
+    "filterBrand": "Brand",
+    "filterRating": "Rating 4★+",
+    "totalResultsPrefix": "Total",
+    "totalResultsSuffix": "results",
+    "filterApplied": "{{count}} filters applied",
+    "sortRelevance": "Relevance",
+    "sortPriceLow": "Price: Low",
+    "sortPriceHigh": "Price: High",
+    "sortNewest": "Newest"
   },
   "userProfile": {
     "docTitle": "My Page - YourDeal",
@@ -2456,7 +2488,17 @@
     "liveGuideReady": "✨ Ready!",
     "liveGuideTip": "💡 Viewer psychology tip: Viewers send gifts because they enjoy the content / feel valued / want to connect with the seller. Just calling out names boosts sales.",
     "liveGuideDontShow": "Don't show again",
-    "liveGuideStart": "Start Live →"
+    "liveGuideStart": "Start Live →",
+    "boosterReceived": "Donations",
+    "boosterMatched": "Matched",
+    "boosterOptions": "⚡ Donation Booster Options",
+    "boosterNotice": "⚠️ Can only be used once per live. Matched amount is added separately from viewer payments.",
+    "boosterActivate": "Activate Donation Booster",
+    "cameraDenied": "Camera permission denied. Please allow it in browser settings.",
+    "cameraPreviewOn": "Turn on Camera Preview",
+    "cameraPreviewDesc": "Check your screen before broadcast (local preview, no effect on broadcast)",
+    "cameraDefault": "Camera",
+    "cameraLocalPreview": "🔒 Local Preview"
   },
   "admin": {
     "login": {
@@ -2898,7 +2940,12 @@
     "scoreInfo": "Score {{score}} · Fee {{rate}}% · Exposure {{weight}}×",
     "untilNext": "Until next tier",
     "pointsNeeded": "{{points}} pts",
-    "viewDetail": "View tier details"
+    "viewDetail": "View tier details",
+    "tierDiamond": "Diamond",
+    "tierGold": "Gold",
+    "tierSilver": "Silver",
+    "tierBronze": "Bronze",
+    "tierNew": "New"
   },
   "bottomNav": {
     "liveStartAria": "Start Live",
@@ -3135,7 +3182,17 @@
     "timeDealParticipants": "{{current}}/{{target}} joined",
     "timeDealGroupTargetAchieved": "🎉 Goal reached! {{discount}}% off applied!",
     "timeDealGroupNeedMore": "{{needMore}} more to unlock -{{bonusDiscount}}% bonus!",
-    "timeDealRemaining": "{{remaining}} remaining"
+    "timeDealRemaining": "{{remaining}} remaining",
+    "donationGift": "Gift",
+    "donationTitle": "Deal Donation",
+    "donationSubtitle": "Send support to the seller!",
+    "donationMyDeal": "My Deals",
+    "donationCharge": "Charge",
+    "donationMsgPlaceholder": "Leave a support message (optional)",
+    "donationInsufficient": "Not enough deals.",
+    "donationChargeNow": "Charge Now",
+    "donationProcessing": "Donating...",
+    "donationBtn": "Donate {{amount}} Deals"
   },
   "paymentFail": {
     "title": "Payment Failed",

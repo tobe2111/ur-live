@@ -87,7 +87,7 @@
     "invalidPhone": "请输入有效的电话号码。",
     "addressRequired": "请选择配送地址。",
     "couponApplyFailed": "优惠券应用失败。",
-    "wishlistAdded": "已加入心愿单",
+    "wishlistAdded": "已添加到心愿单。",
     "comingSoon": "即将推出",
     "loadFailed": "加载失败",
     "outOfStock": "已售罄",
@@ -178,7 +178,11 @@
     "create": "创建",
     "sort": "排序",
     "action": "操作",
-    "failed": "失败"
+    "failed": "失败",
+    "wishlistRemoved": "已从心愿单中删除。",
+    "genericError": "发生错误。请重试。",
+    "wishlistCancel": "取消收藏",
+    "wishlistAdd": "加入心愿单"
   },
   "auth": {
     "email": "邮箱",
@@ -341,7 +345,23 @@
     "relatedProducts": "Related Products",
     "reviews": "Reviews",
     "selectOption": "Select Option",
-    "seller": "Seller"
+    "seller": "Seller",
+    "noticeInspectionTitle": "含检验",
+    "noticeInspectionDesc": "所有商品均经过严格检验流程",
+    "noticeShippingTitle": "配送期间5-7个工作日",
+    "noticeShippingDesc": "卖家发货及检验完成后配送",
+    "noticeReturnTitle": "换货/退货说明",
+    "noticeReturnDesc": "收货后7日内可换货/退货",
+    "optionNone": "暂无可用选项。",
+    "optionLoadFail": "无法加载选项。",
+    "optionLoadError": "加载选项时发生错误。",
+    "optionSelectAria": "{{name}}选项选择",
+    "optionSelect": "选择选项",
+    "optionCloseAria": "关闭选项选择",
+    "optionCurrent": "当前",
+    "optionSoldOut": "售罄",
+    "optionCurrentLabel": "当前选择:",
+    "optionChange": "更改选项"
   },
   "accountDeleteWarning": {
     "loginRequired": "需要登录。",
@@ -555,7 +575,19 @@
     "priceUnder30": "3万韩元以下",
     "priceUnder50": "5万韩元以下",
     "priceOver50": "5万韩元以上",
-    "altProduct": "商品图片"
+    "altProduct": "商品图片",
+    "filterCategory": "分类",
+    "filterPrice30k": "3万韩元以下",
+    "filterFreeShip": "免费配送",
+    "filterBrand": "品牌",
+    "filterRating": "评分4★以上",
+    "totalResultsPrefix": "共",
+    "totalResultsSuffix": "件",
+    "filterApplied": "已应用{{count}}个筛选",
+    "sortRelevance": "相关度",
+    "sortPriceLow": "价格从低到高",
+    "sortPriceHigh": "价格从高到低",
+    "sortNewest": "最新"
   },
   "userProfile": {
     "docTitle": "我的页面 - UR-DEAL",
@@ -2456,7 +2488,17 @@
     "liveGuideReady": "✨ 准备就绪！",
     "liveGuideTip": "💡 观众心理提示：观众送礼的原因是内容好 / 感到被重视 / 想与主播建立联系。叫出名字就能提升销售。",
     "liveGuideDontShow": "不再显示",
-    "liveGuideStart": "开始直播 →"
+    "liveGuideStart": "开始直播 →",
+    "boosterReceived": "收到的赞助",
+    "boosterMatched": "匹配追加",
+    "boosterOptions": "⚡ 赞助助推器选项",
+    "boosterNotice": "⚠️ 每次直播只能使用一次。匹配金额由系统即时追加，与观众付款分开处理。",
+    "boosterActivate": "激活赞助助推器",
+    "cameraDenied": "摄像头权限被拒绝。请在浏览器设置中允许。",
+    "cameraPreviewOn": "开启摄像头预览",
+    "cameraPreviewDesc": "播出前确认自己的画面（本地预览，不影响播出）",
+    "cameraDefault": "摄像头",
+    "cameraLocalPreview": "🔒 本地预览"
   },
   "admin": {
     "login": {
@@ -2898,7 +2940,12 @@
     "scoreInfo": "分数 {{score}} · 手续费 {{rate}}% · 曝光 {{weight}}×",
     "untilNext": "距下一等级",
     "pointsNeeded": "{{points}}分",
-    "viewDetail": "查看等级详情"
+    "viewDetail": "查看等级详情",
+    "tierDiamond": "钻石",
+    "tierGold": "黄金",
+    "tierSilver": "白银",
+    "tierBronze": "青铜",
+    "tierNew": "新人"
   },
   "bottomNav": {
     "liveStartAria": "开始直播",
@@ -3135,7 +3182,17 @@
     "timeDealParticipants": "{{current}}/{{target}}人参与中",
     "timeDealGroupTargetAchieved": "🎉 目标达成！{{discount}}%折扣已应用！",
     "timeDealGroupNeedMore": "再{{needMore}}人即可解锁-{{bonusDiscount}}%额外折扣！",
-    "timeDealRemaining": "剩余{{remaining}}件"
+    "timeDealRemaining": "剩余{{remaining}}件",
+    "donationGift": "礼物",
+    "donationTitle": "딜 赞助",
+    "donationSubtitle": "向卖家送上支持！",
+    "donationMyDeal": "我的Deal",
+    "donationCharge": "充值",
+    "donationMsgPlaceholder": "留下支持留言（可选）",
+    "donationInsufficient": "Deal不足。",
+    "donationChargeNow": "去充值",
+    "donationProcessing": "赞助中...",
+    "donationBtn": "赞助{{amount}}Deal"
   },
   "paymentFail": {
     "title": "支付失败",

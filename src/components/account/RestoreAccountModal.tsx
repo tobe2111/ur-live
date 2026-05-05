@@ -75,7 +75,7 @@ export default function RestoreAccountModal() {
         }
         setTimeout(() => { window.location.href = '/login' }, 800)
       } else {
-        const errMsg = res.data?.error || '복원 실패'
+        const errMsg = res.data?.error || t('user.restoreFailed', { defaultValue: '복원 실패' })
         toast.error(errMsg)
         setRestoring(false)
       }
