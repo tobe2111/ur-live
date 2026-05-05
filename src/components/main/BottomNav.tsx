@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Home, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
-function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TFn = (key: string, opts?: Record<string, any>) => string
+
+function SellerUpgradePanel({ onDone, t }: { onDone: () => void; t: TFn }) {
   const navigate = useNavigate()
   // 🛡️ 2026-05-01: 이미 셀러로 등록된 user 면 "전환" UX, 아니면 "등록" UX.
   const hasSellerToken = !!localStorage.getItem('seller_token')
@@ -17,8 +21,8 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
             <Radio className="w-7 h-7 text-red-500" />
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-            등록된 셀러 계정이 있습니다<br />
-            <span className="text-gray-500 text-xs">셀러 대시보드로 전환합니다</span>
+            {t('bottomNav.sellerHasToken', { defaultValue: '등록된 셀러 계정이 있습니다' })}<br />
+            <span className="text-gray-500 text-xs">{t('bottomNav.sellerHasTokenSub', { defaultValue: '셀러 대시보드로 전환합니다' })}</span>
           </p>
         </div>
         <button
@@ -30,14 +34,14 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
         >
           <Radio className="w-5 h-5" />
-          셀러 대시보드로 전환
+          {t('bottomNav.goToSellerDashboard', { defaultValue: '셀러 대시보드로 전환' })}
         </button>
         {!hasAgencyToken && (
           <button
             onClick={() => { onDone(); navigate('/agency/register/business') }}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
           >
-            에이전시로도 등록하기 →
+            {t('bottomNav.alsoRegisterAgency', { defaultValue: '에이전시로도 등록하기 →' })}
           </button>
         )}
       </div>
@@ -51,8 +55,8 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           <Radio className="w-7 h-7 text-red-500" />
         </div>
         <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-          지금 카카오 계정에 셀러 권한을 추가합니다<br />
-          <span className="text-gray-500 text-xs">별도 가입·로그인 없이 한 번에</span>
+          {t('bottomNav.sellerNoToken', { defaultValue: '지금 카카오 계정에 셀러 권한을 추가합니다' })}<br />
+          <span className="text-gray-500 text-xs">{t('bottomNav.sellerNoTokenSub', { defaultValue: '별도 가입·로그인 없이 한 번에' })}</span>
         </p>
       </div>
 
@@ -61,7 +65,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
         className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
       >
         <UserPlus className="w-5 h-5" />
-        셀러로 시작하기
+        {t('bottomNav.startAsSeller', { defaultValue: '셀러로 시작하기' })}
       </button>
 
       {!hasAgencyToken && (
@@ -69,7 +73,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           onClick={() => { onDone(); navigate('/agency/register/business') }}
           className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
         >
-          에이전시로 등록하기 →
+          {t('bottomNav.registerAsAgency', { defaultValue: '에이전시로 등록하기 →' })}
         </button>
       )}
     </div>
@@ -79,6 +83,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
 export default function BottomNav() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [profileImage, setProfileImage] = useState<string | null>(null)
 
@@ -103,16 +108,16 @@ export default function BottomNav() {
   const isAgency = activeRole === 'agency'
 
   const leftItems = [
-    { icon: Home, label: '홈', path: '/' },
+    { icon: Home, label: t('nav.home', { defaultValue: '홈' }), path: '/' },
     // 🛡️ 2026-04-27: 쇼츠 자리 → 식사권/맛집 지도 (메인 유입 경로).
     //   /shorts 페이지 자체는 라우트로 직접 접근 가능 (URL).
-    { icon: Utensils, label: '맛집', path: '/restaurant-map' },
+    { icon: Utensils, label: t('nav.restaurants', { defaultValue: '맛집' }), path: '/restaurant-map' },
   ]
 
   const rightItems = [
-    { icon: Gift, label: '공구', path: '/group-buy' },
-    { icon: ShoppingCart, label: '쇼핑', path: '/browse' },
-    { icon: User, label: '마이', path: '/user/profile' },
+    { icon: Gift, label: t('nav.groupBuy', { defaultValue: '공구' }), path: '/group-buy' },
+    { icon: ShoppingCart, label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' },
+    { icon: User, label: t('nav.my', { defaultValue: '마이' }), path: '/user/profile' },
   ]
 
   const isActivePath = (path: string) => {
@@ -181,7 +186,7 @@ export default function BottomNav() {
                 <button
                   onClick={() => setSheetOpen(true)}
                   className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-500 shadow-lg shadow-red-500/30 active:scale-90 transition-transform"
-                  aria-label="라이브 시작"
+                  aria-label={t('bottomNav.liveStartAria', { defaultValue: '라이브 시작' })}
                 >
                   <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
                 </button>
@@ -220,16 +225,16 @@ export default function BottomNav() {
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                       {/* 🛡️ 2026-05-01: linked seller 있는 user 는 "전환" 으로 안내 (등록 X) */}
                       {isSeller
-                        ? '라이브 방송'
+                        ? t('bottomNav.sheetTitleLive', { defaultValue: '라이브 방송' })
                         : isAgency
-                        ? '에이전시'
+                        ? t('bottomNav.sheetTitleAgency', { defaultValue: '에이전시' })
                         : !isLoggedIn
-                        ? '로그인이 필요합니다'
+                        ? t('bottomNav.sheetTitleLoginRequired', { defaultValue: '로그인이 필요합니다' })
                         : hasSellerToken
-                        ? '셀러 대시보드'
-                        : '셀러로 시작하기'}
+                        ? t('bottomNav.sheetTitleSellerDashboard', { defaultValue: '셀러 대시보드' })
+                        : t('bottomNav.sheetTitleStartSeller', { defaultValue: '셀러로 시작하기' })}
                     </h3>
-                    <button onClick={() => setSheetOpen(false)} aria-label="시트 닫기" className="p-1 rounded-full hover:bg-white/10">
+                    <button onClick={() => setSheetOpen(false)} aria-label={t('bottomNav.closeSheetAria', { defaultValue: '시트 닫기' })} className="p-1 rounded-full hover:bg-white/10">
                       <X className="w-5 h-5 text-gray-500" />
                     </button>
                   </div>
@@ -245,8 +250,8 @@ export default function BottomNav() {
                           <Radio className="w-6 h-6 text-white" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">라이브 방송 시작하기</p>
-                          <p className="text-[12px] text-white/70 mt-0.5">YouTube 연동으로 바로 방송 시작</p>
+                          <p className="text-[15px] font-bold text-white">{t('bottomNav.liveBroadcastStart', { defaultValue: '라이브 방송 시작하기' })}</p>
+                          <p className="text-[12px] text-white/70 mt-0.5">{t('bottomNav.liveBroadcastDesc', { defaultValue: 'YouTube 연동으로 바로 방송 시작' })}</p>
                         </div>
                       </button>
 
@@ -258,8 +263,8 @@ export default function BottomNav() {
                           <Utensils className="w-6 h-6 text-white" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">식사권 상품 등록</p>
-                          <p className="text-[12px] text-white/80 mt-0.5">맛집 식사권을 공구 상품으로 올리기</p>
+                          <p className="text-[15px] font-bold text-white">{t('bottomNav.mealVoucherRegister', { defaultValue: '식사권 상품 등록' })}</p>
+                          <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.mealVoucherDesc', { defaultValue: '맛집 식사권을 공구 상품으로 올리기' })}</p>
                         </div>
                       </button>
 
@@ -271,8 +276,8 @@ export default function BottomNav() {
                           <LayoutDashboard className="w-6 h-6 text-gray-600" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">셀러 대시보드</p>
-                          <p className="text-[12px] text-gray-500 mt-0.5">상품 관리, 주문, 매출 확인</p>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('bottomNav.sellerDashboard', { defaultValue: '셀러 대시보드' })}</p>
+                          <p className="text-[12px] text-gray-500 mt-0.5">{t('bottomNav.sellerDashboardDesc', { defaultValue: '상품 관리, 주문, 매출 확인' })}</p>
                         </div>
                       </button>
                     </div>
@@ -288,8 +293,8 @@ export default function BottomNav() {
                         <span className="text-lg">💼</span>
                       </div>
                       <div className="text-left flex-1">
-                        <p className="text-[13px] font-bold text-gray-900 dark:text-white">에이전시 대시보드</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">소속 셀러 관리</p>
+                        <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('bottomNav.agencyDashboard', { defaultValue: '에이전시 대시보드' })}</p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">{t('bottomNav.agencyDashboardDesc', { defaultValue: '소속 셀러 관리' })}</p>
                       </div>
                     </button>
                   )}
@@ -305,8 +310,8 @@ export default function BottomNav() {
                           <span className="text-xl">💼</span>
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">에이전시 대시보드</p>
-                          <p className="text-[12px] text-gray-900 dark:text-white/70 mt-0.5">소속 셀러 관리, 계약, 정산</p>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('bottomNav.agencyDashboard', { defaultValue: '에이전시 대시보드' })}</p>
+                          <p className="text-[12px] text-gray-900 dark:text-white/70 mt-0.5">{t('bottomNav.agencyDashboardDesc2', { defaultValue: '소속 셀러 관리, 계약, 정산' })}</p>
                         </div>
                       </button>
                     </div>
@@ -316,6 +321,7 @@ export default function BottomNav() {
                   {isLoggedIn && !isSeller && !isAgency && (
                     <SellerUpgradePanel
                       onDone={() => { setSheetOpen(false) }}
+                      t={t}
                     />
                   )}
 
@@ -323,7 +329,7 @@ export default function BottomNav() {
                   {!isLoggedIn && (
                     <div className="space-y-3">
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                        셀러 계정으로 로그인하세요.
+                        {t('bottomNav.loginDesc', { defaultValue: '셀러 계정으로 로그인하세요.' })}
                       </p>
 
                       <button
@@ -331,7 +337,7 @@ export default function BottomNav() {
                         className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <LogIn className="w-5 h-5" />
-                        셀러 로그인
+                        {t('bottomNav.sellerLogin', { defaultValue: '셀러 로그인' })}
                       </button>
 
                       <button
@@ -339,7 +345,7 @@ export default function BottomNav() {
                         className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <UserPlus className="w-5 h-5" />
-                        셀러 회원가입
+                        {t('bottomNav.sellerSignup', { defaultValue: '셀러 회원가입' })}
                       </button>
                     </div>
                   )}
