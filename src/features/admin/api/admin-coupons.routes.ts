@@ -122,13 +122,11 @@ adminCouponsRoutes.post('/coupons/:id/send-segment', cors(), async (c) => {
       return c.json({ success: false, error: '해당 세그먼트에 유저가 없습니다' }, 404);
     }
 
-    let sentCount = 0;
-    for (const user of users) {
-      try {
-        await DB.prepare("INSERT OR IGNORE INTO user_coupons (user_id, coupon_id) VALUES (?, ?)").bind(String(user.id), couponId).run();
-        sentCount++;
-      } catch { /* duplicate or error — skip */ }
-    }
+    const couponStmts = users.map(user =>
+      DB.prepare("INSERT OR IGNORE INTO user_coupons (user_id, coupon_id) VALUES (?, ?)").bind(String(user.id), couponId)
+    );
+    const couponResults = await DB.batch(couponStmts);
+    const sentCount = couponResults.reduce((acc, r) => acc + (r.meta?.changes ?? 0), 0);
 
     try {
       await DB.prepare(`CREATE TABLE IF NOT EXISTS notifications (
@@ -149,17 +147,11 @@ adminCouponsRoutes.post('/coupons/:id/send-segment', cors(), async (c) => {
       all: '전체', vip: 'VIP', new: '신규', dormant: '휴면', active: '활성'
     };
 
-    for (const user of users) {
-      try {
-        await DB.prepare(
-          "INSERT INTO notifications (user_id, user_type, type, title, message, link) VALUES (?, 'user', 'coupon', ?, ?, '/cart')"
-        ).bind(
-          String(user.id),
-          `쿠폰이 도착했어요!`,
-          `[${couponName}] 쿠폰이 지급되었습니다. 지금 사용해보세요!`
-        ).run();
-      } catch { /* skip */ }
-    }
+    const notifStmts = users.map(user =>
+      DB.prepare("INSERT INTO notifications (user_id, user_type, type, title, message, link) VALUES (?, 'user', 'coupon', ?, ?, '/cart')")
+        .bind(String(user.id), `쿠폰이 도착했어요!`, `[${couponName}] 쿠폰이 지급되었습니다. 지금 사용해보세요!`)
+    );
+    await DB.batch(notifStmts);
 
     return c.json({
       success: true,

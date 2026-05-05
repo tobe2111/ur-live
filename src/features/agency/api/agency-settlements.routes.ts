@@ -190,10 +190,12 @@ app.post('/settlements/request', async (c) => {
       agency.bank_name || null, agency.bank_account || null, agency.account_holder || null
     ).run()
 
-    // 정산 신청된 주문들 마킹
+    // 정산 신청된 주문들 마킹 — batch() 로 단일 라운드트립
     const orderIds = eligibleOrders.map(o => o.id)
-    for (const oid of orderIds) {
-      await c.env.DB.prepare('UPDATE orders SET agency_settled = 1 WHERE id = ?').bind(oid).run()
+    if (orderIds.length > 0) {
+      await c.env.DB.batch(
+        orderIds.map(oid => c.env.DB.prepare('UPDATE orders SET agency_settled = 1 WHERE id = ?').bind(oid))
+      )
     }
 
     // 어드민 알림
