@@ -525,11 +525,11 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     ).bind(returnRecord.order_id).all<{ beneficiary_id: string; commission_amount: number }>();
 
     if (commissions.results && commissions.results.length > 0) {
-      for (const row of commissions.results) {
-        await DB.prepare(
-          "UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?"
-        ).bind(row.commission_amount, row.beneficiary_id).run().catch(swallow('returns:api:returns'));
-      }
+      // batch(): N개 UPDATE → 단일 라운드트립
+      await DB.batch(commissions.results.map(row =>
+        DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?")
+          .bind(row.commission_amount, row.beneficiary_id)
+      )).catch(swallow('returns:api:returns'));
 
       await DB.prepare(
         "UPDATE referral_commissions SET status = 'withdrawn' WHERE order_id = ? AND status = 'granted'"
@@ -543,11 +543,10 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     ).bind(returnRecord.order_id).all<{ referrer_id: string; commission: number }>();
 
     if (aff.results && aff.results.length > 0) {
-      for (const row of aff.results) {
-        await DB.prepare(
-          "UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?"
-        ).bind(row.commission, row.referrer_id).run().catch(swallow('returns:api:returns'));
-      }
+      await DB.batch(aff.results.map(row =>
+        DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?")
+          .bind(row.commission, row.referrer_id)
+      )).catch(swallow('returns:api:returns'));
       await DB.prepare(
         "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND status = 'granted'"
       ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
