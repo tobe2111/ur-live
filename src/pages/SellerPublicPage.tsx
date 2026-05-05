@@ -207,7 +207,7 @@ export default function SellerPublicPage() {
       } catch { /* silent */ }
     }
 
-    const id = setInterval(poll, 30000)
+    const id = setInterval(() => { if (!document.hidden) poll() }, 30000)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seller?.id])

@@ -40,7 +40,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
     fetchActive()
     const interval = setInterval(() => {
       setNow(Date.now())
-      fetchActive()
+      if (!document.hidden) fetchActive()
     }, 10_000)
     return () => clearInterval(interval)
   }, [liveStreamId])
