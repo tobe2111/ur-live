@@ -20,7 +20,7 @@ export function MobileHeader({ onShare }: MobileHeaderProps) {
     }
   }
 
-  const btnClass = "flex items-center justify-center w-9 h-9 rounded-full bg-white/90 backdrop-blur-md shadow-sm"
+  const btnClass = "flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-[#0A0A0A]/90 backdrop-blur-md shadow-sm"
 
   return (
     <header className="absolute top-0 inset-x-0 z-40 flex items-center justify-between px-3" style={{ paddingTop: 12 }}>

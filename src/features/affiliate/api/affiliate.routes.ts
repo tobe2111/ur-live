@@ -84,8 +84,30 @@ affiliateRoutes.post('/track', requireAuth(), async (c) => {
 
   // ✅ Self-referral prevention (server-side comparison using DB user_id)
   if (String(referrer_id) === String(order.user_id)) {
+    try {
+      await DB.prepare(
+        `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
+         VALUES ('self_referral', ?, 'order', ?, ?, 'high')`
+      ).bind(String(referrer_id), String(order.id), JSON.stringify({ buyer_id: order.user_id })).run()
+    } catch { /* */ }
     return c.json({ success: false, error: '본인 추천 불가' }, 400)
   }
+
+  // 🛡️ 2026-05-05 P0: 셀프 구매 차단 (셀러 본인이 추천 받아 자기 상품 구매)
+  try {
+    const sellerOwner = await DB.prepare(
+      `SELECT s.user_id FROM orders o JOIN sellers s ON o.seller_id = s.id WHERE o.id = ? LIMIT 1`
+    ).bind(order.id).first<{ user_id: string }>()
+    if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(order.user_id)) {
+      try {
+        await DB.prepare(
+          `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
+           VALUES ('self_purchase', ?, 'order', ?, ?, 'high')`
+        ).bind(String(order.user_id), String(order.id), JSON.stringify({ sellerOwner, referrer_id })).run()
+      } catch { /* */ }
+      return c.json({ success: false, error: '셀러 본인 구매는 추천 수수료 대상이 아닙니다' }, 400)
+    }
+  } catch { /* */ }
 
   // 중복 방지
   const existing = await DB.prepare(

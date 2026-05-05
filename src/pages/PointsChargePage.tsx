@@ -147,8 +147,8 @@ export default function PointsChargePage() {
       <main className="ur-content-narrow px-4 lg:px-8 pt-5 pb-28 space-y-4">
         {/* 현재 잔액 카드 */}
         <section className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-pink-500 via-rose-500 to-red-500 text-white shadow-md">
-          <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10" aria-hidden="true" />
-          <div className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full bg-white/5" aria-hidden="true" />
+          <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white dark:bg-[#0A0A0A]/10" aria-hidden="true" />
+          <div className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full bg-white dark:bg-[#0A0A0A]/5" aria-hidden="true" />
           <div className="relative">
             <div className="flex items-center gap-1.5 mb-1">
               <Zap className="w-4 h-4 fill-white" strokeWidth={0} />

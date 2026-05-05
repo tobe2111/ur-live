@@ -240,7 +240,7 @@ export default function AccountSettingsPage() {
 
 
         <Section title={t('accountSettings.sectionPaymentShipping')}>
-          <Link to="/mypage/addresses" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
+          <Link to="/mypage/addresses" className="flex items-center gap-3 px-3.5 py-3 active:bg-white dark:bg-[#0A0A0A]/[0.06] transition-colors">
             <MapPin className="w-4 h-4 text-gray-900 dark:text-white/55" aria-hidden="true" />
             <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.addresses')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
@@ -254,7 +254,7 @@ export default function AccountSettingsPage() {
             <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.language')}</span>
             <span className="text-[12px] text-gray-900 dark:text-white/45">{t('accountSettings.menu.languageValue')}</span>
           </div>
-          <Link to="/faq" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <Link to="/faq" className="flex items-center gap-3 px-3.5 py-3 active:bg-white dark:bg-[#0A0A0A]/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <HelpCircle className="w-4 h-4 text-gray-900 dark:text-white/55" aria-hidden="true" />
             <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.support')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
@@ -262,15 +262,15 @@ export default function AccountSettingsPage() {
         </Section>
 
         <Section title={t('accountSettings.sectionPolicies')}>
-          <Link to="/privacy" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors">
+          <Link to="/privacy" className="flex items-center gap-3 px-3.5 py-3 active:bg-white dark:bg-[#0A0A0A]/[0.06] transition-colors">
             <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.privacy')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
           </Link>
-          <Link to="/terms" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <Link to="/terms" className="flex items-center gap-3 px-3.5 py-3 active:bg-white dark:bg-[#0A0A0A]/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.terms')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
           </Link>
-          <Link to="/refund" className="flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <Link to="/refund" className="flex items-center gap-3 px-3.5 py-3 active:bg-white dark:bg-[#0A0A0A]/[0.06] transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{t('accountSettings.menu.refund')}</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
           </Link>
@@ -293,37 +293,37 @@ export default function AccountSettingsPage() {
       {/* 프로필 편집 모달 — stays white for readability */}
       {editModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setEditModal(false)} role="presentation">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('accountSettings.modalEditAria')}>
+          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('accountSettings.modalEditAria')}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">{t('accountSettings.editProfile')}</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile')}</h3>
               <button onClick={() => setEditModal(false)}><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label htmlFor="account-name" className="block text-sm font-medium text-gray-700 mb-1.5">{t('accountSettings.editName')} <span className="text-red-500" aria-hidden="true">*</span></label>
+                <label htmlFor="account-name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">{t('accountSettings.editName')} <span className="text-red-500" aria-hidden="true">*</span></label>
                 <input
                   id="account-name"
                   required
                   aria-required="true"
                   value={editForm.name}
                   onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                   placeholder={t('accountSettings.editNamePlaceholder')}
                 />
               </div>
               <div>
-                <label htmlFor="account-phone" className="block text-sm font-medium text-gray-700 mb-1.5">{t('accountSettings.editPhone')}</label>
+                <label htmlFor="account-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">{t('accountSettings.editPhone')}</label>
                 <input
                   id="account-phone"
                   value={editForm.phone}
                   onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                   placeholder="010-0000-0000" type="tel"
                 />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setEditModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors">{t('accountSettings.editCancel')}</button>
+              <button onClick={() => setEditModal(false)} className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-[#2A2A2A] transition-colors">{t('accountSettings.editCancel')}</button>
               <button onClick={saveProfile} disabled={editLoading} className="flex-1 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50">
                 {editLoading ? t('accountSettings.saving') : t('accountSettings.save')}
               </button>
@@ -347,7 +347,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Item({ icon, label, onClick, badge }: { icon: React.ReactNode; label: string; onClick: () => void; badge?: string }) {
   return (
-    <button type="button" onClick={onClick} className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-white/[0.06] transition-colors text-left" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+    <button type="button" onClick={onClick} className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-white dark:bg-[#0A0A0A]/[0.06] transition-colors text-left" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
       <span className="text-gray-900 dark:text-white/55">{icon}</span>
       <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{label}</span>
       {badge && <span className="text-[10px] bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white/55 px-2 py-0.5 rounded-full">{badge}</span>}
@@ -372,7 +372,7 @@ function ToggleItem({ icon, label, value, onChange }: { icon: React.ReactNode; l
         aria-pressed={value}
         className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-pink-500' : 'bg-gray-100 dark:bg-white/[0.15]'}`}
       >
-        <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
+        <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white dark:bg-[#0A0A0A] rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
       </button>
     </div>
   );
