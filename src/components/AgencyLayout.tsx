@@ -65,6 +65,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/agency/coupons',    label: '쿠폰 배포',     i18nKey: 'agency.nav.coupons', icon: Ticket },
       { path: '/agency/calendar',   label: '라이브 캘린더', i18nKey: 'agency.nav.calendar', icon: Calendar },
       { path: '/agency/invites',    label: '셀러 영입',     i18nKey: 'agency.nav.invites', icon: QrCode },
+      { path: '/agency/match-suggestions', label: '자동 매칭 제안', i18nKey: 'agency.nav.matchSuggestions', icon: UserPlus },
       { path: '/agency/pk',         label: 'PK 이벤트',     i18nKey: 'agency.nav.pk', icon: Swords },
       { path: '/agency/events',     label: '자사 챌린지',   i18nKey: 'agency.nav.events', icon: Trophy },
       { path: '/agency/promote-boosts', label: '노출 부스팅', i18nKey: 'agency.nav.promoteBoosts', icon: Rocket },
