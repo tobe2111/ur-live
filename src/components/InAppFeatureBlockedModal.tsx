@@ -36,9 +36,27 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
 
   useEscapeKey(onClose)
 
+  // 🛡️ iOS Safari scroll lock: position:fixed + scrollY 보존/복원 (단순 overflow:hidden 은 Safari 에서 jump)
   useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    const scrollY = window.scrollY
+    const body = document.body
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    }
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.width = '100%'
+    body.style.overflow = 'hidden'
+    return () => {
+      body.style.position = prev.position
+      body.style.top = prev.top
+      body.style.width = prev.width
+      body.style.overflow = prev.overflow
+      window.scrollTo(0, scrollY)
+    }
   }, [])
 
   const handleCopy = async () => {
@@ -69,7 +87,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pt-5 max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pt-5 max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

@@ -275,7 +275,30 @@ export function useLiveStreamWebSocket(
 
     connect()
 
+    // 🛡️ iOS Safari bfcache: pagehide 시 WebSocket 강제 종료 (좀비 연결 방지),
+    //   pageshow persisted=true 면 back/forward 복원 — 재연결 + reconnect 카운터 리셋.
+    const onPageHide = () => {
+      if (wsRef.current) {
+        try { wsRef.current.close() } catch { /* */ }
+        wsRef.current = null
+      }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+    }
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        reconnectAttemptsRef.current = 0
+        connect()
+      }
+    }
+    window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('pageshow', onPageShow)
+
     return () => {
+      window.removeEventListener('pagehide', onPageHide)
+      window.removeEventListener('pageshow', onPageShow)
       if (wsRef.current) {
         wsRef.current.close()
         wsRef.current = null

@@ -402,7 +402,7 @@ export default function AdminOrdersPage() {
       {showDetail && selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowDetail(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85dvh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">주문 상세</h3>
               <button onClick={() => setShowDetail(false)} className="p-1.5 rounded-lg hover:bg-gray-100">

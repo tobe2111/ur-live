@@ -15,7 +15,7 @@ export default function BizInfoModal({ seller, onClose, onApprove, onReject }: P
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-gray-900">
             사업자 정보 — {seller.business_name || seller.name}

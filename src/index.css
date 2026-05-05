@@ -384,6 +384,22 @@
   }
 }
 
+/* 🛡️ iOS Safari: input/select/textarea font-size < 16px 시 자동 줌 인 (회피 불가).
+   모든 폼 컨트롤에 16px 강제 — 디자인상 작게 보이려면 transform: scale 사용. */
+@media (max-width: 640px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* 🛡️ iOS Safari: 가로 모드 회전 시 텍스트 강제 확대 방지 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 /* Touch-friendly tap targets */
 @media (hover: none) and (pointer: coarse) {
   button, a {

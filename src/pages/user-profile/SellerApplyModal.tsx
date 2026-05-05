@@ -66,7 +66,7 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
     >
       <div
         ref={dialogRef}
-        className="w-full max-w-[430px] bg-gray-50 dark:bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8 max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-[430px] bg-gray-50 dark:bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8 max-h-[85dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

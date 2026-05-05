@@ -39,7 +39,7 @@ export default function LiveStartGuideModal({ open, onClose, onContinue }: Props
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90dvh] overflow-y-auto shadow-2xl">
         <div className="sticky top-0 bg-white border-b border-gray-100 p-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-500" />

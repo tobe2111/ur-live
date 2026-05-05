@@ -23,7 +23,7 @@ export default function FilterSheet({ region: initialRegion, category: initialCa
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center" onClick={onClose} role="presentation">
       <div
-        className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl w-full max-w-[430px] max-h-[80vh] overflow-y-auto sm:rounded-3xl sm:my-auto sm:mb-auto"
+        className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl w-full max-w-[430px] max-h-[80dvh] overflow-y-auto sm:rounded-3xl sm:my-auto sm:mb-auto"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

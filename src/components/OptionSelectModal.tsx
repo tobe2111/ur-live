@@ -103,7 +103,7 @@ export default function OptionSelectModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-fadeIn" onClick={onClose} role="presentation">
       <div
         ref={dialogRef}
-        className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-2xl max-w-md w-full max-h-[80vh] flex flex-col animate-slideUp"
+        className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-2xl max-w-md w-full max-h-[80dvh] flex flex-col animate-slideUp"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

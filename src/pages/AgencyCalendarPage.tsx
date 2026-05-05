@@ -249,7 +249,7 @@ export default function AgencyCalendarPage() {
       {/* 라이브 상세 모달 */}
       {selectedStream && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedStream(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold text-gray-900 truncate">{selectedStream.title}</h2>
