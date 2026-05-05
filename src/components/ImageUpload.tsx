@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Upload, X, Loader2, ImageIcon } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
 import api from '@/lib/api'
@@ -20,12 +21,14 @@ interface ImageUploadProps {
   maxSizeKB?: number
 }
 
-export default function ImageUpload({ 
-  value, 
-  onChange, 
-  label = '이미지 업로드',
-  maxSizeKB = 800 
+export default function ImageUpload({
+  value,
+  onChange,
+  label,
+  maxSizeKB = 800
 }: ImageUploadProps) {
+  const { t } = useTranslation()
+  const resolvedLabel = label ?? t('common.imageUpload', { defaultValue: '이미지 업로드' })
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [dragActive, setDragActive] = useState(false)
@@ -129,7 +132,7 @@ export default function ImageUpload({
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700">
-        {label}
+        {resolvedLabel}
       </label>
 
       {/* 업로드 영역 */}
@@ -158,7 +161,7 @@ export default function ImageUpload({
           {uploading ? (
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-              <p className="text-sm text-gray-600">이미지 압축 중...</p>
+              <p className="text-sm text-gray-600">{t('common.imageCompressing', { defaultValue: '이미지 압축 중...' })}</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
