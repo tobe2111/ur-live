@@ -3513,5 +3513,11 @@
     "restoreBtn": "以前のアカウントを復元",
     "newAccountBtn": "新しいアカウントで始める",
     "restoreFailed": "復元失敗"
+  },
+  "faq": {
+    "catAll": "すべて"
+  },
+  "introduce": {
+    "navStart": "始める"
   }
 }

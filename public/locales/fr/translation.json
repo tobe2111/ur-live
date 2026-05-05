@@ -3513,5 +3513,11 @@
     "restoreBtn": "Restaurer le Compte Précédent",
     "newAccountBtn": "Commencer avec un Nouveau Compte",
     "restoreFailed": "Échec de la restauration"
+  },
+  "faq": {
+    "catAll": "Tout"
+  },
+  "introduce": {
+    "navStart": "Commencer"
   }
 }

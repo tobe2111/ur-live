@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, MapPin, Phone, Loader2, AlertCircle } from 'lucide-react'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import api from '@/lib/api'
@@ -16,6 +17,7 @@ interface SelectedRestaurant {
 }
 
 export default function UserGroupBuyCreatePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   // Auth check
@@ -25,7 +27,7 @@ export default function UserGroupBuyCreatePage() {
 
   useEffect(() => {
     if (!isLoggedIn) {
-      toast.error('로그인이 필요합니다')
+      toast.error(t('groupbuy.loginRequired', { defaultValue: '로그인이 필요합니다' }))
       navigate('/login', { replace: true })
     }
   }, [isLoggedIn, navigate])
@@ -88,14 +90,14 @@ export default function UserGroupBuyCreatePage() {
       const data = res.data?.data || res.data
       const inviteCode = data?.invite_code
       if (inviteCode) {
-        toast.success('맛집 공구가 시작되었습니다!')
+        toast.success(t('groupbuy.successMsg', { defaultValue: '맛집 공구가 시작되었습니다!' }))
         navigate(`/community-group-buy/${inviteCode}`)
       } else {
-        toast.error('공구 생성에 실패했습니다')
+        toast.error(t('groupbuy.failMsg', { defaultValue: '공구 생성에 실패했습니다' }))
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } }
-      const msg = err_.response?.data?.message || '네트워크 오류가 발생했습니다'
+      const msg = err_.response?.data?.message || t('groupbuy.networkError', { defaultValue: '네트워크 오류가 발생했습니다' })
       toast.error(msg)
     } finally {
       setSubmitting(false)
@@ -107,8 +109,8 @@ export default function UserGroupBuyCreatePage() {
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen pb-24">
       <SEO
-        title="맛집 공구 시작"
-        description="내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요."
+        title={t('groupbuy.seoTitle', { defaultValue: '맛집 공구 시작' })}
+        description={t('groupbuy.seoDesc', { defaultValue: '내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요.' })}
         url="/community-group-buy/new"
       />
       {/* Header */}
@@ -117,12 +119,12 @@ export default function UserGroupBuyCreatePage() {
           <button
             onClick={() => navigate(-1)}
             className="p-2 -ml-1"
-            aria-label="뒤로"
+            aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })}
           >
             <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
           </button>
           <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex-1 text-center pr-8">
-            맛집 공구 시작하기
+            {t('groupbuy.createTitle', { defaultValue: '맛집 공구 시작하기' })}
           </h1>
         </div>
       </header>
@@ -134,7 +136,7 @@ export default function UserGroupBuyCreatePage() {
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
               1
             </span>
-            맛집 선택
+            {t('groupbuy.step1Title', { defaultValue: '맛집 선택' })}
           </h2>
 
           <KakaoMapPicker
@@ -178,14 +180,14 @@ export default function UserGroupBuyCreatePage() {
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
               2
             </span>
-            공구 설정
+            {t('groupbuy.step2Title', { defaultValue: '공구 설정' })}
           </h2>
 
           <div className="space-y-4">
             {/* 희망 식사권 가격 */}
             <div>
               <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                희망 식사권 가격
+                {t('groupbuy.priceLabel', { defaultValue: '희망 식사권 가격' })}
               </label>
               <div className="relative">
                 <input
@@ -195,11 +197,11 @@ export default function UserGroupBuyCreatePage() {
                   onChange={(e) =>
                     setProposedPrice(e.target.value ? Number(e.target.value) : '')
                   }
-                  placeholder="예: 20000"
+                  placeholder={t('groupbuy.pricePlaceholder', { defaultValue: '예: 20000' })}
                   className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
-                  원
+                  {t('groupbuy.priceUnit', { defaultValue: '원' })}
                 </span>
               </div>
             </div>
@@ -207,7 +209,7 @@ export default function UserGroupBuyCreatePage() {
             {/* 1인당 딜 예치금 */}
             <div>
               <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                1인당 딜 예치금
+                {t('groupbuy.depositLabel', { defaultValue: '1인당 딜 예치금' })}
               </label>
               <div className="relative">
                 <input
@@ -219,12 +221,12 @@ export default function UserGroupBuyCreatePage() {
                   className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
-                  딜
+                  {t('groupbuy.depositUnit', { defaultValue: '딜' })}
                 </span>
               </div>
               {deposit > 0 && deposit < 1000 && (
                 <p className="text-[11px] text-red-500 mt-1">
-                  최소 1,000딜 이상이어야 합니다
+                  {t('groupbuy.depositMinError', { defaultValue: '최소 1,000딜 이상이어야 합니다' })}
                 </p>
               )}
             </div>
@@ -232,7 +234,7 @@ export default function UserGroupBuyCreatePage() {
             {/* 목표 인원 */}
             <div>
               <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                목표 인원
+                {t('groupbuy.targetCountLabel', { defaultValue: '목표 인원' })}
               </label>
               <div className="relative">
                 <input
@@ -244,12 +246,12 @@ export default function UserGroupBuyCreatePage() {
                   className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
-                  명
+                  {t('groupbuy.targetCountUnit', { defaultValue: '명' })}
                 </span>
               </div>
               {targetCount > 0 && targetCount < 3 && (
                 <p className="text-[11px] text-red-500 mt-1">
-                  최소 3명 이상이어야 합니다
+                  {t('groupbuy.targetCountMinError', { defaultValue: '최소 3명 이상이어야 합니다' })}
                 </p>
               )}
             </div>
@@ -258,11 +260,7 @@ export default function UserGroupBuyCreatePage() {
             {step2Valid && (
               <div className="bg-gray-50 dark:bg-[#1C1C1E] rounded-xl p-3 text-center">
                 <p className="text-[13px] text-gray-600 dark:text-gray-400">
-                  목표 달성 시 총{' '}
-                  <span className="font-bold text-pink-500">
-                    {formatNumber(totalRaised)}딜
-                  </span>{' '}
-                  모금
+                  {t('groupbuy.calculationDesc', { amount: formatNumber(totalRaised), defaultValue: '목표 달성 시 총 {{amount}}딜 모금' })}
                 </p>
               </div>
             )}
@@ -276,13 +274,13 @@ export default function UserGroupBuyCreatePage() {
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
                 3
               </span>
-              확인 &amp; 시작
+              {t('groupbuy.step3Title', { defaultValue: '확인 & 시작' })}
             </h2>
 
             {/* Summary card */}
             <div className="border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 space-y-3 bg-white dark:bg-[#1C1C1E]">
               <div>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">맛집</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{t('groupbuy.summaryRestaurant', { defaultValue: '맛집' })}</p>
                 <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                   {restaurant.name}
                 </p>
@@ -293,21 +291,21 @@ export default function UserGroupBuyCreatePage() {
 
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">희망 가격</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('groupbuy.summaryPriceLabel', { defaultValue: '희망 가격' })}</p>
                   <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                     {formatNumber(proposedPrice)}원
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">예치금</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('groupbuy.summaryDepositLabel', { defaultValue: '예치금' })}</p>
                   <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                     {formatNumber(deposit)}딜
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">목표 인원</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('groupbuy.summaryTargetLabel', { defaultValue: '목표 인원' })}</p>
                   <p className="text-[14px] font-bold text-gray-900 dark:text-white">
-                    {targetCount}명
+                    {targetCount}{t('groupbuy.summaryTargetUnit', { defaultValue: '명' })}
                   </p>
                 </div>
               </div>
@@ -315,11 +313,11 @@ export default function UserGroupBuyCreatePage() {
 
             {/* Balance */}
             <div className="mt-3 flex items-center justify-between px-1">
-              <span className="text-[13px] text-gray-600 dark:text-gray-400">내 딜 잔액</span>
+              <span className="text-[13px] text-gray-600 dark:text-gray-400">{t('groupbuy.balanceLabel', { defaultValue: '내 딜 잔액' })}</span>
               <span className="text-[14px] font-bold text-pink-500">
                 {balance !== null
                   ? `${formatNumber(balance)}딜`
-                  : '로딩중...'}
+                  : t('groupbuy.balanceLoading', { defaultValue: '로딩중...' })}
               </span>
             </div>
 
@@ -327,8 +325,7 @@ export default function UserGroupBuyCreatePage() {
             <div className="mt-3 flex gap-2 bg-gray-50 dark:bg-[#1C1C1E] rounded-xl p-3">
               <AlertCircle className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0 mt-0.5" />
               <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                참여 시 <span className="font-semibold text-gray-700 dark:text-gray-300">{formatNumber(deposit)}딜</span>이
-                예치됩니다. 미달성 시 전액 환불됩니다.
+                {t('groupbuy.warningDeposit', { amount: formatNumber(deposit), defaultValue: '참여 시 {{amount}}딜이 예치됩니다. 미달성 시 전액 환불됩니다.' })}
               </p>
             </div>
           </section>
@@ -346,7 +343,7 @@ export default function UserGroupBuyCreatePage() {
             {submitting ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              '공구 시작하기'
+              t('groupbuy.startBtn', { defaultValue: '공구 시작하기' })
             )}
           </button>
         </div>
