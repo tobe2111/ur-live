@@ -127,7 +127,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
     const start = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
     const end = new Date(now.getTime() + 3600000).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
     window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}`, '_blank')
-    toast.success('Google 캘린더가 열립니다')
+    toast.success(t('broadcastNotify.googleCalendarOpened', { defaultValue: 'Google 캘린더가 열립니다' }))
   }
 
   if (compact) {
@@ -142,14 +142,14 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
               : 'bg-white/10 text-gray-900 dark:text-white border border-white/20'
           }`}
         >
-          {subscribed ? '🔔 알림 ON' : '🔔 알림'}
+          {subscribed ? t('broadcastNotify.notifyOn', { defaultValue: '🔔 알림 ON' }) : t('broadcastNotify.notify', { defaultValue: '🔔 알림' })}
         </button>
         <button
           onClick={handleAddCalendar}
           disabled={calLoading}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#FEE500] text-[#3C1E1E] active:scale-95 disabled:opacity-50"
         >
-          {kr ? '📅 캘린더' : '📅 Calendar'}
+          {kr ? t('broadcastNotify.calendarKr', { defaultValue: '📅 캘린더' }) : t('broadcastNotify.calendarEn', { defaultValue: '📅 Calendar' })}
         </button>
       </div>
     )
