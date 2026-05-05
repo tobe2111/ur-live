@@ -292,7 +292,19 @@
     "changeCompleteTitle": "변경 완료",
     "changeFailedTitle": "변경 실패",
     "fallbackSeller": "판매자",
-    "alertTitle": "알림"
+    "alertTitle": "알림",
+    "selectAll": "전체선택",
+    "emptySubtitle": "마음에 드는 상품을 담아보세요",
+    "removeItemAria": "{{name}} 장바구니에서 삭제",
+    "decreaseQty": "수량 줄이기",
+    "qtyLabel": "수량 {{qty}}",
+    "increaseQty": "수량 늘리기",
+    "soldOut": "품절",
+    "maxQty": "최대 수량 ({{stock}}개)",
+    "lowStock": "재고 {{stock}}개",
+    "subtotal": "상품금액 ({{count}}개)",
+    "paymentAmount": "결제예정금액",
+    "vatIncluded": "부가세 포함 (VAT 10%)"
   },
   "product": {
     "addToCart": "장바구니 담기",
@@ -2494,6 +2506,25 @@
       "alimtalk": "브랜드메시지 관리",
       "sampleRequests": "샘플 신청 관리",
       "agencyCreatorApproval": "에이전시·크리에이터 승인"
+    },
+    "tiktokDiscovery": {
+      "title": "TikTok 셀러 발굴",
+      "subtitle": "TikTok 비디오 데이터로 라이브 가능성 높은 셀러 식별. 라이브 미경험 + 비디오 조회수 높은 셀러 우선.",
+      "loadFailed": "불러오기 실패",
+      "filterAll": "전체",
+      "filterInactive": "🌱 라이브 미경험",
+      "filterActive": "🔴 라이브 활성",
+      "loading": "불러오는 중...",
+      "empty": "TikTok 비디오 캐시 데이터가 없습니다. 마이그레이션 0221 적용 + 셀러 TikTok 연동 필요.",
+      "sellerNo": "셀러 #{{id}}",
+      "sellerDetail": "셀러 상세",
+      "statusActive": "활성",
+      "statusInactive": "미경험",
+      "videos": "비디오",
+      "views": "조회수",
+      "likes": "좋아요",
+      "bestVideo": "베스트",
+      "viewsSuffix": "조회"
     }
   },
   "agency": {

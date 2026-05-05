@@ -292,7 +292,19 @@
     "changeCompleteTitle": "変更完了",
     "changeFailedTitle": "変更失敗",
     "fallbackSeller": "販売者",
-    "alertTitle": "お知らせ"
+    "alertTitle": "お知らせ",
+    "selectAll": "すべて選択",
+    "emptySubtitle": "お気に入りの商品を追加してください",
+    "removeItemAria": "{{name}} をカートから削除",
+    "decreaseQty": "数量を減らす",
+    "qtyLabel": "数量 {{qty}}",
+    "increaseQty": "数量を増やす",
+    "soldOut": "売り切れ",
+    "maxQty": "最大数量 ({{stock}}個)",
+    "lowStock": "在庫 {{stock}}個",
+    "subtotal": "商品金額 ({{count}}個)",
+    "paymentAmount": "お支払い予定金額",
+    "vatIncluded": "消費税込み (VAT 10%)"
   },
   "product": {
     "addToCart": "カートに追加",
@@ -2494,6 +2506,25 @@
       "alimtalk": "ブランドメッセージ",
       "sampleRequests": "サンプル申請",
       "agencyCreatorApproval": "エージェンシー・クリエイター承認"
+    },
+    "tiktokDiscovery": {
+      "title": "TikTokセラー発掘",
+      "subtitle": "TikTok動画データでライブ可能性の高いセラーを識別。ライブ未経験 + 動画視聴回数の多いセラーを優先。",
+      "loadFailed": "読み込み失敗",
+      "filterAll": "全体",
+      "filterInactive": "🌱 ライブ未経験",
+      "filterActive": "🔴 ライブ稼働中",
+      "loading": "読み込み中...",
+      "empty": "TikTok動画キャッシュデータがありません。マイグレーション0221適用 + セラーTikTok連携が必要。",
+      "sellerNo": "セラー #{{id}}",
+      "sellerDetail": "セラー詳細",
+      "statusActive": "稼働中",
+      "statusInactive": "未経験",
+      "videos": "動画",
+      "views": "再生回数",
+      "likes": "いいね",
+      "bestVideo": "ベスト",
+      "viewsSuffix": "再生"
     }
   },
   "agency": {

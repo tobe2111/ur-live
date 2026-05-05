@@ -560,6 +560,84 @@ internalAdminToolsRoutes.get('/api/_internal/repair-new-tables', requireAdmin(),
         notified_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )` },
 
+    // ── 0244: 셀러 자동 등급화 (tier_score / exposure_weight / tier_updated_at + 이력 + 광고 입찰) ──
+    { desc: '0244: sellers.tier_score', sql: `ALTER TABLE sellers ADD COLUMN tier_score REAL DEFAULT 0` },
+    { desc: '0244: sellers.tier_updated_at', sql: `ALTER TABLE sellers ADD COLUMN tier_updated_at DATETIME` },
+    { desc: '0244: sellers.exposure_weight', sql: `ALTER TABLE sellers ADD COLUMN exposure_weight REAL DEFAULT 1.0` },
+    { desc: '0244: seller_tier_history', sql: `
+      CREATE TABLE IF NOT EXISTS seller_tier_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        seller_id INTEGER NOT NULL,
+        prev_tier TEXT,
+        new_tier TEXT,
+        prev_score REAL,
+        new_score REAL,
+        metrics_json TEXT,
+        changed_at DATETIME DEFAULT (datetime('now'))
+      )` },
+    { desc: '0244: idx_tier_history_seller', sql: `CREATE INDEX IF NOT EXISTS idx_tier_history_seller ON seller_tier_history(seller_id, changed_at DESC)` },
+    { desc: '0244: ad_slots', sql: `
+      CREATE TABLE IF NOT EXISTS ad_slots (
+        slot_id TEXT PRIMARY KEY,
+        display_name TEXT NOT NULL,
+        description TEXT,
+        base_price INTEGER NOT NULL DEFAULT 50000,
+        current_seller_id INTEGER,
+        current_bid INTEGER,
+        starts_at DATETIME,
+        expires_at DATETIME,
+        auto_renew INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1
+      )` },
+    { desc: '0244: idx_ad_slots_active_expires', sql: `CREATE INDEX IF NOT EXISTS idx_ad_slots_active_expires ON ad_slots(is_active, expires_at)` },
+    { desc: '0244: ad_bids', sql: `
+      CREATE TABLE IF NOT EXISTS ad_bids (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slot_id TEXT NOT NULL,
+        seller_id INTEGER NOT NULL,
+        bid_amount INTEGER NOT NULL CHECK(bid_amount > 0),
+        status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','won','lost','cancelled','refunded')),
+        start_period DATETIME,
+        end_period DATETIME,
+        payment_status TEXT DEFAULT 'pending' CHECK(payment_status IN ('pending','approved','failed')),
+        toss_payment_key TEXT,
+        created_at DATETIME DEFAULT (datetime('now'))
+      )` },
+    { desc: '0244: idx_ad_bids_slot_status', sql: `CREATE INDEX IF NOT EXISTS idx_ad_bids_slot_status ON ad_bids(slot_id, status, bid_amount DESC)` },
+    { desc: '0244: idx_ad_bids_seller', sql: `CREATE INDEX IF NOT EXISTS idx_ad_bids_seller ON ad_bids(seller_id, created_at DESC)` },
+    { desc: '0244: ad_slots seed', sql: `INSERT OR IGNORE INTO ad_slots (slot_id, display_name, description, base_price) VALUES
+      ('main_hero', '메인 hero 영역', '메인 홈 최상단 24시간 노출', 100000),
+      ('category_top_1', '카테고리 상위 1', '카테고리 첫 번째 슬롯 (24시간)', 50000),
+      ('live_recommend_1', '라이브 추천 1', '라이브 페이지 추천 1순위', 80000),
+      ('live_recommend_2', '라이브 추천 2', '라이브 페이지 추천 2순위', 50000),
+      ('live_recommend_3', '라이브 추천 3', '라이브 페이지 추천 3순위', 30000)` },
+    { desc: '0244: seller_baseline_stats', sql: `
+      CREATE TABLE IF NOT EXISTS seller_baseline_stats (
+        seller_id INTEGER PRIMARY KEY,
+        avg_donation_amount REAL DEFAULT 0,
+        std_donation_amount REAL DEFAULT 0,
+        donation_count_30d INTEGER DEFAULT 0,
+        avg_orders_per_day REAL DEFAULT 0,
+        std_orders_per_day REAL DEFAULT 0,
+        median_buyer_account_age_days REAL DEFAULT 0,
+        updated_at DATETIME DEFAULT (datetime('now'))
+      )` },
+    { desc: '0244: seller_kpi_daily', sql: `
+      CREATE TABLE IF NOT EXISTS seller_kpi_daily (
+        seller_id INTEGER NOT NULL,
+        date DATE NOT NULL,
+        unique_viewers INTEGER DEFAULT 0,
+        viewers_purchased INTEGER DEFAULT 0,
+        gmv INTEGER DEFAULT 0,
+        donation_total INTEGER DEFAULT 0,
+        cvr REAL DEFAULT 0,
+        arpu INTEGER DEFAULT 0,
+        refund_amount INTEGER DEFAULT 0,
+        refund_count INTEGER DEFAULT 0,
+        PRIMARY KEY (seller_id, date)
+      )` },
+    { desc: '0244: idx_seller_kpi_date', sql: `CREATE INDEX IF NOT EXISTS idx_seller_kpi_date ON seller_kpi_daily(date DESC, seller_id)` },
+
     { desc: '0230: casting_requests', sql: `
       CREATE TABLE IF NOT EXISTS casting_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

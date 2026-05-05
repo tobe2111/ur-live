@@ -191,22 +191,44 @@ sellerManagementRoutes.get('/tier', async (c) => {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-    const row = await c.env.DB.prepare(`
-      SELECT
-        COALESCE(tier, 'new') AS tier,
-        COALESCE(tier_score, 0) AS tier_score,
-        COALESCE(exposure_weight, 1.0) AS exposure_weight,
-        COALESCE(commission_rate, 5) AS commission_rate,
-        tier_updated_at
-      FROM sellers WHERE id = ?
-    `).bind(sellerId).first<{
+    // 1차 시도: 0244 컬럼 (tier_score, exposure_weight, tier_updated_at) 포함
+    // 마이그레이션 0244 미적용 환경에서는 컬럼이 없어 throw → fallback 으로 처리.
+    let row: {
       tier: string; tier_score: number; exposure_weight: number;
       commission_rate: number; tier_updated_at: string | null;
-    }>();
+    } | null = null;
+    try {
+      row = await c.env.DB.prepare(`
+        SELECT
+          COALESCE(tier, 'new') AS tier,
+          COALESCE(tier_score, 0) AS tier_score,
+          COALESCE(exposure_weight, 1.0) AS exposure_weight,
+          COALESCE(commission_rate, 5) AS commission_rate,
+          tier_updated_at
+        FROM sellers WHERE id = ?
+      `).bind(sellerId).first();
+    } catch {
+      // fallback: 0244 컬럼 없는 구 스키마. tier 만 조회.
+      const fallback = await c.env.DB.prepare(`
+        SELECT
+          COALESCE(tier, 'new') AS tier,
+          COALESCE(commission_rate, 5) AS commission_rate
+        FROM sellers WHERE id = ?
+      `).bind(sellerId).first<{ tier: string; commission_rate: number }>();
+      if (fallback) {
+        row = {
+          tier: fallback.tier,
+          tier_score: 0,
+          exposure_weight: 1.0,
+          commission_rate: fallback.commission_rate,
+          tier_updated_at: null,
+        };
+      }
+    }
 
     if (!row) return c.json({ success: false, error: '셀러 정보 없음' }, 404);
 
-    // 최근 등급 변경 이력 (최근 5건)
+    // 최근 등급 변경 이력 (최근 5건). 테이블 없으면 빈 배열.
     const history = await c.env.DB.prepare(`
       SELECT prev_tier, new_tier, prev_score, new_score, changed_at
       FROM seller_tier_history

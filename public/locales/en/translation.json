@@ -292,7 +292,19 @@
     "changeCompleteTitle": "Updated",
     "changeFailedTitle": "Update failed",
     "fallbackSeller": "Seller",
-    "alertTitle": "Notice"
+    "alertTitle": "Notice",
+    "selectAll": "Select all",
+    "emptySubtitle": "Add items you like to your cart",
+    "removeItemAria": "Remove {{name}} from cart",
+    "decreaseQty": "Decrease quantity",
+    "qtyLabel": "Quantity {{qty}}",
+    "increaseQty": "Increase quantity",
+    "soldOut": "Sold out",
+    "maxQty": "Max quantity ({{stock}})",
+    "lowStock": "{{stock}} left",
+    "subtotal": "Subtotal ({{count}} items)",
+    "paymentAmount": "Total payment",
+    "vatIncluded": "VAT (10%) included"
   },
   "product": {
     "addToCart": "Add to Cart",
@@ -2494,6 +2506,25 @@
       "alimtalk": "Brand Messages",
       "sampleRequests": "Sample Requests",
       "agencyCreatorApproval": "Agency / Creator Approval"
+    },
+    "tiktokDiscovery": {
+      "title": "TikTok Seller Discovery",
+      "subtitle": "Identify sellers with high live-streaming potential using TikTok video data. Prioritizes sellers without live experience but with high view counts.",
+      "loadFailed": "Failed to load",
+      "filterAll": "All",
+      "filterInactive": "🌱 No live experience",
+      "filterActive": "🔴 Live active",
+      "loading": "Loading...",
+      "empty": "No TikTok video cache data. Apply migration 0221 + seller TikTok integration required.",
+      "sellerNo": "Seller #{{id}}",
+      "sellerDetail": "Seller details",
+      "statusActive": "Active",
+      "statusInactive": "Inexperienced",
+      "videos": "Videos",
+      "views": "Views",
+      "likes": "Likes",
+      "bestVideo": "Best",
+      "viewsSuffix": "views"
     }
   },
   "agency": {

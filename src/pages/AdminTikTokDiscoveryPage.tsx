@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
@@ -21,6 +22,7 @@ interface DiscoveryItem {
 }
 
 export default function AdminTikTokDiscoveryPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<DiscoveryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'inactive' | 'active'>('all')
@@ -32,7 +34,7 @@ export default function AdminTikTokDiscoveryPage() {
       const r = await api.get('/api/admin/tiktok-discovery', { headers: { Authorization: `Bearer ${token}` } })
       if (r.data.success) setItems(r.data.data)
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || '불러오기 실패')
+      toast.error(err?.response?.data?.error || t('admin.tiktokDiscovery.loadFailed', { defaultValue: '불러오기 실패' }))
     } finally { setLoading(false) }
   }, [])
 
@@ -45,11 +47,11 @@ export default function AdminTikTokDiscoveryPage() {
   })
 
   return (
-    <AdminLayout title="TikTok 셀러 발굴">
+    <AdminLayout title={t('admin.tiktokDiscovery.title', { defaultValue: 'TikTok 셀러 발굴' })}>
       <div className="p-6 space-y-6">
         <DashboardPageHeader
-          title="TikTok 셀러 발굴"
-          subtitle="TikTok 비디오 데이터로 라이브 가능성 높은 셀러 식별. 라이브 미경험 + 비디오 조회수 높은 셀러 우선."
+          title={t('admin.tiktokDiscovery.title', { defaultValue: 'TikTok 셀러 발굴' })}
+          subtitle={t('admin.tiktokDiscovery.subtitle', { defaultValue: 'TikTok 비디오 데이터로 라이브 가능성 높은 셀러 식별. 라이브 미경험 + 비디오 조회수 높은 셀러 우선.' })}
           icon={<Sparkles className="h-5 w-5" />}
         />
 
@@ -64,16 +66,16 @@ export default function AdminTikTokDiscoveryPage() {
                   : 'bg-white border border-gray-200 text-gray-700'
               }`}
             >
-              {f === 'all' ? '전체' : f === 'inactive' ? '🌱 라이브 미경험' : '🔴 라이브 활성'}
+              {f === 'all' ? t('admin.tiktokDiscovery.filterAll', { defaultValue: '전체' }) : f === 'inactive' ? t('admin.tiktokDiscovery.filterInactive', { defaultValue: '🌱 라이브 미경험' }) : t('admin.tiktokDiscovery.filterActive', { defaultValue: '🔴 라이브 활성' })}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <div className="text-center text-sm text-gray-400 py-12">불러오는 중...</div>
+          <div className="text-center text-sm text-gray-400 py-12">{t('admin.tiktokDiscovery.loading', { defaultValue: '불러오는 중...' })}</div>
         ) : filtered.length === 0 ? (
           <div className="text-center text-sm text-gray-400 py-12 bg-white rounded-xl border border-gray-100">
-            TikTok 비디오 캐시 데이터가 없습니다. 마이그레이션 0221 적용 + 셀러 TikTok 연동 필요.
+            {t('admin.tiktokDiscovery.empty', { defaultValue: 'TikTok 비디오 캐시 데이터가 없습니다. 마이그레이션 0221 적용 + 셀러 TikTok 연동 필요.' })}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -82,33 +84,33 @@ export default function AdminTikTokDiscoveryPage() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-bold text-gray-900 truncate">
-                      {item.seller_name || `셀러 #${item.seller_id}`}
+                      {item.seller_name || t('admin.tiktokDiscovery.sellerNo', { defaultValue: '셀러 #{{id}}', id: item.seller_id })}
                     </h4>
                     <a
                       href={`/admin/sellers?id=${item.seller_id}`}
                       target="_blank" rel="noreferrer"
                       className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-0.5"
                     >
-                      셀러 상세 <ExternalLink className="w-2.5 h-2.5" />
+                      {t('admin.tiktokDiscovery.sellerDetail', { defaultValue: '셀러 상세' })} <ExternalLink className="w-2.5 h-2.5" />
                     </a>
                   </div>
                   {item.is_seller_active ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">활성</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">{t('admin.tiktokDiscovery.statusActive', { defaultValue: '활성' })}</span>
                   ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 font-bold">미경험</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 font-bold">{t('admin.tiktokDiscovery.statusInactive', { defaultValue: '미경험' })}</span>
                   )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 mb-3">
-                  <Stat icon={<Video className="w-3 h-3" />} label="비디오" value={item.video_count} />
-                  <Stat icon={<Eye className="w-3 h-3" />} label="조회수" value={Math.round(item.total_view_count / 1000) + 'K'} />
-                  <Stat icon={<Heart className="w-3 h-3" />} label="좋아요" value={Math.round(item.total_like_count / 100) / 10 + 'K'} />
+                  <Stat icon={<Video className="w-3 h-3" />} label={t('admin.tiktokDiscovery.videos', { defaultValue: '비디오' })} value={item.video_count} />
+                  <Stat icon={<Eye className="w-3 h-3" />} label={t('admin.tiktokDiscovery.views', { defaultValue: '조회수' })} value={Math.round(item.total_view_count / 1000) + 'K'} />
+                  <Stat icon={<Heart className="w-3 h-3" />} label={t('admin.tiktokDiscovery.likes', { defaultValue: '좋아요' })} value={Math.round(item.total_like_count / 100) / 10 + 'K'} />
                 </div>
 
                 {item.best_video_title && (
                   <div className="text-xs text-gray-600 mb-2 p-2 bg-gray-50 rounded">
-                    🎬 베스트: <strong>{item.best_video_title.slice(0, 40)}</strong>
-                    <div className="text-[10px] text-gray-400 mt-0.5">{formatNumber(item.best_video_views || 0)} 조회</div>
+                    🎬 {t('admin.tiktokDiscovery.bestVideo', { defaultValue: '베스트' })}: <strong>{item.best_video_title.slice(0, 40)}</strong>
+                    <div className="text-[10px] text-gray-400 mt-0.5">{formatNumber(item.best_video_views || 0)} {t('admin.tiktokDiscovery.viewsSuffix', { defaultValue: '조회' })}</div>
                   </div>
                 )}
 

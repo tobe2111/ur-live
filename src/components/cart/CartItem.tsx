@@ -1,6 +1,7 @@
 import React from 'react'
 import { Minus, Plus, X } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { useTranslation } from 'react-i18next'
 
 interface CartItem {
   id: number
@@ -33,6 +34,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
   onOpenOption,
   isUpdating = false
 }: CartItemProps) {
+  const { t } = useTranslation()
   const fmt = (n: number) => formatNumber(n)
 
   const stock = item.product_stock
@@ -80,7 +82,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             type="button"
             onClick={() => onRemove(item.id)}
             disabled={isUpdating}
-            aria-label={`${item.product_name} 장바구니에서 삭제`}
+            aria-label={t('cart.removeItemAria', { name: item.product_name, defaultValue: '{{name}} 장바구니에서 삭제' })}
             className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:text-gray-400 shrink-0"
           >
             <X size={16} />
@@ -104,7 +106,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         {/* Price row */}
         <div className="mt-2">
           <p className={`text-[15px] font-bold ${isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
-            {fmt(item.price_snapshot * item.quantity)}원
+            {fmt(item.price_snapshot * item.quantity)}{t('common.won', { defaultValue: '원' })}
           </p>
         </div>
 
@@ -115,19 +117,19 @@ export const CartItemComponent = React.memo(function CartItemComponent({
               type="button"
               onClick={() => onUpdateQuantity(item.id, -1)}
               disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
-              aria-label="수량 줄이기"
+              aria-label={t('cart.decreaseQty', { defaultValue: '수량 줄이기' })}
               className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
             >
               <Minus size={14} aria-hidden="true" />
             </button>
-            <span aria-live="polite" aria-label={`수량 ${item.quantity}`} className="w-8 text-center text-[13px] font-semibold text-gray-900 dark:text-white border-x border-gray-200 dark:border-[#2A2A2A]">
+            <span aria-live="polite" aria-label={t('cart.qtyLabel', { qty: item.quantity, defaultValue: '수량 {{qty}}' })} className="w-8 text-center text-[13px] font-semibold text-gray-900 dark:text-white border-x border-gray-200 dark:border-[#2A2A2A]">
               {item.quantity}
             </span>
             <button
               type="button"
               onClick={() => onUpdateQuantity(item.id, 1)}
               disabled={isUpdating || isOutOfStock || isAtStockLimit}
-              aria-label="수량 늘리기"
+              aria-label={t('cart.increaseQty', { defaultValue: '수량 늘리기' })}
               className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
             >
               <Plus size={14} aria-hidden="true" />
@@ -136,9 +138,9 @@ export const CartItemComponent = React.memo(function CartItemComponent({
 
           {/* Stock warnings */}
           <div className="text-right">
-            {isOutOfStock && <p className="text-[11px] text-red-500 font-medium">품절</p>}
-            {!isOutOfStock && isAtStockLimit && <p className="text-[11px] text-orange-500">최대 수량 ({stock}개)</p>}
-            {!isOutOfStock && !isAtStockLimit && isLowStock && <p className="text-[11px] text-orange-400">재고 {stock}개</p>}
+            {isOutOfStock && <p className="text-[11px] text-red-500 font-medium">{t('cart.soldOut', { defaultValue: '품절' })}</p>}
+            {!isOutOfStock && isAtStockLimit && <p className="text-[11px] text-orange-500">{t('cart.maxQty', { stock, defaultValue: '최대 수량 ({{stock}}개)' })}</p>}
+            {!isOutOfStock && !isAtStockLimit && isLowStock && <p className="text-[11px] text-orange-400">{t('cart.lowStock', { stock, defaultValue: '재고 {{stock}}개' })}</p>}
           </div>
         </div>
       </div>

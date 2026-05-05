@@ -1938,6 +1938,25 @@
       "alimtalk": "Mensajes",
       "sampleRequests": "Muestras",
       "agencyCreatorApproval": "Aprobación Agencia/Creador"
+    },
+    "tiktokDiscovery": {
+      "title": "Descubrimiento de vendedores TikTok",
+      "subtitle": "Identifica vendedores con alto potencial de live-streaming usando datos de videos TikTok. Prioriza vendedores sin experiencia en vivo pero con alto número de visualizaciones.",
+      "loadFailed": "Error al cargar",
+      "filterAll": "Todos",
+      "filterInactive": "🌱 Sin experiencia en vivo",
+      "filterActive": "🔴 Live activo",
+      "loading": "Cargando...",
+      "empty": "Sin datos de caché de videos TikTok. Aplicar migración 0221 + integración TikTok del vendedor requerida.",
+      "sellerNo": "Vendedor #{{id}}",
+      "sellerDetail": "Detalles del vendedor",
+      "statusActive": "Activo",
+      "statusInactive": "Sin experiencia",
+      "videos": "Videos",
+      "views": "Visualizaciones",
+      "likes": "Me gusta",
+      "bestVideo": "Mejor",
+      "viewsSuffix": "vistas"
     }
   },
   "agency": {
@@ -2184,7 +2203,19 @@
     "changeCompleteTitle": "Actualizado",
     "changeFailedTitle": "Error al actualizar",
     "fallbackSeller": "Vendedor",
-    "alertTitle": "Aviso"
+    "alertTitle": "Aviso",
+    "selectAll": "Seleccionar todo",
+    "emptySubtitle": "Añade productos que te gusten",
+    "removeItemAria": "Eliminar {{name}} del carrito",
+    "decreaseQty": "Reducir cantidad",
+    "qtyLabel": "Cantidad {{qty}}",
+    "increaseQty": "Aumentar cantidad",
+    "soldOut": "Agotado",
+    "maxQty": "Cantidad máxima ({{stock}})",
+    "lowStock": "Quedan {{stock}}",
+    "subtotal": "Subtotal ({{count}} artículos)",
+    "paymentAmount": "Total a pagar",
+    "vatIncluded": "IVA (10%) incluido"
   },
   "payment": {
     "agreeToTerms": "I agree to proceed with payment",

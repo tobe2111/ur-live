@@ -292,7 +292,19 @@
     "changeCompleteTitle": "更改完成",
     "changeFailedTitle": "更改失败",
     "fallbackSeller": "卖家",
-    "alertTitle": "提示"
+    "alertTitle": "提示",
+    "selectAll": "全选",
+    "emptySubtitle": "请添加您喜欢的商品",
+    "removeItemAria": "从购物车中删除 {{name}}",
+    "decreaseQty": "减少数量",
+    "qtyLabel": "数量 {{qty}}",
+    "increaseQty": "增加数量",
+    "soldOut": "售罄",
+    "maxQty": "最大数量 ({{stock}}件)",
+    "lowStock": "库存 {{stock}}件",
+    "subtotal": "商品金额 ({{count}}件)",
+    "paymentAmount": "应付金额",
+    "vatIncluded": "含增值税 (VAT 10%)"
   },
   "product": {
     "addToCart": "加入购物车",
@@ -2494,6 +2506,25 @@
       "alimtalk": "品牌消息",
       "sampleRequests": "样品申请",
       "agencyCreatorApproval": "代理·创作者审批"
+    },
+    "tiktokDiscovery": {
+      "title": "TikTok 卖家发掘",
+      "subtitle": "通过 TikTok 视频数据识别直播潜力高的卖家。优先考虑无直播经验但视频播放量高的卖家。",
+      "loadFailed": "加载失败",
+      "filterAll": "全部",
+      "filterInactive": "🌱 无直播经验",
+      "filterActive": "🔴 直播活跃",
+      "loading": "加载中...",
+      "empty": "无 TikTok 视频缓存数据。需应用迁移 0221 + 卖家 TikTok 关联。",
+      "sellerNo": "卖家 #{{id}}",
+      "sellerDetail": "卖家详情",
+      "statusActive": "活跃",
+      "statusInactive": "无经验",
+      "videos": "视频",
+      "views": "播放量",
+      "likes": "点赞",
+      "bestVideo": "最佳",
+      "viewsSuffix": "次播放"
     }
   },
   "agency": {

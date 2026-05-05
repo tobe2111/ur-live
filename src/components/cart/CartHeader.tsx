@@ -1,6 +1,7 @@
 import React from 'react'
 import { X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 interface CartHeaderProps {
   itemCount: number
@@ -18,6 +19,7 @@ export const CartHeader = React.memo(function CartHeader({
   onDeleteSelected
 }: CartHeaderProps) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -32,11 +34,11 @@ export const CartHeader = React.memo(function CartHeader({
       {/* v4 sticky white header: X left, title center, spacer right */}
       <div className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
-          <button type="button" onClick={handleBack} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
+          <button type="button" onClick={handleBack} aria-label={t('common.back', { defaultValue: '뒤로 가기' })} className="w-9 h-9 flex items-center justify-center">
             <X size={22} className="text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
           <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
-            장바구니{' '}
+            {t('cart.title', { defaultValue: '장바구니' })}{' '}
             {itemCount > 0 && <span className="text-pink-500">{itemCount}</span>}
           </h1>
           <div className="w-9" />
@@ -67,7 +69,7 @@ export const CartHeader = React.memo(function CartHeader({
                 )}
               </span>
               <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
-                전체선택
+                {t('cart.selectAll', { defaultValue: '전체선택' })}
               </span>
               <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">
                 {selectedCount}/{itemCount}
@@ -79,7 +81,7 @@ export const CartHeader = React.memo(function CartHeader({
               disabled={selectedCount === 0}
               className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:text-red-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
             >
-              선택삭제
+              {t('cart.deleteSelected', { defaultValue: '선택삭제' })}
               {selectedCount > 0 && (
                 <span className="ml-1 text-gray-400 dark:text-gray-500">({selectedCount})</span>
               )}
