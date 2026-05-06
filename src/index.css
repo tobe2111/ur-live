@@ -400,6 +400,22 @@ html {
   text-size-adjust: 100%;
 }
 
+/* 🛡️ 2026-05-06: 이미지 overflow 방지 — width/height 누락된 41+ <img> 보호.
+   부모 width 보다 큰 이미지가 가로 스크롤 / 레이아웃 깨짐 유발하는 문제 글로벌 차단.
+   명시적 클래스 (w-N h-N) 가 있으면 그게 우선 적용됨. */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 🛡️ 2026-05-06: 한국어 어절 단위 줄바꿈 — 좁은 모바일에서 단어 중간 끊김 방지.
+   `안녕하세요` 가 `안녕` / `하세요` 로 어색하게 끊기는 현상 방지.
+   영문은 영향 없음 (어절 = 단어). */
+:where(p, h1, h2, h3, h4, h5, h6, span, div, button, a) {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 /* 🛡️ iOS Safari: Tailwind h-screen/min-h-screen 기본 100vh → 100dvh 오버라이드.
    132곳 일괄 수정 — address bar 가림/viewport jump 해소.
    CSS @supports 가드: 미지원 브라우저는 100vh 폴백 유지. */
