@@ -4184,5 +4184,21 @@
   "agency.taskSalesQuota": "Monthly Sales",
   "agency.taskActivation": "Activation (1hr+ live)",
   "agency.taskDone": "Done ✓",
-  "agency.taskFailed": "Not Met"
+  "agency.taskFailed": "Not Met",
+  "payment.errors.invalidInfo": "Payment information is invalid.",
+  "payment.errors.invalidAmount": "Payment amount is invalid.",
+  "payment.errors.approvalFailed": "Payment approval failed.",
+  "payment.errors.approvalError": "An error occurred during payment approval.",
+  "groupBuy.seoTitle": "Group Buy",
+  "groupBuy.seoDesc": "Browse popular group buy products. From restaurant vouchers to special deals.",
+  "groupBuy.categoryAll": "All",
+  "groupBuy.categoryMealVoucher": "Restaurant Vouchers",
+  "groupBuy.categoryGeneral": "General Products",
+  "common.back": "Back",
+  "common.networkError": "A network error occurred",
+  "common.wishlist": "Add to wishlist",
+  "search.pageTitle": "Search - UrDeal",
+  "search.errorMsg": "An error occurred while searching",
+  "search.seoTitleQuery": "{{query}} search results - UrDeal",
+  "search.seoDesc": "Search for products on UrDeal. Find the best prices on live commerce products."
 }

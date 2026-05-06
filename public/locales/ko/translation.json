@@ -4479,5 +4479,21 @@
   "agency.taskSalesQuota": "월 매출",
   "agency.taskActivation": "활성화 (1시간↑ 라이브)",
   "agency.taskDone": "완료 ✓",
-  "agency.taskFailed": "미달"
+  "agency.taskFailed": "미달",
+  "payment.errors.invalidInfo": "결제 정보가 유효하지 않습니다.",
+  "payment.errors.invalidAmount": "결제 금액이 유효하지 않습니다.",
+  "payment.errors.approvalFailed": "결제 승인에 실패했습니다.",
+  "payment.errors.approvalError": "결제 승인 중 오류가 발생했습니다.",
+  "groupBuy.seoTitle": "공동구매",
+  "groupBuy.seoDesc": "인기 공동구매 상품을 한눈에. 맛집 식사권부터 공동구매 특가 상품까지",
+  "groupBuy.categoryAll": "전체",
+  "groupBuy.categoryMealVoucher": "맛집 식사권",
+  "groupBuy.categoryGeneral": "일반 상품",
+  "common.back": "뒤로",
+  "common.networkError": "네트워크 오류가 발생했습니다",
+  "common.wishlist": "관심 등록",
+  "search.pageTitle": "검색 - 유어딜",
+  "search.errorMsg": "검색 중 오류가 발생했습니다",
+  "search.seoTitleQuery": "{{query}} 검색결과 - 유어딜",
+  "search.seoDesc": "유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요."
 }

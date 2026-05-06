@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { useSearch } from '@/hooks/useSearch'
@@ -33,6 +34,7 @@ const relatedKeywordsMap: Record<string, string[]> = {
 export default function SearchPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const query = searchParams.get('q') || ''
 
   // React Query 훅 사용 (2글자 이상만 검색)
@@ -43,11 +45,11 @@ export default function SearchPage() {
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
   const [priceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
 
-  useEffect(() => { document.title = '검색 - 유어딜' }, [])
+  useEffect(() => { document.title = t('search.pageTitle', { defaultValue: '검색 - 유어딜' }) }, [t])
 
   useEffect(() => {
     if (isError) {
-      setError('검색 중 오류가 발생했습니다')
+      setError(t('search.errorMsg', { defaultValue: '검색 중 오류가 발생했습니다' }))
     }
   }, [isError])
 
@@ -108,7 +110,7 @@ export default function SearchPage() {
 
   return (
     <div className="bg-white dark:bg-[#0A0A0A] pb-20 min-h-screen">
-      <SEO title={query ? `${query} 검색결과 - 유어딜` : '검색 - 유어딜'} description="유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요." url="/search" noindex />
+      <SEO title={query ? t('search.seoTitleQuery', { query, defaultValue: `${query} 검색결과 - 유어딜` }) : t('search.pageTitle', { defaultValue: '검색 - 유어딜' })} description={t('search.seoDesc', { defaultValue: '유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요.' })} url="/search" noindex />
       {/* Header */}
       <SearchHeader
         query={query}

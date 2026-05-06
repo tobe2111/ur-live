@@ -37,7 +37,7 @@ export default function PaymentSuccessPage() {
 
   useEffect(() => {
     if (!paymentKey || !orderId || !amount) {
-      setError('결제 정보가 유효하지 않습니다.')
+      setError(t('payment.errors.invalidInfo', { defaultValue: '결제 정보가 유효하지 않습니다.' }))
       setLoading(false)
       return
     }
@@ -118,7 +118,7 @@ export default function PaymentSuccessPage() {
       // 토스 리다이렉트에서 전달된 amount를 정수로 변환 (KRW는 소수점 없음)
       const parsedAmount = Math.round(Number(amount))
       if (isNaN(parsedAmount) || parsedAmount <= 0) {
-        setError('결제 금액이 유효하지 않습니다.')
+        setError(t('payment.errors.invalidAmount', { defaultValue: '결제 금액이 유효하지 않습니다.' }))
         return
       }
 
@@ -138,7 +138,7 @@ export default function PaymentSuccessPage() {
           orderId,
           error: response.data.error,
         }, 'error')
-        setError(response.data.error || '결제 승인에 실패했습니다.')
+        setError(response.data.error || t('payment.errors.approvalFailed', { defaultValue: '결제 승인에 실패했습니다.' }))
         return
       }
 
@@ -173,7 +173,7 @@ export default function PaymentSuccessPage() {
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
       captureError(err as Error, { flow: 'payment_confirm', orderId })
-      setError(axiosErr.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
+      setError(axiosErr.response?.data?.error || t('payment.errors.approvalError', { defaultValue: '결제 승인 중 오류가 발생했습니다.' }))
     } finally {
       setLoading(false)
       isProcessingRef.current = false // 처리 완료

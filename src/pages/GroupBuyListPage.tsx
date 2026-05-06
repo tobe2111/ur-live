@@ -72,7 +72,7 @@ export default function GroupBuyListPage() {
         if (r.data?.success) setItems(r.data.data || [])
         else toast.error(t('common.loadFailed'))
       })
-      .catch(() => toast.error('네트워크 오류가 발생했습니다'))
+      .catch(() => toast.error(t('common.networkError', { defaultValue: '네트워크 오류가 발생했습니다' })))
       .finally(() => setLoading(false))
   }, [])
 
@@ -167,8 +167,8 @@ export default function GroupBuyListPage() {
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
-        title="공동구매"
-        description="인기 공동구매 상품을 한눈에. 맛집 식사권부터 공동구매 특가 상품까지"
+        title={t('groupBuy.seoTitle', { defaultValue: '공동구매' })}
+        description={t('groupBuy.seoDesc', { defaultValue: '인기 공동구매 상품을 한눈에. 맛집 식사권부터 공동구매 특가 상품까지' })}
         url="/group-buy"
       />
 
@@ -178,7 +178,7 @@ export default function GroupBuyListPage() {
           <button
             onClick={() => navigate(-1)}
             className="p-2 -ml-1"
-            aria-label="뒤로"
+            aria-label={t('common.back', { defaultValue: '뒤로' })}
           >
             <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
           </button>
@@ -241,20 +241,20 @@ export default function GroupBuyListPage() {
         <div className="ur-content-wide px-4 lg:px-8 mt-4">
           <div className="flex gap-2">
             {([
-              { key: 'all', label: '전체' },
-              { key: 'meal_voucher', label: '맛집 식사권' },
-              { key: 'general', label: '일반 상품' },
-            ] as const).map((t) => (
+              { key: 'all', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
+              { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '맛집 식사권' }) },
+              { key: 'general', label: t('groupBuy.categoryGeneral', { defaultValue: '일반 상품' }) },
+            ] as const).map((tab) => (
               <button
-                key={t.key}
-                onClick={() => setCategory(t.key)}
+                key={tab.key}
+                onClick={() => setCategory(tab.key)}
                 className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
-                  category === t.key
+                  category === tab.key
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
                     : 'bg-white dark:bg-transparent text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A]'
                 }`}
               >
-                {t.label}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -394,7 +394,7 @@ export default function GroupBuyListPage() {
                         <button
                           onClick={(e) => toggleInterest(e, p.id, p.restaurant_name)}
                           className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
-                          aria-label="관심 등록"
+                          aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
                         >
                           <Bell
                             className={`w-3.5 h-3.5 ${interestedIds.has(p.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`}
@@ -542,7 +542,7 @@ export default function GroupBuyListPage() {
                           <button
                             onClick={(e) => toggleInterest(e, g.id, g.restaurant_name)}
                             className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 active:scale-90 transition-transform"
-                            aria-label="관심 등록"
+                            aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
                           >
                             <Bell
                               className={`w-3.5 h-3.5 ${interestedIds.has(g.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`}
