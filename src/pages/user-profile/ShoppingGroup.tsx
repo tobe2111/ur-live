@@ -27,8 +27,8 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
             key={item.label}
             type="button"
             onClick={() => navigate(item.path)}
-            className="w-full flex items-center gap-3 px-3.5 py-3.5 text-left active:bg-white/[0.06]"
-            style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+            className="w-full flex items-center gap-3 px-3.5 py-3.5 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
+            style={{ borderTop: i ? '1px solid' : 'none', borderColor: 'rgba(0,0,0,0.06)' }}
           >
             <span className="text-lg" aria-hidden="true">{item.icon}</span>
             <div className="flex-1 min-w-0">
