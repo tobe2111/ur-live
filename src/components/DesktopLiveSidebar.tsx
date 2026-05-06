@@ -1,9 +1,10 @@
 /**
- * PC 좌측 고정 사이드바 — 반응형 (md+ 노출)
- *  - md(768) ~ xl(1280) 미만: 60px collapsed (아이콘만, 라벨/섹션헤더 숨김)
- *  - xl(1280)+: 224px (w-56) 풀 (라벨 + 섹션헤더 + 앱 CTA)
- *  - md 미만: 숨김 (BottomNav 사용)
- * 시안: docs/design/responsive-tablet-mobile.md (2026-05-06)
+ * PC 좌측 고정 사이드바
+ * - xl(1280px)+: 224px 풀 사이드바 (라벨 표시)
+ * - md(768px)~xl: 60px collapsed (아이콘만, 라벨 숨김)
+ * - <md: hidden (BottomNav 사용)
+ *
+ * MobileAppLayout 에서 HIDE_SIDEBAR_PREFIXES 제외 전 페이지에 삽입.
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -27,13 +28,13 @@ const MENU_ITEMS: NavItem[] = [
 ]
 
 const CATEGORY_ITEMS = [
-  { labelKey: 'category.chickenPizza',  labelDefault: '치킨·피자',     icon: Utensils,        path: '/browse?category=food&sub=chicken' },
-  { labelKey: 'category.koreanFood',    labelDefault: '한식·분식',     icon: UtensilsCrossed, path: '/browse?category=food&sub=korean' },
-  { labelKey: 'category.cafe',          labelDefault: '카페·디저트',   icon: Coffee,          path: '/browse?category=food&sub=cafe' },
-  { labelKey: 'category.japanese',      labelDefault: '일식·돈까스',   icon: Fish,            path: '/browse?category=food&sub=japanese' },
-  { labelKey: 'category.asian',         labelDefault: '아시안·양식',   icon: Globe,           path: '/browse?category=food&sub=asian' },
-  { labelKey: 'category.beauty',        labelDefault: '뷰티·헬스',     icon: Sparkles,        path: '/browse?category=beauty' },
-  { labelKey: 'category.living',        labelDefault: '리빙·인테리어', icon: Sofa,            path: '/browse?category=living' },
+  { labelKey: 'category.chickenPizza',  labelDefault: '치킨·피자',     icon: Utensils,        slug: 'food' },
+  { labelKey: 'category.koreanFood',    labelDefault: '한식·분식',     icon: UtensilsCrossed, slug: 'food' },
+  { labelKey: 'category.cafe',          labelDefault: '카페·디저트',   icon: Coffee,          slug: 'food' },
+  { labelKey: 'category.japanese',      labelDefault: '일식·돈까스',   icon: Fish,            slug: 'food' },
+  { labelKey: 'category.asian',         labelDefault: '아시안·양식',   icon: Globe,           slug: 'food' },
+  { labelKey: 'category.beauty',        labelDefault: '뷰티·헬스',     icon: Sparkles,        slug: 'beauty' },
+  { labelKey: 'category.living',        labelDefault: '리빙·인테리어', icon: Sofa,            slug: 'living' },
 ]
 
 const MY_ITEMS: NavItem[] = [
@@ -43,34 +44,23 @@ const MY_ITEMS: NavItem[] = [
   { labelKey: 'my.vouchers', labelDefault: '내 식사권',  icon: BookOpen,    path: '/my-vouchers',  active: (p) => p.startsWith('/my-vouchers') },
 ]
 
-/**
- * NavBtn — 반응형:
- *  - xl 미만 (태블릿): 가운데 정렬 아이콘만, 좌측 보더로 active 표시
- *  - xl+: 라벨 노출, 배경 강조로 active 표시
- */
 function NavBtn({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick: () => void }) {
   const { t } = useTranslation()
   const Icon = item.icon
-  const label = t(item.labelKey, { defaultValue: item.labelDefault })
   return (
     <button
       type="button"
       onClick={onClick}
-      title={label}
-      aria-label={label}
-      aria-current={isActive ? 'page' : undefined}
-      className={`flex items-center justify-center xl:justify-start xl:gap-2.5 w-full h-12 xl:h-auto xl:px-3 xl:py-2 xl:rounded-lg text-left transition-colors text-[13px] font-medium relative ${
-        isActive
-          ? 'xl:bg-pink-50 xl:dark:bg-pink-500/10 text-pink-600 dark:text-pink-400'
-          : 'text-gray-600 dark:text-white/60 xl:hover:bg-gray-100 xl:dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
-      }`}
+      title={t(item.labelKey, { defaultValue: item.labelDefault })}
+      className={`flex items-center xl:gap-2.5 w-full xl:px-3 py-2 xl:rounded-lg text-left transition-colors text-[13px] font-medium
+        md:justify-center md:h-12 md:rounded-none md:border-l-2 xl:justify-start xl:h-auto xl:border-l-0 xl:rounded-lg
+        ${isActive
+          ? 'md:border-l-red-500 md:bg-red-500/[0.08] xl:border-l-transparent xl:bg-pink-50 xl:dark:bg-pink-500/10 text-pink-600 dark:text-pink-400'
+          : 'border-l-transparent text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
+        }`}
     >
-      {/* 태블릿 active 좌측 보더 (xl 미만에서만) */}
-      {isActive && (
-        <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-pink-500 rounded-r xl:hidden" aria-hidden="true" />
-      )}
       <Icon className="w-[18px] h-[18px] shrink-0" />
-      <span className="hidden xl:inline-block">{label}</span>
+      <span className="hidden xl:inline">{t(item.labelKey, { defaultValue: item.labelDefault })}</span>
     </button>
   )
 }
@@ -87,15 +77,13 @@ export default function DesktopLiveSidebar() {
       className="hidden md:flex fixed left-0 top-0 bottom-0 w-[60px] xl:w-56 z-40 flex-col bg-white dark:bg-[#0A0A0A] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       aria-label={t('nav.mainMenu', { defaultValue: '메인 메뉴' })}
     >
-      {/* 로고 — 태블릿 collapsed 에서는 작은 U 아이콘 */}
+      {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘 */}
       <Link to="/" className="flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
-        <span className="block xl:hidden w-7 h-7 rounded-md bg-gradient-to-br from-[#EF4444] to-[#EC4899] text-white font-black text-[12px] flex items-center justify-center" aria-hidden="true">U</span>
-        <span className="hidden xl:block">
-          <UrDealLogo size={20} />
-        </span>
+        <span className="xl:hidden text-[18px] font-black text-red-500 select-none">U</span>
+        <span className="hidden xl:block"><UrDealLogo size={20} /></span>
       </Link>
 
-      <div className="flex-1 px-1 xl:px-2 pb-4 flex flex-col xl:gap-5 gap-1">
+      <div className="flex-1 xl:px-2 pb-4 flex flex-col xl:gap-5">
         {/* MENU */}
         <section>
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
@@ -111,9 +99,6 @@ export default function DesktopLiveSidebar() {
           ))}
         </section>
 
-        {/* divider for tablet (xl 미만), section header for xl */}
-        <div className="xl:hidden mx-2 my-1 h-px bg-gray-100 dark:bg-white/[0.06]" aria-hidden="true" />
-
         {/* CATEGORY */}
         <section>
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
@@ -121,34 +106,27 @@ export default function DesktopLiveSidebar() {
           </p>
           {CATEGORY_ITEMS.map(cat => {
             const Icon = cat.icon
-            const catPathWithQuery = cat.path
-            const isActive = (pathname + search) === catPathWithQuery
-            const label = t(cat.labelKey, { defaultValue: cat.labelDefault })
+            const catPath = `/browse?category=${cat.slug}`
+            const isActive = pathname === '/browse' && search.includes(`category=${cat.slug}`)
             return (
               <button
                 key={cat.labelDefault}
                 type="button"
-                onClick={() => navigate(cat.path)}
-                title={label}
-                aria-label={label}
-                aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center justify-center xl:justify-start xl:gap-2.5 w-full h-12 xl:h-auto xl:px-3 xl:py-2 xl:rounded-lg text-left transition-colors text-[13px] font-medium relative ${
-                  isActive
-                    ? 'xl:bg-pink-50 xl:dark:bg-pink-500/10 text-pink-600 dark:text-pink-400'
-                    : 'text-gray-600 dark:text-white/60 xl:hover:bg-gray-100 xl:dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
-                }`}
+                title={t(cat.labelKey, { defaultValue: cat.labelDefault })}
+                onClick={() => navigate(catPath)}
+                className={`flex items-center xl:gap-2.5 w-full xl:px-3 py-2 text-left transition-colors text-[13px] font-medium
+                  md:justify-center md:h-12 md:rounded-none md:border-l-2 xl:justify-start xl:h-auto xl:border-l-0 xl:rounded-lg
+                  ${isActive
+                    ? 'md:border-l-red-500 md:bg-red-500/[0.08] xl:border-l-transparent xl:bg-pink-50 xl:dark:bg-pink-500/10 text-pink-600 dark:text-pink-400'
+                    : 'border-l-transparent text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
+                  }`}
               >
-                {isActive && (
-                  <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-pink-500 rounded-r xl:hidden" aria-hidden="true" />
-                )}
                 <Icon className="w-[18px] h-[18px] shrink-0" />
-                <span className="hidden xl:inline-block">{label}</span>
+                <span className="hidden xl:inline">{t(cat.labelKey, { defaultValue: cat.labelDefault })}</span>
               </button>
             )
           })}
         </section>
-
-        <div className="xl:hidden mx-2 my-1 h-px bg-gray-100 dark:bg-white/[0.06]" aria-hidden="true" />
 
         {/* MY */}
         <section>
@@ -166,7 +144,7 @@ export default function DesktopLiveSidebar() {
         </section>
       </div>
 
-      {/* 앱 다운로드 CTA — xl+ 에서만 (태블릿에서는 공간 부족) */}
+      {/* 앱 다운로드 CTA — xl 에서만 */}
       <div className="hidden xl:block mx-3 mb-4 rounded-xl bg-pink-500 p-3 shrink-0">
         <p className="text-white text-[13px] font-bold leading-tight">유어딜 앱으로</p>
         <p className="text-white/80 text-[11px] mt-1 leading-snug">라이브 알림 + 추천 / 앱 전용 혜택</p>

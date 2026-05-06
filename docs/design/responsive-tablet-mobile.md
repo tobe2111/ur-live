@@ -2,7 +2,7 @@
 
 **시안 받은 날**: 2026-05-06
 **출처**: design-v4.html / v4/pc.jsx (line 1894+)
-**상태**: 구현 진행 중
+**상태**: 구현 완료
 
 ## 핵심 사양
 
@@ -34,10 +34,10 @@
 ## 구현 todo
 
 - [x] 시안 archive 저장
-- [ ] DesktopLiveSidebar `collapsed` 모드 추가 (md~xl 범위)
-- [ ] MobileAppLayout 태블릿 padding `md:pl-[60px]` 추가
-- [ ] BottomNav `md:hidden` 으로 변경 (이전: `lg:hidden`)
-- [ ] DesktopTopNav md+ 노출 (이전: lg+)
+- [x] DesktopLiveSidebar `collapsed` 모드 추가 (md~xl 범위)
+- [x] MobileAppLayout 태블릿 padding `md:pl-[60px]` 추가
+- [x] BottomNav `md:hidden` 으로 변경 (이전: `lg:hidden`)
+- [x] DesktopTopNav md+ 노출 (이전: lg+)
 - [ ] 그리드: `md:grid-cols-3` 로 명시 (이미 lg/xl 정의된 페이지 위주)
 - [ ] 검증: 1024px / 1280px / 1920px 3가지 viewport
 
@@ -51,7 +51,9 @@
 
 ## 영향 컴포넌트
 
-- `src/components/DesktopLiveSidebar.tsx` (collapsed 모드 추가)
-- `src/components/MobileAppLayout.tsx` (padding + 사이드바 활성화 breakpoint)
-- `src/components/main/BottomNav.tsx` (`md:hidden`)
-- `src/components/main/DesktopTopNav.tsx` (`md:block`)
+- `src/components/DesktopLiveSidebar.tsx` (collapsed 모드 추가) ✅
+- `src/components/MobileAppLayout.tsx` (padding + 사이드바 활성화 breakpoint) ✅
+- `src/components/main/BottomNav.tsx` (`md:hidden`) ✅
+- `src/components/main/DesktopTopNav.tsx` (`md:block`) ✅
+
+## ✅ 구현 완료
