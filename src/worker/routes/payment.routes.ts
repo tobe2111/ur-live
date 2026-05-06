@@ -120,7 +120,7 @@ paymentsRouter.post('/confirm', async (c) => {
     // Security: verify user owns these orders (타입 안전 비교: DB는 INTEGER, auth는 STRING)
     const unauthorized = orders.find(o => String(o.user_id) !== String(userId));
     if (unauthorized) {
-      console.error('[PAYMENTS] User mismatch:', { authUserId: userId, orderUserId: unauthorized.user_id });
+      console.error('[PAYMENTS] User mismatch — order ownership validation failed');
       // 🚨 fraud signal — Sentry 보고
       captureException(new Error('PAYMENT_USER_MISMATCH'), {
         tags: { area: 'payment', kind: 'user_mismatch', severity: 'warning' },
@@ -132,7 +132,7 @@ paymentsRouter.post('/confirm', async (c) => {
     // DB에 저장된 금액으로 검증 (금액 변조 방지)
     const totalAmount = orders.reduce((sum, o) => sum + o.total_amount, 0);
     if (totalAmount !== amount) {
-      console.error('[PAYMENTS] Amount mismatch:', { expected: totalAmount, received: amount, orderNumber });
+      console.error('[PAYMENTS] Amount mismatch — payment amount validation failed');
       // 🚨 fraud signal — 금액 변조 시도
       captureException(new Error('PAYMENT_AMOUNT_MISMATCH'), {
         tags: { area: 'payment', kind: 'amount_mismatch', severity: 'warning' },
@@ -214,11 +214,7 @@ paymentsRouter.post('/confirm', async (c) => {
 
     // 토스 응답의 금액도 한 번 더 검증
     if (tossData.totalAmount !== totalAmount) {
-      console.error('[PAYMENTS] Toss amount mismatch after confirm:', {
-        toss: tossData.totalAmount,
-        db: totalAmount,
-        orderNumber,
-      });
+      logError('toss.confirm.amount_mismatch', { orderId: orderNumber });
     }
 
     // Update all orders to DONE
@@ -277,12 +273,7 @@ paymentsRouter.post('/confirm', async (c) => {
 
     const updatedOrders = await orderRepo.findByOrderNumber(orderNumber);
 
-    console.log('[PAYMENTS] CONFIRMED', {
-      orderNumber,
-      amount,
-      method: tossData.method,
-      ordersCount: updatedOrders.length,
-    });
+    logInfo('payment.confirmed', { orderId: orderNumber, method: tossData.method, count: updatedOrders.length });
 
     // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
     // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
