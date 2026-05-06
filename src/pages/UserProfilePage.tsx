@@ -67,7 +67,7 @@ export default function UserProfilePage() {
   // 🔄 로딩 중 (한국: localStorage 인증이므로 isAuthReady 무시)
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
+      <div className="dark min-h-screen bg-[#020202] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
           <p className="text-gray-500 dark:text-gray-400">로딩 중...</p>
@@ -95,7 +95,11 @@ export default function UserProfilePage() {
 
   // 🛡️ 2026-04-30 v4 Wallet 디자인 시안 매칭 — InsetGroup 형태로 정돈, 모든 기능 보존
   return (
-    <div className="bg-white dark:bg-[#020202] flex flex-col min-h-screen pb-7">
+    // 🛡️ 2026-05-06: /user/profile 은 CLAUDE.md 스펙상 다크 전용 페이지.
+    //   하위 컴포넌트(TeamPointsCard, OrderStatusBar, ShoppingGroup 등) 가 dark 전용 클래스만 가져
+    //   light 토글 시 흰 배경에 흰 글자로 invisible. 페이지 전체를 dark 클래스로 wrap 하여
+    //   사용자 토글과 무관하게 항상 다크 렌더링. 토글 자체는 다른 화이트 페이지 (browse/checkout) 에 영향.
+    <div className="dark bg-[#020202] flex flex-col min-h-screen pb-7">
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className="sr-only">마이페이지</h1>
 
