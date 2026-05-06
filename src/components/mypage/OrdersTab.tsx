@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Package, MapPin, Truck, ChevronRight, Check, MessageCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
+import { safeDate } from '@/utils/safe-date'
 import { toast } from '@/hooks/useToast'
 import type { Order } from '@/types/order'
 import { formatNumber } from '@/utils/format'
@@ -236,9 +237,9 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
             const canCancel  = ['pending', 'paid', 'confirmed', 'done'].includes(order.status.toLowerCase())
             const canConfirm = order.status === 'shipping' && !!onConfirmOrder
             const orderNum = order.order_number ?? String(order.id)
-            const dateStr = new Date(order.created_at).toLocaleDateString('ko-KR', {
+            const dateStr = safeDate(order.created_at)?.toLocaleDateString('ko-KR', {
               year: 'numeric', month: 'long', day: 'numeric',
-            })
+            }) ?? '-'
 
             return (
               <article

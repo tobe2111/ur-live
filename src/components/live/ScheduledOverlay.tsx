@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import type { Stream } from './LiveTypes'
+import { safeDate, safeTime } from '@/utils/safe-date'
 
 function useCountdown(targetDate: string | undefined, soonText: string) {
   const [remaining, setRemaining] = useState('')
@@ -10,7 +11,7 @@ function useCountdown(targetDate: string | undefined, soonText: string) {
     if (!targetDate) return
 
     const update = () => {
-      const diff = new Date(targetDate).getTime() - Date.now()
+      const diff = safeTime(targetDate) - Date.now()
       if (diff <= 0) {
         setRemaining(soonText)
         return
@@ -39,8 +40,9 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
   const { t } = useTranslation()
   const countdown = useCountdown(stream.scheduled_at, t('live.scheduled.soon', { defaultValue: '곧 시작됩니다' }))
 
-  const formattedDate = stream.scheduled_at
-    ? `${new Date(stream.scheduled_at).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} ${new Date(stream.scheduled_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+  const _schedDate = safeDate(stream.scheduled_at)
+  const formattedDate = _schedDate
+    ? `${_schedDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} ${_schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
     : null
 
   return (

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Eye, ChevronRight } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { safeDate, safeTime } from '@/utils/safe-date'
 
 interface LiveStream {
   id: number
@@ -39,7 +40,7 @@ export function UpcomingLive({ streams }: UpcomingLiveProps) {
       if (a.status === 'live' && b.status !== 'live') return -1
       if (a.status !== 'live' && b.status === 'live') return 1
       if (a.scheduled_at && b.scheduled_at) {
-        return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+        return safeTime(a.scheduled_at) - safeTime(b.scheduled_at)
       }
       return 0
     })
@@ -105,12 +106,12 @@ export function UpcomingLive({ streams }: UpcomingLiveProps) {
                 {stream.scheduled_at && stream.status === 'scheduled' && (
                   <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {new Date(stream.scheduled_at).toLocaleString('ko-KR', {
+                    {safeDate(stream.scheduled_at)?.toLocaleString('ko-KR', {
                       month: 'long',
                       day: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })}
+                    }) ?? '-'}
                   </p>
                 )}
               </div>

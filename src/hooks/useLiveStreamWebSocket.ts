@@ -20,6 +20,7 @@ import { getAccessToken } from '@/utils/auth'
 import { isFeatureBlockedSync, isPWAStandalone } from '@/lib/in-app-warning'
 import { toast } from '@/hooks/useToast'
 import type { ChatMessage, StreamData } from '@/types/live-stream'
+import { safeTime } from '@/utils/safe-date'
 
 export interface DonationEvent {
   donorName: string
@@ -81,7 +82,9 @@ export function useLiveStreamWebSocket(
   const clearMessages = useCallback(() => setMessages([]), [])
 
   const addLocalMessage = useCallback((msg: ChatMessage) => {
-    setMessages(prev => [...prev, msg])
+    // 🛡️ 2026-05-06: 채팅 무한 누적 차단 — 모바일 라이브 장시간 시청 시 freeze 사고 방지.
+    // 최대 200개 유지. 화면 표시는 ReelCard 에서 추가로 -8 슬라이스됨.
+    setMessages(prev => [...prev, msg].slice(-200))
   }, [])
 
   const sendMessage = useCallback(
@@ -127,7 +130,7 @@ export function useLiveStreamWebSocket(
           userName: msg.user_name,
           userType: msg.is_seller ? 'streamer' : (msg.is_admin ? 'system' : 'viewer'),
           message: msg.message,
-          timestamp: new Date(msg.created_at).getTime(),
+          timestamp: safeTime(msg.created_at),
           isSeller: Boolean(msg.is_seller),
           isAdmin: Boolean(msg.is_admin),
         }))
@@ -188,19 +191,19 @@ export function useLiveStreamWebSocket(
 
           if (msg.type === 'chat') {
             const d = msg.data
-            setMessages((prev) => [
-              ...prev,
-              {
+            setMessages((prev) => {
+              const newMsg: ChatMessage = {
                 id: String(d.id),
                 userId: d.user_id,
                 userName: d.user_name,
                 userType: d.is_seller ? 'streamer' : (d.is_admin ? 'system' : 'viewer'),
                 message: d.message,
-                timestamp: new Date(d.created_at).getTime(),
+                timestamp: safeTime(d.created_at),
                 isSeller: Boolean(d.is_seller),
                 isAdmin: Boolean(d.is_admin),
-              },
-            ])
+              }
+              return [...prev, newMsg].slice(-200)
+            })
           } else if (msg.type === 'viewer_count') {
             setStreamData((prev) =>
               prev ? { ...prev, viewer_count: msg.data.count } : null

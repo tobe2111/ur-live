@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Eye, Clock } from 'lucide-react'
 import api from '@/lib/api'
 import { useStreamStore } from '@/shared/stores/useStreamStore'
+import { safeDate } from '@/utils/safe-date'
 
 interface ScheduledStream {
   id: number
@@ -20,7 +21,7 @@ function fmt(n: number) { return n.toLocaleString() }
 
 function ScheduledCard({ s }: { s: ScheduledStream }) {
   const navigate = useNavigate()
-  const schedDate = s.scheduled_at ? new Date(s.scheduled_at) : null
+  const schedDate = safeDate(s.scheduled_at)
   const timeLabel = schedDate
     ? schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true })
     : ''
