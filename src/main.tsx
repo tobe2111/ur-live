@@ -19,7 +19,6 @@ import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
-    requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
   }
 }
 
@@ -100,7 +99,7 @@ if (import.meta.env.PROD) {
     document.head.appendChild(s)
   }
   if ('requestIdleCallback' in window) {
-    window.requestIdleCallback!(loadGTM, { timeout: 4000 })
+    requestIdleCallback(loadGTM, { timeout: 4000 })
   } else {
     setTimeout(loadGTM, 2500)
   }
