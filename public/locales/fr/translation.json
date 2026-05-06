@@ -3998,7 +3998,12 @@
     "optionPlaceholder": "Veuillez sélectionner une option",
     "pointReward": "Points de récompense",
     "vatIncluded": "TVA incluse (10%)",
-    "tomorrowDelivery": "Arrive demain"
+    "tomorrowDelivery": "Arrive demain",
+    "header": {
+      "back": "Retour",
+      "share": "Partager",
+      "cart": "Panier"
+    }
   },
   "paymentSuccess": {
     "approving": "Approbation du paiement...",
@@ -4303,5 +4308,88 @@
   "sharePrompt": {
     "closeAria": "Fermer l'invite de partage",
     "later": "Plus tard"
+  },
+  "map": {
+    "filter": {
+      "ariaLabel": "Paramètres de filtre",
+      "title": "Filtre",
+      "reset": "Réinitialiser",
+      "resetAria": "Réinitialiser les filtres",
+      "region": "Région",
+      "category": "Catégorie",
+      "apply": "Appliquer"
+    },
+    "detail": {
+      "deselect": "Désélectionner",
+      "unfavorite": "Retirer des favoris",
+      "favorite": "Ajouter aux favoris",
+      "call": "Appeler",
+      "directionsAria": "Itinéraire KakaoMap",
+      "directions": "Itinéraire",
+      "buyVoucher": "Acheter le bon"
+    },
+    "search": {
+      "back": "Retour",
+      "ariaLabel": "Rechercher",
+      "deleteAll": "Tout supprimer"
+    },
+    "sheet": {
+      "filterAria": "Ouvrir filtre région/catégorie",
+      "count": "lieux",
+      "nearMeLabel": "📍 Près de moi",
+      "sortAria": "Trier"
+    },
+    "voucher": {
+      "all": "Tout",
+      "meal": "Repas",
+      "beauty": "Beauté",
+      "health": "Santé",
+      "pet": "Animal",
+      "stay": "Hébergement",
+      "activity": "Activité"
+    }
+  },
+  "sellerSwitch": {
+    "pending": "En cours d'examen",
+    "rejected": "Rejeté",
+    "suspended": "Suspendu",
+    "dashboardAria": "Basculer vers tableau de bord vendeur",
+    "switching": "Basculement...",
+    "sellerMode": "Mode vendeur",
+    "applyAria": "Devenir vendeur",
+    "applyLabel": "Devenir vendeur",
+    "successMsg": "Redirection vers le tableau de bord vendeur!",
+    "errorMsg": "Échec du passage en mode vendeur"
+  },
+  "pwa": {
+    "install": {
+      "closeAria": "Fermer",
+      "title": "🎁 Installez et obtenez un coupon de bienvenue!",
+      "desc": "Installez sur l'écran d'accueil et obtenez un coupon de 5 000 ₩",
+      "installBtn": "Installer",
+      "later": "Plus tard",
+      "manualDesc": "Ajoutez à l'écran et recevez 5 000 ₩"
+    }
+  },
+  "pointsCharge": {
+    "seoTitle": "Recharger Deal - Ur-Deal",
+    "seoDesc": "Rechargez vos points de deal",
+    "back": "Retour",
+    "title": "Recharger Deal",
+    "balance": "Mon solde de deal",
+    "rate": "1 KRW = 1 deal · Sans frais",
+    "selectTitle": "Montant de recharge",
+    "selectHint": "Sélectionnez le montant souhaité",
+    "currentBalance": "Solde actuel",
+    "chargeDeals": "Deal à recharger",
+    "afterBalance": "Solde après recharge",
+    "noRefund": "Les deals rechargés ne sont pas remboursables",
+    "usageNote": "Utilisable uniquement pour les dons live et les paiements de produits.",
+    "chargeHistory": "Détails de recharge",
+    "paymentNoRefund": "Les deals rechargés ne sont pas remboursables après paiement.",
+    "prev": "Précédent",
+    "payBtn": "Payer {{amount}} KRW",
+    "preparing": "Préparation du paiement…",
+    "chargeBtn": "Recharger {{deals}} deals"
   }
 }

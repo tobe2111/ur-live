@@ -13,6 +13,7 @@
  *     로그인된 사용자만, 1회 발급 (UNIQUE constraint), localStorage 가드.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Smartphone, X, Plus } from 'lucide-react'
 import { isPWAStandalone } from '@/lib/in-app-warning'
 import { detectInAppBrowser, isIOS, isAndroid } from '@/lib/in-app-browser'
@@ -60,6 +61,7 @@ async function claimInstallReward(): Promise<void> {
 }
 
 export default function PWAInstallPrompt() {
+  const { t } = useTranslation()
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [show, setShow] = useState(false)
   const [iosManual, setIosManual] = useState(false)
@@ -164,11 +166,11 @@ export default function PWAInstallPrompt() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 dark:text-white">
-                🎁 설치하면 환영 쿠폰!
+                {t('pwa.install.title', { defaultValue: '🎁 설치하면 환영 쿠폰!' })}
               </p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">홈 화면에 설치하고 5,000원 쿠폰 받기</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.desc', { defaultValue: '홈 화면에 설치하고 5,000원 쿠폰 받기' })}</p>
             </div>
-            <button onClick={handleDismiss} aria-label="닫기" className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
+            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
@@ -178,10 +180,10 @@ export default function PWAInstallPrompt() {
               className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-pink-500 text-white rounded-xl font-bold text-sm active:scale-95"
             >
               <Plus className="w-4 h-4" />
-              설치하기
+              {t('pwa.install.installBtn', { defaultValue: '설치하기' })}
             </button>
             <button onClick={handleDismiss} className="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-sm font-medium">
-              나중에
+              {t('pwa.install.later', { defaultValue: '나중에' })}
             </button>
           </div>
         </div>
@@ -201,10 +203,10 @@ export default function PWAInstallPrompt() {
               <Smartphone className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 dark:text-white">🎁 설치하면 환영 쿠폰!</p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">홈 화면에 추가하고 5,000원 받기</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">{t('pwa.install.title', { defaultValue: '🎁 설치하면 환영 쿠폰!' })}</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.manualDesc', { defaultValue: '홈 화면에 추가하고 5,000원 받기' })}</p>
             </div>
-            <button onClick={handleDismiss} aria-label="닫기" className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
+            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>

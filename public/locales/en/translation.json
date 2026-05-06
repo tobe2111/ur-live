@@ -3998,7 +3998,12 @@
     "optionPlaceholder": "Please select an option",
     "pointReward": "Reward points",
     "vatIncluded": "VAT included (10%)",
-    "tomorrowDelivery": "Arrives tomorrow"
+    "tomorrowDelivery": "Arrives tomorrow",
+    "header": {
+      "back": "Go back",
+      "share": "Share",
+      "cart": "Cart"
+    }
   },
   "paymentSuccess": {
     "approving": "Approving payment...",
@@ -4303,5 +4308,88 @@
   "sharePrompt": {
     "closeAria": "Close share prompt",
     "later": "Later"
+  },
+  "map": {
+    "filter": {
+      "ariaLabel": "Filter settings",
+      "title": "Filter",
+      "reset": "Reset",
+      "resetAria": "Reset filters",
+      "region": "Region",
+      "category": "Category",
+      "apply": "Apply"
+    },
+    "detail": {
+      "deselect": "Deselect",
+      "unfavorite": "Remove from favorites",
+      "favorite": "Add to favorites",
+      "call": "Call",
+      "directionsAria": "KakaoMap directions",
+      "directions": "Directions",
+      "buyVoucher": "Buy voucher"
+    },
+    "search": {
+      "back": "Go back",
+      "ariaLabel": "Search",
+      "deleteAll": "Delete all"
+    },
+    "sheet": {
+      "filterAria": "Open region/category filter",
+      "count": "places",
+      "nearMeLabel": "📍 Near me",
+      "sortAria": "Sort"
+    },
+    "voucher": {
+      "all": "All",
+      "meal": "Dining",
+      "beauty": "Beauty",
+      "health": "Health",
+      "pet": "Pet",
+      "stay": "Stay",
+      "activity": "Activity"
+    }
+  },
+  "sellerSwitch": {
+    "pending": "Under review",
+    "rejected": "Rejected",
+    "suspended": "Suspended",
+    "dashboardAria": "Switch to seller dashboard",
+    "switching": "Switching...",
+    "sellerMode": "Seller mode",
+    "applyAria": "Become a seller",
+    "applyLabel": "Become a seller",
+    "successMsg": "Redirecting to seller dashboard!",
+    "errorMsg": "Failed to switch to seller"
+  },
+  "pwa": {
+    "install": {
+      "closeAria": "Close",
+      "title": "🎁 Install for a welcome coupon!",
+      "desc": "Install on home screen and get a ₩5,000 coupon",
+      "installBtn": "Install",
+      "later": "Later",
+      "manualDesc": "Add to home screen and get ₩5,000"
+    }
+  },
+  "pointsCharge": {
+    "seoTitle": "Deal Charge - Ur-Deal",
+    "seoDesc": "Charge your deal points",
+    "back": "Go back",
+    "title": "Deal Charge",
+    "balance": "My deal balance",
+    "rate": "1 KRW = 1 deal · No fees",
+    "selectTitle": "Charge amount",
+    "selectHint": "Select desired amount",
+    "currentBalance": "Current balance",
+    "chargeDeals": "Deals to charge",
+    "afterBalance": "Balance after charge",
+    "noRefund": "Charged deals are non-refundable",
+    "usageNote": "Only usable for live donations and product payments.",
+    "chargeHistory": "Charge details",
+    "paymentNoRefund": "Charged deals are non-refundable after payment.",
+    "prev": "Previous",
+    "payBtn": "Pay {{amount}} KRW",
+    "preparing": "Preparing payment…",
+    "chargeBtn": "Charge {{deals}} deals"
   }
 }

@@ -20,14 +20,14 @@ interface Props {
   setShowFavoritesOnly: (fn: (v: boolean) => boolean) => void
 }
 
-const VOUCHER_TYPES: Array<{ key: VoucherType; label: string; emoji: string }> = [
-  { key: 'all', label: '전체', emoji: '✨' },
-  { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
-  { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
-  { key: 'health_voucher', label: '헬스', emoji: '💪' },
-  { key: 'pet_voucher', label: '반려', emoji: '🐶' },
-  { key: 'stay_voucher', label: '숙박', emoji: '🏨' },
-  { key: 'activity_voucher', label: '액티비티', emoji: '🎯' },
+const VOUCHER_TYPE_DEFS: Array<{ key: VoucherType; labelKey: string; defaultLabel: string; emoji: string }> = [
+  { key: 'all', labelKey: 'map.voucher.all', defaultLabel: '전체', emoji: '✨' },
+  { key: 'meal_voucher', labelKey: 'map.voucher.meal', defaultLabel: '식사', emoji: '🍽️' },
+  { key: 'beauty_voucher', labelKey: 'map.voucher.beauty', defaultLabel: '뷰티', emoji: '💇' },
+  { key: 'health_voucher', labelKey: 'map.voucher.health', defaultLabel: '헬스', emoji: '💪' },
+  { key: 'pet_voucher', labelKey: 'map.voucher.pet', defaultLabel: '반려', emoji: '🐶' },
+  { key: 'stay_voucher', labelKey: 'map.voucher.stay', defaultLabel: '숙박', emoji: '🏨' },
+  { key: 'activity_voucher', labelKey: 'map.voucher.activity', defaultLabel: '액티비티', emoji: '🎯' },
 ]
 
 /**
@@ -56,7 +56,7 @@ export default function SheetFilterBar({
       <div className="flex items-center gap-2">
         <button
           onClick={onOpenFilter}
-          aria-label="지역·카테고리 필터 열기"
+          aria-label={t('map.sheet.filterAria', { defaultValue: '지역·카테고리 필터 열기' })}
           className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
             activeFilterCount > 0
               ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
@@ -84,7 +84,7 @@ export default function SheetFilterBar({
             <Navigation className="w-3 h-3" />
             <span>{t('restaurantMap.nearMe')}</span>
           </button>
-          {VOUCHER_TYPES.map(v => (
+          {VOUCHER_TYPE_DEFS.map(v => (
             <button
               key={v.key}
               onClick={() => setVoucherType(v.key)}
@@ -95,7 +95,7 @@ export default function SheetFilterBar({
               }`}
             >
               <span>{v.emoji}</span>
-              <span>{v.label}</span>
+              <span>{t(v.labelKey, { defaultValue: v.defaultLabel })}</span>
             </button>
           ))}
         </div>
@@ -104,8 +104,8 @@ export default function SheetFilterBar({
       <div className="flex items-center justify-between mt-2 px-1">
         <div className="flex items-center gap-2">
           <span className="text-[12px] text-gray-500 dark:text-gray-400">
-            <span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>곳
-            {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">📍 내 위치 기준</span>}
+            <span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}
+            {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">{t('map.sheet.nearMeLabel', { defaultValue: '📍 내 위치 기준' })}</span>}
           </span>
           {favorites.length > 0 && (
             <button
@@ -126,7 +126,7 @@ export default function SheetFilterBar({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
-            aria-label="정렬"
+            aria-label={t('map.sheet.sortAria', { defaultValue: '정렬' })}
             className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-transparent focus:outline-none"
           >
             {userLoc && <option value="distance">{t('restaurantMap.sort.distance')}</option>}

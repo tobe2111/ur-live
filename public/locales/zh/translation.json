@@ -3998,7 +3998,12 @@
     "optionPlaceholder": "请选择选项",
     "pointReward": "积分奖励",
     "vatIncluded": "含增值税 (10%)",
-    "tomorrowDelivery": "明日送达"
+    "tomorrowDelivery": "明日送达",
+    "header": {
+      "back": "返回",
+      "share": "分享",
+      "cart": "购物车"
+    }
   },
   "paymentSuccess": {
     "approving": "正在批准付款...",
@@ -4303,5 +4308,88 @@
   "sharePrompt": {
     "closeAria": "关闭分享提示",
     "later": "稍后"
+  },
+  "map": {
+    "filter": {
+      "ariaLabel": "筛选设置",
+      "title": "筛选",
+      "reset": "重置",
+      "resetAria": "重置筛选",
+      "region": "地区",
+      "category": "分类",
+      "apply": "应用"
+    },
+    "detail": {
+      "deselect": "取消选择",
+      "unfavorite": "取消收藏",
+      "favorite": "收藏",
+      "call": "电话",
+      "directionsAria": "KakaoMap导航",
+      "directions": "导航",
+      "buyVoucher": "购买券"
+    },
+    "search": {
+      "back": "返回",
+      "ariaLabel": "搜索",
+      "deleteAll": "全部删除"
+    },
+    "sheet": {
+      "filterAria": "打开地区·分类筛选",
+      "count": "处",
+      "nearMeLabel": "📍 附近位置",
+      "sortAria": "排序"
+    },
+    "voucher": {
+      "all": "全部",
+      "meal": "餐饮",
+      "beauty": "美容",
+      "health": "健身",
+      "pet": "宠物",
+      "stay": "住宿",
+      "activity": "活动"
+    }
+  },
+  "sellerSwitch": {
+    "pending": "审核中",
+    "rejected": "已拒绝",
+    "suspended": "已暂停",
+    "dashboardAria": "切换到卖家后台",
+    "switching": "切换中...",
+    "sellerMode": "卖家模式",
+    "applyAria": "成为卖家",
+    "applyLabel": "成为卖家",
+    "successMsg": "正在前往卖家后台!",
+    "errorMsg": "切换到卖家失败"
+  },
+  "pwa": {
+    "install": {
+      "closeAria": "关闭",
+      "title": "🎁 安装即获欢迎券!",
+      "desc": "安装到主屏幕并获得5,000韩元优惠券",
+      "installBtn": "安装",
+      "later": "稍后",
+      "manualDesc": "添加到主屏幕并获得5,000韩元"
+    }
+  },
+  "pointsCharge": {
+    "seoTitle": "充值Deal - Ur-Deal",
+    "seoDesc": "充值您的Deal积分",
+    "back": "返回",
+    "title": "充值Deal",
+    "balance": "我的Deal余额",
+    "rate": "1韩元 = 1Deal · 无手续费",
+    "selectTitle": "充值金额",
+    "selectHint": "请选择金额",
+    "currentBalance": "当前余额",
+    "chargeDeals": "充值Deal",
+    "afterBalance": "充值后余额",
+    "noRefund": "已充值的Deal不可退款",
+    "usageNote": "仅可用于直播后援及商品结算。",
+    "chargeHistory": "充值明细",
+    "paymentNoRefund": "支付完成后，已充值的Deal不可退款。",
+    "prev": "上一步",
+    "payBtn": "支付{{amount}}韩元",
+    "preparing": "支付准备中…",
+    "chargeBtn": "充值{{deals}}Deal"
   }
 }

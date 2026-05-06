@@ -34,7 +34,7 @@ export default function MapSearchHeader({
       <div className="flex items-center gap-2 pointer-events-auto">
         <button
           onClick={() => navigate(-1)}
-          aria-label="뒤로가기"
+          aria-label={t('map.search.back', { defaultValue: '뒤로가기' })}
           className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md shrink-0"
         >
           <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
@@ -48,7 +48,7 @@ export default function MapSearchHeader({
             onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
             onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); (e.target as HTMLInputElement).blur() } }}
             placeholder={t('restaurantMap.searchPlaceholder')}
-            aria-label="검색"
+            aria-label={t('map.search.ariaLabel', { defaultValue: '검색' })}
             className="w-full pl-10 pr-9 py-2.5 bg-white/95 backdrop-blur-md rounded-full text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-md"
           />
           {search && (
@@ -65,7 +65,7 @@ export default function MapSearchHeader({
                   onClick={() => { setSearchHistory([]); storage.setJSON('restaurant_search_history', []) }}
                   className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300"
                 >
-                  전체 삭제
+                  {t('map.search.deleteAll', { defaultValue: '전체 삭제' })}
                 </button>
               </div>
               <div className="max-h-60 overflow-y-auto">

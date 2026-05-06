@@ -3998,7 +3998,12 @@
     "optionPlaceholder": "オプションを選択してください",
     "pointReward": "ポイント還元",
     "vatIncluded": "消費税込 (VAT 10%)",
-    "tomorrowDelivery": "明日到着予定"
+    "tomorrowDelivery": "明日到着予定",
+    "header": {
+      "back": "戻る",
+      "share": "シェア",
+      "cart": "カート"
+    }
   },
   "paymentSuccess": {
     "approving": "決済を承認中です...",
@@ -4303,5 +4308,88 @@
   "sharePrompt": {
     "closeAria": "共有プロンプトを閉じる",
     "later": "後で"
+  },
+  "map": {
+    "filter": {
+      "ariaLabel": "フィルター設定",
+      "title": "フィルター",
+      "reset": "リセット",
+      "resetAria": "フィルターリセット",
+      "region": "地域",
+      "category": "カテゴリー",
+      "apply": "適用"
+    },
+    "detail": {
+      "deselect": "選択解除",
+      "unfavorite": "お気に入り解除",
+      "favorite": "お気に入り",
+      "call": "電話",
+      "directionsAria": "カカオマップ経路案内",
+      "directions": "経路案内",
+      "buyVoucher": "バウチャー購入"
+    },
+    "search": {
+      "back": "戻る",
+      "ariaLabel": "検索",
+      "deleteAll": "全て削除"
+    },
+    "sheet": {
+      "filterAria": "地域・カテゴリーフィルター",
+      "count": "箇所",
+      "nearMeLabel": "📍 現在地基準",
+      "sortAria": "並び替え"
+    },
+    "voucher": {
+      "all": "全て",
+      "meal": "食事",
+      "beauty": "ビューティー",
+      "health": "ヘルス",
+      "pet": "ペット",
+      "stay": "宿泊",
+      "activity": "アクティビティ"
+    }
+  },
+  "sellerSwitch": {
+    "pending": "審査中",
+    "rejected": "却下",
+    "suspended": "停止",
+    "dashboardAria": "セラーダッシュボードへ切替",
+    "switching": "切替中...",
+    "sellerMode": "セラーモード",
+    "applyAria": "セラーとして活動する",
+    "applyLabel": "セラーとして活動する",
+    "successMsg": "セラーダッシュボードへ移動します!",
+    "errorMsg": "セラー切替に失敗しました"
+  },
+  "pwa": {
+    "install": {
+      "closeAria": "閉じる",
+      "title": "🎁 インストールで歓迎クーポン!",
+      "desc": "ホーム画面にインストールして5,000円クーポンをゲット",
+      "installBtn": "インストール",
+      "later": "後で",
+      "manualDesc": "ホーム画面に追加して5,000円をもらう"
+    }
+  },
+  "pointsCharge": {
+    "seoTitle": "ディール充電 - Ur-Deal",
+    "seoDesc": "ディールポイントを充電してください",
+    "back": "戻る",
+    "title": "ディール充電",
+    "balance": "マイディール残高",
+    "rate": "1ウォン = 1ディール · 手数料なし",
+    "selectTitle": "充電金額",
+    "selectHint": "ご希望の金額をお選びください",
+    "currentBalance": "現在の残高",
+    "chargeDeals": "充電ディール",
+    "afterBalance": "充電後残高",
+    "noRefund": "充電済みディールは返金不可です",
+    "usageNote": "ライブ放送の支援と商品決済のみ使用可能です。",
+    "chargeHistory": "充電内訳",
+    "paymentNoRefund": "決済完了後、充電済みディールは返金不可です。",
+    "prev": "前へ",
+    "payBtn": "{{amount}}ウォン決済",
+    "preparing": "決済準備中…",
+    "chargeBtn": "{{deals}}ディールを充電する"
   }
 }
