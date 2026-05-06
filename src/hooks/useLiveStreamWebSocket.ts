@@ -242,9 +242,14 @@ export function useLiveStreamWebSocket(
         wsRef.current = null
 
         if (reconnectAttemptsRef.current < MAX_RECONNECT) {
-          const delay = 1000 * Math.pow(2, reconnectAttemptsRef.current)
+          // 🛡️ 2026-05-06: Exponential backoff + ±25% jitter — 동시 reconnect thundering herd 방지.
+          //   서버 재시작 시 모든 클라이언트가 같은 시점에 reconnect 시도 → 부하 폭주.
+          //   각 클라이언트 무작위 지연으로 평탄화.
+          const baseDelay = 1000 * Math.pow(2, reconnectAttemptsRef.current)
+          const jitter = baseDelay * (0.5 - Math.random()) * 0.5  // ±25%
+          const delay = Math.max(500, Math.round(baseDelay + jitter))
           reconnectAttemptsRef.current++
-          setError(`연결 끊김. ${delay / 1000}초 후 재연결...`)
+          setError(`연결 끊김. ${Math.round(delay / 1000)}초 후 재연결...`)
           reconnectTimeoutRef.current = setTimeout(connect, delay)
         } else {
           // WebSocket failed after max retries — fall back to polling

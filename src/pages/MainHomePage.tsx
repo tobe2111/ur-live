@@ -137,35 +137,54 @@ export default function MainHomePage() {
     // 🛡️ 2026-04-28: 6 calls → 1 (/api/home/bundle) — 1분 edge cache + swr.
     //   첫 진입: 1회 round-trip (D1 6쿼리 병렬). 이후 진입: edge cache hit (수십 ms).
     // 🛡️ 2026-05-01: 8s timeout + 안전 가드 — Worker cold start / D1 hang 시 무한 스켈레톤 차단.
-    //   axios 기본 timeout (15s) 보다 짧게 잡아 사용자에게 빠르게 빈 화면 fallback.
+    // 🛡️ 2026-05-06: 60s 자동 새로고침 (visibility-aware) — 라이브 시작/종료 자동 반영.
     let bundleSettled = false
+    let cancelled = false
     const safetyTimer = setTimeout(() => {
-      if (!bundleSettled) {
+      if (!bundleSettled && !cancelled) {
         bundleSettled = true
         setLoading(false)
       }
     }, 8000)
 
-    api.get('/api/home/bundle', { timeout: 8000 })
-      .then(res => {
-        if (!res.data.success) return
-        const d = res.data.data || {}
-        if (Array.isArray(d.live)) setLiveStreams(d.live)
-        if (Array.isArray(d.scheduled)) setScheduledStreams(d.scheduled)
-        if (Array.isArray(d.ended)) setEndedStreams(d.ended)
-        if (Array.isArray(d.meal_vouchers)) setMealProducts(d.meal_vouchers)
-        if (Array.isArray(d.featured)) setProducts(d.featured)
-        if (Array.isArray(d.latest)) setNewProducts(d.latest)
-      })
-      .catch(() => { /* swallow — 빈 페이지 fallback */ })
-      .finally(() => {
-        bundleSettled = true
-        clearTimeout(safetyTimer)
-        setLoading(false)
-      })
+    const fetchBundle = (initial: boolean) => {
+      api.get('/api/home/bundle', { timeout: 8000 })
+        .then(res => {
+          if (cancelled || !res.data.success) return
+          const d = res.data.data || {}
+          if (Array.isArray(d.live)) setLiveStreams(d.live)
+          if (Array.isArray(d.scheduled)) setScheduledStreams(d.scheduled)
+          if (Array.isArray(d.ended)) setEndedStreams(d.ended)
+          if (Array.isArray(d.meal_vouchers)) setMealProducts(d.meal_vouchers)
+          if (Array.isArray(d.featured)) setProducts(d.featured)
+          if (Array.isArray(d.latest)) setNewProducts(d.latest)
+        })
+        .catch(() => { /* swallow — 빈 페이지 fallback */ })
+        .finally(() => {
+          if (cancelled) return
+          if (initial) {
+            bundleSettled = true
+            clearTimeout(safetyTimer)
+            setLoading(false)
+          }
+        })
+    }
 
-    return () => { clearTimeout(safetyTimer) }
-  }, [])
+    fetchBundle(true)
+    // 60초 자동 새로고침 (visibility 활성 시만 — 백그라운드 탭은 fetch 안 함)
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchBundle(false)
+    }, 60_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchBundle(false) }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      cancelled = true
+      clearTimeout(safetyTimer)
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [t])
 
   // Nearby 지역 필터링
   const filteredMeals = mealProducts.filter(m => {

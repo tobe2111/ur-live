@@ -31,6 +31,8 @@ const FORCE_REFRESH_DEBOUNCE_MS = 30 * 1000;
 //   같은 URL 의 401 가 5초 내 재발생하면 즉시 reject (재시도 차단).
 const _recent401: Map<string, number> = new Map();
 const URL_401_DEBOUNCE_MS = 5 * 1000;
+// 5xx 디바운스 캐시 — 같은 URL+status 30s 내 중복 토스트 차단
+const _recent5xx: Map<string, number> = new Map();
 
 // 🛡️ 2026-04-29: 셀러/어드민/에이전시 refresh inflight 락.
 //   같은 페이지에서 여러 API 가 동시 401 → 각각 인터셉터 진입 → 동시 refresh 호출 →
@@ -550,6 +552,28 @@ api.interceptors.response.use(
     // 403 Forbidden
     if (error.response?.status === 403) {
       console.warn('[API] 접근 권한 없음:', url);
+    }
+
+    // 🛡️ 2026-05-06: 5xx 전역 toast (페이지마다 처리하면 누락 사고 잦음)
+    //   - PUBLIC_API 는 noisy 하므로 제외 (단순 fetch fail 은 페이지 fallback 으로 충분)
+    //   - 같은 status+url 30초 디바운스 (5xx 폭주 시 토스트 폭탄 방지)
+    //   - 토스트 import 는 동적 (api.ts 가 toast 에 의존하면 순환 가능성)
+    const status5xx = error.response?.status
+    if (status5xx && status5xx >= 500 && status5xx < 600 && !isPublicAPI(url)) {
+      const key = `${status5xx}:${url.split('?')[0]}`
+      const last = _recent5xx.get(key) ?? 0
+      if (Date.now() - last > 30_000) {
+        _recent5xx.set(key, Date.now())
+        if (_recent5xx.size > 30) {
+          const oldest = _recent5xx.keys().next().value
+          if (oldest !== undefined) _recent5xx.delete(oldest)
+        }
+        import('@/hooks/useToast').then(({ toast }) =>
+          toast.error(status5xx === 503
+            ? '일시적으로 이용할 수 없어요. 잠시 후 다시 시도해주세요.'
+            : '서버 오류가 발생했어요. 잠시 후 다시 시도해주세요.')
+        ).catch(() => { /* toast lazy import 실패 시 무시 */ })
+      }
     }
 
     return Promise.reject(error);
