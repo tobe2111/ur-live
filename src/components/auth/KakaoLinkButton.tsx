@@ -101,7 +101,7 @@ export function KakaoLinkButton({ role }: Props) {
 
   async function unlink() {
     if (!confirm(t('kakaoLink.unlinkConfirm'))) return
-    const pw = prompt('본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)')
+    const pw = prompt(t('kakaoLink.unlinkPasswordPrompt', { defaultValue: '본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)' }))
     if (!pw) return
     setWorking(true)
     try {
@@ -125,7 +125,7 @@ export function KakaoLinkButton({ role }: Props) {
   if (loading) {
     return (
       <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-        <Loader2 className="w-4 h-4 animate-spin" /> 연동 상태 확인 중...
+        <Loader2 className="w-4 h-4 animate-spin" /> {t('kakaoLink.checkingStatus', { defaultValue: '연동 상태 확인 중...' })}
       </div>
     )
   }
@@ -139,14 +139,14 @@ export function KakaoLinkButton({ role }: Props) {
           <div className="w-10 h-10 rounded-full bg-yellow-300 flex items-center justify-center text-lg">💬</div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-green-700 font-bold">✓ 카카오 계정 연동됨</p>
+          <p className="text-xs text-green-700 font-bold">{t('kakaoLink.linkedStatus', { defaultValue: '✓ 카카오 계정 연동됨' })}</p>
           <p className="text-sm text-gray-900 font-semibold truncate">{status.user.name}</p>
           {status.user.email && <p className="text-[11px] text-gray-500 truncate">{status.user.email}</p>}
         </div>
         <button onClick={unlink} disabled={working}
           className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1">
           {working ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
-          해제
+          {t('kakaoLink.unlinkBtn', { defaultValue: '해제' })}
         </button>
       </div>
     )
@@ -160,8 +160,7 @@ export function KakaoLinkButton({ role }: Props) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-gray-900">{t('kakaoLink.title')}</p>
           <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
-            연동하면 카카오 로그인만으로 접근 가능해요.<br />
-            비밀번호 관리 부담 ↓ · 보안 ↑
+            {t('kakaoLink.benefit', { defaultValue: '연동하면 카카오 로그인만으로 접근 가능해요. 비밀번호 관리 부담 ↓ · 보안 ↑' })}
           </p>
         </div>
       </div>
@@ -175,7 +174,7 @@ export function KakaoLinkButton({ role }: Props) {
       <div className="flex items-start gap-1.5 text-[10px] text-gray-500">
         <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
         <span>
-          기존 이메일/비밀번호 로그인도 계속 사용 가능합니다.
+          {t('kakaoLink.emailStillUsable', { defaultValue: '기존 이메일/비밀번호 로그인도 계속 사용 가능합니다.' })}
           {t('kakaoLink.unlinkHint')}
         </span>
       </div>

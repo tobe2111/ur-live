@@ -824,7 +824,9 @@
     "addCartError": "장바구니 추가에 실패했습니다.",
     "loading": "위시리스트를 불러오는 중...",
     "retry": "다시 시도",
-    "addToCart": "장바구니"
+    "addToCart": "장바구니",
+    "seoTitle": "위시리스트 - 유어딜",
+    "seoDesc": "관심 상품을 모아보세요"
   },
   "seller": {
     "dashboard": "대시보드",
@@ -3653,7 +3655,13 @@
     "authFailed": "카카오 인증 실패",
     "authCancelled": "카카오 인증 취소됨",
     "linkFailed": "연동 실패",
-    "unlinkHint": "언제든 위 \"해제\" 버튼으로 연동 해제할 수 있어요."
+    "unlinkHint": "언제든 위 \"해제\" 버튼으로 연동 해제할 수 있어요.",
+    "unlinkPasswordPrompt": "본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 \"비밀번호 찾기\" 로 설정하세요)",
+    "checkingStatus": "연동 상태 확인 중...",
+    "linkedStatus": "✓ 카카오 계정 연동됨",
+    "unlinkBtn": "해제",
+    "benefit": "연동하면 카카오 로그인만으로 접근 가능해요. 비밀번호 관리 부담 ↓ · 보안 ↑",
+    "emailStillUsable": "기존 이메일/비밀번호 로그인도 계속 사용 가능합니다."
   },
   "live": {
     "player": {
@@ -3879,7 +3887,11 @@
       "discount": "할인율순",
       "price": "가격 낮은순",
       "rating": "평점순"
-    }
+    },
+    "seoTitle": "맛집 지도",
+    "seoDesc": "유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인",
+    "listAria": "맛집 목록",
+    "sheetResizeAria": "시트 크기 조절"
   },
   "address": {
     "title": "배송지 관리",
@@ -4621,7 +4633,8 @@
       "call": "전화",
       "directionsAria": "카카오맵 길찾기",
       "directions": "길찾기",
-      "buyVoucher": "바우처 구매"
+      "buyVoucher": "바우처 구매",
+      "buy": "구매"
     },
     "search": {
       "back": "뒤로가기",
@@ -4685,6 +4698,21 @@
     "prev": "이전",
     "payBtn": "{{amount}}원 결제",
     "preparing": "결제 준비 중…",
-    "chargeBtn": "{{deals}}딜 충전하기"
+    "chargeBtn": "{{deals}}딜 충전하기",
+    "invalidPayment": "결제 정보가 유효하지 않습니다.",
+    "confirmFailed": "충전 확인에 실패했습니다.",
+    "processingError": "충전 처리 중 오류가 발생했습니다.",
+    "processingTitle": "딜 충전 처리",
+    "processingDesc": "딜 포인트 충전 처리 중",
+    "processingMsg": "충전을 처리하는 중...",
+    "failTitle": "딜 충전 실패",
+    "failDesc": "딜 포인트 충전에 실패했습니다",
+    "successTitle": "딜 충전 완료",
+    "successDesc": "딜 포인트 충전이 완료되었습니다",
+    "successHeading": "충전 완료!",
+    "chargedDeals": "충전된 딜",
+    "successBalance": "현재 잔액: {{balance}}딜",
+    "goLive": "라이브로 돌아가기",
+    "chargeMore": "추가 충전"
   }
 }

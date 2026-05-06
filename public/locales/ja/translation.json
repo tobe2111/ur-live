@@ -824,7 +824,9 @@
     "addCartError": "カートへの追加に失敗しました。",
     "loading": "ウィッシュリストを読み込み中...",
     "retry": "再試行",
-    "addToCart": "カート"
+    "addToCart": "カート",
+    "seoTitle": "ウィッシュリスト - Ur-Deal",
+    "seoDesc": "気になる商品をまとめて見る"
   },
   "seller": {
     "dashboard": "ダッシュボード",
@@ -3653,7 +3655,13 @@
     "authFailed": "カカオ認証失敗",
     "authCancelled": "カカオ認証キャンセル",
     "linkFailed": "連携失敗",
-    "unlinkHint": "上の \"解除\" ボタンでいつでも連携解除できます。"
+    "unlinkHint": "上の \"解除\" ボタンでいつでも連携解除できます。",
+    "unlinkPasswordPrompt": "本人確認のためパスワードを入力してください。\n(カカオのみで登録した場合、先に「パスワード検索」で設定してください)",
+    "checkingStatus": "連携状態確認中...",
+    "linkedStatus": "✓ カカオアカウント連携済み",
+    "unlinkBtn": "解除",
+    "benefit": "連携するとカカオログインのみでアクセス可能。パスワード管理負担 ↓ · セキュリティ ↑",
+    "emailStillUsable": "従来のメール/パスワードログインも引き続き使用可能です。"
   },
   "live": {
     "player": {
@@ -3879,7 +3887,11 @@
       "discount": "割引率順",
       "price": "価格が安い順",
       "rating": "評価順"
-    }
+    },
+    "seoTitle": "グルメマップ",
+    "seoDesc": "Ur-Dealバウチャー利用可能なグルメをマップで探しましょう。インフルエンサー推薦最大70%割引。",
+    "listAria": "グルメリスト",
+    "sheetResizeAria": "シートサイズ調整"
   },
   "address": {
     "title": "配送先の管理",
@@ -4326,7 +4338,8 @@
       "call": "電話",
       "directionsAria": "カカオマップ経路案内",
       "directions": "経路案内",
-      "buyVoucher": "バウチャー購入"
+      "buyVoucher": "バウチャー購入",
+      "buy": "購入"
     },
     "search": {
       "back": "戻る",
@@ -4390,6 +4403,21 @@
     "prev": "前へ",
     "payBtn": "{{amount}}ウォン決済",
     "preparing": "決済準備中…",
-    "chargeBtn": "{{deals}}ディールを充電する"
+    "chargeBtn": "{{deals}}ディールを充電する",
+    "invalidPayment": "決済情報が無効です。",
+    "confirmFailed": "充電確認に失敗しました。",
+    "processingError": "充電処理中にエラーが発生しました。",
+    "processingTitle": "ディール充電処理",
+    "processingDesc": "ディールポイント充電処理中",
+    "processingMsg": "充電を処理中...",
+    "failTitle": "ディール充電失敗",
+    "failDesc": "ディールポイント充電に失敗しました",
+    "successTitle": "ディール充電完了",
+    "successDesc": "ディールポイント充電が完了しました",
+    "successHeading": "充電完了!",
+    "chargedDeals": "充電済みディール",
+    "successBalance": "現在の残高: {{balance}}ディール",
+    "goLive": "ライブに戻る",
+    "chargeMore": "追加充電"
   }
 }

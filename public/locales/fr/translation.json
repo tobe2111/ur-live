@@ -3518,7 +3518,9 @@
     "addCartError": "Échec de l'ajout au panier.",
     "loading": "Chargement de la liste de souhaits...",
     "retry": "Réessayer",
-    "addToCart": "Ajouter au panier"
+    "addToCart": "Ajouter au panier",
+    "seoTitle": "Liste de souhaits - Ur-Deal",
+    "seoDesc": "Voir vos produits sauvegardés"
   },
   "voucher": {
     "myVouchers": "Mes coupons",
@@ -3653,7 +3655,13 @@
     "authFailed": "Échec de l'authentification KakaoTalk",
     "authCancelled": "Authentification KakaoTalk annulée",
     "linkFailed": "Échec de la liaison",
-    "unlinkHint": "Vous pouvez délier à tout moment avec le bouton \"Délier\" ci-dessus."
+    "unlinkHint": "Vous pouvez délier à tout moment avec le bouton \"Délier\" ci-dessus.",
+    "unlinkPasswordPrompt": "Entrez votre mot de passe pour vérifier votre identité.\n(Si vous n'avez utilisé que Kakao, configurez d'abord un mot de passe via \"Trouver le mot de passe\")",
+    "checkingStatus": "Vérification du statut de liaison...",
+    "linkedStatus": "✓ Compte Kakao lié",
+    "unlinkBtn": "Délier",
+    "benefit": "Une fois lié, accédez avec Kakao uniquement. Moins de mots de passe ↓ · Plus de sécurité ↑",
+    "emailStillUsable": "La connexion par email/mot de passe reste disponible."
   },
   "live": {
     "player": {
@@ -3879,7 +3887,11 @@
       "discount": "Par remise",
       "price": "Prix croissant",
       "rating": "Par évaluation"
-    }
+    },
+    "seoTitle": "Carte des restaurants",
+    "seoDesc": "Trouvez des restaurants acceptant les bons Ur-Deal sur la carte. Jusqu'à 70% de réduction.",
+    "listAria": "Liste des restaurants",
+    "sheetResizeAria": "Redimensionner le panneau"
   },
   "address": {
     "title": "Adresses de livraison",
@@ -4326,7 +4338,8 @@
       "call": "Appeler",
       "directionsAria": "Itinéraire KakaoMap",
       "directions": "Itinéraire",
-      "buyVoucher": "Acheter le bon"
+      "buyVoucher": "Acheter le bon",
+      "buy": "Acheter"
     },
     "search": {
       "back": "Retour",
@@ -4390,6 +4403,21 @@
     "prev": "Précédent",
     "payBtn": "Payer {{amount}} KRW",
     "preparing": "Préparation du paiement…",
-    "chargeBtn": "Recharger {{deals}} deals"
+    "chargeBtn": "Recharger {{deals}} deals",
+    "invalidPayment": "Les informations de paiement sont invalides.",
+    "confirmFailed": "La confirmation de recharge a échoué.",
+    "processingError": "Une erreur s'est produite lors du traitement de la recharge.",
+    "processingTitle": "Traitement de la recharge Deal",
+    "processingDesc": "Traitement de la recharge de points Deal",
+    "processingMsg": "Traitement de la recharge...",
+    "failTitle": "Échec de la recharge Deal",
+    "failDesc": "La recharge de points Deal a échoué",
+    "successTitle": "Recharge Deal terminée",
+    "successDesc": "La recharge de points Deal est terminée",
+    "successHeading": "Recharge terminée!",
+    "chargedDeals": "Deals rechargés",
+    "successBalance": "Solde actuel: {{balance}} deals",
+    "goLive": "Retourner au live",
+    "chargeMore": "Recharger davantage"
   }
 }

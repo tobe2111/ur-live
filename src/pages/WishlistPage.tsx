@@ -145,7 +145,7 @@ const WishlistPage: React.FC = () => {
 
   return (
     <WalletPageWrapper theme={theme}>
-      <SEO title="위시리스트 - 유어딜" description="관심 상품을 모아보세요" url="/wishlist" noindex />
+      <SEO title={t('wishlist.seoTitle', { defaultValue: '위시리스트 - 유어딜' })} description={t('wishlist.seoDesc', { defaultValue: '관심 상품을 모아보세요' })} url="/wishlist" noindex />
 
       {/* 상단 chrome — 뒤로가기 */}
       <div className="sticky top-0 z-30 px-2 pt-3 pb-2 flex items-center"

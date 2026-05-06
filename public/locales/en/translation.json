@@ -824,7 +824,9 @@
     "addCartError": "Failed to add to cart.",
     "loading": "Loading wishlist...",
     "retry": "Retry",
-    "addToCart": "Add to Cart"
+    "addToCart": "Add to Cart",
+    "seoTitle": "Wishlist - Ur-Deal",
+    "seoDesc": "View your saved products"
   },
   "seller": {
     "dashboard": "Dashboard",
@@ -3653,7 +3655,13 @@
     "authFailed": "KakaoTalk authentication failed",
     "authCancelled": "KakaoTalk authentication cancelled",
     "linkFailed": "Link failed",
-    "unlinkHint": "You can unlink anytime using the \"Unlink\" button above."
+    "unlinkHint": "You can unlink anytime using the \"Unlink\" button above.",
+    "unlinkPasswordPrompt": "Enter your password to verify identity.\n(If you signed up with Kakao only, first set a password via \"Find Password\")",
+    "checkingStatus": "Checking link status...",
+    "linkedStatus": "✓ Kakao account linked",
+    "unlinkBtn": "Unlink",
+    "benefit": "Once linked, you can access with Kakao login only. Less password hassle ↓ · Better security ↑",
+    "emailStillUsable": "Email/password login remains available."
   },
   "live": {
     "player": {
@@ -3879,7 +3887,11 @@
       "discount": "By discount",
       "price": "Lowest price",
       "rating": "By rating"
-    }
+    },
+    "seoTitle": "Restaurant Map",
+    "seoDesc": "Find restaurants that accept Ur-Deal vouchers on the map. Up to 70% off influencer-recommended restaurants.",
+    "listAria": "Restaurant list",
+    "sheetResizeAria": "Resize sheet"
   },
   "address": {
     "title": "Shipping Addresses",
@@ -4326,7 +4338,8 @@
       "call": "Call",
       "directionsAria": "KakaoMap directions",
       "directions": "Directions",
-      "buyVoucher": "Buy voucher"
+      "buyVoucher": "Buy voucher",
+      "buy": "Buy"
     },
     "search": {
       "back": "Go back",
@@ -4390,6 +4403,21 @@
     "prev": "Previous",
     "payBtn": "Pay {{amount}} KRW",
     "preparing": "Preparing payment…",
-    "chargeBtn": "Charge {{deals}} deals"
+    "chargeBtn": "Charge {{deals}} deals",
+    "invalidPayment": "Payment information is invalid.",
+    "confirmFailed": "Charge confirmation failed.",
+    "processingError": "An error occurred while processing the charge.",
+    "processingTitle": "Deal Charge Processing",
+    "processingDesc": "Processing deal point charge",
+    "processingMsg": "Processing charge...",
+    "failTitle": "Deal Charge Failed",
+    "failDesc": "Deal point charge failed",
+    "successTitle": "Deal Charge Complete",
+    "successDesc": "Deal point charge is complete",
+    "successHeading": "Charge Complete!",
+    "chargedDeals": "Charged deals",
+    "successBalance": "Current balance: {{balance}} deals",
+    "goLive": "Back to live",
+    "chargeMore": "Charge more"
   }
 }

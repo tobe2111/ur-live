@@ -824,7 +824,9 @@
     "addCartError": "加入购物车失败。",
     "loading": "正在加载心愿单...",
     "retry": "重试",
-    "addToCart": "加入购物车"
+    "addToCart": "加入购物车",
+    "seoTitle": "愿望清单 - Ur-Deal",
+    "seoDesc": "查看您收藏的商品"
   },
   "seller": {
     "dashboard": "仪表盘",
@@ -3653,7 +3655,13 @@
     "authFailed": "Kakao 认证失败",
     "authCancelled": "Kakao 认证已取消",
     "linkFailed": "关联失败",
-    "unlinkHint": "可随时使用上方的 \"解除\" 按钮取消关联。"
+    "unlinkHint": "可随时使用上方的 \"解除\" 按钮取消关联。",
+    "unlinkPasswordPrompt": "请输入密码以验证身份。\n(如果仅通过Kakao注册，请先通过\"找密码\"设置密码)",
+    "checkingStatus": "检查关联状态中...",
+    "linkedStatus": "✓ Kakao账号已关联",
+    "unlinkBtn": "解除",
+    "benefit": "关联后仅需Kakao登录即可访问。密码管理负担 ↓ · 安全性 ↑",
+    "emailStillUsable": "现有邮箱/密码登录仍然可用。"
   },
   "live": {
     "player": {
@@ -3879,7 +3887,11 @@
       "discount": "按折扣",
       "price": "价格从低到高",
       "rating": "按评分"
-    }
+    },
+    "seoTitle": "美食地图",
+    "seoDesc": "在地图上找到可使用Ur-Deal优惠券的餐厅。最高70%折扣。",
+    "listAria": "餐厅列表",
+    "sheetResizeAria": "调整面板大小"
   },
   "address": {
     "title": "收货地址管理",
@@ -4326,7 +4338,8 @@
       "call": "电话",
       "directionsAria": "KakaoMap导航",
       "directions": "导航",
-      "buyVoucher": "购买券"
+      "buyVoucher": "购买券",
+      "buy": "购买"
     },
     "search": {
       "back": "返回",
@@ -4390,6 +4403,21 @@
     "prev": "上一步",
     "payBtn": "支付{{amount}}韩元",
     "preparing": "支付准备中…",
-    "chargeBtn": "充值{{deals}}Deal"
+    "chargeBtn": "充值{{deals}}Deal",
+    "invalidPayment": "支付信息无效。",
+    "confirmFailed": "充值确认失败。",
+    "processingError": "充值处理中发生错误。",
+    "processingTitle": "Deal充值处理",
+    "processingDesc": "处理Deal积分充值中",
+    "processingMsg": "处理充值中...",
+    "failTitle": "Deal充值失败",
+    "failDesc": "Deal积分充值失败",
+    "successTitle": "Deal充值完成",
+    "successDesc": "Deal积分充值已完成",
+    "successHeading": "充值完成!",
+    "chargedDeals": "已充值Deal",
+    "successBalance": "当前余额: {{balance}}Deal",
+    "goLive": "返回直播",
+    "chargeMore": "继续充值"
   }
 }

@@ -3518,7 +3518,9 @@
     "addCartError": "No se pudo añadir al carrito.",
     "loading": "Cargando lista de deseos...",
     "retry": "Reintentar",
-    "addToCart": "Añadir al carrito"
+    "addToCart": "Añadir al carrito",
+    "seoTitle": "Lista de deseos - Ur-Deal",
+    "seoDesc": "Ver tus productos guardados"
   },
   "voucher": {
     "myVouchers": "Mis cupones",
@@ -3653,7 +3655,13 @@
     "authFailed": "Autenticación de KakaoTalk fallida",
     "authCancelled": "Autenticación de KakaoTalk cancelada",
     "linkFailed": "Vinculación fallida",
-    "unlinkHint": "Puedes desvincular en cualquier momento con el botón \"Desvincular\" de arriba."
+    "unlinkHint": "Puedes desvincular en cualquier momento con el botón \"Desvincular\" de arriba.",
+    "unlinkPasswordPrompt": "Ingrese su contraseña para verificar su identidad.\n(Si solo se registró con Kakao, primero configure una contraseña en \"Encontrar contraseña\")",
+    "checkingStatus": "Comprobando estado de vinculación...",
+    "linkedStatus": "✓ Cuenta Kakao vinculada",
+    "unlinkBtn": "Desvincular",
+    "benefit": "Una vez vinculado, puede acceder solo con Kakao. Menos contraseñas ↓ · Más seguridad ↑",
+    "emailStillUsable": "El inicio de sesión con email/contraseña sigue disponible."
   },
   "live": {
     "player": {
@@ -3879,7 +3887,11 @@
       "discount": "Por descuento",
       "price": "Precio más bajo",
       "rating": "Por valoración"
-    }
+    },
+    "seoTitle": "Mapa de restaurantes",
+    "seoDesc": "Encuentra restaurantes que aceptan vales de Ur-Deal en el mapa. Hasta 70% de descuento.",
+    "listAria": "Lista de restaurantes",
+    "sheetResizeAria": "Redimensionar panel"
   },
   "address": {
     "title": "Direcciones de envío",
@@ -4326,7 +4338,8 @@
       "call": "Llamar",
       "directionsAria": "Direcciones en KakaoMap",
       "directions": "Cómo llegar",
-      "buyVoucher": "Comprar vale"
+      "buyVoucher": "Comprar vale",
+      "buy": "Comprar"
     },
     "search": {
       "back": "Volver",
@@ -4390,6 +4403,21 @@
     "prev": "Anterior",
     "payBtn": "Pagar {{amount}} KRW",
     "preparing": "Preparando pago…",
-    "chargeBtn": "Recargar {{deals}} deals"
+    "chargeBtn": "Recargar {{deals}} deals",
+    "invalidPayment": "La información de pago no es válida.",
+    "confirmFailed": "La confirmación de recarga falló.",
+    "processingError": "Ocurrió un error al procesar la recarga.",
+    "processingTitle": "Procesando recarga de Deal",
+    "processingDesc": "Procesando recarga de puntos Deal",
+    "processingMsg": "Procesando recarga...",
+    "failTitle": "Recarga de Deal fallida",
+    "failDesc": "La recarga de puntos Deal falló",
+    "successTitle": "Recarga de Deal completada",
+    "successDesc": "La recarga de puntos Deal está completa",
+    "successHeading": "¡Recarga completa!",
+    "chargedDeals": "Deals recargados",
+    "successBalance": "Saldo actual: {{balance}} deals",
+    "goLive": "Volver al live",
+    "chargeMore": "Recargar más"
   }
 }

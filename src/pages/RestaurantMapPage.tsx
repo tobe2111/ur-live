@@ -378,7 +378,7 @@ export default function RestaurantMapPage() {
 
   return (
     <div className="relative h-screen w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
-      <SEO title="맛집 지도" description="유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인" url="/restaurant-map" />
+      <SEO title={t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })} description={t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })} url="/restaurant-map" />
 
       {/* ═══ 풀스크린 카카오맵 (배경) ═══
           🛡️ 2026-04-30 CLS: mapRef 컨테이너 항상 렌더 → SDK load 시 placeholder
@@ -432,7 +432,7 @@ export default function RestaurantMapPage() {
           transition: dragStartY.current == null ? 'top 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
         }}
         role="dialog"
-        aria-label="맛집 목록"
+        aria-label={t('restaurantMap.listAria', { defaultValue: '맛집 목록' })}
       >
         {/* Drag handle — 실시간 추적 + snap */}
         <div
@@ -445,7 +445,7 @@ export default function RestaurantMapPage() {
           onMouseUp={(e) => handleSheetDragEnd(e.clientY)}
           onMouseLeave={(e) => { if (dragStartY.current != null) handleSheetDragEnd(e.clientY) }}
           role="slider"
-          aria-label="시트 크기 조절"
+          aria-label={t('restaurantMap.sheetResizeAria', { defaultValue: '시트 크기 조절' })}
           aria-valuemin={0}
           aria-valuemax={2}
           aria-valuenow={sheetSnap === 'peek' ? 0 : sheetSnap === 'mid' ? 1 : 2}
