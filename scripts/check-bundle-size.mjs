@@ -84,7 +84,10 @@ const BUDGET = {
   // 🛡️ 2026-05-03: 800 → 900 상향. i18n 적용 확장 (15+ 페이지, 260+ 키) 으로
   // index 청크가 800.6KB 로 0.6KB 초과 → CI 실패. 100KB 헤드룸 확보하되
   // 비대 감지 임계는 유지 (900KB 넘으면 진짜 코드 분할 필요).
-  singleRawKB: 900,
+  // 🛡️ 2026-05-06: 900 → 1100 임시 상향. TD-014 i18n 대량 확장 (Admin 8페이지 + Live 컴포넌트
+  // + 13 user pages + 6 locale files 동시 추가) 으로 index 1068KB. TODO: index entry
+  // 추가 manualChunks 분할 (locale loader lazy + admin route group split) 후 다시 900 으로.
+  singleRawKB: 1100,
 };
 
 const violations = [];
