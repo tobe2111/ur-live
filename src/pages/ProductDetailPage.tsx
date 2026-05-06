@@ -452,7 +452,7 @@ export default function ProductDetailPage() {
           )}
           <div className="flex items-center gap-2 mt-3">
             <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
-            <span className="text-[11px] font-bold text-pink-500">최대 {Math.round(displayPrice * 0.03)}딜</span>
+            <span className="text-[11px] font-bold text-pink-500">최대 {formatNumber(Math.round(displayPrice * 0.03))}딜</span>
           </div>
           {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
           <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>

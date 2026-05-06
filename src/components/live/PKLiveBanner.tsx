@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { Swords, Trophy } from 'lucide-react'
 
@@ -30,6 +31,7 @@ interface Props {
  * 시청자의 응원 (=결제) 이 매출에 즉시 반영됨.
  */
 export default function PKLiveBanner({ liveStreamId }: Props) {
+  const { t } = useTranslation()
   const [pk, setPk] = useState<PKBattleStatus | null>(null)
   const [now, setNow] = useState(Date.now())
 
@@ -64,7 +66,7 @@ export default function PKLiveBanner({ liveStreamId }: Props) {
       <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl px-4 py-3 shadow-lg flex items-center gap-2.5">
         <Trophy className="w-5 h-5 flex-shrink-0 fill-white" />
         <div className="text-sm font-bold flex-1">
-          🏆 PK 종료 — <span className="font-black">{winnerName} ({winnerSide}측)</span> 우승!
+          {t('live.pk.endedPrefix', { defaultValue: '🏆 PK 종료 — ' })}<span className="font-black">{t('live.pk.winnerName', { defaultValue: '{{name}} ({{side}}측)', name: winnerName, side: winnerSide })}</span>{t('live.pk.endedSuffix', { defaultValue: ' 우승!' })}
         </div>
       </div>
     )

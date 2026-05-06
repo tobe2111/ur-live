@@ -3706,7 +3706,37 @@
     "donationFailed": "赞助失败。",
     "donationCenterAlert": "{{name}}赞助了{{amount}}Deal！",
     "donationBalance": "{{amount}}Deal",
-    "timeDealJoinFailed": "参与失败"
+    "timeDealJoinFailed": "参与失败",
+    "auction": {
+      "title": "实时竞拍",
+      "ended": "竞拍结束!",
+      "winner": "👑 {{name}}中标",
+      "purchaseAtWinningPrice": "按中标价购买",
+      "purchaseFailed": "购买失败",
+      "bidSuccess": "出价 {{amount}}원 成功!",
+      "bidFailed": "出价失败",
+      "currentHighest": "当前最高价",
+      "bidCount": "出价 {{count}} 次",
+      "bid": "出价",
+      "minBidInfo": "最低出价: {{min}}원 (+{{inc}}원)",
+      "wonSuffix": "원"
+    },
+    "product": {
+      "soldOut": "售罄",
+      "soldCount": "已售 {{count}}件",
+      "stockLeft": "库存: {{count}}件",
+      "adding": "添加中...",
+      "addToCart": "加入购物车",
+      "wonSuffix": "원"
+    },
+    "supporter": {
+      "title": "支持者排行",
+      "peopleCount": "{{count}}人",
+      "totalDonations": "共后援 {{amount}} Deal",
+      "empty": "还没有支持者",
+      "donationCount": "后援 {{count}} 次",
+      "dealLabel": "Deal"
+    }
   },
   "paymentFail": {
     "title": "支付失败",
@@ -3962,7 +3992,7 @@
       "wonSuffix": "원",
       "dealSuffix": "딜",
       "vatIncluded": "含增值税 (10% · {{vat}}원)",
-      "dealsToEarn": "支付时获得 {{count}} 딜"
+      "dealsToEarn": "支付时获得 {{amount}} 딜"
     },
     "shipping": {
       "title": "收货地址",

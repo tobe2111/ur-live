@@ -5,10 +5,10 @@ import api from '@/lib/api'
 import {
   Package, ShoppingBag, Play, DollarSign,
   TrendingUp,
-  ChevronRight, ArrowUpRight,
+  ChevronRight,
   AlertCircle,
-  AlertTriangle, CreditCard, Users,
-  Utensils, Gift, Radio, LayoutDashboard
+  AlertTriangle, CreditCard,
+  LayoutDashboard
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -595,231 +595,31 @@ export default function SellerPage() {
             <div className="space-y-4">
 
               {/* 전환 퍼널 — 실제 데이터만 표시 (추정값 사용 금지) */}
-              {(() => {
-                const hasViewerData = stats.totalViewers > 0
-                const orderCount = stats.totalOrders || 0
-                const viewerCount = stats.totalViewers || 0
-                // 시청자 기준 전환율 (실제 데이터 있을 때만)
-                const orderPct = hasViewerData && viewerCount > 0
-                  ? Math.max(0, Math.round((orderCount / viewerCount) * 100))
-                  : 0
-                return (
-                  <div className="bg-white rounded-2xl p-5 border border-[#E8EAEE]">
-                    <h3 className="text-[14px] font-extrabold text-gray-900 mb-3">{t('seller.conversionFunnel')}</h3>
-                    {!hasViewerData && orderCount === 0 ? (
-                      <p className="text-[12px] text-gray-500 py-4 text-center">
-                        {t('seller.noViewerData')}
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {hasViewerData && (
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[12px] font-semibold text-gray-700">{t('seller.broadcastViewers')}</span>
-                              <span className="text-[12px] font-extrabold text-gray-900">
-                                {formatNumber(viewerCount)}<span className="text-[10px] text-gray-500 ml-1">(100%)</span>
-                              </span>
-                            </div>
-                            <div className="w-full h-1.5 rounded-full bg-gray-100">
-                              <div className="h-full rounded-full" style={{ width: '100%', background: '#FF0033' }} />
-                            </div>
-                          </div>
-                        )}
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[12px] font-semibold text-gray-700">{t('seller.ordersCompleted')}</span>
-                            <span className="text-[12px] font-extrabold text-gray-900">
-                              {formatNumber(orderCount)}
-                              {hasViewerData && (
-                                <span className="text-[10px] text-gray-500 ml-1">({orderPct}%)</span>
-                              )}
-                            </span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-gray-100">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${hasViewerData ? Math.min(orderPct, 100) : 100}%`,
-                                background: '#10B981'
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
+              <ConversionFunnel
+                totalViewers={stats.totalViewers}
+                totalOrders={stats.totalOrders}
+              />
 
               {/* 빠른 액션 — 활동 데이터 기반 동적 배치 */}
-              <div>
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('seller.quickActions')}</h2>
-                <div className="space-y-2">
-                  {/* 식사권/공구 관련 (식사권 이력 있거나 가게사장님이면 상단) */}
-                  {(hasMealVouchers || sellerType === 'store_owner') && (
-                    <>
-                      <Link to="/seller/meal-voucher/new"
-                        className="flex items-center justify-between p-3.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <Utensils className="w-4 h-4" />
-                          <div>
-                            <p className="text-[13px] font-bold">{t('seller.registerVoucher')}</p>
-                            <p className="text-[11px] text-gray-400">{t('seller.selectOnKakaoMap')}</p>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                      {activeGroupBuys > 0 && (
-                        <Link to="/seller/group-buy"
-                          className="flex items-center justify-between p-3.5 bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <Gift className="w-4 h-4 text-pink-600" />
-                            <div>
-                              <p className="text-[13px] font-bold text-gray-900">{t('seller.groupBuyManage')}</p>
-                              <p className="text-[11px] text-pink-600">{t('seller.activeGroupBuyCount', { count: activeGroupBuys })}</p>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
-                        </Link>
-                      )}
-                    </>
-                  )}
-
-                  {/* 공동구매 만들기 (항상 표시) */}
-                  <Link to="/seller/meal-voucher/new"
-                    className={`flex items-center justify-between p-3.5 rounded-xl transition-colors ${
-                      hasMealVouchers || sellerType === 'store_owner'
-                        ? 'bg-white border border-gray-200 hover:bg-gray-50'
-                        : 'bg-gray-900 text-white hover:bg-gray-800'
-                    }`}>
-                    <div className="flex items-center gap-3">
-                      <Users className={`w-4 h-4 ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-600' : ''}`} />
-                      <div>
-                        <p className={`text-[13px] font-bold ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-900' : ''}`}>{t('seller.createGroupBuy')}</p>
-                        <p className={`text-[11px] ${hasMealVouchers || sellerType === 'store_owner' ? 'text-gray-500' : 'text-gray-400'}`}>{t('seller.tierBasedDiscount')}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </Link>
-
-                  {/* 라이브 관련 (라이브 이력 있거나 인플루언서면 표시) */}
-                  {isInfluencer && (
-                    <Link to="/seller/live-broadcast"
-                      className={`flex items-center justify-between p-3.5 rounded-xl transition-colors ${
-                        hasLiveHistory
-                          ? 'bg-red-50 border border-red-200 hover:bg-red-100'
-                          : 'bg-white border border-gray-200 hover:bg-gray-50'
-                      }`}>
-                      <div className="flex items-center gap-3">
-                        <Radio className={`w-4 h-4 ${hasLiveHistory ? 'text-red-500' : 'text-gray-600'}`} />
-                        <div>
-                          <p className="text-[13px] font-bold text-gray-900">{t('seller.live')}</p>
-                          <p className="text-[11px] text-gray-500">{hasLiveHistory ? t('seller.continuePrevious') : t('seller.startFirstLive')}</p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400" />
-                    </Link>
-                  )}
-                </div>
-              </div>
+              <QuickActions
+                hasMealVouchers={hasMealVouchers}
+                sellerType={sellerType}
+                activeGroupBuys={activeGroupBuys}
+                isInfluencer={isInfluencer}
+                hasLiveHistory={hasLiveHistory}
+              />
 
               {/* 알림 */}
-              <div>
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('seller.alerts')}</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                  <Link
-                    to={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
-                    className="bg-pink-50 rounded-xl p-3 text-center hover:bg-pink-100 transition-colors block"
-                  >
-                    <Users className="w-5 h-5 text-pink-600 mx-auto mb-1.5" />
-                    <p className="text-lg font-bold text-gray-900">{followerCount}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{t('seller.followers')}</p>
-                  </Link>
-                  <Link
-                    to="/seller/products"
-                    className="bg-amber-50 rounded-xl p-3 text-center hover:bg-amber-100 transition-colors block"
-                  >
-                    <AlertTriangle className="w-5 h-5 text-amber-600 mx-auto mb-1.5" />
-                    <p className="text-lg font-bold text-gray-900">{stockAlertCount}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{t('seller.lowStock')}</p>
-                  </Link>
-                  <Link
-                    to="/seller/orders"
-                    className="bg-blue-50 rounded-xl p-3 text-center hover:bg-blue-100 transition-colors block"
-                  >
-                    <ShoppingBag className="w-5 h-5 text-blue-600 mx-auto mb-1.5" />
-                    <p className="text-lg font-bold text-gray-900">{(stats.pendingOrders || 0)}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{t('seller.pendingOrdersAlert')}</p>
-                  </Link>
-                  <Link
-                    to="/seller/settlements"
-                    className="bg-green-50 rounded-xl p-3 text-center hover:bg-green-100 transition-colors block"
-                  >
-                    <CreditCard className="w-5 h-5 text-green-600 mx-auto mb-1.5" />
-                    <p className="text-lg font-bold text-gray-900">{fmtShort(stats.pendingSettlement ?? Math.round(stats.totalRevenue * 0.85))}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{t('seller.expectedSettlement')}</p>
-                  </Link>
-                </div>
-              </div>
+              <AlertsGrid
+                followerCount={followerCount}
+                stockAlertCount={stockAlertCount}
+                pendingOrders={stats.pendingOrders || 0}
+                pendingSettlement={stats.pendingSettlement ?? Math.round(stats.totalRevenue * 0.85)}
+                fmtShort={fmtShort}
+              />
 
               {/* 내 공개 페이지 미리보기 */}
-              {getSellerId() && (
-                <div className="bg-white rounded-xl shadow-sm p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-semibold text-gray-900">{t('seller.myPublicPage')}</h2>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/s/${getSellerId()}`)
-                          const el = document.getElementById('copy-toast')
-                          if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000) }
-                        }}
-                        className="text-xs text-blue-600 font-medium hover:underline"
-                      >
-                        {t('seller.copyLink')}
-                      </button>
-                      <a
-                        href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
-                        target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-0.5"
-                      >
-                        {t('seller.newTab')} <ArrowUpRight className="w-3 h-3" />
-                      </a>
-                    </div>
-                  </div>
-                  <p id="copy-toast" className="text-xs text-green-600 text-center mb-2 hidden">{t('seller.linkCopied')}</p>
-
-                  {/* 공개 페이지 바로가기 (인라인 편집 가능) */}
-                  <div className="flex justify-center">
-                    <a
-                      href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
-                      className="block w-full max-w-[280px] p-4 bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl border border-pink-100 text-center hover:shadow-md transition-shadow"
-                    >
-                      <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
-                        <span className="text-2xl">🏪</span>
-                      </div>
-                      <p className="text-sm font-bold text-gray-900">{t('seller.myPublicPage')}</p>
-                      <p className="text-xs text-gray-500 mt-1">{t('seller.tapToEditPublicPage')}</p>
-                    </a>
-                  </div>
-
-                  <div className="flex gap-2 mt-4">
-                    <a
-                      href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
-                      target="_blank" rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200"
-                    >
-                      {t('seller.newTab')} <ArrowUpRight className="w-3 h-3" />
-                    </a>
-                    <Link
-                      to="/seller/profile"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
-                    >
-                      {t('seller.editProfile')}
-                    </Link>
-                  </div>
-                </div>
-              )}
+              <PublicPagePreview />
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import React from 'react'
 import { ShoppingBag, Star } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
 
 interface Product {
@@ -27,6 +28,7 @@ export const LiveProductCard = React.memo(function LiveProductCard({
   isAddingToCart = false,
   className = ''
 }: LiveProductCardProps) {
+  const { t } = useTranslation()
   const formatPrice = (price: number) => {
     return formatNumber(price)
   }
@@ -57,7 +59,7 @@ export const LiveProductCard = React.memo(function LiveProductCard({
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <div className="bg-white px-4 py-2 rounded-md font-bold text-gray-900">
-              품절
+              {t('live.product.soldOut', { defaultValue: '품절' })}
             </div>
           </div>
         )}
@@ -80,7 +82,7 @@ export const LiveProductCard = React.memo(function LiveProductCard({
             )}
             {product.sold && (
               <div>
-                {formatNumber(product.sold)}개 판매
+                {t('live.product.soldCount', { defaultValue: '{{count}}개 판매', count: product.sold })}
               </div>
             )}
           </div>
@@ -90,11 +92,11 @@ export const LiveProductCard = React.memo(function LiveProductCard({
         <div className="mb-3">
           {product.originalPrice && product.originalPrice > product.price && (
             <div className="text-sm text-gray-500 dark:text-gray-400 line-through">
-              {formatPrice(product.originalPrice)}원
+              {formatPrice(product.originalPrice)}{t('live.product.wonSuffix', { defaultValue: '원' })}
             </div>
           )}
           <div className="text-2xl font-bold text-blue-600">
-            {formatPrice(product.price)}원
+            {formatPrice(product.price)}{t('live.product.wonSuffix', { defaultValue: '원' })}
           </div>
         </div>
 
@@ -102,9 +104,9 @@ export const LiveProductCard = React.memo(function LiveProductCard({
         {product.stock !== undefined && (
           <div className="mb-3 text-sm">
             {product.stock > 0 ? (
-              <span className="text-green-600">재고: {product.stock}개</span>
+              <span className="text-green-600">{t('live.product.stockLeft', { defaultValue: '재고: {{count}}개', count: product.stock })}</span>
             ) : (
-              <span className="text-red-600 font-bold">품절</span>
+              <span className="text-red-600 font-bold">{t('live.product.soldOut', { defaultValue: '품절' })}</span>
             )}
           </div>
         )}
@@ -122,7 +124,7 @@ export const LiveProductCard = React.memo(function LiveProductCard({
           }`}
         >
           <ShoppingBag size={20} />
-          {isAddingToCart ? '추가 중...' : isOutOfStock ? '품절' : '장바구니 담기'}
+          {isAddingToCart ? t('live.product.adding', { defaultValue: '추가 중...' }) : isOutOfStock ? t('live.product.soldOut', { defaultValue: '품절' }) : t('live.product.addToCart', { defaultValue: '장바구니 담기' })}
         </button>
       </div>
     </div>

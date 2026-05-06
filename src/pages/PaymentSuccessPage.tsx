@@ -259,7 +259,7 @@ export default function PaymentSuccessPage() {
                   <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7] dark:border-[#2A2A2A]">
                     <span className="text-sm sm:text-base lg:text-lg font-medium text-[#1d1d1f] dark:text-white">{t('paymentSuccess.paymentAmount')}</span>
                     <span className="text-lg sm:text-xl lg:text-2xl font-bold text-[#007aff]">
-                      {parseInt(amount || '0')}원
+                      {formatNumber(parseInt(amount || '0'))}원
                     </span>
                   </div>
                 </div>
