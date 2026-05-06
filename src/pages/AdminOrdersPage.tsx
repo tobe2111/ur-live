@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import i18next from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -11,6 +12,9 @@ import {
   Calendar, User, Search, Filter, Download, ChevronLeft,
   ChevronRight, RefreshCw, Clock, DollarSign
 } from 'lucide-react'
+
+// Module-scope t — uses i18next instance directly (for module-level constants below)
+const t: (key: string, opts?: { defaultValue?: string; [k: string]: unknown }) => string = (key, opts) => i18next.t(key, opts as never) as unknown as string
 
 interface OrderItem {
   id: number
