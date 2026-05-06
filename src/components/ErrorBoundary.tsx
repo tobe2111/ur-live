@@ -78,10 +78,10 @@ class ErrorBoundary extends Component<Props, State> {
               일시적인 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
             </p>
 
-            {import.meta.env.DEV && this.state.error && (
+            {this.state.error && (
               <details className="text-left mb-6">
                 <summary className="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700">
-                  개발자 정보 (Dev Only)
+                  오류 상세 보기
                 </summary>
                 <pre className="mt-2 text-xs bg-gray-100 dark:bg-[#1A1A1A] p-3 rounded overflow-auto max-h-40">
                   {this.state.error.toString()}
