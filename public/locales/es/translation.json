@@ -2941,7 +2941,9 @@
     "markAllRead": "Marcar todo como leído",
     "empty": "No hay notificaciones",
     "emptyDesc": "Las nuevas actividades aparecerán aquí",
-    "back": "Volver"
+    "back": "Volver",
+    "seoTitle": "Notificaciones - Ur-Deal",
+    "seoDesc": "Consulte sus nuevas notificaciones"
   },
   "cart": {
     "continueShop": "Continue Shopping",
@@ -3073,7 +3075,9 @@
       "cardNumberLabel": "Número de tarjeta:",
       "expiryLabel": "Vencimiento:",
       "cvcLabel": "CVC:"
-    }
+    },
+    "successSeoTitle": "Pago completo - Ur-Deal",
+    "successSeoDesc": "Su pedido se ha completado correctamente"
   },
   "product": {
     "addToCart": "Add to Cart",
@@ -4091,7 +4095,9 @@
     "catAll": "Todo"
   },
   "introduce": {
-    "navStart": "Comenzar"
+    "navStart": "Comenzar",
+    "seoTitle": "Ur-Deal - Comercio en vivo restaurante compra grupal",
+    "seoDesc": "Comercio en vivo gestionado por propietarios. La forma más rápida de encontrar ofertas locales."
   },
   "checkout": {
     "header": {
@@ -4344,7 +4350,8 @@
     "search": {
       "back": "Volver",
       "ariaLabel": "Buscar",
-      "deleteAll": "Eliminar todo"
+      "deleteAll": "Eliminar todo",
+      "clearAria": "Borrar búsqueda"
     },
     "sheet": {
       "filterAria": "Abrir filtro región/categoría",
@@ -4419,5 +4426,15 @@
     "successBalance": "Saldo actual: {{balance}} deals",
     "goLive": "Volver al live",
     "chargeMore": "Recargar más"
+  },
+  "login": {
+    "seoTitle": "Inicio de sesión - Ur-Deal",
+    "seoDesc": "Inicia sesión en Ur-Deal."
+  },
+  "guide": {
+    "sectionTitlePlaceholder": "Título de sección",
+    "orderPlaceholder": "Orden",
+    "editBtn": "Editar",
+    "deleteBtn": "Eliminar"
   }
 }

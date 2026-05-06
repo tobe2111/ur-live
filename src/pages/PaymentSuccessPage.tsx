@@ -219,7 +219,7 @@ export default function PaymentSuccessPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center px-4 py-6">
-      <SEO title="결제 완료 - 유어딜" description="주문이 성공적으로 완료되었습니다" url="/payment/success" noindex />
+      <SEO title={t('payment.successSeoTitle', { defaultValue: '결제 완료 - 유어딜' })} description={t('payment.successSeoDesc', { defaultValue: '주문이 성공적으로 완료되었습니다' })} url="/payment/success" noindex />
       <div className="max-w-2xl w-full">
         <div className="bg-white dark:bg-[#1C1C1E] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A2A2A]">
           {/* 성공 아이콘 */}

@@ -247,7 +247,9 @@
     "markAllRead": "全部标记已读",
     "empty": "暂无通知",
     "emptyDesc": "有新消息时会显示在这里",
-    "back": "返回"
+    "back": "返回",
+    "seoTitle": "通知 - Ur-Deal",
+    "seoDesc": "查看您的新通知"
   },
   "payment": {
     "checkout": "结算",
@@ -324,7 +326,9 @@
       "cardNumberLabel": "卡号:",
       "expiryLabel": "有效期:",
       "cvcLabel": "CVC:"
-    }
+    },
+    "successSeoTitle": "支付完成 - Ur-Deal",
+    "successSeoDesc": "您的订单已成功完成"
   },
   "cart": {
     "title": "购物车",
@@ -4091,7 +4095,9 @@
     "catAll": "全部"
   },
   "introduce": {
-    "navStart": "开始"
+    "navStart": "开始",
+    "seoTitle": "Ur-Deal - 直播电商美食团购",
+    "seoDesc": "店主直播的直播电商。以特价发现当地美食的最快方式。"
   },
   "checkout": {
     "header": {
@@ -4344,7 +4350,8 @@
     "search": {
       "back": "返回",
       "ariaLabel": "搜索",
-      "deleteAll": "全部删除"
+      "deleteAll": "全部删除",
+      "clearAria": "清除搜索"
     },
     "sheet": {
       "filterAria": "打开地区·分类筛选",
@@ -4419,5 +4426,15 @@
     "successBalance": "当前余额: {{balance}}Deal",
     "goLive": "返回直播",
     "chargeMore": "继续充值"
+  },
+  "login": {
+    "seoTitle": "登录 - Ur-Deal",
+    "seoDesc": "登录Ur-Deal。"
+  },
+  "guide": {
+    "sectionTitlePlaceholder": "章节标题",
+    "orderPlaceholder": "顺序",
+    "editBtn": "编辑",
+    "deleteBtn": "删除"
   }
 }

@@ -258,7 +258,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#020202] flex flex-col items-center justify-center px-5 py-12">
-      <SEO title="로그인 - 유어딜" description="유어딜에 로그인하세요." url="/login" noindex />
+      <SEO title={t('login.seoTitle', { defaultValue: '로그인 - 유어딜' })} description={t('login.seoDesc', { defaultValue: '유어딜에 로그인하세요.' })} url="/login" noindex />
       <div className="w-full max-w-[360px]">
 
         {/* Logo */}

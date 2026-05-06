@@ -149,7 +149,7 @@ export default function MyVouchersPage() {
           onClick={() => navigate(-1)}
           className="w-9 h-9 flex items-center justify-center rounded-full"
           style={{ background: tk.fillSoft, color: tk.label }}
-          aria-label="뒤로가기"
+          aria-label={t('common.back', { defaultValue: '뒤로가기' })}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>

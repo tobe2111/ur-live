@@ -247,7 +247,9 @@
     "markAllRead": "すべて既読",
     "empty": "通知はありません",
     "emptyDesc": "新しいお知らせがあるとここに表示されます",
-    "back": "戻る"
+    "back": "戻る",
+    "seoTitle": "通知 - Ur-Deal",
+    "seoDesc": "新しい通知を確認してください"
   },
   "payment": {
     "checkout": "決済する",
@@ -324,7 +326,9 @@
       "cardNumberLabel": "カード番号:",
       "expiryLabel": "有効期限:",
       "cvcLabel": "CVC:"
-    }
+    },
+    "successSeoTitle": "決済完了 - Ur-Deal",
+    "successSeoDesc": "ご注文が正常に完了しました"
   },
   "cart": {
     "title": "カート",
@@ -4091,7 +4095,9 @@
     "catAll": "すべて"
   },
   "introduce": {
-    "navStart": "始める"
+    "navStart": "始める",
+    "seoTitle": "Ur-Deal - ライブコマース グルメ共同購入",
+    "seoDesc": "オーナーが直接行うライブコマース。地元グルメを特価で見つける最速の方法。"
   },
   "checkout": {
     "header": {
@@ -4344,7 +4350,8 @@
     "search": {
       "back": "戻る",
       "ariaLabel": "検索",
-      "deleteAll": "全て削除"
+      "deleteAll": "全て削除",
+      "clearAria": "検索語消去"
     },
     "sheet": {
       "filterAria": "地域・カテゴリーフィルター",
@@ -4419,5 +4426,15 @@
     "successBalance": "現在の残高: {{balance}}ディール",
     "goLive": "ライブに戻る",
     "chargeMore": "追加充電"
+  },
+  "login": {
+    "seoTitle": "ログイン - Ur-Deal",
+    "seoDesc": "Ur-Dealにログインしてください。"
+  },
+  "guide": {
+    "sectionTitlePlaceholder": "セクションタイトル",
+    "orderPlaceholder": "順序",
+    "editBtn": "編集",
+    "deleteBtn": "削除"
   }
 }

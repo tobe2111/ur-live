@@ -89,7 +89,7 @@ export default function IntroducePage() {
 
   return (
     <div className="bg-[#020202] text-white min-h-screen">
-      <SEO title="유어딜 - 라이브 커머스 맛집 공동구매" description="사장님이 직접 켜는 라이브커머스. 우리 동네 맛집을 특가로 만나는 가장 빠른 방법." url="/introduce" />
+      <SEO title={t('introduce.seoTitle', { defaultValue: '유어딜 - 라이브 커머스 맛집 공동구매' })} description={t('introduce.seoDesc', { defaultValue: '사장님이 직접 켜는 라이브커머스. 우리 동네 맛집을 특가로 만나는 가장 빠른 방법.' })} url="/introduce" />
 
       {/* ─── NAV ─── */}
       <header className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur-md border-b border-[#1A1A1A]">

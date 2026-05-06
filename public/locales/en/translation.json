@@ -247,7 +247,9 @@
     "markAllRead": "Mark all as read",
     "empty": "No notifications",
     "emptyDesc": "New activity will appear here",
-    "back": "Back"
+    "back": "Back",
+    "seoTitle": "Notifications - Ur-Deal",
+    "seoDesc": "Check your new notifications"
   },
   "payment": {
     "checkout": "Checkout",
@@ -324,7 +326,9 @@
       "cardNumberLabel": "Card number:",
       "expiryLabel": "Expiry:",
       "cvcLabel": "CVC:"
-    }
+    },
+    "successSeoTitle": "Payment Complete - Ur-Deal",
+    "successSeoDesc": "Your order has been successfully completed"
   },
   "cart": {
     "title": "Shopping Cart",
@@ -4091,7 +4095,9 @@
     "catAll": "All"
   },
   "introduce": {
-    "navStart": "Get Started"
+    "navStart": "Get Started",
+    "seoTitle": "Ur-Deal - Live Commerce Restaurant Group Buy",
+    "seoDesc": "Live commerce run by restaurant owners. The fastest way to find great local food deals."
   },
   "checkout": {
     "header": {
@@ -4344,7 +4350,8 @@
     "search": {
       "back": "Go back",
       "ariaLabel": "Search",
-      "deleteAll": "Delete all"
+      "deleteAll": "Delete all",
+      "clearAria": "Clear search"
     },
     "sheet": {
       "filterAria": "Open region/category filter",
@@ -4419,5 +4426,15 @@
     "successBalance": "Current balance: {{balance}} deals",
     "goLive": "Back to live",
     "chargeMore": "Charge more"
+  },
+  "login": {
+    "seoTitle": "Login - Ur-Deal",
+    "seoDesc": "Log in to Ur-Deal."
+  },
+  "guide": {
+    "sectionTitlePlaceholder": "Section title",
+    "orderPlaceholder": "Order",
+    "editBtn": "Edit",
+    "deleteBtn": "Delete"
   }
 }

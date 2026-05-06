@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { ChevronDown, ChevronRight, Loader2, Pencil, Save, X, Trash2, Plus } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -137,6 +138,7 @@ function applyInline(s: string): string {
 }
 
 export default function GuideViewer({ guideType, editable = false }: Props) {
+  const { t } = useTranslation()
   const [sections, setSections] = useState<GuideSection[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -250,14 +252,14 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
               type="text"
               value={editForm.section_title || ''}
               onChange={e => setEditForm(f => ({ ...f, section_title: e.target.value }))}
-              placeholder="섹션 제목"
+              placeholder={t('guide.sectionTitlePlaceholder', { defaultValue: '섹션 제목' })}
               className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm font-bold text-gray-900"
             />
             <input
               type="number"
               value={editForm.section_order || 0}
               onChange={e => setEditForm(f => ({ ...f, section_order: Number(e.target.value) }))}
-              placeholder="순서"
+              placeholder={t('guide.orderPlaceholder', { defaultValue: '순서' })}
               className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900"
             />
           </div>
@@ -299,11 +301,11 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
               </button>
               {editable && !isEditing && (
                 <div className="flex items-center gap-1 pr-3">
-                  <button onClick={() => startEdit(s)} title="편집"
+                  <button onClick={() => startEdit(s)} title={t('guide.editBtn', { defaultValue: '편집' })}
                     className="p-2 text-gray-400 hover:text-blue-600">
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button onClick={() => deleteSection(s.section_key)} title="삭제"
+                  <button onClick={() => deleteSection(s.section_key)} title={t('guide.deleteBtn', { defaultValue: '삭제' })}
                     className="p-2 text-gray-400 hover:text-red-600">
                     <Trash2 className="w-4 h-4" />
                   </button>

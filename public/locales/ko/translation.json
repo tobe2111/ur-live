@@ -247,7 +247,9 @@
     "markAllRead": "모두 읽음",
     "empty": "알림이 없습니다",
     "emptyDesc": "새로운 소식이 있으면 여기에 표시됩니다",
-    "back": "뒤로 가기"
+    "back": "뒤로 가기",
+    "seoTitle": "알림 - 유어딜",
+    "seoDesc": "새로운 알림을 확인하세요"
   },
   "payment": {
     "checkout": "결제하기",
@@ -324,7 +326,9 @@
       "cardNumberLabel": "카드번호:",
       "expiryLabel": "유효기간:",
       "cvcLabel": "CVC:"
-    }
+    },
+    "successSeoTitle": "결제 완료 - 유어딜",
+    "successSeoDesc": "주문이 성공적으로 완료되었습니다"
   },
   "cart": {
     "title": "장바구니",
@@ -4155,7 +4159,9 @@
     "faq5Q": "셀러 입점 조건은?",
     "faq5A": "사업자 등록이 된 식당·브랜드라면 누구나 신청 가능합니다. 입점 수수료는 없고 판매 수수료만 부담합니다.",
     "faq6Q": "결제는 어떤 방법이 가능한가요?",
-    "faq6A": "신용카드·체크카드·계좌이체·간편결제(카카오페이/토스) 모두 지원합니다."
+    "faq6A": "신용카드·체크카드·계좌이체·간편결제(카카오페이/토스) 모두 지원합니다.",
+    "seoTitle": "유어딜 - 라이브 커머스 맛집 공동구매",
+    "seoDesc": "사장님이 직접 켜는 라이브커머스. 우리 동네 맛집을 특가로 만나는 가장 빠른 방법."
   },
   "register": {
     "title": "회원가입",
@@ -4639,7 +4645,8 @@
     "search": {
       "back": "뒤로가기",
       "ariaLabel": "검색",
-      "deleteAll": "전체 삭제"
+      "deleteAll": "전체 삭제",
+      "clearAria": "검색어 지우기"
     },
     "sheet": {
       "filterAria": "지역·카테고리 필터 열기",
@@ -4714,5 +4721,15 @@
     "successBalance": "현재 잔액: {{balance}}딜",
     "goLive": "라이브로 돌아가기",
     "chargeMore": "추가 충전"
+  },
+  "login": {
+    "seoTitle": "로그인 - 유어딜",
+    "seoDesc": "유어딜에 로그인하세요."
+  },
+  "guide": {
+    "sectionTitlePlaceholder": "섹션 제목",
+    "orderPlaceholder": "순서",
+    "editBtn": "편집",
+    "deleteBtn": "삭제"
   }
 }
