@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Gift, Utensils } from 'lucide-react'
+import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -107,14 +107,11 @@ export default function BottomNav() {
 
   const leftItems = [
     { icon: Home, label: t('nav.home', { defaultValue: '홈' }), path: '/' },
-    // 🛡️ 2026-04-27: 쇼츠 자리 → 식사권/맛집 지도 (메인 유입 경로).
-    //   /shorts 페이지 자체는 라우트로 직접 접근 가능 (URL).
-    { icon: Utensils, label: t('nav.restaurants', { defaultValue: '맛집' }), path: '/restaurant-map' },
+    { icon: Radio, label: t('nav.live', { defaultValue: '라이브' }), path: '/live' },
   ]
 
   const rightItems = [
-    { icon: Gift, label: t('nav.groupBuy', { defaultValue: '공구' }), path: '/group-buy' },
-    { icon: ShoppingCart, label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' },
+    { icon: ShoppingBag, label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' },
     { icon: User, label: t('nav.my', { defaultValue: '마이' }), path: '/user/profile' },
   ]
 
