@@ -9,17 +9,18 @@ import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
-import PushNotificationSetup from './components/PushNotificationSetup'
 import OfflineBanner from './components/OfflineBanner'
 import InAppBrowserBanner from './components/InAppBrowserBanner'
-import PWAInstallPrompt from './components/PWAInstallPrompt'
-import OnboardingTrigger from './components/onboarding/OnboardingTrigger'
-import RestoreAccountModal from './components/account/RestoreAccountModal'
 import BottomNav from '@/components/main/BottomNav'
 import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
-import SideBanner from '@/components/SideBanner'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
+// lazy-loaded — only rendered conditionally, not on initial paint
+const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
+const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
+const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingTrigger'))
+const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
+const SideBanner = lazy(() => import('@/components/SideBanner'))
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
@@ -305,12 +306,12 @@ function AppContent() {
           {!hideBottomNav && <DesktopTopNav />}
           <div className="flex-1">
           <InAppBrowserBanner />
-          <PWAInstallPrompt />
-          <OnboardingTrigger />
-          <RestoreAccountModal />
+          <Suspense fallback={null}><PWAInstallPrompt /></Suspense>
+          <Suspense fallback={null}><OnboardingTrigger /></Suspense>
+          <Suspense fallback={null}><RestoreAccountModal /></Suspense>
           <OfflineBanner />
           <ScrollToTop />
-          <PushNotificationSetup />
+          <Suspense fallback={null}><PushNotificationSetup /></Suspense>
           <main id="main-content">
           <ErrorBoundary key={location.key}>
           <Routes>
@@ -514,7 +515,7 @@ function AppContent() {
           </main>
           </div>
           {!hideBottomNav && <BottomNav />}
-          {!fullScreen && <SideBanner />}
+          {!fullScreen && <Suspense fallback={null}><SideBanner /></Suspense>}
           {/* 🛡️ 2026-04-22 배치 124: 카카오 상담 플로팅 버튼 (대시보드 외 모든 페이지) */}
           {!fullScreen && <KakaoConsultButton />}
           </div>

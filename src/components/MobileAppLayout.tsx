@@ -1,8 +1,9 @@
-import { ReactNode } from 'react'
+import { ReactNode, lazy, Suspense } from 'react'
 import { useLocation } from 'react-router-dom'
 import DesktopLiveSidebar from './DesktopLiveSidebar'
-import DesktopLiveLeftPanel from './DesktopLiveLeftPanel'
-import DesktopLiveRightPanel from './DesktopLiveRightPanel'
+
+const DesktopLiveLeftPanel = lazy(() => import('./DesktopLiveLeftPanel'))
+const DesktopLiveRightPanel = lazy(() => import('./DesktopLiveRightPanel'))
 
 interface MobileAppLayoutProps {
   children: ReactNode
@@ -42,9 +43,9 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {/* PC (xl+) 좌측 TikTok 식 사이드바 — 일반 페이지 + 라이브/쇼츠 모두 노출 (fixed 포지션). */}
       {showSidebar && <DesktopLiveSidebar />}
       {/* PC (xl+) 좌측 통계 패널 — /live/:id 에서만 (fixed, 사이드바 바로 우측). */}
-      {mobileOnly && <DesktopLiveLeftPanel />}
+      {mobileOnly && <Suspense fallback={null}><DesktopLiveLeftPanel /></Suspense>}
       {/* PC (xl+) 우측 상품/공지 패널 — 라이브/쇼츠 페이지에서 (fixed 포지션). */}
-      {mobileOnly && <DesktopLiveRightPanel />}
+      {mobileOnly && <Suspense fallback={null}><DesktopLiveRightPanel /></Suspense>}
       {/* 일반 페이지만 컨테이너에 사이드바 padding 적용. mobile-only 는 430px 액자 가운데 유지.
           📐 2026-05-06 (responsive-tablet-mobile.md): md~xl 60px collapsed sidebar → md:pl-[60px]. */}
       <div

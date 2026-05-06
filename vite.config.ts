@@ -77,6 +77,8 @@ export default defineConfig({
           // 🛡️ 2026-04-27 추가 분할 — index entry 크기 줄이기
           // i18next + 6개 언어 번들 (모든 페이지에서 쓰지만 별도 lazy 가능)
           if (id.includes('i18next') || id.includes('react-i18next')) return 'i18n'
+          // locale JSON 파일 — 별도 청크로 분리 (i18n 청크와 다른 캐싱 주기)
+          if (id.includes('/public/locales/') || (id.includes('/locales/') && id.endsWith('.json'))) return 'locales'
           // Radix UI components (대부분 셀러/어드민 페이지에서만 사용)
           if (id.includes('@radix-ui')) return 'radix-ui'
           // Date utility (date-fns 등)
@@ -98,6 +100,29 @@ export default defineConfig({
           if (id.includes('@capacitor/')) return 'capacitor'
           // Image compression (seller upload pages만 사용 — 지연 캐싱)
           if (id.includes('browser-image-compression')) return 'img-utils'
+          // 🛡️ 2026-05-06: 소스 코드 분할 — index entry 추가 분리.
+          // 인증 스토어: App.tsx 에서 eagerly import 되지만 별도 청크로 캐싱 분리.
+          if (id.includes('/src/shared/stores/')) return 'app-stores'
+          // 공유 설정/유틸: region, env-validator, feature-flags 등 — 변경 빈도 낮음
+          if (id.includes('/src/shared/config/') || id.includes('/src/shared/utils/')) return 'app-shared'
+          // 공유 타입/상수: 런타임 코드 없이 타입 + 상수 → 별도 캐싱
+          if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
+          // 레이아웃 컴포넌트: BottomNav, DesktopTopNav, DesktopLiveSidebar 등
+          if (id.includes('/src/components/main/')) return 'app-layout'
+          // 인증 컴포넌트: RouteGuards, KakaoLinkButton 등
+          if (id.includes('/src/components/auth/')) return 'app-auth'
+          // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
+          if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
+          // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
+          if (id.includes('/src/features/')) return 'app-features'
+          // 라우트 그룹 정의 파일 — seller/admin/agency 라우트 (큰 Route 트리)
+          if (id.includes('/src/routes/')) return 'app-routes'
+          // 기타 공유 컴포넌트 — 하위 디렉터리 별 분리
+          if (id.includes('/src/components/live/')) return 'app-live-components'
+          if (id.includes('/src/components/')) return 'app-components'
+          // 나머지 src/ 디렉터리 — types, constants, config, layouts
+          if (id.includes('/src/types/') || id.includes('/src/constants/') ||
+              id.includes('/src/config/') || id.includes('/src/layouts/')) return 'app-misc'
         },
       },
     },
