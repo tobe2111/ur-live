@@ -73,7 +73,7 @@ export interface PaymentProvider {
   /**
    * Initialize payment and return payment widget URL or data
    */
-  initialize(request: PaymentRequest): Promise<{ widgetUrl?: string; data?: any }>;
+  initialize(request: PaymentRequest): Promise<{ widgetUrl?: string; data?: unknown }>;
 
   /**
    * Approve/confirm payment after user completes payment in widget
@@ -88,5 +88,5 @@ export interface PaymentProvider {
   /**
    * Verify payment signature/webhook (optional)
    */
-  verify?(data: any): Promise<boolean>;
+  verify?(data: unknown): Promise<boolean>;
 }
