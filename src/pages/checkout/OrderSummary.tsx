@@ -78,17 +78,17 @@ export default function OrderSummary({
         <div className="flex items-end justify-between pt-3 mt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
           <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">{t('checkout.summary.totalAmount', { defaultValue: '총 결제 금액' })}</span>
           <span className="text-[20px] font-black text-red-500" style={{ letterSpacing: '-0.03em' }}>
-            {finalAmount}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}
+            {formatNumber(finalAmount)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}
           </span>
         </div>
         {finalAmount > 0 && (
           <>
             <div className="flex justify-end mt-0.5">
-              <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('checkout.summary.vatIncluded', { defaultValue: '부가세 포함 (10% · {{vat}}원)', vat })}</span>
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('checkout.summary.vatIncluded', { defaultValue: '부가세 포함 (10% · {{vat}}원)', vat: formatNumber(vat) })}</span>
             </div>
             <div className="flex justify-end mt-1">
               <span className="rounded-md px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold">
-                {t('checkout.summary.dealsToEarn', { defaultValue: '결제 시 {{count}}딜 적립 예정', count: dealsToEarn })}
+                {t('checkout.summary.dealsToEarn', { defaultValue: '결제 시 {{amount}}딜 적립 예정', amount: formatNumber(dealsToEarn) })}
               </span>
             </div>
           </>

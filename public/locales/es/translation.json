@@ -3706,7 +3706,37 @@
     "donationFailed": "La donación falló.",
     "donationCenterAlert": "¡{{name}} donó {{amount}} deals!",
     "donationBalance": "{{amount}} Deals",
-    "timeDealJoinFailed": "Error al unirse"
+    "timeDealJoinFailed": "Error al unirse",
+    "auction": {
+      "title": "Subasta en vivo",
+      "ended": "¡Subasta terminada!",
+      "winner": "👑 Ganada por {{name}}",
+      "purchaseAtWinningPrice": "Comprar al precio ganador",
+      "purchaseFailed": "Compra fallida",
+      "bidSuccess": "¡Puja de {{amount}} KRW!",
+      "bidFailed": "Puja fallida",
+      "currentHighest": "Más alta actual",
+      "bidCount": "{{count}} puja(s)",
+      "bid": "Pujar",
+      "minBidInfo": "Puja mín.: {{min}} KRW (+{{inc}})",
+      "wonSuffix": " KRW"
+    },
+    "product": {
+      "soldOut": "Agotado",
+      "soldCount": "{{count}} vendidos",
+      "stockLeft": "Stock: {{count}}",
+      "adding": "Añadiendo...",
+      "addToCart": "Añadir al carrito",
+      "wonSuffix": " KRW"
+    },
+    "supporter": {
+      "title": "Ranking de seguidores",
+      "peopleCount": "{{count}}",
+      "totalDonations": "Total {{amount}} Deal donados",
+      "empty": "Aún no hay seguidores",
+      "donationCount": "{{count}} donación(es)",
+      "dealLabel": "Deal"
+    }
   },
   "paymentFail": {
     "title": "Pago fallido",
@@ -3962,7 +3992,7 @@
       "wonSuffix": " KRW",
       "dealSuffix": " Deal",
       "vatIncluded": "IVA incluido (10% · {{vat}} KRW)",
-      "dealsToEarn": "Gana {{count}} Deal al pagar"
+      "dealsToEarn": "Gana {{amount}} Deal al pagar"
     },
     "shipping": {
       "title": "Dirección de envío",

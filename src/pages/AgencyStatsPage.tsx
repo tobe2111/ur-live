@@ -174,7 +174,7 @@ export default function AgencyStatsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: t('agency.stats.totalRevenue', { defaultValue: '총 매출' }), value: `${(totals.revenue / 10000).toFixed(0)}만원`, icon: TrendingUp, color: 'bg-blue-600' },
-          { label: t('agency.stats.commissionRevenue', { defaultValue: '수수료 수익' }), value: `${Math.round(totals.revenue * commissionRate / 100)}원`, icon: DollarSign, color: 'bg-indigo-600' },
+          { label: t('agency.stats.commissionRevenue', { defaultValue: '수수료 수익' }), value: `${formatNumber(Math.round(totals.revenue * commissionRate / 100))}원`, icon: DollarSign, color: 'bg-indigo-600' },
           { label: t('agency.stats.totalOrders', { defaultValue: '총 주문' }), value: `${totals.orders}건`, icon: ShoppingBag, color: 'bg-emerald-500' },
           { label: t('agency.stats.totalLives', { defaultValue: '총 라이브' }), value: `${totals.streams}회`, icon: Play, color: 'bg-rose-500' },
           { label: t('agency.stats.totalViewers', { defaultValue: '총 시청자' }), value: `${formatNumber(totals.viewers)}명`, icon: Users, color: 'bg-violet-500' },

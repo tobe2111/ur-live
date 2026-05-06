@@ -3706,7 +3706,37 @@
     "donationFailed": "후원에 실패했습니다.",
     "donationCenterAlert": "{{name}}님이 {{amount}}딜 후원!",
     "donationBalance": "{{amount}}딜",
-    "timeDealJoinFailed": "참여 실패"
+    "timeDealJoinFailed": "참여 실패",
+    "auction": {
+      "title": "실시간 경매",
+      "ended": "경매 종료!",
+      "winner": "👑 {{name}}님 낙찰",
+      "purchaseAtWinningPrice": "낙찰가로 구매하기",
+      "purchaseFailed": "구매 실패",
+      "bidSuccess": "{{amount}}원 입찰 성공!",
+      "bidFailed": "입찰 실패",
+      "currentHighest": "현재 최고가",
+      "bidCount": "입찰 {{count}}회",
+      "bid": "입찰",
+      "minBidInfo": "최소 입찰: {{min}}원 (+{{inc}}원)",
+      "wonSuffix": "원"
+    },
+    "product": {
+      "soldOut": "품절",
+      "soldCount": "{{count}}개 판매",
+      "stockLeft": "재고: {{count}}개",
+      "adding": "추가 중...",
+      "addToCart": "장바구니 담기",
+      "wonSuffix": "원"
+    },
+    "supporter": {
+      "title": "서포터 랭킹",
+      "peopleCount": "{{count}}명",
+      "totalDonations": "총 {{amount}}딜 후원",
+      "empty": "아직 서포터가 없습니다",
+      "donationCount": "{{count}}회 후원",
+      "dealLabel": "딜"
+    }
   },
   "paymentFail": {
     "title": "결제 실패",
@@ -4257,7 +4287,7 @@
       "wonSuffix": "원",
       "dealSuffix": "딜",
       "vatIncluded": "부가세 포함 (10% · {{vat}}원)",
-      "dealsToEarn": "결제 시 {{count}}딜 적립 예정"
+      "dealsToEarn": "결제 시 {{amount}}딜 적립 예정"
     },
     "shipping": {
       "title": "배송지",

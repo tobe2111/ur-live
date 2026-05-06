@@ -3706,7 +3706,37 @@
     "donationFailed": "Donation failed.",
     "donationCenterAlert": "{{name}} donated {{amount}} deals!",
     "donationBalance": "{{amount}} Deals",
-    "timeDealJoinFailed": "Join failed"
+    "timeDealJoinFailed": "Join failed",
+    "auction": {
+      "title": "Live auction",
+      "ended": "Auction ended!",
+      "winner": "👑 Won by {{name}}",
+      "purchaseAtWinningPrice": "Buy at winning price",
+      "purchaseFailed": "Purchase failed",
+      "bidSuccess": "Bid {{amount}} KRW placed!",
+      "bidFailed": "Bid failed",
+      "currentHighest": "Current highest",
+      "bidCount": "{{count}} bid(s)",
+      "bid": "Bid",
+      "minBidInfo": "Min bid: {{min}} KRW (+{{inc}})",
+      "wonSuffix": " KRW"
+    },
+    "product": {
+      "soldOut": "Sold out",
+      "soldCount": "{{count}} sold",
+      "stockLeft": "Stock: {{count}}",
+      "adding": "Adding...",
+      "addToCart": "Add to cart",
+      "wonSuffix": " KRW"
+    },
+    "supporter": {
+      "title": "Supporter ranking",
+      "peopleCount": "{{count}}",
+      "totalDonations": "Total {{amount}} Deal donated",
+      "empty": "No supporters yet",
+      "donationCount": "{{count}} donation(s)",
+      "dealLabel": "Deal"
+    }
   },
   "paymentFail": {
     "title": "Payment Failed",
@@ -3962,7 +3992,7 @@
       "wonSuffix": " KRW",
       "dealSuffix": " Deal",
       "vatIncluded": "VAT included (10% · {{vat}} KRW)",
-      "dealsToEarn": "Earn {{count}} Deal on payment"
+      "dealsToEarn": "Earn {{amount}} Deal on payment"
     },
     "shipping": {
       "title": "Shipping address",

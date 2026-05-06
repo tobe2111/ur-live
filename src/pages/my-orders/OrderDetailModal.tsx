@@ -197,7 +197,7 @@ export default function OrderDetailModal({ order, onClose, onCancel }: Props) {
                 <span className="text-gray-500 dark:text-gray-400">{t('orderDetail.productAmount', { defaultValue: '상품 금액' })}</span>
                 <span className="font-medium text-gray-900 dark:text-white">
                   {/* ✅ items가 배열이 아닌 값(object 등)으로 올 경우 .reduce is not a function 방어 */}
-                  {(Array.isArray(order.items) ? order.items : []).reduce((sum, item) => sum + (item.price_snapshot ?? 0) * item.quantity, 0)}원
+                  {formatNumber((Array.isArray(order.items) ? order.items : []).reduce((sum, item) => sum + (item.price_snapshot ?? 0) * item.quantity, 0))}원
                 </span>
               </div>
               <div className="flex justify-between">

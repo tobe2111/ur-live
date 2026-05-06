@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Gavel, Crown, Timer } from 'lucide-react'
@@ -13,6 +14,7 @@ interface AuctionData {
 
 export default function AuctionPanel({ streamId }: { streamId: string | number }) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [auction, setAuction] = useState<AuctionData | null>(null)
   const [bidAmount, setBidAmount] = useState(0)
   const [bidding, setBidding] = useState(false)
@@ -56,9 +58,9 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
     return (
       <div className="bg-gradient-to-br from-green-500/90 to-emerald-600/90 backdrop-blur-md rounded-2xl p-4 text-white shadow-lg">
         <div className="text-center">
-          <p className="text-sm font-bold mb-1">경매 종료!</p>
-          <p className="text-xs opacity-80">👑 {auction.winner_name}님 낙찰</p>
-          <p className="text-2xl font-bold mt-2">{auction.current_price?.toLocaleString()}원</p>
+          <p className="text-sm font-bold mb-1">{t('live.auction.ended', { defaultValue: '경매 종료!' })}</p>
+          <p className="text-xs opacity-80">{t('live.auction.winner', { defaultValue: '👑 {{name}}님 낙찰', name: auction.winner_name })}</p>
+          <p className="text-2xl font-bold mt-2">{auction.current_price?.toLocaleString()}{t('live.auction.wonSuffix', { defaultValue: '원' })}</p>
           <button
             onClick={async () => {
               try {
@@ -70,11 +72,11 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
                 } else {
                   toast.error(res.data.error)
                 }
-              } catch (err: any) { toast.error(err?.response?.data?.error || '구매 실패') }
+              } catch (err: any) { toast.error(err?.response?.data?.error || t('live.auction.purchaseFailed', { defaultValue: '구매 실패' })) }
             }}
             className="mt-3 w-full py-2.5 bg-white text-green-700 font-bold rounded-xl text-sm active:scale-[0.96]"
           >
-            낙찰가로 구매하기
+            {t('live.auction.purchaseAtWinningPrice', { defaultValue: '낙찰가로 구매하기' })}
           </button>
         </div>
       </div>
@@ -89,12 +91,12 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
     try {
       const res = await api.post(`/api/auction/${auction.id}/bid`, { amount: bidAmount })
       if (res.data.success) {
-        toast.success(`${formatNumber(bidAmount)}원 입찰 성공!`)
+        toast.success(t('live.auction.bidSuccess', { defaultValue: '{{amount}}원 입찰 성공!', amount: formatNumber(bidAmount) }))
         setBidAmount(bidAmount + auction.min_increment)
       } else {
         toast.error(res.data.error)
       }
-    } catch (err: any) { toast.error(err?.response?.data?.error || '입찰 실패') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || t('live.auction.bidFailed', { defaultValue: '입찰 실패' })) }
     finally { setBidding(false) }
   }
 
@@ -107,7 +109,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Gavel className="w-5 h-5" />
-          <span className="font-bold text-sm">실시간 경매</span>
+          <span className="font-bold text-sm">{t('live.auction.title', { defaultValue: '실시간 경매' })}</span>
         </div>
         <div className="flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1">
           <Timer className="w-3.5 h-3.5" />
@@ -124,11 +126,11 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
       <div className="bg-white/20 rounded-xl p-3 mb-3">
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-[10px] text-gray-900 dark:text-white/70">현재 최고가</p>
-            <p className="text-2xl font-bold">{formatNumber(auction.current_price)}원</p>
+            <p className="text-[10px] text-gray-900 dark:text-white/70">{t('live.auction.currentHighest', { defaultValue: '현재 최고가' })}</p>
+            <p className="text-2xl font-bold">{formatNumber(auction.current_price)}{t('live.auction.wonSuffix', { defaultValue: '원' })}</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-gray-900 dark:text-white/70">입찰 {auction.bid_count}회</p>
+            <p className="text-[10px] text-gray-900 dark:text-white/70">{t('live.auction.bidCount', { defaultValue: '입찰 {{count}}회', count: auction.bid_count })}</p>
             {auction.winner_name && (
               <div className="flex items-center gap-1 text-xs">
                 <Crown className="w-3 h-3 text-yellow-300" />
@@ -148,7 +150,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
                 {i === 0 ? '👑' : i === 1 ? '💎' : '⭐'}
                 {b.user_name}
               </span>
-              <span className="font-mono">{formatNumber(b.amount)}원</span>
+              <span className="font-mono">{formatNumber(b.amount)}{t('live.auction.wonSuffix', { defaultValue: '원' })}</span>
             </div>
           ))}
         </div>
@@ -171,13 +173,13 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
           disabled={bidding || timeLeft <= 0}
           className="px-5 py-2.5 bg-white text-orange-600 font-bold rounded-xl text-sm active:scale-[0.96] disabled:opacity-50 shrink-0"
         >
-          {bidding ? '...' : '입찰'}
+          {bidding ? '...' : t('live.auction.bid', { defaultValue: '입찰' })}
         </button>
       </div>
 
       {/* 최소 입찰 안내 */}
       <p className="text-[10px] text-gray-900 dark:text-white/60 mt-2 text-center">
-        최소 입찰: {formatNumber(auction.current_price + auction.min_increment)}원 (+{formatNumber(auction.min_increment)}원)
+        {t('live.auction.minBidInfo', { defaultValue: '최소 입찰: {{min}}원 (+{{inc}}원)', min: formatNumber(auction.current_price + auction.min_increment), inc: formatNumber(auction.min_increment) })}
       </p>
     </div>
   )

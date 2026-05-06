@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { Crown, Diamond, Star, Heart, Users } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -21,6 +22,7 @@ const BADGE_ICONS: Record<string, { icon: typeof Crown; color: string; bg: strin
 }
 
 export default function SupporterRanking({ sellerId, compact = false }: Props) {
+  const { t } = useTranslation()
   const [supporters, setSupporters] = useState<Supporter[]>([])
   const [stats, setStats] = useState({ supporter_count: 0, total_donations: 0 })
   const [loading, setLoading] = useState(true)
@@ -67,22 +69,22 @@ export default function SupporterRanking({ sellerId, compact = false }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />
-            <h3 className="font-bold text-gray-900">서포터 랭킹</h3>
+            <h3 className="font-bold text-gray-900">{t('live.supporter.title', { defaultValue: '서포터 랭킹' })}</h3>
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-500">
             <Users className="w-3.5 h-3.5" />
-            <span>{stats.supporter_count}명</span>
+            <span>{t('live.supporter.peopleCount', { defaultValue: '{{count}}명', count: stats.supporter_count })}</span>
           </div>
         </div>
         <p className="text-xs text-gray-500 mt-0.5">
-          총 {formatNumber(stats.total_donations)}딜 후원
+          {t('live.supporter.totalDonations', { defaultValue: '총 {{amount}}딜 후원', amount: formatNumber(stats.total_donations) })}
         </p>
       </div>
 
       {/* 랭킹 리스트 */}
       {supporters.length === 0 ? (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
-          아직 서포터가 없습니다
+          {t('live.supporter.empty', { defaultValue: '아직 서포터가 없습니다' })}
         </div>
       ) : (
         <div className="divide-y divide-gray-50">
@@ -103,13 +105,13 @@ export default function SupporterRanking({ sellerId, compact = false }: Props) {
                 {/* 이름 */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{s.donor_name}</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400">{s.donation_count}회 후원</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('live.supporter.donationCount', { defaultValue: '{{count}}회 후원', count: s.donation_count })}</p>
                 </div>
 
                 {/* 총액 */}
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-pink-500">{formatNumber(s.total_amount)}</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400">딜</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('live.supporter.dealLabel', { defaultValue: '딜' })}</p>
                 </div>
               </div>
             )

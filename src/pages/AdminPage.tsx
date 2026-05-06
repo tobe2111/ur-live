@@ -4,13 +4,12 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
-  Users, Play, Package, TrendingUp, CheckCircle, XCircle,
-  DollarSign, Eye, RefreshCw, X
+  Users, Play, Package, TrendingUp, CheckCircle,
+  DollarSign, Eye, X
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { LayoutDashboard } from 'lucide-react'
-import { formatKST, formatKSTDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import DeferUntilVisible from './admin-page/DeferUntilVisible'
 import ChartSkeleton from './admin-page/ChartSkeleton'
@@ -18,6 +17,9 @@ import AdminRevenueChart from './admin-page/AdminRevenueChart'
 import AdminActivityFeed from './admin-page/AdminActivityFeed'
 import RejectionModal from './admin-page/RejectionModal'
 import BizInfoModal from './admin-page/BizInfoModal'
+import SellersTable from './admin-page/SellersTable'
+import StreamsTable from './admin-page/StreamsTable'
+import PendingSellersTable from './admin-page/PendingSellersTable'
 import type { ApiError, Seller, Stream, Stats, DashboardStats, Alert } from './admin-page/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / DeferUntilVisible / ChartSkeleton /
@@ -562,184 +564,30 @@ export default function AdminPage() {
       )}
 
       {/* ── 승인 대기 판매자 ── */}
-      {pendingSellers.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-amber-100 bg-amber-50 flex items-center gap-2">
-            <Users className="w-4 h-4 text-amber-600" />
-            <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k034', { defaultValue: '승인 대기 판매자' })}</h2>
-            <span className="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-              {pendingSellers.length}명
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50">
-                  {[t('admin.dashboard.k035', { defaultValue: '신청일시' }), t('admin.dashboard.k036', { defaultValue: '이름' }), t('admin.dashboard.k037', { defaultValue: '이메일' }), t('admin.dashboard.k038', { defaultValue: '연락처' }), t('admin.dashboard.k039', { defaultValue: '상호명' }), t('admin.dashboard.k040', { defaultValue: '사업자번호' }), t('admin.dashboard.k041', { defaultValue: '승인 관리' })].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {pendingSellers.map(seller => (
-                  <tr key={seller.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-xs text-gray-500">{formatKST(seller.created_at)}</td>
-                    <td className="px-4 py-3">
-                      <p className="text-xs font-medium text-gray-900">{seller.name || '-'}</p>
-                      <p className="text-xs text-gray-400">{seller.username}</p>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{seller.email}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{seller.phone || '-'}</td>
-                    <td className="px-4 py-3 text-xs text-gray-900">{seller.business_name || seller.company_name || '-'}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{seller.business_number || '-'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button onClick={() => approveSeller(seller.id)} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700">
-                          <CheckCircle className="w-3 h-3" /> 승인
-                        </button>
-                        <button onClick={() => openRejectModal(seller)} className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700">
-                          <XCircle className="w-3 h-3" /> 거부
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <PendingSellersTable
+        pendingSellers={pendingSellers}
+        onApprove={approveSeller}
+        onReject={openRejectModal}
+      />
 
       {/* ── 판매자 관리 ── */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k042', { defaultValue: '판매자 관리' })}</h2>
-          <button onClick={loadData} aria-label={t('admin.dashboard.k043', { defaultValue: "데이터 새로고침" })} className="p-1.5 rounded-lg hover:bg-gray-100">
-            <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50">
-                {['ID', t('admin.dashboard.k037', { defaultValue: '이메일' }), t('admin.dashboard.k044', { defaultValue: '회사명' }), t('admin.dashboard.k045', { defaultValue: '수수료율' }), t('admin.dashboard.k046', { defaultValue: '특수권한' }), t('admin.dashboard.k047', { defaultValue: '상태' }), t('admin.dashboard.k048', { defaultValue: '가입일' }), t('admin.dashboard.k049', { defaultValue: '액션' })].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading && sellers.length === 0 ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={`skel-${i}`}>
-                    {Array.from({ length: 8 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3"><Skel className="h-4 w-full" /></td>
-                    ))}
-                  </tr>
-                ))
-              ) : sellers.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">{t('admin.dashboard.k050', { defaultValue: '등록된 판매자가 없습니다' })}</td></tr>
-              ) : sellers.map(seller => (
-                <tr key={seller.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs text-gray-500">
-                    {seller.id}
-                    {seller.linked_user_id && (
-                      <span className="ml-1 inline-flex items-center px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-bold" title={t('admin.dashboard.k051', { defaultValue: "카카오 계정 연동됨" })}>
-                        💬
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-900">{seller.email}</td>
-                  <td className="px-4 py-3 text-xs text-gray-900">{seller.business_name || seller.company_name || '-'}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => updateCommissionRate(seller.id, seller.commission_rate ?? 10)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                      {seller.commission_rate != null ? `${seller.commission_rate.toFixed(2)}%` : '-'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleManipulateStatsPermission(seller.id, seller.can_manipulate_stats || 0)}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
-                        seller.can_manipulate_stats ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}
-                    >
-                      {seller.can_manipulate_stats ? <><CheckCircle className="w-3 h-3" />{t('admin.dashboard.k052', { defaultValue: '승인됨' })}</> : <><XCircle className="w-3 h-3" />{t('admin.dashboard.k053', { defaultValue: '미승인' })}</>}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                      seller.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
-                      seller.status === 'suspended' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
-                    }`}>
-                      {seller.status === 'approved' ? t('admin.dashboard.k052', { defaultValue: '승인됨' }) : seller.status === 'suspended' ? t('admin.dashboard.k054', { defaultValue: '정지됨' }) : t('admin.dashboard.k055', { defaultValue: '대기중' })}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{formatKSTDate(seller.created_at)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openBizInfo(seller)} className="text-xs text-purple-600 hover:text-purple-800 font-medium">{t('admin.dashboard.k056', { defaultValue: '사업자정보' })}</button>
-                      {seller.status !== 'approved' && (
-                        <button onClick={() => approveSeller(seller.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">{t('admin.dashboard.k016', { defaultValue: '승인' })}</button>
-                      )}
-                      {seller.status !== 'suspended' && (
-                        <button onClick={() => suspendSeller(seller.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">{t('admin.dashboard.k057', { defaultValue: '정지' })}</button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SellersTable
+        sellers={sellers}
+        loading={loading}
+        onRefresh={loadData}
+        onUpdateCommission={updateCommissionRate}
+        onTogglePermission={toggleManipulateStatsPermission}
+        onOpenBizInfo={openBizInfo}
+        onApprove={approveSeller}
+        onSuspend={suspendSeller}
+      />
 
       {/* ── 라이브 스트림 관리 ── */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k058', { defaultValue: '라이브 스트림 관리' })}</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50">
-                {['ID', t('admin.dashboard.k059', { defaultValue: '제목' }), 'YouTube ID', t('admin.dashboard.k047', { defaultValue: '상태' }), t('admin.dashboard.k060', { defaultValue: '생성일' }), t('admin.dashboard.k049', { defaultValue: '액션' })].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading && streams.length === 0 ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={`skel-s-${i}`}>
-                    {Array.from({ length: 6 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3"><Skel className="h-4 w-full" /></td>
-                    ))}
-                  </tr>
-                ))
-              ) : streams.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">{t('admin.dashboard.k061', { defaultValue: '등록된 라이브가 없습니다' })}</td></tr>
-              ) : streams.map(stream => (
-                <tr key={stream.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs text-gray-500">{stream.id}</td>
-                  <td className="px-4 py-3 text-xs text-gray-900">{stream.title}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500 font-mono">{stream.youtube_video_id}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                      stream.status === 'live' ? 'bg-red-50 text-red-600' :
-                      stream.status === 'scheduled' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {stream.status === 'live' ? t('admin.dashboard.k062', { defaultValue: '🔴 라이브' }) : stream.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{formatKSTDate(stream.created_at)}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => deleteStream(stream.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">{t('admin.dashboard.k063', { defaultValue: '삭제' })}</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <StreamsTable
+        streams={streams}
+        loading={loading}
+        onDelete={deleteStream}
+      />
       {/* ── 사업자 정보 상세 모달 ── */}
       {bizInfoSeller && (
         <BizInfoModal

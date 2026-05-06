@@ -3706,7 +3706,37 @@
     "donationFailed": "後援に失敗しました。",
     "donationCenterAlert": "{{name}}さんが{{amount}}ディール後援！",
     "donationBalance": "{{amount}}ディール",
-    "timeDealJoinFailed": "参加失敗"
+    "timeDealJoinFailed": "参加失敗",
+    "auction": {
+      "title": "リアルタイム入札",
+      "ended": "入札終了!",
+      "winner": "👑 {{name}}さん落札",
+      "purchaseAtWinningPrice": "落札価格で購入",
+      "purchaseFailed": "購入失敗",
+      "bidSuccess": "{{amount}}원 入札成功!",
+      "bidFailed": "入札失敗",
+      "currentHighest": "現在最高価",
+      "bidCount": "入札 {{count}}回",
+      "bid": "入札",
+      "minBidInfo": "最低入札: {{min}}원 (+{{inc}}원)",
+      "wonSuffix": "원"
+    },
+    "product": {
+      "soldOut": "売り切れ",
+      "soldCount": "{{count}}点販売",
+      "stockLeft": "在庫: {{count}}点",
+      "adding": "追加中...",
+      "addToCart": "カートに追加",
+      "wonSuffix": "원"
+    },
+    "supporter": {
+      "title": "サポーターランキング",
+      "peopleCount": "{{count}}人",
+      "totalDonations": "合計 {{amount}}ディール後援",
+      "empty": "まだサポーターがいません",
+      "donationCount": "{{count}}回後援",
+      "dealLabel": "ディール"
+    }
   },
   "paymentFail": {
     "title": "決済失敗",
@@ -3962,7 +3992,7 @@
       "wonSuffix": "원",
       "dealSuffix": "ディール",
       "vatIncluded": "付加税込み (10% · {{vat}}원)",
-      "dealsToEarn": "決済時 {{count}} ディール獲得予定"
+      "dealsToEarn": "決済時 {{amount}} ディール獲得予定"
     },
     "shipping": {
       "title": "配送先",
