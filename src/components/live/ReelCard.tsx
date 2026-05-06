@@ -99,6 +99,7 @@ import LiveChat from '@/components/live/LiveChatStream'
 //   기존 ReelCard 자체 정의 (96줄) 제거. 외부 ProductListSheet 가 더 정교한 디자인.
 import { ProductListSheet } from '@/components/live/ProductListSheet'
 import { formatNumber } from '@/utils/format'
+import { useStreamStore } from '@/shared/stores/useStreamStore'
 export type { Stream, Product, ReelData, YTPlayer, YTPlayerEvent, ApiError }
 
 function ReelCardImpl({
@@ -224,6 +225,45 @@ function ReelCardImpl({
     streamData: wsStreamData,
     lastDonation,
   } = useLiveStreamWebSocket(stream.id, true, stream.status === 'ended')
+
+  // ── PC 패널 공유 스토어 사이드이펙트 ──────────────────────────────────────
+  // ReelCard 핵심 로직 무변경. 스토어에 쓰기만 담당.
+  const {
+    setStream: storeSetStream,
+    setViewerCount: storeSetViewerCount,
+    setCurrentProductId: storeSetCurrentProductId,
+    setProducts: storeSetProducts,
+    setMessages: storeSetMessages,
+    setConnected: storeSetConnected,
+    setSendMessage: storeSetSendMessage,
+    reset: storeReset,
+  } = useStreamStore()
+
+  useEffect(() => {
+    storeSetStream({ id: stream.id, title: stream.title, sellerName: stream.streamerName || stream.seller_name || '' })
+    storeSetSendMessage(sendChatMessage)
+    return () => { storeReset() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.id])
+
+  useEffect(() => { storeSetConnected(chatConnected) }, [chatConnected, storeSetConnected])
+
+  useEffect(() => {
+    const merged = [
+      ...chatMessages.map(m => ({ ...m, source: m.source || 'kakao' as const })),
+      ...ytChatMessages,
+    ].sort((a, b) => a.timestamp - b.timestamp).slice(-50)
+    storeSetMessages(merged)
+  }, [chatMessages, ytChatMessages, storeSetMessages])
+
+  useEffect(() => {
+    if (streamProducts.length > 0) storeSetProducts(streamProducts)
+  }, [streamProducts, storeSetProducts])
+
+  useEffect(() => {
+    storeSetCurrentProductId(wsStreamData?.current_product_id ?? null)
+  }, [wsStreamData?.current_product_id, storeSetCurrentProductId])
+  // ── 스토어 사이드이펙트 끝 ────────────────────────────────────────────────
 
   // 채팅 메시지 병합 메모이제이션 (flicker 방지)
   const mergedChatMessages = useMemo(() =>
