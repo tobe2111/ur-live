@@ -3,6 +3,11 @@
  */
 import type { CartItem } from '@/types/cart'
 
+export interface GroupBuyTier {
+  count: number
+  discount: number
+}
+
 export interface SellerGroup {
   seller_id: number
   seller_name: string

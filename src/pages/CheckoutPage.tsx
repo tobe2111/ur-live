@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import type { CartItem } from '@/types/cart'
+import type { ShippingAddress, GroupBuyTier, SellerGroup } from './checkout/types'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { handleApiError, getUserFriendlyError } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { AlertCircle } from 'lucide-react'
 import { getUserIdSync } from '@/utils/auth'
-// ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
@@ -23,23 +24,12 @@ import PaymentSection from './checkout/PaymentSection'
 import CheckoutAddressSection from './checkout/CheckoutAddressSection'
 import { useBeforePayment } from './checkout/useBeforePayment'
 
-// TossPaymentWidget / StripeCheckout 은 ./checkout/PaymentSection 내부에서 lazy 마운트.
-
 // 토스 SDK 프리로드 — 체크아웃 진입 전에 로드 시작
 if (typeof window !== 'undefined') {
   import('@tosspayments/tosspayments-sdk').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
 }
 
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
-
-import { CartItem } from '@/types/cart'
-import { formatNumber } from '@/utils/format'
-import type { ShippingAddress } from './checkout/types'
-
-interface GroupBuyTier {
-  count: number
-  discount: number
-}
 
 export default function CheckoutPage() {
   const { t } = useTranslation()
@@ -136,14 +126,7 @@ export default function CheckoutPage() {
     groups[sellerId].items.push(item)
     groups[sellerId].subtotal += (item.price_snapshot ?? item.price ?? 0) * item.quantity
     return groups
-  }, {} as Record<number, {
-    seller_id: number
-    seller_name: string
-    items: CartItem[]
-    subtotal: number
-    shipping_fee: number
-    free_shipping_threshold: number
-  }>)
+  }, {} as Record<number, SellerGroup>)
 
   // 소계 및 배송비 계산
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
@@ -166,8 +149,7 @@ export default function CheckoutPage() {
 
   useEffect(() => { document.title = t('checkoutPage.docTitle') }, [t])
 
-  // v36 FIX: 결제 진행 중 페이지 이탈 경고
-  const isSubmittingRef = useRef(false)
+  // v36 FIX: 결제 진행 중 페이지 이탈 경고 (isSubmittingRef는 useBeforePayment 훅에서 반환)
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (isSubmittingRef.current) {
@@ -259,22 +241,23 @@ export default function CheckoutPage() {
       }
     }
     loadData()
-
-    // Daum Postcode SDK (CheckoutAddressSection 에서도 사용)
-    const DAUM_SRC = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
-    const existingScript = document.querySelector(`script[src="${DAUM_SRC}"]`)
-    let script: HTMLScriptElement | null = null
-    if (!existingScript) {
-      script = document.createElement('script')
-      script.src = DAUM_SRC
-      script.async = true
-      document.head.appendChild(script)
-    }
-    return () => { if (script && document.head.contains(script)) document.head.removeChild(script) }
   }, [navigate, urlParamsProcessed])
 
   // 식사권 여부 확인
   const isMealVoucher = cartItems.some(item => (item as CartItem & { category?: string }).category === 'meal_voucher')
+
+  // 결제 전 주문 생성 훅 (TD-018 final pass 분리)
+  const { handleBeforePayment, isSubmittingRef } = useBeforePayment({
+    isMealVoucher,
+    isDirectPurchase,
+    selectedAddress,
+    sellerGroups,
+    groupBuyDiscounts,
+    couponId,
+    couponDiscount,
+    totalGroupBuyDiscount,
+    dealToUse,
+  })
 
   const handlePayWithDeals = async () => {
     if (!selectedAddress) { toast.error(t('common.addressRequired')); return }
@@ -309,119 +292,24 @@ export default function CheckoutPage() {
     } finally { setPayingWithDeals(false) }
   }
 
-  const handleBeforePayment = async (orderId: string): Promise<void> => {
-    if (isSubmittingRef.current) throw new Error(t('payment.errors.paymentInProgress'))
-    isSubmittingRef.current = true
-    try {
-      if (!isMealVoucher && !selectedAddress) {
-        throw new Error(t('payment.errors.selectAddress'))
-      }
-      if (isDirectPurchase) sessionStorage.setItem('directPurchase', 'true')
-      else sessionStorage.removeItem('directPurchase')
-
-      const shippingAddress = isMealVoucher ? {
-        postal_code: '00000',
-        address1: t('checkoutPage.voucherAddress'),
-        address2: '',
-        country: 'KR',
-        recipient_name: t('checkoutPage.voucherRecipient'),
-      } : {
-        postal_code: selectedAddress!.postal_code,
-        address1: selectedAddress!.address,
-        address2: selectedAddress!.address_detail || '',
-        country: 'KR',
-        recipient_name: selectedAddress!.recipient_name,
-      }
-
-      for (const group of Object.values(sellerGroups)) {
-        const groupShippingFee = (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold)
-          ? 0
-          : group.shipping_fee
-        addBreadcrumb('order', 'creating', { orderId, sellerId: group.seller_id, itemCount: group.items.length, total: group.subtotal + groupShippingFee })
-        const response = await api.post('/api/orders', {
-          seller_id: group.seller_id ? String(group.seller_id) : '',
-          order_number: orderId,
-          items: group.items.map(item => ({
-            product_id: String(item.product_id),
-            quantity: item.quantity,
-            ...(item.option_value ? { options: { value: item.option_value } } : {}),
-          })),
-          shipping_address: shippingAddress,
-          shipping_name: isMealVoucher ? t('checkoutPage.voucherRecipient') : selectedAddress!.recipient_name,
-          shipping_phone: isMealVoucher ? '' : selectedAddress!.phone,
-          shipping_fee: groupShippingFee,
-          idempotency_key: `${orderId}_${group.seller_id}`,
-          referrer_id: (() => {
-            const ref = localStorage.getItem('affiliate_ref')
-            const expires = localStorage.getItem('affiliate_ref_expires')
-            if (ref && expires && Date.now() < Number(expires)) return ref
-            const cookie = document.cookie.match(/affiliate_ref=([^;]+)/)
-            return cookie?.[1] || undefined
-          })(),
-          group_buy_discounts: groupBuyDiscounts,
-          coupon_id: couponId || undefined,
-          coupon_discount: couponDiscount || undefined,
-          discount_amount: (couponDiscount || 0) + (totalGroupBuyDiscount || 0) + (dealToUse || 0),
-          deal_used: dealToUse || undefined,
-        })
-        if (!response.data.success) throw new Error(response.data.error || t('payment.errors.orderCreateFailed'))
-        if (couponId && couponDiscount > 0 && response.data.data?.order_id) {
-          try {
-            await api.post('/api/coupons/use', { coupon_id: couponId, order_id: response.data.data.order_id, discount_amount: couponDiscount })
-          } catch (couponErr) {
-            captureError(couponErr as Error, { context: 'CheckoutPage.couponUse', couponId })
-          }
-        }
-      }
-    } finally {
-      isSubmittingRef.current = false
-    }
-  }
-
-  // ✅ BUG #3 FIX: Auth-guard and loading checks rendered here (after all hooks)
+  // ✅ BUG #3 FIX: Auth/loading guards (all hooks called above this line)
   const isSessionUser = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
-  if (!isSessionUser && (!isAuthReady || authLoading)) {
-    return (
-      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-400 dark:text-gray-500">로딩 중...</p>
-        </div>
-      </div>
-    )
-  }
-
+  if (!isSessionUser && (!isAuthReady || authLoading))
+    return <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4" /><p className="text-gray-400 dark:text-gray-500">로딩 중...</p></div></div>
   if (!user && !isSessionUser) return null
-
-  if (loading || tokenRefreshing) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-400 dark:text-gray-500">
-            {tokenRefreshing ? t('payment.errors.securityAuthInProgress') : t('payment.errors.loading')}
-          </p>
+  if (loading || tokenRefreshing)
+    return <div className="flex items-center justify-center min-h-screen"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" /><p className="mt-4 text-gray-400 dark:text-gray-500">{tokenRefreshing ? t('payment.errors.securityAuthInProgress') : t('payment.errors.loading')}</p></div></div>
+  if (error) return (
+    <div className="w-full p-4 sm:p-6">
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">
+        <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-600" /><p className="text-red-800">{error}</p></div>
+        <div className="flex gap-2 mt-4">
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
+          <Button onClick={() => navigate('/cart')} variant="outline">장바구니로 돌아가기</Button>
         </div>
       </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="w-full p-4 sm:p-6">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <p className="text-red-800">{error}</p>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
-            <Button onClick={() => navigate('/cart')} variant="outline">장바구니로 돌아가기</Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-[#f4f4f4]">

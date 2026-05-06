@@ -64,6 +64,20 @@ export default function CheckoutAddressSection({
     is_default: 0,
   })
 
+  // Daum Postcode SDK 로드 (마운트 시 1회)
+  useEffect(() => {
+    const DAUM_SRC = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    const existing = document.querySelector(`script[src="${DAUM_SRC}"]`)
+    let script: HTMLScriptElement | null = null
+    if (!existing) {
+      script = document.createElement('script')
+      script.src = DAUM_SRC
+      script.async = true
+      document.head.appendChild(script)
+    }
+    return () => { if (script && document.head.contains(script)) document.head.removeChild(script) }
+  }, [])
+
   // 배송지 목록 로드
   useEffect(() => {
     api.get('/api/shipping-addresses')
