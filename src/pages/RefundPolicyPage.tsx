@@ -1,13 +1,15 @@
 import { ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 
 export default function RefundPolicyPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-20">
-      <SEO title="환불정책 - 유어딜" description="유어딜 환불 및 반품 정책을 안내합니다." url="/refund-policy" />
+      <SEO title={t('refundPolicy.seoTitle', { defaultValue: '환불정책 - 유어딜' })} description={t('refundPolicy.seoDesc', { defaultValue: '유어딜 환불 및 반품 정책을 안내합니다.' })} url="/refund-policy" />
 
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Clock, Share2, Tag } from 'lucide-react'
 import api from '@/lib/api'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
@@ -15,6 +16,7 @@ interface BlogPost {
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [post, setPost] = useState<BlogPost | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -185,7 +187,7 @@ export default function BlogDetailPage() {
             <Link to="/seller/register" className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold">셀러 시작</Link>
           </div>
           <div className="mt-3">
-            <KakaoShareButton title={post.title} description={post.summary} link={`/blog/${post.slug}`} buttonText="글 읽기" />
+            <KakaoShareButton title={post.title} description={post.summary} link={`/blog/${post.slug}`} buttonText={t('blog.readBtn', { defaultValue: '글 읽기' })} />
           </div>
         </div>
       </article>

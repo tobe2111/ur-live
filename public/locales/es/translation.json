@@ -3510,7 +3510,9 @@
     "browseGroupBuy": "Ver compras grupales",
     "tagGroupBuy": "Compra grupal",
     "tagVoucher": "Cupón",
-    "removeAria": "Eliminar"
+    "removeAria": "Eliminar",
+    "seoTitle": "Restaurantes favoritos - Ur-Deal",
+    "seoDesc": "Lista de restaurantes guardados y alertas de compra grupal"
   },
   "wishlist": {
     "title": "Lista de deseos",
@@ -4388,7 +4390,11 @@
       "desc": "Instala en pantalla de inicio y obtén cupón de ₩5.000",
       "installBtn": "Instalar",
       "later": "Más tarde",
-      "manualDesc": "Añadir a pantalla y obtener ₩5.000"
+      "manualDesc": "Añadir a pantalla y obtener ₩5.000",
+      "iosStep1": "Toca el <strong class=\"text-pink-600\">botón Compartir</strong> abajo",
+      "iosStep2": "Selecciona \"Añadir a pantalla de inicio\"",
+      "androidStep1": "Toca el <strong class=\"text-pink-600\">menú ⋮</strong> arriba a la derecha",
+      "androidStep2": "\"Instalar app\" o \"Añadir a pantalla de inicio\""
     }
   },
   "pointsCharge": {
@@ -4436,5 +4442,14 @@
     "orderPlaceholder": "Orden",
     "editBtn": "Editar",
     "deleteBtn": "Eliminar"
+  },
+  "refundPolicy": {
+    "seoTitle": "Política de reembolso - Ur-Deal",
+    "seoDesc": "Conozca la política de reembolso y devolución de Ur-Deal."
+  },
+  "blog": {
+    "listSeoTitle": "Blog",
+    "listSeoDesc": "Blog de comercio en vivo Ur-Deal — guías de vendedor, tendencias, consejos",
+    "readBtn": "Leer artículo"
   }
 }

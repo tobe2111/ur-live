@@ -816,7 +816,9 @@
     "browseGroupBuy": "共同購入を見る",
     "tagGroupBuy": "共同購入",
     "tagVoucher": "食事券",
-    "removeAria": "削除"
+    "removeAria": "削除",
+    "seoTitle": "お気に入りグルメ - Ur-Deal",
+    "seoDesc": "お気に入り登録したグルメと共同購入通知一覧"
   },
   "wishlist": {
     "title": "ウィッシュリスト",
@@ -4388,7 +4390,11 @@
       "desc": "ホーム画面にインストールして5,000円クーポンをゲット",
       "installBtn": "インストール",
       "later": "後で",
-      "manualDesc": "ホーム画面に追加して5,000円をもらう"
+      "manualDesc": "ホーム画面に追加して5,000円をもらう",
+      "iosStep1": "下部の<strong class=\"text-pink-600\">共有ボタン</strong>をタップ",
+      "iosStep2": "\"ホーム画面に追加\"を選択",
+      "androidStep1": "右上の<strong class=\"text-pink-600\">⋮ メニュー</strong>をタップ",
+      "androidStep2": "\"アプリをインストール\"または\"ホーム画面に追加\""
     }
   },
   "pointsCharge": {
@@ -4436,5 +4442,14 @@
     "orderPlaceholder": "順序",
     "editBtn": "編集",
     "deleteBtn": "削除"
+  },
+  "refundPolicy": {
+    "seoTitle": "返金ポリシー - Ur-Deal",
+    "seoDesc": "Ur-Dealの返金・返品ポリシーについてご説明します。"
+  },
+  "blog": {
+    "listSeoTitle": "ブログ",
+    "listSeoDesc": "Ur-Dealライブコマースブログ — セラーガイド、トレンド、ヒント",
+    "readBtn": "記事を読む"
   }
 }

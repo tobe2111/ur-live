@@ -816,7 +816,9 @@
     "browseGroupBuy": "공동구매 보러가기",
     "tagGroupBuy": "공동구매",
     "tagVoucher": "식사권",
-    "removeAria": "삭제"
+    "removeAria": "삭제",
+    "seoTitle": "관심 맛집 - 유어딜",
+    "seoDesc": "관심 등록한 맛집과 공동구매 알림 목록"
   },
   "wishlist": {
     "title": "위시리스트",
@@ -4683,7 +4685,11 @@
       "desc": "홈 화면에 설치하고 5,000원 쿠폰 받기",
       "installBtn": "설치하기",
       "later": "나중에",
-      "manualDesc": "홈 화면에 추가하고 5,000원 받기"
+      "manualDesc": "홈 화면에 추가하고 5,000원 받기",
+      "iosStep1": "하단 <strong class=\"text-pink-600\">공유 버튼</strong> 누르기",
+      "iosStep2": "\"홈 화면에 추가\" 선택",
+      "androidStep1": "우상단 <strong class=\"text-pink-600\">⋮ 메뉴</strong> 누르기",
+      "androidStep2": "\"앱 설치\" 또는 \"홈 화면에 추가\""
     }
   },
   "pointsCharge": {
@@ -4731,5 +4737,14 @@
     "orderPlaceholder": "순서",
     "editBtn": "편집",
     "deleteBtn": "삭제"
+  },
+  "refundPolicy": {
+    "seoTitle": "환불정책 - 유어딜",
+    "seoDesc": "유어딜 환불 및 반품 정책을 안내합니다."
+  },
+  "blog": {
+    "listSeoTitle": "블로그",
+    "listSeoDesc": "유어딜 라이브 커머스 블로그 — 셀러 가이드, 트렌드, 팁",
+    "readBtn": "글 읽기"
   }
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -11,6 +12,7 @@ interface BlogPost {
 
 export default function BlogListPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTag, setSelectedTag] = useState('')
@@ -27,7 +29,7 @@ export default function BlogListPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
-      <SEO title="블로그" description="유어딜 라이브 커머스 블로그 — 셀러 가이드, 트렌드, 팁" url="/blog" />
+      <SEO title={t('blog.listSeoTitle', { defaultValue: '블로그' })} description={t('blog.listSeoDesc', { defaultValue: '유어딜 라이브 커머스 블로그 — 셀러 가이드, 트렌드, 팁' })} url="/blog" />
 
       {/* Header */}
       <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-200 dark:border-[#1A1A1A]">

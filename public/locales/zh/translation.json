@@ -816,7 +816,9 @@
     "browseGroupBuy": "查看团购",
     "tagGroupBuy": "团购",
     "tagVoucher": "餐券",
-    "removeAria": "删除"
+    "removeAria": "删除",
+    "seoTitle": "感兴趣的餐厅 - Ur-Deal",
+    "seoDesc": "已收藏的餐厅和团购通知列表"
   },
   "wishlist": {
     "title": "心愿单",
@@ -4388,7 +4390,11 @@
       "desc": "安装到主屏幕并获得5,000韩元优惠券",
       "installBtn": "安装",
       "later": "稍后",
-      "manualDesc": "添加到主屏幕并获得5,000韩元"
+      "manualDesc": "添加到主屏幕并获得5,000韩元",
+      "iosStep1": "点击底部的<strong class=\"text-pink-600\">分享按钮</strong>",
+      "iosStep2": "选择\"添加到主屏幕\"",
+      "androidStep1": "点击右上角的<strong class=\"text-pink-600\">⋮ 菜单</strong>",
+      "androidStep2": "\"安装应用\"或\"添加到主屏幕\""
     }
   },
   "pointsCharge": {
@@ -4436,5 +4442,14 @@
     "orderPlaceholder": "顺序",
     "editBtn": "编辑",
     "deleteBtn": "删除"
+  },
+  "refundPolicy": {
+    "seoTitle": "退款政策 - Ur-Deal",
+    "seoDesc": "了解Ur-Deal的退款和退货政策。"
+  },
+  "blog": {
+    "listSeoTitle": "博客",
+    "listSeoDesc": "Ur-Deal直播电商博客 — 卖家指南、趋势、技巧",
+    "readBtn": "阅读文章"
   }
 }

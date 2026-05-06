@@ -816,7 +816,9 @@
     "browseGroupBuy": "Browse Group Buys",
     "tagGroupBuy": "Group Buy",
     "tagVoucher": "Voucher",
-    "removeAria": "Remove"
+    "removeAria": "Remove",
+    "seoTitle": "Favorite Restaurants - Ur-Deal",
+    "seoDesc": "List of saved restaurants and group buy alerts"
   },
   "wishlist": {
     "title": "Wishlist",
@@ -4388,7 +4390,11 @@
       "desc": "Install on home screen and get a ₩5,000 coupon",
       "installBtn": "Install",
       "later": "Later",
-      "manualDesc": "Add to home screen and get ₩5,000"
+      "manualDesc": "Add to home screen and get ₩5,000",
+      "iosStep1": "Tap the <strong class=\"text-pink-600\">Share button</strong> at the bottom",
+      "iosStep2": "Select \"Add to Home Screen\"",
+      "androidStep1": "Tap the <strong class=\"text-pink-600\">⋮ menu</strong> top right",
+      "androidStep2": "\"Install app\" or \"Add to Home Screen\""
     }
   },
   "pointsCharge": {
@@ -4436,5 +4442,14 @@
     "orderPlaceholder": "Order",
     "editBtn": "Edit",
     "deleteBtn": "Delete"
+  },
+  "refundPolicy": {
+    "seoTitle": "Refund Policy - Ur-Deal",
+    "seoDesc": "Learn about Ur-Deal's refund and return policy."
+  },
+  "blog": {
+    "listSeoTitle": "Blog",
+    "listSeoDesc": "Ur-Deal live commerce blog — seller guides, trends, tips",
+    "readBtn": "Read article"
   }
 }

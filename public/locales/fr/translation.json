@@ -3510,7 +3510,9 @@
     "browseGroupBuy": "Voir les achats groupés",
     "tagGroupBuy": "Achat groupé",
     "tagVoucher": "Bon",
-    "removeAria": "Supprimer"
+    "removeAria": "Supprimer",
+    "seoTitle": "Restaurants favoris - Ur-Deal",
+    "seoDesc": "Liste des restaurants sauvegardés et alertes d'achat groupé"
   },
   "wishlist": {
     "title": "Liste de souhaits",
@@ -4388,7 +4390,11 @@
       "desc": "Installez sur l'écran d'accueil et obtenez un coupon de 5 000 ₩",
       "installBtn": "Installer",
       "later": "Plus tard",
-      "manualDesc": "Ajoutez à l'écran et recevez 5 000 ₩"
+      "manualDesc": "Ajoutez à l'écran et recevez 5 000 ₩",
+      "iosStep1": "Appuyez sur le <strong class=\"text-pink-600\">bouton Partager</strong> en bas",
+      "iosStep2": "Sélectionnez \"Ajouter à l'écran d'accueil\"",
+      "androidStep1": "Appuyez sur le <strong class=\"text-pink-600\">menu ⋮</strong> en haut à droite",
+      "androidStep2": "\"Installer l'app\" ou \"Ajouter à l'écran d'accueil\""
     }
   },
   "pointsCharge": {
@@ -4436,5 +4442,14 @@
     "orderPlaceholder": "Ordre",
     "editBtn": "Modifier",
     "deleteBtn": "Supprimer"
+  },
+  "refundPolicy": {
+    "seoTitle": "Politique de remboursement - Ur-Deal",
+    "seoDesc": "Découvrez la politique de remboursement et de retour d'Ur-Deal."
+  },
+  "blog": {
+    "listSeoTitle": "Blog",
+    "listSeoDesc": "Blog de commerce live Ur-Deal — guides vendeurs, tendances, conseils",
+    "readBtn": "Lire l'article"
   }
 }
