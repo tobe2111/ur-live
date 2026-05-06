@@ -57,7 +57,7 @@ export function validateKREnv(env: Record<string, any> = import.meta.env): void 
   } catch (error) {
     if (error instanceof z.ZodError) {
       const message = formatValidationError(error, 'KR');
-      console.error(message);
+      if (import.meta.env.DEV) console.error(message);
       throw new Error('KR 환경 변수 검증 실패');
     }
     throw error;
@@ -73,7 +73,7 @@ export function validateWorldEnv(env: Record<string, any> = import.meta.env): vo
   } catch (error) {
     if (error instanceof z.ZodError) {
       const message = formatValidationError(error, 'WORLD');
-      console.error(message);
+      if (import.meta.env.DEV) console.error(message);
       throw new Error('WORLD 환경 변수 검증 실패');
     }
     throw error;
@@ -109,7 +109,7 @@ export function validateWorkerEnv(env: Record<string, any>, region: 'KR' | 'GLOB
   } catch (error) {
     if (error instanceof z.ZodError) {
       const message = formatValidationError(error, `Worker - ${region}`);
-      console.error(message);
+      if (import.meta.env.DEV) console.error(message);
       throw new Error(`Worker 환경 변수 검증 실패 (Region: ${region})`);
     }
     throw error;
@@ -137,8 +137,10 @@ export function validateEnvForRuntime(region: 'KR' | 'GLOBAL'): void {
     }
   } catch (error) {
     // ⚠️ 런타임 에러는 경고로만 처리 (앱 실행을 막지 않음)
-    console.warn('[Env Validator] ⚠️ 환경 변수 검증 경고 (앱은 계속 실행)');
-    console.warn(error);
+    if (import.meta.env.DEV) {
+      console.warn('[Env Validator] ⚠️ 환경 변수 검증 경고 (앱은 계속 실행)');
+      console.warn(error);
+    }
     
     // Sentry로 에러 전송 (프로덕션 모니터링용)
     if (import.meta.env.VITE_SENTRY_DSN && typeof window !== 'undefined') {

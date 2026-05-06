@@ -435,7 +435,7 @@ async function handlePaymentConfirmed(
         await DB.prepare(`
           INSERT INTO notifications (user_id, user_type, type, title, message, link)
           VALUES (?, 'user', 'digital_purchase', ?, ?, '/my/digital')
-        `).bind(userId, '디지털 상품 구매 완료', '마이페이지 → 디지털 보관함에서 다운로드/시청 가능합니다').run().catch(() => {});
+        `).bind(userId, '디지털 상품 구매 완료', '마이페이지 → 디지털 보관함에서 다운로드/시청 가능합니다').run().catch(swallow('webhook:digital-notification'));
       }
     } catch (err) {
       if (DB) console.error('[WEBHOOK] digital access grant failed:', err);

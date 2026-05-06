@@ -43,7 +43,7 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
         setNotifications(res.data.notifications)
         setUnreadCount(res.data.unread_count || 0)
       }
-    } catch { /* 네트워크 에러 무시 — 30초 후 재시도 */ }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[DashboardBell] fetch failed:', e) }
   }, [tokenKey])
 
   useEffect(() => {

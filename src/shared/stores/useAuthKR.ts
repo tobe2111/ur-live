@@ -518,7 +518,7 @@ export const useAuthKR = create<AuthKRState>()(
                           idTokenFallback, ''
                         );
                       } catch (e) {
-                        console.error('[AuthKR] Fallback token save error:', e);
+                        if (import.meta.env.DEV) console.warn('[AuthKR] Fallback token save error:', e);
                       }
                     }
                   })();

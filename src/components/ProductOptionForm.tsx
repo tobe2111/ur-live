@@ -54,7 +54,7 @@ export default function ProductOptionForm({
     onChange(options.filter((_, i) => i !== index))
   }
 
-  const handleUpdateOption = (index: number, field: keyof ProductOption, value: any) => {
+  const handleUpdateOption = (index: number, field: keyof ProductOption, value: string | number) => {
     const updated = [...options]
     updated[index] = { ...updated[index], [field]: value }
     onChange(updated)
