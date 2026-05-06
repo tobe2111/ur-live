@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -20,6 +21,7 @@ import { EMPTY_FORM } from './admin-products/types'
 import type { Product, SupplySalesRow, SupplySalesSummary, SampleRequest } from './admin-products/types'
 
 export default function AdminProductsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'products' | 'sample-requests' | 'supply-sales'>('products')
   const [products, setProducts] = useState<Product[]>([])
@@ -57,7 +59,7 @@ export default function AdminProductsPage() {
       const response = await api.get('/api/admin/products', { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) setProducts(response.data.data)
     } catch {
-      setError('상품 목록을 불러올 수 없습니다.')
+      setError(t('admin.products.k001', { defaultValue: '상품 목록을 불러올 수 없습니다.' }))
     } finally { setLoading(false) }
   }
 
@@ -68,7 +70,7 @@ export default function AdminProductsPage() {
       const res = await api.get('/api/admin/sample-requests', { headers: { Authorization: `Bearer ${token}` } })
       if (res.data.success) setSampleRequests(res.data.data?.items ?? [])
     } catch {
-      toast.error('샘플 신청 목록을 불러올 수 없습니다.')
+      toast.error(t('admin.products.k002', { defaultValue: '샘플 신청 목록을 불러올 수 없습니다.' }))
     } finally { setSrLoading(false) }
   }
 
@@ -82,7 +84,7 @@ export default function AdminProductsPage() {
         setSupplySummary(res.data.data?.summary ?? null)
       }
     } catch {
-      toast.error('판매 현황을 불러올 수 없습니다.')
+      toast.error(t('admin.products.k003', { defaultValue: '판매 현황을 불러올 수 없습니다.' }))
     } finally { setSalesLoading(false) }
   }
 
@@ -94,11 +96,11 @@ export default function AdminProductsPage() {
         action,
         admin_memo: adminMemoMap[reqId] || null,
       }, { headers: { Authorization: `Bearer ${token}` } })
-      toast.success(action === 'approve' ? '샘플 신청이 승인되었습니다.' : '샘플 신청이 거부되었습니다.')
+      toast.success(action === 'approve' ? t('admin.products.k004', { defaultValue: '샘플 신청이 승인되었습니다.' }) : t('admin.products.k005', { defaultValue: '샘플 신청이 거부되었습니다.' }))
       loadSampleRequests()
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
-      toast.error(axiosErr.response?.data?.error || '처리에 실패했습니다.')
+      toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
     } finally { setActionLoading(null) }
   }
 
@@ -119,34 +121,34 @@ export default function AdminProductsPage() {
       }
       if (editingProduct) {
         await api.put(`/api/admin/products/${editingProduct.id}`, payload, { headers: { Authorization: `Bearer ${token}` } })
-        toast.success('상품이 수정되었습니다.')
+        toast.success(t('admin.products.k007', { defaultValue: '상품이 수정되었습니다.' }))
       } else {
         const createRes = await api.post('/api/admin/products', payload, { headers: { Authorization: `Bearer ${token}` } })
         const productId = createRes.data.data?.id || createRes.data.data?.productId
         if (productOptions.length > 0 && productId) {
           try {
             await api.post(`/api/admin/products/${productId}/options`, { options: productOptions }, { headers: { Authorization: `Bearer ${token}` } })
-          } catch { toast.error('상품은 등록되었으나 옵션 저장에 실패했습니다.') }
+          } catch { toast.error(t('admin.products.k008', { defaultValue: '상품은 등록되었으나 옵션 저장에 실패했습니다.' })) }
         }
-        toast.success('상품이 등록되었습니다.')
+        toast.success(t('admin.products.k009', { defaultValue: '상품이 등록되었습니다.' }))
       }
       setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]); loadProducts()
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
-      setError(axiosErr.response?.data?.error || '상품 저장에 실패했습니다.')
+      setError(axiosErr.response?.data?.error || t('admin.products.k010', { defaultValue: '상품 저장에 실패했습니다.' }))
     }
   }
 
   async function handleDelete(productId: number) {
-    if (!confirm('정말 이 상품을 삭제하시겠습니까?')) return
+    if (!confirm(t('admin.products.k011', { defaultValue: '정말 이 상품을 삭제하시겠습니까?' }))) return
     setDeleting(productId)
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       await api.delete(`/api/admin/products/${productId}`, { headers: { Authorization: `Bearer ${token}` } })
-      toast.success('상품이 삭제되었습니다.'); loadProducts()
+      toast.success(t('admin.products.k012', { defaultValue: '상품이 삭제되었습니다.' })); loadProducts()
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
-      toast.error(axiosErr.response?.data?.error || '상품 삭제에 실패했습니다.')
+      toast.error(axiosErr.response?.data?.error || t('admin.products.k013', { defaultValue: '상품 삭제에 실패했습니다.' }))
     } finally { setDeleting(null) }
   }
 
@@ -154,10 +156,10 @@ export default function AdminProductsPage() {
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       await api.patch(`/api/admin/products/${productId}`, { is_active: !current }, { headers: { Authorization: `Bearer ${token}` } })
-      toast.success('상품 상태가 변경되었습니다.'); loadProducts()
+      toast.success(t('admin.products.k014', { defaultValue: '상품 상태가 변경되었습니다.' })); loadProducts()
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
-      toast.error(axiosErr.response?.data?.error || '상품 상태 변경에 실패했습니다.')
+      toast.error(axiosErr.response?.data?.error || t('admin.products.k015', { defaultValue: '상품 상태 변경에 실패했습니다.' }))
     }
   }
 
@@ -189,7 +191,7 @@ export default function AdminProductsPage() {
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">상품 목록을 불러오는 중...</p>
+          <p className="text-sm text-gray-500">{t('admin.products.k016', { defaultValue: '상품 목록을 불러오는 중...' })}</p>
         </div>
       </div>
     )
@@ -197,7 +199,7 @@ export default function AdminProductsPage() {
 
   return (
     <AdminLayout
-      title="상품 관리"
+      title={t('admin.products.k017', { defaultValue: "상품 관리" })}
       headerRight={
         activeTab === 'products' ? (
           <div className="flex items-center gap-2">
@@ -229,7 +231,7 @@ export default function AdminProductsPage() {
           onClick={() => setActiveTab('products')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
-          <span className="flex items-center gap-1.5"><Package className="w-4 h-4" /> 상품 목록</span>
+          <span className="flex items-center gap-1.5"><Package className="w-4 h-4" /> {t('admin.products.k018', { defaultValue: '상품 목록' })}</span>
         </button>
         <button
           onClick={() => setActiveTab('sample-requests')}
@@ -246,7 +248,7 @@ export default function AdminProductsPage() {
           onClick={() => setActiveTab('supply-sales')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supply-sales' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
-          <span className="flex items-center gap-1.5"><BarChart2 className="w-4 h-4" /> 공급 판매 현황</span>
+          <span className="flex items-center gap-1.5"><BarChart2 className="w-4 h-4" /> {t('admin.products.k019', { defaultValue: '공급 판매 현황' })}</span>
         </button>
       </div>
 
@@ -258,7 +260,7 @@ export default function AdminProductsPage() {
           {products.length === 0 ? (
             <div className="py-20 text-center">
               <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-              <p className="text-sm text-gray-400 mb-4">등록된 상품이 없습니다.</p>
+              <p className="text-sm text-gray-400 mb-4">{t('admin.products.k020', { defaultValue: '등록된 상품이 없습니다.' })}</p>
               <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 mx-auto">
                 <Plus className="w-4 h-4" /> 첫 상품 등록하기
               </button>
@@ -268,7 +270,7 @@ export default function AdminProductsPage() {
               <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="bg-gray-50">
-                    {['이미지', '상품명', '타입', '판매가 / 공급가', '재고', '판매 수', '상태', '액션'].map(h => (
+                    {[t('admin.products.k021', { defaultValue: '이미지' }), t('admin.products.k022', { defaultValue: '상품명' }), t('admin.products.k023', { defaultValue: '타입' }), t('admin.products.k024', { defaultValue: '판매가 / 공급가' }), t('admin.products.k025', { defaultValue: '재고' }), t('admin.products.k026', { defaultValue: '판매 수' }), t('admin.products.k027', { defaultValue: '상태' }), t('admin.products.k028', { defaultValue: '액션' })].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                     ))}
                   </tr>
@@ -283,7 +285,7 @@ export default function AdminProductsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                        <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description || '설명 없음'}</p>
+                        <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description || t('admin.products.k029', { defaultValue: '설명 없음' })}</p>
                         {product.is_supply_product && (
                           <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mt-1 text-xs font-medium rounded-full bg-purple-50 text-purple-700">
                             <Truck className="w-3 h-3" /> 공급 상품
@@ -296,7 +298,7 @@ export default function AdminProductsPage() {
                             <Star className="w-3 h-3" /> Ur 특가
                           </span>
                         ) : (
-                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600">라이브</span>
+                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600">{t('admin.products.k030', { defaultValue: '라이브' })}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -324,7 +326,7 @@ export default function AdminProductsPage() {
                               await api.patch(`/api/admin/products/${product.id}`, { sold_count: val }, { headers: { Authorization: `Bearer ${tk}` } })
                               setProducts(prev => prev.map(p => p.id === product.id ? { ...p, sold_count: val } : p))
                               toast.success(`판매 수 ${val}으로 변경`)
-                            } catch { toast.error('변경 실패') }
+                            } catch { toast.error(t('admin.products.k031', { defaultValue: '변경 실패' })) }
                           }}
                           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                         />
@@ -371,7 +373,7 @@ export default function AdminProductsPage() {
           ) : sampleRequests.length === 0 ? (
             <div className="py-20 text-center">
               <Truck className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-              <p className="text-sm text-gray-400">샘플 신청 내역이 없습니다.</p>
+              <p className="text-sm text-gray-400">{t('admin.products.k032', { defaultValue: '샘플 신청 내역이 없습니다.' })}</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
@@ -380,9 +382,9 @@ export default function AdminProductsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        {req.status === 'PENDING' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700"><Clock className="w-3 h-3" /> 대기중</span>}
-                        {req.status === 'APPROVED' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700"><CheckCircle className="w-3 h-3" /> 승인됨</span>}
-                        {req.status === 'REJECTED' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600"><XCircle className="w-3 h-3" /> 거부됨</span>}
+                        {req.status === 'PENDING' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700"><Clock className="w-3 h-3" /> {t('admin.products.k033', { defaultValue: '대기중' })}</span>}
+                        {req.status === 'APPROVED' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700"><CheckCircle className="w-3 h-3" /> {t('admin.products.k034', { defaultValue: '승인됨' })}</span>}
+                        {req.status === 'REJECTED' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600"><XCircle className="w-3 h-3" /> {t('admin.products.k035', { defaultValue: '거부됨' })}</span>}
                         <span className="text-xs text-gray-400">{formatKSTDate(req.created_at)}</span>
                       </div>
                       <p className="text-sm font-semibold text-gray-900">{req.product_name}</p>
@@ -401,7 +403,7 @@ export default function AdminProductsPage() {
                     {req.status === 'PENDING' && (
                       <div className="flex-shrink-0 flex flex-col gap-2 w-48">
                         <textarea
-                          placeholder="어드민 메모 (선택)"
+                          placeholder={t('admin.products.k036', { defaultValue: "어드민 메모 (선택)" })}
                           value={adminMemoMap[req.id] || ''}
                           onChange={e => setAdminMemoMap(prev => ({ ...prev, [req.id]: e.target.value }))}
                           rows={2}
@@ -460,15 +462,15 @@ export default function AdminProductsPage() {
             ) : supplySales.length === 0 ? (
               <div className="py-20 text-center">
                 <TrendingUp className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-sm text-gray-400">공급 상품 판매 내역이 없습니다.</p>
-                <p className="text-xs text-gray-300 mt-1">셀러가 공급 상품을 등록하고 판매하면 여기에 표시됩니다.</p>
+                <p className="text-sm text-gray-400">{t('admin.products.k037', { defaultValue: '공급 상품 판매 내역이 없습니다.' })}</p>
+                <p className="text-xs text-gray-300 mt-1">{t('admin.products.k038', { defaultValue: '셀러가 공급 상품을 등록하고 판매하면 여기에 표시됩니다.' })}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[800px]">
                   <thead>
                     <tr className="bg-gray-50">
-                      {['공급 상품', '셀러', '셀러 판매가', '공급가', '주문', '판매량', '셀러 매출', '어드민 수익', '셀러 마진'].map(h => (
+                      {[t('admin.products.k039', { defaultValue: '공급 상품' }), t('admin.products.k040', { defaultValue: '셀러' }), t('admin.products.k041', { defaultValue: '셀러 판매가' }), t('admin.products.k042', { defaultValue: '공급가' }), t('admin.products.k043', { defaultValue: '주문' }), t('admin.products.k044', { defaultValue: '판매량' }), t('admin.products.k045', { defaultValue: '셀러 매출' }), t('admin.products.k046', { defaultValue: '어드민 수익' }), t('admin.products.k047', { defaultValue: '셀러 마진' })].map(h => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -505,7 +507,7 @@ export default function AdminProductsPage() {
           <div className="fixed inset-0 bg-black/50" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]) }} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">{editingProduct ? '상품 수정' : '상품 등록'}</h2>
+              <h2 className="text-sm font-semibold text-gray-900">{editingProduct ? t('admin.products.k048', { defaultValue: '상품 수정' }) : t('admin.products.k049', { defaultValue: '상품 등록' })}</h2>
               <button onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]) }} className="p-1.5 rounded-lg hover:bg-gray-100">
                 <X className="w-4 h-4 text-gray-400" />
               </button>
@@ -514,27 +516,27 @@ export default function AdminProductsPage() {
               {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">상품명 <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k022', { defaultValue: '상품명' })} <span className="text-red-500">*</span></label>
                 <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">짧은 설명</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k050', { defaultValue: '짧은 설명' })}</label>
                 <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">상세 설명</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k051', { defaultValue: '상세 설명' })}</label>
                 <textarea value={formData.long_description} onChange={e => setFormData({ ...formData, long_description: e.target.value })} rows={6} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">판매가 (Ur 특가 노출) <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k052', { defaultValue: '판매가 (Ur 특가 노출)' })} <span className="text-red-500">*</span></label>
                   <input type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} required min="0" placeholder="89000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">정가 (할인 전)</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k053', { defaultValue: '정가 (할인 전)' })}</label>
                   <input type="number" value={formData.compare_at_price} onChange={e => setFormData({ ...formData, compare_at_price: e.target.value })} min="0" placeholder="149000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                 </div>
               </div>
@@ -554,7 +556,7 @@ export default function AdminProductsPage() {
                 </label>
                 {formData.is_supply_product && (
                   <div>
-                    <label className="block text-xs font-medium text-purple-700 mb-1.5">공급가 (셀러에게만 노출)</label>
+                    <label className="block text-xs font-medium text-purple-700 mb-1.5">{t('admin.products.k054', { defaultValue: '공급가 (셀러에게만 노출)' })}</label>
                     <input
                       type="number"
                       value={formData.supply_price}
@@ -563,24 +565,24 @@ export default function AdminProductsPage() {
                       placeholder="55000"
                       className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
                     />
-                    <p className="text-xs text-purple-600 mt-1">셀러가 샘플 신청 후 승인되면 공급가로 상품을 등록해 판매할 수 있습니다.</p>
+                    <p className="text-xs text-purple-600 mt-1">{t('admin.products.k055', { defaultValue: '셀러가 샘플 신청 후 승인되면 공급가로 상품을 등록해 판매할 수 있습니다.' })}</p>
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">재고 수량 <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k056', { defaultValue: '재고 수량' })} <span className="text-red-500">*</span></label>
                 <input type="number" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} required min="0" placeholder="50" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">대표 이미지</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k057', { defaultValue: '대표 이미지' })}</label>
                 <ImageUpload value={formData.image_url} onChange={url => setFormData({ ...formData, image_url: url })} label="" maxSizeKB={800} />
-                <input type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder="또는 이미지 URL 직접 입력" className="w-full px-3 py-2 mt-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <input type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder={t('admin.products.k058', { defaultValue: "또는 이미지 URL 직접 입력" })} className="w-full px-3 py-2 mt-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">상세 이미지 (최대 4장)</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k059', { defaultValue: '상세 이미지 (최대 4장)' })}</label>
                 <div className="space-y-2">
                   {formData.detail_images.map((url, i) => (
                     <input key={i} type="url" value={url} onChange={e => { const imgs = [...formData.detail_images]; imgs[i] = e.target.value; setFormData({ ...formData, detail_images: imgs }) }} placeholder={`상세 이미지 ${i + 1} URL`} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
@@ -590,16 +592,16 @@ export default function AdminProductsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">카테고리 <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k060', { defaultValue: '카테고리' })} <span className="text-red-500">*</span></label>
                   <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    {[['fashion', '패션'], ['beauty', '뷰티'], ['food', '식품'], ['electronics', '전자기기'], ['lifestyle', '라이프스타일']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    {[['fashion', t('admin.products.k061', { defaultValue: '패션' })], ['beauty', t('admin.products.k062', { defaultValue: '뷰티' })], ['food', t('admin.products.k063', { defaultValue: '식품' })], ['electronics', t('admin.products.k064', { defaultValue: '전자기기' })], ['lifestyle', t('admin.products.k065', { defaultValue: '라이프스타일' })]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">상품 타입 <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k066', { defaultValue: '상품 타입' })} <span className="text-red-500">*</span></label>
                   <select value={formData.product_type} onChange={e => setFormData({ ...formData, product_type: e.target.value as 'live' | 'featured' })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    <option value="featured">Ur 특가 (메인 페이지 노출)</option>
-                    <option value="live">라이브 방송 전용</option>
+                    <option value="featured">{t('admin.products.k067', { defaultValue: 'Ur 특가 (메인 페이지 노출)' })}</option>
+                    <option value="live">{t('admin.products.k068', { defaultValue: '라이브 방송 전용' })}</option>
                   </select>
                 </div>
               </div>
@@ -614,8 +616,8 @@ export default function AdminProductsPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]) }} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">취소</button>
-                <button type="submit" className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">{editingProduct ? '수정' : '등록'}</button>
+                <button type="button" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]) }} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t('admin.products.k069', { defaultValue: '취소' })}</button>
+                <button type="submit" className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">{editingProduct ? t('admin.products.k070', { defaultValue: '수정' }) : t('admin.products.k071', { defaultValue: '등록' })}</button>
               </div>
             </form>
           </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -45,15 +46,15 @@ interface Order {
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING:    { label: '주문 접수',  color: 'text-amber-700',   bg: 'bg-amber-50' },
-  PAID:       { label: '결제 완료',  color: 'text-blue-700',    bg: 'bg-blue-50' },
-  DONE:       { label: '결제 완료',  color: 'text-blue-700',    bg: 'bg-blue-50' },
-  PREPARING:  { label: '상품 준비',  color: 'text-indigo-700',  bg: 'bg-indigo-50' },
-  SHIPPING:   { label: '배송 중',    color: 'text-purple-700',  bg: 'bg-purple-50' },
-  DELIVERED:  { label: '배송 완료',  color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  CANCELLED:  { label: '취소',       color: 'text-red-700',     bg: 'bg-red-50' },
-  REFUNDED:   { label: '환불',       color: 'text-gray-600',    bg: 'bg-gray-100' },
-  FAILED:     { label: '결제 실패',  color: 'text-red-700',     bg: 'bg-red-50' },
+  PENDING:    { label: t('admin.orders.k001', { defaultValue: '주문 접수' }),  color: 'text-amber-700',   bg: 'bg-amber-50' },
+  PAID:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-blue-700',    bg: 'bg-blue-50' },
+  DONE:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-blue-700',    bg: 'bg-blue-50' },
+  PREPARING:  { label: t('admin.orders.k003', { defaultValue: '상품 준비' }),  color: 'text-indigo-700',  bg: 'bg-indigo-50' },
+  SHIPPING:   { label: t('admin.orders.k004', { defaultValue: '배송 중' }),    color: 'text-purple-700',  bg: 'bg-purple-50' },
+  DELIVERED:  { label: t('admin.orders.k005', { defaultValue: '배송 완료' }),  color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  CANCELLED:  { label: t('admin.orders.k006', { defaultValue: '취소' }),       color: 'text-red-700',     bg: 'bg-red-50' },
+  REFUNDED:   { label: t('admin.orders.k007', { defaultValue: '환불' }),       color: 'text-gray-600',    bg: 'bg-gray-100' },
+  FAILED:     { label: t('admin.orders.k008', { defaultValue: '결제 실패' }),  color: 'text-red-700',     bg: 'bg-red-50' },
 }
 
 const NEXT_STATUS: Record<string, string> = {
@@ -62,23 +63,23 @@ const NEXT_STATUS: Record<string, string> = {
 }
 
 const COURIER_OPTIONS = [
-  { value: 'CJ대한통운', label: 'CJ대한통운' },
-  { value: '로젠택배', label: '로젠택배' },
-  { value: '옐로우캡', label: '옐로우캡' },
-  { value: '우체국택배', label: '우체국택배' },
-  { value: '한진택배', label: '한진택배' },
-  { value: '롯데택배', label: '롯데택배' },
-  { value: '드림택배', label: '드림택배' },
-  { value: 'KGB택배', label: 'KGB택배' },
-  { value: '대신택배', label: '대신택배' },
-  { value: '일양로지스', label: '일양로지스' },
-  { value: '경동택배', label: '경동택배' },
-  { value: '천일택배', label: '천일택배' },
-  { value: '합동택배', label: '합동택배' },
-  { value: 'CVSnet편의점택배', label: 'CVSnet편의점택배' },
-  { value: '우편발송', label: '우편발송' },
-  { value: 'GTX로지스', label: 'GTX로지스' },
-  { value: '건영택배', label: '건영택배' },
+  { value: t('admin.orders.k009', { defaultValue: 'CJ대한통운' }), label: t('admin.orders.k009', { defaultValue: 'CJ대한통운' }) },
+  { value: t('admin.orders.k010', { defaultValue: '로젠택배' }), label: t('admin.orders.k010', { defaultValue: '로젠택배' }) },
+  { value: t('admin.orders.k011', { defaultValue: '옐로우캡' }), label: t('admin.orders.k011', { defaultValue: '옐로우캡' }) },
+  { value: t('admin.orders.k012', { defaultValue: '우체국택배' }), label: t('admin.orders.k012', { defaultValue: '우체국택배' }) },
+  { value: t('admin.orders.k013', { defaultValue: '한진택배' }), label: t('admin.orders.k013', { defaultValue: '한진택배' }) },
+  { value: t('admin.orders.k014', { defaultValue: '롯데택배' }), label: t('admin.orders.k014', { defaultValue: '롯데택배' }) },
+  { value: t('admin.orders.k015', { defaultValue: '드림택배' }), label: t('admin.orders.k015', { defaultValue: '드림택배' }) },
+  { value: t('admin.orders.k016', { defaultValue: 'KGB택배' }), label: t('admin.orders.k016', { defaultValue: 'KGB택배' }) },
+  { value: t('admin.orders.k017', { defaultValue: '대신택배' }), label: t('admin.orders.k017', { defaultValue: '대신택배' }) },
+  { value: t('admin.orders.k018', { defaultValue: '일양로지스' }), label: t('admin.orders.k018', { defaultValue: '일양로지스' }) },
+  { value: t('admin.orders.k019', { defaultValue: '경동택배' }), label: t('admin.orders.k019', { defaultValue: '경동택배' }) },
+  { value: t('admin.orders.k020', { defaultValue: '천일택배' }), label: t('admin.orders.k020', { defaultValue: '천일택배' }) },
+  { value: t('admin.orders.k021', { defaultValue: '합동택배' }), label: t('admin.orders.k021', { defaultValue: '합동택배' }) },
+  { value: t('admin.orders.k022', { defaultValue: 'CVSnet편의점택배' }), label: t('admin.orders.k022', { defaultValue: 'CVSnet편의점택배' }) },
+  { value: t('admin.orders.k023', { defaultValue: '우편발송' }), label: t('admin.orders.k023', { defaultValue: '우편발송' }) },
+  { value: t('admin.orders.k024', { defaultValue: 'GTX로지스' }), label: t('admin.orders.k024', { defaultValue: 'GTX로지스' }) },
+  { value: t('admin.orders.k025', { defaultValue: '건영택배' }), label: t('admin.orders.k025', { defaultValue: '건영택배' }) },
   { value: 'EMS', label: 'EMS' },
   { value: 'DHL', label: 'DHL' },
   { value: 'FedEx', label: 'FedEx' },
@@ -87,9 +88,9 @@ const COURIER_OPTIONS = [
 ]
 
 const PAYMENT_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  paid:    { label: '결제 완료', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  pending: { label: '결제 대기', color: 'text-amber-700',   bg: 'bg-amber-50' },
-  failed:  { label: '결제 실패', color: 'text-red-700',     bg: 'bg-red-50' },
+  paid:    { label: t('admin.orders.k002', { defaultValue: '결제 완료' }), color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  pending: { label: t('admin.orders.k026', { defaultValue: '결제 대기' }), color: 'text-amber-700',   bg: 'bg-amber-50' },
+  failed:  { label: t('admin.orders.k008', { defaultValue: '결제 실패' }), color: 'text-red-700',     bg: 'bg-red-50' },
 }
 
 function parseShippingAddress(address: string, zipcode?: string, detail?: string): { postal_code: string; address1: string; address2: string } {
@@ -107,6 +108,7 @@ function parseShippingAddress(address: string, zipcode?: string, detail?: string
 }
 
 export default function AdminOrdersPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
@@ -131,7 +133,7 @@ export default function AdminOrdersPage() {
       if (response.data.success) setOrders(response.data.data)
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      setError('주문 목록을 불러올 수 없습니다.')
+      setError(t('admin.orders.k027', { defaultValue: '주문 목록을 불러올 수 없습니다.' }))
       if (err_.response?.status === 401) navigate('/admin/login')
     } finally { setLoading(false) }
   }, [navigate])
@@ -145,7 +147,7 @@ export default function AdminOrdersPage() {
       }
     } catch (e) {
       if (import.meta.env.DEV) console.error('[AdminOrders] loadSellers failed:', e)
-      toast.error('셀러 목록을 불러올 수 없습니다.')
+      toast.error(t('admin.orders.k028', { defaultValue: '셀러 목록을 불러올 수 없습니다.' }))
     }
   }, [])
 
@@ -181,7 +183,7 @@ export default function AdminOrdersPage() {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       const response = await api.get(`/api/admin/orders/${orderNumber}`, { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) { setSelectedOrder(response.data.data); setShowDetail(true) }
-    } catch { toast.error('주문 상세 정보를 불러올 수 없습니다.') }
+    } catch { toast.error(t('admin.orders.k029', { defaultValue: '주문 상세 정보를 불러올 수 없습니다.' })) }
   }
 
   // 주문 상태 변경
@@ -196,7 +198,7 @@ export default function AdminOrdersPage() {
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      toast.error(err_.response?.data?.error || '상태 변경에 실패했습니다.')
+      toast.error(err_.response?.data?.error || t('admin.orders.k030', { defaultValue: '상태 변경에 실패했습니다.' }))
     }
   }
 
@@ -205,14 +207,14 @@ export default function AdminOrdersPage() {
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       await api.put(`/api/admin/orders/${orderNumber}/tracking`, { tracking_number: trackingNumber, shipping_company: shippingCompany }, { headers: { Authorization: `Bearer ${token}` } })
-      toast.success('운송장이 등록되었습니다.')
+      toast.success(t('admin.orders.k031', { defaultValue: '운송장이 등록되었습니다.' }))
       loadOrders()
       if (selectedOrder) {
         setSelectedOrder({ ...selectedOrder, tracking_number: trackingNumber, courier: shippingCompany, status: 'SHIPPING' })
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      toast.error(err_.response?.data?.error || '운송장 등록에 실패했습니다.')
+      toast.error(err_.response?.data?.error || t('admin.orders.k032', { defaultValue: '운송장 등록에 실패했습니다.' }))
     }
   }
 
@@ -229,7 +231,7 @@ export default function AdminOrdersPage() {
       link.href = url
       link.setAttribute('download', `orders_${new Date().toISOString().split('T')[0]}.csv`)
       document.body.appendChild(link); link.click(); link.remove()
-    } catch { toast.error('주문 내역 다운로드에 실패했습니다.') }
+    } catch { toast.error(t('admin.orders.k033', { defaultValue: '주문 내역 다운로드에 실패했습니다.' })) }
   }
 
   const orderStats = {
@@ -246,7 +248,7 @@ export default function AdminOrdersPage() {
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">주문 목록을 불러오는 중...</p>
+          <p className="text-sm text-gray-500">{t('admin.orders.k034', { defaultValue: '주문 목록을 불러오는 중...' })}</p>
         </div>
       </div>
     )
@@ -254,7 +256,7 @@ export default function AdminOrdersPage() {
 
   return (
     <AdminLayout
-      title="주문 관리"
+      title={t('admin.orders.k035', { defaultValue: "주문 관리" })}
       headerRight={
         <>
           <button onClick={loadOrders} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
@@ -269,19 +271,19 @@ export default function AdminOrdersPage() {
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
           {error}
-          <button onClick={() => window.location.reload()} className="mt-3 block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
+          <button onClick={() => window.location.reload()} className="mt-3 block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('admin.orders.k036', { defaultValue: '다시 시도' })}</button>
         </div>
       )}
 
       {/* 통계 카드 */}
       <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: '전체', value: orderStats.total, color: 'text-gray-900' },
-          { label: '주문 접수', value: orderStats.pending, color: 'text-amber-600' },
-          { label: '배송 중', value: orderStats.shipped, color: 'text-purple-600' },
-          { label: '배송 완료', value: orderStats.delivered, color: 'text-emerald-600' },
-          { label: '취소', value: orderStats.cancelled, color: 'text-red-600' },
-          { label: '총 매출', value: `₩${formatNumber(orderStats.totalAmount)}`, color: 'text-blue-600' },
+          { label: t('admin.orders.k037', { defaultValue: '전체' }), value: orderStats.total, color: 'text-gray-900' },
+          { label: t('admin.orders.k001', { defaultValue: '주문 접수' }), value: orderStats.pending, color: 'text-amber-600' },
+          { label: t('admin.orders.k004', { defaultValue: '배송 중' }), value: orderStats.shipped, color: 'text-purple-600' },
+          { label: t('admin.orders.k005', { defaultValue: '배송 완료' }), value: orderStats.delivered, color: 'text-emerald-600' },
+          { label: t('admin.orders.k006', { defaultValue: '취소' }), value: orderStats.cancelled, color: 'text-red-600' },
+          { label: t('admin.orders.k038', { defaultValue: '총 매출' }), value: `₩${formatNumber(orderStats.totalAmount)}`, color: 'text-blue-600' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
@@ -294,31 +296,31 @@ export default function AdminOrdersPage() {
       <div className="bg-white rounded-xl shadow-sm p-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5"><Filter className="w-3.5 h-3.5 inline mr-1" />주문 상태</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5"><Filter className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k039', { defaultValue: '주문 상태' })}</label>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="ALL">전체</option>
+              <option value="ALL">{t('admin.orders.k037', { defaultValue: '전체' })}</option>
               {Object.entries(STATUS_STYLES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5"><User className="w-3.5 h-3.5 inline mr-1" />판매자</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5"><User className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k040', { defaultValue: '판매자' })}</label>
             <select value={sellerFilter} onChange={e => setSellerFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="ALL">전체 판매자</option>
+              <option value="ALL">{t('admin.orders.k041', { defaultValue: '전체 판매자' })}</option>
               {sellers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />시작일</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k042', { defaultValue: '시작일' })}</label>
             <input type="date" value={dateFilter.start} onChange={e => setDateFilter({ ...dateFilter, start: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />종료일</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k043', { defaultValue: '종료일' })}</label>
             <input type="date" value={dateFilter.end} onChange={e => setDateFilter({ ...dateFilter, end: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
         <div className="mt-3">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5"><Search className="w-3.5 h-3.5 inline mr-1" />검색</label>
-          <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="주문번호, 고객명, 전화번호, 이메일" aria-label="주문 검색" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <label className="block text-xs font-medium text-gray-500 mb-1.5"><Search className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k044', { defaultValue: '검색' })}</label>
+          <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={t('admin.orders.k045', { defaultValue: "주문번호, 고객명, 전화번호, 이메일" })} aria-label={t('admin.orders.k046', { defaultValue: "주문 검색" })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         {(statusFilter !== 'ALL' || sellerFilter !== 'ALL' || searchQuery || dateFilter.start || dateFilter.end) && (
           <button onClick={() => { setStatusFilter('ALL'); setSellerFilter('ALL'); setSearchQuery(''); setDateFilter({ start: '', end: '' }) }} className="mt-3 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
@@ -333,14 +335,14 @@ export default function AdminOrdersPage() {
           <table className="w-full min-w-[800px]">
             <thead>
               <tr className="bg-gray-50">
-                {['주문번호', '주문일시', '판매자', '고객명', '주문 상태', '결제 상태', '금액', ''].map(h => (
+                {[t('admin.orders.k047', { defaultValue: '주문번호' }), t('admin.orders.k048', { defaultValue: '주문일시' }), t('admin.orders.k040', { defaultValue: '판매자' }), t('admin.orders.k049', { defaultValue: '고객명' }), t('admin.orders.k039', { defaultValue: '주문 상태' }), t('admin.orders.k050', { defaultValue: '결제 상태' }), t('admin.orders.k051', { defaultValue: '금액' }), ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {currentOrders.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">주문 내역이 없습니다.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">{t('admin.orders.k052', { defaultValue: '주문 내역이 없습니다.' })}</td></tr>
               ) : currentOrders.map(order => {
                 const ss = STATUS_STYLES[order.status] || { label: order.status, color: 'text-gray-600', bg: 'bg-gray-100' }
                 const ps = PAYMENT_STYLES[order.payment_status] || { label: order.payment_status, color: 'text-gray-600', bg: 'bg-gray-100' }
@@ -376,7 +378,7 @@ export default function AdminOrdersPage() {
         {totalPages > 1 && (
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
             <p className="text-xs text-gray-500">
-              전체 <span className="font-medium">{filteredOrders.length}</span>개 중 <span className="font-medium">{startIndex + 1}</span>-<span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredOrders.length)}</span>개
+              전체 <span className="font-medium">{filteredOrders.length}</span>{t('admin.orders.k053', { defaultValue: '개 중' })} <span className="font-medium">{startIndex + 1}</span>-<span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredOrders.length)}</span>개
             </p>
             <div className="flex items-center gap-1">
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
@@ -404,20 +406,20 @@ export default function AdminOrdersPage() {
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowDetail(false)} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85dvh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">주문 상세</h3>
+              <h3 className="text-sm font-semibold text-gray-900">{t('admin.orders.k054', { defaultValue: '주문 상세' })}</h3>
               <button onClick={() => setShowDetail(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
                 <XCircle className="w-4 h-4 text-gray-400" />
               </button>
             </div>
             <div className="p-6 space-y-5">
               <div>
-                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">주문 정보</h4>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">{t('admin.orders.k055', { defaultValue: '주문 정보' })}</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {[
-                    ['주문번호', selectedOrder.order_number],
-                    ['주문일시', formatKST(selectedOrder.created_at)],
-                    ['판매자', selectedOrder.seller_name],
-                    ['결제 방법', selectedOrder.payment_method || '-'],
+                    [t('admin.orders.k047', { defaultValue: '주문번호' }), selectedOrder.order_number],
+                    [t('admin.orders.k048', { defaultValue: '주문일시' }), formatKST(selectedOrder.created_at)],
+                    [t('admin.orders.k040', { defaultValue: '판매자' }), selectedOrder.seller_name],
+                    [t('admin.orders.k056', { defaultValue: '결제 방법' }), selectedOrder.payment_method || '-'],
                   ].map(([k, v]) => (
                     <div key={k}>
                       <p className="text-xs text-gray-400">{k}</p>
@@ -427,23 +429,23 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">배송 정보</h4>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">{t('admin.orders.k057', { defaultValue: '배송 정보' })}</h4>
                 {(() => {
                   const addr = parseShippingAddress(selectedOrder.shipping_address, selectedOrder.shipping_zipcode, selectedOrder.shipping_address_detail)
                   return (
                     <div className="space-y-2 text-sm">
-                      <div><p className="text-xs text-gray-400">받는 사람</p><p className="font-medium text-gray-900">{selectedOrder.shipping_name}</p></div>
-                      <div><p className="text-xs text-gray-400">연락처</p><p className="font-medium text-gray-900">{selectedOrder.shipping_phone}</p></div>
-                      {addr.postal_code && <div><p className="text-xs text-gray-400">우편번호</p><p className="font-medium text-gray-900">{addr.postal_code}</p></div>}
-                      <div><p className="text-xs text-gray-400">주소</p><p className="font-medium text-gray-900">{addr.address1}{addr.address2 ? ` ${addr.address2}` : ''}</p></div>
-                      {selectedOrder.tracking_number && <div><p className="text-xs text-gray-400">운송장</p><p className="font-medium text-gray-900">{selectedOrder.courier} {selectedOrder.tracking_number}</p></div>}
+                      <div><p className="text-xs text-gray-400">{t('admin.orders.k058', { defaultValue: '받는 사람' })}</p><p className="font-medium text-gray-900">{selectedOrder.shipping_name}</p></div>
+                      <div><p className="text-xs text-gray-400">{t('admin.orders.k059', { defaultValue: '연락처' })}</p><p className="font-medium text-gray-900">{selectedOrder.shipping_phone}</p></div>
+                      {addr.postal_code && <div><p className="text-xs text-gray-400">{t('admin.orders.k060', { defaultValue: '우편번호' })}</p><p className="font-medium text-gray-900">{addr.postal_code}</p></div>}
+                      <div><p className="text-xs text-gray-400">{t('admin.orders.k061', { defaultValue: '주소' })}</p><p className="font-medium text-gray-900">{addr.address1}{addr.address2 ? ` ${addr.address2}` : ''}</p></div>
+                      {selectedOrder.tracking_number && <div><p className="text-xs text-gray-400">{t('admin.orders.k062', { defaultValue: '운송장' })}</p><p className="font-medium text-gray-900">{selectedOrder.courier} {selectedOrder.tracking_number}</p></div>}
                     </div>
                   )
                 })()}
               </div>
               {selectedOrder.items && selectedOrder.items.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">주문 상품</h4>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">{t('admin.orders.k063', { defaultValue: '주문 상품' })}</h4>
                   <div className="space-y-2">
                     {selectedOrder.items.map(item => (
                       <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
@@ -459,13 +461,13 @@ export default function AdminOrdersPage() {
                 </div>
               )}
               <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl">
-                <span className="text-sm font-medium text-gray-700">총 결제 금액</span>
+                <span className="text-sm font-medium text-gray-700">{t('admin.orders.k064', { defaultValue: '총 결제 금액' })}</span>
                 <span className="text-lg font-bold text-blue-600">₩{formatNumber(selectedOrder.total_amount)}</span>
               </div>
 
               {/* 주문 상태 변경 */}
               <div>
-                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">주문 처리</h4>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">{t('admin.orders.k065', { defaultValue: '주문 처리' })}</h4>
                 <div className="flex flex-wrap gap-2">
                   {NEXT_STATUS[selectedOrder.status] && (
                     <button
@@ -478,7 +480,7 @@ export default function AdminOrdersPage() {
                   {!['CANCELLED', 'REFUNDED', 'DELIVERED'].includes(selectedOrder.status) && (
                     <button
                       onClick={() => {
-                        const reason = prompt('취소 사유를 입력해주세요:')
+                        const reason = prompt(t('admin.orders.k066', { defaultValue: '취소 사유를 입력해주세요:' }))
                         if (reason) updateOrderStatus(selectedOrder.order_number, 'CANCELLED', reason)
                       }}
                       className="px-4 py-2 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
@@ -492,7 +494,7 @@ export default function AdminOrdersPage() {
               {/* 운송장 등록 */}
               {['DONE', 'PAID', 'PREPARING'].includes(selectedOrder.status) && (
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">운송장 등록</h4>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">{t('admin.orders.k067', { defaultValue: '운송장 등록' })}</h4>
                   <form onSubmit={e => {
                     e.preventDefault()
                     const form = e.target as HTMLFormElement
@@ -501,7 +503,7 @@ export default function AdminOrdersPage() {
                     if (company && number) updateTracking(selectedOrder.order_number, number, company)
                   }} className="flex gap-2">
                     <select name="courier" defaultValue={selectedOrder.courier || ''} className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 flex-shrink-0">
-                      <option value="">택배사 선택</option>
+                      <option value="">{t('admin.orders.k068', { defaultValue: '택배사 선택' })}</option>
                       {COURIER_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </select>
                     <input name="tracking" type="text" defaultValue={selectedOrder.tracking_number || ''} placeholder="운송장 번호" className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 flex-1" />
