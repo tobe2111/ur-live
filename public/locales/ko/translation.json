@@ -3736,6 +3736,49 @@
       "empty": "아직 서포터가 없습니다",
       "donationCount": "{{count}}회 후원",
       "dealLabel": "딜"
+    },
+    "pk": {
+      "endedPrefix": "🏆 PK 종료 — ",
+      "winnerName": "{{name}} ({{side}}측)",
+      "endedSuffix": " 우승!",
+      "inProgress": "🔴 PK 진행 중",
+      "tenThousandDeal": "{{amount}}만 딜",
+      "cheerNotice": "💝 응원하는 셀러에게 결제/후원하면 그 셀러 매출에 즉시 반영됩니다!"
+    },
+    "chat": {
+      "anonymous": "익명",
+      "title": "실시간 채팅",
+      "beFirst": "첫 번째 메시지를 남겨보세요!",
+      "inputPlaceholder": "메시지를 입력하세요...",
+      "joinedAs": "{{name}}(으)로 참여 중"
+    },
+    "productSheet": {
+      "title": "라이브 상품 ({{count}}개)",
+      "subtitle": "상품을 선택해서 구매하세요",
+      "empty": "등록된 상품이 없습니다"
+    },
+    "streamInfo": {
+      "watching": "{{value}} 시청 중",
+      "share": "공유하기"
+    },
+    "scheduled": {
+      "soon": "곧 시작됩니다",
+      "badge": "방송 예정",
+      "untilStart": "방송 시작까지",
+      "notSet": "방송 시작 시간이 아직 정해지지 않았습니다",
+      "shareDescWithName": "{{name}}의 라이브 방송",
+      "shareDescDefault": "유어딜 라이브",
+      "goHome": "홈으로"
+    },
+    "topNav": {
+      "backHome": "홈으로 돌아가기",
+      "sellerAvatarAlt": "{{name}} 프로필 이미지",
+      "unfollow": "팔로우 취소",
+      "follow": "팔로우하기",
+      "followingLabel": "Following",
+      "followLabel": "팔로우",
+      "visitYoutube": "유튜브 채널 방문",
+      "visitInstagram": "인스타그램 방문"
     }
   },
   "paymentFail": {

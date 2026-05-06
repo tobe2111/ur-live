@@ -11,6 +11,9 @@ import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import FollowButton from './seller-public/FollowButton'
 import StreamCard from './seller-public/StreamCard'
+import VideosTab from './seller-public/VideosTab'
+import VouchersTab from './seller-public/VouchersTab'
+import HomeTab from './seller-public/HomeTab'
 import type { Seller, LiveStream, Product, Short, Tab } from './seller-public/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
@@ -441,198 +444,25 @@ export default function SellerPublicPage() {
       <div className="ur-content-wide px-4 lg:px-8 py-5">
         {/* ═══ 홈 탭 ═══ */}
         {tab === 'home' && (
-          <div className="space-y-6">
-            {/* 식사권 하이라이트 (있을 때) */}
-            {mealVouchers.length > 0 && (
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className={`text-base font-bold ${T.text}`}>🍽️ {t('seller.publicPage.recommendedVouchers')}</h2>
-                  <button onClick={() => setTab('vouchers')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
-                </div>
-                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-                  {mealVouchers.slice(0, 4).map(p => {
-                    const disc = p.original_price && p.original_price > 0 ? Math.round((1 - (p.price || 0) / p.original_price) * 100) : 0
-                    const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / (p.group_buy_target || 1)) * 100) : 0
-                    const isAchieved = (p.group_buy_current || 0) > 0 && (p.group_buy_target || 0) > 0 && p.group_buy_current! >= p.group_buy_target!
-                    return (
-                      <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-44 text-left active:scale-[0.97]">
-                        <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
-                          {p.image_url && <img src={p.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-                          {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">-{disc}%</span>}
-                          {isAchieved && <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{t('seller.publicPage.achieved')}</span>}
-                        </div>
-                        <div className="mt-2">
-                          <p className={`text-[12px] font-medium ${T.text} line-clamp-1`}>{p.name}</p>
-                          {p.restaurant_name && <p className="text-[10px] text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-2.5 h-2.5" />{p.restaurant_name}</p>}
-                          <div className="flex items-baseline gap-1.5 mt-0.5">
-                            <span className="text-[13px] font-extrabold text-red-500">{formatNumber(p.price || 0)}원</span>
-                            {p.original_price && p.original_price > p.price && (
-                              <span className="text-[10px] text-gray-500 line-through">{formatNumber(p.original_price || 0)}</span>
-                            )}
-                          </div>
-                          {(p.group_buy_target ?? 0) > 0 && (
-                            <div className="mt-1.5">
-                              <div className="w-full bg-gray-700 rounded-full h-1.5"><div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
-                              <div className="flex items-center justify-between mt-0.5">
-                                <p className="text-[9px] text-gray-400">{p.group_buy_current || 0}/{p.group_buy_target}명</p>
-                                {!isAchieved && <p className="text-[9px] text-pink-400 font-medium">{t('seller.publicPage.joinGroupBuy')}</p>}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            )}
-
-            {/* 최신 영상 (YouTube 임베드 2열) */}
-            {shorts.length > 0 && (
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className={`text-base font-bold ${T.text}`}>📹 {t('seller.publicPage.reviewVideos')}</h2>
-                  {isOwner && <button onClick={() => navigate('/seller/shorts')} className="text-xs text-blue-500 flex items-center gap-0.5"><Plus className="w-3 h-3" /> {t('seller.publicPage.addVideo')}</button>}
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                  {shorts.slice(0, 4).map(s => (
-                    <div key={s.id} className="rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
-                      {s.youtube_video_id ? (
-                        <div className="aspect-video">
-                          <iframe
-                            src={`https://www.youtube.com/embed/${s.youtube_video_id}`}
-                            title={s.title}
-                            className="w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            loading="lazy"
-                          />
-                        </div>
-                      ) : (
-                        <div className="aspect-video bg-gray-200 flex items-center justify-center"><Play className="w-6 h-6 text-gray-400" /></div>
-                      )}
-                      <div className="p-2">
-                        <p className={`text-[11px] font-medium ${T.text} line-clamp-1`}>{s.title}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5"><Eye className="w-3 h-3" />{s.view_count}</span>
-                          {s.product_name && <span className="text-[10px] text-pink-500 font-medium">{s.product_name}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {shorts.length > 4 && (
-                  <button onClick={() => setTab('shorts')} className="w-full mt-3 py-2.5 text-sm text-gray-500 bg-gray-50 dark:bg-[#121212] rounded-xl font-medium">
-                    {t('seller.publicPage.moreVideos', { count: shorts.length })}
-                  </button>
-                )}
-              </section>
-            )}
-
-            {/* 라이브 */}
-            {recentStreams.length > 0 && (
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className={`text-base font-bold ${T.text}`}>{t('seller.tabLive')} <span className="text-pink-500">{streams.length}</span></h2>
-                  <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                  {recentStreams.slice(0, 4).map(s => (
-                    <StreamCard key={s.id} stream={s} onClick={() => navigate(`/live/${s.id}`)} />
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
+          <HomeTab
+            mealVouchers={mealVouchers}
+            shorts={shorts}
+            recentStreams={recentStreams}
+            streams={streams}
+            isOwner={isOwner}
+            textClass={T.text}
+            setTab={setTab}
+          />
         )}
 
         {/* ═══ 식사권 탭 ═══ */}
         {tab === 'vouchers' && (
-          mealVouchers.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-gray-400 text-sm">{t('seller.publicPage.noVouchers')}</p>
-              {isOwner && <button onClick={() => navigate('/seller/products/new')} className="mt-3 text-sm text-pink-500 font-medium">{t('seller.publicPage.registerVoucher')}</button>}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {mealVouchers.map(p => {
-                const disc = p.original_price && p.original_price > 0 ? Math.round((1 - (p.price || 0) / p.original_price) * 100) : 0
-                const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / (p.group_buy_target || 1)) * 100) : 0
-                return (
-                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-gray-50 dark:bg-[#121212] rounded-xl text-left active:scale-[0.98]">
-                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-200 shrink-0">
-                      {p.image_url && <img src={p.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-bold ${T.text} line-clamp-1`}>{p.name}</p>
-                      {p.restaurant_name && <p className="text-xs text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-3 h-3" />{p.restaurant_name}</p>}
-                      {p.restaurant_address && <p className="text-[10px] text-gray-400 mt-0.5">{p.restaurant_address}</p>}
-                      <div className="flex items-baseline gap-1.5 mt-1.5">
-                        {disc > 0 && <span className="text-sm font-extrabold text-red-500">{disc}%</span>}
-                        <span className={`text-sm font-extrabold ${T.text}`}>{formatNumber(p.price || 0)}원</span>
-                        {p.original_price && <span className="text-xs text-gray-400 line-through">{formatNumber(p.original_price || 0)}원</span>}
-                      </div>
-                      {(p.group_buy_target ?? 0) > 0 && (
-                        <div className="mt-1.5">
-                          <div className="w-full bg-gray-700 rounded-full h-1.5"><div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
-                          <div className="flex items-center justify-between mt-0.5">
-                            <p className="text-[10px] text-gray-500">{p.group_buy_current || 0}/{p.group_buy_target}{t('common.person')}</p>
-                            {p.group_buy_current && p.group_buy_target && p.group_buy_current >= p.group_buy_target
-                              ? <span className="text-[10px] text-green-400 font-bold">{t('seller.publicPage.achieved')}</span>
-                              : <span className="text-[10px] text-pink-400 font-medium">{t('seller.publicPage.joinGroupBuy')}</span>
-                            }
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )
+          <VouchersTab mealVouchers={mealVouchers} isOwner={isOwner} textClass={T.text} />
         )}
 
         {/* ═══ 영상 탭 (YouTube 임베드 2열) ═══ */}
         {tab === 'shorts' && (
-          shorts.length === 0 ? (
-            <div className="text-center py-16">
-              <Play className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">{t('seller.publicPage.noVideos')}</p>
-              {isOwner && <button onClick={() => navigate('/seller/shorts')} className="mt-3 text-sm text-blue-500 font-medium">{t('seller.publicPage.registerVideo')}</button>}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {shorts.map(s => (
-                <div key={s.id} className="rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
-                  {s.youtube_video_id ? (
-                    <div className="aspect-video">
-                      <iframe
-                        src={`https://www.youtube.com/embed/${s.youtube_video_id}`}
-                        title={s.title}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        loading="lazy"
-                      />
-                    </div>
-                  ) : (
-                    <div className="aspect-video bg-gray-200 flex items-center justify-center"><Play className="w-6 h-6 text-gray-400" /></div>
-                  )}
-                  <div className="p-2">
-                    <p className={`text-[11px] font-medium ${T.text} line-clamp-2`}>{s.title}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-gray-500 flex items-center gap-0.5"><Eye className="w-3 h-3" />{s.view_count}</span>
-                      {s.product_name && (
-                        <button onClick={() => s.product_id && navigate(`/products/${s.product_id}`)} className="text-[10px] text-pink-500 font-medium">
-                          🍽️ {s.product_name}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
+          <VideosTab shorts={shorts} isOwner={isOwner} textClass={T.text} />
         )}
 
         {/* ═══ 라이브 탭 ═══ */}

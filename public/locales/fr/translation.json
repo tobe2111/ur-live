@@ -3736,6 +3736,49 @@
       "empty": "Aucun supporter pour le moment",
       "donationCount": "{{count}} don(s)",
       "dealLabel": "Deal"
+    },
+    "pk": {
+      "endedPrefix": "🏆 PK terminée — ",
+      "winnerName": "{{name}} (Côté {{side}})",
+      "endedSuffix": " gagne !",
+      "inProgress": "🔴 PK en cours",
+      "tenThousandDeal": "{{amount}}0K Deal",
+      "cheerNotice": "💝 Payez ou faites un don à votre vendeur favori — ses revenus sont mis à jour instantanément !"
+    },
+    "chat": {
+      "anonymous": "Anonyme",
+      "title": "Tchat en direct",
+      "beFirst": "Soyez le premier à envoyer un message !",
+      "inputPlaceholder": "Saisir un message...",
+      "joinedAs": "Connecté en tant que {{name}}"
+    },
+    "productSheet": {
+      "title": "Produits en direct ({{count}})",
+      "subtitle": "Choisissez un produit à acheter",
+      "empty": "Aucun produit disponible"
+    },
+    "streamInfo": {
+      "watching": "{{value}} en train de regarder",
+      "share": "Partager"
+    },
+    "scheduled": {
+      "soon": "Commence bientôt",
+      "badge": "Programmé",
+      "untilStart": "Jusqu'au début",
+      "notSet": "L'heure de début n'est pas encore définie",
+      "shareDescWithName": "Diffusion en direct de {{name}}",
+      "shareDescDefault": "Yourdeal en direct",
+      "goHome": "Accueil"
+    },
+    "topNav": {
+      "backHome": "Retour à l'accueil",
+      "sellerAvatarAlt": "Image de profil de {{name}}",
+      "unfollow": "Ne plus suivre",
+      "follow": "Suivre",
+      "followingLabel": "Suivi",
+      "followLabel": "Suivre",
+      "visitYoutube": "Visiter la chaîne YouTube",
+      "visitInstagram": "Visiter Instagram"
     }
   },
   "paymentFail": {

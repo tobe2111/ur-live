@@ -69,7 +69,7 @@ export const LiveStreamInfo = React.memo(function LiveStreamInfo({
           <button
             onClick={onShare}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            aria-label="공유하기"
+            aria-label={t('live.streamInfo.share', { defaultValue: '공유하기' })}
           >
             <Share2 size={20} className="text-gray-600" />
           </button>
