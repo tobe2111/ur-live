@@ -14,6 +14,7 @@ import InvitePrompt from './main-home/InvitePrompt'
 import { REGIONS, CATEGORIES } from './main-home/constants'
 import { detectRegionFromCoords, getThumb, disc, fmtEnd } from './main-home/utils'
 import type { LiveStream, Product } from './main-home/types'
+import FlashDealsHero from '@/components/main/FlashDealsHero'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils + RecentlyViewed/InvitePrompt
 //   를 ./main-home/ 디렉토리로 추출.
@@ -382,6 +383,9 @@ export default function MainHomePage() {
           })}
         </div>
       </div>
+
+      {/* ═══ Flash Deals ═══ */}
+      <FlashDealsHero />
 
       {/* ═══ 지금 라이브딜 ═══ */}
       {liveStreams.length > 0 && (
