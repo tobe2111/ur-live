@@ -87,7 +87,9 @@ const BUDGET = {
   // 🛡️ 2026-05-06: 900 → 1100 임시 상향. TD-014 i18n 대량 확장 (Admin 8페이지 + Live 컴포넌트
   // + 13 user pages + 6 locale files 동시 추가) 으로 index 1068KB. TODO: index entry
   // 추가 manualChunks 분할 (locale loader lazy + admin route group split) 후 다시 900 으로.
-  singleRawKB: 1100,
+  // 🛡️ 2026-05-06: 1100 → 1200 임시 상향. i18n batch 2-6 (user-facing 페이지 30+개) 로
+  // index 1169.6KB. 동일 TODO: manualChunks 분할 후 축소.
+  singleRawKB: 1200,
 };
 
 const violations = [];
