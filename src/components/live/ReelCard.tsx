@@ -240,29 +240,36 @@ function ReelCardImpl({
   } = useStreamStore()
 
   useEffect(() => {
+    if (!isActive) return
     storeSetStream({ id: stream.id, title: stream.title, sellerName: stream.streamerName || stream.seller_name || '' })
     storeSetSendMessage(sendChatMessage)
     return () => { storeReset() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream.id])
-
-  useEffect(() => { storeSetConnected(chatConnected) }, [chatConnected, storeSetConnected])
+  }, [stream.id, isActive])
 
   useEffect(() => {
+    if (!isActive) return
+    storeSetConnected(chatConnected)
+  }, [isActive, chatConnected, storeSetConnected])
+
+  useEffect(() => {
+    if (!isActive) return
     const merged = [
       ...chatMessages.map(m => ({ ...m, source: m.source || 'kakao' as const })),
       ...ytChatMessages,
     ].sort((a, b) => a.timestamp - b.timestamp).slice(-50)
     storeSetMessages(merged)
-  }, [chatMessages, ytChatMessages, storeSetMessages])
+  }, [isActive, chatMessages, ytChatMessages, storeSetMessages])
 
   useEffect(() => {
-    if (streamProducts.length > 0) storeSetProducts(streamProducts)
-  }, [streamProducts, storeSetProducts])
+    if (!isActive || streamProducts.length === 0) return
+    storeSetProducts(streamProducts)
+  }, [isActive, streamProducts, storeSetProducts])
 
   useEffect(() => {
+    if (!isActive) return
     storeSetCurrentProductId(wsStreamData?.current_product_id ?? null)
-  }, [wsStreamData?.current_product_id, storeSetCurrentProductId])
+  }, [isActive, wsStreamData?.current_product_id, storeSetCurrentProductId])
   // ── 스토어 사이드이펙트 끝 ────────────────────────────────────────────────
 
   // 채팅 메시지 병합 메모이제이션 (flicker 방지)
