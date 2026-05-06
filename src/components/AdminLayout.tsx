@@ -119,7 +119,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     setSearchQuery('')
   }
 
-  const adminName = localStorage.getItem('admin_name') || localStorage.getItem('admin_email') || '관리자'
+  const [adminName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('admin_name') || localStorage.getItem('admin_email') : null) || '관리자')
 
   function logout() {
     clearAuthData('admin')

@@ -105,7 +105,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   // 🛡️ 2026-04-30: agency 세션 만료 5분 전 자동 refresh
   useTokenAutoRefresh('agency')
 
-  const [agencyName, setAgencyName] = useState(localStorage.getItem('agency_name') || '에이전시')
+  const [agencyName, setAgencyName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('agency_name') : null) || '에이전시')
   const [agencyStatus, setAgencyStatus] = useState<string | null>(null)
   const [sellerCount, setSellerCount] = useState(0)
   const [revenue30d, setRevenue30d] = useState<number | null>(null)
