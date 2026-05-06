@@ -8,6 +8,7 @@
  * 핵심 결제 처리 콜백 (onPaymentSuccess / onBeforePayment) 은 부모에서 props 로 전달.
  */
 import { lazy, Suspense } from 'react'
+import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
 import { isKorea } from '@/config/region'
 import { showErrorToast } from '@/lib/errorHandler'
@@ -52,9 +53,10 @@ export default function PaymentSection({
   userId, cartItems, totalShippingFee, clientKey, selectedAddressOk,
   onBeforePayment, onTossPaymentSuccess, onStripePaymentSuccess,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
-      <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">결제 수단</h2>
+      <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('payment.section.title', { defaultValue: '결제 수단' })}</h2>
 
       {/* 결제 방법 탭 */}
       <div className="flex gap-2 mb-4">
@@ -66,7 +68,7 @@ export default function PaymentSection({
               : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-gray-500 dark:text-gray-400'
           }`}
         >
-          카드/간편결제
+          {t('payment.section.cardOrEasyPay', { defaultValue: '카드/간편결제' })}
         </button>
       </div>
 
@@ -85,14 +87,14 @@ export default function PaymentSection({
           disabled={payingWithDeals || !selectedAddressOk}
           className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white text-base font-bold disabled:opacity-40"
         >
-          {payingWithDeals ? '처리 중...' : `${formatNumber(totalAmount)}딜로 결제`}
+          {payingWithDeals ? t('payment.section.processing', { defaultValue: '처리 중...' }) : t('payment.section.payWithDeals', { defaultValue: '{{amount}}딜로 결제', amount: formatNumber(totalAmount) })}
         </button>
       ) : isKorea() ? (
         /* 한국: Toss Payments */
         <Suspense fallback={
           <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400 text-sm">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
-            <p>결제 수단 불러오는 중...</p>
+            <p>{t('payment.section.loading', { defaultValue: '결제 수단 불러오는 중...' })}</p>
           </div>
         }>
           <TossPaymentWidget

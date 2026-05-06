@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, MapPin, Search, X, Navigation, ArrowUpDown, Heart, SlidersHorizontal } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { isKorea } from '@/shared/config/region'
 import { storage } from '@/shared/utils/storage'
-import { useEscapeKey } from '@/hooks/useEscapeKey'
-import { formatNumber } from '@/utils/format'
 
 // 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
 // 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.
+// 🛡️ 2026-05-06: TD-006 추가 분할 — MapSearchHeader / SheetFilterBar 추출.
 import { CATEGORIES, REGIONS } from './restaurant-map/constants'
 import FilterSheet from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
@@ -19,6 +17,8 @@ import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'
 import SelectedPeekCard from './restaurant-map/SelectedPeekCard'
 import SelectedDetailCard from './restaurant-map/SelectedDetailCard'
+import MapSearchHeader from './restaurant-map/MapSearchHeader'
+import SheetFilterBar from './restaurant-map/SheetFilterBar'
 import { useKakaoMap } from './restaurant-map/useKakaoMap'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
@@ -30,7 +30,6 @@ export type { KakaoPlace }
 
 export default function RestaurantMapPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [selected, setSelected] = useState<Restaurant | null>(null)
   const [loading, setLoading] = useState(true)
@@ -403,61 +402,15 @@ export default function RestaurantMapPage() {
       )}
 
       {/* ═══ 상단 floating glass 검색바 ═══ */}
-      <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none">
-        <div className="flex items-center gap-2 pointer-events-auto">
-          <button
-            onClick={() => navigate(-1)}
-            aria-label="뒤로가기"
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md shrink-0"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-          </button>
-          <div className="flex-1 relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); (e.target as HTMLInputElement).blur() } }}
-              placeholder={t('restaurantMap.searchPlaceholder')}
-              aria-label="검색"
-              className="w-full pl-10 pr-9 py-2.5 bg-white/95 backdrop-blur-md rounded-full text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-md"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2">
-                <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-              </button>
-            )}
-            {/* 🛡️ Phase 5: 검색 히스토리 dropdown — focus 시 + 입력값 비어있을 때만 */}
-            {searchFocused && !search && searchHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden z-10">
-                <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A]">
-                  <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">{t('restaurantMap.recentSearch')}</span>
-                  <button
-                    onClick={() => { setSearchHistory([]); storage.setJSON('restaurant_search_history', []) }}
-                    className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300"
-                  >
-                    전체 삭제
-                  </button>
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                  {searchHistory.map((q) => (
-                    <button
-                      key={q}
-                      onMouseDown={(e) => { e.preventDefault(); setSearch(q); pushSearchHistory(q) }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A1A1A] flex items-center gap-2"
-                    >
-                      <Search className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
-                      <span className="truncate">{q}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <MapSearchHeader
+        search={search}
+        setSearch={setSearch}
+        searchFocused={searchFocused}
+        setSearchFocused={setSearchFocused}
+        searchHistory={searchHistory}
+        setSearchHistory={setSearchHistory}
+        pushSearchHistory={pushSearchHistory}
+      />
 
       {/* ═══ 선택된 맛집 카드 (지도 위 floating, sheet peek 일 때만 표시) ═══ */}
       {selected && sheetSnap === 'peek' && (
@@ -502,99 +455,21 @@ export default function RestaurantMapPage() {
         </div>
 
         {/* Sticky filter row + count + sort */}
-        <div className="px-3 pb-2 border-b border-gray-100 dark:border-[#1A1A1A] shrink-0">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setFilterSheetOpen(true)}
-              aria-label="지역·카테고리 필터 열기"
-              className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
-                activeFilterCount > 0
-                  ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-                  : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A2A2A]'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              {activeFilterCount > 0 && (
-                <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#0A0A0A]/25 text-[10px] font-bold">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-            <div className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto no-scrollbar">
-              {/* 🛡️ Phase 5: '내 주변' 퀵필터 — GPS prompt + 거리순 자동 */}
-              <button
-                onClick={requestNearMe}
-                aria-pressed={nearMeMode}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
-                  nearMeMode
-                    ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-                    : 'bg-pink-50 text-pink-600 border border-pink-200'
-                }`}
-              >
-                <Navigation className="w-3 h-3" />
-                <span>{t('restaurantMap.nearMe')}</span>
-              </button>
-              {[
-                { key: 'all', label: '전체', emoji: '✨' },
-                { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
-                { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
-                { key: 'health_voucher', label: '헬스', emoji: '💪' },
-                { key: 'pet_voucher', label: '반려', emoji: '🐶' },
-                { key: 'stay_voucher', label: '숙박', emoji: '🏨' },
-                { key: 'activity_voucher', label: '액티비티', emoji: '🎯' },
-              ].map(t => (
-                <button
-                  key={t.key}
-                  onClick={() => setVoucherType(t.key as typeof voucherType)}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
-                    voucherType === t.key
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-50 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'
-                  }`}
-                >
-                  <span>{t.emoji}</span>
-                  <span>{t.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-2 px-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] text-gray-500 dark:text-gray-400">
-                <span className="font-bold text-gray-900 dark:text-white">{filtered.length}</span>곳
-                {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">📍 내 위치 기준</span>}
-              </span>
-              {favorites.length > 0 && (
-                <button
-                  onClick={() => setShowFavoritesOnly(v => !v)}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
-                    showFavoritesOnly
-                      ? 'bg-pink-500 text-white border-pink-500'
-                      : 'bg-white dark:bg-[#0A0A0A] text-pink-500 border-pink-200'
-                  }`}
-                >
-                  <Heart className="w-2.5 h-2.5" fill={showFavoritesOnly ? 'currentColor' : 'none'} />
-                  {favorites.length}
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <ArrowUpDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortBy)}
-                aria-label="정렬"
-                className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-transparent focus:outline-none"
-              >
-                {userLoc && <option value="distance">{t('restaurantMap.sort.distance')}</option>}
-                <option value="discount">{t('restaurantMap.sort.discount')}</option>
-                <option value="price">{t('restaurantMap.sort.price')}</option>
-                <option value="rating">{t('restaurantMap.sort.rating')}</option>
-              </select>
-            </div>
-          </div>
-        </div>
+        <SheetFilterBar
+          activeFilterCount={activeFilterCount}
+          onOpenFilter={() => setFilterSheetOpen(true)}
+          nearMeMode={nearMeMode}
+          requestNearMe={requestNearMe}
+          voucherType={voucherType}
+          setVoucherType={setVoucherType}
+          filteredCount={filtered.length}
+          userLoc={userLoc}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          favorites={favorites}
+          showFavoritesOnly={showFavoritesOnly}
+          setShowFavoritesOnly={setShowFavoritesOnly}
+        />
 
         {/* ═══ 시트 안 스크롤 가능한 결과 리스트 ═══ */}
         <div className="flex-1 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
@@ -620,85 +495,13 @@ export default function RestaurantMapPage() {
             />
           )}
 
-          {loading ? (
-              /* 🛡️ 2026-04-30 CLS: 단일 스피너 → 카드 skeleton 으로 교체.
-                 실제 결과 카드와 같은 높이 (90px) 를 유지해 layout shift 0 */
-              <div className="space-y-3 pb-8" aria-hidden="true">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1A1A1A]">
-                    <div className="w-[72px] h-[72px] rounded-xl bg-gray-100 dark:bg-[#1A1A1A] animate-pulse shrink-0" />
-                    <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
-                      <div className="h-3.5 w-2/3 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
-                      <div className="h-3 w-4/5 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
-                      <div className="h-4 w-1/3 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse mt-1" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-16">
-                <MapPin className="w-14 h-14 text-gray-200 mx-auto mb-4" />
-                <p className="text-gray-900 dark:text-white font-bold">맛집을 찾지 못했어요</p>
-                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">다른 지역이나 검색어를 시도해보세요</p>
-              </div>
-            ) : (
-              <div className="space-y-3 pb-8">
-                {filtered.map(r => {
-                  const discount = r.original_price > r.price ? Math.round((1 - r.price / r.original_price) * 100) : 0
-                  return (
-                    <button
-                      key={r.id}
-                      onClick={() => selectAndPan(r)}
-                      className={`w-full flex gap-3 p-3.5 rounded-2xl text-left transition-all ${
-                        selected?.id === r.id
-                          ? 'bg-pink-50 border-2 border-pink-300 shadow-sm'
-                          : 'bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1A1A1A] hover:shadow-md'
-                      }`}
-                    >
-                      {r.image_url ? (
-                        <img src={r.image_url} alt="" className="w-[72px] h-[72px] rounded-xl object-cover shrink-0" loading="lazy" />
-                      ) : (
-                        <div className="w-[72px] h-[72px] rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
-                          <span className="text-2xl">🍽️</span>
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{r.restaurant_name}</p>
-                          {discount > 0 && (
-                            <span className="text-[10px] bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-md shrink-0">
-                              -{discount}%
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
-                          <MapPin className="w-3 h-3 shrink-0" />
-                          {r.restaurant_address || '주소 미등록'}
-                          {userLoc && r.restaurant_lat && r.restaurant_lng && (
-                            <span className="ml-1 font-semibold text-pink-500 shrink-0">
-                              · {distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng).toFixed(1)}km
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{r.name}</p>
-                        <div className="flex items-baseline gap-1.5 mt-1.5">
-                          <span className="text-base font-extrabold text-gray-900 dark:text-white">{r.price?.toLocaleString()}원</span>
-                          {r.original_price > r.price && (
-                            <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/products/${r.id}`) }}
-                        className="self-center px-3.5 py-2 bg-pink-500 text-white text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
-                      >
-                        구매
-                      </button>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+          <RestaurantList
+            loading={loading}
+            filtered={filtered}
+            selected={selected}
+            userLoc={userLoc}
+            onSelect={selectAndPan}
+          />
           </div>
         </div>
 
