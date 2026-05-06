@@ -409,13 +409,27 @@ html {
   .max-h-screen { max-height: 100dvh; }
 }
 
-/* Touch-friendly tap targets */
+/* 🛡️ 2026-05-06: iOS Safari input focus 시 자동 줌(font-size < 16px) 방지.
+   text-sm/xs 클래스로 작게 보여도 실제 fontSize 16px 으로 강제 — visual size 영향 없음
+   (브라우저 zoom 기준만 통과). 이 처리 안 하면 input focus 시 화면이 확대돼 사용성 깨짐. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Touch-friendly tap targets — 명시적 opt-in 클래스만 적용.
+   🛡️ 2026-05-06: 모든 button/a 에 min-height:44px 강제 시 작은 아이콘 버튼이 늘어나
+   flex 컨테이너 안에서 wrap/overflow → 모바일 레이아웃 깨짐 사고 다발. opt-in 패턴으로 변경.
+   필요 시 .tap-target 클래스 부여. */
 @media (hover: none) and (pointer: coarse) {
-  button, a {
+  .tap-target {
     min-height: 44px;
     min-width: 44px;
   }
-  
+
   .apple-button {
     padding: 12px 24px;
   }

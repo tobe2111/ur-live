@@ -230,8 +230,8 @@ export default function BrowsePage() {
           }))
         ) : undefined}
       />
-      {/* 상단 헤더: 검색바 + 아이콘 — PC 에서도 풀너비 sticky, 콘텐츠는 centered */}
-      <div className="sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+      {/* 상단 헤더: 검색바 + 아이콘 — 모바일 전용. md+ 는 DesktopTopNav 가 동일 기능 제공. */}
+      <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-wide px-4 py-2.5 lg:px-8">
           <div className="flex items-center gap-3">
           <button
