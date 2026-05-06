@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react'
 import { ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useBackButton } from '@/hooks/useBackButton'
+import { useTranslation } from 'react-i18next'
 
 interface ModalProps {
   isOpen: boolean
@@ -14,9 +15,9 @@ interface ModalProps {
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
-export function CustomModal({ 
-  isOpen, 
-  onClose, 
+export function CustomModal({
+  isOpen,
+  onClose,
   onConfirm, 
   title, 
   message, 
@@ -24,6 +25,7 @@ export function CustomModal({
   type = 'alert',
   maxWidth = 'sm'
 }: ModalProps) {
+  const { t } = useTranslation()
   useEffect(() => {
     if (!isOpen) return
     const handleKey = (e: KeyboardEvent) => {
@@ -92,7 +94,7 @@ export function CustomModal({
               </h3>
               <button
                 onClick={onClose}
-                aria-label="닫기"
+                aria-label={t('common.close')}
                 className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#2A2A2A] flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
               >
                 <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />

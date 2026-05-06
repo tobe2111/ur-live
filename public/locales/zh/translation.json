@@ -184,7 +184,9 @@
     "wishlistCancel": "取消收藏",
     "wishlistAdd": "加入心愿单",
     "imageUploadFailed": "图片上传失败。",
-    "unitMan": "万"
+    "unitMan": "万",
+    "kakaoConsult": "KakaoTalk客服",
+    "share": "分享"
   },
   "auth": {
     "email": "邮箱",
@@ -249,7 +251,8 @@
     "emptyDesc": "有新消息时会显示在这里",
     "back": "返回",
     "seoTitle": "通知 - Ur-Deal",
-    "seoDesc": "查看您的新通知"
+    "seoDesc": "查看您的新通知",
+    "listAria": "通知列表"
   },
   "payment": {
     "checkout": "结算",
@@ -783,7 +786,9 @@
     "goHome": "返回首页",
     "autoRedirect": "10 秒后自动返回首页。",
     "feedbackPrefix": "如有改进建议请联系",
-    "feedbackSuffix": "。"
+    "feedbackSuffix": "。",
+    "seoTitle": "账户删除完成",
+    "seoDesc": "您的账户已被删除"
   },
   "myGroupBuys": {
     "title": "我的团购",
@@ -4369,6 +4374,9 @@
       "pet": "宠物",
       "stay": "住宿",
       "activity": "活动"
+    },
+    "picker": {
+      "placeholder": "输入店名或地址"
     }
   },
   "sellerSwitch": {
@@ -4455,5 +4463,19 @@
   "embed": {
     "liveTitle": "直播嵌入",
     "liveDesc": "Ur-Deal直播嵌入小部件"
+  },
+  "streaming": {
+    "closeTutorial": "关闭教程"
+  },
+  "chat": {
+    "dialogAria": "聊天输入",
+    "sellerPlaceholder": "输入卖家消息...",
+    "userPlaceholder": "输入消息...",
+    "sellerInputAria": "卖家消息",
+    "inputAria": "聊天消息",
+    "sendPlaceholder": "发送消息"
+  },
+  "search": {
+    "inputPlaceholder": "搜索商品、品牌、卖家"
   }
 }

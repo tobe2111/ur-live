@@ -8,6 +8,7 @@
  */
 import { useLocation } from 'react-router-dom'
 import { MessageCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const KAKAO_CHAT_URL = 'http://pf.kakao.com/_AITdn/chat'
 
@@ -15,6 +16,7 @@ const KAKAO_CHAT_URL = 'http://pf.kakao.com/_AITdn/chat'
 const DASHBOARD_PREFIXES = ['/seller', '/admin', '/agency']
 
 export default function KakaoConsultButton() {
+  const { t } = useTranslation()
   const location = useLocation()
 
   // 대시보드 경로에서는 표시 안 함 (공개 셀러 프로필 /profile/, /s/ 는 표시)
@@ -32,7 +34,7 @@ export default function KakaoConsultButton() {
         <a
           href={KAKAO_CHAT_URL}
           target="_blank" rel="noopener noreferrer"
-          aria-label="카카오 상담"
+          aria-label={t('common.kakaoConsult', { defaultValue: '카카오 상담' })}
           className="pointer-events-auto flex items-center justify-center w-12 h-12 rounded-full shadow-lg active:scale-95 transition-transform"
           style={{ backgroundColor: '#FEE500' }}
         >

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface ToastProps {
   message: string
@@ -9,6 +10,7 @@ interface ToastProps {
 }
 
 export default function Toast({ message, type = 'info', onClose, duration = 3000 }: ToastProps) {
+  const { t } = useTranslation()
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose()
@@ -34,7 +36,7 @@ export default function Toast({ message, type = 'info', onClose, duration = 3000
       <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${colors[type]} min-w-[280px] max-w-md`}>
         {icons[type]}
         <p className="flex-1 text-sm font-medium text-gray-900">{message}</p>
-        <button onClick={onClose} aria-label="알림 닫기" className="text-gray-400 hover:text-gray-600">
+        <button onClick={onClose} aria-label={t('common.close')} className="text-gray-400 hover:text-gray-600">
           <X className="w-4 h-4" />
         </button>
       </div>

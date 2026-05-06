@@ -1,8 +1,10 @@
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
+import { useTranslation } from 'react-i18next'
 
 export default function ToastContainer() {
   const { toasts, remove } = useToast()
+  const { t: tl } = useTranslation()
 
   if (toasts.length === 0) return null
 
@@ -34,7 +36,7 @@ export default function ToastContainer() {
           <p className="flex-1 text-sm font-medium text-gray-900">{t.message}</p>
           <button
             onClick={() => remove(t.id)}
-            aria-label="알림 닫기"
+            aria-label={tl('common.close')}
             className="text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 rounded"
           >
             <X className="w-4 h-4" />

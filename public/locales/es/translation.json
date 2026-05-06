@@ -184,7 +184,9 @@
     "wishlistCancel": "Eliminar de favoritos",
     "wishlistAdd": "Añadir a favoritos",
     "imageUploadFailed": "Error al subir imagen.",
-    "unitMan": ""
+    "unitMan": "",
+    "kakaoConsult": "Soporte KakaoTalk",
+    "share": "Compartir"
   },
   "seller": {
     "dashboard": "Panel",
@@ -2943,7 +2945,8 @@
     "emptyDesc": "Las nuevas actividades aparecerán aquí",
     "back": "Volver",
     "seoTitle": "Notificaciones - Ur-Deal",
-    "seoDesc": "Consulte sus nuevas notificaciones"
+    "seoDesc": "Consulte sus nuevas notificaciones",
+    "listAria": "Notificaciones"
   },
   "cart": {
     "continueShop": "Continue Shopping",
@@ -3477,7 +3480,9 @@
     "goHome": "Ir al inicio",
     "autoRedirect": "Redirección automática al inicio en 10 segundos.",
     "feedbackPrefix": "Si tienes comentarios para mejorar, contacta",
-    "feedbackSuffix": "."
+    "feedbackSuffix": ".",
+    "seoTitle": "Cuenta eliminada",
+    "seoDesc": "Tu cuenta ha sido eliminada"
   },
   "myGroupBuys": {
     "title": "Mis compras grupales",
@@ -4369,6 +4374,9 @@
       "pet": "Mascota",
       "stay": "Alojamiento",
       "activity": "Actividad"
+    },
+    "picker": {
+      "placeholder": "Nombre de tienda o dirección"
     }
   },
   "sellerSwitch": {
@@ -4455,5 +4463,19 @@
   "embed": {
     "liveTitle": "Incrustación de live",
     "liveDesc": "Widget de incrustación live de Ur-Deal"
+  },
+  "streaming": {
+    "closeTutorial": "Cerrar tutorial"
+  },
+  "chat": {
+    "dialogAria": "Entrada de chat",
+    "sellerPlaceholder": "Escribe mensaje del vendedor...",
+    "userPlaceholder": "Escribe un mensaje...",
+    "sellerInputAria": "Mensaje del vendedor",
+    "inputAria": "Mensaje de chat",
+    "sendPlaceholder": "Enviar mensaje"
+  },
+  "search": {
+    "inputPlaceholder": "Buscar productos, marcas, vendedores"
   }
 }

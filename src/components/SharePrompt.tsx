@@ -62,6 +62,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
 export function ShareBanner({ title, description, link, buttonText, className }: {
   title: string; description: string; link: string; buttonText?: string; className?: string
 }) {
+  const { t } = useTranslation()
   const [dismissed, setDismissed] = useState(false)
   if (dismissed) return null
 
@@ -69,7 +70,7 @@ export function ShareBanner({ title, description, link, buttonText, className }:
     <div className={`bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4 ${className || ''}`}>
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-bold text-gray-900 dark:text-white">{title}</p>
-        <button onClick={() => setDismissed(true)} aria-label="배너 닫기" className="text-gray-400 dark:text-gray-500"><X className="w-4 h-4" /></button>
+        <button onClick={() => setDismissed(true)} aria-label={t('common.close')} className="text-gray-400 dark:text-gray-500"><X className="w-4 h-4" /></button>
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{description}</p>
       <KakaoShareButton title={title} description={description} link={link} buttonText={buttonText} />

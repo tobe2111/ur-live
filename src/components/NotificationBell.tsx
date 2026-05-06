@@ -3,6 +3,7 @@ import { Bell, X, Check } from 'lucide-react'
 import api from '@/lib/api'
 import { isLoggedInSync } from '@/utils/auth'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 interface Notification {
   id: number
@@ -20,6 +21,7 @@ interface NotificationBellProps {
 
 export default function NotificationBell({ userType }: NotificationBellProps) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
@@ -184,7 +186,7 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
               )}
               <button
                 onClick={() => setIsOpen(false)}
-                aria-label="알림 닫기"
+                aria-label={t('common.close')}
                 className="p-1 text-gray-400 hover:text-gray-600"
               >
                 <X className="w-5 h-5" />

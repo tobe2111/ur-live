@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Search, X, ShoppingBag } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface SearchSuggestion {
   type: 'product' | 'seller'
@@ -23,6 +24,7 @@ export default function SearchHeader({
   onLoadSuggestions
 }: SearchHeaderProps) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [inputValue, setInputValue] = useState(query)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
@@ -88,7 +90,7 @@ export default function SearchHeader({
               onChange={(e) => setInputValue(e.target.value)}
               onFocus={() => { setIsFocused(true); if (suggestions.length > 0) setShowSuggestions(true) }}
               onBlur={() => setIsFocused(false)}
-              placeholder="상품명, 브랜드, 셀러 검색"
+              placeholder={t('search.inputPlaceholder', { defaultValue: '상품명, 브랜드, 셀러 검색' })}
               className={`w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#121212] rounded-full text-[14px] text-gray-900 dark:text-white font-medium transition-all focus:outline-none ${
                 isFocused ? 'border-2 border-gray-900 bg-white dark:bg-[#0A0A0A]' : 'border-2 border-transparent'
               }`}

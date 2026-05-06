@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ShoppingBag, Info, Send } from 'lucide-react'
 import { useStreamStore } from '@/shared/stores/useStreamStore'
 import { getUserIdSync, getUserNameSync } from '@/utils/auth'
+import { useTranslation } from 'react-i18next'
 
 function getStreamId(pathname: string): string | null {
   const m = pathname.match(/^\/live\/(\d+)/)
@@ -17,6 +18,7 @@ function disc(p: number, op?: number | null) {
 type Tab = '채팅' | '상품' | '공지'
 
 export default function DesktopLiveRightPanel() {
+  const { t } = useTranslation()
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const streamId = getStreamId(pathname)
@@ -116,7 +118,7 @@ export default function DesktopLiveRightPanel() {
                 value={inputText}
                 onChange={e => setInputText(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                placeholder="메시지 보내기"
+                placeholder={t('chat.sendPlaceholder', { defaultValue: '메시지 보내기' })}
                 className="flex-1 h-10 px-3.5 rounded-full bg-[#1A1A1A] text-white text-[13px] placeholder-gray-600 border border-transparent focus:border-[#2A2A2A] outline-none"
               />
               <button

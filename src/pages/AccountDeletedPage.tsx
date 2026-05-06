@@ -19,7 +19,7 @@ export default function AccountDeletedPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center px-4">
-      <SEO title="계정 삭제 완료" description="계정이 삭제되었습니다" url="/account/deleted" noindex />
+      <SEO title={t('accountDeleted.seoTitle', { defaultValue: '계정 삭제 완료' })} description={t('accountDeleted.seoDesc', { defaultValue: '계정이 삭제되었습니다' })} url="/account/deleted" noindex />
       <div className="max-w-md w-full">
         <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-lg p-8 text-center">
           {/* 완료 아이콘 */}

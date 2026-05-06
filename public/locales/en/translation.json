@@ -184,7 +184,9 @@
     "wishlistCancel": "Remove from Wishlist",
     "wishlistAdd": "Add to Wishlist",
     "imageUploadFailed": "Image upload failed.",
-    "unitMan": ""
+    "unitMan": "",
+    "kakaoConsult": "KakaoTalk Support",
+    "share": "Share"
   },
   "auth": {
     "email": "Email",
@@ -249,7 +251,8 @@
     "emptyDesc": "New activity will appear here",
     "back": "Back",
     "seoTitle": "Notifications - Ur-Deal",
-    "seoDesc": "Check your new notifications"
+    "seoDesc": "Check your new notifications",
+    "listAria": "Notifications"
   },
   "payment": {
     "checkout": "Checkout",
@@ -783,7 +786,9 @@
     "goHome": "Go to Home",
     "autoRedirect": "Auto-redirecting to home in 10 seconds.",
     "feedbackPrefix": "If you have feedback for improvement, please contact",
-    "feedbackSuffix": "."
+    "feedbackSuffix": ".",
+    "seoTitle": "Account Deleted",
+    "seoDesc": "Your account has been deleted"
   },
   "myGroupBuys": {
     "title": "My Group Buys",
@@ -4369,6 +4374,9 @@
       "pet": "Pet",
       "stay": "Stay",
       "activity": "Activity"
+    },
+    "picker": {
+      "placeholder": "Store name or address"
     }
   },
   "sellerSwitch": {
@@ -4455,5 +4463,19 @@
   "embed": {
     "liveTitle": "Live Embed",
     "liveDesc": "Ur-Deal live embed widget"
+  },
+  "streaming": {
+    "closeTutorial": "Close tutorial"
+  },
+  "chat": {
+    "dialogAria": "Chat input",
+    "sellerPlaceholder": "Enter seller message...",
+    "userPlaceholder": "Enter message...",
+    "sellerInputAria": "Seller message",
+    "inputAria": "Chat message",
+    "sendPlaceholder": "Send message"
+  },
+  "search": {
+    "inputPlaceholder": "Search products, brands, sellers"
   }
 }

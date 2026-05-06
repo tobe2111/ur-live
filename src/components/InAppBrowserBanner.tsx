@@ -7,6 +7,7 @@
  * window.__urInAppBrowser 는 main.tsx 가 React 마운트 전에 set 함.
  */
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   detectInAppBrowser,
   openInExternalBrowser,
@@ -18,6 +19,7 @@ import {
 const DISMISS_KEY = 'ur_inapp_banner_dismissed_v1'
 
 export default function InAppBrowserBanner() {
+  const { t } = useTranslation()
   const [inApp, setInApp] = useState<InAppBrowserName | null>(null)
   const [dismissed, setDismissed] = useState(false)
 
@@ -86,7 +88,7 @@ export default function InAppBrowserBanner() {
       </button>
       <button
         onClick={handleDismiss}
-        aria-label="닫기"
+        aria-label={t('common.close')}
         style={{
           background: 'transparent',
           border: 0,

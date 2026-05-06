@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { MapPin, Search, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 declare global {
   interface Window { kakao: any }
@@ -28,6 +29,7 @@ interface Props {
  * 검색 결과를 지도 위에 마커로 표시, 마커 클릭 시 선택
  */
 export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: Props) {
+  const { t } = useTranslation()
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
@@ -158,7 +160,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search() } }}
-            placeholder="매장 이름 또는 주소 (예: 광화문 김밥천국)"
+            placeholder={t('map.picker.placeholder', { defaultValue: '매장 이름 또는 주소 (예: 광화문 김밥천국)' })}
             className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
           />
         </div>

@@ -184,7 +184,9 @@
     "wishlistCancel": "お気に入り解除",
     "wishlistAdd": "お気に入りに追加",
     "imageUploadFailed": "画像のアップロードに失敗しました。",
-    "unitMan": "万"
+    "unitMan": "万",
+    "kakaoConsult": "カカオトークサポート",
+    "share": "シェア"
   },
   "auth": {
     "email": "メールアドレス",
@@ -249,7 +251,8 @@
     "emptyDesc": "新しいお知らせがあるとここに表示されます",
     "back": "戻る",
     "seoTitle": "通知 - Ur-Deal",
-    "seoDesc": "新しい通知を確認してください"
+    "seoDesc": "新しい通知を確認してください",
+    "listAria": "通知一覧"
   },
   "payment": {
     "checkout": "決済する",
@@ -783,7 +786,9 @@
     "goHome": "ホームへ",
     "autoRedirect": "10秒後に自動的にホームへ移動します。",
     "feedbackPrefix": "改善のためのご意見は",
-    "feedbackSuffix": "までご連絡ください。"
+    "feedbackSuffix": "までご連絡ください。",
+    "seoTitle": "アカウント削除完了",
+    "seoDesc": "アカウントが削除されました"
   },
   "myGroupBuys": {
     "title": "マイ共同購入",
@@ -4369,6 +4374,9 @@
       "pet": "ペット",
       "stay": "宿泊",
       "activity": "アクティビティ"
+    },
+    "picker": {
+      "placeholder": "店名または住所を入力"
     }
   },
   "sellerSwitch": {
@@ -4455,5 +4463,19 @@
   "embed": {
     "liveTitle": "ライブ埋め込み",
     "liveDesc": "Ur-Dealライブ埋め込みウィジェット"
+  },
+  "streaming": {
+    "closeTutorial": "チュートリアルを閉じる"
+  },
+  "chat": {
+    "dialogAria": "チャット入力",
+    "sellerPlaceholder": "セラーメッセージを入力...",
+    "userPlaceholder": "メッセージを入力...",
+    "sellerInputAria": "セラーメッセージ",
+    "inputAria": "チャットメッセージ",
+    "sendPlaceholder": "メッセージを送る"
+  },
+  "search": {
+    "inputPlaceholder": "商品名・ブランド・セラーを検索"
   }
 }

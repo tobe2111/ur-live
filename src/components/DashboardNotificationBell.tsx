@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Bell } from 'lucide-react'
 import api from '@/lib/api'
+import { useTranslation } from 'react-i18next'
 
 interface Notification {
   id: number
@@ -30,6 +31,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function DashboardNotificationBell({ tokenKey }: Props) {
+  const { t } = useTranslation()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
@@ -117,7 +119,7 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden" role="dialog" aria-label="알림 목록">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden" role="dialog" aria-label={t('notifications.listAria', { defaultValue: '알림 목록' })}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <span className="text-sm font-semibold text-gray-900">알림</span>
             {unreadCount > 0 && (

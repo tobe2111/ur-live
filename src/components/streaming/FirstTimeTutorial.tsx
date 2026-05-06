@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { X, ArrowRight } from 'lucide-react'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { useTranslation } from 'react-i18next'
 
 const TUTORIAL_KEY = 'seller_live_tutorial_done'
 
@@ -47,6 +48,7 @@ const STEPS: Step[] = [
 ]
 
 export function FirstTimeTutorial({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
   const [step, setStep] = useState(0)
   const current = STEPS[step]
 
@@ -80,7 +82,7 @@ export function FirstTimeTutorial({ onClose }: { onClose: () => void }) {
               {current.title}
             </h3>
           </div>
-          <button type="button" onClick={dismiss} aria-label="튜토리얼 닫기" className="text-gray-400 hover:text-gray-700">
+          <button type="button" onClick={dismiss} aria-label={t('streaming.closeTutorial', { defaultValue: '튜토리얼 닫기' })} className="text-gray-400 hover:text-gray-700">
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>

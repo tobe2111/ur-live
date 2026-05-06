@@ -184,7 +184,9 @@
     "wishlistCancel": "찜 취소",
     "wishlistAdd": "찜하기",
     "imageUploadFailed": "이미지 업로드에 실패했습니다.",
-    "unitMan": "만"
+    "unitMan": "만",
+    "kakaoConsult": "카카오 상담",
+    "share": "공유"
   },
   "auth": {
     "email": "이메일",
@@ -249,7 +251,8 @@
     "emptyDesc": "새로운 소식이 있으면 여기에 표시됩니다",
     "back": "뒤로 가기",
     "seoTitle": "알림 - 유어딜",
-    "seoDesc": "새로운 알림을 확인하세요"
+    "seoDesc": "새로운 알림을 확인하세요",
+    "listAria": "알림 목록"
   },
   "payment": {
     "checkout": "결제하기",
@@ -783,7 +786,9 @@
     "goHome": "홈으로 이동",
     "autoRedirect": "10초 후 자동으로 홈 페이지로 이동합니다.",
     "feedbackPrefix": "서비스 개선을 위한 의견이 있으시다면",
-    "feedbackSuffix": "으로 연락해주세요."
+    "feedbackSuffix": "으로 연락해주세요.",
+    "seoTitle": "계정 삭제 완료",
+    "seoDesc": "계정이 삭제되었습니다"
   },
   "myGroupBuys": {
     "title": "내 공동구매",
@@ -4664,6 +4669,9 @@
       "pet": "반려",
       "stay": "숙박",
       "activity": "액티비티"
+    },
+    "picker": {
+      "placeholder": "매장 이름 또는 주소 (예: 광화문 김밥천국)"
     }
   },
   "sellerSwitch": {
@@ -4750,5 +4758,19 @@
   "embed": {
     "liveTitle": "라이브 임베드",
     "liveDesc": "유어딜 라이브 임베드 위젯"
+  },
+  "streaming": {
+    "closeTutorial": "튜토리얼 닫기"
+  },
+  "chat": {
+    "dialogAria": "채팅 입력",
+    "sellerPlaceholder": "셀러 메시지를 입력하세요...",
+    "userPlaceholder": "메시지를 입력하세요...",
+    "sellerInputAria": "셀러 메시지",
+    "inputAria": "채팅 메시지",
+    "sendPlaceholder": "메시지 보내기"
+  },
+  "search": {
+    "inputPlaceholder": "상품명, 브랜드, 셀러 검색"
   }
 }

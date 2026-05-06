@@ -15,9 +15,9 @@
  *     />
  *   )}
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { X, ExternalLink, Copy, Check } from 'lucide-react'
-import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getFeatureInfo, getInAppLabel, handleOpenExternal, type RestrictedFeature } from '@/lib/in-app-warning'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 
@@ -29,6 +29,7 @@ interface Props {
 }
 
 export default function InAppFeatureBlockedModal({ feature, onClose, onAlternative, alternativeLabel }: Props) {
+  const { t } = useTranslation()
   const info = getFeatureInfo(feature)
   const inAppLabel = getInAppLabel() || '인앱'
   const [copied, setCopied] = useState(false)
@@ -103,7 +104,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
               {info.title}
             </h2>
           </div>
-          <button onClick={onClose} aria-label="닫기" className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
+          <button onClick={onClose} aria-label={t('common.close')} className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
