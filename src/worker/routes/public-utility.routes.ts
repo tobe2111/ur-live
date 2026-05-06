@@ -128,6 +128,98 @@ publicUtilityRoutes.get('/api/version', async (c) => {
   }
 })
 
+// ── GET /api/flash-deals ────────────────────────
+// 타임딜(플래시 딜) 상품 조회 — flash_deal_start/end 또는 sale_ends_at fallback
+publicUtilityRoutes.get('/api/flash-deals', async (c) => {
+  try {
+    const DB = c.env.DB
+    if (!DB) return c.json({ success: true, data: { deals: [], avg_discount_rate: 0, count: 0 } })
+
+    // 컬럼 존재 여부 확인 (PRAGMA)
+    let hasFlashDeal = false
+    let hasSaleEndsAt = false
+    try {
+      const pragmaResult = await DB.prepare(`PRAGMA table_info(products)`).all<{ name: string }>()
+      const cols = (pragmaResult?.results ?? []).map((r: { name: string }) => r.name)
+      hasFlashDeal = cols.includes('flash_deal_start')
+      hasSaleEndsAt = cols.includes('sale_ends_at')
+    } catch { /* PRAGMA 실패 시 fallback */ }
+
+    let deals: Record<string, unknown>[] = []
+    let avgDiscountRate = 0
+
+    if (hasFlashDeal) {
+      const result = await DB.prepare(`
+        SELECT id, name, price, original_price, image_url, sold_count, stock,
+               flash_deal_start, flash_deal_end,
+               CASE
+                 WHEN original_price > 0 AND original_price > price
+                 THEN CAST(ROUND((original_price - price) * 100.0 / original_price) AS INTEGER)
+                 ELSE 0
+               END AS computed_discount_rate
+        FROM products
+        WHERE is_active=1
+          AND flash_deal_start IS NOT NULL
+        ORDER BY flash_deal_end ASC
+        LIMIT 20
+      `).all<Record<string, unknown>>()
+      deals = result?.results ?? []
+    } else if (hasSaleEndsAt) {
+      const result = await DB.prepare(`
+        SELECT id, name, price, original_price, image_url, sold_count, stock,
+               sale_ends_at AS flash_deal_end,
+               CASE
+                 WHEN original_price > 0 AND original_price > price
+                 THEN CAST(ROUND((original_price - price) * 100.0 / original_price) AS INTEGER)
+                 ELSE 0
+               END AS computed_discount_rate
+        FROM products
+        WHERE is_active=1
+          AND sale_ends_at IS NOT NULL
+          AND sale_ends_at > datetime('now')
+        ORDER BY sale_ends_at ASC
+        LIMIT 20
+      `).all<Record<string, unknown>>()
+      deals = result?.results ?? []
+    } else {
+      // flash_deal/sale_ends_at 컬럼 없음 — 할인상품 중 상위 6개를 타임딜로 표시
+      const result = await DB.prepare(`
+        SELECT id, name, price, original_price, image_url, sold_count, stock,
+               NULL AS flash_deal_end,
+               CASE
+                 WHEN original_price > 0 AND original_price > price
+                 THEN CAST(ROUND((original_price - price) * 100.0 / original_price) AS INTEGER)
+                 ELSE 0
+               END AS computed_discount_rate
+        FROM products
+        WHERE is_active=1
+          AND original_price IS NOT NULL
+          AND original_price > price
+        ORDER BY (original_price - price) DESC
+        LIMIT 6
+      `).all<Record<string, unknown>>()
+      deals = result?.results ?? []
+    }
+
+    if (deals.length > 0) {
+      const total = deals.reduce((sum, d) => sum + (Number(d.computed_discount_rate) || 0), 0)
+      avgDiscountRate = Math.round(total / deals.length)
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        deals,
+        avg_discount_rate: avgDiscountRate,
+        count: deals.length,
+      },
+    })
+  } catch (e) {
+    if (import.meta.env.DEV) console.error('[flash-deals]', e)
+    return c.json({ success: true, data: { deals: [], avg_discount_rate: 0, count: 0 } })
+  }
+})
+
 // 🛡️ 2026-04-28: 메인페이지 perf — 6개 분리 호출 → 1개 통합
 //   /api/streams x3 + /api/group-buy/products + /api/products x2 → /api/home/bundle
 //   서버 측 D1 호출은 동일 (병렬), 클라이언트 round-trip 6→1 (50-300ms 절감)
