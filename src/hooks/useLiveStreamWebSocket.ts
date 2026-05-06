@@ -300,8 +300,18 @@ export function useLiveStreamWebSocket(
       window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('pageshow', onPageShow)
       if (wsRef.current) {
-        wsRef.current.close()
+        const ws = wsRef.current
         wsRef.current = null
+        // 🛡️ 2026-05-06: CONNECTING 상태에서 close() 호출 시 콘솔에 "closed before
+        //   established" 경고가 찍힘 (스크롤로 active card 가 빠르게 바뀔 때 발생).
+        //   open 후 close() 하면 깔끔하게 종료됨. CONNECTING 인 경우 onopen 에서 close.
+        if (ws.readyState === WebSocket.CONNECTING) {
+          ws.onopen = () => { try { ws.close() } catch { /* ignore */ } }
+          ws.onerror = null
+          ws.onmessage = null
+        } else {
+          try { ws.close() } catch { /* ignore */ }
+        }
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
