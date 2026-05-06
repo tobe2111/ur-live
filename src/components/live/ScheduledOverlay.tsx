@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import type { Stream } from './LiveTypes'
 
-function useCountdown(targetDate: string | undefined) {
+function useCountdown(targetDate: string | undefined, soonText: string) {
   const [remaining, setRemaining] = useState('')
 
   useEffect(() => {
@@ -11,7 +12,7 @@ function useCountdown(targetDate: string | undefined) {
     const update = () => {
       const diff = new Date(targetDate).getTime() - Date.now()
       if (diff <= 0) {
-        setRemaining('곧 시작됩니다')
+        setRemaining(soonText)
         return
       }
       const days = Math.floor(diff / 86400000)
@@ -29,13 +30,14 @@ function useCountdown(targetDate: string | undefined) {
     update()
     const interval = setInterval(update, 1000)
     return () => clearInterval(interval)
-  }, [targetDate])
+  }, [targetDate, soonText])
 
   return remaining
 }
 
 export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream; onGoHome: () => void }) {
-  const countdown = useCountdown(stream.scheduled_at)
+  const { t } = useTranslation()
+  const countdown = useCountdown(stream.scheduled_at, t('live.scheduled.soon', { defaultValue: '곧 시작됩니다' }))
 
   const formattedDate = stream.scheduled_at
     ? `${new Date(stream.scheduled_at).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} ${new Date(stream.scheduled_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
@@ -48,7 +50,7 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span className="text-white text-sm font-bold">방송 예정</span>
+          <span className="text-white text-sm font-bold">{t('live.scheduled.badge', { defaultValue: '방송 예정' })}</span>
         </div>
 
         <h2 className="text-white text-xl font-bold text-center leading-tight">
@@ -63,7 +65,7 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
 
         {stream.scheduled_at && (
           <div className="text-center">
-            <p className="text-white/60 text-xs mb-2">방송 시작까지</p>
+            <p className="text-white/60 text-xs mb-2">{t('live.scheduled.untilStart', { defaultValue: '방송 시작까지' })}</p>
             <p className="text-white text-3xl font-bold font-mono tracking-wider">
               {countdown}
             </p>
@@ -72,13 +74,13 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
         )}
 
         {!stream.scheduled_at && (
-          <p className="text-white/60 text-sm">방송 시작 시간이 아직 정해지지 않았습니다</p>
+          <p className="text-white/60 text-sm">{t('live.scheduled.notSet', { defaultValue: '방송 시작 시간이 아직 정해지지 않았습니다' })}</p>
         )}
 
         <div className="flex gap-3 mt-2">
           <KakaoShareButton
             title={stream.title}
-            description={stream.seller_name ? `${stream.seller_name}의 라이브 방송` : '유어딜 라이브'}
+            description={stream.seller_name ? t('live.scheduled.shareDescWithName', { defaultValue: '{{name}}의 라이브 방송', name: stream.seller_name }) : t('live.scheduled.shareDescDefault', { defaultValue: '유어딜 라이브' })}
             link={`/live/${stream.id}`}
             className="px-6 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-full text-sm font-bold"
             compact={false}
@@ -87,7 +89,7 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
             onClick={onGoHome}
             className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white/80 rounded-full text-sm font-medium transition-colors"
           >
-            홈으로
+            {t('live.scheduled.goHome', { defaultValue: '홈으로' })}
           </button>
         </div>
       </div>

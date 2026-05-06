@@ -3736,6 +3736,49 @@
       "empty": "No supporters yet",
       "donationCount": "{{count}} donation(s)",
       "dealLabel": "Deal"
+    },
+    "pk": {
+      "endedPrefix": "🏆 PK ended — ",
+      "winnerName": "{{name}} (Side {{side}})",
+      "endedSuffix": " wins!",
+      "inProgress": "🔴 PK in progress",
+      "tenThousandDeal": "{{amount}}0K Deal",
+      "cheerNotice": "💝 Pay or donate to your favorite seller — their revenue updates instantly!"
+    },
+    "chat": {
+      "anonymous": "Anonymous",
+      "title": "Live chat",
+      "beFirst": "Be the first to send a message!",
+      "inputPlaceholder": "Type a message...",
+      "joinedAs": "Joined as {{name}}"
+    },
+    "productSheet": {
+      "title": "Live products ({{count}})",
+      "subtitle": "Tap to select and buy a product",
+      "empty": "No products available"
+    },
+    "streamInfo": {
+      "watching": "{{value}} watching",
+      "share": "Share"
+    },
+    "scheduled": {
+      "soon": "Starting soon",
+      "badge": "Scheduled",
+      "untilStart": "Until start",
+      "notSet": "Start time has not been set yet",
+      "shareDescWithName": "{{name}}'s live broadcast",
+      "shareDescDefault": "Yourdeal Live",
+      "goHome": "Home"
+    },
+    "topNav": {
+      "backHome": "Back to home",
+      "sellerAvatarAlt": "{{name}}'s profile image",
+      "unfollow": "Unfollow",
+      "follow": "Follow",
+      "followingLabel": "Following",
+      "followLabel": "Follow",
+      "visitYoutube": "Visit YouTube channel",
+      "visitInstagram": "Visit Instagram"
     }
   },
   "paymentFail": {

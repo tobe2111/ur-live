@@ -3736,6 +3736,49 @@
       "empty": "还没有支持者",
       "donationCount": "后援 {{count}} 次",
       "dealLabel": "Deal"
+    },
+    "pk": {
+      "endedPrefix": "🏆 PK 结束 — ",
+      "winnerName": "{{name}} ({{side}}方)",
+      "endedSuffix": " 获胜!",
+      "inProgress": "🔴 PK 进行中",
+      "tenThousandDeal": "{{amount}}万 Deal",
+      "cheerNotice": "💝 支付/打赏支持的卖家,即可立即反映到其销售额!"
+    },
+    "chat": {
+      "anonymous": "匿名",
+      "title": "实时聊天",
+      "beFirst": "发送第一条消息!",
+      "inputPlaceholder": "输入消息...",
+      "joinedAs": "以 {{name}} 参与"
+    },
+    "productSheet": {
+      "title": "直播商品 ({{count}}件)",
+      "subtitle": "选择商品立即购买",
+      "empty": "还没有商品"
+    },
+    "streamInfo": {
+      "watching": "{{value}} 在看",
+      "share": "分享"
+    },
+    "scheduled": {
+      "soon": "即将开始",
+      "badge": "即将开播",
+      "untilStart": "距离开播",
+      "notSet": "尚未设置开播时间",
+      "shareDescWithName": "{{name}}的直播",
+      "shareDescDefault": "Yourdeal 直播",
+      "goHome": "回首页"
+    },
+    "topNav": {
+      "backHome": "返回首页",
+      "sellerAvatarAlt": "{{name}}头像",
+      "unfollow": "取消关注",
+      "follow": "关注",
+      "followingLabel": "已关注",
+      "followLabel": "关注",
+      "visitYoutube": "访问 YouTube 频道",
+      "visitInstagram": "访问 Instagram"
     }
   },
   "paymentFail": {

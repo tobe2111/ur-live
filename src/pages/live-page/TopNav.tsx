@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react'
 import { ChevronLeft, Eye } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { glass } from '@/components/glass/glassTokens'
 import { formatViewers } from '@/components/live/LiveUtils'
@@ -16,6 +17,7 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
   viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string }
   sellerName?: string; sellerAvatar?: string; sellerId?: number
 }) {
+  const { t } = useTranslation()
   const [following, setFollowing] = useState(false)
   const handleFollow = async () => {
     if (!sellerId) return
@@ -35,7 +37,7 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
     <header className="absolute top-0 left-0 right-0 z-50 px-2 pt-safe pb-1.5">
       <div className="flex items-center justify-between gap-1.5">
         {/* 좌측: 뒤로가기 (Q7 = 유지) */}
-        <a href="/" aria-label="홈으로 돌아가기"
+        <a href="/" aria-label={t('live.topNav.backHome', { defaultValue: '홈으로 돌아가기' })}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
           style={glass.navPill}>
           <ChevronLeft className="h-5 w-5 text-white/80" />
@@ -46,7 +48,7 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
           <div className="flex items-center gap-1.5 min-w-0 flex-1 rounded-full pl-1 pr-2 py-1"
             style={glass.navPill}>
             {sellerAvatar ? (
-              <img src={sellerAvatar} alt={`${sellerName} 프로필 이미지`}
+              <img src={sellerAvatar} alt={t('live.topNav.sellerAvatarAlt', { defaultValue: '{{name}} 프로필 이미지', name: sellerName })}
                 className="rounded-full object-cover shrink-0"
                 style={{ width: 24, height: 24 }} loading="lazy" decoding="async" />
             ) : (
@@ -64,14 +66,14 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
         <div className="flex items-center gap-1 shrink-0">
           {sellerId && (
             <button onClick={handleFollow}
-              aria-label={following ? '팔로우 취소' : '팔로우하기'}
+              aria-label={following ? t('live.topNav.unfollow', { defaultValue: '팔로우 취소' }) : t('live.topNav.follow', { defaultValue: '팔로우하기' })}
               className="rounded-full px-2.5 py-1.5 transition-colors"
               style={{
                 background: following ? 'rgba(255,255,255,0.18)' : '#fff',
                 color: following ? 'rgba(255,255,255,0.9)' : '#000',
                 fontSize: 11, fontWeight: 800,
               }}>
-              {following ? 'Following' : '팔로우'}
+              {following ? t('live.topNav.followingLabel', { defaultValue: 'Following' }) : t('live.topNav.followLabel', { defaultValue: '팔로우' })}
             </button>
           )}
           <div className="inline-flex items-center gap-1 rounded-full"
@@ -85,14 +87,14 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
             <span className="text-white" style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatViewers(viewers)}</span>
           </div>
           {sellerLinks?.youtube && (
-            <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label="유튜브 채널 방문"
+            <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label={t('live.topNav.visitYoutube', { defaultValue: '유튜브 채널 방문' })}
               className="flex h-7 w-7 items-center justify-center rounded-full"
               style={glass.actionRail}>
               <YouTubeIcon className="h-3.5 w-3.5 text-white/85" />
             </a>
           )}
           {sellerLinks?.instagram && (
-            <a href={sellerLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label="인스타그램 방문"
+            <a href={sellerLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label={t('live.topNav.visitInstagram', { defaultValue: '인스타그램 방문' })}
               className="flex h-7 w-7 items-center justify-center rounded-full"
               style={glass.actionRail}>
               <InstagramIcon className="h-3.5 w-3.5 text-white/85" />

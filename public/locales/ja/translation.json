@@ -3736,6 +3736,49 @@
       "empty": "まだサポーターがいません",
       "donationCount": "{{count}}回後援",
       "dealLabel": "ディール"
+    },
+    "pk": {
+      "endedPrefix": "🏆 PK終了 — ",
+      "winnerName": "{{name}} ({{side}}側)",
+      "endedSuffix": " 優勝!",
+      "inProgress": "🔴 PK進行中",
+      "tenThousandDeal": "{{amount}}万ディール",
+      "cheerNotice": "💝 応援するセラーに決済・後援すると、そのセラーの売上に即時反映!"
+    },
+    "chat": {
+      "anonymous": "匿名",
+      "title": "リアルタイムチャット",
+      "beFirst": "最初のメッセージを送りましょう!",
+      "inputPlaceholder": "メッセージを入力...",
+      "joinedAs": "{{name}}として参加中"
+    },
+    "productSheet": {
+      "title": "ライブ商品 ({{count}}点)",
+      "subtitle": "商品を選んで購入しましょう",
+      "empty": "登録された商品がありません"
+    },
+    "streamInfo": {
+      "watching": "{{value}} 視聴中",
+      "share": "共有"
+    },
+    "scheduled": {
+      "soon": "まもなく開始",
+      "badge": "配信予定",
+      "untilStart": "配信開始まで",
+      "notSet": "配信開始時間はまだ未定です",
+      "shareDescWithName": "{{name}}のライブ配信",
+      "shareDescDefault": "ユアディールライブ",
+      "goHome": "ホームへ"
+    },
+    "topNav": {
+      "backHome": "ホームに戻る",
+      "sellerAvatarAlt": "{{name}}のプロフィール画像",
+      "unfollow": "フォロー解除",
+      "follow": "フォローする",
+      "followingLabel": "フォロー中",
+      "followLabel": "フォロー",
+      "visitYoutube": "YouTubeチャンネルへ",
+      "visitInstagram": "Instagramへ"
     }
   },
   "paymentFail": {
