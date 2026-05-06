@@ -312,7 +312,7 @@ function AppContent() {
           <ScrollToTop />
           <PushNotificationSetup />
           <main id="main-content">
-          <ErrorBoundary>
+          <ErrorBoundary key={location.key}>
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />

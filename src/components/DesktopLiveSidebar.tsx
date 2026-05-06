@@ -69,7 +69,7 @@ export default function DesktopLiveSidebar() {
 
   return (
     <aside
-      className="hidden xl:flex fixed left-0 top-0 bottom-0 w-56 z-40 flex-col bg-white dark:bg-[#0A0A0A] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto"
+      className="hidden xl:flex fixed left-0 top-0 bottom-0 w-56 z-40 flex-col bg-white dark:bg-[#0A0A0A] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       aria-label={t('nav.mainMenu', { defaultValue: '메인 메뉴' })}
     >
       {/* 로고 */}
