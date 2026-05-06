@@ -3,6 +3,28 @@
 import { autoRedirectKakaoToExternal, detectInAppBrowser } from '@/lib/in-app-browser'
 const _kakaoRedirected = autoRedirectKakaoToExternal()
 
+// 🛡️ 2026-05-06: localStorage / sessionStorage throw-safe 글로벌 가드.
+//   원인: Safari private mode (iOS<14), 카카오/네이버 인앱 webview, sandboxed iframe,
+//   ITP 차단, quota 초과 시 setItem/getItem 이 SecurityError/QuotaExceededError throw.
+//   코드 395곳이 가드 없이 직접 `localStorage.xxx` 호출 → 한 곳만 throw 해도
+//   React tree 전체 unmount → 흰화면 사고. Storage.prototype 한 번만 패치해
+//   모든 호출지점이 자동 보호됨 (코드 변경 0건).
+//   getItem 실패 → null 반환 (정상 미존재 시와 동일). setItem/removeItem 실패 → 무시.
+try {
+  const wrap = (proto: Storage | null) => {
+    if (!proto) return
+    const origGet = proto.getItem
+    const origSet = proto.setItem
+    const origRemove = proto.removeItem
+    proto.getItem = function (k) { try { return origGet.call(this, k) } catch { return null } }
+    proto.setItem = function (k, v) { try { origSet.call(this, k, v) } catch { /* quota/security — silent */ } }
+    proto.removeItem = function (k) { try { origRemove.call(this, k) } catch { /* silent */ } }
+  }
+  wrap(window.localStorage)
+  wrap(window.sessionStorage)
+} catch { /* Storage 자체가 없는 환경 — 무시 */ }
+
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
