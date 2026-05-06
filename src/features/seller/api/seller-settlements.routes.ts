@@ -47,8 +47,8 @@ sellerSettlementsRoutes.get('/settlements', async (c) => {
     const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
-    const limit = parseInt(c.req.query('limit') || '20');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = Math.max(1, Math.min(200, parseInt(c.req.query('limit') || '20') || 20));
+    const offset = Math.max(0, parseInt(c.req.query('offset') || '0') || 0);
     const rows = await db.prepare(
       'SELECT * FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
     ).bind(sellerId, limit, offset).all().catch(() => ({ results: [] }));

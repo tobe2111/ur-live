@@ -116,7 +116,7 @@ publicUtilityRoutes.get('/api/version', async (c) => {
 
     const origin = new URL(c.req.url).origin
     const htmlRes = await fetch(`${origin}/`, { cf: { cacheTtl: 30 } } as RequestInit)
-    if (!htmlRes.ok) return c.json({ success: false, version: null, secrets }, 200)
+    if (!htmlRes.ok) return c.json({ success: false, version: null, secrets }, 502)
 
     const html = await htmlRes.text()
     const match = html.match(/assets\/(index-[A-Za-z0-9_-]+\.js)/)
@@ -124,7 +124,7 @@ publicUtilityRoutes.get('/api/version', async (c) => {
     _cachedBuildVersion = { version, fetchedAt: now }
     return c.json({ success: true, version, secrets })
   } catch {
-    return c.json({ success: false, version: null, secrets }, 200)
+    return c.json({ success: false, version: null, secrets }, 502)
   }
 })
 
