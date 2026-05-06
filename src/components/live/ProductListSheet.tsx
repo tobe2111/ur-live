@@ -1,4 +1,5 @@
 import { ShoppingBag, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import type { Product, Stream } from './LiveTypes'
@@ -19,6 +20,7 @@ export function ProductListSheet({
   loading: boolean
   stream?: Stream
 }) {
+  const { t } = useTranslation()
   const safeProducts = products || []
 
   // 🛡️ 2026-04-29: a11y — ESC 닫기 + Tab focus trap
@@ -46,15 +48,15 @@ export function ProductListSheet({
             type="button"
             onClick={onClose}
             className="absolute right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            aria-label="닫기"
+            aria-label={t('common.close', { defaultValue: '닫기' })}
           >
             <X className="h-4 w-4 text-gray-800" aria-hidden="true" />
           </button>
         </div>
 
         <div className="px-5 pt-4 pb-3 border-b border-gray-100">
-          <h3 id="product-list-sheet-title" className="text-lg font-bold text-gray-900">라이브 상품 ({safeProducts.length}개)</h3>
-          <p className="text-sm text-gray-500 mt-1">상품을 선택해서 구매하세요</p>
+          <h3 id="product-list-sheet-title" className="text-lg font-bold text-gray-900">{t('live.productSheet.title', { defaultValue: '라이브 상품 ({{count}}개)', count: safeProducts.length })}</h3>
+          <p className="text-sm text-gray-500 mt-1">{t('live.productSheet.subtitle', { defaultValue: '상품을 선택해서 구매하세요' })}</p>
         </div>
 
         <div className="px-5 py-4">
@@ -65,7 +67,7 @@ export function ProductListSheet({
           ) : safeProducts.length === 0 ? (
             <div className="text-center py-12">
               <ShoppingBag className="h-12 w-12 mx-auto text-gray-700 dark:text-gray-300 mb-3" />
-              <p className="text-gray-500">등록된 상품이 없습니다</p>
+              <p className="text-gray-500">{t('live.productSheet.empty', { defaultValue: '등록된 상품이 없습니다' })}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">{safeProducts.map((product) => {
@@ -91,7 +93,7 @@ export function ProductListSheet({
                     {isOutOfStock && (
                       <div className="absolute inset-0 bg-black/40 z-20 flex items-center justify-center">
                         <div className="bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm">
-                          품절
+                          {t('live.product.soldOut', { defaultValue: '품절' })}
                         </div>
                       </div>
                     )}
@@ -144,7 +146,7 @@ export function ProductListSheet({
                       </div>
                       {product.stock !== undefined && (
                         <p className="text-sm text-gray-500 mt-1">
-                          재고: {product.stock}개
+                          {t('live.product.stockLeft', { defaultValue: '재고: {{count}}개', count: product.stock })}
                         </p>
                       )}
                     </div>

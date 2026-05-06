@@ -83,7 +83,7 @@ export default function PKLiveBanner({ liveStreamId }: Props) {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 text-sm font-bold">
           <Swords className="w-4 h-4" />
-          <span>🔴 PK 진행 중</span>
+          <span>{t('live.pk.inProgress', { defaultValue: '🔴 PK 진행 중' })}</span>
         </div>
         <div className="text-base font-bold tabular-nums">
           {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
@@ -107,12 +107,12 @@ export default function PKLiveBanner({ liveStreamId }: Props) {
       </div>
 
       <div className="flex items-center justify-between mt-1.5 text-[11px] opacity-90">
-        <span>{(pk.revenue_a / 10_000).toFixed(1)}만 딜</span>
-        <span>{(pk.revenue_b / 10_000).toFixed(1)}만 딜</span>
+        <span>{t('live.pk.tenThousandDeal', { defaultValue: '{{amount}}만 딜', amount: (pk.revenue_a / 10_000).toFixed(1) })}</span>
+        <span>{t('live.pk.tenThousandDeal', { defaultValue: '{{amount}}만 딜', amount: (pk.revenue_b / 10_000).toFixed(1) })}</span>
       </div>
 
       <p className="mt-2 text-[10px] text-center opacity-80">
-        💝 응원하는 셀러에게 결제/후원하면 그 셀러 매출에 즉시 반영됩니다!
+        {t('live.pk.cheerNotice', { defaultValue: '💝 응원하는 셀러에게 결제/후원하면 그 셀러 매출에 즉시 반영됩니다!' })}
       </p>
     </div>
   )
