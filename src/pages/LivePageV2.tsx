@@ -7,6 +7,7 @@ import ReelCard from '@/components/live/ReelCard'
 import '@/utils/console-suppressor'
 import TopNav from './live-page/TopNav'
 import type { Stream, ReelData } from './live-page/types'
+import { useStreamStore } from '@/shared/stores/useStreamStore'
 
 // 🛡️ 2026-05-01: TD-018 분할 — types / icons / TopNav 를 ./live-page/ 로 이동.
 // HeartReaction, LiveChat, ProductListSheet, ReelCard → @/components/live/ 에 위치.
@@ -38,6 +39,7 @@ export default function LivePageV2() {
   
   // 실시간 시청자 수
   const [viewerCount, setViewerCount] = useState<number>(0)
+  const storeSetViewerCount = useStreamStore(s => s.setViewerCount)
 
   // ✅ UX C12 FIX: Session fixation 취약점 제거 (URL-param → localStorage 블록 삭제).
   // 인증 세션은 /auth/kakao/*/callback 라우트에서 중앙 처리됨. 임의의 URL에서
@@ -254,6 +256,7 @@ export default function LivePageV2() {
         const response = await api.get(`/api/streams/${currentStream.id}/viewer-count`)
         if (response.data.success) {
           setViewerCount(response.data.data.viewer_count)
+          storeSetViewerCount(response.data.data.viewer_count)
           consecutiveFailures = 0  // 성공 시 리셋
         }
       } catch (error) {
