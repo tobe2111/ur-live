@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { swallow } from '@/shared/utils/swallow'
 
 interface SideBannerItem {
   id: number
@@ -19,9 +20,7 @@ export default function SideBanner() {
           setBanners(data.data)
         }
       })
-      .catch(() => {
-        // silently ignore fetch errors
-      })
+      .catch(swallow('SideBanner:fetch'))
   }, [])
 
   if (banners.length === 0) return null

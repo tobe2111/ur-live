@@ -167,20 +167,17 @@ async function verifyFirebaseToken(
 ): Promise<JwtPayload | null> {
   try {
     if (!projectId) {
-      console.error('[Firebase] FIREBASE_PROJECT_ID is not set');
       return null;
     }
 
     // JWT 구조 파싱
     const parts = token.split('.');
     if (parts.length !== 3) {
-      console.error('[Firebase] Invalid JWT structure');
       return null;
     }
 
     const [headerB64, payloadB64, signatureB64] = parts;
     if (!headerB64 || !payloadB64 || !signatureB64) {
-      console.error('[Firebase] Missing JWT parts');
       return null;
     }
 
@@ -261,8 +258,7 @@ async function verifyFirebaseToken(
     }
 
     return payload;
-  } catch (error) {
-    console.error('[Firebase] Exception during verification:', error);
+  } catch {
     return null;
   }
 }
@@ -279,7 +275,6 @@ export function requireAuth() {
   return async (c: Context, next: Next) => {
     const jwtSecret = c.env.JWT_SECRET;
     if (!jwtSecret) {
-      console.error('[Auth] JWT_SECRET is not configured');
       return c.json(unauthorizedResponse('Authentication service misconfigured'), 503);
     }
 
@@ -475,9 +470,6 @@ export function optionalAuth() {
   return async (c: Context, next: Next) => {
     const jwtSecret = c.env.JWT_SECRET;
     if (!jwtSecret) {
-      // optional auth — continue unauthenticated, but LOUDLY log misconfiguration
-      // so it cannot silently fail-open in production.
-      console.error('[Auth] JWT_SECRET not configured (optionalAuth fail-open)');
       return next();
     }
 
