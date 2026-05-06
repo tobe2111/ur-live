@@ -310,7 +310,7 @@ export const useAuthKR = create<AuthKRState>()(
 
         // ── 카카오 로그인 (redirect) ──────────────────────────────────────────
         loginWithKakao: async () => {
-          const KAKAO_AUTH_URL = (import.meta as any).env?.VITE_KAKAO_AUTH_URL || '/auth/kakao';
+          const KAKAO_AUTH_URL = import.meta.env.VITE_KAKAO_AUTH_URL || '/auth/kakao';
           window.location.href = KAKAO_AUTH_URL;
         },
 

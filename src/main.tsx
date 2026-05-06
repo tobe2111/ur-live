@@ -16,6 +16,13 @@ import { initNativeFeatures, isNative } from '@/lib/native'
 import { swallow } from '@/shared/utils/swallow'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+    requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+  }
+}
+
 // 🛡️ 2026-05-01 (D fix): 카카오 OAuth callback URL 파라미터 → localStorage.
 //   React mount 전 동기 처리로 ProtectedRoute 첫 render 통과 보장.
 //   try-catch 로 감싸서 처리 실패해도 React 마운트는 진행 (흰화면 방지).
@@ -89,11 +96,11 @@ if (import.meta.env.PROD) {
     const s = document.createElement('script')
     s.async = true
     s.src = 'https://www.googletagmanager.com/gtag/js?id=G-B1ST2L37CM'
-    s.onload = () => { try { (window as any).gtag?.('config', 'G-B1ST2L37CM') } catch { /* */ } }
+    s.onload = () => { try { window.gtag?.('config', 'G-B1ST2L37CM') } catch { /* */ } }
     document.head.appendChild(s)
   }
   if ('requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(loadGTM, { timeout: 4000 })
+    window.requestIdleCallback!(loadGTM, { timeout: 4000 })
   } else {
     setTimeout(loadGTM, 2500)
   }

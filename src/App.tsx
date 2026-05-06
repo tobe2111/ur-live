@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
+import { QueryProvider } from './lib/react-query'
+import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
+import ToastContainer from './components/ToastContainer'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
@@ -20,28 +23,14 @@ import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
-
-// Redirect component for old product URL
-function AgencyAuthGuard({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem('agency_token')
-  if (!token) return <Navigate to="/agency/login" replace />
-  return <>{children}</>
-}
-
-function ProductRedirect() {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/products/${id}`} replace />;
-}
-import { QueryProvider } from './lib/react-query'
-import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
-import ToastContainer from './components/ToastContainer'
+// TD-006: route group files
 import { SellerRoutes } from './routes/seller.routes'
 import { AdminRoutes } from './routes/admin.routes'
 import { AgencyRoutes } from './routes/agency.routes'
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
-// ✅ 모든 페이지를 lazy loading (초기 번들 크기 최소화)
+// ✅ Public / User 페이지들 lazy loading (초기 번들 크기 최소화)
 const MainHomePage = lazy(() => import('./pages/MainHomePage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const ShortsPage = lazy(() => import('./pages/ShortsPage'))
@@ -68,18 +57,11 @@ const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const MyDigitalLibraryPage = lazy(() => import('./pages/MyDigitalLibraryPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
-const SellerGroupBuyPage = lazy(() => import('./pages/SellerGroupBuyPage'))
-const SellerBundlesPage = lazy(() => import('./pages/SellerBundlesPage'))
-const SellerGuidePage = lazy(() => import('./pages/SellerGuidePage'))
-const SellerAdSlotsPage = lazy(() => import('./pages/SellerAdSlotsPage'))
-const AgencyGuidePage = lazy(() => import('./pages/AgencyGuidePage'))
-const SellerMealVoucherNewPage = lazy(() => import('./pages/SellerMealVoucherNewPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
-
 const GiftClaimPage = lazy(() => import('./pages/GiftClaimPage'))
 
 // User 페이지들
@@ -95,7 +77,6 @@ const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'))
 const AccountDeleteWarningPage = lazy(() => import('./pages/AccountDeleteWarningPage'))
 const AccountDeletedPage = lazy(() => import('./pages/AccountDeletedPage'))
-
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const BlogListPage = lazy(() => import('./pages/BlogListPage'))
@@ -118,6 +99,12 @@ const FAQPage = lazy(() => import('./pages/FAQPage'))
 
 // 🔧 Debug 페이지
 const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
+
+// Redirect component for old product URL
+function ProductRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/products/${id}`} replace />;
+}
 
 // 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
 // 🛡️ 2026-04-29: PageLoader — 브랜드 spinner + sr-only "로딩 중" announcement (a11y)
@@ -297,6 +284,7 @@ function AppContent() {
       dynamic.setAttribute('content', isLight ? '#FFFFFF' : '#020202')
     } catch { /* SSR / 브라우저 미지원 */ }
   }, [location.pathname])
+
   const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
@@ -341,10 +329,8 @@ function AppContent() {
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}
             <Route path="/product/:id" element={<ProductRedirect />} />
-            <Route path="/s/:sellerId" element={<SellerPublicPage />} />
-            <Route path="/profile/:sellerId" element={<SellerPublicPage />} />
             <Route path="/search" element={<SearchPage />} />
-            
+
             {/* Public Auth 페이지들 */}
             <Route path="/login" element={
               <PublicRoute>
@@ -358,424 +344,18 @@ function AppContent() {
             } />
             <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
             <Route path="/auth/kakao/sync/callback" element={<KakaoCallbackPage />} />
-            
-            {/* Seller 로그인 페이지 (Public) */}
-            <Route path="/seller/login" element={
-              <PublicRoute forSeller>
-                <SellerLoginPage />
-              </PublicRoute>
-            } />
-            <Route path="/seller/register" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
-            <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
-            <Route path="/seller/register/business" element={<ErrorBoundary><SellerRegisterBusinessPage /></ErrorBoundary>} />
-            <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
-            <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />
-            <Route path="/seller/forgot-password" element={<ErrorBoundary><SellerForgotPasswordPage /></ErrorBoundary>} />
-            <Route path="/seller/reset-password" element={<ErrorBoundary><SellerResetPasswordPage /></ErrorBoundary>} />
-            
-            {/* Seller Protected 페이지들 */}
-            <Route path="/seller" element={
-              <ProtectedRoute requireSeller>
-                <SellerPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
-            <Route path="/seller/business-info" element={
-              <ProtectedRoute requireSeller>
-                <SellerBusinessInfoPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/castings" element={
-              <ProtectedRoute requireSeller>
-                <SellerCastingsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/promote-boosts" element={
-              <ProtectedRoute requireSeller>
-                <SellerPromoteBoostsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/orders" element={
-              <ProtectedRoute requireSeller>
-                <SellerOrdersPage />
-              </ProtectedRoute>
-            } />
-            {/* 🛡️ 2026-04-28: MD 위탁 판매 (셀러간 협업) */}
-            <Route path="/seller/consignment" element={
-              <ProtectedRoute requireSeller>
-                <SellerConsignmentPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/products" element={
-              <ProtectedRoute requireSeller>
-                <SellerProductsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/inventory" element={
-              <ProtectedRoute requireSeller>
-                <SellerInventoryPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/analytics" element={
-              <ProtectedRoute requireSeller>
-                <SellerAnalyticsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/reviews" element={
-              <ProtectedRoute requireSeller>
-                <SellerReviewsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/coupons" element={
-              <ProtectedRoute requireSeller>
-                <SellerCouponsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/products/new" element={
-              <ProtectedRoute requireSeller>
-                <SellerProductNewPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/products/:id/edit" element={
-              <ProtectedRoute requireSeller>
-                <SellerProductEditPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/live" element={<Navigate to="/seller/live-broadcast" replace />} />
-            <Route path="/seller/live-control" element={<Navigate to="/seller/live-broadcast" replace />} />
-            <Route path="/seller/streams/new" element={
-              <ProtectedRoute requireSeller>
-                <SellerStreamNewPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/streams/:id" element={
-              <ProtectedRoute requireSeller>
-                <SellerStreamEditPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/profile" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerProfileEditPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/settlements" element={
-              <ProtectedRoute requireSeller>
-                <SellerSettlementsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/youtube-growth" element={
-              <ProtectedRoute requireSeller>
-                <SellerYoutubeGrowthPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/youtube-growth/success" element={
-              <ProtectedRoute requireSeller>
-                <SellerYoutubeGrowthSuccessPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/alimtalk" element={
-              <ProtectedRoute requireSeller>
-                <SellerAlimtalkPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/donations" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerDonationsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/transfers" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerTransfersPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/shorts" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerShortsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/group-buy" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerGroupBuyPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/bundles" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerBundlesPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/guide" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerGuidePage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/ad-slots" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerAdSlotsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/meal-voucher/new" element={
-              <ProtectedRoute requireSeller>
-                <ErrorBoundary><SellerMealVoucherNewPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-<Route path="/seller/live-broadcast" element={
-              <ProtectedRoute requireSeller>
-                <SellerLiveBroadcastPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/live-broadcast/:streamId" element={
-              <ProtectedRoute requireSeller>
-                <SellerLiveBroadcastPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/live-analytics" element={
-              <ProtectedRoute requireSeller>
-                <SellerLiveAnalyticsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/live-analytics/:streamId" element={
-              <ProtectedRoute requireSeller>
-                <SellerLiveAnalyticsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/supply" element={
-              <ProtectedRoute requireSeller>
-                <SellerSupplyPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/youtube/callback" element={
-              <ProtectedRoute requireSeller>
-                <YouTubeCallbackPage />
-              </ProtectedRoute>
-            } />
-            
-            {/* Admin 로그인 페이지 (Public) */}
-            <Route path="/admin/login" element={
-              <PublicRoute forAdmin>
-                <AdminLoginPage />
-              </PublicRoute>
-            } />
-            
-            {/* Admin Protected 페이지들 */}
-            <Route path="/admin" element={
-              <ProtectedRoute requireAdmin>
-                <AdminPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/settlement" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminSettlementPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/banners" element={
-              <ProtectedRoute requireAdmin>
-                <AdminBannersPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/orders" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminOrdersPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/products" element={
-              <ProtectedRoute requireAdmin>
-                <AdminProductsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/alimtalk" element={
-              <ProtectedRoute requireAdmin>
-                <AdminAlimtalkPricingPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/kv-monitoring" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><KVMonitoringPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/sample-requests" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminSampleRequestsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/operations-guide" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminOperationsGuidePage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/cafe24" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminCafe24Page /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/cafe24/callback" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminCafe24Page /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/blog" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminBlogPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            {/* 🛡️ 2026-04-28: 알림 채널 설정 */}
-            <Route path="/admin/notification-settings" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminNotificationSettingsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/deals" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminDealMonitorPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/reviews" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminReviewsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/replay" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminReplayPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/seller-approval" element={
-              <ProtectedRoute requireAdmin><AdminSellerApprovalPage /></ProtectedRoute>
-            } />
-            <Route path="/admin/agency-creator-approval" element={
-              <ProtectedRoute requireAdmin><AdminAgencyCreatorApprovalPage /></ProtectedRoute>
-            } />
-            <Route path="/admin/settlements-bulk" element={
-              <ProtectedRoute requireAdmin><AdminSettlementsBulkPage /></ProtectedRoute>
-            } />
-            <Route path="/admin/notices" element={
-              <ProtectedRoute requireAdmin><AdminNoticesPage /></ProtectedRoute>
-            } />
-            <Route path="/admin/platform-settings" element={
-              <ProtectedRoute requireAdmin><AdminPlatformSettingsPage /></ProtectedRoute>
-            } />
-            <Route path="/admin/kakao-test" element={
-              <ProtectedRoute requireAdmin>
-                <AdminKakaoTestPage />
-              </ProtectedRoute>
-            } />
             <Route path="/auth/kakao/consent/callback" element={<KakaoConsentCallbackPage />} />
             <Route path="/auth/kakao/link/callback" element={<KakaoLinkCallbackPage />} />
-            <Route path="/admin/kakao-test/callback" element={<ProtectedRoute requireAdmin><AdminKakaoTestCallbackPage /></ProtectedRoute>} />
-            <Route path="/admin/tiktok-discovery" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminTikTokDiscoveryPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/restaurant-demand" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminRestaurantDemandPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/castings" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminCastingsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/insights" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminOpsInsightsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/coupons" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminCouponsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/agencies" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminAgencyPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
 
-            <Route path="/admin/abuse" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminAbusePage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/ad-slots" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminAdSlotsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/audit-log" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminAuditLogPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/revenue" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminRevenueAnalyticsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/accounts" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminAccountsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/live-monitor" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminLiveMonitorPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/health" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminHealthPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/users" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminUsersPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/review-moderation" element={
-              <ProtectedRoute requireAdmin>
-                <ErrorBoundary><AdminReviewModerationPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
+            {/* Seller 페이지들 (공개 + 보호) — src/routes/seller.routes.tsx */}
+            <SellerRoutes />
 
-            {/* Agency 대시보드 — login/register는 공개, 나머지는 인증 필요 */}
-            <Route path="/agency/login" element={<AgencyLoginPage />} />
-            <Route path="/agency/register" element={<AgencyRegisterPage />} />
-            <Route path="/agency/register/business" element={<AgencyRegisterBusinessPage />} />
-            <Route path="/agency/waiting" element={<AgencyWaitingPage />} />
-            <Route path="/agency/forgot-password" element={<AgencyForgotPasswordPage />} />
-            <Route path="/agency/reset-password" element={<AgencyResetPasswordPage />} />
-            <Route path="/agency" element={<AgencyAuthGuard><AgencyPage /></AgencyAuthGuard>} />
-            <Route path="/agency/sellers" element={<AgencyAuthGuard><AgencySellersPage /></AgencyAuthGuard>} />
-            <Route path="/agency/orders" element={<AgencyAuthGuard><AgencyOrdersPage /></AgencyAuthGuard>} />
-            <Route path="/agency/streams" element={<AgencyAuthGuard><AgencyStreamsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/stats" element={<AgencyAuthGuard><AgencyStatsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/guide" element={<AgencyAuthGuard><AgencyGuidePage /></AgencyAuthGuard>} />
-            <Route path="/agency/settlements" element={<AgencyAuthGuard><AgencySettlementsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/ranking" element={<AgencyAuthGuard><AgencyRankingPage /></AgencyAuthGuard>} />
-            <Route path="/agency/schedule" element={<AgencyAuthGuard><AgencySchedulePage /></AgencyAuthGuard>} />
-            <Route path="/agency/returns" element={<AgencyAuthGuard><AgencyReturnsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/sellers/:sellerId/products" element={<AgencyAuthGuard><AgencyProductsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/notices" element={<AgencyAuthGuard><AgencyNoticesPage /></AgencyAuthGuard>} />
-            <Route path="/agency/compare" element={<AgencyAuthGuard><AgencyComparePage /></AgencyAuthGuard>} />
-            <Route path="/agency/contracts" element={<AgencyAuthGuard><AgencyContractsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/targets" element={<AgencyAuthGuard><AgencyTargetsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/campaigns" element={<AgencyAuthGuard><AgencyCampaignsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/incentives" element={<AgencyAuthGuard><AgencyIncentivesPage /></AgencyAuthGuard>} />
-            <Route path="/agency/messages" element={<AgencyAuthGuard><AgencyMessagesPage /></AgencyAuthGuard>} />
-            <Route path="/agency/coupons" element={<AgencyAuthGuard><AgencyCouponsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/members" element={<AgencyAuthGuard><AgencyMembersPage /></AgencyAuthGuard>} />
-            <Route path="/agency/calendar" element={<AgencyAuthGuard><AgencyCalendarPage /></AgencyAuthGuard>} />
-            <Route path="/agency/invites" element={<AgencyAuthGuard><AgencyInvitesPage /></AgencyAuthGuard>} />
-            <Route path="/agency/pk" element={<AgencyAuthGuard><AgencyPKBattlesPage /></AgencyAuthGuard>} />
-            <Route path="/agency/transfers" element={<AgencyAuthGuard><AgencyTransfersPage /></AgencyAuthGuard>} />
-            <Route path="/agency/match-suggestions" element={<AgencyAuthGuard><AgencyMatchSuggestionsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/events" element={<AgencyAuthGuard><AgencySelfEventsPage /></AgencyAuthGuard>} />
-            <Route path="/agency/promote-boosts" element={<AgencyAuthGuard><AgencyPromoteBoostsPage /></AgencyAuthGuard>} />
-            <Route path="/a/:slug" element={<AgencyPublicPage />} />
-            <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
-            <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
-            
+            {/* Admin 페이지들 (공개 + 보호) — src/routes/admin.routes.tsx */}
+            <AdminRoutes />
+
+            {/* Agency 페이지들 (공개 + 보호) — src/routes/agency.routes.tsx */}
+            <AgencyRoutes />
+
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<ErrorBoundary><CartPage /></ErrorBoundary>} />
             <Route path="/checkout" element={
@@ -875,7 +455,7 @@ function AppContent() {
                 <NotificationsPage />
               </ProtectedRoute>
             } />
-            
+
             {/* Payment 페이지들 */}
             {/* /payment/demo: dev 전용 — 프로덕션 빌드 시 tree-shake */}
             {import.meta.env.DEV && <Route path="/payment/demo" element={<ErrorBoundary><PaymentDemoPage /></ErrorBoundary>} />}
@@ -891,7 +471,7 @@ function AppContent() {
             <Route path="/points/charge/success" element={<ErrorBoundary><PointsChargeSuccessPage /></ErrorBoundary>} />
             <Route path="/points/charge/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
             <Route path="/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
-            
+
             {/* 친구 초대 공동구매 */}
             <Route path="/referral/:code" element={<ReferralPage />} />
 
@@ -900,11 +480,11 @@ function AppContent() {
                 redirect 만 되어 사용 안 되던 것을 실제 렌더링하도록 수정. 사용자는 지도 또는 /browse 카테고리 둘 다 사용 가능. */}
             <Route path="/restaurant-map" element={<RestaurantMapPage />} />
 
-            {/* Terms Pages */}
             {/* 블로그 */}
             <Route path="/blog" element={<BlogListPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />
 
+            {/* Terms Pages */}
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/gdpr" element={<GDPRPage />} />
@@ -923,7 +503,7 @@ function AppContent() {
 
             {/* Debug 페이지 (개발 환경만) — 프로덕션에선 라우트 등록 안 됨 */}
             {import.meta.env.DEV && <Route path="/kakao-debug" element={<KakaoDebugPage />} />}
-            
+
             {/* Error 페이지들 */}
             <Route path="/500" element={<ServerErrorPage />} />
             <Route path="*" element={<NotFoundPage />} />
