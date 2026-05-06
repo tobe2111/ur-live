@@ -255,12 +255,12 @@ export default function BrowsePage() {
         <div className="ur-content-wide flex px-4 lg:px-8 gap-1.5 pb-2.5">
           {[
             { key: 'all', label: t('browse.categoryAll') },
+            { key: 'meal_voucher', label: t('browse.categoryVoucher') },
+            { key: 'food', label: t('browse.categoryFood') },
             { key: 'fashion', label: t('browse.categoryFashion') },
             { key: 'beauty', label: t('browse.categoryBeauty') },
-            { key: 'food', label: t('browse.categoryFood') },
             { key: 'living', label: t('browse.categoryLiving') },
             { key: 'digital', label: t('browse.categoryDigital') },
-            { key: 'meal_voucher', label: t('browse.categoryVoucher') },
           ].map(c => (
             <button key={c.key}
               onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
