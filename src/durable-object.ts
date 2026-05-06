@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
-import type { WSMessage, ProductChangeMessage, ViewerCountMessage, StreamStatusMessage } from './types';
+import type { WSMessage, ProductChangeMessage, ViewerCountMessage, StreamStatusMessage, Product, ProductOption } from './types';
+
 
 // 🛡️ 2026-04-22: DO 당 최대 동시 WebSocket 수
 const MAX_SESSIONS_PER_DO = 10_000;
@@ -19,10 +20,10 @@ export class LiveStreamDurableObject extends DurableObject {
   private sessions: Set<WebSocket>;
   private chatSessions: Map<WebSocket, ChatSession>;
   private viewerCount: number;
-  private currentProduct: any;
+  private currentProduct: { product: Product; options: ProductOption[] } | null;
   private state: DurableObjectState;
 
-  constructor(state: DurableObjectState, env: any) {
+  constructor(state: DurableObjectState, env: Cloudflare.Env) {
     super(state, env);
     this.state = state;
     this.sessions = new Set();
@@ -124,7 +125,7 @@ export class LiveStreamDurableObject extends DurableObject {
     });
   }
 
-  handleMessage(webSocket: WebSocket, message: any) {
+  handleMessage(webSocket: WebSocket, message: Record<string, unknown>) {
     // 🛡️ 2026-04-23 배치 164: 채팅 메시지 처리 (WebSocket 전환 기초)
     //   클라이언트가 { type: 'chat_message', data: { text } } 전송 시 검증 후 브로드캐스트.
     //   - 익명 차단 (user_id 없으면 거부)
@@ -140,7 +141,8 @@ export class LiveStreamDurableObject extends DurableObject {
         return;
       }
 
-      const text = typeof message.data?.text === 'string' ? message.data.text : '';
+      const msgData = message.data as Record<string, unknown> | null | undefined;
+      const text = typeof msgData?.text === 'string' ? msgData.text : '';
       const clean = text.replace(/<[^>]*>/g, '').trim();
       if (!clean || clean.length === 0) return;
       if (clean.length > CHAT_MAX_LEN) {
@@ -162,7 +164,7 @@ export class LiveStreamDurableObject extends DurableObject {
         data: {
           user_id: sess.userId,
           text: clean,
-          display_name: typeof message.data?.display_name === 'string' ? String(message.data.display_name).slice(0, 30) : null,
+          display_name: typeof msgData?.display_name === 'string' ? String(msgData.display_name).slice(0, 30) : null,
         },
         timestamp: now,
       });
@@ -187,7 +189,7 @@ export class LiveStreamDurableObject extends DurableObject {
 
       // 상품 변경 메시지인 경우 현재 상품 저장 + DO storage persist
       if (message.type === 'product_change') {
-        this.currentProduct = message.data;
+        this.currentProduct = message.data as { product: Product; options: ProductOption[] };
         // 🛡️ 2026-04-22: storage 영속화 (DO 재시작 후 복원용)
         try { await this.state.storage.put('currentProduct', message.data); } catch {}
       }
