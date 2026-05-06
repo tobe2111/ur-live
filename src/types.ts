@@ -118,7 +118,7 @@ export type WSMessageType =
 
 export interface WSMessage {
   type: WSMessageType;
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 
