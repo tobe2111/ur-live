@@ -42,16 +42,35 @@ export default function LiveListPage() {
 
   useEffect(() => {
     document.title = t('liveList.docTitle')
-    Promise.allSettled([
-      api.get('/api/streams?status=live'),
-      api.get('/api/streams?status=scheduled'),
-      api.get('/api/streams?status=ended&limit=20'),
-    ]).then(([liveRes, scheduledRes, endedRes]) => {
-      if (liveRes.status === 'fulfilled' && liveRes.value.data.success) setLiveStreams(liveRes.value.data.data || [])
-      if (scheduledRes.status === 'fulfilled' && scheduledRes.value.data.success) setScheduledStreams(scheduledRes.value.data.data || [])
-      if (endedRes.status === 'fulfilled' && endedRes.value.data.success) setEndedStreams(endedRes.value.data.data || [])
-    }).finally(() => setLoading(false))
-  }, [])
+    let cancelled = false
+
+    const fetchAll = (initial: boolean) => {
+      Promise.allSettled([
+        api.get('/api/streams?status=live'),
+        api.get('/api/streams?status=scheduled'),
+        api.get('/api/streams?status=ended&limit=20'),
+      ]).then(([liveRes, scheduledRes, endedRes]) => {
+        if (cancelled) return
+        if (liveRes.status === 'fulfilled' && liveRes.value.data.success) setLiveStreams(liveRes.value.data.data || [])
+        if (scheduledRes.status === 'fulfilled' && scheduledRes.value.data.success) setScheduledStreams(scheduledRes.value.data.data || [])
+        if (endedRes.status === 'fulfilled' && endedRes.value.data.success) setEndedStreams(endedRes.value.data.data || [])
+      }).finally(() => { if (!cancelled && initial) setLoading(false) })
+    }
+
+    fetchAll(true)
+    // 🛡️ 2026-05-06: 30초마다 자동 새로고침 (탭 활성 + visible 시).
+    //   라이브 시작/종료/시청자수 변동 반영 — 사용자가 새로고침 안 해도 최신 상태 유지.
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchAll(false)
+    }, 30_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchAll(false) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [t])
 
   const getThumb = (s: LiveStream) =>
     s.youtube_video_id ? `https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg`
@@ -166,15 +185,13 @@ export default function LiveListPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <SkeletonGrid />
       ) : filteredLive.length + filteredScheduled.length + filteredEnded.length === 0 ? (
         <EmptyState onExplore={() => navigate('/')} />
       ) : (
         <div className="pt-4">
           {/* 지금 방송 중 — 가로 스크롤 풀블리드 4:5 카드 */}
-          {(tab === 'all' || tab === 'live') && filteredLive.length > 0 && (
+          {(tab === 'all' || tab === 'live') && (
             <section className="mb-6">
               <div className="flex items-center gap-2 px-4 mb-2">
                 <div className="inline-flex items-center gap-1 rounded-full" style={{ padding: '3px 7px 3px 5px', background: 'rgba(239,68,68,0.92)' }}>
@@ -182,7 +199,15 @@ export default function LiveListPage() {
                   <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#fff' }}>LIVE</span>
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 700 }} className="text-gray-900 dark:text-white">{t('liveList.nowLiveLabel')}</span>
+                <span style={{ fontSize: 11 }} className="text-gray-500 dark:text-gray-500">{filteredLive.length}</span>
               </div>
+              {filteredLive.length === 0 ? (
+                <InlineEmpty
+                  icon="live"
+                  title={t('liveList.noLiveTitle', { defaultValue: '지금 방송 중인 라이브가 없어요' })}
+                  hint={t('liveList.noLiveHint', { defaultValue: '예정된 방송 알림을 받아보세요' })}
+                />
+              ) : (
               <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-2 lg:overflow-visible lg:grid lg:grid-cols-3 xl:grid-cols-4 lg:px-4">
                 {filteredLive.map(s => (
                   <button
@@ -224,16 +249,25 @@ export default function LiveListPage() {
                   </button>
                 ))}
               </div>
+              )}
             </section>
           )}
 
           {/* 방송 예정 — 세로 리스트 + 알림 pill */}
-          {(tab === 'all' || tab === 'scheduled') && filteredScheduled.length > 0 && (
+          {(tab === 'all' || tab === 'scheduled') && (
             <section className="px-4 mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="w-3.5 h-3.5 text-blue-400" strokeWidth={2.5} />
                 <span style={{ fontSize: 13, fontWeight: 700 }} className="text-gray-900 dark:text-white">{t('liveList.scheduledLabel')}</span>
+                <span style={{ fontSize: 11 }} className="text-gray-500 dark:text-gray-500">{filteredScheduled.length}</span>
               </div>
+              {filteredScheduled.length === 0 ? (
+                <InlineEmpty
+                  icon="scheduled"
+                  title={t('liveList.noScheduledTitle', { defaultValue: '예정된 방송이 없어요' })}
+                  hint={t('liveList.noScheduledHint', { defaultValue: '셀러가 예약하면 여기에 표시됩니다' })}
+                />
+              ) : (
               <div className="space-y-2">
                 {filteredScheduled.map(s => {
                   const d = s.scheduled_at ? new Date(s.scheduled_at) : null
@@ -278,16 +312,25 @@ export default function LiveListPage() {
                   )
                 })}
               </div>
+              )}
             </section>
           )}
 
           {/* 다시보기 — 2칸 그리드 + 중앙 play glass + 우상단 뷰 카운트 */}
-          {(tab === 'all' || tab === 'replay') && filteredEnded.length > 0 && (
+          {(tab === 'all' || tab === 'replay') && (
             <section className="px-4 pb-6">
               <div className="flex items-center gap-2 mb-3">
                 <Play className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" strokeWidth={2.5} fill="currentColor" />
                 <span style={{ fontSize: 13, fontWeight: 700 }} className="text-gray-900 dark:text-white">{t('liveList.replayLabel')}</span>
+                <span style={{ fontSize: 11 }} className="text-gray-500 dark:text-gray-500">{filteredEnded.length}</span>
               </div>
+              {filteredEnded.length === 0 ? (
+                <InlineEmpty
+                  icon="replay"
+                  title={t('liveList.noReplayTitle', { defaultValue: '다시 볼 방송이 없어요' })}
+                  hint={t('liveList.noReplayHint', { defaultValue: '종료된 방송이 누적되면 여기 표시됩니다' })}
+                />
+              ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
                 {filteredEnded.map(s => (
                   <button
@@ -330,10 +373,46 @@ export default function LiveListPage() {
                   </button>
                 ))}
               </div>
+              )}
             </section>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Inline Empty (per-section) ───────────────────────────────
+function InlineEmpty({ icon, title, hint }: { icon: 'live' | 'scheduled' | 'replay'; title: string; hint: string }) {
+  const Icon = icon === 'live' ? Radio : icon === 'scheduled' ? Clock : Play
+  return (
+    <div className="mx-4 px-5 py-7 rounded-2xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.06] flex items-center gap-3.5">
+      <div className="w-10 h-10 rounded-full bg-white dark:bg-white/[0.06] flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4 text-gray-400 dark:text-gray-500" strokeWidth={2} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[13px] font-bold text-gray-900 dark:text-white">{title}</p>
+        <p className="text-[11px] text-gray-500 dark:text-gray-500 mt-0.5">{hint}</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Skeleton Grid ─────────────────────────────────────────────
+function SkeletonGrid() {
+  return (
+    <div className="pt-4">
+      <div className="flex items-center gap-2 px-4 mb-2">
+        <div className="h-4 w-12 rounded-full bg-gray-200 dark:bg-white/[0.06] animate-pulse" />
+        <div className="h-3 w-16 rounded bg-gray-200 dark:bg-white/[0.06] animate-pulse" />
+      </div>
+      <div className="flex gap-3 px-4 overflow-x-hidden pb-2 lg:grid lg:grid-cols-3 xl:grid-cols-4">
+        {[0, 1, 2].map(i => (
+          <div key={i} className="shrink-0 w-[280px] lg:w-full">
+            <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.03] animate-pulse" style={{ aspectRatio: '4/5' }} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
