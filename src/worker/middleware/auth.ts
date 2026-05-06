@@ -89,8 +89,8 @@ async function verifyJWT(
 
     const decoded = jwt.decode(token);
     return decoded.payload as unknown as JwtPayload;
-  } catch (error) {
-    console.error('[Auth] JWT verification failed:', error);
+  } catch {
+    // Don't log token content — attacker reconnaissance risk
     return null;
   }
 }
@@ -188,13 +188,11 @@ async function verifyFirebaseToken(
     const header = JSON.parse(atob(headerB64.replace(/-/g, '+').replace(/_/g, '/')));
 
     if (header.alg !== 'RS256') {
-      console.error('[Firebase] Firebase token must use RS256, got:', header.alg);
       return null;
     }
 
     const kid: string = header.kid;
     if (!kid) {
-      console.error('[Firebase] Missing kid in header');
       return null;
     }
 
@@ -202,7 +200,6 @@ async function verifyFirebaseToken(
     const jwkKeys = await getFirebaseJwkKeys();
     const jwk = jwkKeys.find((k) => (k as { kid?: string }).kid === kid);
     if (!jwk) {
-      console.error('[Firebase] JWK not found for kid');
       return null;
     }
 
@@ -225,7 +222,6 @@ async function verifyFirebaseToken(
     );
 
     if (!isValid) {
-      console.error('[Firebase] Signature verification failed');
       return null;
     }
 
@@ -235,13 +231,11 @@ async function verifyFirebaseToken(
 
     // exp 검증
     if (!payload.exp || payload.exp < now) {
-      console.error('[Firebase] Token expired');
       return null;
     }
 
     // iat 검증 (미래 발급 방지, 10분 허용)
     if (!payload.iat || payload.iat > now + 600) {
-      console.error('[Firebase] Token iat is in the future');
       return null;
     }
 
@@ -250,7 +244,6 @@ async function verifyFirebaseToken(
     const isAdminSDK = payload.iss && payload.iss.includes('firebase-adminsdk');
 
     if (!isAdminSDK && payload.iss !== expectedIss) {
-      console.error('[Firebase] Token iss mismatch');
       return null;
     }
 
@@ -259,13 +252,11 @@ async function verifyFirebaseToken(
     const isAdminSDKAud = payload.aud && payload.aud.includes('identitytoolkit.googleapis.com');
 
     if (!isAdminSDKAud && payload.aud !== expectedAud) {
-      console.error('[Firebase] Token aud mismatch');
       return null;
     }
 
     // sub 검증 (UID)
     if (!payload.sub) {
-      console.error('[Firebase] Token missing sub (user ID)');
       return null;
     }
 
