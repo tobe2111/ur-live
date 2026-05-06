@@ -25,13 +25,13 @@ const MENU_ITEMS: NavItem[] = [
 ]
 
 const CATEGORY_ITEMS = [
-  { labelKey: 'category.chickenPizza',  labelDefault: '치킨·피자',     icon: Utensils,        slug: 'food' },
-  { labelKey: 'category.koreanFood',    labelDefault: '한식·분식',     icon: UtensilsCrossed, slug: 'food' },
-  { labelKey: 'category.cafe',          labelDefault: '카페·디저트',   icon: Coffee,          slug: 'food' },
-  { labelKey: 'category.japanese',      labelDefault: '일식·돈까스',   icon: Fish,            slug: 'food' },
-  { labelKey: 'category.asian',         labelDefault: '아시안·양식',   icon: Globe,           slug: 'food' },
-  { labelKey: 'category.beauty',        labelDefault: '뷰티·헬스',     icon: Sparkles,        slug: 'beauty' },
-  { labelKey: 'category.living',        labelDefault: '리빙·인테리어', icon: Sofa,            slug: 'living' },
+  { labelKey: 'category.chickenPizza',  labelDefault: '치킨·피자',     icon: Utensils,        path: '/browse?category=food&sub=chicken' },
+  { labelKey: 'category.koreanFood',    labelDefault: '한식·분식',     icon: UtensilsCrossed, path: '/browse?category=food&sub=korean' },
+  { labelKey: 'category.cafe',          labelDefault: '카페·디저트',   icon: Coffee,          path: '/browse?category=food&sub=cafe' },
+  { labelKey: 'category.japanese',      labelDefault: '일식·돈까스',   icon: Fish,            path: '/browse?category=food&sub=japanese' },
+  { labelKey: 'category.asian',         labelDefault: '아시안·양식',   icon: Globe,           path: '/browse?category=food&sub=asian' },
+  { labelKey: 'category.beauty',        labelDefault: '뷰티·헬스',     icon: Sparkles,        path: '/browse?category=beauty' },
+  { labelKey: 'category.living',        labelDefault: '리빙·인테리어', icon: Sofa,            path: '/browse?category=living' },
 ]
 
 const MY_ITEMS: NavItem[] = [
@@ -100,13 +100,14 @@ export default function DesktopLiveSidebar() {
           </p>
           {CATEGORY_ITEMS.map(cat => {
             const Icon = cat.icon
-            const catPath = `/browse?category=${cat.slug}`
-            const isActive = pathname === '/browse' && search.includes(`category=${cat.slug}`)
+            // active: full path+query must match exactly (prevents multiple food sub-items being active at once)
+            const catUrl = new URL(cat.path, 'http://x')
+            const isActive = pathname === '/browse' && search === catUrl.search
             return (
               <button
                 key={cat.labelDefault}
                 type="button"
-                onClick={() => navigate(catPath)}
+                onClick={() => navigate(cat.path)}
                 className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left transition-colors text-[13px] font-medium ${
                   isActive
                     ? 'bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400'
