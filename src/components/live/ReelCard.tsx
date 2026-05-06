@@ -224,7 +224,7 @@ function ReelCardImpl({
     addLocalMessage,
     streamData: wsStreamData,
     lastDonation,
-  } = useLiveStreamWebSocket(stream.id, true, stream.status === 'ended')
+  } = useLiveStreamWebSocket(stream.id, isActive, stream.status === 'ended')
 
   // ── PC 패널 공유 스토어 사이드이펙트 ──────────────────────────────────────
   // ReelCard 핵심 로직 무변경. 스토어에 쓰기만 담당.
@@ -433,7 +433,7 @@ function ReelCardImpl({
       }
     }
 
-    // @ts-ignore - YouTube API는 index.html에서 미리 로드됨
+    // @ts-ignore
     if (window.YT && window.YT.Player) {
       initializePlayer()
     } else {
@@ -442,6 +442,16 @@ function ReelCardImpl({
       window.youtubeCallbacks.push(() => {
         if (isMounted) initializePlayer()
       })
+      // 🛡️ 2026-05-06: YouTube iframe_api 스크립트는 어디서도 lazy load 되지 않아
+      //   playerReady 가 영원히 false → "라이브 입장 중..." 무한 로딩 사고. 여기서 1회 로드.
+      const SCRIPT_ID = 'youtube-iframe-api'
+      if (!document.getElementById(SCRIPT_ID)) {
+        const tag = document.createElement('script')
+        tag.id = SCRIPT_ID
+        tag.src = 'https://www.youtube.com/iframe_api'
+        tag.async = true
+        document.head.appendChild(tag)
+      }
     }
 
     return () => {
