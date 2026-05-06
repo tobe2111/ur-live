@@ -4,6 +4,7 @@
  * - 한국: 카카오 공유 / 글로벌: 네이티브 공유
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import KakaoShareButton from './KakaoShareButton'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
@@ -20,6 +21,7 @@ interface SharePromptProps {
 }
 
 export default function SharePrompt({ title, message, shareTitle, shareDescription, shareLink, shareButtonText, reward, onClose }: SharePromptProps) {
+  const { t } = useTranslation()
   useEscapeKey(onClose)
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose} role="presentation">
@@ -29,7 +31,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{message}</p>
           </div>
-          <button onClick={onClose} aria-label="공유 프롬프트 닫기" className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+          <button onClick={onClose} aria-label={t('sharePrompt.closeAria', { defaultValue: '공유 프롬프트 닫기' })} className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -49,7 +51,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
 
 
         <button onClick={onClose} className="w-full mt-2 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium">
-          다음에 하기
+          {t('sharePrompt.later', { defaultValue: '다음에 하기' })}
         </button>
       </div>
     </div>

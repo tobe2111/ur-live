@@ -94,13 +94,13 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={`${productName} 선물 보내기`}
+        aria-label={t('gift.ariaLabel', { productName, defaultValue: '{{productName}} 선물 보내기' })}
       >
         {/* 헤더 */}
         <div className="sticky top-0 bg-white dark:bg-[#0A0A0A] px-5 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A] z-10">
           <div className="flex items-center gap-2">
             <Gift className="w-5 h-5 text-pink-500" />
-            <h2 className="font-bold text-gray-900 dark:text-white">선물하기</h2>
+            <h2 className="font-bold text-gray-900 dark:text-white">{t('gift.title', { defaultValue: '선물하기' })}</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full">
             <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
@@ -125,7 +125,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
 
           {/* 수신자 정보 */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5">받는 사람 휴대폰 *</label>
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5">{t('gift.recipientPhone', { defaultValue: '받는 사람 휴대폰 *' })}</label>
             <input
               value={recipientPhone}
               onChange={e => setRecipientPhone(e.target.value)}
@@ -134,11 +134,11 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               required
               className="w-full px-4 py-3 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
             />
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">카카오톡 알림으로 선물 링크가 발송됩니다</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{t('gift.recipientPhoneHint', { defaultValue: '카카오톡 알림으로 선물 링크가 발송됩니다' })}</p>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5">받는 사람 이름 (선택)</label>
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5">{t('gift.recipientName', { defaultValue: '받는 사람 이름 (선택)' })}</label>
             <input
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
@@ -150,7 +150,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
           {/* 메시지 */}
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-pink-500" /> 메시지 (선택)
+              <Sparkles className="w-3 h-3 text-pink-500" /> {t('gift.message', { defaultValue: '메시지 (선택)' })}
             </label>
             <textarea
               value={message}
@@ -169,8 +169,8 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
 
           {/* 안내 */}
           <div className="bg-pink-50 rounded-xl p-3 text-[11px] text-pink-700 leading-relaxed">
-            • 결제 후 받는 분께 카카오톡으로 선물 링크가 발송돼요<br/>
-            • 30일 내 받기 안 하면 자동 환불됩니다
+            • {t('gift.infoLine1', { defaultValue: '결제 후 받는 분께 카카오톡으로 선물 링크가 발송돼요' })}<br/>
+            • {t('gift.infoLine2', { defaultValue: '30일 내 받기 안 하면 자동 환불됩니다' })}
           </div>
 
           {/* CTA */}
@@ -180,7 +180,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
             className="w-full py-4 bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600 transition-colors disabled:opacity-50"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
-            {formatNumber(productPrice)}원 결제하고 선물하기
+            {t('gift.submitBtn', { amount: formatNumber(productPrice), defaultValue: '{{amount}}원 결제하고 선물하기' })}
           </button>
         </form>
       </div>
