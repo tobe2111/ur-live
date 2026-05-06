@@ -924,14 +924,14 @@ function ReelCardImpl({
       {/* 배경 레이어: YouTube 썸네일 → 그라데이션 폴백 (순서대로) */}
       {stream.youtube_video_id ? (
         <img
-          src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
+          src={`https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`}
           alt=""
           className="absolute inset-0 h-full w-full object-cover -z-10"
           loading="eager"
           decoding="async"
           fetchPriority="high"
           onError={(e) => {
-            // maxresdefault 실패 시 hqdefault로 폴백
+            // hqdefault 도 실패 시 (매우 드뭄) 숨김
             const img = e.currentTarget
             if (!img.src.includes('hqdefault')) {
               img.src = `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`

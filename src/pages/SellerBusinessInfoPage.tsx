@@ -110,10 +110,16 @@ export default function SellerBusinessInfoPage() {
   }
 
   function loadDaumPostcodeScript() {
+    // 🛡️ 2026-05-06: 페이지 재방문 시 중복 append 방지 (id 로 idempotent).
+    const SCRIPT_ID = 'daum-postcode-v2'
+    if (document.getElementById(SCRIPT_ID)) return
+    // 이미 로드된 경우도 확인 — window.daum.Postcode 존재하면 스킵
+    if ((window as { daum?: { Postcode?: unknown } }).daum?.Postcode) return
     const script = document.createElement('script')
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    script.id = SCRIPT_ID
+    script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
     script.async = true
-    document.body.appendChild(script)
+    document.head.appendChild(script)
   }
 
   async function loadBusinessInfo() {

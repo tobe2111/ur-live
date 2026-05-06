@@ -64,14 +64,11 @@ export function UpcomingLive({ streams }: UpcomingLiveProps) {
             {/* YouTube Thumbnail */}
             <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-2 bg-gray-100">
               <img
-                src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
+                src={`https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`}
                 alt={stream.title}
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                onError={(e) => {
-                  e.currentTarget.src = `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`
-                }}
               />
               
               {/* Live Badge or D-Day Badge */}
