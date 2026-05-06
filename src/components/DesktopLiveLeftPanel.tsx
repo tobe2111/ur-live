@@ -71,7 +71,7 @@ export default function DesktopLiveLeftPanel() {
           setScheduled((r.data.data?.scheduled ?? []).slice(0, 3))
         }
       })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[DesktopLiveLeftPanel] scheduled fetch:', e?.message || e) })
   }, [])
 
   if (!streamId) return null
