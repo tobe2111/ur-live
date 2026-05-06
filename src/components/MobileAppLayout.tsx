@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import DesktopLiveSidebar from './DesktopLiveSidebar'
+import DesktopLiveLeftPanel from './DesktopLiveLeftPanel'
 import DesktopLiveRightPanel from './DesktopLiveRightPanel'
 
 interface MobileAppLayoutProps {
@@ -40,7 +41,9 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
     <>
       {/* PC (xl+) 좌측 TikTok 식 사이드바 — 일반 페이지 + 라이브/쇼츠 모두 노출 (fixed 포지션). */}
       {showSidebar && <DesktopLiveSidebar />}
-      {/* PC (2xl+) 우측 안내 패널 — 라이브/쇼츠 페이지에서만 (fixed 포지션). */}
+      {/* PC (xl+) 좌측 통계 패널 — /live/:id 에서만 (fixed, 사이드바 바로 우측). */}
+      {mobileOnly && <DesktopLiveLeftPanel />}
+      {/* PC (xl+) 우측 상품/공지 패널 — 라이브/쇼츠 페이지에서 (fixed 포지션). */}
       {mobileOnly && <DesktopLiveRightPanel />}
       {/* 일반 페이지만 컨테이너에 사이드바 padding 적용. mobile-only 는 430px 액자 가운데 유지. */}
       <div
