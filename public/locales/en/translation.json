@@ -296,6 +296,34 @@
       "processing": "Processing...",
       "payWithDeals": "Pay with {{amount}} Deal",
       "loading": "Loading payment method..."
+    },
+    "demo": {
+      "sdkInitFailed": "SDK init failed: {{message}}",
+      "uiContainerNotFound": "Payment UI container not found.",
+      "agreementContainerNotFound": "Agreement UI container not found.",
+      "renderFailed": "UI render failed: {{message}}",
+      "loadingSystem": "Loading payment system...",
+      "paymentCancelled": "Payment was cancelled.",
+      "paymentError": "Payment error: {{message}}",
+      "testProduct": "Test product",
+      "testCustomerName": "Test",
+      "seoTitle": "Payment demo",
+      "seoDesc": "Toss Payments demo page",
+      "heading": "Toss Payments demo",
+      "errorLabel": "⚠️ Error:",
+      "infoHeading": "Payment info",
+      "productNameLabel": "Product:",
+      "amountLabel": "Amount:",
+      "wonSuffix": " KRW",
+      "applyCoupon": "Apply 5,000 KRW coupon",
+      "methodHeading": "Select payment method",
+      "pay": "Pay",
+      "preparing": "Preparing payment...",
+      "debugHeading": "Debug info",
+      "testCardHeading": "💳 Test card info",
+      "cardNumberLabel": "Card number:",
+      "expiryLabel": "Expiry:",
+      "cvcLabel": "CVC:"
     }
   },
   "cart": {
@@ -3779,6 +3807,19 @@
       "followLabel": "Follow",
       "visitYoutube": "Visit YouTube channel",
       "visitInstagram": "Visit Instagram"
+    },
+    "page": {
+      "docTitle": "{{title}} - Yourdeal Live",
+      "entering": "Entering live...",
+      "pleaseWait": "Please wait a moment",
+      "preparing": "Preparing live...",
+      "noLive": "No live broadcasts right now",
+      "noLiveSubtitle": "We'll notify you when a live broadcast starts",
+      "broadcastList": "View broadcast list",
+      "seoTitle": "{{title}} - Yourdeal",
+      "seoFallbackTitle": "Live",
+      "seoDescription": "Watch Yourdeal live broadcasts and shop in real time",
+      "srHeading": "Live broadcast"
     }
   },
   "paymentFail": {

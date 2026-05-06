@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import ReelCard from '@/components/live/ReelCard'
@@ -16,6 +17,7 @@ import type { Stream, ReelData } from './live-page/types'
 export default function LivePageV2() {
   const { streamId } = useParams<{ streamId: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [sp] = useSearchParams()
   useEffect(() => {
     const ref = sp.get('ref')
@@ -142,7 +144,7 @@ export default function LivePageV2() {
           const currentStreamData = streams.find(s => s.id === parseInt(streamId))
           if (currentStreamData) {
             setCurrentStream(currentStreamData)
-            document.title = `${currentStreamData.title} - 유어딜 라이브`
+            document.title = t('live.page.docTitle', { defaultValue: '{{title}} - 유어딜 라이브', title: currentStreamData.title })
           }
         }
 
@@ -307,8 +309,8 @@ export default function LivePageV2() {
               <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
             </div>
           </div>
-          <div className="text-gray-900 dark:text-white text-xl font-bold">라이브 입장 중...</div>
-          <div className="text-gray-500 dark:text-white/60 text-sm">잠시만 기다려주세요</div>
+          <div className="text-gray-900 dark:text-white text-xl font-bold">{t('live.page.entering', { defaultValue: '라이브 입장 중...' })}</div>
+          <div className="text-gray-500 dark:text-white/60 text-sm">{t('live.page.pleaseWait', { defaultValue: '잠시만 기다려주세요' })}</div>
         </div>
       </div>
     )
@@ -323,14 +325,14 @@ export default function LivePageV2() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
           </svg>
         </div>
-        <p className="text-white font-bold text-[17px] mb-1">진행 중인 라이브가 없어요</p>
-        <p className="text-white/50 text-[13px] mb-6">라이브 방송이 시작되면 알림을 보내드릴게요</p>
+        <p className="text-white font-bold text-[17px] mb-1">{t('live.page.noLive', { defaultValue: '진행 중인 라이브가 없어요' })}</p>
+        <p className="text-white/50 text-[13px] mb-6">{t('live.page.noLiveSubtitle', { defaultValue: '라이브 방송이 시작되면 알림을 보내드릴게요' })}</p>
         <div className="flex gap-2">
           <button onClick={() => navigate('/live')} className="px-5 py-2.5 bg-white/[0.08] text-white text-[13px] font-semibold rounded-full hover:bg-white/[0.14] transition-colors">
-            방송 목록 보기
+            {t('live.page.broadcastList', { defaultValue: '방송 목록 보기' })}
           </button>
           <button onClick={() => navigate('/')} className="px-5 py-2.5 bg-[#EF4444] text-white text-[13px] font-semibold rounded-full hover:bg-[#DC2626] transition-colors">
-            홈으로
+            {t('live.scheduled.goHome', { defaultValue: '홈으로' })}
           </button>
         </div>
       </div>
@@ -349,7 +351,7 @@ export default function LivePageV2() {
               <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
             </div>
           </div>
-          <div className="text-gray-900 dark:text-white text-xl font-bold">라이브 준비 중...</div>
+          <div className="text-gray-900 dark:text-white text-xl font-bold">{t('live.page.preparing', { defaultValue: '라이브 준비 중...' })}</div>
         </div>
       </div>
     )
@@ -357,8 +359,8 @@ export default function LivePageV2() {
 
   return (
     <main className="relative h-dvh overflow-hidden bg-black no-scrollbar" style={{ scrollbarWidth: 'none' }}>
-      <SEO title={`${reels[activeIndex]?.stream?.title || '라이브'} - 유어딜`} description="유어딜 라이브 방송을 시청하고 실시간으로 쇼핑하세요" url={`/live/${streamId}`} />
-      <h1 className="sr-only">{reels[activeIndex]?.stream?.title || '라이브 방송'}</h1>
+      <SEO title={t('live.page.seoTitle', { defaultValue: '{{title}} - 유어딜', title: reels[activeIndex]?.stream?.title || t('live.page.seoFallbackTitle', { defaultValue: '라이브' }) })} description={t('live.page.seoDescription', { defaultValue: '유어딜 라이브 방송을 시청하고 실시간으로 쇼핑하세요' })} url={`/live/${streamId}`} />
+      <h1 className="sr-only">{reels[activeIndex]?.stream?.title || t('live.page.srHeading', { defaultValue: '라이브 방송' })}</h1>
       <TopNav
         viewers={viewerCount}
         sellerName={reels[activeIndex]?.stream?.seller_name || reels[activeIndex]?.stream?.streamerName}

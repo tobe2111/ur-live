@@ -3036,6 +3036,34 @@
       "processing": "Traitement...",
       "payWithDeals": "Payer avec {{amount}} Deal",
       "loading": "Chargement du moyen de paiement..."
+    },
+    "demo": {
+      "sdkInitFailed": "Échec de l'initialisation du SDK : {{message}}",
+      "uiContainerNotFound": "Conteneur de l'UI de paiement introuvable.",
+      "agreementContainerNotFound": "Conteneur de l'UI des conditions introuvable.",
+      "renderFailed": "Échec du rendu UI : {{message}}",
+      "loadingSystem": "Chargement du système de paiement...",
+      "paymentCancelled": "Paiement annulé.",
+      "paymentError": "Erreur de paiement : {{message}}",
+      "testProduct": "Produit test",
+      "testCustomerName": "Test",
+      "seoTitle": "Démo paiement",
+      "seoDesc": "Page de démo Toss Payments",
+      "heading": "Démo Toss Payments",
+      "errorLabel": "⚠️ Erreur :",
+      "infoHeading": "Infos de paiement",
+      "productNameLabel": "Produit :",
+      "amountLabel": "Montant :",
+      "wonSuffix": " KRW",
+      "applyCoupon": "Appliquer un coupon de 5 000 KRW",
+      "methodHeading": "Choisir le moyen de paiement",
+      "pay": "Payer",
+      "preparing": "Préparation du paiement...",
+      "debugHeading": "Infos de débogage",
+      "testCardHeading": "💳 Carte de test",
+      "cardNumberLabel": "Numéro de carte :",
+      "expiryLabel": "Expiration :",
+      "cvcLabel": "CVC :"
     }
   },
   "product": {
@@ -3779,6 +3807,19 @@
       "followLabel": "Suivre",
       "visitYoutube": "Visiter la chaîne YouTube",
       "visitInstagram": "Visiter Instagram"
+    },
+    "page": {
+      "docTitle": "{{title}} - Yourdeal Live",
+      "entering": "Entrée dans le live...",
+      "pleaseWait": "Veuillez patienter",
+      "preparing": "Préparation du live...",
+      "noLive": "Aucun live en cours",
+      "noLiveSubtitle": "Nous vous avertirons au démarrage d'un live",
+      "broadcastList": "Voir la liste des diffusions",
+      "seoTitle": "{{title}} - Yourdeal",
+      "seoFallbackTitle": "En direct",
+      "seoDescription": "Regardez les lives Yourdeal et achetez en direct",
+      "srHeading": "Diffusion en direct"
     }
   },
   "paymentFail": {

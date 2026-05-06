@@ -296,6 +296,34 @@
       "processing": "処理中...",
       "payWithDeals": "{{amount}}ディールで決済",
       "loading": "決済手段を読み込み中..."
+    },
+    "demo": {
+      "sdkInitFailed": "SDK初期化失敗: {{message}}",
+      "uiContainerNotFound": "決済UIコンテナが見つかりません。",
+      "agreementContainerNotFound": "規約UIコンテナが見つかりません。",
+      "renderFailed": "UIレンダリング失敗: {{message}}",
+      "loadingSystem": "決済システムを読み込み中です。",
+      "paymentCancelled": "決済がキャンセルされました。",
+      "paymentError": "決済エラー: {{message}}",
+      "testProduct": "テスト商品",
+      "testCustomerName": "テスト",
+      "seoTitle": "決済デモ",
+      "seoDesc": "Toss Payments 決済デモページ",
+      "heading": "Toss Payments 決済デモ",
+      "errorLabel": "⚠️ エラー:",
+      "infoHeading": "決済情報",
+      "productNameLabel": "商品名:",
+      "amountLabel": "決済金額:",
+      "wonSuffix": "원",
+      "applyCoupon": "5,000원 クーポン適用",
+      "methodHeading": "決済手段の選択",
+      "pay": "決済する",
+      "preparing": "決済準備中...",
+      "debugHeading": "デバッグ情報",
+      "testCardHeading": "💳 テストカード情報",
+      "cardNumberLabel": "カード番号:",
+      "expiryLabel": "有効期限:",
+      "cvcLabel": "CVC:"
     }
   },
   "cart": {
@@ -3779,6 +3807,19 @@
       "followLabel": "フォロー",
       "visitYoutube": "YouTubeチャンネルへ",
       "visitInstagram": "Instagramへ"
+    },
+    "page": {
+      "docTitle": "{{title}} - ユアディールライブ",
+      "entering": "ライブ入室中...",
+      "pleaseWait": "少々お待ちください",
+      "preparing": "ライブ準備中...",
+      "noLive": "現在配信中のライブはありません",
+      "noLiveSubtitle": "ライブ配信が始まったらお知らせします",
+      "broadcastList": "配信一覧を見る",
+      "seoTitle": "{{title}} - ユアディール",
+      "seoFallbackTitle": "ライブ",
+      "seoDescription": "ユアディールのライブを視聴してリアルタイムでショッピング",
+      "srHeading": "ライブ配信"
     }
   },
   "paymentFail": {

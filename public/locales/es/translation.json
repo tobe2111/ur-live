@@ -3036,6 +3036,34 @@
       "processing": "Procesando...",
       "payWithDeals": "Pagar con {{amount}} Deal",
       "loading": "Cargando método de pago..."
+    },
+    "demo": {
+      "sdkInitFailed": "Falló la inicialización del SDK: {{message}}",
+      "uiContainerNotFound": "Contenedor de UI de pago no encontrado.",
+      "agreementContainerNotFound": "Contenedor de UI de términos no encontrado.",
+      "renderFailed": "Falló el renderizado de UI: {{message}}",
+      "loadingSystem": "Cargando sistema de pago...",
+      "paymentCancelled": "Pago cancelado.",
+      "paymentError": "Error de pago: {{message}}",
+      "testProduct": "Producto de prueba",
+      "testCustomerName": "Test",
+      "seoTitle": "Demo de pago",
+      "seoDesc": "Página de demostración de Toss Payments",
+      "heading": "Demo de Toss Payments",
+      "errorLabel": "⚠️ Error:",
+      "infoHeading": "Información de pago",
+      "productNameLabel": "Producto:",
+      "amountLabel": "Importe:",
+      "wonSuffix": " KRW",
+      "applyCoupon": "Aplicar cupón de 5.000 KRW",
+      "methodHeading": "Seleccionar método de pago",
+      "pay": "Pagar",
+      "preparing": "Preparando pago...",
+      "debugHeading": "Información de depuración",
+      "testCardHeading": "💳 Datos de tarjeta de prueba",
+      "cardNumberLabel": "Número de tarjeta:",
+      "expiryLabel": "Vencimiento:",
+      "cvcLabel": "CVC:"
     }
   },
   "product": {
@@ -3779,6 +3807,19 @@
       "followLabel": "Seguir",
       "visitYoutube": "Visitar canal de YouTube",
       "visitInstagram": "Visitar Instagram"
+    },
+    "page": {
+      "docTitle": "{{title}} - Yourdeal Live",
+      "entering": "Entrando al directo...",
+      "pleaseWait": "Un momento por favor",
+      "preparing": "Preparando el directo...",
+      "noLive": "No hay transmisiones en vivo ahora",
+      "noLiveSubtitle": "Te avisaremos cuando empiece una transmisión",
+      "broadcastList": "Ver lista de transmisiones",
+      "seoTitle": "{{title}} - Yourdeal",
+      "seoFallbackTitle": "En vivo",
+      "seoDescription": "Mira las transmisiones en vivo de Yourdeal y compra en tiempo real",
+      "srHeading": "Transmisión en vivo"
     }
   },
   "paymentFail": {
