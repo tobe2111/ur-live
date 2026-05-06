@@ -1,21 +1,12 @@
 /**
- * 🛡️ 2026-05-03: PC 상단 네비게이션 — BottomNav 의 PC 대응 버전.
- *
- * 모바일 (≤md): 숨김 (BottomNav 가 하단에 표시됨)
- * PC (lg+): 상단 sticky 네비게이션 표시 + BottomNav 는 자체적으로 hidden
- *
- * 메뉴 구조는 BottomNav 와 1:1 매칭:
- *   - 홈 / 맛집 / 공구 / 쇼핑 / 마이
- *   - 라이브 시작 버튼은 + 아이콘 → "라이브 시작" CTA 텍스트
- *
- * 디자인:
- *   - bg-white dark:bg-[#020202] (다크), 좌측 로고, 중앙 메뉴, 우측 검색·알림·장바구니
- *   - active 항목은 핑크 underline + bold
+ * PC 상단 네비게이션 (lg+).
+ * - lg ~ xl: 로고 + 탭 메뉴 + 검색/알림/장바구니/프로필
+ * - xl+: 로고/탭 숨김 (사이드바가 대신), 검색바 + 우측 액션만 표시
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingCart, User, Radio, Gift, Utensils, Search, Bell } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
 import api from '@/lib/api'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { isLoggedInSync } from '@/utils/auth'
@@ -26,10 +17,12 @@ export default function DesktopTopNav() {
   const { t } = useTranslation()
   const [unreadCount, setUnreadCount] = useState(0)
   const [cartCount, setCartCount] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchRef = useRef<HTMLInputElement>(null)
+  const loggedIn = isLoggedInSync()
 
-  // 알림 unread 동기화 (60초)
   useEffect(() => {
-    if (!isLoggedInSync()) { setUnreadCount(0); setCartCount(0); return }
+    if (!loggedIn) { setUnreadCount(0); setCartCount(0); return }
     let cancelled = false
     const fetchCounts = async () => {
       try {
@@ -43,7 +36,7 @@ export default function DesktopTopNav() {
         if (cancelled) return
         if (r2.data?.success) {
           const items = r2.data.data?.items || (Array.isArray(r2.data.data) ? r2.data.data : [])
-          const count = items.reduce((s: number, it: any) => s + (it.quantity || 1), 0)
+          const count = items.reduce((s: number, it: { quantity?: number }) => s + (it.quantity || 1), 0)
           setCartCount(count)
         }
       } catch { if (!cancelled) setCartCount(0) }
@@ -53,11 +46,10 @@ export default function DesktopTopNav() {
     const onVisible = () => { if (!document.hidden) fetchCounts() }
     document.addEventListener('visibilitychange', onVisible)
     return () => { cancelled = true; clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
-  }, [])
+  }, [loggedIn])
 
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
-    { icon: Utensils, key: 'restaurants', label: t('nav.restaurants', { defaultValue: '맛집' }), path: '/restaurant-map' },
     { icon: Radio, key: 'live', label: t('nav.live', { defaultValue: '라이브' }), path: '/live' },
     { icon: Gift, key: 'groupBuy', label: t('nav.groupBuy', { defaultValue: '공구' }), path: '/group-buy' },
     { icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' },
@@ -68,20 +60,25 @@ export default function DesktopTopNav() {
     if (path === '/') return cur === '/'
     if (cur === path) return true
     if (cur.startsWith(path + '/')) return true
-    if (path === '/live' && cur.startsWith('/live')) return true
     return false
   }
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const q = searchQuery.trim()
+    if (q) navigate(`/search?q=${encodeURIComponent(q)}`)
+  }
+
   return (
-    <header className="hidden lg:block xl:hidden sticky top-0 z-40 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
-      <div className="ur-content-wide flex items-center gap-6 px-6 lg:px-8 h-14">
-        {/* Logo */}
-        <Link to="/" className="flex items-center shrink-0">
+    <header className="hidden lg:block sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="flex items-center gap-4 px-4 lg:px-6 xl:pl-60 h-14">
+        {/* 로고 — xl 이상에서는 사이드바에 있으므로 숨김 */}
+        <Link to="/" className="flex items-center shrink-0 xl:hidden">
           <UrDealLogo size={20} />
         </Link>
 
-        {/* Center: Nav items */}
-        <nav className="flex items-center gap-1 flex-1">
+        {/* 탭 메뉴 — xl 이상에서는 사이드바에 있으므로 숨김 */}
+        <nav className="flex items-center gap-1 xl:hidden">
           {navItems.map(item => {
             const active = isActivePath(item.path)
             const Icon = item.icon
@@ -106,35 +103,61 @@ export default function DesktopTopNav() {
           })}
         </nav>
 
-        {/* Right: Search / Notifications / Cart / Profile */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* 검색 인풋 — xl+ 에서 넓게 */}
+        <form onSubmit={handleSearch} className="flex-1 max-w-md xl:max-w-lg">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <input
+              ref={searchRef}
+              type="search"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={t('search.placeholder', { defaultValue: '라이브, 식사권, 상품 검색' })}
+              className="w-full pl-9 pr-4 py-2 text-[13px] bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-none outline-none focus:ring-2 focus:ring-pink-400/30"
+            />
+          </div>
+        </form>
+
+        {/* 우측 액션 */}
+        <div className="flex items-center gap-1 shrink-0 ml-auto">
+          {/* LIVE 배지 */}
           <button
-            onClick={() => navigate('/search')}
-            aria-label={t('liveList.ariaSearch', { defaultValue: '검색' })}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            onClick={() => navigate('/live')}
+            className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500 text-white text-[12px] font-bold hover:bg-red-600 transition-colors"
           >
-            <Search className="w-5 h-5" strokeWidth={1.75} />
+            <Zap className="w-3.5 h-3.5" />
+            LIVE
           </button>
+
+          {/* 판매자센터 */}
           <button
-            onClick={() => navigate('/notifications')}
-            aria-label={
-              unreadCount > 0
-                ? t('mainHome.ariaNotificationsCount', { count: unreadCount })
-                : t('mainHome.ariaNotifications')
-            }
-            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            onClick={() => navigate('/seller')}
+            className="hidden xl:block px-3 py-1.5 text-[12px] font-medium text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
           >
-            <Bell className="w-5 h-5" strokeWidth={1.75} />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
+            {t('nav.sellerCenter', { defaultValue: '판매자센터' })}
           </button>
+
+          {/* 알림 */}
+          {loggedIn && (
+            <button
+              onClick={() => navigate('/notifications')}
+              aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : '알림'}
+              className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
+            >
+              <Bell className="w-5 h-5" strokeWidth={1.75} />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* 장바구니 */}
           <button
             onClick={() => navigate('/cart')}
             aria-label={t('liveList.ariaCart', { defaultValue: '장바구니' })}
-            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
           >
             <ShoppingCart className="w-5 h-5" strokeWidth={1.75} />
             {cartCount > 0 && (
@@ -143,15 +166,26 @@ export default function DesktopTopNav() {
               </span>
             )}
           </button>
-          <button
-            onClick={() => navigate('/user/profile')}
-            aria-label={t('nav.my', { defaultValue: '마이' })}
-            className={`w-9 h-9 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.06] ${
-              isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
-            }`}
-          >
-            <User className="w-5 h-5" strokeWidth={1.75} />
-          </button>
+
+          {/* 로그인 or 프로필 */}
+          {loggedIn ? (
+            <button
+              onClick={() => navigate('/user/profile')}
+              aria-label={t('nav.my', { defaultValue: '마이' })}
+              className={`w-9 h-9 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] ${
+                isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
+              }`}
+            >
+              <User className="w-5 h-5" strokeWidth={1.75} />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/login')}
+              className="px-4 py-1.5 bg-pink-500 text-white text-[13px] font-bold rounded-full hover:bg-pink-600 transition-colors"
+            >
+              {t('auth.login', { defaultValue: '로그인' })}
+            </button>
+          )}
         </div>
       </div>
     </header>
