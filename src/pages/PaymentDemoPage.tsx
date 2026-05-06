@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
@@ -13,6 +14,7 @@ function generateRandomString() {
 }
 
 export default function PaymentDemoPage() {
+  const { t } = useTranslation()
   const [amount, setAmount] = useState({
     currency: 'KRW',
     value: 50000
@@ -36,7 +38,7 @@ export default function PaymentDemoPage() {
         setWidgets(widgetsInstance)
       } catch (err: unknown) {
         const err_ = err as { message?: string }
-        setError(`SDK 초기화 실패: ${err_.message}`)
+        setError(t('payment.demo.sdkInitFailed', { defaultValue: 'SDK 초기화 실패: {{message}}', message: err_.message }))
       }
     }
 
@@ -59,12 +61,12 @@ export default function PaymentDemoPage() {
         const agreementEl = document.getElementById('agreement')
         
         if (!paymentMethodEl) {
-          setError('결제 UI 컨테이너를 찾을 수 없습니다.')
+          setError(t('payment.demo.uiContainerNotFound', { defaultValue: '결제 UI 컨테이너를 찾을 수 없습니다.' }))
           return
         }
-        
+
         if (!agreementEl) {
-          setError('약관 UI 컨테이너를 찾을 수 없습니다.')
+          setError(t('payment.demo.agreementContainerNotFound', { defaultValue: '약관 UI 컨테이너를 찾을 수 없습니다.' }))
           return
         }
         
@@ -86,7 +88,7 @@ export default function PaymentDemoPage() {
         setReady(true)
       } catch (err: unknown) {
         const err_ = err as { message?: string }
-        setError(`UI 렌더링 실패: ${err_.message}`)
+        setError(t('payment.demo.renderFailed', { defaultValue: 'UI 렌더링 실패: {{message}}', message: err_.message }))
       }
     }
 
@@ -112,7 +114,7 @@ export default function PaymentDemoPage() {
   // 결제하기
   const handlePayment = async () => {
     if (!widgets || !ready) {
-      toast.info('결제 시스템을 불러오는 중입니다.')
+      toast.info(t('payment.demo.loadingSystem', { defaultValue: '결제 시스템을 불러오는 중입니다.' }))
       return
     }
 
@@ -122,19 +124,19 @@ export default function PaymentDemoPage() {
       
       await widgets.requestPayment({
         orderId,
-        orderName: '테스트 상품',
+        orderName: t('payment.demo.testProduct', { defaultValue: '테스트 상품' }),
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
         customerEmail: 'test@example.com',
-        customerName: '테스트',
+        customerName: t('payment.demo.testCustomerName', { defaultValue: '테스트' }),
         customerMobilePhone: '01012341234'
       })
     } catch (err: unknown) {
       const err_ = err as { message?: string; code?: string }
       if (err_.code === 'USER_CANCEL') {
-        toast.info('결제가 취소되었습니다.')
+        toast.info(t('payment.demo.paymentCancelled', { defaultValue: '결제가 취소되었습니다.' }))
       } else {
-        toast.error(`결제 오류: ${err_.message}`)
+        toast.error(t('payment.demo.paymentError', { defaultValue: '결제 오류: {{message}}', message: err_.message }))
       }
     }
   }
@@ -146,9 +148,9 @@ export default function PaymentDemoPage() {
       padding: '40px 20px',
       fontFamily: 'sans-serif'
     }}>
-      <SEO title="결제 데모" description="토스페이먼츠 결제 데모 페이지" url="/payment/demo" noindex />
+      <SEO title={t('payment.demo.seoTitle', { defaultValue: '결제 데모' })} description={t('payment.demo.seoDesc', { defaultValue: '토스페이먼츠 결제 데모 페이지' })} url="/payment/demo" noindex />
       <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '20px' }}>
-        토스페이먼츠 결제 데모
+        {t('payment.demo.heading', { defaultValue: '토스페이먼츠 결제 데모' })}
       </h1>
       
       {error && (
@@ -160,7 +162,7 @@ export default function PaymentDemoPage() {
           marginBottom: '20px',
           color: '#c00'
         }}>
-          <strong>⚠️ 오류:</strong> {error}
+          <strong>{t('payment.demo.errorLabel', { defaultValue: '⚠️ 오류:' })}</strong> {error}
         </div>
       )}
 
@@ -172,16 +174,16 @@ export default function PaymentDemoPage() {
         marginBottom: '20px'
       }}>
         <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
-          결제 정보
+          {t('payment.demo.infoHeading', { defaultValue: '결제 정보' })}
         </h2>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span>상품명:</span>
-          <strong>테스트 상품</strong>
+          <span>{t('payment.demo.productNameLabel', { defaultValue: '상품명:' })}</span>
+          <strong>{t('payment.demo.testProduct', { defaultValue: '테스트 상품' })}</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span>결제 금액:</span>
+          <span>{t('payment.demo.amountLabel', { defaultValue: '결제 금액:' })}</span>
           <strong style={{ color: '#0066ff', fontSize: '20px' }}>
-            {formatNumber(amount.value)}원
+            {formatNumber(amount.value)}{t('payment.demo.wonSuffix', { defaultValue: '원' })}
           </strong>
         </div>
         
@@ -199,7 +201,7 @@ export default function PaymentDemoPage() {
               }}
               style={{ marginRight: '8px' }}
             />
-            <span>5,000원 쿠폰 적용</span>
+            <span>{t('payment.demo.applyCoupon', { defaultValue: '5,000원 쿠폰 적용' })}</span>
           </label>
         </div>
       </div>
@@ -213,7 +215,7 @@ export default function PaymentDemoPage() {
         marginBottom: '20px'
       }}>
         <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
-          결제 수단 선택
+          {t('payment.demo.methodHeading', { defaultValue: '결제 수단 선택' })}
         </h2>
         <div id="payment-method"></div>
         <div id="agreement" style={{ marginTop: '16px' }}></div>
@@ -235,7 +237,7 @@ export default function PaymentDemoPage() {
           cursor: ready ? 'pointer' : 'not-allowed'
         }}
       >
-        {ready ? '결제하기' : '결제 준비 중...'}
+        {ready ? t('payment.demo.pay', { defaultValue: '결제하기' }) : t('payment.demo.preparing', { defaultValue: '결제 준비 중...' })}
       </button>
 
       {/* 디버그 정보 */}
@@ -248,12 +250,12 @@ export default function PaymentDemoPage() {
         color: '#666'
       }}>
         <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px' }}>
-          디버그 정보
+          {t('payment.demo.debugHeading', { defaultValue: '디버그 정보' })}
         </h3>
         <div>Client Key: {clientKey}</div>
         <div>SDK Loaded: {widgets ? '✅ Yes' : '❌ No'}</div>
         <div>UI Ready: {ready ? '✅ Yes' : '❌ No'}</div>
-        <div>Amount: {formatNumber(amount.value)}원</div>
+        <div>Amount: {formatNumber(amount.value)}{t('payment.demo.wonSuffix', { defaultValue: '원' })}</div>
       </div>
 
       {/* 테스트 카드 정보 */}
@@ -265,16 +267,16 @@ export default function PaymentDemoPage() {
         fontSize: '14px'
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px' }}>
-          💳 테스트 카드 정보
+          {t('payment.demo.testCardHeading', { defaultValue: '💳 테스트 카드 정보' })}
         </h3>
         <div style={{ marginBottom: '8px' }}>
-          <strong>카드번호:</strong> 4000-0000-0000-0008
+          <strong>{t('payment.demo.cardNumberLabel', { defaultValue: '카드번호:' })}</strong> 4000-0000-0000-0008
         </div>
         <div style={{ marginBottom: '8px' }}>
-          <strong>유효기간:</strong> 12/25
+          <strong>{t('payment.demo.expiryLabel', { defaultValue: '유효기간:' })}</strong> 12/25
         </div>
         <div style={{ marginBottom: '8px' }}>
-          <strong>CVC:</strong> 123
+          <strong>{t('payment.demo.cvcLabel', { defaultValue: 'CVC:' })}</strong> 123
         </div>
         <div>
           <strong>비밀번호:</strong> 12

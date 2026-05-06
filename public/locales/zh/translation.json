@@ -296,6 +296,34 @@
       "processing": "处理中...",
       "payWithDeals": "使用 {{amount}} Deal 支付",
       "loading": "正在加载支付方式..."
+    },
+    "demo": {
+      "sdkInitFailed": "SDK 初始化失败: {{message}}",
+      "uiContainerNotFound": "找不到支付 UI 容器。",
+      "agreementContainerNotFound": "找不到协议 UI 容器。",
+      "renderFailed": "UI 渲染失败: {{message}}",
+      "loadingSystem": "正在加载支付系统。",
+      "paymentCancelled": "支付已取消。",
+      "paymentError": "支付错误: {{message}}",
+      "testProduct": "测试商品",
+      "testCustomerName": "测试",
+      "seoTitle": "支付演示",
+      "seoDesc": "Toss Payments 支付演示页面",
+      "heading": "Toss Payments 支付演示",
+      "errorLabel": "⚠️ 错误:",
+      "infoHeading": "支付信息",
+      "productNameLabel": "商品名:",
+      "amountLabel": "支付金额:",
+      "wonSuffix": "원",
+      "applyCoupon": "使用 5,000원 优惠券",
+      "methodHeading": "选择支付方式",
+      "pay": "立即支付",
+      "preparing": "正在准备支付...",
+      "debugHeading": "调试信息",
+      "testCardHeading": "💳 测试卡信息",
+      "cardNumberLabel": "卡号:",
+      "expiryLabel": "有效期:",
+      "cvcLabel": "CVC:"
     }
   },
   "cart": {
@@ -3779,6 +3807,19 @@
       "followLabel": "关注",
       "visitYoutube": "访问 YouTube 频道",
       "visitInstagram": "访问 Instagram"
+    },
+    "page": {
+      "docTitle": "{{title}} - Yourdeal 直播",
+      "entering": "正在进入直播...",
+      "pleaseWait": "请稍候",
+      "preparing": "正在准备直播...",
+      "noLive": "当前没有直播",
+      "noLiveSubtitle": "直播开始时会通知您",
+      "broadcastList": "查看直播列表",
+      "seoTitle": "{{title}} - Yourdeal",
+      "seoFallbackTitle": "直播",
+      "seoDescription": "观看 Yourdeal 直播,实时购物",
+      "srHeading": "直播"
     }
   },
   "paymentFail": {

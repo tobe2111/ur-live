@@ -296,6 +296,34 @@
       "processing": "처리 중...",
       "payWithDeals": "{{amount}}딜로 결제",
       "loading": "결제 수단 불러오는 중..."
+    },
+    "demo": {
+      "sdkInitFailed": "SDK 초기화 실패: {{message}}",
+      "uiContainerNotFound": "결제 UI 컨테이너를 찾을 수 없습니다.",
+      "agreementContainerNotFound": "약관 UI 컨테이너를 찾을 수 없습니다.",
+      "renderFailed": "UI 렌더링 실패: {{message}}",
+      "loadingSystem": "결제 시스템을 불러오는 중입니다.",
+      "paymentCancelled": "결제가 취소되었습니다.",
+      "paymentError": "결제 오류: {{message}}",
+      "testProduct": "테스트 상품",
+      "testCustomerName": "테스트",
+      "seoTitle": "결제 데모",
+      "seoDesc": "토스페이먼츠 결제 데모 페이지",
+      "heading": "토스페이먼츠 결제 데모",
+      "errorLabel": "⚠️ 오류:",
+      "infoHeading": "결제 정보",
+      "productNameLabel": "상품명:",
+      "amountLabel": "결제 금액:",
+      "wonSuffix": "원",
+      "applyCoupon": "5,000원 쿠폰 적용",
+      "methodHeading": "결제 수단 선택",
+      "pay": "결제하기",
+      "preparing": "결제 준비 중...",
+      "debugHeading": "디버그 정보",
+      "testCardHeading": "💳 테스트 카드 정보",
+      "cardNumberLabel": "카드번호:",
+      "expiryLabel": "유효기간:",
+      "cvcLabel": "CVC:"
     }
   },
   "cart": {
@@ -3779,6 +3807,19 @@
       "followLabel": "팔로우",
       "visitYoutube": "유튜브 채널 방문",
       "visitInstagram": "인스타그램 방문"
+    },
+    "page": {
+      "docTitle": "{{title}} - 유어딜 라이브",
+      "entering": "라이브 입장 중...",
+      "pleaseWait": "잠시만 기다려주세요",
+      "preparing": "라이브 준비 중...",
+      "noLive": "진행 중인 라이브가 없어요",
+      "noLiveSubtitle": "라이브 방송이 시작되면 알림을 보내드릴게요",
+      "broadcastList": "방송 목록 보기",
+      "seoTitle": "{{title}} - 유어딜",
+      "seoFallbackTitle": "라이브",
+      "seoDescription": "유어딜 라이브 방송을 시청하고 실시간으로 쇼핑하세요",
+      "srHeading": "라이브 방송"
     }
   },
   "paymentFail": {

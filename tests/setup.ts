@@ -101,6 +101,31 @@ global.window.Kakao = {
   },
 } as any;
 
+// Mock react-i18next — return defaultValue with {{var}} interpolation so tests don't need full i18n init
+vi.mock('react-i18next', () => {
+  const interpolate = (template: string, vars?: Record<string, unknown>): string => {
+    if (!vars) return template;
+    return template.replace(/\{\{(\w+)\}\}/g, (_, k) => (vars[k] !== undefined ? String(vars[k]) : `{{${k}}}`));
+  };
+  const t = (key: string, opts?: Record<string, unknown> | string) => {
+    if (typeof opts === 'string') return interpolate(opts);
+    if (opts && typeof opts === 'object') {
+      const dv = (opts as { defaultValue?: string }).defaultValue;
+      return interpolate(dv ?? key, opts as Record<string, unknown>);
+    }
+    return key;
+  };
+  return {
+    useTranslation: () => ({
+      t,
+      i18n: { changeLanguage: vi.fn().mockResolvedValue(undefined), language: 'ko' },
+    }),
+    Trans: ({ children, i18nKey, defaults }: { children?: unknown; i18nKey?: string; defaults?: string }) =>
+      children ?? defaults ?? i18nKey ?? '',
+    initReactI18next: { type: '3rdParty', init: vi.fn() },
+  };
+});
+
 // Mock Sentry
 vi.mock('@sentry/react', () => ({
   init: vi.fn(),
