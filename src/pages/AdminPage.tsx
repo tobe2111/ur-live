@@ -28,11 +28,6 @@ import type { ApiError, Seller, Stream, Stats, DashboardStats, Alert } from './a
 //   AlertTriangle, Zap, ChevronRight, Search, MoreVertical, Bell, Send, Shield,
 //   Radio, Activity, FileText) 제거.
 
-// Inline skeleton placeholder (판매자/스트림 테이블에서만 사용)
-const Skel = ({ className }: { className?: string }) => (
-  <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
-)
-
 export default function AdminPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
