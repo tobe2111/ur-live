@@ -4451,5 +4451,9 @@
     "listSeoTitle": "Blog",
     "listSeoDesc": "Blog de comercio en vivo Ur-Deal — guías de vendedor, tendencias, consejos",
     "readBtn": "Leer artículo"
+  },
+  "embed": {
+    "liveTitle": "Incrustación de live",
+    "liveDesc": "Widget de incrustación live de Ur-Deal"
   }
 }

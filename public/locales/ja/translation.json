@@ -4451,5 +4451,9 @@
     "listSeoTitle": "ブログ",
     "listSeoDesc": "Ur-Dealライブコマースブログ — セラーガイド、トレンド、ヒント",
     "readBtn": "記事を読む"
+  },
+  "embed": {
+    "liveTitle": "ライブ埋め込み",
+    "liveDesc": "Ur-Dealライブ埋め込みウィジェット"
   }
 }

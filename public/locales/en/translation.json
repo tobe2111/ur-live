@@ -4451,5 +4451,9 @@
     "listSeoTitle": "Blog",
     "listSeoDesc": "Ur-Deal live commerce blog — seller guides, trends, tips",
     "readBtn": "Read article"
+  },
+  "embed": {
+    "liveTitle": "Live Embed",
+    "liveDesc": "Ur-Deal live embed widget"
   }
 }

@@ -4451,5 +4451,9 @@
     "listSeoTitle": "博客",
     "listSeoDesc": "Ur-Deal直播电商博客 — 卖家指南、趋势、技巧",
     "readBtn": "阅读文章"
+  },
+  "embed": {
+    "liveTitle": "直播嵌入",
+    "liveDesc": "Ur-Deal直播嵌入小部件"
   }
 }

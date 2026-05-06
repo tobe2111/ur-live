@@ -4746,5 +4746,9 @@
     "listSeoTitle": "블로그",
     "listSeoDesc": "유어딜 라이브 커머스 블로그 — 셀러 가이드, 트렌드, 팁",
     "readBtn": "글 읽기"
+  },
+  "embed": {
+    "liveTitle": "라이브 임베드",
+    "liveDesc": "유어딜 라이브 임베드 위젯"
   }
 }

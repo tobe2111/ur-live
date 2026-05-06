@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { ShoppingBag } from 'lucide-react'
 import SEO from '@/components/SEO'
@@ -19,6 +20,7 @@ interface EmbedStream {
 }
 
 export default function EmbedLivePage() {
+  const { t } = useTranslation()
   const { streamId } = useParams<{ streamId: string }>()
   const [stream, setStream] = useState<EmbedStream | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,7 +58,7 @@ export default function EmbedLivePage() {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
-      <SEO title={stream.title || '라이브 임베드'} description="유어딜 라이브 임베드 위젯" url={`/embed/live/${streamId ?? ''}`} noindex />
+      <SEO title={stream.title || t('embed.liveTitle', { defaultValue: '라이브 임베드' })} description={t('embed.liveDesc', { defaultValue: '유어딜 라이브 임베드 위젯' })} url={`/embed/live/${streamId ?? ''}`} noindex />
       {/* YouTube 영상 */}
       {stream.youtube_video_id && (
         <iframe
