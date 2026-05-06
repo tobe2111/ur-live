@@ -20,8 +20,10 @@ import { downloadSellerTemplate } from '@/utils/product-template'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 
-// 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-new/types 로 추출.
-import type { LiveStream } from './seller-product-new/types'
+import type { LiveStream, ProductFormData } from './seller-product-new/types'
+import DigitalProductSection from './seller-product-new/DigitalProductSection'
+import MealVoucherFields from './seller-product-new/MealVoucherFields'
+import LivePriceSection from './seller-product-new/LivePriceSection'
 
 export default function SellerProductNewPage() {
   const { t } = useTranslation()
@@ -30,7 +32,7 @@ export default function SellerProductNewPage() {
   const [error, setError] = useState('')
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
     long_description: '',
@@ -42,49 +44,32 @@ export default function SellerProductNewPage() {
     live_price_enabled: false,
     product_type: 'live',
     category: 'lifestyle',
-    // 🛡️ 2026-05-05: 디지털/정보 상품 (운동/뷰티/전자책/강의)
-    product_kind: 'physical' as 'physical' | 'digital' | 'video_course' | 'pdf_guide' | 'live_class',
-    delivery_type: 'shipping' as 'shipping' | 'instant_url' | 'email' | 'unlock',
+    product_kind: 'physical',
+    delivery_type: 'shipping',
     content_url: '',
-    content_format: '' as '' | 'pdf' | 'video' | 'zip' | 'epub' | 'html' | 'audio' | 'image',
+    content_format: '',
     access_duration_days: '',
     preview_url: '',
   })
-  
+
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
 
   useEffect(() => {
-    // Check authentication - use 'seller_token' (same as login page)
     const sessionToken = localStorage.getItem('seller_token')
-    
-    if (!sessionToken) {
-      navigate('/seller/login')
-      return
-    }
-
+    if (!sessionToken) { navigate('/seller/login'); return }
     loadLiveStreams()
   }, [])
 
   async function loadLiveStreams() {
     try {
       const sessionToken = localStorage.getItem('seller_token')
-
-      if (!sessionToken) {
-        navigate('/seller/login')
-        return
-      }
-
-      // Note: You may need to create this API endpoint
+      if (!sessionToken) { navigate('/seller/login'); return }
       const response = await api.get('/api/seller/streams', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
-
-      if (response.data.success) {
-        setLiveStreams(response.data.data || [])
-      }
+      if (response.data.success) setLiveStreams(response.data.data || [])
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to load live streams:', error)
-      // Continue without live streams
     }
   }
 
@@ -92,24 +77,17 @@ export default function SellerProductNewPage() {
     e.preventDefault()
     setError('')
 
-    // 유효성 검사
     if (!formData.name?.trim()) { setError(t('seller.products.enterProductName')); return }
     if (!formData.price || Number(formData.price) <= 0) { setError(t('seller.products.priceAboveZero')); return }
     if (Number(formData.price) > 100000000) { setError(t('seller.products.priceTooHigh')); return }
-    // 디지털 상품은 stock/배송 검증 skip — 무한 재고
     const isDigital = formData.product_kind !== 'physical'
     if (!isDigital && Number(formData.stock) < 0) { setError(t('seller.products.stockAboveZero')); return }
     if (isDigital && !formData.content_url?.trim()) { setError(t('seller.products.digitalContentUrlRequired', { defaultValue: '디지털 상품의 콘텐츠 URL을 입력해주세요' })); return }
 
     setLoading(true)
-
     try {
       const sessionToken = localStorage.getItem('seller_token')
-
-      if (!sessionToken) {
-        navigate('/seller/login')
-        return
-      }
+      if (!sessionToken) { navigate('/seller/login'); return }
 
       const extra = formData as unknown as Record<string, string>
       const payload: Record<string, unknown> = {
@@ -124,14 +102,12 @@ export default function SellerProductNewPage() {
         live_price_enabled: formData.live_price_enabled,
         product_type: formData.product_type,
         category: formData.category,
-        // 🛡️ 2026-05-05: 디지털 상품 필드
         product_kind: formData.product_kind,
         delivery_type: isDigital ? formData.delivery_type : 'shipping',
         content_url: isDigital ? formData.content_url : null,
         content_format: isDigital ? formData.content_format : null,
         access_duration_days: isDigital && formData.access_duration_days ? Number(formData.access_duration_days) : null,
         preview_url: isDigital ? formData.preview_url || null : null,
-        // 식사권/공동구매 필드 (category가 meal_voucher일 때만 유효)
         ...(formData.category === 'meal_voucher' ? {
           restaurant_name: extra.restaurant_name || null,
           restaurant_address: extra.restaurant_address || null,
@@ -150,8 +126,6 @@ export default function SellerProductNewPage() {
 
       if (response.data.success) {
         const productId = response.data.data?.id || response.data.data?.productId
-        
-        // 옵션이 있으면 저장
         if (productOptions.length > 0 && productId) {
           try {
             await api.post(`/api/seller/products/${productId}/options`, {
@@ -161,11 +135,9 @@ export default function SellerProductNewPage() {
             })
           } catch (optError: unknown) {
             if (import.meta.env.DEV) console.error('Failed to save options:', optError)
-            // 옵션 저장 실패해도 상품은 등록됨
             toast.error(t('common.productRegisteredOptionsFailed'))
           }
         }
-        
         toast.success(t('common.productRegistered'))
         navigate('/seller/products')
       }
@@ -179,16 +151,12 @@ export default function SellerProductNewPage() {
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
   return (
     <SellerLayout title={t('seller.productCreate')}>
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
-        {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
         <DashboardPageHeader
           title={t('seller.productCreate')}
           subtitle={t('seller.newProductDesc')}
@@ -203,11 +171,9 @@ export default function SellerProductNewPage() {
             </button>
           }
         />
-        {/* 🛡️ 2026-04-23 배치 170: CSV 대량 업로드 UI 활성화 (이전: hidden) */}
+
         <div className="mb-8">
-          <p className="text-sm text-gray-500">
-            {t('seller.newProductDesc')}
-          </p>
+          <p className="text-sm text-gray-500">{t('seller.newProductDesc')}</p>
           <button
             type="button"
             onClick={downloadSellerTemplate}
@@ -217,7 +183,6 @@ export default function SellerProductNewPage() {
             {t('seller.bulkUploadTemplate')}
           </button>
 
-          {/* 대량등록 */}
           <div className="mt-3 flex items-center gap-3">
             <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
               <FileText className="w-4 h-4" />
@@ -233,16 +198,13 @@ export default function SellerProductNewPage() {
                     const text = await file.text()
                     const lines = text.split('\n').filter(l => l.trim())
                     if (lines.length < 2) { toast.error(t('common.noData')); return }
-
                     const headers = lines[0].split(',').map(h => h.trim())
                     const token = localStorage.getItem('seller_token')
                     let success = 0, fail = 0
-
                     for (let i = 1; i < lines.length; i++) {
                       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
                       const row: Record<string, string> = {}
                       headers.forEach((h, idx) => { row[h] = values[idx] || '' })
-
                       try {
                         await api.post('/api/seller/products', {
                           name: row['name'] || row['상품명'],
@@ -255,7 +217,6 @@ export default function SellerProductNewPage() {
                         success++
                       } catch { fail++ }
                     }
-
                     toast.success(t('seller.products.bulkResult', { success, fail }))
                     if (success > 0) navigate('/seller/products')
                   } catch { toast.error(t('seller.products.csvReadFailed')) }
@@ -267,7 +228,6 @@ export default function SellerProductNewPage() {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center gap-2 text-red-700">
@@ -278,7 +238,6 @@ export default function SellerProductNewPage() {
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
           {/* Product Name */}
           <div>
@@ -349,7 +308,7 @@ export default function SellerProductNewPage() {
               <p className="text-xs text-gray-500 mt-1">{t('common.enterInWon')}</p>
             </div>
 
-            {formData.product_kind === 'physical' && (
+            {formData.product_kind === 'physical' ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {t('seller.stockQuantity')} <span className="text-red-500">*</span>
@@ -369,147 +328,30 @@ export default function SellerProductNewPage() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{t('common.enterInUnits')}</p>
               </div>
-            )}
-            {formData.product_kind !== 'physical' && (
+            ) : (
               <div className="flex items-center px-4 py-3 bg-blue-50 border border-blue-100 rounded-lg">
                 <span className="text-xs text-blue-700">{t('seller.products.digitalUnlimitedStock', { defaultValue: '📦 디지털 상품 — 무한 재고 (자동 999,999)' })}</span>
               </div>
             )}
           </div>
 
-          {/* 🛡️ 2026-05-05: 상품 유형 (실물 / 디지털) */}
-          <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 space-y-3">
-            <div>
-              <label className="block text-sm font-bold text-purple-900 mb-2">
-                {t('seller.products.productKindLabel', { defaultValue: '상품 유형' })} <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'physical', label: t('seller.products.kindPhysical', { defaultValue: '📦 실물 배송' }), desc: t('seller.products.kindPhysicalDesc', { defaultValue: '의류·식품·생활용품' }) },
-                  { value: 'digital', label: t('seller.products.kindDigital', { defaultValue: '📄 디지털 파일' }), desc: t('seller.products.kindDigitalDesc', { defaultValue: 'PDF·이미지·전자책' }) },
-                  { value: 'video_course', label: t('seller.products.kindVideoCourse', { defaultValue: '🎬 영상 강의' }), desc: t('seller.products.kindVideoCourseDesc', { defaultValue: '운동·뷰티·노하우' }) },
-                  { value: 'pdf_guide', label: t('seller.products.kindPdfGuide', { defaultValue: '📚 정보 가이드' }), desc: t('seller.products.kindPdfGuideDesc', { defaultValue: '가이드·노하우 문서' }) },
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setFormData(p => ({
-                      ...p,
-                      product_kind: opt.value as typeof formData.product_kind,
-                      delivery_type: opt.value === 'physical' ? 'shipping' : (opt.value === 'video_course' ? 'unlock' : 'instant_url'),
-                      content_format: opt.value === 'video_course' ? 'video' : opt.value === 'digital' ? 'pdf' : opt.value === 'pdf_guide' ? 'pdf' : '',
-                    }))}
-                    className={`text-left p-3 rounded-lg border-2 transition-colors ${
-                      formData.product_kind === opt.value
-                        ? 'bg-white border-purple-500 ring-2 ring-purple-200'
-                        : 'bg-white border-gray-200 hover:border-purple-300'
-                    }`}
-                  >
-                    <div className="text-sm font-bold text-gray-900">{opt.label}</div>
-                    <div className="text-[11px] text-gray-500 mt-0.5">{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Product Kind (Digital/Physical) */}
+          <DigitalProductSection
+            formData={formData}
+            onChange={handleChange}
+            onKindChange={(kind, deliveryType, contentFormat) =>
+              setFormData(p => ({ ...p, product_kind: kind, delivery_type: deliveryType, content_format: contentFormat }))
+            }
+          />
 
-            {formData.product_kind !== 'physical' && (
-              <>
-                <div>
-                  <label className="block text-xs font-medium text-purple-900 mb-1.5">
-                    {t('seller.products.contentUrlLabel', { defaultValue: '콘텐츠 URL' })} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="url"
-                    name="content_url"
-                    value={formData.content_url}
-                    onChange={handleChange}
-                    placeholder={t('seller.products.contentUrlPlaceholder', { defaultValue: 'https://r2.ur-team.com/digital/abc.pdf 또는 YouTube/Vimeo 링크' })}
-                    className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 bg-white"
-                  />
-                  <p className="text-[11px] text-purple-700 mt-1">{t('seller.products.contentUrlHint', { defaultValue: '⚠️ R2 또는 외부 CDN URL. 구매자만 접근 가능한 signed URL이 자동 발급됩니다.' })}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-purple-900 mb-1.5">{t('seller.products.contentFormatLabel', { defaultValue: '파일 형식' })}</label>
-                    <select
-                      name="content_format"
-                      value={formData.content_format}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 bg-white"
-                    >
-                      <option value="">{t('seller.products.contentFormatSelect', { defaultValue: '선택' })}</option>
-                      <option value="pdf">{t('seller.products.contentFormatPdf', { defaultValue: 'PDF (전자책/가이드)' })}</option>
-                      <option value="video">{t('seller.products.contentFormatVideo', { defaultValue: '동영상' })}</option>
-                      <option value="zip">{t('seller.products.contentFormatZip', { defaultValue: 'ZIP (다중 파일)' })}</option>
-                      <option value="audio">{t('seller.products.contentFormatAudio', { defaultValue: '음성/팟캐스트' })}</option>
-                      <option value="image">{t('seller.products.contentFormatImage', { defaultValue: '이미지/그래픽' })}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-purple-900 mb-1.5">{t('seller.products.accessDaysLabel', { defaultValue: '접근 기간 (일)' })}</label>
-                    <input
-                      type="number"
-                      name="access_duration_days"
-                      value={formData.access_duration_days}
-                      onChange={handleChange}
-                      placeholder={t('seller.products.accessDaysPlaceholder', { defaultValue: '비워두면 영구' })}
-                      min="1"
-                      className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 bg-white"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-purple-900 mb-1.5">
-                    {t('seller.products.previewUrlLabel', { defaultValue: '미리보기 URL (선택)' })}
-                  </label>
-                  <input
-                    type="url"
-                    name="preview_url"
-                    value={formData.preview_url}
-                    onChange={handleChange}
-                    placeholder={t('seller.products.previewUrlPlaceholder', { defaultValue: '무료 샘플 PDF 또는 강의 첫 강 (구매 전 노출)' })}
-                    className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 bg-white"
-                  />
-                </div>
-                <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[11px] text-amber-800">
-                  {t('seller.products.digitalLegalNotice', { defaultValue: '📌 디지털 상품은 「전자상거래법」상 청약철회 제한 가능. 약관에 명시되며, 구매자는 결제 즉시 마이페이지 → 디지털 보관함에서 다운로드 가능합니다.' })}
-                </div>
-              </>
-            )}
-          </div>
+          {/* Live-only Price */}
+          <LivePriceSection
+            formData={formData}
+            onChange={handleChange}
+            onToggle={enabled => setFormData(p => ({ ...p, live_price_enabled: enabled }))}
+          />
 
-          {/* 라이브 전용 특가 */}
-          <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
-            <div className="flex items-center gap-2 mb-3">
-              <input
-                type="checkbox"
-                id="live_price_enabled"
-                checked={formData.live_price_enabled}
-                onChange={e => setFormData({ ...formData, live_price_enabled: e.target.checked })}
-                className="rounded border-orange-300 text-orange-600"
-              />
-              <label htmlFor="live_price_enabled" className="text-sm font-semibold text-orange-800">
-                {t('seller.liveOnly')}
-              </label>
-              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">{t('seller.liveOnlyDuring')}</span>
-            </div>
-            {formData.live_price_enabled && (
-              <div>
-                <input
-                  type="number"
-                  name="live_only_price"
-                  value={formData.live_only_price}
-                  onChange={handleChange}
-                  placeholder={t('seller.liveOnlyPricePlaceholder')}
-                  min="0"
-                  className="w-full px-3 py-2 border border-orange-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 bg-white"
-                />
-                <p className="text-xs text-orange-600 mt-1">{t('seller.liveOnlyPriceDesc')}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Image Upload - Optional */}
+          {/* Image Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('seller.productImageOptional')} <span className="text-gray-400">({t('common.optional')})</span>
@@ -520,14 +362,10 @@ export default function SellerProductNewPage() {
               label=""
               maxSizeKB={800}
             />
-            <p className="text-xs text-gray-500 mt-2">
-              {t('seller.productImageOptionalDesc')}
-            </p>
+            <p className="text-xs text-gray-500 mt-2">{t('seller.productImageOptionalDesc')}</p>
           </div>
 
-          {/* Image Preview - Removed as ImageUpload component handles it */}
-
-          {/* Category Selection */}
+          {/* Category */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('common.category')} <span className="text-red-500">*</span>
@@ -549,57 +387,12 @@ export default function SellerProductNewPage() {
             <p className="text-xs text-gray-500 mt-1">{t('seller.selectCategoryDesc')}</p>
           </div>
 
-          {/* 식사권 전용 필드 */}
+          {/* Meal Voucher Fields */}
           {formData.category === 'meal_voucher' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
-              <h3 className="text-sm font-bold text-orange-800">{t('seller.products.mealVoucherInfo')}</h3>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.restaurantName')} *</label>
-                <input name="restaurant_name" onChange={handleChange} placeholder={t('seller.products.restaurantNamePlaceholder')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.restaurantAddress')}</label>
-                <input name="restaurant_address" onChange={handleChange} placeholder={t('seller.products.restaurantAddressPlaceholder')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.restaurantPhone')}</label>
-                <input name="restaurant_phone" onChange={handleChange} placeholder="02-1234-5678"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.voucherTerms')}</label>
-                <input name="voucher_terms" onChange={handleChange} placeholder={t('seller.products.voucherTermsPlaceholder')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.expiryDate')}</label>
-                  <input type="date" name="voucher_expiry" onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyTarget')}</label>
-                  <input type="number" name="group_buy_target" onChange={handleChange} placeholder="50"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyDeadline')}</label>
-                <input type="datetime-local" name="group_buy_deadline" onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.storeVerifyPin')} *</label>
-                <input name="store_verify_pin" onChange={handleChange} placeholder={t('seller.products.storeVerifyPinPlaceholder')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-                <p className="text-xs text-gray-400 mt-1">{t('seller.products.storeVerifyPinDesc')}</p>
-              </div>
-            </div>
+            <MealVoucherFields onChange={handleChange} />
           )}
 
-          {/* Product Type - Only Live Products for Sellers */}
+          {/* Product Type info panel */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
               {t('seller.productType')}
@@ -612,16 +405,11 @@ export default function SellerProductNewPage() {
                     <span className="font-semibold text-gray-900">{t('seller.liveOnlyProduct')}</span>
                     <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">{t('seller.sellerOnly')}</span>
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {t('seller.liveOnlyProductNote')}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    💡 {t('seller.featuredOnlyAdmin')}
-                  </p>
+                  <p className="text-sm text-gray-600 mt-1">{t('seller.liveOnlyProductNote')}</p>
+                  <p className="text-xs text-gray-500 mt-2">💡 {t('seller.featuredOnlyAdmin')}</p>
                 </div>
               </div>
             </div>
-            {/* Hidden input to ensure product_type is submitted */}
             <input type="hidden" name="product_type" value="live" />
           </div>
 
@@ -660,7 +448,7 @@ export default function SellerProductNewPage() {
             />
           </div>
 
-          {/* Submit Button */}
+          {/* Submit */}
           <div className="pt-4 border-t">
             <div className="flex gap-3">
               <Button
