@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import NotificationList from './agency-page/NotificationList'
 import { StatusBadge, PayBadge } from './agency-page/badges'
+import { KpiMetricsGrid, MonthlyTasksGrid } from './agency-page/KpiMetricsGrid'
 import InviteLinkSection from './agency-page/InviteLinkSection'
 import RevenueTrendChart from './agency-page/RevenueTrendChart'
 import type { Stats, Seller, Order, DailyStat, Stream, KpiData, MonthlyTask } from './agency-page/types'
@@ -371,86 +372,13 @@ export default function AgencyPage() {
       </div>
 
       {/* 🛡️ 2026-04-26 L2: TikTok 스타일 핵심 지표 6가지 (Q5) */}
-      {kpiData && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              📊 핵심 지표 6 ({kpiData.period_days}일 기준 · 참고용)
-            </span>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-            {[
-              { label: '총 매출(딜)', value: `${(kpiData.diamond_total / 10_000).toFixed(1)}만`, sub: '매출+후원', color: 'bg-purple-500' },
-              { label: '라이브 진행률', value: `${kpiData.live_rate}%`, sub: '진행 셀러 비율', color: 'bg-blue-500' },
-              { label: '유효 라이브 진행률', value: `${kpiData.effective_live_rate}%`, sub: '30분↑ 셀러', color: 'bg-indigo-500' },
-              { label: '활성 셀러', value: String(kpiData.active_creators), sub: '진행 셀러 수', color: 'bg-emerald-500' },
-              { label: '유효 활성 셀러', value: String(kpiData.effective_active_creators), sub: '30분↑ 진행', color: 'bg-teal-500' },
-              { label: '신규 셀러', value: String(kpiData.new_creators_today), sub: '오늘 영입', color: 'bg-orange-500' },
-            ].map((kpi) => (
-              <div key={kpi.label} className="rounded-xl p-3 bg-white border border-gray-200">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">{kpi.label}</p>
-                <p className="text-lg font-extrabold text-gray-900">{kpi.value}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {kpiData && <KpiMetricsGrid kpiData={kpiData} />}
 
       {/* 🛡️ 2026-04-27 Phase 2-2: PL 시뮬레이터 */}
       <PLSimulator />
 
       {/* 🛡️ 2026-04-26 L2: 이번 달 의무 작업 진행률 (Q6) */}
-      {monthlyTasks.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              🎯 이번 달 의무 작업
-            </span>
-            <span className="text-[10px] text-gray-400">{monthlyTasks[0]?.month}</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {monthlyTasks.map(task => {
-              const pct = Math.min(100, Math.round((task.actual_value / Math.max(1, task.target_value)) * 100))
-              const isCompleted = task.status === 'completed'
-              const isFailed = task.status === 'failed'
-              const taskLabel: Record<MonthlyTask['task_type'], string> = {
-                creator_growth: '신규 영입',
-                sales_quota: '월 매출',
-                activation: '활성화 (1시간↑ 라이브)',
-              }
-              const formatValue = (n: number) =>
-                task.task_type === 'sales_quota' ? `${(n / 10_000).toFixed(0)}만원` : `${n}${task.task_type === 'creator_growth' ? '명' : '명'}`
-
-              return (
-                <div key={task.id} className={`rounded-xl p-4 border ${
-                  isCompleted ? 'bg-green-50 border-green-200' :
-                  isFailed ? 'bg-red-50 border-red-200' :
-                  'bg-white border-gray-200'
-                }`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-bold text-gray-700">{taskLabel[task.task_type]}</p>
-                    {isCompleted && <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded font-bold">완료 ✓</span>}
-                    {isFailed && <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold">미달</span>}
-                  </div>
-                  <p className="text-lg font-extrabold text-gray-900 mb-2">
-                    {formatValue(task.actual_value)} <span className="text-xs text-gray-400 font-normal">/ {formatValue(task.target_value)}</span>
-                  </p>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-full transition-all ${
-                        isCompleted ? 'bg-green-500' : isFailed ? 'bg-red-500' : pct >= 70 ? 'bg-blue-500' : 'bg-amber-500'
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-gray-500 mt-1">{pct}%</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      <MonthlyTasksGrid tasks={monthlyTasks} />
 
       {/* 1.5 Actionable insights callouts */}
       {insights.length > 0 && (

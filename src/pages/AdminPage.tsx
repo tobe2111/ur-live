@@ -73,7 +73,7 @@ export default function AdminPage() {
         type: 'success',
         emoji: '\uD83C\uDF89',
         title: t('admin.dashboard.k001', { defaultValue: '일일 매출 목표 달성!' }),
-        message: `오늘 매출 ${fmtPrice(dashboardStats.todaySales)} 달성 (목표: ${fmtPrice(salesTarget)})`
+        message: t('admin.dashboard.todaySalesMsg', { sales: fmtPrice(dashboardStats.todaySales), target: fmtPrice(salesTarget), defaultValue: `오늘 매출 ${fmtPrice(dashboardStats.todaySales)} 달성 (목표: ${fmtPrice(salesTarget)})` })
       }])
       salesAlertShown.current = true
     }
@@ -210,8 +210,8 @@ export default function AdminPage() {
           return [...prev, {
             type: 'warning' as const,
             emoji: '⚠️',
-            title: `고액 주문 감지 (${userEntries.length}명)`,
-            message: summary + (userEntries.length > 3 ? ` 외 ${userEntries.length - 3}명` : '')
+            title: t('admin.dashboard.highOrderAlert', { count: userEntries.length, defaultValue: `고액 주문 감지 (${userEntries.length}명)` }),
+            message: summary + (userEntries.length > 3 ? t('admin.dashboard.andMore', { n: userEntries.length - 3, defaultValue: ` 외 ${userEntries.length - 3}명` }) : '')
           }]
         })
       }
@@ -256,7 +256,7 @@ export default function AdminPage() {
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      toast.error(`승인 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+      toast.error(t('admin.dashboard.approveFailed', { msg: apiErr.response?.data?.error || apiErr.message, defaultValue: `승인 실패: ${apiErr.response?.data?.error || apiErr.message}` }))
     }
   }
 
@@ -274,7 +274,7 @@ export default function AdminPage() {
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      toast.error(`거부 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+      toast.error(t('admin.dashboard.rejectFailed', { msg: apiErr.response?.data?.error || apiErr.message, defaultValue: `거부 실패: ${apiErr.response?.data?.error || apiErr.message}` }))
     }
   }
 
@@ -331,7 +331,7 @@ export default function AdminPage() {
   }
 
   async function updateCommissionRate(sellerId: number, currentRate: number) {
-    const newRate = prompt(`새 수수료율 (0-100%, 현재: ${currentRate}%)`, currentRate.toString())
+    const newRate = prompt(t('admin.dashboard.commissionPrompt', { currentRate, defaultValue: `새 수수료율 (0-100%, 현재: ${currentRate}%)` }), currentRate.toString())
     if (!newRate) return
     const rate = parseFloat(newRate)
     if (isNaN(rate) || rate < 0 || rate > 100) {

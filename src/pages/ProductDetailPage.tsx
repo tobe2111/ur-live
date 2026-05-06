@@ -253,7 +253,7 @@ export default function ProductDetailPage() {
             onClick={() => navigate('/')}
             className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
           >
-            홈으로 돌아가기
+            {t('common.backToHome', { defaultValue: '홈으로 돌아가기' })}
           </button>
         </div>
       </div>
@@ -349,7 +349,7 @@ export default function ProductDetailPage() {
           )}
           {(detailImages.length > 1 || (product.long_description && product.long_description.length > 200)) && (
             <button className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:bg-[#121212]">
-              상세정보 펼쳐보기
+              {t('productDetail.expandDetails', { defaultValue: '상세정보 펼쳐보기' })}
             </button>
           )}
         </section>
@@ -366,7 +366,7 @@ export default function ProductDetailPage() {
                 <ChevronRight className="w-4 h-4 text-white/60" />
               </div>
               <div className="flex items-center justify-between mb-1 text-[11px] text-white/70">
-                <span>{product.group_buy_current || 0}명 참여 · {product.group_buy_target}명 목표</span>
+                <span>{t('productDetail.groupBuyProgress', { current: product.group_buy_current || 0, target: product.group_buy_target, defaultValue: `${product.group_buy_current || 0}명 참여 · ${product.group_buy_target}명 목표` })}</span>
                 {product.group_buy_deadline && <GroupBuyCountdown deadline={product.group_buy_deadline} />}
               </div>
               <div className="w-full rounded-full overflow-hidden h-1 bg-white dark:bg-[#0A0A0A]/15">
@@ -406,12 +406,12 @@ export default function ProductDetailPage() {
                   <button type="button"
                     onClick={() => navigate(`/restaurant-map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
                     className="py-2 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-gray-200 dark:hover:bg-[#2A2A2A] text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
-                    🗺 지도
+                    {t('productDetail.mapLink', { defaultValue: '🗺 지도' })}
                   </button>
                   <a href={`https://map.naver.com/v5/search/${encodeURIComponent(product.restaurant_name || product.restaurant_address)}`}
                     target="_blank" rel="noopener noreferrer"
                     className="py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
-                    네이버
+                    {t('productDetail.naverMap', { defaultValue: '네이버' })}
                   </a>
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((product.restaurant_name || '') + ' ' + (product.restaurant_address || ''))}`}
                     target="_blank" rel="noopener noreferrer"
@@ -488,7 +488,7 @@ export default function ProductDetailPage() {
           <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50 dark:bg-[#121212]">
             <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             <span className="text-[12px] font-semibold text-gray-900 dark:text-white">{t('productDetail.tomorrowDelivery')}</span>
-            <span className="text-[11px] text-gray-500 dark:text-gray-400">· 5만원 이상 무료</span>
+            <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('productDetail.freeShippingNote', { defaultValue: '· 5만원 이상 무료' })}</span>
           </div>
         </div>
 

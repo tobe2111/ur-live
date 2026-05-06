@@ -368,7 +368,7 @@ export default function MainHomePage() {
           <span className="text-[14px] text-[#FBBF24] shrink-0">→</span>
         </button>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
           {displayMeals.slice(0, 8).map((m, i) => {
             const current = m.group_buy_current || 0
             const d = disc(m.price, m.original_price)
@@ -419,11 +419,11 @@ export default function MainHomePage() {
             </div>
             <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400 pb-1">{t('mainHome.seeAll')}</button>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 md:overflow-visible md:grid md:grid-cols-3 md:mx-0 md:px-0 lg:grid-cols-4 xl:grid-cols-5">
             {liveStreams.map(s => {
               const thumb = getThumb(s)
               return (
-                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] lg:w-auto text-left active:scale-[0.98] transition-transform">
+                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] md:w-auto text-left active:scale-[0.98] transition-transform">
                   <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#1A1A1A]">
                     {thumb && <img src={thumb} alt={s.title || t('mainHome.altLiveStream')} loading="lazy" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 35%, rgba(0,0,0,0.9) 100%)' }} />
@@ -464,7 +464,7 @@ export default function MainHomePage() {
             </div>
             <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 md:overflow-visible md:grid md:grid-cols-3 md:mx-0 md:px-0 lg:grid-cols-4 xl:grid-cols-5">
             {scheduledStreams.slice(0, 10).map(s => {
               const thumb = getThumb(s)
               const schedDate = s.scheduled_at ? new Date(s.scheduled_at) : null
@@ -504,7 +504,7 @@ export default function MainHomePage() {
             </div>
             <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 lg:overflow-visible lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:mx-0 lg:px-0">
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 md:overflow-visible md:grid md:grid-cols-3 md:mx-0 md:px-0 lg:grid-cols-4 xl:grid-cols-5">
             {endedStreams.slice(0, 10).map(s => {
               const thumb = getThumb(s)
               return (

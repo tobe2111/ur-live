@@ -295,7 +295,7 @@ export default function CheckoutPage() {
   // ✅ BUG #3 FIX: Auth/loading guards (all hooks called above this line)
   const isSessionUser = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
   if (!isSessionUser && (!isAuthReady || authLoading))
-    return <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4" /><p className="text-gray-400 dark:text-gray-500">로딩 중...</p></div></div>
+    return <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4" /><p className="text-gray-400 dark:text-gray-500">{t('common.loading', { defaultValue: '로딩 중...' })}</p></div></div>
   if (!user && !isSessionUser) return null
   if (loading || tokenRefreshing)
     return <div className="flex items-center justify-center min-h-screen"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" /><p className="mt-4 text-gray-400 dark:text-gray-500">{tokenRefreshing ? t('payment.errors.securityAuthInProgress') : t('payment.errors.loading')}</p></div></div>
@@ -304,8 +304,8 @@ export default function CheckoutPage() {
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">
         <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-600" /><p className="text-red-800">{error}</p></div>
         <div className="flex gap-2 mt-4">
-          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
-          <Button onClick={() => navigate('/cart')} variant="outline">장바구니로 돌아가기</Button>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('common.retry', { defaultValue: '다시 시도' })}</button>
+          <Button onClick={() => navigate('/cart')} variant="outline">{t('checkout.backToCart', { defaultValue: '장바구니로 돌아가기' })}</Button>
         </div>
       </div>
     </div>

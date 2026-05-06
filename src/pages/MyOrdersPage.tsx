@@ -159,7 +159,7 @@ export default function MyOrdersPage() {
   }
 
   async function handleConfirmOrder(orderId: number | string, orderNumber: string) {
-    if (!confirm(`주문 ${orderNumber}을(를) 구매확정 하시겠습니까?\n구매확정 후에는 취소할 수 없습니다.`)) return
+    if (!confirm(t('myOrders.confirmPurchasePrompt', { orderNumber, defaultValue: `주문 ${orderNumber}을(를) 구매확정 하시겠습니까?\n구매확정 후에는 취소할 수 없습니다.` }))) return
     setProcessing(true)
     try {
       const response = await api.post(`/api/orders/${orderId}/confirm`)
@@ -290,7 +290,7 @@ export default function MyOrdersPage() {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p className="text-[17px] text-gray-500 dark:text-gray-400">로딩 중...</p>
+              <p className="text-[17px] text-gray-500 dark:text-gray-400">{t('common.loading', { defaultValue: '로딩 중...' })}</p>
             </div>
           </div>
         ) : error ? (
@@ -303,7 +303,7 @@ export default function MyOrdersPage() {
                 onClick={() => loadData()}
                 className="px-6 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold"
               >
-                다시 시도
+                {t('common.retry', { defaultValue: '다시 시도' })}
               </button>
             </div>
           </div>

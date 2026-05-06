@@ -208,7 +208,7 @@ export default function LiveListPage() {
                   hint={t('liveList.noLiveHint', { defaultValue: '예정된 방송 알림을 받아보세요' })}
                 />
               ) : (
-              <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-2 lg:overflow-visible lg:grid lg:grid-cols-3 xl:grid-cols-4 lg:px-4">
+              <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-2 md:overflow-visible md:grid md:grid-cols-2 md:px-4 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredLive.map(s => (
                   <button
                     key={s.id}
@@ -406,9 +406,9 @@ function SkeletonGrid() {
         <div className="h-4 w-12 rounded-full bg-gray-200 dark:bg-white/[0.06] animate-pulse" />
         <div className="h-3 w-16 rounded bg-gray-200 dark:bg-white/[0.06] animate-pulse" />
       </div>
-      <div className="flex gap-3 px-4 overflow-x-hidden pb-2 lg:grid lg:grid-cols-3 xl:grid-cols-4">
+      <div className="flex gap-3 px-4 overflow-x-hidden pb-2 md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-3 xl:grid-cols-4">
         {[0, 1, 2].map(i => (
-          <div key={i} className="shrink-0 w-[280px] lg:w-full">
+          <div key={i} className="shrink-0 w-[280px] md:w-full">
             <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.03] animate-pulse" style={{ aspectRatio: '4/5' }} />
           </div>
         ))}
