@@ -4,6 +4,7 @@
  * 표시만 담당. 변경/선택 클릭 시 부모의 setShowAddressModal 호출.
  */
 import { AlertCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { ShippingAddress } from './types'
 
 interface Props {
@@ -12,16 +13,17 @@ interface Props {
 }
 
 export default function ShippingSection({ selectedAddress, onOpenAddressModal }: Props) {
+  const { t } = useTranslation()
   return (
     <section className="bg-white dark:bg-[#0A0A0A] px-5 py-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">배송지</h2>
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.shipping.title', { defaultValue: '배송지' })}</h2>
         <button
           type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenAddressModal() }}
           className="text-[13px] font-medium text-blue-600 active:scale-95"
         >
-          {selectedAddress ? '변경' : '선택'}
+          {selectedAddress ? t('checkout.shipping.change', { defaultValue: '변경' }) : t('checkout.shipping.select', { defaultValue: '선택' })}
         </button>
       </div>
 
@@ -30,8 +32,8 @@ export default function ShippingSection({ selectedAddress, onOpenAddressModal }:
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-red-800 font-semibold text-[14px]">⚠️ 배송지를 선택해주세요</p>
-              <p className="text-red-700 text-[13px] mt-1">배송지를 선택하셔야 결제가 가능합니다.</p>
+              <p className="text-red-800 font-semibold text-[14px]">{t('checkout.shipping.pleaseSelect', { defaultValue: '⚠️ 배송지를 선택해주세요' })}</p>
+              <p className="text-red-700 text-[13px] mt-1">{t('checkout.shipping.requiredForPayment', { defaultValue: '배송지를 선택하셔야 결제가 가능합니다.' })}</p>
             </div>
           </div>
         </div>
@@ -41,7 +43,7 @@ export default function ShippingSection({ selectedAddress, onOpenAddressModal }:
             <span className="text-[15px] font-semibold text-gray-900 dark:text-white">{selectedAddress.recipient_name}</span>
             {selectedAddress.is_default === 1 && (
               <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-600">
-                기본
+                {t('checkout.shipping.defaultBadge', { defaultValue: '기본' })}
               </span>
             )}
           </div>

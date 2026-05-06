@@ -147,35 +147,35 @@ export default function AdminDealMonitorPage() {
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('admin.pages.deals')}
-          subtitle="유저 포인트 충전 및 소비 현황"
+          subtitle={t('admin.dealMonitor.k001', { defaultValue: "유저 포인트 충전 및 소비 현황" })}
           icon={<Gift className="h-5 w-5" />}
         />
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={<Gift className="w-5 h-5 text-pink-600" />}
-          label="총 충전액"
+          label={t('admin.dealMonitor.k002', { defaultValue: "총 충전액" })}
           value={`${fmt(s?.totals.total_charged_amount)}원`}
           sub={`수수료 ${fmt(s?.totals.total_commission)}원`}
           bg="bg-pink-50"
         />
         <StatCard
           icon={<Zap className="w-5 h-5 text-amber-600" />}
-          label="발급 딜"
+          label={t('admin.dealMonitor.k003', { defaultValue: "발급 딜" })}
           value={`${fmt(s?.totals.total_points_issued)}딜`}
           sub={`후원 ${fmt(s?.donations.total_donated)}딜`}
           bg="bg-amber-50"
         />
         <StatCard
           icon={<TrendingUp className="w-5 h-5 text-blue-600" />}
-          label="오늘"
+          label={t('admin.dealMonitor.k004', { defaultValue: "오늘" })}
           value={`${fmt(s?.today.amount)}원`}
           sub={`${fmt(s?.today.count)}건`}
           bg="bg-blue-50"
         />
         <StatCard
           icon={<Users className="w-5 h-5 text-green-600" />}
-          label="충전 유저"
+          label={t('admin.dealMonitor.k005', { defaultValue: "충전 유저" })}
           value={`${fmt(s?.totals.unique_users)}명`}
           sub={`이번 달 ${fmt(s?.thisMonth.amount)}원`}
           bg="bg-green-50"
@@ -211,7 +211,7 @@ export default function AdminDealMonitorPage() {
                   type="text"
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
-                  placeholder="이름 / 이메일 / 주문번호"
+                  placeholder={t('admin.dealMonitor.k006', { defaultValue: "이름 / 이메일 / 주문번호" })}
                   className="pl-9 pr-3 py-2 text-sm text-gray-900 border rounded-lg w-56 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -226,10 +226,10 @@ export default function AdminDealMonitorPage() {
               onChange={e => { setSort(e.target.value); setPage(1) }}
               className="text-sm text-gray-900 border rounded-lg px-3 py-2"
             >
-              <option value="total_charged">충전액순</option>
-              <option value="total_donated">후원액순</option>
-              <option value="balance">잔액순</option>
-              <option value="last_charged">최근충전순</option>
+              <option value="total_charged">{t('admin.dealMonitor.k007', { defaultValue: '충전액순' })}</option>
+              <option value="total_donated">{t('admin.dealMonitor.k008', { defaultValue: '후원액순' })}</option>
+              <option value="balance">{t('admin.dealMonitor.k009', { defaultValue: '잔액순' })}</option>
+              <option value="last_charged">{t('admin.dealMonitor.k010', { defaultValue: '최근충전순' })}</option>
             </select>
           )}
         </div>
@@ -244,18 +244,18 @@ export default function AdminDealMonitorPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">일시</th>
-                  <th className="px-4 py-3 text-left font-medium">유저</th>
-                  <th className="px-4 py-3 text-right font-medium">결제액</th>
-                  <th className="px-4 py-3 text-right font-medium">수수료</th>
-                  <th className="px-4 py-3 text-right font-medium">충전 딜</th>
-                  <th className="px-4 py-3 text-right font-medium">현재 잔액</th>
-                  <th className="px-4 py-3 text-left font-medium">주문번호</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k011', { defaultValue: '일시' })}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k012', { defaultValue: '유저' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k013', { defaultValue: '결제액' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k014', { defaultValue: '수수료' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k015', { defaultValue: '충전 딜' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k016', { defaultValue: '현재 잔액' })}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k017', { defaultValue: '주문번호' })}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {charges.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-gray-400">충전 내역이 없습니다</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-gray-400">{t('admin.dealMonitor.k018', { defaultValue: '충전 내역이 없습니다' })}</td></tr>
                 ) : charges.map(c => (
                   <tr key={c.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatKST(c.created_at)}</td>
@@ -287,18 +287,18 @@ export default function AdminDealMonitorPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">유저</th>
-                  <th className="px-4 py-3 text-right font-medium">충전 횟수</th>
-                  <th className="px-4 py-3 text-right font-medium">총 충전액</th>
-                  <th className="px-4 py-3 text-right font-medium">총 후원액</th>
-                  <th className="px-4 py-3 text-right font-medium">현재 잔액</th>
-                  <th className="px-4 py-3 text-left font-medium">최근 충전</th>
-                  <th className="px-4 py-3 text-left font-medium">가입일</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k012', { defaultValue: '유저' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k019', { defaultValue: '충전 횟수' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k002', { defaultValue: '총 충전액' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k020', { defaultValue: '총 후원액' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k016', { defaultValue: '현재 잔액' })}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k021', { defaultValue: '최근 충전' })}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k022', { defaultValue: '가입일' })}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {users.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-gray-400">충전 유저가 없습니다</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-gray-400">{t('admin.dealMonitor.k023', { defaultValue: '충전 유저가 없습니다' })}</td></tr>
                 ) : users.map(u => (
                   <tr key={u.user_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">

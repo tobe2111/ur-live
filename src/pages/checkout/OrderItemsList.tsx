@@ -4,6 +4,7 @@
  * 셀러별 그룹 + 각 상품 + 배송비 표시. read-only.
  */
 import { Package } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
 import type { SellerGroup } from './types'
 
@@ -13,11 +14,12 @@ interface Props {
 }
 
 export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) {
+  const { t } = useTranslation()
   return (
     <section className="bg-white dark:bg-[#0A0A0A] px-5 py-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">주문 상품</h2>
-        <span className="text-[13px] text-gray-400 dark:text-gray-500">{totalItemCount}개</span>
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.items.title', { defaultValue: '주문 상품' })}</h2>
+        <span className="text-[13px] text-gray-400 dark:text-gray-500">{t('checkout.items.count', { defaultValue: '{{count}}개', count: totalItemCount })}</span>
       </div>
 
       <div className="mt-5 flex flex-col gap-5">
@@ -49,12 +51,12 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
                   </p>
                   {item.option_value && (
                     <p className="text-[13px] text-gray-400 dark:text-gray-500">
-                      {item.option_value} / {item.quantity}개
+                      {t('checkout.items.optionLine', { defaultValue: '{{option}} / {{count}}개', option: item.option_value, count: item.quantity })}
                     </p>
                   )}
                   <div className="flex items-center gap-1.5">
                     <span className="text-[15px] font-bold text-gray-900 dark:text-white">
-                      {formatNumber((item.price_snapshot ?? 0) * item.quantity)}원
+                      {formatNumber((item.price_snapshot ?? 0) * item.quantity)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}
                     </span>
                   </div>
                 </div>
@@ -63,16 +65,16 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
 
             {/* 배송비 정보 */}
             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#2A2A2A] flex justify-between text-[13px]">
-              <span className="text-gray-400 dark:text-gray-500">배송비</span>
+              <span className="text-gray-400 dark:text-gray-500">{t('checkout.summary.shippingFee', { defaultValue: '배송비' })}</span>
               <span className="font-semibold text-gray-900 dark:text-white">
                 {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
-                  ? <span className="text-blue-600 font-medium">무료</span>
-                  : `${formatNumber(group.shipping_fee)}원`}
+                  ? <span className="text-blue-600 font-medium">{t('checkout.summary.free', { defaultValue: '무료' })}</span>
+                  : `${formatNumber(group.shipping_fee)}${t('checkout.summary.wonSuffix', { defaultValue: '원' })}`}
               </span>
             </div>
             {group.free_shipping_threshold > 0 && group.subtotal < group.free_shipping_threshold && (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
-                {formatNumber(group.free_shipping_threshold - group.subtotal)}원 추가 시 무료배송
+                {t('checkout.items.addForFreeShipping', { defaultValue: '{{amount}}원 추가 시 무료배송', amount: formatNumber(group.free_shipping_threshold - group.subtotal) })}
               </p>
             )}
           </div>

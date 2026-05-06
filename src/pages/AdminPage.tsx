@@ -75,7 +75,7 @@ export default function AdminPage() {
       setAlerts(prev => [...prev, {
         type: 'success',
         emoji: '\uD83C\uDF89',
-        title: '일일 매출 목표 달성!',
+        title: t('admin.dashboard.k001', { defaultValue: '일일 매출 목표 달성!' }),
         message: `오늘 매출 ${fmtPrice(dashboardStats.todaySales)} 달성 (목표: ${fmtPrice(salesTarget)})`
       }])
       salesAlertShown.current = true
@@ -206,7 +206,7 @@ export default function AdminPage() {
       const userEntries = Object.entries(highValueByUser)
       if (userEntries.length > 0) {
         setAlerts(prev => {
-          if (prev.some(a => a.title.includes('고액 주문'))) return prev
+          if (prev.some(a => a.title.includes(t('admin.dashboard.k002', { defaultValue: '고액 주문' })))) return prev
           const summary = userEntries.slice(0, 3).map(([uid, d]) =>
             `${uid}: ${d.count}건 ${formatNumber(d.total)}원`
           ).join(' | ')
@@ -232,11 +232,11 @@ export default function AdminPage() {
             if (recent.length >= 2) {
               continuousDetected.add(uid)
               setAlerts(prev => {
-                if (prev.some(a => a.title.includes('연속 주문'))) return prev
+                if (prev.some(a => a.title.includes(t('admin.dashboard.k003', { defaultValue: '연속 주문' })))) return prev
                 return [...prev, {
                   type: 'error' as const,
                   emoji: '🚨',
-                  title: '연속 주문 감지',
+                  title: t('admin.dashboard.k004', { defaultValue: '연속 주문 감지' }),
                   message: `유저 ${order.user_email || uid}: 1분 내 ${recent.length + 1}건`
                 }]
               })
@@ -252,10 +252,10 @@ export default function AdminPage() {
   }
 
   async function approveSeller(sellerId: number) {
-    if (!confirm('이 판매자를 승인하시겠습니까?')) return
+    if (!confirm(t('admin.dashboard.k005', { defaultValue: '이 판매자를 승인하시겠습니까?' }))) return
     try {
       const response = await api.patch(`/api/admin/sellers/${sellerId}/approve`, {})
-      toast.success(response.data.message || '판매자 승인 완료!')
+      toast.success(response.data.message || t('admin.dashboard.k006', { defaultValue: '판매자 승인 완료!' }))
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
@@ -265,12 +265,12 @@ export default function AdminPage() {
 
   async function rejectSeller() {
     if (!selectedSeller || !rejectionReason.trim()) {
-      toast.error('거부 사유를 입력해주세요')
+      toast.error(t('admin.dashboard.k007', { defaultValue: '거부 사유를 입력해주세요' }))
       return
     }
     try {
       const response = await api.patch(`/api/admin/sellers/${selectedSeller.id}/reject`, { reason: rejectionReason })
-      toast.info(response.data.message || '판매자 승인이 거부되었습니다')
+      toast.info(response.data.message || t('admin.dashboard.k008', { defaultValue: '판매자 승인이 거부되었습니다' }))
       setRejectModalOpen(false)
       setSelectedSeller(null)
       setRejectionReason('')
@@ -302,30 +302,30 @@ export default function AdminPage() {
   async function approveBizInfo(sellerId: number) {
     try {
       await api.patch(`/api/admin/sellers/${sellerId}/business-info/approve`)
-      toast.success('사업자 정보를 승인했습니다')
+      toast.success(t('admin.dashboard.k009', { defaultValue: '사업자 정보를 승인했습니다' }))
       setBizInfoSeller(prev => prev ? { ...prev, biz_is_verified: 1, biz_verified_at: new Date().toISOString() } : null)
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      toast.error(apiErr.response?.data?.error || '승인 실패')
+      toast.error(apiErr.response?.data?.error || t('admin.dashboard.k010', { defaultValue: '승인 실패' }))
     }
   }
 
   async function rejectBizInfo(sellerId: number) {
     try {
       await api.patch(`/api/admin/sellers/${sellerId}/business-info/reject`)
-      toast.success('사업자 정보를 반려했습니다')
+      toast.success(t('admin.dashboard.k011', { defaultValue: '사업자 정보를 반려했습니다' }))
       setBizInfoSeller(prev => prev ? { ...prev, biz_is_verified: 0, biz_verified_at: null } : null)
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      toast.error(apiErr.response?.data?.error || '반려 실패')
+      toast.error(apiErr.response?.data?.error || t('admin.dashboard.k012', { defaultValue: '반려 실패' }))
     }
   }
 
   async function deleteStream(streamId: number) {
-    if (!confirm('정말 이 라이브를 삭제하시겠습니까?')) return
+    if (!confirm(t('admin.dashboard.k013', { defaultValue: '정말 이 라이브를 삭제하시겠습니까?' }))) return
     try {
       await api.delete(`/api/admin/streams/${streamId}`)
-      toast.success('라이브 삭제 완료!')
+      toast.success(t('admin.dashboard.k014', { defaultValue: '라이브 삭제 완료!' }))
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
@@ -338,7 +338,7 @@ export default function AdminPage() {
     if (!newRate) return
     const rate = parseFloat(newRate)
     if (isNaN(rate) || rate < 0 || rate > 100) {
-      toast.error('수수료율은 0~100 사이여야 합니다')
+      toast.error(t('admin.dashboard.k015', { defaultValue: '수수료율은 0~100 사이여야 합니다' }))
       return
     }
     try {
@@ -353,7 +353,7 @@ export default function AdminPage() {
 
   async function toggleManipulateStatsPermission(sellerId: number, currentValue: number) {
     const newValue = currentValue ? 0 : 1
-    const action = newValue ? '승인' : '해제'
+    const action = newValue ? t('admin.dashboard.k016', { defaultValue: '승인' }) : t('admin.dashboard.k017', { defaultValue: '해제' })
     if (!confirm(`시청자 수 조작 권한을 ${action}하시겠습니까?`)) return
     try {
       await api.patch(`/api/admin/sellers/${sellerId}/permissions`, { can_manipulate_stats: newValue })
@@ -366,10 +366,10 @@ export default function AdminPage() {
   }
 
   async function suspendSeller(sellerId: number) {
-    if (!confirm('이 판매자를 정지(비활성화)하시겠습니까?')) return
+    if (!confirm(t('admin.dashboard.k018', { defaultValue: '이 판매자를 정지(비활성화)하시겠습니까?' }))) return
     try {
       const response = await api.delete(`/api/admin/sellers/${sellerId}`)
-      toast.success(response.data.message || '판매자가 정지되었습니다')
+      toast.success(response.data.message || t('admin.dashboard.k019', { defaultValue: '판매자가 정지되었습니다' }))
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
@@ -387,13 +387,13 @@ export default function AdminPage() {
         <div className="flex items-start justify-between gap-4">
           <DashboardPageHeader
             title={t('admin.pages.dashboard')}
-            subtitle="유어딜 전체 운영 현황 — 셀러 승인·매출·주문·정산"
+            subtitle={t('admin.dashboard.k020', { defaultValue: "유어딜 전체 운영 현황 — 셀러 승인·매출·주문·정산" })}
             icon={<LayoutDashboard className="h-5 w-5" />}
           />
           <button
             onClick={() => { loadData(); loadDashboardStats() }}
             className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-[12px] font-semibold transition-colors"
-            title="수동 새로고침 (자동: 30초)"
+            title={t('admin.dashboard.k021', { defaultValue: "수동 새로고침 (자동: 30초)" })}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             새로고침
@@ -424,7 +424,7 @@ export default function AdminPage() {
                 <p className="text-sm font-medium text-gray-900">{alert.title}</p>
                 <p className="text-xs text-gray-500">{alert.message}</p>
               </div>
-              <button onClick={() => dismissAlert(i)} aria-label="알림 닫기" className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+              <button onClick={() => dismissAlert(i)} aria-label={t('admin.dashboard.k022', { defaultValue: "알림 닫기" })} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
             </div>
           ))}
         </div>
@@ -433,7 +433,7 @@ export default function AdminPage() {
       {/* ── 실시간 통계 카드 ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
-          { label: '오늘 매출', value: fmtPrice(dashboardStats.todaySales), sub: '실시간', icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: t('admin.dashboard.k023', { defaultValue: '오늘 매출' }), value: fmtPrice(dashboardStats.todaySales), sub: t('admin.dashboard.k024', { defaultValue: '실시간' }), icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: '오늘 주문', value: `${formatNumber(dashboardStats.todayOrders || 0)}건`, sub: '실시간', icon: <Package className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: '현재 방문자', value: `${formatNumber(dashboardStats.currentVisitors || 0)}명`, sub: '최근 5분', icon: <Eye className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
           { label: '라이브 방송', value: `${formatNumber(dashboardStats.liveStreams || 0)}개`, sub: '진행 중', icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50' },
@@ -453,10 +453,10 @@ export default function AdminPage() {
 
       {/* ── 매출 차트 + 활동 피드 (스크롤 진입 시 로드) ── */}
       <div className="grid lg:grid-cols-2 gap-3 sm:gap-4">
-        <DeferUntilVisible fallback={<ChartSkeleton title="매출 추이" />}>
+        <DeferUntilVisible fallback={<ChartSkeleton title={t('admin.dashboard.k025', { defaultValue: "매출 추이" })} />}>
           <AdminRevenueChart />
         </DeferUntilVisible>
-        <DeferUntilVisible fallback={<ChartSkeleton title="최근 활동" />}>
+        <DeferUntilVisible fallback={<ChartSkeleton title={t('admin.dashboard.k026', { defaultValue: "최근 활동" })} />}>
           <AdminActivityFeed />
         </DeferUntilVisible>
       </div>
@@ -464,10 +464,10 @@ export default function AdminPage() {
       {/* ── 판매자 통계 카드 — 🛡️ 2026-04-28: 클릭 가능 (해당 페이지 이동) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
-          { label: '총 판매자', value: stats.totalSellers, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50', link: '/admin/seller-approval' },
-          { label: '승인된 판매자', value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/admin/seller-approval?status=active' },
-          { label: '총 라이브', value: stats.totalStreams, icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50', link: '/admin/live-monitor' },
-          { label: '진행 중 라이브', value: stats.activeStreams, icon: <TrendingUp className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50', link: '/admin/live-monitor?status=live' },
+          { label: t('admin.dashboard.k027', { defaultValue: '총 판매자' }), value: stats.totalSellers, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50', link: '/admin/seller-approval' },
+          { label: t('admin.dashboard.k028', { defaultValue: '승인된 판매자' }), value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/admin/seller-approval?status=active' },
+          { label: t('admin.dashboard.k029', { defaultValue: '총 라이브' }), value: stats.totalStreams, icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50', link: '/admin/live-monitor' },
+          { label: t('admin.dashboard.k030', { defaultValue: '진행 중 라이브' }), value: stats.activeStreams, icon: <TrendingUp className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50', link: '/admin/live-monitor?status=live' },
         ].map(card => (
           <button
             key={card.label}
@@ -489,13 +489,13 @@ export default function AdminPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-red-100 bg-red-50 flex items-center gap-2">
           <Play className="w-4 h-4 text-red-500" />
-          <h2 className="text-sm font-semibold text-gray-900">진행 중인 라이브</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k031', { defaultValue: '진행 중인 라이브' })}</h2>
           <span className="ml-auto text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
             {liveStreams.length}개
           </span>
         </div>
         {liveStreams.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-gray-400">현재 진행 중인 라이브가 없습니다</div>
+          <div className="px-5 py-8 text-center text-sm text-gray-400">{t('admin.dashboard.k032', { defaultValue: '현재 진행 중인 라이브가 없습니다' })}</div>
         ) : (
           <div className="divide-y divide-gray-50">
             {liveStreams.map(stream => (
@@ -531,7 +531,7 @@ export default function AdminPage() {
       {/* ── 수수료 설정 ── */}
       {commissionSettings.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm p-5 mb-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">💰 플랫폼 수수료 설정</h2>
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('admin.dashboard.k033', { defaultValue: '💰 플랫폼 수수료 설정' })}</h2>
           <div className="space-y-3">
             {commissionSettings.map(setting => (
               <div key={setting.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -566,7 +566,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-amber-100 bg-amber-50 flex items-center gap-2">
             <Users className="w-4 h-4 text-amber-600" />
-            <h2 className="text-sm font-semibold text-gray-900">승인 대기 판매자</h2>
+            <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k034', { defaultValue: '승인 대기 판매자' })}</h2>
             <span className="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
               {pendingSellers.length}명
             </span>
@@ -575,7 +575,7 @@ export default function AdminPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50">
-                  {['신청일시', '이름', '이메일', '연락처', '상호명', '사업자번호', '승인 관리'].map(h => (
+                  {[t('admin.dashboard.k035', { defaultValue: '신청일시' }), t('admin.dashboard.k036', { defaultValue: '이름' }), t('admin.dashboard.k037', { defaultValue: '이메일' }), t('admin.dashboard.k038', { defaultValue: '연락처' }), t('admin.dashboard.k039', { defaultValue: '상호명' }), t('admin.dashboard.k040', { defaultValue: '사업자번호' }), t('admin.dashboard.k041', { defaultValue: '승인 관리' })].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                   ))}
                 </tr>
@@ -613,8 +613,8 @@ export default function AdminPage() {
       {/* ── 판매자 관리 ── */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">판매자 관리</h2>
-          <button onClick={loadData} aria-label="데이터 새로고침" className="p-1.5 rounded-lg hover:bg-gray-100">
+          <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k042', { defaultValue: '판매자 관리' })}</h2>
+          <button onClick={loadData} aria-label={t('admin.dashboard.k043', { defaultValue: "데이터 새로고침" })} className="p-1.5 rounded-lg hover:bg-gray-100">
             <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
           </button>
         </div>
@@ -622,7 +622,7 @@ export default function AdminPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50">
-                {['ID', '이메일', '회사명', '수수료율', '특수권한', '상태', '가입일', '액션'].map(h => (
+                {['ID', t('admin.dashboard.k037', { defaultValue: '이메일' }), t('admin.dashboard.k044', { defaultValue: '회사명' }), t('admin.dashboard.k045', { defaultValue: '수수료율' }), t('admin.dashboard.k046', { defaultValue: '특수권한' }), t('admin.dashboard.k047', { defaultValue: '상태' }), t('admin.dashboard.k048', { defaultValue: '가입일' }), t('admin.dashboard.k049', { defaultValue: '액션' })].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -637,13 +637,13 @@ export default function AdminPage() {
                   </tr>
                 ))
               ) : sellers.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">등록된 판매자가 없습니다</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">{t('admin.dashboard.k050', { defaultValue: '등록된 판매자가 없습니다' })}</td></tr>
               ) : sellers.map(seller => (
                 <tr key={seller.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-xs text-gray-500">
                     {seller.id}
                     {seller.linked_user_id && (
-                      <span className="ml-1 inline-flex items-center px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-bold" title="카카오 계정 연동됨">
+                      <span className="ml-1 inline-flex items-center px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-bold" title={t('admin.dashboard.k051', { defaultValue: "카카오 계정 연동됨" })}>
                         💬
                       </span>
                     )}
@@ -662,7 +662,7 @@ export default function AdminPage() {
                         seller.can_manipulate_stats ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                       }`}
                     >
-                      {seller.can_manipulate_stats ? <><CheckCircle className="w-3 h-3" />승인됨</> : <><XCircle className="w-3 h-3" />미승인</>}
+                      {seller.can_manipulate_stats ? <><CheckCircle className="w-3 h-3" />{t('admin.dashboard.k052', { defaultValue: '승인됨' })}</> : <><XCircle className="w-3 h-3" />{t('admin.dashboard.k053', { defaultValue: '미승인' })}</>}
                     </button>
                   </td>
                   <td className="px-4 py-3">
@@ -670,18 +670,18 @@ export default function AdminPage() {
                       seller.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
                       seller.status === 'suspended' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
                     }`}>
-                      {seller.status === 'approved' ? '승인됨' : seller.status === 'suspended' ? '정지됨' : '대기중'}
+                      {seller.status === 'approved' ? t('admin.dashboard.k052', { defaultValue: '승인됨' }) : seller.status === 'suspended' ? t('admin.dashboard.k054', { defaultValue: '정지됨' }) : t('admin.dashboard.k055', { defaultValue: '대기중' })}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">{formatKSTDate(seller.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openBizInfo(seller)} className="text-xs text-purple-600 hover:text-purple-800 font-medium">사업자정보</button>
+                      <button onClick={() => openBizInfo(seller)} className="text-xs text-purple-600 hover:text-purple-800 font-medium">{t('admin.dashboard.k056', { defaultValue: '사업자정보' })}</button>
                       {seller.status !== 'approved' && (
-                        <button onClick={() => approveSeller(seller.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">승인</button>
+                        <button onClick={() => approveSeller(seller.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">{t('admin.dashboard.k016', { defaultValue: '승인' })}</button>
                       )}
                       {seller.status !== 'suspended' && (
-                        <button onClick={() => suspendSeller(seller.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">정지</button>
+                        <button onClick={() => suspendSeller(seller.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">{t('admin.dashboard.k057', { defaultValue: '정지' })}</button>
                       )}
                     </div>
                   </td>
@@ -695,13 +695,13 @@ export default function AdminPage() {
       {/* ── 라이브 스트림 관리 ── */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">라이브 스트림 관리</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k058', { defaultValue: '라이브 스트림 관리' })}</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50">
-                {['ID', '제목', 'YouTube ID', '상태', '생성일', '액션'].map(h => (
+                {['ID', t('admin.dashboard.k059', { defaultValue: '제목' }), 'YouTube ID', t('admin.dashboard.k047', { defaultValue: '상태' }), t('admin.dashboard.k060', { defaultValue: '생성일' }), t('admin.dashboard.k049', { defaultValue: '액션' })].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -716,7 +716,7 @@ export default function AdminPage() {
                   </tr>
                 ))
               ) : streams.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">등록된 라이브가 없습니다</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">{t('admin.dashboard.k061', { defaultValue: '등록된 라이브가 없습니다' })}</td></tr>
               ) : streams.map(stream => (
                 <tr key={stream.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-xs text-gray-500">{stream.id}</td>
@@ -727,12 +727,12 @@ export default function AdminPage() {
                       stream.status === 'live' ? 'bg-red-50 text-red-600' :
                       stream.status === 'scheduled' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'
                     }`}>
-                      {stream.status === 'live' ? '🔴 라이브' : stream.status}
+                      {stream.status === 'live' ? t('admin.dashboard.k062', { defaultValue: '🔴 라이브' }) : stream.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">{formatKSTDate(stream.created_at)}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => deleteStream(stream.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">삭제</button>
+                    <button onClick={() => deleteStream(stream.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">{t('admin.dashboard.k063', { defaultValue: '삭제' })}</button>
                   </td>
                 </tr>
               ))}

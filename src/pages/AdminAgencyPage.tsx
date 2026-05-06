@@ -123,7 +123,7 @@ export default function AdminAgencyPage() {
       fetchAgencies()
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      setError(err_.response?.data?.error || '저장 실패')
+      setError(err_.response?.data?.error || t('admin.agency.k001', { defaultValue: '저장 실패' }))
     } finally {
       setSaving(false)
     }
@@ -134,7 +134,7 @@ export default function AdminAgencyPage() {
       await api.patch(`/api/admin/agencies/${a.id}`, { status: 'active' }, { headers })
       fetchAgencies()
     } catch {
-      toast.error('승인 처리에 실패했습니다.')
+      toast.error(t('admin.agency.k002', { defaultValue: '승인 처리에 실패했습니다.' }))
     }
   }
 
@@ -144,7 +144,7 @@ export default function AdminAgencyPage() {
       await api.patch(`/api/admin/agencies/${a.id}`, { status: 'rejected' }, { headers })
       fetchAgencies()
     } catch {
-      toast.error('거절 처리에 실패했습니다.')
+      toast.error(t('admin.agency.k003', { defaultValue: '거절 처리에 실패했습니다.' }))
     }
   }
 
@@ -154,7 +154,7 @@ export default function AdminAgencyPage() {
       await api.patch(`/api/admin/agencies/${a.id}`, { status: newStatus }, { headers })
       fetchAgencies()
     } catch {
-      toast.error('상태 변경에 실패했습니다.')
+      toast.error(t('admin.agency.k004', { defaultValue: '상태 변경에 실패했습니다.' }))
     }
   }
 
@@ -162,16 +162,16 @@ export default function AdminAgencyPage() {
     const newPwd = prompt(`"${a.name}" 에이전시의 새 비밀번호 (8자 이상):`, '')
     if (newPwd === null) return
     if (!newPwd || newPwd.length < 8) {
-      toast.error('비밀번호는 8자 이상이어야 합니다.')
+      toast.error(t('admin.agency.k005', { defaultValue: '비밀번호는 8자 이상이어야 합니다.' }))
       return
     }
     try {
       const r = await api.post(`/api/admin/agencies/${a.id}/reset-password`, { newPassword: newPwd }, { headers })
-      toast.success(r.data?.message || '비밀번호가 재설정되었습니다.')
+      toast.success(r.data?.message || t('admin.agency.k006', { defaultValue: '비밀번호가 재설정되었습니다.' }))
       fetchAgencies()
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string } } }
-      toast.error(err_.response?.data?.error || '비밀번호 재설정에 실패했습니다.')
+      toast.error(err_.response?.data?.error || t('admin.agency.k007', { defaultValue: '비밀번호 재설정에 실패했습니다.' }))
     }
   }
 
@@ -182,7 +182,7 @@ export default function AdminAgencyPage() {
       fetchAgencies()
       fetchUnassigned()
     } catch {
-      toast.error('삭제에 실패했습니다.')
+      toast.error(t('admin.agency.k008', { defaultValue: '삭제에 실패했습니다.' }))
     }
   }
 
@@ -191,7 +191,7 @@ export default function AdminAgencyPage() {
       await api.post(`/api/admin/agencies/${agencyId}/sellers`, { seller_id: sellerId }, { headers })
       refreshAgencySellers(agencyId)
     } catch {
-      toast.error('셀러 배정에 실패했습니다.')
+      toast.error(t('admin.agency.k009', { defaultValue: '셀러 배정에 실패했습니다.' }))
     }
   }
 
@@ -200,7 +200,7 @@ export default function AdminAgencyPage() {
       await api.delete(`/api/admin/agencies/${agencyId}/sellers/${sellerId}`, { headers })
       refreshAgencySellers(agencyId)
     } catch {
-      toast.error('셀러 해제에 실패했습니다.')
+      toast.error(t('admin.agency.k010', { defaultValue: '셀러 해제에 실패했습니다.' }))
     }
   }
 
@@ -242,7 +242,7 @@ export default function AdminAgencyPage() {
         {agencies.filter(a => a.status === 'pending').length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">승인 대기</span>
+              <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">{t('admin.agency.k011', { defaultValue: '승인 대기' })}</span>
               <span className="bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                 {agencies.filter(a => a.status === 'pending').length}
               </span>
@@ -253,7 +253,7 @@ export default function AdminAgencyPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-gray-900">{a.name}</p>
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">대기중</span>
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">{t('admin.agency.k012', { defaultValue: '대기중' })}</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">{a.contact_name} · {a.email} {a.phone && `· ${a.phone}`}</p>
                     <p className="text-xs text-gray-400 mt-0.5">신청일: {new Date(a.created_at).toLocaleDateString('ko-KR')}</p>
@@ -284,8 +284,8 @@ export default function AdminAgencyPage() {
         {/* 전체 에이전시 목록 */}
         {agencies.filter(a => a.status !== 'pending').length === 0 && agencies.filter(a => a.status === 'pending').length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <p className="text-gray-500 text-sm mb-1">등록된 에이전시가 없습니다.</p>
-            <p className="text-gray-400 text-xs">에이전시 추가 버튼으로 생성하세요.</p>
+            <p className="text-gray-500 text-sm mb-1">{t('admin.agency.k013', { defaultValue: '등록된 에이전시가 없습니다.' })}</p>
+            <p className="text-gray-400 text-xs">{t('admin.agency.k014', { defaultValue: '에이전시 추가 버튼으로 생성하세요.' })}</p>
           </div>
         ) : (
         <div className="space-y-3">
@@ -301,7 +301,7 @@ export default function AdminAgencyPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-gray-900">{a.name}</p>
                       {a.linked_user_id && (
-                        <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-bold" title="카카오 계정 연동됨">
+                        <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-bold" title={t('admin.agency.k015', { defaultValue: "카카오 계정 연동됨" })}>
                           💬 카카오
                         </span>
                       )}
@@ -310,7 +310,7 @@ export default function AdminAgencyPage() {
                         a.status === 'rejected' ? 'bg-red-100 text-red-600' :
                         'bg-gray-100 text-gray-500'
                       }`}>
-                        {a.status === 'active' ? '승인' : a.status === 'rejected' ? '거절' : '비활성'}
+                        {a.status === 'active' ? t('admin.agency.k016', { defaultValue: '승인' }) : a.status === 'rejected' ? t('admin.agency.k017', { defaultValue: '거절' }) : t('admin.agency.k018', { defaultValue: '비활성' })}
                       </span>
                       {/* 🛡️ 2026-04-26 Q1: 등급 표시 + tier_locked 표시 */}
                       {a.tier && (
@@ -322,7 +322,7 @@ export default function AdminAgencyPage() {
                         </span>
                       )}
                       {a.auto_settle === 1 && (
-                        <span className="text-[10px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-medium" title="자동 정산 활성화">
+                        <span className="text-[10px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-medium" title={t('admin.agency.k019', { defaultValue: "자동 정산 활성화" })}>
                           🤖 자동정산
                         </span>
                       )}
@@ -345,25 +345,25 @@ export default function AdminAgencyPage() {
                         toast.success(`${a.name} → ${tierLabel(newTier)} (수동 고정)`)
                         fetchAgencies()
                       } catch (err: any) {
-                        toast.error(err?.response?.data?.error || '등급 변경 실패')
+                        toast.error(err?.response?.data?.error || t('admin.agency.k020', { defaultValue: '등급 변경 실패' }))
                       }
                     }}
-                    title="등급 수동 변경 (자동 평가 비활성화됨)"
+                    title={t('admin.agency.k021', { defaultValue: "등급 수동 변경 (자동 평가 비활성화됨)" })}
                     className="text-xs bg-white border border-gray-200 rounded-lg px-2 py-1 cursor-pointer hover:border-gray-300"
                   >
-                    <option value="new">브론즈</option>
-                    <option value="junior">실버</option>
-                    <option value="senior">골드</option>
+                    <option value="new">{t('admin.agency.k022', { defaultValue: '브론즈' })}</option>
+                    <option value="junior">{t('admin.agency.k023', { defaultValue: '실버' })}</option>
+                    <option value="senior">{t('admin.agency.k024', { defaultValue: '골드' })}</option>
                   </select>
                   {a.tier_locked === 1 && (
                     <button
                       onClick={async () => {
-                        if (!confirm('자동 평가를 다시 활성화하시겠습니까? 다음 cron 실행 시 등급이 자동 재산정됩니다.')) return
+                        if (!confirm(t('admin.agency.k025', { defaultValue: '자동 평가를 다시 활성화하시겠습니까? 다음 cron 실행 시 등급이 자동 재산정됩니다.' }))) return
                         await api.patch(`/api/admin/agencies/${a.id}`, { tier_locked: false }, { headers })
-                        toast.info('자동 평가 활성화')
+                        toast.info(t('admin.agency.k026', { defaultValue: '자동 평가 활성화' }))
                         fetchAgencies()
                       }}
-                      title="자동 평가 다시 켜기"
+                      title={t('admin.agency.k027', { defaultValue: "자동 평가 다시 켜기" })}
                       className="text-[10px] text-blue-600 hover:text-blue-800 underline"
                     >
                       자동평가 ↻
@@ -372,7 +372,7 @@ export default function AdminAgencyPage() {
                   {/* 승인/거절 토글 */}
                   <button
                     onClick={() => handleToggleStatus(a)}
-                    title={a.status === 'active' ? '비활성(거절)으로 변경' : '활성(승인)으로 변경'}
+                    title={a.status === 'active' ? t('admin.agency.k028', { defaultValue: '비활성(거절)으로 변경' }) : t('admin.agency.k029', { defaultValue: '활성(승인)으로 변경' })}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                       a.status === 'active'
                         ? 'bg-green-50 text-green-600 hover:bg-red-50 hover:text-red-500'
@@ -380,14 +380,14 @@ export default function AdminAgencyPage() {
                     }`}
                   >
                     {a.status === 'active'
-                      ? <><CheckCircle className="w-3.5 h-3.5" /> 승인됨</>
-                      : <><XCircle className="w-3.5 h-3.5" /> 거절됨</>
+                      ? <><CheckCircle className="w-3.5 h-3.5" /> {t('admin.agency.k030', { defaultValue: '승인됨' })}</>
+                      : <><XCircle className="w-3.5 h-3.5" /> {t('admin.agency.k031', { defaultValue: '거절됨' })}</>
                     }
                   </button>
                   {a.status === 'active' && (
                     <button
                       onClick={() => handleResetPassword(a)}
-                      title="비밀번호 재설정"
+                      title={t('admin.agency.k032', { defaultValue: "비밀번호 재설정" })}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
                     >
                       <KeyRound className="w-3.5 h-3.5" />
@@ -421,9 +421,9 @@ export default function AdminAgencyPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Assigned sellers */}
                     <div>
-                      <p className="text-xs font-semibold text-gray-600 mb-2">소속 셀러</p>
+                      <p className="text-xs font-semibold text-gray-600 mb-2">{t('admin.agency.k033', { defaultValue: '소속 셀러' })}</p>
                       {(agencySellers[a.id] || []).length === 0 ? (
-                        <p className="text-xs text-gray-400">소속 셀러가 없습니다.</p>
+                        <p className="text-xs text-gray-400">{t('admin.agency.k034', { defaultValue: '소속 셀러가 없습니다.' })}</p>
                       ) : (
                         <div className="space-y-1.5">
                           {agencySellers[a.id].map(s => (
@@ -435,7 +435,7 @@ export default function AdminAgencyPage() {
                               <button
                                 onClick={() => removeSeller(a.id, s.id)}
                                 className="ml-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors flex-shrink-0"
-                                title="소속 해제"
+                                title={t('admin.agency.k035', { defaultValue: "소속 해제" })}
                               >
                                 <UserMinus className="w-3.5 h-3.5" />
                               </button>
@@ -447,9 +447,9 @@ export default function AdminAgencyPage() {
 
                     {/* Unassigned sellers */}
                     <div>
-                      <p className="text-xs font-semibold text-gray-600 mb-2">배정 가능한 셀러</p>
+                      <p className="text-xs font-semibold text-gray-600 mb-2">{t('admin.agency.k036', { defaultValue: '배정 가능한 셀러' })}</p>
                       {unassigned.length === 0 ? (
-                        <p className="text-xs text-gray-400">배정 가능한 셀러가 없습니다.</p>
+                        <p className="text-xs text-gray-400">{t('admin.agency.k037', { defaultValue: '배정 가능한 셀러가 없습니다.' })}</p>
                       ) : (
                         <div className="space-y-1.5 max-h-48 overflow-y-auto">
                           {unassigned.map(s => (
@@ -461,7 +461,7 @@ export default function AdminAgencyPage() {
                               <button
                                 onClick={() => assignSeller(a.id, s.id)}
                                 className="ml-2 p-1 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors flex-shrink-0"
-                                title="소속 추가"
+                                title={t('admin.agency.k038', { defaultValue: "소속 추가" })}
                               >
                                 <UserPlus className="w-3.5 h-3.5" />
                               </button>
@@ -485,7 +485,7 @@ export default function AdminAgencyPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">
-              {modal === 'create' ? '에이전시 추가' : '에이전시 수정'}
+              {modal === 'create' ? t('admin.agency.k039', { defaultValue: '에이전시 추가' }) : t('admin.agency.k040', { defaultValue: '에이전시 수정' })}
             </h2>
 
             {error && (
@@ -494,11 +494,11 @@ export default function AdminAgencyPage() {
 
             <div className="space-y-4">
               {[
-                { key: 'name', label: '에이전시명', placeholder: '(주)베스트에이전시', required: true },
-                { key: 'contact_name', label: '담당자명', placeholder: '홍길동', required: true },
-                { key: 'email', label: '이메일', placeholder: 'agency@example.com', required: true },
-                { key: 'password', label: modal === 'create' ? '비밀번호' : '비밀번호 (변경 시만 입력)', placeholder: '8자 이상', required: modal === 'create' },
-                { key: 'phone', label: '전화번호', placeholder: '010-1234-5678', required: false },
+                { key: 'name', label: t('admin.agency.k041', { defaultValue: '에이전시명' }), placeholder: t('admin.agency.k042', { defaultValue: '(주)베스트에이전시' }), required: true },
+                { key: 'contact_name', label: t('admin.agency.k043', { defaultValue: '담당자명' }), placeholder: t('admin.agency.k044', { defaultValue: '홍길동' }), required: true },
+                { key: 'email', label: t('admin.agency.k045', { defaultValue: '이메일' }), placeholder: 'agency@example.com', required: true },
+                { key: 'password', label: modal === 'create' ? t('admin.agency.k046', { defaultValue: '비밀번호' }) : t('admin.agency.k047', { defaultValue: '비밀번호 (변경 시만 입력)' }), placeholder: t('admin.agency.k048', { defaultValue: '8자 이상' }), required: modal === 'create' },
+                { key: 'phone', label: t('admin.agency.k049', { defaultValue: '전화번호' }), placeholder: '010-1234-5678', required: false },
               ].map(({ key, label, placeholder, required }) => (
                 <div key={key}>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -516,14 +516,14 @@ export default function AdminAgencyPage() {
 
               {modal === 'edit' && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">상태</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{t('admin.agency.k050', { defaultValue: '상태' })}</label>
                   <select
                     value={form.status}
                     onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="active">활성</option>
-                    <option value="inactive">비활성</option>
+                    <option value="active">{t('admin.agency.k051', { defaultValue: '활성' })}</option>
+                    <option value="inactive">{t('admin.agency.k018', { defaultValue: '비활성' })}</option>
                   </select>
                 </div>
               )}
@@ -541,7 +541,7 @@ export default function AdminAgencyPage() {
                 disabled={saving}
                 className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                {saving ? '저장 중...' : '저장'}
+                {saving ? t('admin.agency.k052', { defaultValue: '저장 중...' }) : t('admin.agency.k053', { defaultValue: '저장' })}
               </button>
             </div>
           </div>

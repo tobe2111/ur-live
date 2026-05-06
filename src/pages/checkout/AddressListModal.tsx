@@ -4,6 +4,7 @@
  * 등록된 배송지 리스트 + 새 배송지 추가 버튼.
  */
 import { MapPin, Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { CustomModal } from '@/components/CustomModal'
 import type { ShippingAddress } from './types'
 
@@ -19,11 +20,12 @@ interface Props {
 export default function AddressListModal({
   isOpen, onClose, addresses, selectedAddress, onSelectAddress, onAddNewAddress,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <CustomModal
       isOpen={isOpen}
       onClose={onClose}
-      title="배송지 선택"
+      title={t('checkout.address.selectTitle', { defaultValue: '배송지 선택' })}
       type="custom"
       maxWidth="lg"
     >
@@ -31,8 +33,8 @@ export default function AddressListModal({
         {addresses.length === 0 ? (
           <div className="py-12 text-center">
             <MapPin className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-[15px] text-gray-500 dark:text-gray-400">등록된 배송지가 없습니다.</p>
-            <p className="text-[13px] text-gray-400 dark:text-gray-500 mt-1">새 배송지를 추가해주세요.</p>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('checkout.address.empty', { defaultValue: '등록된 배송지가 없습니다.' })}</p>
+            <p className="text-[13px] text-gray-400 dark:text-gray-500 mt-1">{t('checkout.address.pleaseAddNew', { defaultValue: '새 배송지를 추가해주세요.' })}</p>
           </div>
         ) : (
           addresses.map((addr) => {
@@ -54,7 +56,7 @@ export default function AddressListModal({
                   <p className="text-[15px] font-bold text-gray-900 dark:text-white">{addr.recipient_name}</p>
                   <span className="text-[13px] text-gray-400 dark:text-gray-500">{addr.phone}</span>
                   {addr.is_default === 1 && (
-                    <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">기본 배송지</span>
+                    <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">{t('checkout.address.defaultLabel', { defaultValue: '기본 배송지' })}</span>
                   )}
                   {isSelected && (
                     <svg className="w-4 h-4 text-gray-900 dark:text-white ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -79,7 +81,7 @@ export default function AddressListModal({
           className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 dark:border-[#3A3A3A] py-3.5 text-[14px] font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:bg-[#121212] cursor-pointer active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
-          새 배송지 추가
+          {t('checkout.address.addNew', { defaultValue: '새 배송지 추가' })}
         </button>
       </div>
     </CustomModal>
