@@ -107,8 +107,8 @@ export default function LiveListPage() {
     <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-24">
       <SEO title={t('liveList.seoTitle')} description={t('liveList.seoDesc')} url="/live" />
 
-      {/* 🛡️ 2026-04-29 v4 Film Strip 헤더 — UR·DEAL 로고 + 검색/알림/장바구니 */}
-      <header className="sticky top-0 z-50 bg-white/85 dark:bg-[#020202]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-100 dark:border-white/[0.06]">
+      {/* 🛡️ 2026-04-29 v4 Film Strip 헤더 — 모바일 전용. md+ 는 DesktopTopNav 가 담당. */}
+      <header className="md:hidden sticky top-0 z-50 bg-white/85 dark:bg-[#020202]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-100 dark:border-white/[0.06]">
         <div className="flex items-center justify-between px-4 h-[52px]">
           {/* UR·DEAL 로고 (홈으로) */}
           <button onClick={() => navigate('/')} aria-label={t('liveList.ariaHome')}>

@@ -8,7 +8,7 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, ShoppingBag, Ticket, Utensils, UtensilsCrossed, Coffee, Fish, Globe, Sparkles, Sofa, User, PackageSearch, Heart, BookOpen } from 'lucide-react'
+import { Home, Radio, Compass, ShoppingBag, Ticket, Utensils, Globe, Sparkles, Sofa, User, PackageSearch, Heart, BookOpen } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 interface NavItem {
@@ -28,13 +28,12 @@ const MENU_ITEMS: NavItem[] = [
 ]
 
 const CATEGORY_ITEMS = [
-  { labelKey: 'category.chickenPizza',  labelDefault: '치킨·피자',     icon: Utensils,        slug: 'food' },
-  { labelKey: 'category.koreanFood',    labelDefault: '한식·분식',     icon: UtensilsCrossed, slug: 'food' },
-  { labelKey: 'category.cafe',          labelDefault: '카페·디저트',   icon: Coffee,          slug: 'food' },
-  { labelKey: 'category.japanese',      labelDefault: '일식·돈까스',   icon: Fish,            slug: 'food' },
-  { labelKey: 'category.asian',         labelDefault: '아시안·양식',   icon: Globe,           slug: 'food' },
-  { labelKey: 'category.beauty',        labelDefault: '뷰티·헬스',     icon: Sparkles,        slug: 'beauty' },
-  { labelKey: 'category.living',        labelDefault: '리빙·인테리어', icon: Sofa,            slug: 'living' },
+  { labelKey: 'category.food',     labelDefault: '음식·식사권',   icon: Utensils,        slug: 'food' },
+  { labelKey: 'category.voucher',  labelDefault: '식사권',        icon: Ticket,          slug: 'meal_voucher' },
+  { labelKey: 'category.beauty',   labelDefault: '뷰티·헬스',     icon: Sparkles,        slug: 'beauty' },
+  { labelKey: 'category.living',   labelDefault: '리빙·인테리어', icon: Sofa,            slug: 'living' },
+  { labelKey: 'category.fashion',  labelDefault: '패션',          icon: ShoppingBag,     slug: 'fashion' },
+  { labelKey: 'category.digital',  labelDefault: '디지털',        icon: Globe,           slug: 'digital' },
 ]
 
 const MY_ITEMS: NavItem[] = [
@@ -77,8 +76,8 @@ export default function DesktopLiveSidebar() {
       className="hidden md:flex fixed left-0 top-0 bottom-0 w-[60px] xl:w-56 z-40 flex-col bg-white dark:bg-[#0A0A0A] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       aria-label={t('nav.mainMenu', { defaultValue: '메인 메뉴' })}
     >
-      {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘 */}
-      <Link to="/" className="flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
+      {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘. sticky 로 사이드바 스크롤 시 항상 표시 */}
+      <Link to="/" className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
         <span className="xl:hidden text-[18px] font-black text-red-500 select-none">U</span>
         <span className="hidden xl:block"><UrDealLogo size={20} /></span>
       </Link>

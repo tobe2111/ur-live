@@ -201,8 +201,8 @@ export default function MainHomePage() {
     <div className="bg-white dark:bg-[#020202] min-h-screen pb-16">
       <SEO title={t('mainHome.seoTitle')} description={t('mainHome.seoDesc')} url="/" jsonLd={[organizationJsonLd, webSiteJsonLd]} />
 
-      {/* ═══ Sticky Top Bar ═══ — PC 풀너비 sticky, 콘텐츠는 centered */}
-      <div className="sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md">
+      {/* ═══ Sticky Top Bar ═══ — 모바일 전용. md+ 는 DesktopTopNav 가 담당. */}
+      <div className="md:hidden sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md">
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <UrDealLogo size={18} />

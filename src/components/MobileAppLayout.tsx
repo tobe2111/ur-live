@@ -23,8 +23,9 @@ interface MobileAppLayoutProps {
  */
 
 // 9:16 비디오 / 모바일 전용 UI 페이지 (PC 에서도 액자 유지 + 우측 패널)
+// 주의: '/live' 단독(리스트)은 일반 페이지 — '/live/:id'(스트림)만 mobile-only
 const MOBILE_ONLY_PREFIXES = [
-  '/live',         // LivePageV2 (9:16 풀스크린 비디오)
+  '/live/',        // LivePageV2 (9:16 풀스크린 비디오) — /live/:id 만 매칭
   '/shorts',       // ShortsPage (9:16 쇼츠)
 ]
 
@@ -35,7 +36,7 @@ const HIDE_SIDEBAR_PREFIXES = [
 
 export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   const location = useLocation()
-  const mobileOnly = MOBILE_ONLY_PREFIXES.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
+  const mobileOnly = MOBILE_ONLY_PREFIXES.some(p => location.pathname.startsWith(p))
   const hideSidebar = HIDE_SIDEBAR_PREFIXES.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   const showSidebar = !hideSidebar
   return (
