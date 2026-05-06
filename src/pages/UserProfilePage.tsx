@@ -67,7 +67,7 @@ export default function UserProfilePage() {
   // 🔄 로딩 중 (한국: localStorage 인증이므로 isAuthReady 무시)
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="dark min-h-screen bg-[#020202] flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
           <p className="text-gray-500 dark:text-gray-400">로딩 중...</p>
@@ -95,11 +95,7 @@ export default function UserProfilePage() {
 
   // 🛡️ 2026-04-30 v4 Wallet 디자인 시안 매칭 — InsetGroup 형태로 정돈, 모든 기능 보존
   return (
-    // 🛡️ 2026-05-06: /user/profile 은 CLAUDE.md 스펙상 다크 전용 페이지.
-    //   하위 컴포넌트(TeamPointsCard, OrderStatusBar, ShoppingGroup 등) 가 dark 전용 클래스만 가져
-    //   light 토글 시 흰 배경에 흰 글자로 invisible. 페이지 전체를 dark 클래스로 wrap 하여
-    //   사용자 토글과 무관하게 항상 다크 렌더링. 토글 자체는 다른 화이트 페이지 (browse/checkout) 에 영향.
-    <div className="dark bg-[#020202] flex flex-col min-h-screen pb-7">
+    <div className="bg-white dark:bg-[#020202] flex flex-col min-h-screen pb-7">
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className="sr-only">마이페이지</h1>
 
@@ -168,8 +164,8 @@ export default function UserProfilePage() {
             <button
               key={item.label}
               onClick={() => navigate(item.path)}
-              className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.06]"
-              style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+              className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
+              style={{ borderTop: i ? '1px solid' : 'none', borderColor: 'rgba(0,0,0,0.06)' }}
             >
               <span className="text-base" aria-hidden="true">{item.icon}</span>
               <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{item.label}</span>
@@ -196,8 +192,8 @@ export default function UserProfilePage() {
             <button
               key={item.label}
               onClick={() => (item as any).action ? (item as any).action() : item.path && navigate(item.path)}
-              className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.06]"
-              style={{ borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+              className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
+              style={{ borderTop: i ? '1px solid' : 'none', borderColor: 'rgba(0,0,0,0.06)' }}
             >
               <div className="flex-1">
                 <p className="text-[13px] text-gray-900 dark:text-white">{item.label}</p>
