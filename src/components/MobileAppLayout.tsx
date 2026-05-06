@@ -45,9 +45,10 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {mobileOnly && <DesktopLiveLeftPanel />}
       {/* PC (xl+) 우측 상품/공지 패널 — 라이브/쇼츠 페이지에서 (fixed 포지션). */}
       {mobileOnly && <DesktopLiveRightPanel />}
-      {/* 일반 페이지만 컨테이너에 사이드바 padding 적용. mobile-only 는 430px 액자 가운데 유지. */}
+      {/* 일반 페이지만 컨테이너에 사이드바 padding 적용. mobile-only 는 430px 액자 가운데 유지.
+          📐 2026-05-06 (responsive-tablet-mobile.md): md~xl 60px collapsed sidebar → md:pl-[60px]. */}
       <div
-        className={`mobile-app-container ${showSidebar && !mobileOnly ? 'xl:pl-56' : ''}`}
+        className={`mobile-app-container ${showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : ''}`}
         data-mobile-only={mobileOnly ? 'true' : 'false'}
       >
         {children}
