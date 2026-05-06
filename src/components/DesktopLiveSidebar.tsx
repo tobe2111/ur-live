@@ -101,8 +101,8 @@ export default function DesktopLiveSidebar() {
           {CATEGORY_ITEMS.map(cat => {
             const Icon = cat.icon
             // active: full path+query must match exactly (prevents multiple food sub-items being active at once)
-            const catUrl = new URL(cat.path, 'http://x')
-            const isActive = pathname === '/browse' && search === catUrl.search
+            const catPathWithQuery = cat.path
+            const isActive = (pathname + search) === catPathWithQuery
             return (
               <button
                 key={cat.labelDefault}

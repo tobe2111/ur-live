@@ -13,6 +13,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+  componentStack?: string;
 }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -26,10 +27,9 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (import.meta.env.DEV) {
-      console.error('Error Boundary caught an error:', error, errorInfo);
-      console.error('Component Stack:', errorInfo.componentStack);
-    }
+    this.setState({ componentStack: errorInfo.componentStack || '' });
+    console.error('[ErrorBoundary] caught:', error?.message || '(no message)', error);
+    console.error('[ErrorBoundary] component stack:', errorInfo.componentStack);
 
     // 🛡️ 2026-04-29: 프로덕션 Sentry 전송 (window.Sentry 동적 사용 — 번들 영향 최소)
     try {
@@ -83,8 +83,11 @@ class ErrorBoundary extends Component<Props, State> {
                 <summary className="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700">
                   오류 상세 보기
                 </summary>
-                <pre className="mt-2 text-xs bg-gray-100 dark:bg-[#1A1A1A] p-3 rounded overflow-auto max-h-40">
+                <pre className="mt-2 text-xs bg-gray-100 dark:bg-[#1A1A1A] p-3 rounded overflow-auto max-h-60">
                   {this.state.error.toString()}
+                  {'\n\n--- Stack ---\n'}
+                  {this.state.error?.stack || ''}
+                  {this.state.componentStack ? '\n\n--- Component Tree ---\n' + this.state.componentStack : ''}
                 </pre>
               </details>
             )}
