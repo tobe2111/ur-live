@@ -107,18 +107,15 @@ export function ProductListSheet({
 
                     <div className="relative h-20 w-20 shrink-0 rounded-xl bg-gray-100 overflow-hidden">
                       <img
-                        src={product.image_url || product.image || sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')}
+                        src={product.image_url || product.image || sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/hqdefault.jpg` : '')}
                         alt={product.name}
                         className="w-full h-full object-cover"
                         loading="lazy"
                         decoding="async"
                         onError={(e) => {
-                          // 🛡️ 2026-05-03: maxresdefault.jpg 404 fallback 체인
-                          //   1순위: 명시 thumbnail (있으면), 2순위: hqdefault (항상 존재)
+                          // 80x80 썸네일이라 hqdefault(480x360) 면 충분 — 추가 fallback 만 처리
                           const img = e.target as HTMLImageElement
-                          if (img.src.includes('maxresdefault') && sheetStream?.youtube_video_id) {
-                            img.src = `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/hqdefault.jpg`
-                          } else if (sheetStream?.thumbnail_url && img.src !== sheetStream.thumbnail_url) {
+                          if (sheetStream?.thumbnail_url && img.src !== sheetStream.thumbnail_url) {
                             img.src = sheetStream.thumbnail_url
                           }
                         }}
