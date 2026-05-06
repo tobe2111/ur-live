@@ -14,6 +14,12 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { isKorea } from '@/shared/config/region'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import type { User as FirebaseUser } from 'firebase/auth'
+
+interface AuthWorldState {
+  user: FirebaseUser | null;
+  isAuthReady: boolean;
+}
 
 const DEBUG = import.meta.env.DEV
 
@@ -95,8 +101,8 @@ function GlobalUserProtectedRoute({
 }) {
   // 글로벌에서만 import (한국에서는 이 컴포넌트 자체가 렌더 안 됨)
   const { useAuthWorld } = require('@/shared/stores/useAuthWorld')
-  const firebaseUser = useAuthWorld((s: any) => s.user)
-  const isAuthReady = useAuthWorld((s: any) => s.isAuthReady)
+  const firebaseUser = useAuthWorld((s: AuthWorldState) => s.user)
+  const isAuthReady = useAuthWorld((s: AuthWorldState) => s.isAuthReady)
 
   const [timedOut, setTimedOut] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
