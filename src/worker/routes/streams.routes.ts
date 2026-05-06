@@ -119,7 +119,8 @@ streamsRouter.get('/', async (c) => {
 
       // 🛡️ 2026-05-05: 셀러 등급별 exposure_weight 반영 — diamond=4×, gold=2.5×, silver=1.5×, bronze=1×, new=0.7×
       // status priority 가 1순위, 그 다음 가중치 × recency.
-      const query = `
+      // 🛡️ 2026-05-06: migration 0244 (sellers.tier/exposure_weight) 미적용 환경 fallback.
+      const buildQuery = (withTier: boolean) => `
         SELECT
           ls.id,
           ls.title,
@@ -133,8 +134,8 @@ streamsRouter.get('/', async (c) => {
           ls.seller_instagram,
           ls.seller_youtube,
           s.name             AS seller_name,
-          s.tier             AS seller_tier,
-          COALESCE(s.exposure_weight, 1.0) AS exposure_weight,
+          ${withTier ? 's.tier             AS seller_tier,' : "NULL              AS seller_tier,"}
+          ${withTier ? 'COALESCE(s.exposure_weight, 1.0) AS exposure_weight,' : '1.0               AS exposure_weight,'}
           cp.id              AS current_product_id,
           cp.name            AS current_product_name,
           cp.price           AS current_product_price,
@@ -149,18 +150,30 @@ streamsRouter.get('/', async (c) => {
         ${whereClause}
         ORDER BY
           CASE ls.status WHEN 'live' THEN 0 WHEN 'scheduled' THEN 1 ELSE 2 END,
-          (COALESCE(s.exposure_weight, 1.0) *
-            (1.0 / (1 + (julianday('now') - julianday(ls.created_at)) * 0.5))
-          ) DESC,
+          ${withTier
+            ? `(COALESCE(s.exposure_weight, 1.0) *
+                (1.0 / (1 + (julianday('now') - julianday(ls.created_at)) * 0.5))
+              ) DESC,`
+            : ''}
           ls.created_at DESC
         LIMIT ? OFFSET ?
       `;
       params.push(limit, offset);
 
-      const rows = await db
-        .prepare(query)
-        .bind(...params)
-        .all();
+      let rows: D1Result<Record<string, unknown>>;
+      try {
+        rows = await db
+          .prepare(buildQuery(true))
+          .bind(...params)
+          .all();
+      } catch (e) {
+        // sellers.tier / exposure_weight 컬럼 미존재 (migration 0244 미적용) 시 fallback
+        console.warn('[Streams] tier columns missing, falling back:', e instanceof Error ? e.message : e);
+        rows = await db
+          .prepare(buildQuery(false))
+          .bind(...params)
+          .all();
+      }
 
       // count
       const countParams: unknown[] = [];
