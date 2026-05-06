@@ -76,13 +76,13 @@ export default function SellerWaitingPage() {
   if (errorMsg) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <SEO title="셀러 상태 조회 오류 - 유어딜" description="셀러 상태 조회에 실패했습니다" url="/seller/waiting" noindex />
+        <SEO title={`${t('sellerWaiting.errorTitle', { defaultValue: '셀러 상태 조회 오류' })} - 유어딜`} description={t('sellerWaiting.errorTitle', { defaultValue: '셀러 상태 조회에 실패했습니다' })} url="/seller/waiting" noindex />
         <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-sm">
           <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-red-100 flex items-center justify-center">
             <AlertCircle className="w-8 h-8 text-red-500" />
           </div>
           <div className="text-center space-y-2 mb-6">
-            <h2 className="text-lg font-bold text-gray-900">상태 확인 실패</h2>
+            <h2 className="text-lg font-bold text-gray-900">{t('sellerWaiting.errorTitle', { defaultValue: '상태 확인 실패' })}</h2>
             <p className="text-sm text-gray-500 leading-relaxed">{errorMsg}</p>
           </div>
           <div className="space-y-2">
@@ -91,13 +91,13 @@ export default function SellerWaitingPage() {
               className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm"
             >
               <RefreshCw className="w-4 h-4" />
-              다시 시도
+              {t('common.retry', { defaultValue: '다시 시도' })}
             </button>
             <Link to="/seller/login" className="block w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm text-center">
-              셀러 로그인으로 이동
+              {t('sellerWaiting.goLogin', { defaultValue: '셀러 로그인으로 이동' })}
             </Link>
             <Link to="/" className="block w-full py-3 text-gray-500 text-xs text-center">
-              홈으로
+              {t('common.home', { defaultValue: '홈으로' })}
             </Link>
           </div>
         </div>
