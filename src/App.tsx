@@ -348,13 +348,15 @@ function AppContent() {
             <Route path="/auth/kakao/link/callback" element={<KakaoLinkCallbackPage />} />
 
             {/* Seller 페이지들 (공개 + 보호) — src/routes/seller.routes.tsx */}
-            <SellerRoutes />
+            {/* NOTE: called as function (not JSX component) so RR6 createRoutesFromChildren
+                sees the Fragment+Route tree directly instead of a non-Route component wrapper */}
+            {SellerRoutes()}
 
             {/* Admin 페이지들 (공개 + 보호) — src/routes/admin.routes.tsx */}
-            <AdminRoutes />
+            {AdminRoutes()}
 
             {/* Agency 페이지들 (공개 + 보호) — src/routes/agency.routes.tsx */}
-            <AgencyRoutes />
+            {AgencyRoutes()}
 
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<ErrorBoundary><CartPage /></ErrorBoundary>} />
