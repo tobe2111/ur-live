@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useMemo, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ShoppingBag, MessageCircle, X, Send } from 'lucide-react'
-import KakaoShareButton from '@/components/KakaoShareButton'
 import PKLiveBanner from '@/components/live/PKLiveBanner'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
@@ -13,13 +11,12 @@ import type { ChatMessage } from '@/types/live-stream'
 import { DonationEffect } from '@/components/LiveDonation'
 import { maskUserName } from '@/components/live/LiveUtils'
 import { TeamPointsBadge } from '@/components/live/TeamPointsBadge'
-import LiveDonation from '@/components/LiveDonation'
 import AuctionPanel from '@/components/live/AuctionPanel'
 import TimeDealPopup from '@/components/live/TimeDealPopup'
-import HeartReaction from '@/components/live/HeartReaction'
-import { glass } from '@/components/glass/glassTokens'
 import ScheduledOverlay from '@/components/live/ScheduledOverlay'
 import ReelProductCard from '@/components/live/ReelProductCard'
+import ReelChatSheet from '@/components/live/ReelChatSheet'
+import ReelActionRail from '@/components/live/ReelActionRail'
 
 interface ApiError {
   response?: { status?: number; statusText?: string; data?: { error?: string } }
@@ -1072,76 +1069,15 @@ function ReelCardImpl({
               )}
             </div>
 
-            {/* 🛡️ 2026-04-29 v4 Boutique 톤 액션 rail
-                — 5개: 좋아요 / 상품 / 선물(후원) / 채팅 / 공유
-                — 40x40 dark glass + 18x18 icon + 9px label
-                — 라벨 위치: 버튼 아래 (디자인 spec) */}
-            <div className="flex flex-col items-center gap-3 shrink-0 pb-1 mr-2.5">
-              {/* 1) 좋아요 (Heart) — 핑크 fill 활성화 */}
-              <div className="flex flex-col items-center gap-0.5">
-                <HeartReaction />
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{t('live.actionLike', { defaultValue: '좋아요' })}</span>
-              </div>
-
-              {/* 2) 상품 목록 */}
-              <div className="flex flex-col items-center gap-0.5">
-                <button
-                  onClick={openProductListSheet}
-                  className="flex items-center justify-center rounded-full transition-all active:scale-90"
-                  style={{
-                    width: 40, height: 40,
-                    ...glass.actionRail,
-                  }}
-                  aria-label={t('live.productAriaLabel', { defaultValue: '상품 목록' })}
-                >
-                  <ShoppingBag style={{ width: 18, height: 18, color: '#fff' }} />
-                </button>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
-                  {t('live.productCountLabel', { count: streamProducts?.length ?? 0, defaultValue: `상품 ${streamProducts?.length ?? 0}` })}
-                </span>
-              </div>
-
-              {/* 3) 선물 (LiveDonation) — 셀러는 미표시 */}
-              {!isSeller && stream?.id && (
-                <div className="flex flex-col items-center gap-0.5">
-                  <LiveDonation streamId={stream.id} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{t('live.actionGift', { defaultValue: '선물' })}</span>
-                </div>
-              )}
-
-              {/* 4) 채팅 토글 */}
-              <div className="flex flex-col items-center gap-0.5">
-                <button
-                  onClick={() => setChatModalOpen(true)}
-                  className="flex items-center justify-center rounded-full transition-all active:scale-90"
-                  style={{
-                    width: 40, height: 40,
-                    ...glass.actionRail,
-                  }}
-                  aria-label={t('live.chatOpenAria', { defaultValue: '채팅 열기' })}
-                >
-                  <MessageCircle style={{ width: 18, height: 18, color: '#fff' }} />
-                </button>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{t('live.actionChat', { defaultValue: '채팅' })}</span>
-              </div>
-
-              {/* 5) 공유 */}
-              <div className="flex flex-col items-center gap-0.5">
-                <KakaoShareButton
-                  title={stream?.title || t('common.appName', { defaultValue: '유어딜 라이브' })}
-                  description={safeProduct?.name || t('live.broadcastInProgress', { defaultValue: '라이브 방송 중' })}
-                  imageUrl={safeProduct?.image_url}
-                  link={`/live/${stream?.id}`}
-                  compact
-                  className="flex items-center justify-center rounded-full transition-all active:scale-90"
-                  style={{
-                    width: 40, height: 40,
-                    ...glass.actionRail,
-                  }}
-                />
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{t('live.actionShare', { defaultValue: '공유' })}</span>
-              </div>
-            </div>
+            {/* 🛡️ TD-006: ReelActionRail 컴포넌트로 추출 (2026-05-06) */}
+            <ReelActionRail
+              stream={stream}
+              safeProduct={safeProduct}
+              isSeller={!!isSeller}
+              streamProductCount={streamProducts?.length ?? 0}
+              onOpenProducts={openProductListSheet}
+              onOpenChat={() => setChatModalOpen(true)}
+            />
           </div>
 
           {/* 전체 상품 모드: 가로 스크롤 상품 목록 */}
@@ -1228,59 +1164,16 @@ function ReelCardImpl({
         </div>
       )}
 
-      {/* Chat Modal */}
+      {/* Chat Modal — 🛡️ TD-006: ReelChatSheet 컴포넌트로 추출 (2026-05-06) */}
       {chatModalOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
-            onClick={() => setChatModalOpen(false)}
-          />
-
-          {/* Chat Input Sheet */}
-          <div className="absolute inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-gray-900">{t('live.sendMessageTitle', { defaultValue: '메시지 보내기' })}</h3>
-                  {isSeller && (
-                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">🎙 {t('live.sellerBadge', { defaultValue: '셀러' })}</span>
-                  )}
-                </div>
-                <button
-                  onClick={() => setChatModalOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200"
-                >
-                  <X className="h-4 w-4 text-gray-800" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSendMessage} className="flex gap-2">
-                <input
-                  type="text"
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  placeholder={isSeller ? t('live.chatPlaceholderSeller', { defaultValue: '셀러 메시지를 입력하세요...' }) : t('live.chatPlaceholderViewer', { defaultValue: '메시지를 입력하세요...' })}
-                  className={`flex-1 rounded-xl border px-4 py-3 text-sm text-gray-900 focus:outline-none ${
-                    isSeller
-                      ? 'border-indigo-300 focus:border-indigo-500 bg-indigo-50/50'
-                      : 'border-gray-300 focus:border-red-500 bg-white'
-                  }`}
-                  disabled={sendingMessage}
-                />
-                <button
-                  type="submit"
-                  disabled={!chatMessage.trim() || sendingMessage}
-                  className={`flex items-center justify-center rounded-xl px-6 py-3 text-gray-900 dark:text-white font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    isSeller ? 'bg-indigo-500' : 'bg-red-500'
-                  }`}
-                >
-                  <Send className="h-5 w-5" />
-                </button>
-              </form>
-            </div>
-          </div>
-        </>
+        <ReelChatSheet
+          chatMessage={chatMessage}
+          sendingMessage={sendingMessage}
+          isSeller={!!isSeller}
+          onChatMessageChange={setChatMessage}
+          onClose={() => setChatModalOpen(false)}
+          onSubmit={handleSendMessage}
+        />
       )}
       {/* 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) */}
     </div>
