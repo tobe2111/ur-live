@@ -167,7 +167,7 @@ export default function BottomNav() {
   return (
     <>
       {/* Nav bar — 모바일만 표시. PC (lg+) 는 DesktopTopNav 가 대신 표시. */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[9999] pointer-events-none hide-on-keyboard lg:hidden">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[9999] pointer-events-none hide-on-keyboard md:hidden">
         <div className="pointer-events-auto">
           <nav
             className="bg-white dark:bg-[#020202] border-t border-[#0A0A0A]"

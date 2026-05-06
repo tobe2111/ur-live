@@ -47,7 +47,7 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {mobileOnly && <DesktopLiveRightPanel />}
       {/* 일반 페이지만 컨테이너에 사이드바 padding 적용. mobile-only 는 430px 액자 가운데 유지. */}
       <div
-        className={`mobile-app-container ${showSidebar && !mobileOnly ? 'xl:pl-56' : ''}`}
+        className={`mobile-app-container ${showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : ''}`}
         data-mobile-only={mobileOnly ? 'true' : 'false'}
       >
         {children}
