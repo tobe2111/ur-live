@@ -70,8 +70,10 @@ export default function DesktopTopNav() {
   }
 
   return (
-    <header className="hidden lg:block sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
-      <div className="flex items-center gap-4 px-4 lg:px-6 xl:pl-60 h-14">
+    <header className="hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+      {/* 📐 2026-05-06 (responsive-tablet-mobile.md): md(768)~xl(1280) 60px collapsed sidebar 만큼 padding-left.
+          xl+ 에서는 224px(w-56) full sidebar → pl-60 (60 = 240px = 사이드바 224 + 16 padding) */}
+      <div className="flex items-center gap-4 px-4 md:pl-[76px] lg:pl-[76px] xl:pl-60 lg:px-6 h-14">
         {/* 로고 — xl 이상에서는 사이드바에 있으므로 숨김 */}
         <Link to="/" className="flex items-center shrink-0 xl:hidden">
           <UrDealLogo size={20} />
