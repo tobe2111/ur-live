@@ -1,5 +1,6 @@
 import React from 'react'
 import { Eye, Share2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface LiveStreamInfoProps {
   title: string
@@ -18,6 +19,7 @@ export const LiveStreamInfo = React.memo(function LiveStreamInfo({
   onShare,
   className = ''
 }: LiveStreamInfoProps) {
+  const { t } = useTranslation()
   const formatViewerCount = (count: number): string => {
     if (count >= 1000000) {
       return `${(count / 1000000).toFixed(1)}M`
@@ -57,7 +59,7 @@ export const LiveStreamInfo = React.memo(function LiveStreamInfo({
             <p className="font-medium text-gray-900">{streamerName}</p>
             <div className="flex items-center gap-1 text-sm text-gray-600">
               <Eye size={14} />
-              <span>{formatViewerCount(viewerCount)} 시청 중</span>
+              <span>{t('live.streamInfo.watching', { defaultValue: '{{value}} 시청 중', value: formatViewerCount(viewerCount) })}</span>
             </div>
           </div>
         </div>

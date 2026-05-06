@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, X, MessageCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { maskUserName } from './LiveUtils'
 
 interface ChatMessage {
@@ -25,9 +26,11 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
   onSendMessage,
   isVisible,
   onToggle,
-  currentUsername = '익명',
+  currentUsername,
   className = ''
 }: LiveChatPanelProps) {
+  const { t } = useTranslation()
+  const displayUsername = currentUsername || t('live.chat.anonymous', { defaultValue: '익명' })
   const [inputValue, setInputValue] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -77,7 +80,7 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <MessageCircle size={20} className="text-blue-600" />
-          <h3 className="font-bold text-gray-900">실시간 채팅</h3>
+          <h3 className="font-bold text-gray-900">{t('live.chat.title', { defaultValue: '실시간 채팅' })}</h3>
           <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
             LIVE
           </div>
@@ -96,7 +99,7 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
           <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
             <div className="text-center">
               <MessageCircle size={48} className="mx-auto mb-2 opacity-50" />
-              <p>첫 번째 메시지를 남겨보세요!</p>
+              <p>{t('live.chat.beFirst', { defaultValue: '첫 번째 메시지를 남겨보세요!' })}</p>
             </div>
           </div>
         ) : (
@@ -140,7 +143,7 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="메시지를 입력하세요..."
+            placeholder={t('live.chat.inputPlaceholder', { defaultValue: '메시지를 입력하세요...' })}
             maxLength={200}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -153,7 +156,7 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
           </button>
         </div>
         <div className="mt-2 text-xs text-gray-500">
-          {currentUsername}(으)로 참여 중 • {inputValue.length}/200
+          {t('live.chat.joinedAs', { defaultValue: '{{name}}(으)로 참여 중', name: displayUsername })} • {inputValue.length}/200
         </div>
       </div>
     </div>
