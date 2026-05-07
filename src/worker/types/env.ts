@@ -61,6 +61,7 @@ export interface Env {
   YOUTUBE_CLIENT_ID?: string;
   YOUTUBE_CLIENT_SECRET?: string;
   YOUTUBE_REDIRECT_URI?: string;
+  YOUTUBE_API_KEY?: string;  // public videos.list API (no OAuth required)
 
   // ---- TikTok (2026-04-26 T1 통합) ----
   TIKTOK_CLIENT_KEY?: string;

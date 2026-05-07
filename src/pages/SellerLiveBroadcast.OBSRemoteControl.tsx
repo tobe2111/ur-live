@@ -194,6 +194,16 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
               {copiedField === 'all' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copiedField === 'all' ? t('seller.liveBroadcast.copyDone') : 'RTMP URL + Key 복사'}
             </button>
+            {/* 🛡️ 2026-05-07: OBS Browser Source 오버레이 URL — 채팅+핀상품을 OBS 화면에 직접 합성 */}
+            <button
+              onClick={() => onCopy(`${typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'}/embed/seller-overlay/${stream.id}`, 'overlay')}
+              className="w-full py-2 bg-white border border-purple-300 hover:bg-purple-50 text-purple-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5"
+            >
+              {copiedField === 'overlay' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedField === 'overlay'
+                ? t('seller.liveBroadcast.copyDone')
+                : t('seller.liveBroadcast.copyOverlayUrl', { defaultValue: 'OBS 브라우저 소스 URL 복사 (채팅+핀상품)' })}
+            </button>
             <details className="text-xs">
               <summary className="cursor-pointer text-purple-700 hover:text-purple-900 select-none">{t('seller.liveBroadcast.showIndividual')}</summary>
               <div className="mt-2 space-y-2">

@@ -4166,7 +4166,7 @@
   },
   "live": {
     "player": {
-      "cannotPlay": "Impossible de lire cette vidéo. Veuillez contacter le vendeur.",
+      "cannotPlay": "La vidéo est privée ou l'intégration est bloquée. Le vendeur doit vérifier sur YouTube Studio : public + autoriser l'intégration.",
       "browserError": "Problème de compatibilité du navigateur. Veuillez actualiser la page.",
       "errorTitle": "Vidéo indisponible"
     },

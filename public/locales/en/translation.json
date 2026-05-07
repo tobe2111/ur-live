@@ -4166,7 +4166,7 @@
   },
   "live": {
     "player": {
-      "cannotPlay": "Can't play this video. Please contact the seller.",
+      "cannotPlay": "Video is private or embedding is blocked. The seller should check YouTube Studio: set to Public + allow embedding.",
       "browserError": "Browser compatibility issue. Please refresh the page.",
       "errorTitle": "Video unavailable"
     },

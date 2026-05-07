@@ -4166,7 +4166,7 @@
   },
   "live": {
     "player": {
-      "cannotPlay": "No se puede reproducir este vídeo. Contacta con el vendedor.",
+      "cannotPlay": "Vídeo es privado o la incrustación está bloqueada. El vendedor debe verificar en YouTube Studio: público + permitir incrustación.",
       "browserError": "Problema de compatibilidad del navegador. Por favor, actualiza la página.",
       "errorTitle": "Vídeo no disponible"
     },

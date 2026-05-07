@@ -4166,7 +4166,7 @@
   },
   "live": {
     "player": {
-      "cannotPlay": "无法播放此视频。请联系卖家。",
+      "cannotPlay": "视频为私密或嵌入被禁用。卖家需在YouTube Studio中设为「公开」并「允许嵌入」。",
       "browserError": "浏览器兼容性问题。请刷新页面。",
       "errorTitle": "无法播放的视频"
     },

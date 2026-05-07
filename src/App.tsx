@@ -46,6 +46,7 @@ const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
 const LiveListPage = lazy(() => import('./pages/LiveListPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
 const EmbedLivePage = lazy(() => import('./pages/EmbedLivePage'))
+const SellerOverlayPage = lazy(() => import('./pages/SellerOverlayPage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
 const PointsChargePage = lazy(() => import('./pages/PointsChargePage'))
@@ -467,6 +468,7 @@ function AppContent() {
 
             {/* 임베드 위젯 (외부 서비스용) */}
             <Route path="/embed/live/:streamId" element={<EmbedLivePage />} />
+            <Route path="/embed/seller-overlay/:streamId" element={<SellerOverlayPage />} />
             <Route path="/payment/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
             <Route path="/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
             <Route path="/payment/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
