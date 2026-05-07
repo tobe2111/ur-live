@@ -34,6 +34,9 @@ export default function LivePageV2() {
   const [isDirectLink, setIsDirectLink] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
+  // 🛡️ 2026-05-07: reelRefs 는 useEffect 보다 먼저 실행되므로 노드를 별도 저장.
+  //   observer 생성 후 pendingNodes 를 일괄 observe 해 race condition 방어.
+  const pendingNodesRef = useRef<HTMLDivElement[]>([])
   
   const [currentStream, setCurrentStream] = useState<Stream | null>(null)
   
@@ -64,7 +67,11 @@ export default function LivePageV2() {
 
   const reelRefs = useCallback((node: HTMLDivElement | null) => {
     if (!node) return
-    if (observerRef.current) observerRef.current.observe(node)
+    if (observerRef.current) {
+      observerRef.current.observe(node)
+    } else {
+      pendingNodesRef.current.push(node)
+    }
   }, [])
 
   useEffect(() => {
@@ -89,9 +96,12 @@ export default function LivePageV2() {
       },
       {
         root: containerRef.current,
-        threshold: [0.3, 0.5, 0.7, 0.9], // 다중 threshold 로 ratio 추적 정확도 ↑
+        threshold: [0.3, 0.5, 0.7, 0.9],
       }
     )
+    // reelRefs 가 observer 생성 전에 실행됐을 경우 pending 노드들 일괄 등록
+    pendingNodesRef.current.forEach(node => observerRef.current!.observe(node))
+    pendingNodesRef.current = []
 
     return () => observerRef.current?.disconnect()
   }, [])

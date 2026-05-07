@@ -104,7 +104,7 @@ export default function SellerPublicPage() {
     if (!file) return
     const token = localStorage.getItem('seller_token')
     if (!token) {
-      toast.error('로그인이 필요합니다')
+      toast.error(t('common.loginRequired', { defaultValue: '로그인이 필요합니다' }))
       return
     }
 
@@ -115,11 +115,11 @@ export default function SellerPublicPage() {
     const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
     if (file.size > MAX_BYTES) {
-      toast.error(`파일 크기는 5MB 이하여야 합니다 (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`)
+      toast.error(t('common.fileSizeLimit', { defaultValue: `파일 크기는 5MB 이하여야 합니다 (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`, size: (file.size / 1024 / 1024).toFixed(1) }))
       return
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error('JPEG, PNG, WebP, GIF 만 가능합니다')
+      toast.error(t('common.imageTypeOnly', { defaultValue: 'JPEG, PNG, WebP, GIF 만 가능합니다' }))
       return
     }
 
