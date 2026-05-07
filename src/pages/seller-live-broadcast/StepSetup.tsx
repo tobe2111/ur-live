@@ -30,7 +30,6 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
   const { t } = useTranslation()
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
   const [showDiagnostic, setShowDiagnostic] = useState(false)
-  const [autoDiagnosticShown, setAutoDiagnosticShown] = useState(false)
   const [waitSeconds, setWaitSeconds] = useState(0)
   const waitRef = useRef(0)
   // 대기 중 화면 잠금 방지 (Prism QR 스캔 중, YouTube Studio 확인 중 화면 꺼짐 방지)
@@ -44,16 +43,6 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
     }, 1000)
     return () => clearInterval(id)
   }, [])
-
-  // 30초 경과 + 여전히 setup 상태 = 송출이 감지 안 되고 있음 → 진단 자동 제안
-  useEffect(() => {
-    if (autoDiagnosticShown) return
-    const id = setTimeout(() => {
-      setShowDiagnostic(true)
-      setAutoDiagnosticShown(true)
-    }, 30000)
-    return () => clearTimeout(id)
-  }, [autoDiagnosticShown])
 
   // P1-5: 예약 방송이고 시작 시간이 30분 이상 미래면 카운트다운 화면
   const scheduledTime = safeTime(stream.scheduled_at)

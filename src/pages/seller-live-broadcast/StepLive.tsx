@@ -47,6 +47,7 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
   const autoAdvanceRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const autoAdvanceSecondsRef = useRef(0)
   const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState(0)
+  const changingProductRef = useRef(false) // 상품 전환 중복 방지
 
   // 라이브 시작 60초 후 YouTube CDN 썸네일 자동 refresh
   // 셀러가 커스텀 썸네일을 직접 지정했으면 덮어쓰지 않음
@@ -185,7 +186,16 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
         }
       }
       updatePiP()
-      pipUpdateIntervalRef.current = setInterval(updatePiP, 1000)
+      pipUpdateIntervalRef.current = setInterval(() => {
+        // PiP 창이 외부에서 닫혔는지 주기적으로 감지 (pagehide 가 일부 브라우저에서 미발화)
+        if (!pipWin || pipWin.closed) {
+          if (pipUpdateIntervalRef.current) clearInterval(pipUpdateIntervalRef.current)
+          pipWindowRef.current = null
+          setPipActive(false)
+          return
+        }
+        updatePiP()
+      }, 1000)
       pipWin.addEventListener('pagehide', () => {
         if (pipUpdateIntervalRef.current) clearInterval(pipUpdateIntervalRef.current)
         pipWindowRef.current = null
@@ -214,13 +224,21 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
       autoAdvanceSecondsRef.current -= 1
       setAutoAdvanceCountdown(autoAdvanceSecondsRef.current)
       if (autoAdvanceSecondsRef.current <= 0) {
+        if (changingProductRef.current) {
+          // 수동 전환 중이면 카운터만 리셋, API 호출 skip
+          autoAdvanceSecondsRef.current = totalSec
+          setAutoAdvanceCountdown(totalSec)
+          return
+        }
         const idx = products.findIndex(p => p.id === stream.current_product_id)
         const nextIdx = (idx + 1) % products.length
         const next = products[nextIdx]
         if (next && nextIdx !== idx) {
+          changingProductRef.current = true
           api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: next.id })
             .then(() => { onChangeProduct(next.id); toast.success(`⏱️ ${next.name} 자동 전환`) })
             .catch(() => {})
+            .finally(() => { changingProductRef.current = false })
           autoAdvanceSecondsRef.current = totalSec
           setAutoAdvanceCountdown(totalSec)
         } else {
@@ -251,18 +269,23 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
   // P2-12: 키보드 단축키 (input 포커스 중에는 무시)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName
+      const target = e.target as HTMLElement
+      const tag = target?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (target?.isContentEditable) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === '?') { e.preventDefault(); setShowShortcuts(v => !v) }
       else if (e.key === ' ' || e.key.toLowerCase() === 'n') {
         e.preventDefault()
+        if (changingProductRef.current) return
         const idx = products.findIndex(p => p.id === stream.current_product_id)
         const next = products[(idx + 1) % products.length]
         if (next) {
+          changingProductRef.current = true
           api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: next.id })
             .then(() => { onChangeProduct(next.id); toast.success(`${next.name} ▶`) })
             .catch(() => { /* silent */ })
+            .finally(() => { changingProductRef.current = false })
         }
       }
     }
@@ -373,6 +396,8 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
                 <button key={p.id}
                   onClick={async () => {
                     if (isSoldOut) { toast.error(`${p.name} 품절`); return }
+                    if (changingProductRef.current) return
+                    changingProductRef.current = true
                     try {
                       await api.post(`/api/seller/streams/${stream.id}/change-product`,
                         { productId: p.id },
@@ -380,6 +405,7 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
                       onChangeProduct(p.id)
                       toast.success(`${p.name} ${t('seller.liveBroadcast.nowShowing')}`)
                     } catch { toast.error(t('seller.liveBroadcast.switchFailed')) }
+                    finally { changingProductRef.current = false }
                   }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium shrink-0 transition-all active:scale-95 ${
                     isCurrent ? 'border-red-500 bg-red-50 text-red-600 shadow-sm' :

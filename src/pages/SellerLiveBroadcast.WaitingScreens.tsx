@@ -137,6 +137,7 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
   const openedRef = useRef(false)
   const obsAutoTriedRef = useRef(false)
   const [obsAutoState, setObsAutoState] = useState<'idle' | 'connecting' | 'success' | 'failed'>('idle')
+  const [popupBlocked, setPopupBlocked] = useState(false)
   const vid = stream.youtube_video_id || stream.youtube_broadcast_id
 
   // 🛡️ 2026-05-07: YouTube Studio 모드도 obs-websocket 설정이 있으면 자동 송출 시도.
@@ -186,8 +187,9 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
     const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},noopener`
     try {
       const p = window.open(studioUrl, 'ur-yt-studio', features)
-      if (p) popupRef.current = p
-    } catch { /* blocked */ }
+      if (p) { popupRef.current = p; setPopupBlocked(false) }
+      else setPopupBlocked(true)
+    } catch { setPopupBlocked(true) }
   }
 
   // YouTube 공식 앱 Deep link (모바일) — 구독자 50+ 필요 (YouTube 정책)
@@ -281,6 +283,16 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
         </div>
       )}
 
+      {popupBlocked && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex items-start gap-2">
+          <span className="text-sm shrink-0">🚫</span>
+          <div className="flex-1">
+            <p className="text-xs font-bold text-amber-900">팝업이 차단됐습니다</p>
+            <p className="text-[11px] text-amber-800 mt-0.5">브라우저 주소창 오른쪽 팝업 차단 아이콘을 클릭해 허용 후 아래 버튼을 눌러주세요.</p>
+          </div>
+        </div>
+      )}
+
       <button onClick={openPopup}
         className="w-full text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">
         {t('seller.liveBroadcast.reopenStudio')}
@@ -311,6 +323,7 @@ export function YouTubeWebcamWaiting({ stream, onGoLive, channelId }: { stream: 
   const linkingRef = useRef(false)
   const [detected, setDetected] = useState<{ youtube_video_id: string; title?: string } | null>(null)
   const [elapsed, setElapsed] = useState(0)
+  const [popupBlocked, setPopupBlocked] = useState(false)
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)
 
   // 실제 채널 ID 사용 — UC 플레이스홀더 대신 셀러의 실제 채널로 정확히 이동
@@ -326,8 +339,9 @@ export function YouTubeWebcamWaiting({ stream, onGoLive, channelId }: { stream: 
       const top = Math.floor((window.screen.availHeight - h) / 2)
       try {
         const p = window.open(studioUrl, 'ur-yt-studio', `popup=yes,width=${w},height=${h},left=${left},top=${top},noopener`)
-        if (p) popupRef.current = p
-      } catch { window.open(studioUrl, '_blank', 'noopener') }
+        if (p) { popupRef.current = p; setPopupBlocked(false) }
+        else setPopupBlocked(true)
+      } catch { setPopupBlocked(true); window.open(studioUrl, '_blank', 'noopener') }
     }
   }
 
@@ -427,6 +441,16 @@ export function YouTubeWebcamWaiting({ stream, onGoLive, channelId }: { stream: 
                 className="shrink-0 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-semibold rounded-md">
                 네, 시작했어요
               </button>
+            </div>
+          )}
+
+          {popupBlocked && !isMobile && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex items-start gap-2">
+              <span className="text-sm shrink-0">🚫</span>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-amber-900">팝업이 차단됐습니다</p>
+                <p className="text-[11px] text-amber-800 mt-0.5">주소창 오른쪽 팝업 차단 아이콘을 허용 후 아래 버튼을 눌러주세요.</p>
+              </div>
             </div>
           )}
 

@@ -283,7 +283,7 @@ export default function SellerLiveBroadcastPage() {
         prevStockRef.current = prev
       } catch { /* silent */ }
     }
-    const id = setInterval(refresh, 120000)  // 2분 (D1 reads, 무료)
+    const id = setInterval(refresh, 30000)  // 30초 — 품절 상품 실시간 감지
     return () => clearInterval(id)
   }, [step, currentStream])
 
@@ -453,12 +453,9 @@ export default function SellerLiveBroadcastPage() {
       liveStartTimeRef.current = 0
       await loadData()
     } catch (err: unknown) {
-      // 🛡️ 종료 실패 시에도 UI 상으로는 종료 처리 (DB 가 아직 'live' 라도 사용자에겐 'ended' 보임).
-      // YouTube 측 자동 stream-detection cron 이 결국 정리. 사용자에게 명확한 안내.
       if (import.meta.env.DEV) console.error('[live-broadcast] end failed:', err)
-      toast.error(t('seller.liveBroadcast.endFailed'))
-      // 5초 후 페이지 새로고침 — 다음 시도 가능
-      setCurrentStream(null); setStep('info')
+      // 종료 실패: 스트림 상태 유지 + 재시도 안내 (강제 초기화 않음)
+      toast.error('방송 종료 실패. 다시 시도하거나 YouTube Studio에서 직접 종료해주세요.')
     }
   }
 

@@ -95,6 +95,19 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
     setLarixStatus(ok ? 'idle' : 'failed')
   }
 
+  // PC/모바일 공통: RTMP 자격증명 QR URL (Prism 자동 입력 페이지)
+  const appBaseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://live.ur-team.com'
+  const autoFillUrl = `${appBaseUrl}/rtmp-setup?` +
+    `url=${encodeURIComponent(rtmpUrl)}&` +
+    `key=${encodeURIComponent(rtmpKey)}&` +
+    `title=${encodeURIComponent(streamTitle)}`
+
+  function copyToClipboard(text: string, type: 'url' | 'key') {
+    navigator.clipboard.writeText(text)
+    setCopied(type)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
   // PC: Prism 데스크톱 앱 + RTMP 자격증명 안내
   if (!isMobile) {
     return (
@@ -156,25 +169,12 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
           <p className="text-xs font-semibold text-gray-700">📱 핸드폰 카메라로 진행하려면</p>
           <div className="flex justify-center">
-            <QRCode value={typeof window !== 'undefined' ? window.location.href : ''} size={120} level="M" includeMargin />
+            <QRCode value={autoFillUrl} size={120} level="M" includeMargin />
           </div>
-          <p className="text-[10px] text-center text-gray-500">QR 스캔 → 모바일에서 같은 페이지 → Prism 앱 자동 연결</p>
+          <p className="text-[10px] text-center text-gray-500">QR 스캔 → RTMP 자동 입력 페이지 → Prism / Larix 자동 연결</p>
         </div>
       </div>
     )
-  }
-
-  // Generate mobile-friendly auto-fill URL
-  const appBaseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://live.ur-team.com'
-  const autoFillUrl = `${appBaseUrl}/rtmp-setup?` +
-    `url=${encodeURIComponent(rtmpUrl)}&` +
-    `key=${encodeURIComponent(rtmpKey)}&` +
-    `title=${encodeURIComponent(streamTitle)}`
-
-  function copyToClipboard(text: string, type: 'url' | 'key') {
-    navigator.clipboard.writeText(text)
-    setCopied(type)
-    setTimeout(() => setCopied(null), 2000)
   }
 
   return (
