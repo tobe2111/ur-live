@@ -305,15 +305,16 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
 //   3. /detect-webcam (10s 폴링) → liveBroadcasts.list 로 활성 방송 자동 감지
 //   4. 감지 시 /link-broadcast PATCH → youtube_video_id DB 저장 → onGoLive()
 // ─────────────────────────────────────────────────────────────────────────────
-export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamLite; onGoLive: () => void }) {
+export function YouTubeWebcamWaiting({ stream, onGoLive, channelId }: { stream: LiveStreamLite; onGoLive: () => void; channelId?: string }) {
   const popupRef = useRef<Window | null>(null)
   const openedRef = useRef(false)
   const linkingRef = useRef(false)
   const [detected, setDetected] = useState<{ youtube_video_id: string; title?: string } | null>(null)
+  const [elapsed, setElapsed] = useState(0)
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)
 
-  // 일반 YouTube Studio URL — video_id 없이 셀러가 직접 웹캠 방송 시작
-  const studioUrl = 'https://studio.youtube.com/channel/UC/livestreaming'
+  // 실제 채널 ID 사용 — UC 플레이스홀더 대신 셀러의 실제 채널로 정확히 이동
+  const studioUrl = `https://studio.youtube.com/channel/${channelId || 'UC'}/livestreaming`
 
   function openStudio() {
     if (isMobile) {
@@ -338,6 +339,12 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
       try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close() } catch {}
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 경과 시간 카운터
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(s => s + 1), 1000)
+    return () => clearInterval(id)
   }, [])
 
   // /detect-webcam 폴링 — 10s 간격, liveBroadcasts.list 1 unit/call
@@ -406,8 +413,22 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
                 <span key={i} className="w-1.5 h-1.5 rounded-full bg-red-400 animate-bounce" style={{ animationDelay: `${d}s` }} />
               ))}
             </span>
-            <p className="text-xs text-red-700 flex-1">YouTube 방송 시작 감지 중… (10초마다 확인)</p>
+            <p className="text-xs text-red-700 flex-1">YouTube 방송 시작 감지 중…</p>
+            <span className="text-[11px] text-red-400 font-mono shrink-0">
+              {String(Math.floor(elapsed / 60)).padStart(2, '0')}:{String(elapsed % 60).padStart(2, '0')}
+            </span>
           </div>
+
+          {/* 30초 후: 방송 시작했는지 확인 유도 */}
+          {elapsed >= 30 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex items-center justify-between gap-2">
+              <p className="text-xs text-amber-800">YouTube Studio에서 방송을 시작하셨나요?</p>
+              <button onClick={onGoLive}
+                className="shrink-0 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-semibold rounded-md">
+                네, 시작했어요
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <button onClick={openStudio}

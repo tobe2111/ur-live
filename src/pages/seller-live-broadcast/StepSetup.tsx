@@ -76,7 +76,11 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
       )}
 
       {method === 'youtube-webcam' && (
-        <YouTubeWebcamWaiting stream={stream} onGoLive={onGoLive} />
+        <YouTubeWebcamWaiting
+          stream={stream}
+          onGoLive={onGoLive}
+          channelId={channels.find((ch: YouTubeChannel) => ch.is_active)?.channel_id}
+        />
       )}
 
       {method === 'youtube' && (
