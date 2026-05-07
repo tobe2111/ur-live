@@ -5,7 +5,7 @@
  * SSR / storage 차단 환경 (incognito strict mode) 안전 처리 (try-catch).
  */
 
-export type StreamMethod = 'youtube' | 'obs' | 'prism' | 'quick'
+export type StreamMethod = 'youtube' | 'youtube-webcam' | 'obs' | 'prism' | 'quick'
 
 export interface BroadcastTemplate {
   name: string
@@ -23,7 +23,7 @@ const TEMPLATES_KEY = 'seller_live_templates'
 export function getLastUsedMethod(): StreamMethod {
   try {
     const v = localStorage.getItem(METHOD_STORAGE_KEY)
-    if (v === 'youtube' || v === 'obs' || v === 'prism' || v === 'quick') return v
+    if (v === 'youtube' || v === 'youtube-webcam' || v === 'obs' || v === 'prism' || v === 'quick') return v
   } catch { /* SSR or blocked */ }
   if (typeof window !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)) return 'prism'
   return 'obs'

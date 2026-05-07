@@ -198,6 +198,92 @@ app.post('/live/create', async (c) => {
 })
 
 /**
+ * POST /api/youtube/live/create-webcam
+ * YouTube API 호출 없이 UR 스트림 레코드만 생성 (웹캠 모드)
+ */
+app.post('/live/create-webcam', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const { title, description, product_ids, scheduled_start_time, privacy_status, thumbnail_url } = await c.req.json()
+  if (!title) return c.json({ success: false, error: 'Title is required' }, 400)
+
+  const scheduledTime = scheduled_start_time || new Date().toISOString()
+
+  try {
+    const streamResult = await c.env.DB.prepare(`
+      INSERT INTO live_streams (
+        seller_id, title, description, status,
+        youtube_video_id, scheduled_at, created_at, updated_at
+      ) VALUES (?, ?, ?, 'scheduled', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).bind(sellerId, title, description || '', scheduledTime).run()
+
+    const streamId = streamResult.meta.last_row_id
+
+    if (product_ids && product_ids.length > 0) {
+      for (const productId of product_ids) {
+        await c.env.DB.prepare(
+          'INSERT OR IGNORE INTO stream_products (stream_id, product_id, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
+        ).bind(streamId, productId).run()
+      }
+      try {
+        const firstProduct = await c.env.DB.prepare(
+          'SELECT id, image_url FROM products WHERE id = ?'
+        ).bind(product_ids[0]).first<{ id: number; image_url: string }>()
+        if (firstProduct?.image_url) {
+          await c.env.DB.prepare(
+            'UPDATE live_streams SET thumbnail_url = ?, current_product_id = ? WHERE id = ?'
+          ).bind(thumbnail_url || firstProduct.image_url, firstProduct.id, streamId).run()
+        }
+      } catch { /* thumbnail optional */ }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        stream_id: streamId,
+        rtmp_url: null,
+        rtmp_key: null,
+        broadcast: null,
+        youtube_url: null,
+      }
+    })
+  } catch (error) {
+    return c.json({ success: false, error: 'Failed to create stream' }, 500)
+  }
+})
+
+/**
+ * PATCH /api/youtube/live/:id/link-broadcast
+ * Chrome Extension 이 YouTube Studio 에서 감지한 broadcast ID 를 스트림에 연결
+ */
+app.patch('/live/:id/link-broadcast', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const streamId = c.req.param('id')
+  const { youtube_video_id } = await c.req.json()
+  if (!youtube_video_id) return c.json({ success: false, error: 'youtube_video_id required' }, 400)
+
+  await c.env.DB.prepare(`
+    UPDATE live_streams
+    SET youtube_video_id = ?, youtube_broadcast_id = ?,
+        youtube_embed_url = ?,
+        thumbnail_url = COALESCE(NULLIF(thumbnail_url, ''), ?),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND seller_id = ?
+  `).bind(
+    youtube_video_id,
+    youtube_video_id,
+    `https://www.youtube.com/embed/${youtube_video_id}`,
+    `https://i.ytimg.com/vi/${youtube_video_id}/maxresdefault.jpg`,
+    streamId, sellerId
+  ).run()
+
+  return c.json({ success: true })
+})
+
+/**
  * POST /api/youtube/live/:id/start
  * Transition broadcast to live
  */

@@ -294,7 +294,11 @@ export default function SellerLiveBroadcastPage() {
       if (isScheduled && scheduledDate && scheduledTime)
         scheduledStartTime = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
 
-      const res = await api.post('/api/seller/youtube/live/create', {
+      const endpoint = method === 'youtube-webcam'
+        ? '/api/seller/youtube/live/create-webcam'
+        : '/api/seller/youtube/live/create'
+
+      const res = await api.post(endpoint, {
         title: effectiveTitle.trim(), description: description.trim(),
         thumbnail_url: thumbnailUrl.trim() || undefined,
         product_ids: effectiveProducts,

@@ -74,13 +74,12 @@ export default function StepInfo({ title, setTitle, description, setDescription,
     { key: 'unlisted', icon: EyeOff, label: t('seller.liveBroadcast.unlisted'), desc: t('seller.liveBroadcast.unlistedDesc') },
     { key: 'private', icon: Lock, label: t('seller.liveBroadcast.private'), desc: t('seller.liveBroadcast.privateDesc') },
   ]
-  // 🛡️ 2026-05-07 (option A): 모드 라벨 명확화 — 모든 모드는 RTMP 인코더 필요.
-  //   비기술 셀러는 Prism Mobile 권장 ("초보 추천" 배지로 유도).
   const methodOptions = [
     { key: 'prism' as const, icon: Smartphone, label: t('seller.liveBroadcast.naverPrism', { defaultValue: 'Prism Mobile' }), desc: t('seller.liveBroadcast.prismDesc', { defaultValue: '핸드폰 1대로 끝 · QR 1번 스캔' }), active: 'border-green-400 bg-green-50', iconActive: 'text-green-600', hasKey: !!hasPersistentKey, recommended: true },
+    { key: 'youtube-webcam' as const, icon: Youtube, label: 'YouTube Studio (웹캠)', desc: 'OBS 없이 브라우저 웹캠으로 바로 · 가장 간편', active: 'border-red-400 bg-red-50', iconActive: 'text-red-600', hasKey: false, recommended: false },
     { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.obsDesc', { defaultValue: 'PC + 무료 OBS 설치 필요 · 화질 최고' }), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600', hasKey: !!hasPersistentKey, recommended: false },
     { key: 'quick' as const, icon: Play, label: t('seller.liveBroadcast.quickStartV2', { defaultValue: '원클릭 (OBS 필요)' }), desc: t('seller.liveBroadcast.quickStartDescV2', { defaultValue: '제목·상품 자동 + OBS 송출' }), active: 'border-pink-400 bg-pink-50', iconActive: 'text-pink-600', hasKey: false, recommended: false },
-    { key: 'youtube' as const, icon: Youtube, label: t('seller.liveBroadcast.youtubeStudioV2', { defaultValue: 'YouTube Studio (전문가)' }), desc: t('seller.liveBroadcast.youtubeStudioDescV2', { defaultValue: 'OBS + 다중 채널 관리' }), active: 'border-red-400 bg-red-50', iconActive: 'text-red-600', hasKey: false, recommended: false },
+    { key: 'youtube' as const, icon: Youtube, label: 'YouTube Studio (OBS 인코더)', desc: 'OBS + 다중 채널 관리 · 전문가용', active: 'border-orange-400 bg-orange-50', iconActive: 'text-orange-600', hasKey: false, recommended: false },
   ]
 
   // 상품 정렬: 선택된 것 → 최근 사용 → 나머지

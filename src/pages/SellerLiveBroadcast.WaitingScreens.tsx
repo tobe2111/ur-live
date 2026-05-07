@@ -8,13 +8,14 @@
  *
  * 🛡️ 2026-04-28: TD-006 추가 분할.
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { safeDate, safeTime } from '@/utils/safe-date'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, CheckCircle2, Youtube } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Youtube, Camera, Monitor } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
-import { OBSWebSocketClient, loadOBSConfig } from '@/lib/obs-websocket'
+import { OBSWebSocketClient, loadOBSConfig, hasOBSExtension } from '@/lib/obs-websocket'
 import { ShareLiveLink } from './SellerLiveBroadcast.parts'
+import api from '@/lib/api'
 
 // LiveStream 의 부분만 사용 — 호출처에서 더 풍부한 타입 전달 가능
 interface LiveStreamLite {
@@ -291,6 +292,149 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
           📱 YouTube 앱에서 열기
         </button>
       )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// YouTubeWebcamWaiting — OBS 없이 YouTube Studio 웹캠으로 라이브
+// 셀러가 YouTube Studio 에서 직접 웹캠으로 라이브 시작 → Extension 이 broadcast ID 감지 → 자동 연결
+// ─────────────────────────────────────────────────────────────────────────────
+export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamLite; onGoLive: () => void }) {
+  const popupRef = useRef<Window | null>(null)
+  const openedRef = useRef(false)
+  const linkedRef = useRef(false)
+  const [phase, setPhase] = useState<'waiting' | 'linked' | 'noext'>('waiting')
+  const [showManual, setShowManual] = useState(false)
+  const hasExt = hasOBSExtension()
+
+  const studioUrl = `https://studio.youtube.com/channel/UC/livestreaming?ur_stream_id=${stream.id}&ur_webcam=1`
+
+  function openPopup() {
+    const w = Math.min(1280, Math.floor(window.screen.availWidth * 0.85))
+    const h = Math.min(820, Math.floor(window.screen.availHeight * 0.85))
+    const left = Math.floor((window.screen.availWidth - w) / 2)
+    const top = Math.floor((window.screen.availHeight - h) / 2)
+    try {
+      const p = window.open(studioUrl, 'ur-yt-studio', `popup=yes,width=${w},height=${h},left=${left},top=${top},noopener`)
+      if (p) popupRef.current = p
+    } catch { /* blocked */ }
+  }
+
+  useEffect(() => {
+    if (openedRef.current) return
+    openedRef.current = true
+    setTimeout(openPopup, 200)
+    return () => {
+      try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close() } catch {}
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Extension 이 webcam broadcast 시작 감지 → chrome.storage 에 저장 → 여기서 polling
+  const handleLinkMessage = useCallback((e: MessageEvent) => {
+    if (!e.data?.__urlive) return
+    if (e.data.type === 'LINKED_BROADCAST_RESULT' && e.data.youtubeVideoId && !linkedRef.current) {
+      linkedRef.current = true
+      setPhase('linked')
+      api.patch(`/api/seller/youtube/live/${stream.id}/link-broadcast`, {
+        youtube_video_id: e.data.youtubeVideoId,
+      }).then(() => {
+        setTimeout(onGoLive, 800)
+      }).catch(() => {
+        // link 실패해도 수동 시작 가능
+        setTimeout(onGoLive, 800)
+      })
+    }
+  }, [stream.id, onGoLive])
+
+  useEffect(() => {
+    window.addEventListener('message', handleLinkMessage)
+    if (!hasExt) {
+      // Extension 없으면 30초 후 수동 시작 안내
+      const t = setTimeout(() => setShowManual(true), 30000)
+      return () => { window.removeEventListener('message', handleLinkMessage); clearTimeout(t) }
+    }
+    // Extension 있으면 5초마다 polling
+    const interval = setInterval(() => {
+      window.postMessage({ __urlive: true, type: 'GET_LINKED_BROADCAST', streamId: stream.id }, '*')
+    }, 5000)
+    const manualTimer = setTimeout(() => setShowManual(true), 90000)
+    return () => {
+      window.removeEventListener('message', handleLinkMessage)
+      clearInterval(interval)
+      clearTimeout(manualTimer)
+    }
+  }, [stream.id, hasExt, handleLinkMessage])
+
+  return (
+    <div className="bg-red-50 border border-red-200 rounded-xl p-5 space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center">
+          <Camera className="w-5 h-5" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-gray-900">YouTube Studio 웹캠 라이브</p>
+          <p className="text-xs text-gray-600 mt-0.5">OBS 없이 브라우저 웹캠으로 바로 송출</p>
+        </div>
+      </div>
+
+      {phase === 'waiting' && (
+        <ol className="space-y-2">
+          {[
+            '팝업 YouTube Studio 창에서',
+            '"라이브 스트리밍 시작" 클릭',
+            '"웹캠" 탭 선택 후 방송 시작',
+          ].map((step, i) => (
+            <li key={i} className="flex items-start gap-2.5">
+              <span className="shrink-0 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+              <span className="text-xs text-gray-700">{step}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {phase === 'linked' && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+          <p className="text-xs font-bold text-green-800">방송 감지됨! 라이브 화면으로 전환 중…</p>
+        </div>
+      )}
+
+      {phase === 'waiting' && (
+        <div className="flex items-center gap-2 bg-white/60 rounded-lg px-3 py-2.5 border border-red-100">
+          <span className="flex gap-1 shrink-0">
+            {[0, 0.2, 0.4].map((d, i) => (
+              <span key={i} className="w-1.5 h-1.5 rounded-full bg-red-400 animate-bounce" style={{ animationDelay: `${d}s` }} />
+            ))}
+          </span>
+          <p className="text-xs text-red-700 flex-1">
+            {hasExt ? 'YouTube Studio 방송 시작 감지 중…' : 'YouTube Studio 에서 방송을 시작해주세요'}
+          </p>
+        </div>
+      )}
+
+      {!hasExt && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p className="text-[11px] text-amber-800 leading-relaxed">
+            <b>Chrome Extension</b>을 설치하면 방송 시작이 자동으로 감지됩니다.
+            미설치 시 아래 "수동 시작"을 눌러주세요.
+          </p>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <button onClick={openPopup}
+          className="flex-1 text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">
+          Studio 다시 열기
+        </button>
+        {(showManual || !hasExt) && (
+          <button onClick={onGoLive}
+            className="text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2">
+            수동 시작
+          </button>
+        )}
+      </div>
     </div>
   )
 }
