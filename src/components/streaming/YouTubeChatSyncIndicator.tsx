@@ -53,7 +53,10 @@ export default function YouTubeChatSyncIndicator({ streamId, onMessage }: Props)
       setError(null)
       try {
         const res = await api.get(`/api/youtube/live/${streamId}/chat`, {
-          params: tokenRef.current ? { nextPageToken: tokenRef.current } : {},
+          params: {
+            forward: '1',
+            ...(tokenRef.current ? { nextPageToken: tokenRef.current } : {}),
+          },
         })
         if (res.data?.success) {
           const items = (res.data.data.items || []) as YouTubeChatItem[]

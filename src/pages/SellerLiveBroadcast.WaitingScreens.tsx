@@ -134,7 +134,34 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
   const { t } = useTranslation()
   const popupRef = useRef<Window | null>(null)
   const openedRef = useRef(false)
+  const obsAutoTriedRef = useRef(false)
+  const [obsAutoState, setObsAutoState] = useState<'idle' | 'connecting' | 'success' | 'failed'>('idle')
   const vid = stream.youtube_video_id || stream.youtube_broadcast_id
+
+  // 🛡️ 2026-05-07: YouTube Studio 모드도 obs-websocket 설정이 있으면 자동 송출 시도.
+  //   YT Studio popup 은 모니터링용으로 유지, OBS 는 백그라운드에서 자동 송출.
+  useEffect(() => {
+    if (obsAutoTriedRef.current) return
+    obsAutoTriedRef.current = true
+    if (!stream.rtmp_url || !stream.rtmp_key) return
+
+    ;(async () => {
+      try {
+        const { OBSWebSocketClient, loadOBSConfig } = await import('@/lib/obs-websocket')
+        const cfg = loadOBSConfig()
+        if (!cfg) return // 저장된 설정 없음 → 사용자가 직접 OBS 켜야 함
+        setObsAutoState('connecting')
+        const client = new OBSWebSocketClient()
+        await client.connect(cfg)
+        await client.setRtmpTarget(stream.rtmp_url!, stream.rtmp_key!)
+        await client.startStreaming()
+        setObsAutoState('success')
+      } catch {
+        setObsAutoState('failed')
+      }
+    })()
+  }, [stream.id, stream.rtmp_url, stream.rtmp_key])
+
   // ?ur_stream_id 로 우리 Chrome Extension 에 streamId 전달
   //   → Extension content-studio.js 가 사이드바 iframe 을 /embed/live/:id 로 자동 연결
   const studioUrl = vid
@@ -205,14 +232,44 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
         </p>
       </div>
 
-      {/* 🛡️ 2026-05-07: 셀러가 "데이터 없음" 화면 보고 멈춤 — RTMP 송출 필요 명시 */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
-        <p className="text-xs font-bold text-amber-900">⚠️ YouTube Studio 에 "데이터 없음" 표시 시</p>
-        <p className="text-[11px] text-amber-800 leading-relaxed">
-          이 모드는 <b>OBS / 인코더에서 RTMP 송출</b>이 필요해요. 웹캠만으로는 진행이 안 됩니다.
-          OBS 가 없다면 <b>"OBS Studio"</b> 또는 <b>"Prism Mobile"</b> 모드로 다시 시작해주세요.
-        </p>
-      </div>
+      {/* 🛡️ 2026-05-07: OBS 자동 송출 상태 (저장된 obs-websocket 설정 있을 때만) */}
+      {obsAutoState !== 'idle' && (
+        <div className={`border rounded-lg p-3 space-y-0.5 ${
+          obsAutoState === 'success' ? 'bg-green-50 border-green-200' :
+          obsAutoState === 'failed' ? 'bg-red-50 border-red-200' :
+          'bg-blue-50 border-blue-200'
+        }`}>
+          <p className={`text-xs font-bold ${
+            obsAutoState === 'success' ? 'text-green-900' :
+            obsAutoState === 'failed' ? 'text-red-900' :
+            'text-blue-900'
+          }`}>
+            {obsAutoState === 'connecting' && '⚙️ OBS 자동 연결 중…'}
+            {obsAutoState === 'success' && '✅ OBS 자동 송출 시작됨'}
+            {obsAutoState === 'failed' && '⚠️ OBS 자동 연결 실패'}
+          </p>
+          <p className={`text-[11px] leading-relaxed ${
+            obsAutoState === 'success' ? 'text-green-800' :
+            obsAutoState === 'failed' ? 'text-red-800' :
+            'text-blue-800'
+          }`}>
+            {obsAutoState === 'connecting' && 'obs-websocket 으로 OBS 를 자동 제어합니다.'}
+            {obsAutoState === 'success' && 'YouTube Studio 에서 곧 영상이 잡혀요.'}
+            {obsAutoState === 'failed' && 'OBS 가 켜져있고 WebSocket 이 활성화됐는지 확인해주세요.'}
+          </p>
+        </div>
+      )}
+
+      {/* 🛡️ 2026-05-07: 셀러가 "데이터 없음" 화면 보고 멈춤 — RTMP 송출 필요 명시 (auto OBS 실패시만 노출) */}
+      {obsAutoState !== 'success' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
+          <p className="text-xs font-bold text-amber-900">⚠️ YouTube Studio 에 "데이터 없음" 표시 시</p>
+          <p className="text-[11px] text-amber-800 leading-relaxed">
+            이 모드는 <b>OBS / 인코더에서 RTMP 송출</b>이 필요해요. 웹캠만으로는 진행이 안 됩니다.
+            OBS 가 없다면 <b>"OBS Studio"</b> 또는 <b>"Prism Mobile"</b> 모드로 다시 시작해주세요.
+          </p>
+        </div>
+      )}
 
       <button onClick={openPopup}
         className="w-full text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">

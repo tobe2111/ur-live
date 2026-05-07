@@ -551,12 +551,55 @@ app.get('/live/:id/chat', async (c) => {
       type: it.snippet?.type || 'textMessageEvent',
     }))
 
+    // 🛡️ 2026-05-07: forward=1 시 YouTube 메시지를 우리 chat_messages 에 INSERT
+    //   - text 메시지만 forward (superchat / member 이벤트 별도 처리)
+    //   - 중복 방지: youtube_message_id 컬럼으로 dedupe (없으면 best-effort)
+    //   - user_name 에 "[YT] " prefix
+    let forwardedCount = 0
+    if (c.req.query('forward') === '1' && items.length > 0) {
+      try {
+        await c.env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS youtube_chat_forwards (
+            youtube_message_id TEXT PRIMARY KEY,
+            chat_message_id INTEGER,
+            forwarded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run()
+      } catch { /* table 이미 존재 */ }
+
+      for (const item of items) {
+        if (item.type !== 'textMessageEvent' || !item.message) continue
+        try {
+          const existing = await c.env.DB.prepare(
+            'SELECT 1 FROM youtube_chat_forwards WHERE youtube_message_id = ?'
+          ).bind(item.id).first()
+          if (existing) continue
+
+          const cleanName = `[YT] ${item.author}`.slice(0, 50)
+          const cleanMsg = item.message.slice(0, 500)
+          const result = await c.env.DB.prepare(`
+            INSERT INTO chat_messages (live_stream_id, user_id, user_name, message, is_seller, is_admin)
+            VALUES (?, NULL, ?, ?, ?, 0)
+          `).bind(streamId, cleanName, cleanMsg, item.isOwner ? 1 : 0).run()
+
+          await c.env.DB.prepare(`
+            INSERT INTO youtube_chat_forwards (youtube_message_id, chat_message_id) VALUES (?, ?)
+          `).bind(item.id, result.meta.last_row_id).run()
+
+          forwardedCount++
+        } catch (err) {
+          if (import.meta.env?.DEV) console.warn('[YT Chat Forward] Skip:', err)
+        }
+      }
+    }
+
     return c.json({
       success: true,
       data: {
         items,
         next_page_token: data.nextPageToken,
         polling_interval_ms: data.pollingIntervalMillis || 5000,
+        forwarded: forwardedCount,
       }
     })
   } catch (error: unknown) {

@@ -684,13 +684,26 @@ const SELLER_SEED: SeedSection[] = [
 4. **방송 예고** — 팔로워에게 시작 1시간 전 알림 발송
 
 ### 방송 도구 4가지 (자동 추천됨)
-- **빠른 시작** — 원클릭, 초보자 추천
-- **YouTube Studio** — 설치 없이 브라우저에서 바로
-- **OBS Studio** — PC에서 고급 화면 구성 가능 ✓ 한 번 설정하면 RTMP 키 자동 저장
-- **Naver Prism** — 모바일/PC 겸용, 한국 셀러에게 친숙 ✓ 첫 사용 시 QR 스캔만 하면 됨
+- **🟢 Prism Mobile** *(초보 추천)* — 핸드폰 1대, QR 1번 스캔
+- **OBS Studio** — PC + 무료 OBS 설치 필요, 화질 최고 ✓ persistent stream key 자동
+- **원클릭 (OBS 필요)** — OBS 설정 후 매번 빠른 시작. obs-websocket 활성화 시 **완전 자동 송출**
+- **YouTube Studio (전문가)** — OBS + 다중 채널 + 슈퍼챗/멤버십 활용
 
 > 💡 **마지막 사용 도구가 자동 선택됩니다.** 한 번 OBS로 방송하면 다음에도 OBS가 기본값.
-> 모바일 접속 시 Prism, PC 접속 시 OBS가 처음 진입 시 추천됨.
+
+### 🛡️ 2026-05-07: obs-websocket 활성화 (강력 추천 — 자동 송출용)
+
+obs-websocket 을 활성화하면 우리 서비스에서 **OBS 를 자동 제어**해서 방송 시작/종료가 1-click 이 됩니다 (RTMP 키 복붙도 불필요).
+
+**OBS 28+ (내장)**:
+1. OBS 실행 → \`Tools\` → \`WebSocket Server Settings\`
+2. \`Enable WebSocket Server\` 체크
+3. 비밀번호 설정 (예: \`urlive123\`)
+4. \`Show Connect Info\` → 표시되는 정보 메모
+5. 우리 서비스 \`/seller/live-broadcast\` → "OBS 연결 설정" 에 host(localhost) / port(4455) / 비밀번호 입력
+6. 다음 방송부터: **방송 만들기 → 자동 OBS 연결 → 자동 RTMP 설정 → 자동 송출**
+
+**OBS 27 이하**: obs-websocket 플러그인 별도 설치 (https://github.com/obsproject/obs-websocket/releases)
 
 ### 방송 만들기 플로우
 1. \`/seller/live-broadcast\` 진입 (이미 진행 중 방송 있으면 자동 복귀)
