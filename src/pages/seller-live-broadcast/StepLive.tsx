@@ -36,6 +36,16 @@ export default function StepLive({ stream, products, method, onChangeProduct, on
   const pipWindowRef = useRef<Window | null>(null)
   const pipUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // 🛡️ 2026-05-07: 라이브 시작 60초 후 YouTube CDN 썸네일 자동 refresh
+  //   (셀러 실제 화면 frame 으로 갱신됨, 비용 0)
+  useEffect(() => {
+    if (method !== 'youtube' && method !== 'quick') return
+    const timer = setTimeout(() => {
+      api.post(`/api/youtube/live/${stream.id}/refresh-thumbnail`, {}).catch(() => { /* silent */ })
+    }, 60000)
+    return () => clearTimeout(timer)
+  }, [stream.id, method])
+
   // Document Picture-in-Picture API (Chrome 116+)
   async function togglePiP() {
     // @ts-expect-error: documentPictureInPicture is not in standard DOM types yet
