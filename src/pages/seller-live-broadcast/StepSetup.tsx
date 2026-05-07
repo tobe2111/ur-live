@@ -8,14 +8,10 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { safeTime } from '@/utils/safe-date'
-import { ScheduledBroadcastWaiting, YouTubeStudioWaiting } from '../SellerLiveBroadcast.WaitingScreens'
-import OBSRemoteControl from '../SellerLiveBroadcast.OBSRemoteControl'
-import PrismQRCode from '@/components/streaming/PrismQRCode'
+import { ScheduledBroadcastWaiting } from '../SellerLiveBroadcast.WaitingScreens'
 import { InlineCameraPreview } from '@/components/streaming/InlineCameraPreview'
 import { BroadcastDiagnostic } from '@/components/streaming/BroadcastDiagnostic'
 import BroadcastPreflightCheck from '@/components/streaming/BroadcastPreflightCheck'
-import ChromeExtensionBanner from '@/components/streaming/ChromeExtensionBanner'
-import QuickStartWaiting from './QuickStartWaiting'
 import type { StreamMethod } from '../SellerLiveBroadcast.storage'
 import type { LiveStream, YouTubeChannel } from './types'
 import { useScreenWakeLock } from '@/hooks/useScreenWakeLock'
@@ -55,41 +51,46 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
         <span className="text-[11px] text-amber-600 font-medium shrink-0">{t('seller.liveBroadcast.waitingConnection')}</span>
       </div>
 
-      {/* 🛡️ 2026-05-07: Quick 과 YouTube Studio 분리 */}
-      {method === 'quick' && (
-        <QuickStartWaiting stream={stream} />
-      )}
-
-      {method === 'youtube' && (
-        <>
-          <ChromeExtensionBanner />
-          <YouTubeStudioWaiting stream={stream} accent="red" />
-        </>
-      )}
-
-      {method === 'obs' && (
-        <OBSRemoteControl stream={stream} hasPersistentKey={!!hasPersistentKey} copiedField={copiedField} onCopy={onCopy} />
-      )}
-
-      {method === 'prism' && (
-        <div className="space-y-3">
-          {hasPersistentKey ? (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-green-800">{t('seller.liveBroadcast.rtmpSetupDone')}</p>
-                <p className="text-xs text-green-700 mt-0.5">{t('seller.liveBroadcast.prismJustStart')}</p>
-                {/* 🛡️ 2026-05-07: 키 잊었을 때 다시 보러가는 링크 (UX 사고 — hasPersistentKey 면 키 숨김) */}
-                <a href="/seller/streaming-setup" className="inline-flex items-center gap-1 text-[11px] text-green-800 hover:text-green-900 underline underline-offset-2 mt-1.5 font-medium">
-                  RTMP 키 다시 보기 →
-                </a>
+      {/* 🛡️ 2026-05-07: 통합된 단순 대기 화면 — 모드 분기 제거.
+          셀러는 사전에 /seller/streaming-setup 에서 본인 도구 설정해둔 상태.
+          여기는 "어디서든 송출 시작 버튼만 누르세요" 안내. */}
+      {hasPersistentKey ? (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-green-800">송출 준비 완료</p>
+            <p className="text-xs text-green-700 mt-0.5">OBS / Prism / Larix / YouTube Studio 어디서든 [방송 시작] 버튼만 누르세요.</p>
+            <a href="/seller/streaming-setup" className="inline-flex items-center gap-1 text-[11px] text-green-800 hover:text-green-900 underline underline-offset-2 mt-1.5 font-medium">
+              RTMP 키 다시 보기 →
+            </a>
+          </div>
+        </div>
+      ) : stream.rtmp_url && stream.rtmp_key ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+          <p className="text-sm font-bold text-amber-900">아래 RTMP 정보를 OBS/Prism/Larix 에 입력하세요</p>
+          <div className="space-y-1.5 mt-2">
+            <div>
+              <label className="block text-[10px] font-bold text-amber-700">RTMP URL</label>
+              <div className="flex gap-2">
+                <input readOnly value={stream.rtmp_url} className="flex-1 px-2 py-1.5 bg-white border border-amber-200 rounded text-xs font-mono text-gray-900" />
+                <button onClick={() => onCopy(stream.rtmp_url!, 'url')} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded">
+                  {copiedField === 'url' ? '✓' : '복사'}
+                </button>
               </div>
             </div>
-          ) : stream.rtmp_url && stream.rtmp_key ? (
-            <PrismQRCode rtmpUrl={stream.rtmp_url} rtmpKey={stream.rtmp_key} streamTitle={stream.title} />
-          ) : null}
+            <div>
+              <label className="block text-[10px] font-bold text-amber-700">Stream Key</label>
+              <div className="flex gap-2">
+                <input readOnly type="password" value={stream.rtmp_key} className="flex-1 px-2 py-1.5 bg-white border border-amber-200 rounded text-xs font-mono text-gray-900" />
+                <button onClick={() => onCopy(stream.rtmp_key!, 'key')} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded">
+                  {copiedField === 'key' ? '✓' : '복사'}
+                </button>
+              </div>
+            </div>
+          </div>
+          <a href="/seller/streaming-setup" className="inline-block text-[11px] text-amber-700 hover:text-amber-900 underline mt-2">상세 가이드 보기 →</a>
         </div>
-      )}
+      ) : null}
 
       <div className="pt-3 border-t border-gray-100 space-y-3">
         {/* 🛡️ 2026-05-07: Pre-flight 사전 점검 — 30초 멈춤 사고 미연 방지 */}
@@ -98,19 +99,17 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
         {/* 인라인 카메라 미리보기 — 어느 방법이든 방송 전 확인용 */}
         <InlineCameraPreview />
 
-        {(method === 'obs' || method === 'prism') && (
-          <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-            <span className="flex gap-1 shrink-0">
-              {[0, 0.2, 0.4].map((d, i) => (
-                <span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce"
-                  style={{ animationDelay: `${d}s` }} />
-              ))}
-            </span>
-            <p className="text-xs text-blue-700 flex-1">
-              {method === 'obs' ? 'OBS' : 'Prism'}에서 스트리밍을 시작하면 자동으로 방송이 시작됩니다
-            </p>
-          </div>
-        )}
+        <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+          <span className="flex gap-1 shrink-0">
+            {[0, 0.2, 0.4].map((d, i) => (
+              <span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce"
+                style={{ animationDelay: `${d}s` }} />
+            ))}
+          </span>
+          <p className="text-xs text-blue-700 flex-1">
+            송출 도구 (OBS/Prism/Larix/YouTube Studio) 에서 [방송 시작] 누르면 자동으로 라이브 시작됩니다.
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600">
             <ArrowLeft className="w-4 h-4" /> {t('common.cancel')}

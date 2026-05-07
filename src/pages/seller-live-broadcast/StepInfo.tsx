@@ -273,33 +273,30 @@ export default function StepInfo({ title, setTitle, description, setDescription,
         )}
       </div>
 
-      {/* 송출 도구 (필수) — P0-3 영구키 배지 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.streamingTool')}</label>
-        <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.streamingToolDesc')}</p>
-        <div className="grid grid-cols-3 gap-3">
-          {methodOptions.map(m => (
-            <button key={m.key} onClick={() => setMethod(m.key)}
-              className={`relative p-4 rounded-xl border-2 transition-all text-center active:scale-95 ${method === m.key ? m.active : 'border-gray-100 hover:border-gray-200'}`}>
-              {m.recommended && (
-                <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] bg-green-500 text-white px-2 py-0.5 rounded-full font-bold whitespace-nowrap shadow-sm">
-                  초보 추천
-                </span>
-              )}
-              {m.hasKey && (
-                <span className="absolute top-1 right-1 text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">
-                  ✓ 저장됨
-                </span>
-              )}
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 ${method === m.key ? m.active.split(' ')[1] : 'bg-gray-100'}`}>
-                <m.icon className={`h-5 w-5 ${method === m.key ? m.iconActive : 'text-gray-400'}`} />
-              </div>
-              <p className="text-xs font-semibold text-gray-900">{m.label}</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">{m.desc}</p>
-            </button>
-          ))}
+      {/* 🛡️ 2026-05-07: 모드 선택 제거 → 송출 키 상태 표시만.
+          셀러는 /seller/streaming-setup 에서 본인 환경에 맞는 도구 (Prism/OBS/Larix/Studio)
+          한 번만 설정. 방송 만들기는 그 도구 무관하게 동일 흐름. */}
+      {hasPersistentKey ? (
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <p className="text-sm font-semibold text-green-800">송출 도구 준비됨</p>
+            <span className="text-xs text-green-600">· OBS/Prism/Larix 어디서든 시작 가능</span>
+          </div>
+          <a href="/seller/streaming-setup" className="text-[11px] text-green-700 hover:text-green-900 underline underline-offset-2">키 다시 보기</a>
         </div>
-      </div>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚙️</span>
+            <p className="text-sm font-bold text-amber-900">송출 도구 설정이 먼저 필요해요</p>
+          </div>
+          <p className="text-xs text-amber-700">한 번만 설정하면 다음 방송부터는 [방송 시작] 만 누르면 됩니다.</p>
+          <a href="/seller/streaming-setup" className="inline-block text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg">
+            송출 키 설정하러 가기 →
+          </a>
+        </div>
+      )}
 
       {/* 🛡️ 2026-05-07: 알림톡 + 연습 모드 토글 */}
       <div className="border-t border-gray-100 pt-4 space-y-2.5">

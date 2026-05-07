@@ -167,17 +167,36 @@ export default function SellerStreamingSetupPage() {
               </div>
             </div>
 
-            {/* 모바일 (Larix) — 추천 */}
+            {/* PC (Prism) — 한국 인기 */}
+            <div className="bg-white border-2 border-indigo-300 rounded-2xl p-6 space-y-3 relative">
+              <span className="absolute -top-2 left-4 text-[10px] bg-indigo-500 text-white font-bold px-2 py-0.5 rounded">한국 인기</span>
+              <div className="flex items-center gap-2">
+                <Monitor className="w-5 h-5 text-indigo-600" />
+                <p className="text-sm font-bold text-gray-900">💻 Prism Live Studio (한국 셀러 가장 많이 사용)</p>
+              </div>
+              <ol className="text-xs text-gray-700 space-y-1.5 pl-4 list-decimal">
+                <li>
+                  <a href="https://prismlive.com/ko_kr/pcapp/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-1">
+                    Prism Live Studio 다운로드 <ExternalLink className="w-3 h-3" />
+                  </a> · 설치 후 실행 (PC 무료, 한글 UI)
+                </li>
+                <li>"라이브" → "방송 채널 추가" → <strong>Custom RTMP</strong> 선택</li>
+                <li>위 RTMP URL 과 Stream Key 붙여넣기 → 저장</li>
+                <li>장면에 카메라/화면 추가 → <strong>"방송 시작"</strong> 클릭</li>
+              </ol>
+              <p className="text-[11px] text-gray-500">📱 모바일 Prism 앱도 동일하게 같은 키 사용 가능 (PC/모바일 모두).</p>
+            </div>
+
+            {/* 모바일 (Larix) */}
             <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
               <div className="flex items-center gap-2">
                 <Smartphone className="w-5 h-5 text-pink-600" />
-                <p className="text-sm font-bold text-gray-900">📱 모바일 (가장 쉬움) — Larix Broadcaster</p>
-                <span className="text-[10px] bg-pink-500 text-white font-bold px-2 py-0.5 rounded">추천</span>
+                <p className="text-sm font-bold text-gray-900">📱 Larix Broadcaster (모바일 전용, QR 자동 입력)</p>
               </div>
               <ol className="text-xs text-gray-700 space-y-1.5 pl-4 list-decimal">
                 <li>App Store / Play Store 에서 "<strong>Larix Broadcaster</strong>" 검색 → 무료 설치</li>
-                <li>아래 QR 을 폰 카메라로 스캔 (또는 폰에서 이 페이지 열어서 "Larix 자동 입력" 버튼)</li>
-                <li>Larix 가 자동으로 RTMP 설정 입력 → 빨간 버튼만 누르면 송출 시작</li>
+                <li>아래 QR 을 폰 카메라로 스캔 (또는 폰에서 이 페이지 열고 자동 입력 버튼)</li>
+                <li>Larix 가 자동으로 RTMP 설정 입력 → 빨간 버튼만 누르면 송출</li>
               </ol>
               <div className="flex gap-4 items-center justify-center pt-2">
                 <div className="bg-white p-3 rounded-xl border border-gray-200">
@@ -185,7 +204,7 @@ export default function SellerStreamingSetupPage() {
                 </div>
                 <div className="text-xs text-gray-600 max-w-xs">
                   <p className="font-semibold mb-1">QR 스캔 후 "Larix 로 열기"</p>
-                  <p className="text-gray-500">설치 안 되어있으면 앱스토어로 이동. Larix 에서 다시 같은 QR 스캔하면 자동 입력됩니다.</p>
+                  <p className="text-gray-500">설치 안 되어있으면 앱스토어로 이동.</p>
                   <a
                     href={larixDeepLink}
                     className="inline-flex items-center gap-1 mt-2 text-pink-600 hover:text-pink-700 font-medium"
@@ -200,7 +219,7 @@ export default function SellerStreamingSetupPage() {
             <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-3">
               <div className="flex items-center gap-2">
                 <Monitor className="w-5 h-5 text-purple-600" />
-                <p className="text-sm font-bold text-gray-900">💻 PC — OBS Studio (전문가용)</p>
+                <p className="text-sm font-bold text-gray-900">💻 OBS Studio (PC, 전세계 표준)</p>
               </div>
               <ol className="text-xs text-gray-700 space-y-1.5 pl-4 list-decimal">
                 <li>
@@ -214,22 +233,23 @@ export default function SellerStreamingSetupPage() {
               </ol>
             </div>
 
-            {/* PC (Prism) */}
+            {/* YouTube Studio (인코더 모드) */}
             <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-3">
               <div className="flex items-center gap-2">
-                <Monitor className="w-5 h-5 text-indigo-600" />
-                <p className="text-sm font-bold text-gray-900">💻 PC — Prism Live Studio (UI 친절)</p>
+                <Youtube className="w-5 h-5 text-red-600" />
+                <p className="text-sm font-bold text-gray-900">🎥 YouTube Studio (브라우저, 다중 채널 관리용)</p>
               </div>
               <ol className="text-xs text-gray-700 space-y-1.5 pl-4 list-decimal">
                 <li>
-                  <a href="https://prismlive.com/ko_kr/pcapp/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-1">
-                    Prism Live Studio 다운로드 <ExternalLink className="w-3 h-3" />
-                  </a> · 설치 후 실행
+                  <a href="https://studio.youtube.com/channel/livestreaming" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline inline-flex items-center gap-1">
+                    YouTube Studio 라이브 <ExternalLink className="w-3 h-3" />
+                  </a> 접속
                 </li>
-                <li>"라이브" → "방송 채널 추가" → <strong>Custom RTMP</strong> 선택</li>
-                <li>위 RTMP URL 과 Stream Key 붙여넣기 → 저장</li>
-                <li><strong>"방송 시작"</strong> 클릭</li>
+                <li>"스트리밍" → "스트림" 탭 → "새 스트림" 또는 기존 스트림 선택</li>
+                <li>위 RTMP URL/Key 와 같은 값이 표시되는지 확인 (Studio 가 같은 endpoint 사용)</li>
+                <li>OBS 또는 Prism 의 RTMP 설정에 위 키 입력 → 송출 시작</li>
               </ol>
+              <p className="text-[11px] text-gray-500">💡 Studio 는 영상 인코딩을 직접 하지 않습니다. 결국 OBS/Prism 같은 외부 인코더 필요.</p>
             </div>
 
             {/* 다음 단계 안내 */}
