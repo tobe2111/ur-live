@@ -15,7 +15,6 @@ import AuctionTimeDealControls from '../SellerLiveBroadcast.AuctionTimeDealContr
 import DonationBoosterButton from '@/components/seller/DonationBoosterButton'
 import PKLiveBanner from '@/components/live/PKLiveBanner'
 import LiveChatPanel from '@/components/seller/LiveChatPanel'
-import YouTubeChatSyncIndicator from '@/components/streaming/YouTubeChatSyncIndicator'
 import ConnectionQualityGauge from '@/components/streaming/ConnectionQualityGauge'
 import type { StreamMethod } from '../SellerLiveBroadcast.storage'
 import type { LiveStream, Product } from './types'
@@ -38,6 +37,7 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
   const [elapsed, setElapsed] = useState('00:00')
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [pipActive, setPipActive] = useState(false)
+  const [productSearch, setProductSearch] = useState('')
   const pipWindowRef = useRef<Window | null>(null)
   const pipUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -69,6 +69,22 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
     }, 30000)
     return () => clearTimeout(timer)
   }, [stream.id, notifyFollowers, stream.title])
+
+  // 방송 중 스트림 끊김 감지 (30초마다 /status 폴링, 캐시 재활용으로 YouTube API quota 최소화)
+  useEffect(() => {
+    if (!stream.youtube_video_id) return  // webcam 미연결 or non-YouTube 모드
+    const check = async () => {
+      try {
+        const res = await api.get(`/api/seller/youtube/live/${stream.id}/status`)
+        const data = res.data?.data
+        if (data?.youtube_status === 'complete' || data?.youtube_status === 'revoked') {
+          toast.error('⚠️ YouTube 방송이 종료되었습니다. 재송출이 필요합니다.')
+        }
+      } catch { /* silent — 네트워크 일시 오류는 무시 */ }
+    }
+    const id = setInterval(check, 30000)
+    return () => clearInterval(id)
+  }, [stream.id, stream.youtube_video_id])
 
   // Document Picture-in-Picture API (Chrome 116+)
   async function togglePiP() {
@@ -236,11 +252,6 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
         </div>
       </div>
 
-      {/* 🛡️ 2026-05-07: YouTube 라이브 채팅 동기화 (YouTube Studio / Quick 모드) */}
-      {(method === 'youtube' || method === 'quick') && (
-        <YouTubeChatSyncIndicator streamId={stream.id} />
-      )}
-
       {/* P2-12: 단축키 도움말 */}
       {showShortcuts && (
         <div className="bg-gray-900 text-white rounded-xl p-4 text-xs space-y-1.5">
@@ -268,13 +279,28 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
       {/* 상품 전환 + 경매/타임딜 */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-4">
         <div>
-          <p className="text-xs font-semibold text-gray-700 mb-2">{t('seller.liveBroadcast.switchProduct')} <span className="text-gray-400 font-normal">({t('seller.liveBroadcast.tapToSwitch')})</span></p>
+          <div className="flex items-center gap-2 mb-2">
+            <p className="text-xs font-semibold text-gray-700 flex-1">{t('seller.liveBroadcast.switchProduct')} <span className="text-gray-400 font-normal">({t('seller.liveBroadcast.tapToSwitch')})</span></p>
+            {products.length > 5 && (
+              <input
+                type="text"
+                value={productSearch}
+                onChange={e => setProductSearch(e.target.value)}
+                placeholder="상품 검색"
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1 w-24 focus:outline-none focus:ring-1 focus:ring-blue-300 text-gray-900"
+              />
+            )}
+          </div>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            {products.map((p: Product) => {
+            {products
+              .filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()))
+              .map((p: Product) => {
               const isCurrent = stream.current_product_id === p.id
+              const isSoldOut = p.stock === 0
               return (
                 <button key={p.id}
                   onClick={async () => {
+                    if (isSoldOut) { toast.error(`${p.name} 품절`); return }
                     try {
                       await api.post(`/api/seller/streams/${stream.id}/change-product`,
                         { productId: p.id },
@@ -284,10 +310,15 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
                     } catch { toast.error(t('seller.liveBroadcast.switchFailed')) }
                   }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium shrink-0 transition-all active:scale-95 ${
-                    isCurrent ? 'border-red-500 bg-red-50 text-red-600 shadow-sm' : 'border-gray-200 text-gray-700 hover:border-blue-300'
+                    isCurrent ? 'border-red-500 bg-red-50 text-red-600 shadow-sm' :
+                    isSoldOut ? 'border-gray-100 bg-gray-50 text-gray-400 opacity-60' :
+                    'border-gray-200 text-gray-700 hover:border-blue-300'
                   }`}>
                   {p.image_url && <img src={p.image_url} alt="" className="w-7 h-7 rounded object-cover" loading="lazy" />}
-                  <span className="truncate max-w-[90px]">{p.name}</span>
+                  <div className="min-w-0">
+                    <span className="truncate max-w-[90px] block">{p.name}</span>
+                    {isSoldOut && <span className="text-[9px] text-red-500 font-bold">품절</span>}
+                  </div>
                   {isCurrent && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />}
                 </button>
               )

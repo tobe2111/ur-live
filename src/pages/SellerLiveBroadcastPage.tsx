@@ -94,8 +94,9 @@ export default function SellerLiveBroadcastPage() {
   const [destinations, setDestinations] = useState<DestinationPlatform[]>([])
   const [currentStream, setCurrentStream] = useState<LiveStream | null>(null)
   // 🛡️ 2026-05-07: 셀러 옵션 — 알림톡 자동 발송 / 연습 모드
+  // 알림톡은 우리 API 비용 발생 — 셀러가 명시적으로 ON 해야 발송
   const [notifyFollowers, setNotifyFollowers] = useState<boolean>(() =>
-    localStorage.getItem('ur_notify_followers_v1') !== '0')
+    localStorage.getItem('ur_notify_followers_v1') === '1')
   const [practiceMode, setPracticeMode] = useState<boolean>(false)
   useEffect(() => {
     localStorage.setItem('ur_notify_followers_v1', notifyFollowers ? '1' : '0')
@@ -260,6 +261,32 @@ export default function SellerLiveBroadcastPage() {
       if (r.data?.success) setDestinations(r.data.data || [])
     }).catch(() => { /* silent */ })
   }
+
+  // 방송 중 재고 주기적 갱신 (2분) + 현재 상품 품절 감지
+  const prevStockRef = useRef<Record<number, number>>({})
+  useEffect(() => {
+    if (step !== 'live' || !currentStream) return
+    const refresh = async () => {
+      try {
+        const r = await api.get('/api/seller/products')
+        if (!r.data?.success) return
+        const updated: Product[] = r.data.data || []
+        setProducts(updated)
+        // 현재 판매 상품이 새로 품절됐는지 체크
+        const prev = prevStockRef.current
+        updated.forEach(p => {
+          const wasInStock = (prev[p.id] ?? 1) > 0
+          if (wasInStock && p.stock === 0 && p.id === currentStream.current_product_id) {
+            toast.error(`⚠️ 현재 판매 상품 "${p.name}" 품절! 다른 상품으로 전환하세요.`)
+          }
+          prev[p.id] = p.stock
+        })
+        prevStockRef.current = prev
+      } catch { /* silent */ }
+    }
+    const id = setInterval(refresh, 120000)  // 2분 (D1 reads, 무료)
+    return () => clearInterval(id)
+  }, [step, currentStream])
 
   // P2-11: 채널 연결 해제 (모달 기반)
   const [disconnectChannelId, setDisconnectChannelId] = useState<number | null>(null)

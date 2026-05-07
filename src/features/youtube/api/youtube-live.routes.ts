@@ -26,10 +26,15 @@ app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
 // YouTube API 상태 조회 서버사이드 캐시 (25s TTL) — API quota 절감
 // 셀러 10명 방송 시: 5s polling → 최대 2 API calls/5s (캐시 미스 시) vs 기존 10 calls/5s
 const statusCache = new Map<string, { data: unknown; ts: number }>()
-const STATUS_CACHE_TTL_MS = 25_000
+const CACHE_TTL: Record<string, number> = {
+  status: 25_000,   // /status 폴링: 25s (라이브 감지 지연 허용)
+  'yt-stats': 60_000, // youtube-stats: 60s (ConnectionQualityGauge 8s → 실제 API 1/8)
+}
 function getCachedStatus(key: string) {
   const entry = statusCache.get(key)
-  if (entry && Date.now() - entry.ts < STATUS_CACHE_TTL_MS) return entry.data
+  const prefix = key.split(':')[0]
+  const ttl = CACHE_TTL[prefix] ?? 25_000
+  if (entry && Date.now() - entry.ts < ttl) return entry.data
   return null
 }
 function setCachedStatus(key: string, data: unknown) {
@@ -526,7 +531,11 @@ app.get('/live/:id/youtube-stats', async (c) => {
     const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
     if (!accessToken) return c.json({ success: false, error: 'YouTube auth required' }, 401)
 
-    // videos.list 로 liveStreamingDetails + statistics 조회
+    // videos.list — 60s 캐싱 (ConnectionQualityGauge 8s 폴링 → YouTube API 실제 호출 1/8로 감소)
+    const statsCacheKey = `yt-stats:${stream.youtube_video_id}`
+    const statsCached = getCachedStatus(statsCacheKey) as Record<string, unknown> | null
+    if (statsCached) return c.json({ success: true, data: statsCached })
+
     const res = await fetch(
       `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,statistics&id=${stream.youtube_video_id}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -534,16 +543,15 @@ app.get('/live/:id/youtube-stats', async (c) => {
     if (!res.ok) return c.json({ success: false, error: `YouTube API ${res.status}` }, 500)
     const data = await res.json() as { items?: Array<{ liveStreamingDetails?: { concurrentViewers?: string; actualStartTime?: string }; statistics?: { viewCount?: string; likeCount?: string } }> }
     const item = data.items?.[0]
+    const statsData = {
+      concurrent_viewers: parseInt(item?.liveStreamingDetails?.concurrentViewers || '0'),
+      total_views: parseInt(item?.statistics?.viewCount || '0'),
+      like_count: parseInt(item?.statistics?.likeCount || '0'),
+      actual_start_time: item?.liveStreamingDetails?.actualStartTime,
+    }
+    setCachedStatus(statsCacheKey, statsData)
 
-    return c.json({
-      success: true,
-      data: {
-        concurrent_viewers: parseInt(item?.liveStreamingDetails?.concurrentViewers || '0'),
-        total_views: parseInt(item?.statistics?.viewCount || '0'),
-        like_count: parseInt(item?.statistics?.likeCount || '0'),
-        actual_start_time: item?.liveStreamingDetails?.actualStartTime,
-      }
-    })
+    return c.json({ success: true, data: statsData })
   } catch (error: unknown) {
     return c.json({ success: false, error: error instanceof Error ? error.message : 'Failed' }, 500)
   }
