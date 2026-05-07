@@ -323,8 +323,15 @@ export default function SellerLiveBroadcastPage() {
     try {
       setCreating(true)
       let scheduledStartTime = new Date().toISOString()
-      if (isScheduled && scheduledDate && scheduledTime)
-        scheduledStartTime = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+      if (isScheduled && scheduledDate && scheduledTime) {
+        const d = new Date(`${scheduledDate}T${scheduledTime}:00`)
+        if (isNaN(d.getTime()) || d.getTime() < Date.now() - 60_000) {
+          toast.error('예약 시간이 과거입니다. 미래 시간으로 설정해주세요.')
+          setCreating(false)
+          return
+        }
+        scheduledStartTime = d.toISOString()
+      }
 
       const endpoint = method === 'youtube-webcam'
         ? '/api/seller/youtube/live/create-webcam'
@@ -584,6 +591,7 @@ export default function SellerLiveBroadcastPage() {
             products={sellableProducts}
             method={method}
             notifyFollowers={notifyFollowers}
+            practiceMode={practiceMode}
             onChangeProduct={(productId: number) => setCurrentStream(s => s ? { ...s, current_product_id: productId } : s)}
             onEndStream={requestEndStream}
           />

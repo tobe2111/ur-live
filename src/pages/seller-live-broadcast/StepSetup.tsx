@@ -3,7 +3,7 @@
  *
  * 라이브 시작 전 RTMP 설정 / OBS 가이드 / 카메라 미리보기 / 송출 진단.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,8 +31,19 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
   const [showDiagnostic, setShowDiagnostic] = useState(false)
   const [autoDiagnosticShown, setAutoDiagnosticShown] = useState(false)
+  const [waitSeconds, setWaitSeconds] = useState(0)
+  const waitRef = useRef(0)
   // 대기 중 화면 잠금 방지 (Prism QR 스캔 중, YouTube Studio 확인 중 화면 꺼짐 방지)
   useScreenWakeLock(true)
+
+  // 대기 경과 시간 카운터 (탈출 안내 표시용)
+  useEffect(() => {
+    const id = setInterval(() => {
+      waitRef.current += 1
+      setWaitSeconds(waitRef.current)
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
 
   // 30초 경과 + 여전히 setup 상태 = 송출이 감지 안 되고 있음 → 진단 자동 제안
   useEffect(() => {
@@ -124,11 +135,28 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
             className="text-[11px] text-blue-500 hover:text-blue-700 underline underline-offset-2">
             🔍 감지 안 되나요?
           </button>
+          {/* 60초 이상 대기 시 수동 시작 버튼 강조 */}
           <button onClick={onGoLive}
-            className="text-[11px] text-gray-300 hover:text-gray-500 underline underline-offset-2">
-            {t('seller.liveBroadcast.manualStartHint')}
+            className={`text-[11px] underline underline-offset-2 transition-colors ${
+              waitSeconds >= 60
+                ? 'text-orange-500 hover:text-orange-700 font-semibold'
+                : 'text-gray-300 hover:text-gray-500'
+            }`}>
+            {waitSeconds >= 60 ? '⚡ 수동으로 시작' : t('seller.liveBroadcast.manualStartHint')}
           </button>
         </div>
+        {/* 2분 이상 대기 시 명시적 안내 */}
+        {waitSeconds >= 120 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
+            <span className="text-base shrink-0">⏱️</span>
+            <div>
+              <p className="text-xs font-bold text-orange-800">송출 감지가 오래 걸리고 있어요</p>
+              <p className="text-[11px] text-orange-700 mt-0.5">
+                이미 OBS/Prism에서 송출 중이라면 <button onClick={onGoLive} className="underline font-semibold">수동으로 시작</button>을 눌러 진행할 수 있어요.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
       {showDiagnostic && (
         <BroadcastDiagnostic streamId={stream.id} method={method} onClose={() => setShowDiagnostic(false)} />

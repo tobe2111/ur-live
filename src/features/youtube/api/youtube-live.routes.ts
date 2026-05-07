@@ -66,6 +66,13 @@ app.post('/live/create', async (c) => {
     }, 400)
   }
 
+  if (scheduled_start_time) {
+    const scheduledMs = new Date(scheduled_start_time).getTime()
+    if (isNaN(scheduledMs) || scheduledMs < Date.now() - 60_000) {
+      return c.json({ success: false, error: '예약 시간이 과거입니다. 미래 시간으로 설정해주세요.' }, 400)
+    }
+  }
+
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
 

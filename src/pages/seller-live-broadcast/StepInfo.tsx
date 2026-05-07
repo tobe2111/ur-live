@@ -69,6 +69,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
   const [templates, setTemplates] = useState<BroadcastTemplate[]>(() => getTemplates())
   const [showTemplates, setShowTemplates] = useState(false)
   const hasPersistentKey = channels[0]?.has_persistent_key
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent)
   const privacyOptions: { key: 'public' | 'unlisted' | 'private'; icon: typeof Globe; label: string; desc: string }[] = [
     { key: 'public', icon: Globe, label: t('seller.liveBroadcast.public'), desc: t('seller.liveBroadcast.publicDesc') },
     { key: 'unlisted', icon: EyeOff, label: t('seller.liveBroadcast.unlisted'), desc: t('seller.liveBroadcast.unlistedDesc') },
@@ -78,7 +79,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
     { key: 'prism' as const, icon: Smartphone, label: t('seller.liveBroadcast.naverPrism', { defaultValue: 'Prism Mobile' }), desc: t('seller.liveBroadcast.prismDesc', { defaultValue: '핸드폰 1대로 끝 · QR 1번 스캔' }), active: 'border-green-400 bg-green-50', iconActive: 'text-green-600', hasKey: !!hasPersistentKey, recommended: true },
     { key: 'youtube-webcam' as const, icon: Youtube, label: 'YouTube Studio (웹캠)', desc: 'OBS 없이 브라우저 웹캠으로 바로 · 가장 간편', active: 'border-red-400 bg-red-50', iconActive: 'text-red-600', hasKey: false, recommended: false },
     { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.obsDesc', { defaultValue: 'PC + 무료 OBS 설치 필요 · 화질 최고' }), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600', hasKey: !!hasPersistentKey, recommended: false },
-    { key: 'quick' as const, icon: Play, label: t('seller.liveBroadcast.quickStartV2', { defaultValue: '원클릭 (OBS 필요)' }), desc: t('seller.liveBroadcast.quickStartDescV2', { defaultValue: '제목·상품 자동 + OBS 송출' }), active: 'border-pink-400 bg-pink-50', iconActive: 'text-pink-600', hasKey: false, recommended: false },
+    ...(!isMobile ? [{ key: 'quick' as const, icon: Play, label: t('seller.liveBroadcast.quickStartV2', { defaultValue: '원클릭 (OBS 필요)' }), desc: t('seller.liveBroadcast.quickStartDescV2', { defaultValue: '제목·상품 자동 + OBS 송출' }), active: 'border-pink-400 bg-pink-50', iconActive: 'text-pink-600', hasKey: false, recommended: false }] : []),
     { key: 'youtube' as const, icon: Youtube, label: 'YouTube Studio (OBS 인코더)', desc: 'OBS + 다중 채널 관리 · 전문가용', active: 'border-orange-400 bg-orange-50', iconActive: 'text-orange-600', hasKey: false, recommended: false },
   ]
 
@@ -251,14 +252,20 @@ export default function StepInfo({ title, setTitle, description, setDescription,
               </button>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto">
-              {filteredProducts.map((p: Product) => (
+              {filteredProducts.map((p: Product) => {
+                const isSoldOut = p.stock === 0
+                const isSelected = selectedProducts.includes(p.id)
+                return (
                 <button key={p.id} onClick={() => toggleProduct(p.id)}
-                  className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all ${selectedProducts.includes(p.id) ? 'border-blue-500 bg-blue-50' : recentProductIds.includes(p.id) ? 'border-gray-300 hover:border-blue-300' : 'border-gray-200 hover:border-gray-300'}`}>
+                  className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all ${isSelected ? 'border-blue-500 bg-blue-50' : isSoldOut ? 'border-red-100 bg-red-50 opacity-70' : recentProductIds.includes(p.id) ? 'border-gray-300 hover:border-blue-300' : 'border-gray-200 hover:border-gray-300'}`}>
                   {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" loading="lazy" />}
-                  <span className="truncate flex-1">{p.name}</span>
-                  {selectedProducts.includes(p.id) && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                  <div className="min-w-0 flex-1">
+                    <span className="truncate block">{p.name}</span>
+                    {isSoldOut && <span className="text-[9px] text-red-500 font-bold">품절</span>}
+                  </div>
+                  {isSelected && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
                 </button>
-              ))}
+              )})}
             </div>
           </>
         )}

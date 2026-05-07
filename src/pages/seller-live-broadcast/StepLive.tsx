@@ -25,11 +25,12 @@ interface StepLiveProps {
   products: Product[]
   method?: StreamMethod
   notifyFollowers?: boolean
+  practiceMode?: boolean
   onChangeProduct: (productId: number) => void
   onEndStream: () => void
 }
 
-export default function StepLive({ stream, products, method, notifyFollowers = true, onChangeProduct, onEndStream }: StepLiveProps) {
+export default function StepLive({ stream, products, method, notifyFollowers = true, practiceMode = false, onChangeProduct, onEndStream }: StepLiveProps) {
   const { t } = useTranslation()
   const startedAtRef = useRef(Date.now())
   // 방송 중 화면 잠금 방지 (모바일에서 화면 꺼짐 방지)
@@ -40,16 +41,23 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
   const [productSearch, setProductSearch] = useState('')
   const pipWindowRef = useRef<Window | null>(null)
   const pipUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // 상품 타이머 자동 전환
+  const [autoAdvanceMin, setAutoAdvanceMin] = useState<number>(0) // 0 = 비활성
+  const [autoAdvanceActive, setAutoAdvanceActive] = useState(false)
+  const autoAdvanceRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const autoAdvanceSecondsRef = useRef(0)
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState(0)
 
-  // 🛡️ 2026-05-07: 라이브 시작 60초 후 YouTube CDN 썸네일 자동 refresh
-  //   (셀러 실제 화면 frame 으로 갱신됨, 비용 0)
+  // 라이브 시작 60초 후 YouTube CDN 썸네일 자동 refresh
+  // 셀러가 커스텀 썸네일을 직접 지정했으면 덮어쓰지 않음
   useEffect(() => {
     if (method !== 'youtube' && method !== 'quick') return
+    if (stream.thumbnail_url) return  // 커스텀 썸네일 유지
     const timer = setTimeout(() => {
       api.post(`/api/youtube/live/${stream.id}/refresh-thumbnail`, {}).catch(() => { /* silent */ })
     }, 60000)
     return () => clearTimeout(timer)
-  }, [stream.id, method])
+  }, [stream.id, method, stream.thumbnail_url])
 
   // 🛡️ 2026-05-07: 라이브 시작 시 팔로워 알림톡 자동 1회 (셀러 잔액 사용)
   //   • notifyFollowers 토글 OFF / 연습 모드 → 발송 안 함
@@ -63,9 +71,14 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
           if (r.data?.success) {
             const sent = r.data.data?.sent || 0
             if (sent > 0) toast.success(`📨 팔로워 ${sent}명에게 알림톡 발송`)
+            else toast.info('📨 알림 발송 대상 팔로워 없음')
+          } else {
+            const err = r.data?.error || ''
+            if (err.includes('크레딧')) toast.error('알림톡 크레딧 부족 — 셀러 > 브랜드메시지에서 충전해주세요')
+            else toast.error(`알림톡 발송 실패: ${err}`)
           }
         })
-        .catch(() => { /* silent */ })
+        .catch(() => { toast.error('알림톡 발송 중 오류가 발생했습니다') })
     }, 30000)
     return () => clearTimeout(timer)
   }, [stream.id, notifyFollowers, stream.title])
@@ -187,6 +200,38 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
     try { pipWindowRef.current?.close() } catch { /* ignore */ }
   }, [])
 
+  // 상품 자동 전환 타이머
+  useEffect(() => {
+    if (!autoAdvanceActive || autoAdvanceMin <= 0) {
+      if (autoAdvanceRef.current) clearInterval(autoAdvanceRef.current)
+      autoAdvanceRef.current = null
+      return
+    }
+    const totalSec = autoAdvanceMin * 60
+    autoAdvanceSecondsRef.current = totalSec
+    setAutoAdvanceCountdown(totalSec)
+    autoAdvanceRef.current = setInterval(() => {
+      autoAdvanceSecondsRef.current -= 1
+      setAutoAdvanceCountdown(autoAdvanceSecondsRef.current)
+      if (autoAdvanceSecondsRef.current <= 0) {
+        const idx = products.findIndex(p => p.id === stream.current_product_id)
+        const nextIdx = (idx + 1) % products.length
+        const next = products[nextIdx]
+        if (next && nextIdx !== idx) {
+          api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: next.id })
+            .then(() => { onChangeProduct(next.id); toast.success(`⏱️ ${next.name} 자동 전환`) })
+            .catch(() => {})
+          autoAdvanceSecondsRef.current = totalSec
+          setAutoAdvanceCountdown(totalSec)
+        } else {
+          setAutoAdvanceActive(false)
+          toast.info('⏱️ 마지막 상품 — 자동 전환 종료')
+        }
+      }
+    }, 1000)
+    return () => { if (autoAdvanceRef.current) clearInterval(autoAdvanceRef.current) }
+  }, [autoAdvanceActive, autoAdvanceMin, products, stream.id, stream.current_product_id, onChangeProduct])
+
   // 방송 경과 시간 타이머
   useEffect(() => {
     const tick = () => {
@@ -227,6 +272,17 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
 
   return (
     <div className="space-y-4">
+      {/* 연습 모드 배너 */}
+      {practiceMode && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+          <span className="text-base">🧪</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-amber-800">연습 모드 방송 중</p>
+            <p className="text-[11px] text-amber-700">시청자 피드 미노출 · 알림톡 미발송 · 비공개(private) 방송입니다</p>
+          </div>
+        </div>
+      )}
+
       {/* 상태 바 */}
       <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-200">
         <div className="flex items-center gap-2 min-w-0">
@@ -278,6 +334,22 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
 
       {/* 상품 전환 + 경매/타임딜 */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-4">
+        {/* 상품 자동 전환 타이머 */}
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-gray-500 shrink-0">⏱️ 자동 전환</span>
+          {[0, 3, 5, 10, 15].map(min => (
+            <button key={min} onClick={() => { setAutoAdvanceMin(min); setAutoAdvanceActive(min > 0) }}
+              className={`px-2 py-1 rounded-lg border font-medium transition-all ${autoAdvanceMin === min && min > 0 && autoAdvanceActive ? 'border-blue-500 bg-blue-50 text-blue-700' : min === 0 ? 'border-gray-200 text-gray-400 hover:border-gray-300' : 'border-gray-200 text-gray-600 hover:border-blue-300'}`}>
+              {min === 0 ? '끄기' : `${min}분`}
+            </button>
+          ))}
+          {autoAdvanceActive && autoAdvanceCountdown > 0 && (
+            <span className="ml-auto text-blue-600 font-mono font-bold shrink-0">
+              {Math.floor(autoAdvanceCountdown / 60)}:{String(autoAdvanceCountdown % 60).padStart(2, '0')} 후 전환
+            </span>
+          )}
+        </div>
+
         <div>
           <div className="flex items-center gap-2 mb-2">
             <p className="text-xs font-semibold text-gray-700 flex-1">{t('seller.liveBroadcast.switchProduct')} <span className="text-gray-400 font-normal">({t('seller.liveBroadcast.tapToSwitch')})</span></p>
