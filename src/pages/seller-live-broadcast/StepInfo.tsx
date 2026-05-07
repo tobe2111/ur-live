@@ -329,26 +329,111 @@ export default function StepInfo({ title, setTitle, description, setDescription,
               </div>
             </div>
 
-            {/* 예약 */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{t('seller.liveBroadcast.scheduleBroadcast')}</p>
-                <p className="text-xs text-gray-500">{isScheduled ? t('seller.liveBroadcast.startAtScheduled') : t('seller.liveBroadcast.startNow')}</p>
+            {/* 🛡️ 2026-05-07: 예약 일정 — 라디오 카드 + datetime 통합 + 빠른 선택 칩 (UX 개선) */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button"
+                  onClick={() => setIsScheduled(() => false)}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                    !isScheduled ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⚡</span>
+                    <div>
+                      <p className={`text-sm font-bold ${!isScheduled ? 'text-blue-700' : 'text-gray-900'}`}>{t('seller.liveBroadcast.startNow', { defaultValue: '바로 시작' })}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">생성 즉시 송출</p>
+                    </div>
+                  </div>
+                </button>
+                <button type="button"
+                  onClick={() => setIsScheduled(() => true)}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                    isScheduled ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📅</span>
+                    <div>
+                      <p className={`text-sm font-bold ${isScheduled ? 'text-blue-700' : 'text-gray-900'}`}>{t('seller.liveBroadcast.scheduleBroadcast', { defaultValue: '예약 방송' })}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">시청자 알림톡 발송</p>
+                    </div>
+                  </div>
+                </button>
               </div>
-              <button onClick={() => setIsScheduled((v: boolean) => !v)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${isScheduled ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${isScheduled ? 'translate-x-5' : ''}`} />
-              </button>
+
+              {isScheduled && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-3 space-y-2">
+                  {/* 빠른 선택 칩 */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {([
+                      { label: '1시간 후', mins: 60 },
+                      { label: '오늘 저녁 8시', when: 'today_8pm' },
+                      { label: '내일 같은 시간', mins: 60 * 24 },
+                      { label: '내일 저녁 8시', when: 'tomorrow_8pm' },
+                    ] as Array<{ label: string; mins?: number; when?: 'today_8pm' | 'tomorrow_8pm' }>).map((q) => (
+                      <button key={q.label} type="button"
+                        onClick={() => {
+                          const d = new Date()
+                          if (typeof q.mins === 'number') {
+                            d.setMinutes(d.getMinutes() + q.mins)
+                          } else if (q.when === 'today_8pm') {
+                            d.setHours(20, 0, 0, 0)
+                          } else if (q.when === 'tomorrow_8pm') {
+                            d.setDate(d.getDate() + 1)
+                            d.setHours(20, 0, 0, 0)
+                          }
+                          const yyyy = d.getFullYear()
+                          const mm = String(d.getMonth() + 1).padStart(2, '0')
+                          const dd = String(d.getDate()).padStart(2, '0')
+                          const hh = String(d.getHours()).padStart(2, '0')
+                          const mi = String(d.getMinutes()).padStart(2, '0')
+                          setScheduledDate(`${yyyy}-${mm}-${dd}`)
+                          setScheduledTime(`${hh}:${mi}`)
+                        }}
+                        className="text-[11px] font-semibold text-blue-700 bg-white border border-blue-200 rounded-full px-2.5 py-1 hover:bg-blue-100 transition-colors">
+                        {q.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* 정밀 입력 */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 mb-1">날짜</label>
+                      <input type="date" value={scheduledDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 mb-1">시간</label>
+                      <input type="time" value={scheduledTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledTime(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white" />
+                    </div>
+                  </div>
+                  {/* 선택 미리보기 */}
+                  {scheduledDate && scheduledTime && (() => {
+                    const d = new Date(`${scheduledDate}T${scheduledTime}:00`)
+                    if (isNaN(d.getTime())) return null
+                    const diffMin = Math.round((d.getTime() - Date.now()) / 60000)
+                    const days = Math.floor(diffMin / 1440)
+                    const hours = Math.floor((diffMin % 1440) / 60)
+                    const mins = diffMin % 60
+                    const inFuture = diffMin > 0
+                    const eta = days > 0 ? `${days}일 ${hours}시간 후` : hours > 0 ? `${hours}시간 ${mins}분 후` : `${mins}분 후`
+                    return (
+                      <div className={`text-xs font-semibold rounded-lg px-3 py-2 flex items-center gap-2 ${
+                        inFuture ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        <span>📍</span>
+                        <span>
+                          {d.toLocaleString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {inFuture && ` (${eta})`}
+                          {!inFuture && ' — 과거 시간이에요. 다시 선택해주세요.'}
+                        </span>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
             </div>
-            {isScheduled && (
-              <div className="flex gap-3">
-                <input type="date" value={scheduledDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-                <input type="time" value={scheduledTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledTime(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-            )}
 
             {/* 목적지 */}
             {destinations.filter(d => d.status === 'available').length > 1 && (
