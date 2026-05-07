@@ -94,9 +94,8 @@ export default function SellerLiveBroadcastPage() {
   const [destinations, setDestinations] = useState<DestinationPlatform[]>([])
   const [currentStream, setCurrentStream] = useState<LiveStream | null>(null)
   // 🛡️ 2026-05-07: 셀러 옵션 — 알림톡 자동 발송 / 연습 모드
-  // 알림톡은 우리 API 비용 발생 — 셀러가 명시적으로 ON 해야 발송
   const [notifyFollowers, setNotifyFollowers] = useState<boolean>(() =>
-    localStorage.getItem('ur_notify_followers_v1') === '1')
+    localStorage.getItem('ur_notify_followers_v1') !== '0')
   const [practiceMode, setPracticeMode] = useState<boolean>(false)
   useEffect(() => {
     localStorage.setItem('ur_notify_followers_v1', notifyFollowers ? '1' : '0')
