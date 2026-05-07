@@ -99,8 +99,10 @@ export function FirstTimeTutorial({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex items-center justify-between pt-2">
-          <button onClick={dismiss} className="text-xs text-gray-400 hover:text-gray-600">
-            나중에
+          {/* 🛡️ 2026-05-07: \"다시 보지 않기\" 명확화 — 기존 \"나중에\" 가 dismiss + mark done 이지만
+              사용자에게는 다시 뜰 것 같이 느껴짐. 명시적으로 변경. */}
+          <button onClick={dismiss} className="text-xs text-gray-500 hover:text-gray-700 underline">
+            다시 보지 않기
           </button>
           <button onClick={next}
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold">

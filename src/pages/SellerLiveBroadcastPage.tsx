@@ -216,27 +216,31 @@ export default function SellerLiveBroadcastPage() {
   }, [transitionCountdown, t])
 
   async function loadData() {
-    try {
-      setLoading(true); setLoadError(null)
-      const [chRes, prRes, stRes, dRes] = await Promise.allSettled([
-        api.get('/api/seller/youtube/channels'),
-        api.get('/api/seller/products'),
-        api.get('/api/seller/streams'),
-        api.get('/api/platforms/destinations'),
-      ])
-      if (chRes.status === 'fulfilled' && chRes.value.data?.success) {
-        const chs = chRes.value.data.data || []
+    setLoadError(null)
+    setLoading(true)
+    // 🛡️ 2026-05-07 (perf): streams 만 critical — 도착 즉시 UI 표시 (loading=false).
+    //   channels (YouTube API 호출 5s+) / products / destinations 는 백그라운드 보강.
+    //   기존: Promise.allSettled 4개 모두 대기 → 가장 느린 API (youtube/channels) 가
+    //   전체 로딩 시간 결정 → 사용자 5-10초 대기 사고.
+    api.get('/api/seller/streams')
+      .then(r => { if (r.data?.success) setStreams(r.data.data || []) })
+      .catch(() => setLoadError(t('seller.liveBroadcast.dataLoadFailed')))
+      .finally(() => setLoading(false))
+
+    // 백그라운드 — 도착 즉시 setState (페이지는 이미 표시 중)
+    api.get('/api/seller/youtube/channels').then(r => {
+      if (r.data?.success) {
+        const chs = r.data.data || []
         setChannels(chs)
         if (chs.length > 0 && !activeChannelId) setActiveChannelId(chs[0].id)
       }
-      if (prRes.status === 'fulfilled' && prRes.value.data?.success)
-        setProducts(prRes.value.data.data || [])
-      if (stRes.status === 'fulfilled' && stRes.value.data?.success)
-        setStreams(stRes.value.data.data || [])
-      if (dRes.status === 'fulfilled' && dRes.value.data?.success)
-        setDestinations(dRes.value.data.data || [])
-    } catch { setLoadError(t('seller.liveBroadcast.dataLoadFailed')) }
-    finally { setLoading(false) }
+    }).catch(() => { /* silent — 채널 없어도 UI 표시 */ })
+    api.get('/api/seller/products').then(r => {
+      if (r.data?.success) setProducts(r.data.data || [])
+    }).catch(() => { /* silent */ })
+    api.get('/api/platforms/destinations').then(r => {
+      if (r.data?.success) setDestinations(r.data.data || [])
+    }).catch(() => { /* silent */ })
   }
 
   // P2-11: 채널 연결 해제 (모달 기반)
