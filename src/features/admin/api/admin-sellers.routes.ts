@@ -206,8 +206,12 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
     const rows = await executeQuery<IdRow>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     if (rows[0].status === 'approved') return c.json({ success: false, error: '이미 승인된 판매자입니다' }, 400);
+    const prevStatus = rows[0].status;
     await executeQuery(DB, `UPDATE sellers SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
-    await writeAuditLog(c, { action: 'approve_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'approved' } });
+    // 🛡️ 2026-05-07: seller_status_history INSERT — 영구 변경 이력. 잘못된 거절 복구 / 분쟁 대응.
+    DB.prepare(`INSERT INTO seller_status_history (seller_id, prev_status, new_status, reason) VALUES (?, ?, 'approved', NULL)`)
+      .bind(sellerId, prevStatus).run().catch(() => { /* 테이블 없을 시 silent */ });
+    await writeAuditLog(c, { action: 'approve_seller', targetType: 'seller', targetId: sellerId, before: { status: prevStatus }, after: { status: 'approved' } });
     createDashboardNotification(DB, 'seller', String(sellerId), 'seller_approved', '셀러 승인 완료', '판매를 시작할 수 있습니다', '/seller').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
 
     // 🛡️ 2026-04-28: 셀러에게 카카오 알림톡
@@ -239,7 +243,11 @@ adminSellersRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
     const reason = typeof rawReason === 'string' ? rawReason.slice(0, 500) : null;
     const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    const prevStatusRow = await executeQuery<{ status: string }>(DB, 'SELECT status FROM sellers WHERE id = ?', [sellerId]);
+    const prevStatus = prevStatusRow[0]?.status || null;
     await executeQuery(DB, `UPDATE sellers SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
+    DB.prepare(`INSERT INTO seller_status_history (seller_id, prev_status, new_status, reason) VALUES (?, ?, 'rejected', ?)`)
+      .bind(sellerId, prevStatus, reason).run().catch(() => { /* silent */ });
     await writeAuditLog(c, { action: 'reject_seller', targetType: 'seller', targetId: sellerId, after: { status: 'rejected', reason } });
 
     // 🛡️ 2026-04-28: 셀러에게 거절 알림 (대시보드)
@@ -258,11 +266,14 @@ adminSellersRoutes.delete('/sellers/:id', cors(), async (c) => {
     const rows = await executeQuery<IdRow>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     if (rows[0].status === 'suspended') return c.json({ success: false, error: '이미 정지된 판매자입니다' }, 400);
+    const prevStatus = rows[0].status;
     try {
       await executeRun(DB, `UPDATE sellers SET is_active = 0, status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     } catch {
       await executeRun(DB, `UPDATE sellers SET status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     }
+    DB.prepare(`INSERT INTO seller_status_history (seller_id, prev_status, new_status, reason) VALUES (?, ?, 'suspended', NULL)`)
+      .bind(sellerId, prevStatus).run().catch(() => { /* silent */ });
 
     try {
       await executeRun(DB, `UPDATE products SET is_active = 0 WHERE seller_id = ?`, [sellerId]);

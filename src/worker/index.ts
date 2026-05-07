@@ -634,15 +634,27 @@ app.route('/api/auth/kakao', kakaoRoutes);
 
 // 🛡️ 2026-04-22: 민감 endpoint 에 bot protection 적용 — 자동화 도구 차단
 // 합법 bot (Googlebot, Kakao 등) 은 allowlist 로 통과.
-app.use('/api/auth/register', botProtection());
-app.use('/api/auth/login', botProtection());
-app.use('/api/seller/register', botProtection());
-app.use('/api/seller/login', botProtection());
-app.use('/api/admin/login', botProtection());
-app.use('/api/agency/login', botProtection());
-app.use('/api/auth/forgot-password', botProtection());
-app.use('/api/seller/forgot-password', botProtection());
-app.use('/api/agency/forgot-password', botProtection());
+// 🛡️ 2026-05-07 (CRITICAL fix): app.use(path) 가 path + 모든 sub-path 매칭하는 Hono prefix
+//   동작 때문에 /api/seller/register 가 /api/seller/register-from-user 도 잡아 403 사고 발생.
+//   → 정확 path + 정확 method 만 매칭하는 wrapper 로 변경. method 불일치 시 즉시 next() pass.
+//   wildcard sub-path (/register-from-user, /register/business) 영향 0.
+const exactPostBot = (exactPath: string) => {
+  const bot = botProtection();
+  return async (c: Context, next: Next) => {
+    const url = new URL(c.req.url);
+    if (c.req.method !== 'POST' || url.pathname !== exactPath) return next();
+    return bot(c, next);
+  };
+};
+app.use('/api/auth/register', exactPostBot('/api/auth/register'));
+app.use('/api/auth/login', exactPostBot('/api/auth/login'));
+app.use('/api/seller/register', exactPostBot('/api/seller/register'));
+app.use('/api/seller/login', exactPostBot('/api/seller/login'));
+app.use('/api/admin/login', exactPostBot('/api/admin/login'));
+app.use('/api/agency/login', exactPostBot('/api/agency/login'));
+app.use('/api/auth/forgot-password', exactPostBot('/api/auth/forgot-password'));
+app.use('/api/seller/forgot-password', exactPostBot('/api/seller/forgot-password'));
+app.use('/api/agency/forgot-password', exactPostBot('/api/agency/forgot-password'));
 
 // Feature: Admin auth — rate limited: 5 attempts per 5 min per IP
 // 🛡️ 2026-04-29 보안 audit (TD-016 HIGH): admin refresh / 2FA 도 rate limit.

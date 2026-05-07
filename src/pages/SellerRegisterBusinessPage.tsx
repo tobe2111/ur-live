@@ -31,10 +31,23 @@ export default function SellerRegisterBusinessPage() {
     business_name: '',
     business_number: '',
     phone: '',
-    seller_type: 'influencer' as 'influencer' | 'store_owner' | 'both',
     youtube_email: '',
     description: '',
   })
+
+  // 🛡️ 2026-05-07: 자동 포맷터 (사업자번호 000-00-00000 / 휴대폰 010-XXXX-XXXX)
+  const formatBusinessNumber = (input: string) => {
+    const d = input.replace(/\D/g, '').slice(0, 10)
+    if (d.length <= 3) return d
+    if (d.length <= 5) return `${d.slice(0,3)}-${d.slice(3)}`
+    return `${d.slice(0,3)}-${d.slice(3,5)}-${d.slice(5)}`
+  }
+  const formatPhone = (input: string) => {
+    const d = input.replace(/\D/g, '').slice(0, 11)
+    if (d.length <= 3) return d
+    if (d.length <= 7) return `${d.slice(0,3)}-${d.slice(3)}`
+    return `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`
+  }
 
   // 이미 셀러 신청 했는지 확인
   useEffect(() => {
@@ -61,21 +74,28 @@ export default function SellerRegisterBusinessPage() {
 
     setLoading(true)
     try {
-      const res = await api.post('/api/seller/register-from-user', form)
+      // seller_type 은 백엔드 default 'influencer' 사용 (UI 에선 제거)
+      const res = await api.post('/api/seller/register-from-user', { ...form, seller_type: 'influencer' })
       if (res.data?.success) {
         toast.success(t('seller.register.applied', { defaultValue: '셀러 전환 신청이 완료됐어요. 관리자 승인을 기다려주세요.' }))
         setExistingStatus('pending')
       } else {
-        toast.error(res.data?.error || '신청 실패')
+        // 🛡️ React #31 방지: error 가 객체 ({message, code}) 일 수 있음 → string 변환
+        const rawErr = res.data?.error as string | { message?: string } | undefined
+        const errMsg = typeof rawErr === 'string' ? rawErr : (rawErr?.message || '신청 실패')
+        toast.error(errMsg)
       }
     } catch (e: unknown) {
-      const err = e as { response?: { status?: number; data?: { error?: string } } }
-      if (err.response?.status === 401) {
+      const err = e as { response?: { status?: number; data?: { error?: string | { message?: string } } } }
+      if (err.response?.status === 401 || err.response?.status === 403) {
         toast.error(t('seller.register.loginRequired', { defaultValue: '로그인이 필요합니다. 카카오 로그인 후 다시 시도해주세요.' }))
         navigate('/login?returnUrl=' + encodeURIComponent('/seller/register/business'))
         return
       }
-      toast.error(err.response?.data?.error || '신청 실패')
+      // 🛡️ React #31 방지: error 가 객체일 수 있음 → string 변환
+      const rawErr = err.response?.data?.error
+      const errMsg = typeof rawErr === 'string' ? rawErr : (typeof rawErr === 'object' && rawErr?.message) ? rawErr.message : '신청 실패'
+      toast.error(errMsg)
     } finally { setLoading(false) }
   }
 
@@ -166,37 +186,24 @@ export default function SellerRegisterBusinessPage() {
 
           <Field label={t('sellerRegisterBusiness.fieldBusinessNumber')} required>
             <input value={form.business_number}
-              onChange={e => setForm(f => ({ ...f, business_number: e.target.value }))}
-              placeholder="XXX-XX-XXXXX"
+              onChange={e => setForm(f => ({ ...f, business_number: formatBusinessNumber(e.target.value) }))}
+              inputMode="numeric"
+              maxLength={12}
+              placeholder="000-00-00000"
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono" />
           </Field>
 
           <Field label={t('sellerRegisterBusiness.fieldPhone')} required>
             <input type="tel" value={form.phone}
-              onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
+              inputMode="numeric"
+              maxLength={13}
               placeholder="010-1234-5678"
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
           </Field>
 
-          <Field label={t('sellerRegisterBusiness.fieldSellerType')}>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { key: 'influencer', label: t('sellerRegisterBusiness.typeInfluencer') },
-                { key: 'store_owner', label: t('sellerRegisterBusiness.typeStoreOwner') },
-                { key: 'both', label: t('sellerRegisterBusiness.typeBoth') },
-              ].map(tp => (
-                <button key={tp.key}
-                  onClick={() => setForm(f => ({ ...f, seller_type: tp.key as any }))}
-                  className={`py-2 rounded-lg text-xs font-semibold border ${
-                    form.seller_type === tp.key
-                      ? 'bg-red-500 text-white border-red-500'
-                      : 'bg-white text-gray-600 border-gray-200'
-                  }`}>
-                  {tp.label}
-                </button>
-              ))}
-            </div>
-          </Field>
+          {/* 🛡️ 2026-05-07: 셀러 유형 (인플루언서/매장사장님/둘다) 제거 — 사용자에게 무의미.
+              백엔드 default 'influencer' 사용. */}
 
           <Field label={t('sellerRegisterBusiness.fieldYoutubeEmail')}>
             <input type="email" value={form.youtube_email}

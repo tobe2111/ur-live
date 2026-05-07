@@ -89,6 +89,34 @@ try {
 // 다른 인앱(네이버/페북/IG/라인 등) 감지 → App 단 배너로 안내 (강제 redirect 안 함)
 ;(window as { __urInAppBrowser?: string | null }).__urInAppBrowser = detectInAppBrowser()
 
+// 🛡️ 2026-05-07: dynamic import (lazy chunk) 로드 실패 자동 복구.
+//   원인: 새 배포 후 사용자 브라우저는 옛 HTML 가지고 있음 → 옛 HTML 이 참조하는 옛 chunk
+//   해시 (e.g. SellerPage-Dnxck7Qn.js) 가 새 빌드에 없어 404 → React lazy() throw.
+//   처리: 같은 세션에서 1회만 자동 reload (무한 reload 차단 sessionStorage 가드).
+//   Sentry 에는 noisy 한 chunk-load 에러 안 올림 (빌드 사이 정상 케이스).
+window.addEventListener('error', (e) => {
+  const msg = String(e.message || '')
+  if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('error loading dynamically imported module')) {
+    try {
+      const k = '__ur_chunk_reload__'
+      if (sessionStorage.getItem(k)) return // 이미 1회 시도 — 무한 reload 차단
+      sessionStorage.setItem(k, '1')
+      window.location.reload()
+    } catch { /* sessionStorage 차단 환경 — silent */ }
+  }
+})
+window.addEventListener('unhandledrejection', (e) => {
+  const msg = String((e.reason as { message?: string })?.message || '')
+  if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('error loading dynamically imported module')) {
+    try {
+      const k = '__ur_chunk_reload__'
+      if (sessionStorage.getItem(k)) return
+      sessionStorage.setItem(k, '1')
+      window.location.reload()
+    } catch { /* silent */ }
+  }
+})
+
 // 카카오 외부브라우저 redirect 시도했으면 React 마운트 skip (이미 외부 브라우저로 이동 중)
 if (!_kakaoRedirected) {
 
