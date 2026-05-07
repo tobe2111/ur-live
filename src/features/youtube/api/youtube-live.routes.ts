@@ -483,4 +483,86 @@ app.post('/live/:id/end', async (c) => {
   }
 })
 
+/**
+ * GET /api/youtube/live/:id/chat?nextPageToken=...
+ *
+ * 🛡️ 2026-05-07: YouTube Live Chat ↔ 우리 채팅 동기화 (proxy).
+ *
+ * YouTube Live Chat API 는 셀러의 OAuth 토큰으로 호출. 시청자 측에서 직접 호출 시
+ * 토큰 노출 — 그래서 서버 proxy 로 처리. 클라이언트는 nextPageToken 만 들고 polling.
+ *
+ * Quota 주의: 5건 / poll 호출. 권장 polling 간격 5-10초.
+ */
+app.get('/live/:id/chat', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const streamId = parseInt(c.req.param('id'))
+  const nextPageToken = c.req.query('nextPageToken') || ''
+
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+  if (!clientId || !clientSecret) return c.json({ success: false, error: 'YouTube API not configured' }, 500)
+
+  try {
+    const stream = await c.env.DB.prepare(
+      'SELECT youtube_live_chat_id FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first<{ youtube_live_chat_id: string }>()
+
+    if (!stream?.youtube_live_chat_id) {
+      return c.json({ success: false, error: 'No live chat ID — broadcast not started yet' }, 404)
+    }
+
+    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    if (!accessToken) return c.json({ success: false, error: 'YouTube auth required' }, 401)
+
+    const url = new URL('https://www.googleapis.com/youtube/v3/liveChat/messages')
+    url.searchParams.set('liveChatId', stream.youtube_live_chat_id)
+    url.searchParams.set('part', 'snippet,authorDetails')
+    url.searchParams.set('maxResults', '50')
+    if (nextPageToken) url.searchParams.set('pageToken', nextPageToken)
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) {
+      const err = await res.text()
+      return c.json({ success: false, error: `YouTube API ${res.status}: ${err.slice(0, 200)}` }, 500)
+    }
+    const data = await res.json() as {
+      nextPageToken?: string
+      pollingIntervalMillis?: number
+      items?: Array<{
+        id: string
+        snippet?: { displayMessage?: string; publishedAt?: string; type?: string }
+        authorDetails?: { displayName?: string; profileImageUrl?: string; isChatOwner?: boolean; isChatModerator?: boolean }
+      }>
+    }
+    const items = (data.items ?? []).map(it => ({
+      id: it.id,
+      message: it.snippet?.displayMessage || '',
+      author: it.authorDetails?.displayName || 'YouTube 사용자',
+      avatar: it.authorDetails?.profileImageUrl,
+      isOwner: !!it.authorDetails?.isChatOwner,
+      isModerator: !!it.authorDetails?.isChatModerator,
+      published_at: it.snippet?.publishedAt,
+      type: it.snippet?.type || 'textMessageEvent',
+    }))
+
+    return c.json({
+      success: true,
+      data: {
+        items,
+        next_page_token: data.nextPageToken,
+        polling_interval_ms: data.pollingIntervalMillis || 5000,
+      }
+    })
+  } catch (error: unknown) {
+    if (import.meta.env?.DEV) console.error('[YouTube Chat Sync] Error:', error)
+    return c.json({ success: false, error: error instanceof Error ? error.message : 'Failed' }, 500)
+  }
+})
+
 export { app as youtubeLiveRoutes }

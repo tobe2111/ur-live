@@ -15,16 +15,19 @@ import AuctionTimeDealControls from '../SellerLiveBroadcast.AuctionTimeDealContr
 import DonationBoosterButton from '@/components/seller/DonationBoosterButton'
 import PKLiveBanner from '@/components/live/PKLiveBanner'
 import LiveChatPanel from '@/components/seller/LiveChatPanel'
+import YouTubeChatSyncIndicator from '@/components/streaming/YouTubeChatSyncIndicator'
+import type { StreamMethod } from '../SellerLiveBroadcast.storage'
 import type { LiveStream, Product } from './types'
 
 interface StepLiveProps {
   stream: LiveStream
   products: Product[]
+  method?: StreamMethod
   onChangeProduct: (productId: number) => void
   onEndStream: () => void
 }
 
-export default function StepLive({ stream, products, onChangeProduct, onEndStream }: StepLiveProps) {
+export default function StepLive({ stream, products, method, onChangeProduct, onEndStream }: StepLiveProps) {
   const { t } = useTranslation()
   const startedAtRef = useRef(Date.now())
   const [elapsed, setElapsed] = useState('00:00')
@@ -197,6 +200,11 @@ export default function StepLive({ stream, products, onChangeProduct, onEndStrea
           <Button onClick={onEndStream} size="sm" variant="destructive">{t('seller.liveBroadcast.endBroadcast')}</Button>
         </div>
       </div>
+
+      {/* 🛡️ 2026-05-07: YouTube 라이브 채팅 동기화 (YouTube Studio / Quick 모드) */}
+      {(method === 'youtube' || method === 'quick') && (
+        <YouTubeChatSyncIndicator streamId={stream.id} />
+      )}
 
       {/* P2-12: 단축키 도움말 */}
       {showShortcuts && (

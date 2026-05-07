@@ -513,6 +513,7 @@ export default function SellerLiveBroadcastPage() {
           <StepLive
             stream={currentStream}
             products={sellableProducts}
+            method={method}
             onChangeProduct={(productId: number) => setCurrentStream(s => s ? { ...s, current_product_id: productId } : s)}
             onEndStream={requestEndStream}
           />

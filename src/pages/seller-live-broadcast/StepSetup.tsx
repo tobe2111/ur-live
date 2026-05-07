@@ -13,6 +13,9 @@ import OBSRemoteControl from '../SellerLiveBroadcast.OBSRemoteControl'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
 import { InlineCameraPreview } from '@/components/streaming/InlineCameraPreview'
 import { BroadcastDiagnostic } from '@/components/streaming/BroadcastDiagnostic'
+import BroadcastPreflightCheck from '@/components/streaming/BroadcastPreflightCheck'
+import ChromeExtensionBanner from '@/components/streaming/ChromeExtensionBanner'
+import QuickStartWaiting from './QuickStartWaiting'
 import type { StreamMethod } from '../SellerLiveBroadcast.storage'
 import type { LiveStream, YouTubeChannel } from './types'
 
@@ -53,11 +56,16 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
         <span className="text-[11px] text-amber-600 font-medium shrink-0">{t('seller.liveBroadcast.waitingConnection')}</span>
       </div>
 
-      {(method === 'quick' || method === 'youtube') && (
-        <YouTubeStudioWaiting
-          stream={stream}
-          accent={method === 'quick' ? 'pink' : 'red'}
-        />
+      {/* 🛡️ 2026-05-07: Quick 과 YouTube Studio 분리 */}
+      {method === 'quick' && (
+        <QuickStartWaiting stream={stream} />
+      )}
+
+      {method === 'youtube' && (
+        <>
+          <ChromeExtensionBanner />
+          <YouTubeStudioWaiting stream={stream} accent="red" />
+        </>
       )}
 
       {method === 'obs' && (
@@ -81,6 +89,9 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
       )}
 
       <div className="pt-3 border-t border-gray-100 space-y-3">
+        {/* 🛡️ 2026-05-07: Pre-flight 사전 점검 — 30초 멈춤 사고 미연 방지 */}
+        <BroadcastPreflightCheck method={method} />
+
         {/* 인라인 카메라 미리보기 — 어느 방법이든 방송 전 확인용 */}
         <InlineCameraPreview />
 
