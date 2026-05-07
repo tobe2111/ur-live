@@ -274,7 +274,7 @@ app.get('/unassigned-sellers', async (c) => {
   const rows = await c.env.DB.prepare(`
     SELECT id, name, email, business_name FROM sellers
     WHERE id NOT IN (SELECT seller_id FROM agency_sellers)
-    AND status = 'approved'
+    AND status IN ('approved', 'active')
     ORDER BY name
   `).all()
   return c.json({ success: true, data: rows.results })

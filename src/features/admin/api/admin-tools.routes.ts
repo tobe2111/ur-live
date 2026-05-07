@@ -163,7 +163,8 @@ adminToolsRoutes.post('/notices', async (c) => {
 
   let totalSent = 0
   if (target === 'sellers' || target === 'all') {
-    const { results: sellers } = await c.env.DB.prepare("SELECT id FROM sellers WHERE status = 'approved'").all<{ id: number }>()
+    // 🛡️ 2026-05-07: 'approved' / 'active' 모두 활성 (status 표준 분기)
+    const { results: sellers } = await c.env.DB.prepare("SELECT id FROM sellers WHERE status IN ('approved', 'active')").all<{ id: number }>()
     if (sellers?.length) {
       const stmts = sellers.map(s =>
         c.env.DB.prepare("INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, created_at) VALUES ('seller', ?, 'admin_notice', ?, ?, datetime('now'))")

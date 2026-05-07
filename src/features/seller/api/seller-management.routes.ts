@@ -409,17 +409,18 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
     // 숫자면 ID, 아니면 slug 또는 username으로 조회
     const isNumeric = /^\d+$/.test(param);
     const seller = isNumeric
+      // 🛡️ 2026-05-07: 'approved' 와 'active' 모두 활성으로 인정 (status 표준 분기).
       ? await DB.prepare(
           `SELECT id, username, slug, name, email, description, business_name, business_number, phone,
                   profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
                   website_url, kakao_chat_link, status, created_at
-           FROM sellers WHERE id = ? AND status = 'approved'`
+           FROM sellers WHERE id = ? AND status IN ('approved', 'active')`
         ).bind(param).first()
       : await DB.prepare(
           `SELECT id, username, slug, name, email, description, business_name, business_number, phone,
                   profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
                   website_url, kakao_chat_link, status, created_at
-           FROM sellers WHERE (slug = ? OR username = ?) AND status = 'approved'`
+           FROM sellers WHERE (slug = ? OR username = ?) AND status IN ('approved', 'active')`
         ).bind(param, param).first();
 
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);

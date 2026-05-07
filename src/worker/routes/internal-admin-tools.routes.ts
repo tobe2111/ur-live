@@ -657,6 +657,41 @@ internalAdminToolsRoutes.get('/api/_internal/repair-new-tables', requireAdmin(),
         completed_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )` },
+
+    // 🛡️ 2026-05-07: 데이터 영구 안정성 보강 — UNIQUE 제약 + 상태 변경 이력 테이블.
+    //   사용자 신고 \"분명 셀러 등록한 적 있는데 새로 등록하라고 함\" 사고 재발 방지.
+    //   1. UNIQUE INDEX (sellers.email, sellers.linked_user_id, sellers.business_number)
+    //      → 중복 셀러 가입 자체 차단. 이미 데이터 있어도 IF NOT EXISTS 안전.
+    //   2. seller_status_history — 모든 상태 변경 (pending→approved→suspended 등) 이력 추적.
+    //      → 잘못 정지된 셀러 복구 / 감사 / 분쟁 대응.
+    //   3. agencies / users 동일 패턴.
+    { desc: '0245: idx_sellers_email_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_email_unique ON sellers(email) WHERE email IS NOT NULL` },
+    { desc: '0245: idx_sellers_linked_user_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_linked_user_unique ON sellers(linked_user_id) WHERE linked_user_id IS NOT NULL` },
+    { desc: '0245: idx_sellers_business_number', sql: `CREATE INDEX IF NOT EXISTS idx_sellers_business_number ON sellers(business_number) WHERE business_number IS NOT NULL` },
+    { desc: '0245: idx_agencies_email_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_agencies_email_unique ON agencies(email) WHERE email IS NOT NULL` },
+    { desc: '0245: idx_agencies_linked_user_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_agencies_linked_user_unique ON agencies(linked_user_id) WHERE linked_user_id IS NOT NULL` },
+    { desc: '0245: seller_status_history', sql: `
+      CREATE TABLE IF NOT EXISTS seller_status_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        seller_id INTEGER NOT NULL,
+        prev_status TEXT,
+        new_status TEXT NOT NULL,
+        reason TEXT,
+        changed_by_admin_id INTEGER,
+        changed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { desc: '0245: idx_seller_status_history', sql: `CREATE INDEX IF NOT EXISTS idx_seller_status_history ON seller_status_history(seller_id, changed_at DESC)` },
+    { desc: '0245: agency_status_history', sql: `
+      CREATE TABLE IF NOT EXISTS agency_status_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agency_id INTEGER NOT NULL,
+        prev_status TEXT,
+        new_status TEXT NOT NULL,
+        reason TEXT,
+        changed_by_admin_id INTEGER,
+        changed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { desc: '0245: idx_agency_status_history', sql: `CREATE INDEX IF NOT EXISTS idx_agency_status_history ON agency_status_history(agency_id, changed_at DESC)` },
   ];
 
   const results: Array<{ desc: string; status: string; error?: string }> = [];

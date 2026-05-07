@@ -107,7 +107,8 @@ adminStatsRoutes.get('/stats', cors(), async (c) => {
     };
     const [ts, as_, tst, ast] = await Promise.all([
       safe<CountRow>('SELECT COUNT(*) as count FROM sellers'),
-      safe<CountRow>("SELECT COUNT(*) as count FROM sellers WHERE status = 'approved'"),
+      // 🛡️ 2026-05-07: status 표준 분기 — 'approved' / 'active' 모두 활성 셀러로 카운트
+      safe<CountRow>("SELECT COUNT(*) as count FROM sellers WHERE status IN ('approved', 'active')"),
       safe<CountRow>('SELECT COUNT(*) as count FROM live_streams'),
       safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status = 'live'"),
     ]);

@@ -63,8 +63,10 @@ async function getActiveSellerId(
 ): Promise<string | null> {
   const id = await getSellerIdFromToken(authorization, jwtSecret);
   if (!id) return null;
+  // 🛡️ 2026-05-07: status 표준 분기 — 'active' 와 'approved' 모두 인정 (코드베이스 혼용 사고 방지).
+  //   admin 라우트는 'active' 사용, 일부 구 코드는 'approved'. 둘 다 활성 상태로 처리.
   const seller = await DB.prepare(
-    "SELECT id FROM sellers WHERE id = ? AND status = 'approved' AND is_active = 1"
+    "SELECT id FROM sellers WHERE id = ? AND status IN ('approved', 'active') AND is_active = 1"
   ).bind(id).first();
   return seller ? id : null;
 }

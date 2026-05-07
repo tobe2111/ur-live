@@ -217,7 +217,9 @@ export default function AdminSellerApprovalPage() {
                       </button>
                     </>
                   )}
-                  {(s.status === 'active' || s.status === 'suspended') && (
+                  {/* 🛡️ 2026-05-07: status 값 표준 분기 — 'active' / 'approved' 둘 다 활성으로 인식.
+                      코드베이스 일부가 'approved' 사용 → 정지 버튼이 안 보이는 사고 방지. */}
+                  {(s.status === 'active' || s.status === 'approved' || s.status === 'suspended') && (
                     <button onClick={() => toggleSuspend(s)} disabled={actingId === s.id}
                       className={`px-3 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 ${
                         s.status === 'suspended'
@@ -225,6 +227,13 @@ export default function AdminSellerApprovalPage() {
                           : 'bg-gray-100 text-gray-700'
                       }`}>
                       {s.status === 'suspended' ? <><Play className="w-3 h-3" /> 재활성</> : <><Pause className="w-3 h-3" /> 정지</>}
+                    </button>
+                  )}
+                  {/* 🛡️ rejected 셀러도 다시 활성화 가능 — 잘못 거절된 케이스 복구 */}
+                  {s.status === 'rejected' && (
+                    <button onClick={() => approve(s.id)} disabled={actingId === s.id}
+                      className="px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                      <UserCheck className="w-3 h-3" /> 활성화
                     </button>
                   )}
                 </div>
