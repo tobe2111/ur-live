@@ -6,6 +6,7 @@ import { safeDate, safeTime } from '@/utils/safe-date'
 
 function useCountdown(targetDate: string | undefined, soonText: string) {
   const [remaining, setRemaining] = useState('')
+  const [imminent, setImminent] = useState(false) // 60초 이내 → 강조 모드
 
   useEffect(() => {
     if (!targetDate) return
@@ -14,6 +15,7 @@ function useCountdown(targetDate: string | undefined, soonText: string) {
       const diff = safeTime(targetDate) - Date.now()
       if (diff <= 0) {
         setRemaining(soonText)
+        setImminent(true)
         return
       }
       const days = Math.floor(diff / 86400000)
@@ -21,7 +23,11 @@ function useCountdown(targetDate: string | undefined, soonText: string) {
       const minutes = Math.floor((diff % 3600000) / 60000)
       const seconds = Math.floor((diff % 60000) / 1000)
 
-      if (days > 0) {
+      // 🛡️ 2026-05-07: 60초 이내 → 초만 강조 ("곧 시작! 23초")
+      setImminent(diff < 60000)
+      if (diff < 60000) {
+        setRemaining(`${seconds}초`)
+      } else if (days > 0) {
         setRemaining(`D-${days} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
       } else {
         setRemaining(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
@@ -33,12 +39,12 @@ function useCountdown(targetDate: string | undefined, soonText: string) {
     return () => clearInterval(interval)
   }, [targetDate, soonText])
 
-  return remaining
+  return { remaining, imminent }
 }
 
 export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream; onGoHome: () => void }) {
   const { t } = useTranslation()
-  const countdown = useCountdown(stream.scheduled_at, t('live.scheduled.soon', { defaultValue: '곧 시작됩니다' }))
+  const { remaining: countdown, imminent } = useCountdown(stream.scheduled_at, t('live.scheduled.soon', { defaultValue: '곧 시작됩니다' }))
 
   const _schedDate = safeDate(stream.scheduled_at)
   const formattedDate = _schedDate
@@ -67,11 +73,18 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
 
         {stream.scheduled_at && (
           <div className="text-center">
-            <p className="text-white/60 text-xs mb-2">{t('live.scheduled.untilStart', { defaultValue: '방송 시작까지' })}</p>
-            <p className="text-white text-3xl font-bold font-mono tracking-wider">
+            <p className="text-white/60 text-xs mb-2">
+              {imminent ? '🔥 곧 시작!' : t('live.scheduled.untilStart', { defaultValue: '방송 시작까지' })}
+            </p>
+            <p className={`font-bold font-mono tracking-wider transition-all ${
+              imminent ? 'text-red-400 text-5xl animate-pulse' : 'text-white text-3xl'
+            }`}>
               {countdown}
             </p>
             <p className="text-white/50 text-sm mt-2">{formattedDate}</p>
+            {imminent && (
+              <p className="text-amber-300 text-xs mt-3 font-semibold">⏰ 알림 켜놓고 기다려주세요</p>
+            )}
           </div>
         )}
 

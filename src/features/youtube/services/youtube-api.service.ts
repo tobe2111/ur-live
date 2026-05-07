@@ -83,6 +83,7 @@ interface YouTubeStreamItem {
     ingestionInfo: {
       streamName: string
       ingestionAddress: string
+      backupIngestionAddress?: string
       rtmpsIngestionAddress?: string
     }
     format: string
@@ -296,6 +297,7 @@ export class YouTubeAPIService {
       ingestionInfo: {
         streamName: data.cdn.ingestionInfo.streamName,
         ingestionAddress: data.cdn.ingestionInfo.ingestionAddress,
+        backupIngestionAddress: data.cdn.ingestionInfo.backupIngestionAddress,
         rtmpsIngestionAddress: data.cdn.ingestionInfo.rtmpsIngestionAddress
       },
       cdn: {
@@ -333,6 +335,7 @@ export class YouTubeAPIService {
       ingestionInfo: {
         streamName: item.cdn.ingestionInfo.streamName,
         ingestionAddress: item.cdn.ingestionInfo.ingestionAddress,
+        backupIngestionAddress: item.cdn.ingestionInfo.backupIngestionAddress,
         rtmpsIngestionAddress: item.cdn.ingestionInfo.rtmpsIngestionAddress
       },
       cdn: {
@@ -378,6 +381,7 @@ export class YouTubeAPIService {
       broadcast,
       stream,
       rtmpUrl: stream.ingestionInfo.ingestionAddress,
+      backupRtmpUrl: stream.ingestionInfo.backupIngestionAddress,
       rtmpKey: stream.ingestionInfo.streamName,
       youtubeUrl: `https://www.youtube.com/watch?v=${broadcast.id}`,
       embedUrl: `https://www.youtube.com/embed/${broadcast.id}?autoplay=1`
@@ -480,12 +484,14 @@ export class YouTubeAPIService {
 
     // Construct RTMP URL
     const rtmpUrl = stream.ingestionInfo.ingestionAddress
+    const backupRtmpUrl = stream.ingestionInfo.backupIngestionAddress
     const rtmpKey = stream.ingestionInfo.streamName
 
     return {
       broadcast,
       stream,
       rtmpUrl,
+      backupRtmpUrl,
       rtmpKey,
       youtubeUrl: `https://www.youtube.com/watch?v=${broadcast.id}`,
       embedUrl: `https://www.youtube.com/embed/${broadcast.id}?autoplay=1`

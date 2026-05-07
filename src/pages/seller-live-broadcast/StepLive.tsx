@@ -16,6 +16,7 @@ import DonationBoosterButton from '@/components/seller/DonationBoosterButton'
 import PKLiveBanner from '@/components/live/PKLiveBanner'
 import LiveChatPanel from '@/components/seller/LiveChatPanel'
 import YouTubeChatSyncIndicator from '@/components/streaming/YouTubeChatSyncIndicator'
+import ConnectionQualityGauge from '@/components/streaming/ConnectionQualityGauge'
 import type { StreamMethod } from '../SellerLiveBroadcast.storage'
 import type { LiveStream, Product } from './types'
 
@@ -197,6 +198,7 @@ export default function StepLive({ stream, products, method, onChangeProduct, on
           <p className="text-sm font-semibold text-gray-900 truncate">{stream.title}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <ConnectionQualityGauge streamId={stream.id} />
           <button onClick={togglePiP}
             className={`w-7 h-7 rounded-full text-xs font-bold ${pipActive ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
             title="Picture-in-Picture (PiP)">

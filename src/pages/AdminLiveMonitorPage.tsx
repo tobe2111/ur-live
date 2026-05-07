@@ -18,6 +18,12 @@ interface LiveStream {
   created_at: string
   current_product_name?: string
   current_product_price?: number
+  // 🛡️ 2026-05-07: 강화된 모니터링 필드
+  total_messages?: number
+  product_changes?: number
+  total_revenue?: number
+  duration_minutes?: number
+  thumbnail_url?: string
 }
 
 interface EndedStream {
@@ -156,9 +162,18 @@ export default function AdminLiveMonitorPage() {
                   <div className="p-4">
                     <h3 className="text-sm font-bold text-gray-900 line-clamp-1">{stream.title}</h3>
                     <p className="text-xs text-gray-500 mt-0.5">{stream.seller_name}</p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 flex-wrap">
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDuration(stream.created_at)}</span>
                       <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{stream.viewer_count}명</span>
+                      {stream.total_messages != null && stream.total_messages > 0 && (
+                        <span className="flex items-center gap-1">💬 {formatNumber(stream.total_messages)}</span>
+                      )}
+                      {stream.product_changes != null && stream.product_changes > 0 && (
+                        <span className="flex items-center gap-1">🔁 {stream.product_changes}회</span>
+                      )}
+                      {stream.total_revenue != null && stream.total_revenue > 0 && (
+                        <span className="flex items-center gap-1 font-bold text-green-600">💰 {formatNumber(stream.total_revenue)}원</span>
+                      )}
                     </div>
                     {stream.current_product_name && (
                       <div className="mt-2 px-2 py-1.5 bg-gray-50 rounded-lg">

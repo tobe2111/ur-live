@@ -399,6 +399,24 @@ streamsRouter.get('/:id/current-product', async (c) => {
   }
 });
 
+// ── GET /api/streams/:id/product-timestamps ──────────────────────────────────
+// 🛡️ 2026-05-07: Replay chapter 마커 — 시청자가 상품별 점프 가능
+streamsRouter.get('/:id/product-timestamps', async (c) => {
+  try {
+    const streamId = c.req.param('id')
+    const rows = await c.env.DB.prepare(`
+      SELECT spt.product_id, spt.offset_sec, spt.created_at, p.name, p.image_url, p.price
+      FROM stream_product_timestamps spt
+      LEFT JOIN products p ON spt.product_id = p.id
+      WHERE spt.stream_id = ?
+      ORDER BY spt.offset_sec ASC
+    `).bind(streamId).all<{ product_id: number; offset_sec: number; created_at: string; name: string; image_url: string | null; price: number }>()
+    return c.json({ success: true, data: rows.results || [] })
+  } catch {
+    return c.json({ success: true, data: [] })
+  }
+})
+
 // ── POST /api/streams/:id/current-product ─────────────────────────────────────
 // 현재 방송 상품 변경 (판매자 JWT 필요)
 streamsRouter.post('/:id/current-product', async (c) => {

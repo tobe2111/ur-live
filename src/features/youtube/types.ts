@@ -34,7 +34,8 @@ export interface YouTubeStream {
   title: string
   ingestionInfo: {
     streamName: string // RTMP stream key
-    ingestionAddress: string // RTMP URL
+    ingestionAddress: string // RTMP URL (primary)
+    backupIngestionAddress?: string // 🛡️ 2026-05-07: backup RTMP — OBS dual-push 권장
     rtmpsIngestionAddress?: string // RTMPS URL
   }
   cdn: {
@@ -48,6 +49,7 @@ export interface YouTubeLiveSetup {
   broadcast: YouTubeBroadcast
   stream: YouTubeStream
   rtmpUrl: string
+  backupRtmpUrl?: string // 🛡️ 2026-05-07: OBS dual-push / fallback 용
   rtmpKey: string
   youtubeUrl: string
   embedUrl: string

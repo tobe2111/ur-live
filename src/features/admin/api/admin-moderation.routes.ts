@@ -214,7 +214,11 @@ adminModerationRoutes.get('/live-monitor', cors(), async (c) => {
   try {
     const DB = c.env.DB;
 
-    const streams = await executeQuery<LiveStreamRow>(DB,
+    // 🛡️ 2026-05-07: 강화된 모니터링 — 매출 / 채팅 수 / 진행 시간 / 상품 변경 횟수
+    const streams = await executeQuery<LiveStreamRow & {
+      total_messages: number; product_changes: number; total_revenue: number;
+      duration_minutes: number;
+    }>(DB,
       `SELECT ls.id, ls.seller_id,
               s.name as seller_name,
               ls.title, ls.status,
@@ -222,7 +226,12 @@ adminModerationRoutes.get('/live-monitor', cors(), async (c) => {
               COALESCE(ls.viewer_count, 0) as viewer_count,
               ls.current_product_id,
               p.name as current_product_name,
-              ls.created_at
+              ls.thumbnail_url,
+              ls.created_at,
+              (SELECT COUNT(*) FROM chat_messages WHERE live_stream_id = ls.id) as total_messages,
+              (SELECT COUNT(*) FROM stream_product_timestamps WHERE stream_id = ls.id) as product_changes,
+              (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE live_stream_id = ls.id AND status IN ('PAID','DONE','SHIPPED','DELIVERED')) as total_revenue,
+              CAST((julianday('now') - julianday(ls.created_at)) * 24 * 60 AS INTEGER) as duration_minutes
        FROM live_streams ls
        LEFT JOIN sellers s ON s.id = ls.seller_id
        LEFT JOIN products p ON p.id = ls.current_product_id

@@ -709,6 +709,31 @@ sellerStreamsRoutes.post('/:id/change-product', async (c) => {
       "UPDATE live_streams SET current_product_id = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(productId ?? null, streamId).run();
 
+    // 🛡️ 2026-05-07: 상품 변경 타임스탬프 기록 → Replay chapter 마커 + 시청자 점프
+    if (productId) {
+      try {
+        await c.env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS stream_product_timestamps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            stream_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            offset_sec INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run()
+        const startedRow = await c.env.DB.prepare(
+          'SELECT created_at FROM live_streams WHERE id = ?'
+        ).bind(streamId).first<{ created_at: string }>()
+        const startedMs = startedRow?.created_at ? new Date(startedRow.created_at.replace(' ', 'T') + 'Z').getTime() : Date.now()
+        const offsetSec = Math.max(0, Math.floor((Date.now() - startedMs) / 1000))
+        await c.env.DB.prepare(`
+          INSERT INTO stream_product_timestamps (stream_id, product_id, offset_sec) VALUES (?, ?, ?)
+        `).bind(streamId, productId, offsetSec).run()
+      } catch (err) {
+        if (import.meta.env?.DEV) console.warn('[ProductTimestamp] Skip:', err)
+      }
+    }
+
     await cacheInvalidate(c.env.SESSION_KV, `stream:${streamId}`);
 
     return c.json({ success: true, message: '상품이 변경되었습니다' });

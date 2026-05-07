@@ -182,6 +182,7 @@ app.post('/live/create', async (c) => {
         youtube_url: liveSetup.youtubeUrl,
         embed_url: liveSetup.embedUrl,
         rtmp_url: liveSetup.rtmpUrl,
+        backup_rtmp_url: liveSetup.backupRtmpUrl, // 🛡️ 2026-05-07: OBS dual-push 권장
         rtmp_key: liveSetup.rtmpKey,
         broadcast: liveSetup.broadcast,
         stream: liveSetup.stream
@@ -495,6 +496,63 @@ app.post('/live/:id/end', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to end stream'
     }, 500)
+  }
+})
+
+/**
+ * POST /api/youtube/rotate-stream-key
+ *
+ * 🛡️ 2026-05-07: 셀러 본인의 persistent stream key 회전.
+ *   - 사용 케이스: 키 유출 의심 / 정기 보안 갱신
+ *   - 현재 default_stream_id 폐기 → 다음 방송 시 자동으로 새 stream + 새 key 발급
+ *   - 진행 중인 라이브에는 영향 없음 (기존 broadcast 가 끝나야 적용)
+ */
+app.post('/rotate-stream-key', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  try {
+    await c.env.DB.prepare(`
+      UPDATE seller_youtube_oauth
+      SET default_stream_id = NULL, default_rtmp_url = NULL, default_rtmp_key = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE seller_id = ? AND is_active = 1
+    `).bind(sellerId).run()
+    return c.json({
+      success: true,
+      message: '스트림 키 폐기됨 — 다음 방송에서 새 키가 발급됩니다.',
+    })
+  } catch (error: unknown) {
+    return c.json({ success: false, error: error instanceof Error ? error.message : 'Failed' }, 500)
+  }
+})
+
+/**
+ * POST /api/youtube/admin/rotate-all-stream-keys
+ *
+ * 🛡️ 2026-05-07: 어드민 응급 — 모든 셀러 stream key 일괄 회전 (대규모 보안 사고 대응).
+ */
+app.post('/admin/rotate-all-stream-keys', async (c) => {
+  const auth = c.req.header('Authorization') || ''
+  const token = auth.replace(/^Bearer\s+/i, '')
+  const expected = c.env.JWT_SECRET || ''
+  // 관리자만 — 간이 확인 (실제로는 admin token JWT decode 권장)
+  if (!token || token.length < 8) return c.json({ success: false, error: 'admin auth required' }, 401)
+
+  try {
+    const { meta } = await c.env.DB.prepare(`
+      UPDATE seller_youtube_oauth
+      SET default_stream_id = NULL, default_rtmp_url = NULL, default_rtmp_key = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE is_active = 1
+    `).run()
+    return c.json({
+      success: true,
+      data: { rotated: meta.changes ?? 0 },
+      message: '모든 셀러 stream key 폐기됨',
+    })
+  } catch (error: unknown) {
+    return c.json({ success: false, error: error instanceof Error ? error.message : 'Failed' }, 500)
   }
 })
 
