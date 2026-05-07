@@ -33,6 +33,10 @@ export default function SellerStreamingSetupPage() {
   const [initializing, setInitializing] = useState(false)
   const [copied, setCopied] = useState<'url' | 'key' | null>(null)
 
+  // 🛡️ 2026-05-07: 디바이스 자동 감지 + 사용자 토글. 모바일/PC 별 가이드 분기.
+  const detectMobile = () => typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+  const [device, setDevice] = useState<'mobile' | 'pc'>(() => (detectMobile() ? 'mobile' : 'pc'))
+
   useEffect(() => {
     void load()
   }, [])
@@ -167,6 +171,72 @@ export default function SellerStreamingSetupPage() {
               </div>
             </div>
 
+            {/* 🛡️ 2026-05-07: 디바이스 토글 — 자동 감지 + 사용자 변경 가능 */}
+            <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1 sticky top-2 z-10">
+              <button
+                onClick={() => setDevice('mobile')}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                  device === 'mobile' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                <Smartphone className="w-4 h-4" /> 📱 모바일에서 송출
+              </button>
+              <button
+                onClick={() => setDevice('pc')}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                  device === 'pc' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                <Monitor className="w-4 h-4" /> 💻 PC 에서 송출
+              </button>
+            </div>
+
+            {device === 'mobile' && (
+              <>
+                {/* 모바일 1순위: Larix */}
+                <div className="bg-white border-2 border-pink-300 rounded-2xl p-6 space-y-3 relative">
+                  <span className="absolute -top-2 left-4 text-[10px] bg-pink-500 text-white font-bold px-2 py-0.5 rounded">가장 쉬움</span>
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-5 h-5 text-pink-600" />
+                    <p className="text-sm font-bold text-gray-900">📱 Larix Broadcaster (5분 안에 송출 시작)</p>
+                  </div>
+                  <ol className="text-xs text-gray-700 space-y-1.5 pl-4 list-decimal">
+                    <li>App Store / Play Store 에서 "<strong>Larix Broadcaster</strong>" 검색 → 무료 설치</li>
+                    <li>아래 큰 버튼 누르면 Larix 가 자동으로 RTMP 설정 입력</li>
+                    <li>Larix 화면에서 빨간 버튼만 누르면 송출 시작</li>
+                  </ol>
+                  <a
+                    href={larixDeepLink}
+                    className="block w-full py-3 bg-pink-600 hover:bg-pink-700 text-white text-center text-sm font-bold rounded-xl"
+                  >
+                    🚀 Larix 자동 입력 (이 폰에서 열기)
+                  </a>
+                  <p className="text-[10px] text-gray-500 text-center">
+                    Larix 미설치 시 → <a href="https://apps.apple.com/app/larix-broadcaster/id1042474385" target="_blank" rel="noopener noreferrer" className="text-pink-600 underline">iOS</a> · <a href="https://play.google.com/store/apps/details?id=com.wmspanel.larix_broadcaster" target="_blank" rel="noopener noreferrer" className="text-pink-600 underline">Android</a>
+                  </p>
+                </div>
+
+                {/* 모바일 2순위: Prism Mobile */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-5 h-5 text-indigo-600" />
+                    <p className="text-sm font-bold text-gray-900">📱 Prism Live Studio Mobile (한국 셀러 익숙)</p>
+                  </div>
+                  <ol className="text-xs text-gray-700 space-y-1.5 pl-4 list-decimal">
+                    <li>App Store / Play Store 에서 "<strong>Prism Live Studio</strong>" 검색 → 무료 설치</li>
+                    <li>앱 실행 → 우상단 톱니 → "Custom RTMP" 또는 "사용자 정의 RTMP" 추가</li>
+                    <li>위 RTMP URL + Stream Key 붙여넣기 → 저장</li>
+                    <li>홈에서 빨간 라이브 버튼 → 송출 시작</li>
+                  </ol>
+                  <p className="text-[10px] text-gray-500">
+                    <a href="https://apps.apple.com/app/prism-live-studio/id1431499267" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">iOS 다운로드</a> · <a href="https://play.google.com/store/apps/details?id=com.prism.live" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">Android 다운로드</a>
+                  </p>
+                </div>
+              </>
+            )}
+
+            {device === 'pc' && (
+              <>
             {/* PC (Prism) — 한국 인기 */}
             <div className="bg-white border-2 border-indigo-300 rounded-2xl p-6 space-y-3 relative">
               <span className="absolute -top-2 left-4 text-[10px] bg-indigo-500 text-white font-bold px-2 py-0.5 rounded">한국 인기</span>
@@ -187,31 +257,19 @@ export default function SellerStreamingSetupPage() {
               <p className="text-[11px] text-gray-500">📱 모바일 Prism 앱도 동일하게 같은 키 사용 가능 (PC/모바일 모두).</p>
             </div>
 
-            {/* 모바일 (Larix) */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
+            {/* PC: 폰으로 이어서 송출 — QR */}
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-2">
               <div className="flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-pink-600" />
-                <p className="text-sm font-bold text-gray-900">📱 Larix Broadcaster (모바일 전용, QR 자동 입력)</p>
+                <Smartphone className="w-4 h-4 text-gray-500" />
+                <p className="text-xs font-bold text-gray-700">📱 폰으로 이어서 송출하려면 — Larix QR</p>
               </div>
-              <ol className="text-xs text-gray-700 space-y-1.5 pl-4 list-decimal">
-                <li>App Store / Play Store 에서 "<strong>Larix Broadcaster</strong>" 검색 → 무료 설치</li>
-                <li>아래 QR 을 폰 카메라로 스캔 (또는 폰에서 이 페이지 열고 자동 입력 버튼)</li>
-                <li>Larix 가 자동으로 RTMP 설정 입력 → 빨간 버튼만 누르면 송출</li>
-              </ol>
-              <div className="flex gap-4 items-center justify-center pt-2">
-                <div className="bg-white p-3 rounded-xl border border-gray-200">
-                  <QRCode value={larixDeepLink} size={140} level="M" />
+              <div className="flex gap-3 items-center">
+                <div className="bg-white p-2 rounded-lg border border-gray-200">
+                  <QRCode value={larixDeepLink} size={100} level="M" />
                 </div>
-                <div className="text-xs text-gray-600 max-w-xs">
-                  <p className="font-semibold mb-1">QR 스캔 후 "Larix 로 열기"</p>
-                  <p className="text-gray-500">설치 안 되어있으면 앱스토어로 이동.</p>
-                  <a
-                    href={larixDeepLink}
-                    className="inline-flex items-center gap-1 mt-2 text-pink-600 hover:text-pink-700 font-medium"
-                  >
-                    <ExternalLink className="w-3 h-3" /> 이 폰에서 Larix 자동 입력
-                  </a>
-                </div>
+                <p className="text-[11px] text-gray-500 flex-1">
+                  폰으로 QR 스캔하면 Larix 가 자동으로 RTMP 설정 입력. PC 송출 대신 폰으로 송출 가능.
+                </p>
               </div>
             </div>
 
@@ -251,6 +309,8 @@ export default function SellerStreamingSetupPage() {
               </ol>
               <p className="text-[11px] text-gray-500">💡 Studio 는 영상 인코딩을 직접 하지 않습니다. 결국 OBS/Prism 같은 외부 인코더 필요.</p>
             </div>
+              </>
+            )}
 
             {/* 다음 단계 안내 */}
             <div className="bg-green-50 border border-green-200 rounded-2xl p-5 space-y-2">
