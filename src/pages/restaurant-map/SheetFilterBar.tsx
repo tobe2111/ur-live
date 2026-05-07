@@ -78,7 +78,7 @@ export default function SheetFilterBar({
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
               nearMeMode
                 ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-                : 'bg-pink-50 text-pink-600 border border-pink-200'
+                : 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-900/40'
             }`}
           >
             <Navigation className="w-3 h-3" />

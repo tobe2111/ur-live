@@ -22,7 +22,7 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
           {selected.image_url ? (
             <img src={selected.image_url} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
           ) : (
-            <div className="w-16 h-16 rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
+            <div className="w-16 h-16 rounded-xl bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center shrink-0">
               <span className="text-xl">🍽️</span>
             </div>
           )}
