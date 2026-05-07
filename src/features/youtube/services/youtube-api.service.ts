@@ -354,6 +354,11 @@ export class YouTubeAPIService {
     scheduledStartTime: string = new Date().toISOString(),
     privacyStatus: 'public' | 'unlisted' | 'private' = 'public'
   ): Promise<YouTubeLiveSetup> {
+    // 🛡️ 2026-05-07: persistent stream 에 묶여있는 이전 broadcast 가 'ready'/'live' 상태로
+    //   남아있으면 YouTube 가 "스트림 키가 이미 할당됨" 에러를 노출. 새 broadcast 바인딩
+    //   전에 stale broadcast 들을 모두 complete 로 전환.
+    await this.endActiveBroadcastsForStream(accessToken, persistentStreamId)
+
     // Create broadcast only (no new stream)
     const broadcast = await this.createBroadcast(
       accessToken,
@@ -376,6 +381,49 @@ export class YouTubeAPIService {
       rtmpKey: stream.ingestionInfo.streamName,
       youtubeUrl: `https://www.youtube.com/watch?v=${broadcast.id}`,
       embedUrl: `https://www.youtube.com/embed/${broadcast.id}?autoplay=1`
+    }
+  }
+
+  /**
+   * End any active/upcoming broadcasts bound to a persistent stream.
+   * YouTube allows only one broadcast per stream key at a time.
+   */
+  async endActiveBroadcastsForStream(
+    accessToken: string,
+    persistentStreamId: string
+  ): Promise<void> {
+    // YouTube API 는 단일 status 만 받음 — 두 번 호출
+    const statusesToCheck: Array<'active' | 'upcoming'> = ['active', 'upcoming']
+    for (const status of statusesToCheck) {
+      try {
+        const res = await fetch(
+          `${YOUTUBE_API_BASE}/liveBroadcasts?part=id,contentDetails,status&broadcastStatus=${status}&maxResults=20&mine=true`,
+          {
+            headers: { 'Authorization': `Bearer ${accessToken}` },
+            signal: AbortSignal.timeout(15000)
+          }
+        )
+        if (!res.ok) continue
+        const data = await res.json() as {
+          items?: Array<{
+            id: string
+            contentDetails?: { boundStreamId?: string }
+            status?: { lifeCycleStatus?: string }
+          }>
+        }
+        for (const item of data.items ?? []) {
+          if (item.contentDetails?.boundStreamId !== persistentStreamId) continue
+          const lifecycle = item.status?.lifeCycleStatus
+          if (lifecycle === 'complete' || lifecycle === 'revoked') continue
+          try {
+            await this.endBroadcast(accessToken, item.id)
+          } catch {
+            // 'live' 가 아니라 transition 실패 가능 — 무시 (다음 단계에서 bind 가 재시도)
+          }
+        }
+      } catch {
+        // 네트워크/권한 오류 — fail-open (기존 동작 유지)
+      }
     }
   }
 
