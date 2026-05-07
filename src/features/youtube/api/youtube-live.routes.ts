@@ -1065,4 +1065,73 @@ app.get('/live/:id/chat', async (c) => {
   }
 })
 
+/**
+ * GET /api/seller/youtube/live-readiness
+ * 🛡️ 2026-05-07: 방송 시작 전 사전 진단 — OAuth 상태 + 라이브 권한 활성 여부.
+ *
+ * 셀러가 시도하기 전에 어디서 막힐지 미리 알려줌:
+ *   - oauth: 'missing' | 'expired' | 'connected'
+ *   - live_permission: 'ok' | 'needs_verification' | 'unknown'
+ *
+ * needs_verification = YouTube 첫 라이브 시 24시간 phone verification 미완.
+ *   해결: https://youtube.com/features 에서 라이브 스트리밍 활성화 → 24시간 대기.
+ */
+app.get('/live-readiness', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+  if (!clientId || !clientSecret) {
+    return c.json({ success: true, data: { oauth: 'missing', live_permission: 'unknown', reason: 'YouTube API not configured' } })
+  }
+
+  const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+  const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+
+  if (!accessToken) {
+    // OAuth 한 번도 안 했거나 refresh token 도 만료
+    const auth = await c.env.DB.prepare(
+      'SELECT id FROM seller_youtube_oauth WHERE seller_id = ? AND is_active = 1 LIMIT 1'
+    ).bind(sellerId).first()
+    return c.json({
+      success: true,
+      data: {
+        oauth: auth ? 'expired' : 'missing',
+        live_permission: 'unknown',
+        action_url: '/seller/youtube',
+      },
+    })
+  }
+
+  // OAuth OK → liveBroadcasts.list dry-run 으로 라이브 권한 확인.
+  // 200 = 권한 있음 (results 비어 있어도 OK), 403 = 24h verification 필요.
+  try {
+    const res = await fetch(
+      'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id&mine=true&maxResults=1',
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    if (res.ok) {
+      return c.json({ success: true, data: { oauth: 'connected', live_permission: 'ok' } })
+    }
+    if (res.status === 403) {
+      const body = await res.json().catch(() => ({})) as { error?: { message?: string; errors?: Array<{ reason?: string }> } }
+      const reason = body.error?.errors?.[0]?.reason || body.error?.message || ''
+      const needsVerification = /livestream|liveStreamingNotEnabled|live.*not.*enabled/i.test(reason)
+      return c.json({
+        success: true,
+        data: {
+          oauth: 'connected',
+          live_permission: needsVerification ? 'needs_verification' : 'unknown',
+          reason,
+          action_url: needsVerification ? 'https://youtube.com/features' : null,
+        },
+      })
+    }
+    return c.json({ success: true, data: { oauth: 'connected', live_permission: 'unknown', reason: `HTTP ${res.status}` } })
+  } catch (err) {
+    return c.json({ success: true, data: { oauth: 'connected', live_permission: 'unknown', reason: (err as Error).message } })
+  }
+})
+
 export { app as youtubeLiveRoutes }

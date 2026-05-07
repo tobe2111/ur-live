@@ -96,6 +96,39 @@ export default function BroadcastPreflightCheck({ method, onAllChecked }: Props)
       })
     }
 
+    // 🛡️ 2026-05-07: 6-7. YouTube 연동 + 라이브 권한 사전 점검 (가장 자주 막히는 지점).
+    //   셀러가 OBS/Prism 켜기 전에 OAuth 만료/24h 인증 미완 등을 미리 알려줌.
+    try {
+      const { default: api } = await import('@/lib/api')
+      const res = await api.get('/api/seller/youtube/live-readiness')
+      const d = res.data?.data
+      if (d) {
+        const oauthOk = d.oauth === 'connected'
+        items.push({
+          key: 'youtube-oauth',
+          label: 'YouTube 연동',
+          status: oauthOk ? 'pass' : 'fail',
+          detail: oauthOk
+            ? '연동 완료'
+            : d.oauth === 'expired'
+              ? '토큰 만료 — /seller/youtube 에서 재연동'
+              : '연동 안 됨 — /seller/youtube 에서 연동',
+        })
+        items.push({
+          key: 'youtube-live-permission',
+          label: 'YouTube 라이브 권한',
+          status: d.live_permission === 'ok' ? 'pass' : d.live_permission === 'needs_verification' ? 'fail' : 'warn',
+          detail: d.live_permission === 'ok'
+            ? '활성'
+            : d.live_permission === 'needs_verification'
+              ? '24시간 인증 필요 — youtube.com/features 에서 활성화 후 24h 대기'
+              : (d.reason || '확인 불가'),
+        })
+      }
+    } catch {
+      items.push({ key: 'youtube-oauth', label: 'YouTube 연동', status: 'warn', detail: '확인 불가' })
+    }
+
     setResults(items)
     setRunning(false)
     const allPass = items.every(i => i.status === 'pass')
