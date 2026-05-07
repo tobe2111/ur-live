@@ -220,7 +220,7 @@ export default function ShortsPage() {
         <Play className="w-12 h-12 text-gray-500 mb-3" />
         <p className="text-lg font-bold">{t('shorts.empty')}</p>
         <p className="text-sm text-gray-500 mt-1">{t('shorts.emptySub')}</p>
-        <button onClick={() => navigate('/')} className="mt-4 px-5 py-2 bg-white/10 rounded-full text-sm">홈으로</button>
+        <button onClick={() => navigate('/')} className="mt-4 px-5 py-2 bg-white/10 rounded-full text-sm">{t('shortsPage.home', { defaultValue: '홈으로' })}</button>
       </div>
     )
   }
@@ -297,7 +297,7 @@ export default function ShortsPage() {
                   </div>
                   <div className="text-left">
                     <p className="text-white text-[12px] font-bold leading-tight">{item.seller_name || t('shortsPage.fallbackSeller')}</p>
-                    <p className="text-white/60 text-[10px] leading-tight">{item.view_count || 0} 조회</p>
+                    <p className="text-white/60 text-[10px] leading-tight">{t('shortsPage.viewCount', { defaultValue: '{{count}} 조회', count: item.view_count || 0 })}</p>
                   </div>
                 </button>
 
@@ -307,7 +307,7 @@ export default function ShortsPage() {
                     onClick={() => item.seller_id ? navigate(`/s/${item.seller_id}`) : toast.info(t('common.comingSoon'))}
                     className="px-3.5 py-1.5 bg-white rounded-full text-[11px] font-bold text-gray-900 active:scale-95 transition-transform"
                   >
-                    팔로우
+                    {t('shortsPage.follow', { defaultValue: '팔로우' })}
                   </button>
                   <button onClick={() => setMuted(!muted)} aria-label={muted ? t('shortsPage.ariaUnmute') : t('shortsPage.ariaMute')} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
@@ -359,7 +359,7 @@ export default function ShortsPage() {
                   <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     <MessageCircle className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-[10px] text-white font-medium">댓글</span>
+                  <span className="text-[10px] text-white font-medium">{t('shortsPage.comment', { defaultValue: '댓글' })}</span>
                 </button>
 
                 {/* Share (Kakao) */}
@@ -376,7 +376,7 @@ export default function ShortsPage() {
                   <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     <Bookmark className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-[10px] text-white font-medium">저장</span>
+                  <span className="text-[10px] text-white font-medium">{t('shortsPage.save', { defaultValue: '저장' })}</span>
                 </button>
               </div>
 
@@ -394,7 +394,7 @@ export default function ShortsPage() {
                     </div>
                     <span className="text-xs text-white/80 flex-1 text-left">{t('shorts.toLive')}</span>
                     {item.viewer_count != null && item.viewer_count > 0 && (
-                      <span className="text-[10px] text-white/70">{item.viewer_count}명 시청</span>
+                      <span className="text-[10px] text-white/70">{t('shortsPage.viewersWatching', { defaultValue: '{{count}}명 시청', count: item.viewer_count })}</span>
                     )}
                   </button>
                 )}
@@ -422,7 +422,7 @@ export default function ShortsPage() {
                     onClick={() => item.live_stream_id && navigate(`/live/${item.live_stream_id}`)}
                     className="mt-2 text-xs text-red-400 font-medium"
                   >
-                    라이브 다시보기로 이동 →
+                    {t('shortsPage.toReplay', { defaultValue: '라이브 다시보기로 이동 →' })}
                   </button>
                 )}
               </div>
@@ -469,7 +469,7 @@ export default function ShortsPage() {
                         <div className="flex items-baseline gap-1">
                           {discountRate > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>{discountRate}%</span>}
                           <span style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{formatNumber(finalPrice)}</span>
-                          <span style={{ fontSize: 11, color: '#6B7280' }}>원</span>
+                          <span style={{ fontSize: 11, color: '#6B7280' }}>{t('common.currencyWon', { defaultValue: '원' })}</span>
                         </div>
                       </div>
                     </div>
@@ -489,7 +489,7 @@ export default function ShortsPage() {
                         aria-label={t('shortsPage.ariaWishlist')}
                       >
                         <Heart style={{ width: 16, height: 16, color: '#6B7280' }} />
-                        <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>찜하기</span>
+                        <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>{t('shortsPage.wishItem', { defaultValue: '찜하기' })}</span>
                       </button>
                       <button
                         onClick={(e) => {
@@ -507,7 +507,7 @@ export default function ShortsPage() {
                         aria-label={t('shortsPage.ariaAddCart')}
                       >
                         <ShoppingCart style={{ width: 16, height: 16, color: '#6B7280' }} />
-                        <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>장바구니</span>
+                        <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>{t('shortsPage.cart', { defaultValue: '장바구니' })}</span>
                       </button>
                       <button
                         onClick={(e) => {
@@ -518,8 +518,8 @@ export default function ShortsPage() {
                         style={boutiqueCTA}
                         aria-label={t('shortsPage.ariaBuyNow')}
                       >
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>바로구매</span>
-                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>무료배송</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>{t('shortsPage.buyNow', { defaultValue: '바로구매' })}</span>
+                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>{t('shortsPage.freeShipping', { defaultValue: '무료배송' })}</span>
                       </button>
                     </div>
                   </div>

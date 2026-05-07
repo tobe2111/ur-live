@@ -255,7 +255,7 @@ export default function MainHomePage() {
               if (link.startsWith('/') && !link.startsWith('//')) navigate(link)
               else if (link.startsWith('http://') || link.startsWith('https://')) window.open(link, '_blank', 'noopener,noreferrer')
             }}
-            aria-label={`배너: ${heroBanner.title}`}
+            aria-label={t('mainHome.bannerAria', { defaultValue: '배너: {{title}}', title: heroBanner.title })}
             className="absolute inset-0 z-0 cursor-pointer"
           />
         )}
@@ -278,7 +278,7 @@ export default function MainHomePage() {
           {featured && (
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-[12px] font-extrabold text-red-400">{featuredDisc}%</span>
-              <span className="text-[18px] font-black text-white">{formatNumber(featured.price)}원</span>
+              <span className="text-[18px] font-black text-white">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(featured.price) })}</span>
               {featured.original_price && <span className="text-[10px] text-white/55 line-through">{formatNumber(featured.original_price)}</span>}
             </div>
           )}
@@ -389,7 +389,7 @@ export default function MainHomePage() {
                   <p className="text-[12px] text-gray-900 dark:text-white font-bold leading-tight line-clamp-2">{m.name}</p>
                   <div className="flex items-baseline gap-1 mt-1">
                     {d > 0 && <span className="text-[11px] font-extrabold text-red-400">{d}%</span>}
-                    <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{formatNumber(m.price)}원</span>
+                    <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(m.price) })}</span>
                   </div>
                   {current > 0 && (
                     <p className="text-[10px] mt-1.5 text-gray-500 dark:text-gray-400">
@@ -444,7 +444,7 @@ export default function MainHomePage() {
                   </div>
                   {s.current_product && (
                     <div className="flex items-baseline gap-1 mt-2 px-0.5">
-                      <span className="text-[13px] font-extrabold text-red-400">{formatNumber(s.current_product.price)}원</span>
+                      <span className="text-[13px] font-extrabold text-red-400">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(s.current_product.price) })}</span>
                     </div>
                   )}
                 </button>
@@ -559,7 +559,7 @@ export default function MainHomePage() {
                     </div>
                     <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
                     <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">
-                      {d > 0 && <span className="text-red-500 dark:text-red-400 mr-1">{d}%</span>}{formatNumber(p.price)}원
+                      {d > 0 && <span className="text-red-500 dark:text-red-400 mr-1">{d}%</span>}{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(p.price) })}
                     </p>
                   </button>
                 )
