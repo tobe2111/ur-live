@@ -75,10 +75,12 @@ export default function StepInfo({ title, setTitle, description, setDescription,
     { key: 'unlisted', icon: EyeOff, label: t('seller.liveBroadcast.unlisted'), desc: t('seller.liveBroadcast.unlistedDesc') },
     { key: 'private', icon: Lock, label: t('seller.liveBroadcast.private'), desc: t('seller.liveBroadcast.privateDesc') },
   ]
+  // 🛡️ 2026-05-07: YouTube Studio 웹캠 모드 제거.
+  //   - 24h 인증/모바일 차단/팝업/채널 매칭 등 변수가 너무 많아 검증 실패율 높음.
+  //   - 백엔드 (`/create-webcam`, `/detect-webcam`, `/link-broadcast`) 는 유지하되 UI 노출만 제거.
+  //   셀러는 Prism (모바일) / OBS / YouTube Studio + 외부 인코더 중 선택.
   const methodOptions = [
     { key: 'prism' as const, icon: Smartphone, label: t('seller.liveBroadcast.naverPrism', { defaultValue: 'Prism Mobile' }), desc: t('seller.liveBroadcast.prismDesc', { defaultValue: '핸드폰 1대로 끝 · QR 1번 스캔' }), active: 'border-green-400 bg-green-50', iconActive: 'text-green-600', hasKey: !!hasPersistentKey, recommended: true },
-    { key: 'youtube-webcam' as const, icon: Youtube, label: 'YouTube Studio (웹캠)', desc: 'OBS 없이 브라우저 웹캠으로 바로 · 가장 간편', active: 'border-red-400 bg-red-50', iconActive: 'text-red-600', hasKey: false, recommended: false },
-    // 🛡️ 2026-05-07: OBS = 자동 연결 + 수동 fallback 통합. Quick 옵션은 메뉴에서 제거 (legacy 값 'quick' 은 storage 에서 'obs' 로 매핑).
     { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.obsDesc', { defaultValue: 'PC + OBS · 자동 연결 시 원클릭 송출' }), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600', hasKey: !!hasPersistentKey, recommended: false },
     { key: 'youtube' as const, icon: Youtube, label: 'YouTube Studio (OBS 인코더)', desc: 'OBS + 다중 채널 관리 · 전문가용', active: 'border-orange-400 bg-orange-50', iconActive: 'text-orange-600', hasKey: false, recommended: false },
   ]

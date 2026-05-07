@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { safeTime } from '@/utils/safe-date'
-import { ScheduledBroadcastWaiting, YouTubeStudioWaiting, YouTubeWebcamWaiting } from '../SellerLiveBroadcast.WaitingScreens'
+import { ScheduledBroadcastWaiting, YouTubeStudioWaiting } from '../SellerLiveBroadcast.WaitingScreens'
 import OBSRemoteControl from '../SellerLiveBroadcast.OBSRemoteControl'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
 import { InlineCameraPreview } from '@/components/streaming/InlineCameraPreview'
@@ -58,14 +58,6 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
       {/* 🛡️ 2026-05-07: Quick 과 YouTube Studio 분리 */}
       {method === 'quick' && (
         <QuickStartWaiting stream={stream} />
-      )}
-
-      {method === 'youtube-webcam' && (
-        <YouTubeWebcamWaiting
-          stream={stream}
-          onGoLive={onGoLive}
-          channelId={channels.find((ch: YouTubeChannel) => ch.is_active)?.channel_id}
-        />
       )}
 
       {method === 'youtube' && (

@@ -21,7 +21,7 @@ interface Check {
 
 interface Props {
   streamId: number
-  method: 'obs' | 'prism' | 'youtube' | 'youtube-webcam' | 'quick'
+  method: 'obs' | 'prism' | 'youtube' | 'quick'
   onClose: () => void
 }
 

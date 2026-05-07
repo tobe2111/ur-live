@@ -18,7 +18,7 @@ interface CheckResult {
 }
 
 interface Props {
-  method: 'quick' | 'youtube' | 'youtube-webcam' | 'obs' | 'prism'
+  method: 'quick' | 'youtube' | 'obs' | 'prism'
   onAllChecked?: (allPass: boolean) => void
 }
 

@@ -192,11 +192,8 @@ export default function SellerLiveBroadcastPage() {
 
   // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링
   // 적응형: 초반 2분은 5s, 이후 15s (YouTube API quota 절감)
-  // 🛡️ 2026-05-07: youtube-webcam 모드는 /detect-webcam 이 별도 폴링하므로 /status 스킵
-  //   (broadcast_id 가 null 이라 YouTube API 호출 불가 + 중복 폴링 방지)
   useEffect(() => {
     if (step !== 'setup' || !currentStream || transitionCountdown !== null) return
-    if (method === 'youtube-webcam') return
     const startedAt = Date.now()
     const poll = async () => {
       try {
@@ -336,11 +333,7 @@ export default function SellerLiveBroadcastPage() {
         scheduledStartTime = d.toISOString()
       }
 
-      const endpoint = method === 'youtube-webcam'
-        ? '/api/seller/youtube/live/create-webcam'
-        : '/api/seller/youtube/live/create'
-
-      const res = await api.post(endpoint, {
+      const res = await api.post('/api/seller/youtube/live/create', {
         title: effectiveTitle.trim(), description: description.trim(),
         thumbnail_url: thumbnailUrl.trim() || undefined,
         product_ids: effectiveProducts,
