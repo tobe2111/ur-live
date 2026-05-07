@@ -11,6 +11,7 @@
 import type { Env } from '../types/env';
 import { sendDiscordAlert } from '../utils/discord-alert';
 import { ensureUserPointsTable } from '../utils/ensure-tables';
+import { reportCronFailure } from '../utils/cron-reporter';
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
 
@@ -94,7 +95,9 @@ export async function handleAutoSettlement(env: Env) {
       } catch (sellerErr) {
         failedSellers++;
         failedSellerIds.push(sellerId);
-        console.error(`[Cron] Settlement failed for seller ${sellerId}:`, sellerErr);
+        // 🛡️ 2026-05-07: 정산 실패는 critical (돈 이슈) — admin 대시보드 알림 + 영구 기록
+        await reportCronFailure(env, 'auto-settlement', sellerErr,
+          { sellerId, voucherCount: vouchers.length }, 'critical')
         // 다음 셀러 계속 진행
       }
     }

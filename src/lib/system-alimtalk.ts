@@ -47,8 +47,35 @@ export async function sendSystemAlimtalk(
         message,
       }
     );
+
+    // 🛡️ 2026-05-07: 발송 실패 시 retry queue 에 영구 기록 — cron 이 재시도.
+    //   원인: silent fail 시 critical 알림 (정산/주문/선물) 사용자에게 영원히 안 감.
+    //   처리: alimtalk_failures 테이블 INSERT → retry-alimtalk cron 이 5분 주기로 retry (최대 3회).
+    if (!result.success) {
+      const db = (e as Record<string, D1Database | undefined>).DB;
+      if (db) {
+        try {
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS alimtalk_failures (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              phone TEXT NOT NULL, template_code TEXT NOT NULL, message TEXT NOT NULL,
+              error TEXT, retry_count INTEGER DEFAULT 0, max_retries INTEGER DEFAULT 3,
+              next_retry_at DATETIME DEFAULT (datetime('now', '+5 minutes')),
+              resolved INTEGER DEFAULT 0,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+          await db.prepare(`
+            INSERT INTO alimtalk_failures (phone, template_code, message, error)
+            VALUES (?, ?, ?, ?)
+          `).bind(cleaned, templateCode, message.slice(0, 1000), result.error?.slice(0, 500) || 'unknown').run();
+        } catch { /* 큐 INSERT 실패해도 원본 결과 반환 */ }
+      }
+    }
+
     return result;
-  } catch (e) {
-    return { success: false, error: (e as Error).message };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
   }
 }
