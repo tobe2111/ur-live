@@ -186,7 +186,8 @@
     "imageUploadFailed": "Error al subir imagen.",
     "unitMan": "",
     "kakaoConsult": "Soporte KakaoTalk",
-    "share": "Compartir"
+    "share": "Compartir",
+    "currencyWon": "KRW"
   },
   "seller": {
     "dashboard": "Panel",
@@ -3679,7 +3680,18 @@
     "loginRequired": "Inicio de sesión requerido",
     "ariaWishlist": "Añadir a la lista",
     "ariaAddCart": "Añadir al carrito",
-    "ariaBuyNow": "Comprar ahora"
+    "ariaBuyNow": "Comprar ahora",
+    "home": "Inicio",
+    "follow": "Seguir",
+    "comment": "Comentar",
+    "save": "Guardar",
+    "viewCount": "{{count}} vistas",
+    "viewersWatching": "{{count}} viendo",
+    "toReplay": "Ver repetición en vivo →",
+    "wishItem": "Favorito",
+    "cart": "Carrito",
+    "buyNow": "Comprar ahora",
+    "freeShipping": "Envío gratis"
   },
   "couponClaim": {
     "noCode": "Falta el código del cupón",
@@ -3774,7 +3786,10 @@
     "recommendTitle": "Recomendados",
     "buyNow": "Comprar",
     "regionPickerAria": "Elegir región",
-    "regionPickerTitle": "Elegir región"
+    "regionPickerTitle": "Elegir región",
+    "bannerAria": "Banner: {{title}}",
+    "priceWon": "{{price}} KRW",
+    "ratingSold": "★ {{rating}} · {{n}} vendidos"
   },
   "browse": {
     "title": "Comprar",

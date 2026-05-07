@@ -186,7 +186,8 @@
     "imageUploadFailed": "图片上传失败。",
     "unitMan": "万",
     "kakaoConsult": "KakaoTalk客服",
-    "share": "分享"
+    "share": "分享",
+    "currencyWon": "韩元"
   },
   "auth": {
     "email": "邮箱",
@@ -510,7 +511,18 @@
     "loginRequired": "需要登录",
     "ariaWishlist": "收藏",
     "ariaAddCart": "加入购物车",
-    "ariaBuyNow": "立即购买"
+    "ariaBuyNow": "立即购买",
+    "home": "返回首页",
+    "follow": "关注",
+    "comment": "评论",
+    "save": "保存",
+    "viewCount": "{{count}} 次观看",
+    "viewersWatching": "{{count}} 人观看中",
+    "toReplay": "查看直播回放 →",
+    "wishItem": "收藏",
+    "cart": "购物车",
+    "buyNow": "立即购买",
+    "freeShipping": "免运费"
   },
   "couponClaim": {
     "noCode": "缺少优惠券代码",
@@ -605,7 +617,10 @@
     "recommendTitle": "推荐商品",
     "buyNow": "立即购买",
     "regionPickerAria": "选择地区",
-    "regionPickerTitle": "选择地区"
+    "regionPickerTitle": "选择地区",
+    "bannerAria": "横幅: {{title}}",
+    "priceWon": "{{price}} 韩元",
+    "ratingSold": "★ {{rating}} · {{n}} 已售"
   },
   "browse": {
     "title": "购物",

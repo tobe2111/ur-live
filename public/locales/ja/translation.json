@@ -186,7 +186,8 @@
     "imageUploadFailed": "画像のアップロードに失敗しました。",
     "unitMan": "万",
     "kakaoConsult": "カカオトークサポート",
-    "share": "シェア"
+    "share": "シェア",
+    "currencyWon": "ウォン"
   },
   "auth": {
     "email": "メールアドレス",
@@ -510,7 +511,18 @@
     "loginRequired": "ログインが必要です",
     "ariaWishlist": "お気に入り",
     "ariaAddCart": "カートに追加",
-    "ariaBuyNow": "今すぐ購入"
+    "ariaBuyNow": "今すぐ購入",
+    "home": "ホームへ",
+    "follow": "フォロー",
+    "comment": "コメント",
+    "save": "保存",
+    "viewCount": "{{count}}回視聴",
+    "viewersWatching": "{{count}}人が視聴中",
+    "toReplay": "ライブ録画を見る →",
+    "wishItem": "お気に入り",
+    "cart": "カート",
+    "buyNow": "今すぐ購入",
+    "freeShipping": "送料無料"
   },
   "couponClaim": {
     "noCode": "クーポンコードがありません",
@@ -605,7 +617,10 @@
     "recommendTitle": "おすすめ商品",
     "buyNow": "購入する",
     "regionPickerAria": "地域選択",
-    "regionPickerTitle": "地域選択"
+    "regionPickerTitle": "地域選択",
+    "bannerAria": "バナー: {{title}}",
+    "priceWon": "{{price}}ウォン",
+    "ratingSold": "★ {{rating}} · {{n}}件購入"
   },
   "browse": {
     "title": "ショッピング",

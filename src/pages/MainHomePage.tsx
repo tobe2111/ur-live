@@ -583,14 +583,14 @@ export default function MainHomePage() {
                     </div>
                     <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
                     {p.original_price && p.original_price > p.price && (
-                      <p className="text-[10px] text-gray-500 dark:text-gray-600 line-through mt-0.5">{formatNumber(p.original_price)}원</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-600 line-through mt-0.5">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(p.original_price) })}</p>
                     )}
                     <div className="flex items-baseline gap-1 mt-0.5">
                       {d > 0 && <span className="text-[12px] font-extrabold text-red-500">{d}%</span>}
-                      <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}원</span>
+                      <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(p.price) })}</span>
                     </div>
                     {(p.avg_rating || p.sold_count) && (
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">★ {(p.avg_rating || 4.5).toFixed(1)} · {formatNumber(p.sold_count || 0)} 구매</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.ratingSold', { rating: (p.avg_rating || 4.5).toFixed(1), n: formatNumber(p.sold_count || 0), defaultValue: '★ {{rating}} · {{n}} 구매' as string })}</p>
                     )}
                   </button>
                 )
