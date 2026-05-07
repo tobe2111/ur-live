@@ -95,25 +95,70 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
     setLarixStatus(ok ? 'idle' : 'failed')
   }
 
-  // 🛡️ 2026-05-07: PC 사용자에게 OBS 모드 권장 (Prism 은 모바일 전용)
+  // PC: Prism 데스크톱 앱 + RTMP 자격증명 안내
   if (!isMobile) {
     return (
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 space-y-3">
-        <div className="flex items-start gap-3">
-          <Smartphone className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm font-bold text-amber-900">PC 에서 Prism 모드를 선택하셨네요</p>
-            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-              Prism Mobile 은 핸드폰 전용 앱이에요. PC 라면 <b>"OBS Studio"</b> 모드를 추천드립니다 (화질 + 안정성 모두 우수).
-            </p>
+      <div className="space-y-4">
+        {/* Prism 데스크톱 다운로드 */}
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <Smartphone className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-indigo-900">Prism Live Studio (PC)</p>
+              <p className="text-xs text-indigo-700 mt-0.5">무료 방송 송출 소프트웨어 · Windows / macOS</p>
+            </div>
+            <a href="https://prismlive.com/ko_kr/pcapp/" target="_blank" rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">
+              <ExternalLink className="w-3 h-3" /> 다운로드
+            </a>
+          </div>
+          <ol className="space-y-1.5 pl-1">
+            {[
+              'Prism Live Studio 설치 후 실행',
+              '"라이브" → "방송 채널 추가" → "Custom RTMP" 선택',
+              '아래 RTMP URL과 Stream Key 붙여넣기',
+              '"방송 시작" 클릭',
+            ].map((step, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="shrink-0 w-4 h-4 rounded-full bg-indigo-500 text-white text-[9px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                <span className="text-xs text-indigo-800">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* RTMP 자격증명 */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-700">RTMP 접속 정보</p>
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 mb-1">RTMP URL</label>
+            <div className="flex gap-2">
+              <input type="text" value={rtmpUrl} readOnly
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 font-mono" />
+              <Button size="sm" variant="outline" onClick={() => copyToClipboard(rtmpUrl, 'url')}>
+                {copied === 'url' ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 mb-1">Stream Key</label>
+            <div className="flex gap-2">
+              <input type="password" value={rtmpKey} readOnly
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 font-mono" />
+              <Button size="sm" variant="outline" onClick={() => copyToClipboard(rtmpKey, 'key')}>
+                {copied === 'key' ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg p-3 space-y-2">
-          <p className="text-xs font-semibold text-gray-700">📱 핸드폰으로 진행하려면 — QR 스캔</p>
+
+        {/* 핸드폰으로 이어하기 QR */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+          <p className="text-xs font-semibold text-gray-700">📱 핸드폰 카메라로 진행하려면</p>
           <div className="flex justify-center">
-            <QRCode value={typeof window !== 'undefined' ? window.location.href : ''} size={140} level="M" includeMargin={true} />
+            <QRCode value={typeof window !== 'undefined' ? window.location.href : ''} size={120} level="M" includeMargin />
           </div>
-          <p className="text-[10px] text-center text-gray-500">핸드폰으로 위 QR 스캔 → 같은 페이지를 모바일에서 진행</p>
+          <p className="text-[10px] text-center text-gray-500">QR 스캔 → 모바일에서 같은 페이지 → Prism 앱 자동 연결</p>
         </div>
       </div>
     )

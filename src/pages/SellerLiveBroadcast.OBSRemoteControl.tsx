@@ -44,6 +44,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
   copiedField: string | null; onCopy: (v: string, k: string) => void
 }) {
   const { t } = useTranslation()
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)
   const clientRef = useRef<OBSWebSocketClient | null>(null)
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
@@ -119,6 +120,60 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
     } finally {
       setStarting(false)
     }
+  }
+
+  // ── 모바일: OBS WebSocket 불필요 — Larix/Streamlabs RTMP 안내
+  if (isMobile) {
+    const fullRtmpUrl = stream.rtmp_url && stream.rtmp_key
+      ? (stream.rtmp_url.endsWith('/') ? `${stream.rtmp_url}${stream.rtmp_key}` : `${stream.rtmp_url}/${stream.rtmp_key}`)
+      : ''
+    const larixLink = fullRtmpUrl
+      ? `larix://set/?name=${encodeURIComponent(stream.title || 'UR Live')}&url=${encodeURIComponent(fullRtmpUrl)}&mode=audio%2Bvideo`
+      : ''
+
+    return (
+      <div className="space-y-4">
+        {/* Larix 딥링크 — 공식 URL scheme, RTMP 자동 입력 */}
+        {larixLink && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <span className="text-xl shrink-0">🚀</span>
+              <div>
+                <p className="text-sm font-bold text-indigo-900">Larix Broadcaster (권장)</p>
+                <p className="text-xs text-indigo-700 mt-0.5">무료 RTMP 앱 · RTMP 자동 입력 지원</p>
+              </div>
+            </div>
+            <a href={larixLink}
+              className="block w-full text-center py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg">
+              Larix 앱으로 자동 연결
+            </a>
+            <p className="text-[10px] text-indigo-600">앱 없으면 App Store / Play Store 에서 "Larix Broadcaster" 검색</p>
+          </div>
+        )}
+
+        {/* RTMP 수동 복사 */}
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
+          <p className="text-xs font-semibold text-purple-800">또는 RTMP 직접 입력 (Streamlabs, Prism 등)</p>
+          {stream.rtmp_url && (
+            <button onClick={() => onCopy(`URL: ${stream.rtmp_url}\nKey: ${stream.rtmp_key}`, 'all')}
+              className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2">
+              {copiedField === 'all' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedField === 'all' ? '복사됨!' : 'RTMP URL + Key 복사'}
+            </button>
+          )}
+          <RtmpBlock label="RTMP URL" value={stream.rtmp_url || ''} fieldKey="rtmp_url" copiedField={copiedField} onCopy={onCopy} />
+          {stream.rtmp_key && <RtmpBlock label="Stream Key" value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
+        </div>
+
+        {/* Prism 모드 권장 */}
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
+          <span className="text-base shrink-0">💡</span>
+          <p className="text-xs text-green-800">
+            <b>핸드폰 카메라로 방송</b>하려면 <b>"Prism Mobile"</b> 모드가 더 편해요 — QR 1번 스캔으로 자동 연결됩니다.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   // ── 미연결: 연결 UI OR 기존 RTMP 복사 fallback ─────────────────

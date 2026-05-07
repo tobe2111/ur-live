@@ -11,7 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { safeDate, safeTime } from '@/utils/safe-date'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, CheckCircle2, Youtube, Camera, Monitor } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Youtube, Camera } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { OBSWebSocketClient, loadOBSConfig, hasOBSExtension } from '@/lib/obs-websocket'
 import { ShareLiveLink } from './SellerLiveBroadcast.parts'
@@ -298,105 +298,73 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
 
 // ─────────────────────────────────────────────────────────────────────────────
 // YouTubeWebcamWaiting — OBS 없이 YouTube Studio 웹캠으로 라이브
-// 셀러가 YouTube Studio 에서 직접 웹캠으로 라이브 시작 → Extension 이 broadcast ID 감지 → 자동 연결
+//
+// 플로우: YouTube API 로 방송 생성(video_id 확보) → Studio URL 직접 오픈
+//   PC:      팝업 창으로 studio.youtube.com/video/{id}/livestreaming 열기
+//   모바일:  같은 URL 을 새 탭으로 → YouTube Studio 앱 설치 시 앱으로 딥링크됨
+//   감지:    /status API 폴링 (15s) → youtube_status === 'live' 시 자동 전환
+//   Extension 불필요 — video_id 는 생성 시점에 이미 확보됨
 // ─────────────────────────────────────────────────────────────────────────────
 export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamLite; onGoLive: () => void }) {
   const popupRef = useRef<Window | null>(null)
   const openedRef = useRef(false)
-  const linkedRef = useRef(false)
-  const [phase, setPhase] = useState<'waiting' | 'linked' | 'noext'>('waiting')
-  const [showManual, setShowManual] = useState(false)
-  const [manualInput, setManualInput] = useState('')
-  const [manualLinking, setManualLinking] = useState(false)
-  const hasExt = hasOBSExtension()
+  const detectedRef = useRef(false)
+  const [detected, setDetected] = useState(false)
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)
 
-  function extractVideoId(input: string): string | null {
-    const trimmed = input.trim()
-    // YouTube Studio URL: studio.youtube.com/video/{vid}/livestreaming
-    const studioMatch = trimmed.match(/\/video\/([a-zA-Z0-9_-]{11,})/)
-    if (studioMatch) return studioMatch[1]
-    // YouTube URL: youtube.com/watch?v={vid}
-    const watchMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11,})/)
-    if (watchMatch) return watchMatch[1]
-    // Raw ID (11자 이상 알파뉴메릭)
-    if (/^[a-zA-Z0-9_-]{11,}$/.test(trimmed)) return trimmed
-    return null
-  }
+  // video_id 기반 Studio URL — 생성 시점에 이미 확보된 값
+  const vid = stream.youtube_video_id || stream.youtube_broadcast_id
+  const studioUrl = vid
+    ? `https://studio.youtube.com/video/${vid}/livestreaming`
+    : `https://studio.youtube.com/channel/UC/livestreaming`
 
-  async function handleManualLink() {
-    const vid = extractVideoId(manualInput)
-    if (!vid) { toast.error('올바른 YouTube 비디오 ID 또는 URL을 입력해주세요'); return }
-    setManualLinking(true)
-    try {
-      await api.patch(`/api/seller/youtube/live/${stream.id}/link-broadcast`, { youtube_video_id: vid })
-      linkedRef.current = true
-      setPhase('linked')
-      setTimeout(onGoLive, 800)
-    } catch {
-      toast.error('연결 실패. 다시 시도해주세요.')
-    } finally {
-      setManualLinking(false)
+  function openStudio() {
+    if (isMobile) {
+      // 모바일: 새 탭 → YouTube Studio 앱 설치 시 앱 딥링크
+      window.open(studioUrl, '_blank', 'noopener')
+    } else {
+      // PC: 팝업 창
+      const w = Math.min(1280, Math.floor(window.screen.availWidth * 0.85))
+      const h = Math.min(820, Math.floor(window.screen.availHeight * 0.85))
+      const left = Math.floor((window.screen.availWidth - w) / 2)
+      const top = Math.floor((window.screen.availHeight - h) / 2)
+      try {
+        const p = window.open(studioUrl, 'ur-yt-studio', `popup=yes,width=${w},height=${h},left=${left},top=${top},noopener`)
+        if (p) popupRef.current = p
+      } catch { window.open(studioUrl, '_blank', 'noopener') }
     }
   }
 
-  const studioUrl = `https://studio.youtube.com/channel/UC/livestreaming?ur_stream_id=${stream.id}&ur_webcam=1`
-
-  function openPopup() {
-    const w = Math.min(1280, Math.floor(window.screen.availWidth * 0.85))
-    const h = Math.min(820, Math.floor(window.screen.availHeight * 0.85))
-    const left = Math.floor((window.screen.availWidth - w) / 2)
-    const top = Math.floor((window.screen.availHeight - h) / 2)
-    try {
-      const p = window.open(studioUrl, 'ur-yt-studio', `popup=yes,width=${w},height=${h},left=${left},top=${top},noopener`)
-      if (p) popupRef.current = p
-    } catch { /* blocked */ }
-  }
-
+  // 마운트 시 자동 오픈
   useEffect(() => {
     if (openedRef.current) return
     openedRef.current = true
-    setTimeout(openPopup, 200)
+    setTimeout(openStudio, 200)
     return () => {
       try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close() } catch {}
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Extension 이 webcam broadcast 시작 감지 → chrome.storage 에 저장 → 여기서 polling
-  const handleLinkMessage = useCallback((e: MessageEvent) => {
-    if (!e.data?.__urlive) return
-    if (e.data.type === 'LINKED_BROADCAST_RESULT' && e.data.youtubeVideoId && !linkedRef.current) {
-      linkedRef.current = true
-      setPhase('linked')
-      api.patch(`/api/seller/youtube/live/${stream.id}/link-broadcast`, {
-        youtube_video_id: e.data.youtubeVideoId,
-      }).then(() => {
-        setTimeout(onGoLive, 800)
-      }).catch(() => {
-        // link 실패해도 수동 시작 가능
-        setTimeout(onGoLive, 800)
-      })
-    }
-  }, [stream.id, onGoLive])
-
+  // /status 폴링 — youtube_status === 'live' 감지 시 자동 전환
   useEffect(() => {
-    window.addEventListener('message', handleLinkMessage)
-    if (!hasExt) {
-      // Extension 없으면 30초 후 수동 시작 안내
-      const t = setTimeout(() => setShowManual(true), 30000)
-      return () => { window.removeEventListener('message', handleLinkMessage); clearTimeout(t) }
+    if (!vid) return
+    const poll = async () => {
+      if (detectedRef.current) return
+      try {
+        const res = await api.get(`/api/seller/youtube/live/${stream.id}/status`)
+        const status = res.data?.data?.youtube_status
+        if (status === 'live') {
+          detectedRef.current = true
+          setDetected(true)
+          setTimeout(onGoLive, 800)
+        }
+      } catch { /* 네트워크 오류 무시 */ }
     }
-    // Extension 있으면 5초마다 polling
-    const interval = setInterval(() => {
-      window.postMessage({ __urlive: true, type: 'GET_LINKED_BROADCAST', streamId: stream.id }, '*')
-    }, 5000)
-    const manualTimer = setTimeout(() => setShowManual(true), 90000)
-    return () => {
-      window.removeEventListener('message', handleLinkMessage)
-      clearInterval(interval)
-      clearTimeout(manualTimer)
-    }
-  }, [stream.id, hasExt, handleLinkMessage])
+    poll()
+    const id = setInterval(poll, 15000)
+    return () => clearInterval(id)
+  }, [stream.id, vid, onGoLive])
 
   return (
     <div className="bg-red-50 border border-red-200 rounded-xl p-5 space-y-4">
@@ -406,86 +374,56 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
         </div>
         <div className="flex-1">
           <p className="text-sm font-bold text-gray-900">YouTube Studio 웹캠 라이브</p>
-          <p className="text-xs text-gray-600 mt-0.5">OBS 없이 브라우저 웹캠으로 바로 송출</p>
+          <p className="text-xs text-gray-600 mt-0.5">OBS 없이 브라우저/앱 웹캠으로 바로 송출</p>
         </div>
       </div>
 
-      {phase === 'waiting' && (
-        <ol className="space-y-2">
-          {[
-            '팝업 YouTube Studio 창에서',
-            '"라이브 스트리밍 시작" 클릭',
-            '"웹캠" 탭 선택 후 방송 시작',
-          ].map((step, i) => (
-            <li key={i} className="flex items-start gap-2.5">
-              <span className="shrink-0 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
-              <span className="text-xs text-gray-700">{step}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-
-      {phase === 'linked' && (
+      {detected ? (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-          <p className="text-xs font-bold text-green-800">방송 감지됨! 라이브 화면으로 전환 중…</p>
+          <p className="text-xs font-bold text-green-800">방송 시작 감지됨! 라이브 화면으로 전환 중…</p>
         </div>
-      )}
-
-      {phase === 'waiting' && (
-        <div className="flex items-center gap-2 bg-white/60 rounded-lg px-3 py-2.5 border border-red-100">
-          <span className="flex gap-1 shrink-0">
-            {[0, 0.2, 0.4].map((d, i) => (
-              <span key={i} className="w-1.5 h-1.5 rounded-full bg-red-400 animate-bounce" style={{ animationDelay: `${d}s` }} />
+      ) : (
+        <>
+          <ol className="space-y-2">
+            {(isMobile ? [
+              'YouTube Studio 앱 또는 브라우저 탭이 열립니다',
+              '방송 목록에서 방금 만든 방송 선택',
+              '"웹캠" 또는 "카메라" 탭 → Go Live',
+            ] : [
+              '팝업 YouTube Studio 창에서',
+              '"웹캠" 탭 선택',
+              '"라이브 시작" 클릭',
+            ]).map((step, i) => (
+              <li key={i} className="flex items-start gap-2.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                <span className="text-xs text-gray-700">{step}</span>
+              </li>
             ))}
-          </span>
-          <p className="text-xs text-red-700 flex-1">
-            {hasExt ? 'YouTube Studio 방송 시작 감지 중…' : 'YouTube Studio 에서 방송을 시작해주세요'}
-          </p>
-        </div>
-      )}
+          </ol>
 
-      {!hasExt && phase === 'waiting' && (
-        <div className="space-y-2">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <p className="text-[11px] text-amber-800 leading-relaxed">
-              YouTube Studio에서 방송을 시작한 후, Studio URL 또는 비디오 ID를 아래에 붙여넣으세요.
-            </p>
-            <p className="text-[10px] text-amber-600 mt-1">
-              예: <code className="bg-amber-100 px-1 rounded">https://studio.youtube.com/video/<b>abc123xyz</b>/livestreaming</code>
-            </p>
+          <div className="flex items-center gap-2 bg-white/60 rounded-lg px-3 py-2.5 border border-red-100">
+            <span className="flex gap-1 shrink-0">
+              {[0, 0.2, 0.4].map((d, i) => (
+                <span key={i} className="w-1.5 h-1.5 rounded-full bg-red-400 animate-bounce" style={{ animationDelay: `${d}s` }} />
+              ))}
+            </span>
+            <p className="text-xs text-red-700 flex-1">YouTube Studio 방송 시작 감지 중… (15초마다 확인)</p>
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={manualInput}
-              onChange={e => setManualInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleManualLink()}
-              placeholder="URL 또는 비디오 ID 붙여넣기"
-              className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-red-300"
-            />
-            <button
-              onClick={handleManualLink}
-              disabled={!manualInput.trim() || manualLinking}
-              className="shrink-0 px-3 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-semibold rounded-lg">
-              {manualLinking ? '연결 중…' : '연결'}
+
+          <div className="flex items-center gap-2">
+            <button onClick={openStudio}
+              className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5">
+              <Youtube className="w-3.5 h-3.5" />
+              {isMobile ? 'YouTube Studio 열기' : 'Studio 팝업 다시 열기'}
+            </button>
+            <button onClick={onGoLive}
+              className="text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2 shrink-0">
+              수동 시작
             </button>
           </div>
-        </div>
+        </>
       )}
-
-      <div className="flex items-center gap-2">
-        <button onClick={openPopup}
-          className="flex-1 text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">
-          Studio 다시 열기
-        </button>
-        {showManual && hasExt && (
-          <button onClick={onGoLive}
-            className="text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2">
-            수동 시작
-          </button>
-        )}
-      </div>
     </div>
   )
 }
