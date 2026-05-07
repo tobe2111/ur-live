@@ -348,11 +348,27 @@ export function YouTubeWebcamWaiting({ stream, onGoLive, channelId }: { stream: 
   useEffect(() => {
     if (openedRef.current) return
     openedRef.current = true
+
+    // 🛡️ 2026-05-07: popup 자동 오픈 가드 — 두 가지 케이스 차단
+    //   1. 이미 youtube_video_id 가 연결된 stream (재방문/리렌더) → 즉시 라이브 전환
+    //   2. 이 세션에서 이미 popup 한 번 띄운 stream → 안 띄움 (셀러가 의도적으로 닫았을 수 있음).
+    //      셀러가 다시 열고 싶으면 화면의 "YouTube Studio 열기" 버튼 클릭.
+    if (stream.youtube_video_id) {
+      setDetected({ youtube_video_id: stream.youtube_video_id })
+      setTimeout(onGoLive, 800)
+      return
+    }
+    const sessionKey = `seller_yt_webcam_opened_${stream.id}`
+    try {
+      if (sessionStorage.getItem(sessionKey)) return
+      sessionStorage.setItem(sessionKey, '1')
+    } catch { /* sessionStorage 차단 환경 */ }
+
     setTimeout(openStudio, 200)
-    // 🛡️ 2026-05-07: 웹캠 모드는 popup = 카메라 인코더. 자동 close 시 방송 즉시 끊김.
+    // 웹캠 모드는 popup = 카메라 인코더. 자동 close 시 방송 즉시 끊김.
     //   라이브 전환 시 WaitingScreens 언마운트 되더라도 popup 유지 (셀러가 명시적으로 닫을 때까지).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [stream.id])
 
   // 경과 시간 카운터
   useEffect(() => {
