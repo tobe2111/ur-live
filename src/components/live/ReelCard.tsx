@@ -529,15 +529,29 @@ function ReelCardImpl({
   const handleVideoClick = () => {
     if (playerRef.current && playerReady) {
       try {
-        // Unmute and play for better UX
         playerRef.current.unMute()
         playerRef.current.setVolume(100)
         playerRef.current.playVideo()
         setIsMuted(false)
         setShowPlayButton(false)
+        return
       } catch (error) {
         if (import.meta.env.DEV) console.error('[ReelCard] Failed to start video:', error)
       }
+    }
+    // 🛡️ 2026-05-07: player 가 ready 되지 않은 경우 IFrame 강제 재생성 — 사용자 click 응답성 보장
+    const playerEl = document.getElementById(`youtube-player-${stream.id}`)
+    if (playerEl && stream.youtube_video_id) {
+      while (playerEl.firstChild) playerEl.removeChild(playerEl.firstChild)
+      // @ts-ignore — useEffect dependency 변경으로 재 init 트리거 안 됨, fallback iframe 직접 삽입
+      const iframe = document.createElement('iframe')
+      iframe.src = `https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1`
+      iframe.allow = 'autoplay; encrypted-media; fullscreen'
+      iframe.style.width = '100%'
+      iframe.style.height = '100%'
+      iframe.style.border = '0'
+      playerEl.appendChild(iframe)
+      setShowPlayButton(false)
     }
   }
 
@@ -984,14 +998,9 @@ function ReelCardImpl({
       {/* 라이브/종료 방송: 로딩 → 자동재생 → 실패 시 탭 유도 */}
       {stream.status !== 'scheduled' && stream.youtube_video_id && !playerError && showPlayButton && (
         <button
-          onClick={playerReady ? handleVideoClick : undefined}
-          className={`absolute inset-0 z-10 flex flex-col items-center justify-center transition-all ${
-            autoplayFailed
-              ? 'bg-black/50 cursor-pointer'
-              : 'bg-black/60 cursor-default'
-          }`}
+          onClick={handleVideoClick}
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center transition-all bg-black/60 cursor-pointer"
           aria-label={t('live.enterAria', { defaultValue: '방송 입장하기' })}
-          disabled={!playerReady}
         >
           <div className="flex flex-col items-center gap-4">
             <div className="px-4 py-1.5 bg-red-600 rounded-full flex items-center gap-2">

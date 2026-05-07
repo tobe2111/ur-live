@@ -229,13 +229,21 @@ publicUtilityRoutes.get('/api/home/bundle', async (c) => {
   try {
     const [live, scheduled, ended, mealVouchers, featured, latest] = await Promise.all([
       safeAll(DB.prepare(
+        // 🛡️ 2026-05-07: started_at 6시간 이내만 (외부 도구로 종료된 stale 'live' 데이터 숨김)
         `SELECT id, title, youtube_video_id, viewer_count, current_viewers, status, seller_id,
-                created_at, scheduled_at, current_product_id
-         FROM live_streams WHERE status='live' ORDER BY current_viewers DESC LIMIT 12`
+                created_at, scheduled_at, started_at, current_product_id
+         FROM live_streams
+         WHERE status='live'
+           AND (started_at IS NULL OR datetime(started_at) >= datetime('now', '-6 hours'))
+         ORDER BY current_viewers DESC LIMIT 12`
       ).all<Record<string, unknown>>()),
       safeAll(DB.prepare(
+        // 🛡️ 2026-05-07: scheduled_at 이 24시간 이상 지난 건 제외 (방치된 테스트 방송 숨김)
         `SELECT id, title, youtube_video_id, status, seller_id, scheduled_at, created_at
-         FROM live_streams WHERE status='scheduled' ORDER BY scheduled_at ASC LIMIT 8`
+         FROM live_streams
+         WHERE status='scheduled'
+           AND (scheduled_at IS NULL OR datetime(scheduled_at) >= datetime('now', '-1 day'))
+         ORDER BY scheduled_at ASC LIMIT 8`
       ).all<Record<string, unknown>>()),
       safeAll(DB.prepare(
         `SELECT id, title, youtube_video_id, status, seller_id, ended_at, created_at
