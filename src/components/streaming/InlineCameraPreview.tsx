@@ -142,7 +142,7 @@ export function InlineCameraPreview() {
         {devices.length > 1 && (
           <select value={selectedCam}
             onChange={e => { setSelectedCam(e.target.value); stop(); start(e.target.value) }}
-            className="bg-black/60 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm">
+            className="bg-black/60 text-white text-xs px-2 py-1.5 rounded-md backdrop-blur-sm min-w-[80px] max-w-[140px]">
             {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || t('seller.cameraDefault', { defaultValue: '카메라' })}</option>)}
           </select>
         )}

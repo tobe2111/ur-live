@@ -36,8 +36,9 @@ export default function BroadcastPreflightCheck({ method, onAllChecked }: Props)
       items.push({
         key: 'camera',
         label: '카메라 권한',
-        status: cam?.state === 'granted' ? 'pass' : cam?.state === 'denied' ? 'fail' : 'warn',
-        detail: cam?.state === 'denied' ? '주소창 자물쇠 → 카메라 → 허용' : cam?.state === 'prompt' ? '아직 미허용 (방송 시작 시 프롬프트)' : undefined,
+        // 'prompt' = 아직 안 물어봤을 뿐, 오류 아님 → pass 처리 (false-warn 방지)
+        status: cam?.state === 'granted' ? 'pass' : cam?.state === 'denied' ? 'fail' : 'pass',
+        detail: cam?.state === 'denied' ? '주소창 자물쇠 → 카메라 → 허용' : cam?.state === 'prompt' ? '방송 시작 시 허용 요청' : undefined,
       })
     } catch {
       items.push({ key: 'camera', label: '카메라 권한', status: 'warn', detail: '확인 불가 (모바일 PWA)' })

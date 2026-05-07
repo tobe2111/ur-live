@@ -180,7 +180,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
         <div className="flex gap-1.5 shrink-0">
           {sellableProducts.length > 0 && (
             <button onClick={handleTestBroadcast} disabled={creating}
-              className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-full font-medium disabled:opacity-50"
+              className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               title="비공개 테스트 방송으로 파이프라인 검증">
               🧪 테스트
             </button>

@@ -156,13 +156,13 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
         if (elapsedEl) elapsedEl.textContent = elapsed
 
         const currentP = products.find(p => p.id === stream.current_product_id)
-        const imgEl = pipWin.document.getElementById('pip-product-img') as HTMLElement
+        const imgEl = pipWin.document.getElementById('pip-product-img') as HTMLElement | null
         const nameEl = pipWin.document.getElementById('pip-product-name')
         const priceEl = pipWin.document.getElementById('pip-product-price')
-        if (currentP && imgEl && nameEl && priceEl) {
-          imgEl.style.background = currentP.image_url ? `url(${currentP.image_url}) center/cover` : '#27272a'
-          nameEl.textContent = currentP.name
-          priceEl.textContent = `₩${formatNumber(currentP.price)}`
+        if (currentP) {
+          if (imgEl) imgEl.style.background = currentP.image_url ? `url(${currentP.image_url}) center/cover` : '#27272a'
+          if (nameEl) nameEl.textContent = currentP.name
+          if (priceEl) priceEl.textContent = `₩${formatNumber(currentP.price)}`
         }
 
         const listEl = pipWin.document.getElementById('pip-product-list')
@@ -283,7 +283,7 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
         if (next) {
           changingProductRef.current = true
           api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: next.id })
-            .then(() => { onChangeProduct(next.id); toast.success(`${next.name} ▶`) })
+            .then(() => { onChangeProduct(next.id) }) // 단축키는 toast 없이 (방송 중 잦은 전환 시 toast 폭탄 방지)
             .catch(() => { /* silent */ })
             .finally(() => { changingProductRef.current = false })
         }

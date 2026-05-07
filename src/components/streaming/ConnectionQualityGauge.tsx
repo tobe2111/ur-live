@@ -26,6 +26,7 @@ export default function ConnectionQualityGauge({ streamId, mode }: Props) {
   const [data, setData] = useState<QualityData | null>(null)
   const consecutiveBadRef = useRef(0)
   const warnedRef = useRef(false)
+  const lastRecoveryRef = useRef(0) // 회복 toast 마지막 시각 — 2분 내 중복 방지
   // youtube/quick만 YouTube API 호출, 나머지는 경량 ping으로 RTT만 측정
   const useYouTubeStats = mode === 'youtube' || mode === 'quick' || !mode
 
@@ -51,7 +52,10 @@ export default function ConnectionQualityGauge({ streamId, mode }: Props) {
             toast.info('🔴 송출 품질 저하 30초 이상 — 인터넷 연결 / OBS 비트레이트 확인')
           }
         } else if (status === 'good') {
-          if (warnedRef.current) toast.success('✅ 송출 품질 회복')
+          if (warnedRef.current && Date.now() - lastRecoveryRef.current > 120_000) {
+            toast.success('✅ 송출 품질 회복')
+            lastRecoveryRef.current = Date.now()
+          }
           consecutiveBadRef.current = 0
           warnedRef.current = false
         }
@@ -65,7 +69,7 @@ export default function ConnectionQualityGauge({ streamId, mode }: Props) {
       }
     }
     tick()
-    const id = setInterval(tick, 8000)
+    const id = setInterval(tick, 5000)
     return () => { cancelled = true; clearInterval(id) }
   }, [streamId])
 

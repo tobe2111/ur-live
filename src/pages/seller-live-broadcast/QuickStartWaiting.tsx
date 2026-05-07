@@ -61,7 +61,17 @@ export default function QuickStartWaiting({ stream }: Props) {
         setPhase('done')
       } catch (e: unknown) {
         if (import.meta.env.DEV) console.warn('[QuickStart] OBS auto-start failed:', e)
-        setError((e as Error).message || '연결 실패')
+        const msg = (e as Error).message || ''
+        // 원인별 안내 메시지 구분
+        const hint =
+          msg.includes('ECONNREFUSED') || msg.includes('failed to connect') || msg.includes('WebSocket')
+            ? 'OBS가 실행 중인지, WebSocket 서버가 활성화됐는지 확인해주세요 (Tools → WebSocket Server Settings)'
+            : msg.includes('password') || msg.includes('auth')
+            ? 'OBS WebSocket 비밀번호가 틀렸어요. 설정에서 비밀번호를 확인해주세요'
+            : msg.includes('firewall') || msg.includes('blocked')
+            ? '방화벽이 WebSocket 포트(4455)를 차단하고 있을 수 있어요'
+            : msg || '알 수 없는 오류'
+        setError(hint)
         setPhase('manual')
       }
     })()
