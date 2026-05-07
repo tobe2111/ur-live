@@ -16,6 +16,7 @@ const SellerTikTokCallbackPage = lazy(() => import('@/pages/SellerTikTokCallback
 const SellerForgotPasswordPage = lazy(() => import('@/pages/SellerForgotPasswordPage'))
 const SellerResetPasswordPage = lazy(() => import('@/pages/SellerResetPasswordPage'))
 const SellerBusinessInfoPage = lazy(() => import('@/pages/SellerBusinessInfoPage'))
+const SellerTierPage = lazy(() => import('@/pages/SellerTierPage'))
 const SellerOrdersPage = lazy(() => import('@/pages/SellerOrdersPage'))
 const SellerConsignmentPage = lazy(() => import('@/pages/SellerConsignmentPage'))
 const SellerProductsPage = lazy(() => import('@/pages/SellerProductsPage'))
@@ -74,6 +75,11 @@ export function SellerRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
+      <Route path="/seller/tier" element={
+        <ProtectedRoute requireSeller>
+          <SellerTierPage />
+        </ProtectedRoute>
+      } />
       <Route path="/seller/business-info" element={
         <ProtectedRoute requireSeller>
           <SellerBusinessInfoPage />
