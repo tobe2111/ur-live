@@ -93,6 +93,13 @@ export default function SellerLiveBroadcastPage() {
   const [destination, setDestination] = useState<Destination>('youtube')
   const [destinations, setDestinations] = useState<DestinationPlatform[]>([])
   const [currentStream, setCurrentStream] = useState<LiveStream | null>(null)
+  // 🛡️ 2026-05-07: 셀러 옵션 — 알림톡 자동 발송 / 연습 모드
+  const [notifyFollowers, setNotifyFollowers] = useState<boolean>(() =>
+    localStorage.getItem('ur_notify_followers_v1') !== '0')
+  const [practiceMode, setPracticeMode] = useState<boolean>(false)
+  useEffect(() => {
+    localStorage.setItem('ur_notify_followers_v1', notifyFollowers ? '1' : '0')
+  }, [notifyFollowers])
 
   // Step 1 폼 (마지막 방송 값으로 prefill)
   const lastBroadcast = useRef(getLastBroadcast()).current
@@ -274,7 +281,10 @@ export default function SellerLiveBroadcastPage() {
   }
 
   async function createBroadcast(overrides?: { title?: string; productIds?: number[] }) {
-    const effectiveTitle = overrides?.title ?? title
+    const baseTitle = overrides?.title ?? title
+    // 🛡️ 2026-05-07: 연습 모드면 title prefix [연습] + privacy 강제 private + 알림톡 OFF
+    const effectiveTitle = practiceMode ? `[연습] ${baseTitle}`.slice(0, 200) : baseTitle
+    const effectivePrivacy = practiceMode ? 'private' : privacy
     const effectiveProducts = overrides?.productIds ?? selectedProducts
     if (!effectiveTitle.trim()) { toast.error(t('seller.liveBroadcast.enterTitle')); return }
     if (effectiveProducts.length === 0) { toast.error(t('seller.liveBroadcast.selectOneProduct')); return }
@@ -289,7 +299,7 @@ export default function SellerLiveBroadcastPage() {
         thumbnail_url: thumbnailUrl.trim() || undefined,
         product_ids: effectiveProducts,
         scheduled_start_time: scheduledStartTime,
-        privacy_status: privacy,
+        privacy_status: effectivePrivacy,
         channel_id: activeChannelId || undefined,
       })
       if (res.data?.success) {
@@ -492,6 +502,10 @@ export default function SellerLiveBroadcastPage() {
             tokenExpired={!!channels.find(c => c.id === activeChannelId)?.token_expired}
             onReauthenticate={connectYouTube}
             connectingYouTube={connectingYouTube}
+            notifyFollowers={notifyFollowers}
+            setNotifyFollowers={setNotifyFollowers}
+            practiceMode={practiceMode}
+            setPracticeMode={setPracticeMode}
           />
         )}
 
@@ -514,6 +528,7 @@ export default function SellerLiveBroadcastPage() {
             stream={currentStream}
             products={sellableProducts}
             method={method}
+            notifyFollowers={notifyFollowers}
             onChangeProduct={(productId: number) => setCurrentStream(s => s ? { ...s, current_product_id: productId } : s)}
             onEndStream={requestEndStream}
           />

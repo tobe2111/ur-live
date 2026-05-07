@@ -106,6 +106,12 @@ streamsRouter.get('/', async (c) => {
       const params: unknown[] = [];
       const conditions: string[] = [];
 
+      // 🛡️ 2026-05-07: 연습 모드 ([연습] prefix) 시청자 피드 미노출
+      //   sellerId 필터가 없는 공용 피드에만 적용 — 셀러 본인 조회는 그대로
+      if (!sellerId) {
+        conditions.push("(ls.title NOT LIKE '[연습]%' OR ls.title IS NULL)");
+      }
+
       if (status) {
         conditions.push('ls.status = ?');
         params.push(status);

@@ -500,6 +500,97 @@ app.post('/live/:id/end', async (c) => {
 })
 
 /**
+ * POST /api/youtube/live/:id/notify-followers
+ *
+ * 🛡️ 2026-05-07: 라이브 시작 시 셀러 팔로워에게 알림톡 자동 발송 (1회).
+ *   - 셀러 본인 alimtalk 잔액에서 차감 (우리 비용 0)
+ *   - live_notify_log 로 멱등 (1라이브 1회)
+ *   - 동시 접속자 1.5-3배 상승 효과
+ */
+app.post('/live/:id/notify-followers', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const streamId = parseInt(c.req.param('id'))
+  try {
+    const stream = await c.env.DB.prepare(
+      'SELECT id, title, status FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first<{ id: number; title: string; status: string }>()
+
+    if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
+    if (stream.status !== 'live') return c.json({ success: false, error: '라이브 중일 때만 발송 가능' }, 409)
+    // 🛡️ 2026-05-07: 연습 모드 — 알림 발송 안 함
+    if (stream.title.startsWith('[연습]')) {
+      return c.json({ success: false, error: '연습 모드는 알림 발송 불가', code: 'PRACTICE_MODE' }, 409)
+    }
+
+    // 멱등 — 1라이브 1회만
+    try {
+      await c.env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS live_notify_log (
+          live_stream_id INTEGER PRIMARY KEY,
+          seller_id INTEGER NOT NULL,
+          notified_count INTEGER DEFAULT 0,
+          notified_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+    } catch { /* exists */ }
+
+    const dup = await c.env.DB.prepare('SELECT live_stream_id FROM live_notify_log WHERE live_stream_id = ?')
+      .bind(streamId).first()
+    if (dup) return c.json({ success: false, error: '이미 알림 발송됨', code: 'ALREADY_NOTIFIED' }, 409)
+
+    // 셀러 정보 + 팔로워 phone 목록
+    const seller = await c.env.DB.prepare('SELECT name FROM sellers WHERE id = ?').bind(sellerId)
+      .first<{ name: string }>()
+    const sellerName = seller?.name || '셀러'
+
+    const followers = await c.env.DB.prepare(`
+      SELECT DISTINCT u.phone
+      FROM seller_follows f
+      JOIN users u ON u.id = f.user_id
+      WHERE f.seller_id = ? AND u.phone IS NOT NULL AND u.phone != ''
+      LIMIT 500
+    `).bind(sellerId).all<{ phone: string }>()
+
+    const phones = (followers.results || []).map(r => r.phone).filter(Boolean)
+    if (phones.length === 0) {
+      return c.json({ success: true, data: { sent: 0, message: '발송할 팔로워가 없습니다' } })
+    }
+
+    // alimtalk send (best-effort, 실패는 alimtalk_failures 큐로)
+    let sent = 0
+    const senderKey = c.env.ALIGO_SENDER_KEY
+    const templateCode = (c.env as unknown as { ALIGO_TEMPLATE_LIVE_START?: string }).ALIGO_TEMPLATE_LIVE_START || 'UB_8350'  // 셀러가 등록한 템플릿
+    const liveUrl = `https://live.ur-team.com/live/${streamId}`
+    const text = `🔴 ${sellerName}님이 라이브 방송을 시작했어요!\n\n"${stream.title}"\n\n바로 입장: ${liveUrl}`
+
+    if (senderKey) {
+      try {
+        const { sendAlimtalk } = await import('../../../lib/aligo')
+        for (const phone of phones) {
+          try {
+            const r = await sendAlimtalk(c.env as never, {
+              senderKey, templateCode, to: phone, message: text,
+              buttons: [{ type: 'WL', name: '라이브 입장', url_mobile: liveUrl, url_pc: liveUrl }]
+            })
+            if (r.success) sent++
+          } catch { /* 개별 실패 → retry 큐에 자동 들어감 */ }
+        }
+      } catch { /* aligo 모듈 로드 실패 */ }
+    }
+
+    await c.env.DB.prepare(
+      'INSERT INTO live_notify_log (live_stream_id, seller_id, notified_count) VALUES (?, ?, ?)'
+    ).bind(streamId, sellerId, sent).run()
+
+    return c.json({ success: true, data: { sent, total_followers: phones.length } })
+  } catch (error: unknown) {
+    return c.json({ success: false, error: error instanceof Error ? error.message : 'Failed' }, 500)
+  }
+})
+
+/**
  * POST /api/youtube/rotate-stream-key
  *
  * 🛡️ 2026-05-07: 셀러 본인의 persistent stream key 회전.

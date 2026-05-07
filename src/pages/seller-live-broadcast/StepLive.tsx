@@ -24,11 +24,12 @@ interface StepLiveProps {
   stream: LiveStream
   products: Product[]
   method?: StreamMethod
+  notifyFollowers?: boolean
   onChangeProduct: (productId: number) => void
   onEndStream: () => void
 }
 
-export default function StepLive({ stream, products, method, onChangeProduct, onEndStream }: StepLiveProps) {
+export default function StepLive({ stream, products, method, notifyFollowers = true, onChangeProduct, onEndStream }: StepLiveProps) {
   const { t } = useTranslation()
   const startedAtRef = useRef(Date.now())
   const [elapsed, setElapsed] = useState('00:00')
@@ -46,6 +47,25 @@ export default function StepLive({ stream, products, method, onChangeProduct, on
     }, 60000)
     return () => clearTimeout(timer)
   }, [stream.id, method])
+
+  // 🛡️ 2026-05-07: 라이브 시작 시 팔로워 알림톡 자동 1회 (셀러 잔액 사용)
+  //   • notifyFollowers 토글 OFF / 연습 모드 → 발송 안 함
+  //   • 30초 버퍼 후 발송 (트래픽 급증 방지)
+  useEffect(() => {
+    if (!notifyFollowers) return
+    if (stream.title.startsWith('[연습]')) return
+    const timer = setTimeout(() => {
+      api.post(`/api/youtube/live/${stream.id}/notify-followers`, {})
+        .then(r => {
+          if (r.data?.success) {
+            const sent = r.data.data?.sent || 0
+            if (sent > 0) toast.success(`📨 팔로워 ${sent}명에게 알림톡 발송`)
+          }
+        })
+        .catch(() => { /* silent */ })
+    }, 30000)
+    return () => clearTimeout(timer)
+  }, [stream.id, notifyFollowers, stream.title])
 
   // Document Picture-in-Picture API (Chrome 116+)
   async function togglePiP() {

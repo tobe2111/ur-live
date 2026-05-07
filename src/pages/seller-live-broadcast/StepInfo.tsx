@@ -40,6 +40,11 @@ interface StepInfoProps {
   tokenExpired: boolean
   onReauthenticate: () => void
   connectingYouTube: boolean
+  // 🛡️ 2026-05-07: 신규 옵션 — 알림톡 / 연습 모드
+  notifyFollowers?: boolean
+  setNotifyFollowers?: (v: boolean) => void
+  practiceMode?: boolean
+  setPracticeMode?: (v: boolean) => void
 }
 
 export default function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, setThumbnailUrl, privacy, setPrivacy,
@@ -47,7 +52,9 @@ export default function StepInfo({ title, setTitle, description, setDescription,
   sellableProducts, selectedProducts, setSelectedProducts, toggleProduct, method, setMethod,
   destination, setDestination, destinations,
   creating, onCreate, navigate, channels, recentProductIds,
-  tokenExpired, onReauthenticate, connectingYouTube
+  tokenExpired, onReauthenticate, connectingYouTube,
+  notifyFollowers = true, setNotifyFollowers,
+  practiceMode = false, setPracticeMode,
 }: StepInfoProps) {
   const { t } = useTranslation()
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -284,6 +291,39 @@ export default function StepInfo({ title, setTitle, description, setDescription,
             </button>
           ))}
         </div>
+      </div>
+
+      {/* 🛡️ 2026-05-07: 알림톡 + 연습 모드 토글 */}
+      <div className="border-t border-gray-100 pt-4 space-y-2.5">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={notifyFollowers}
+            onChange={e => setNotifyFollowers?.(e.target.checked)}
+            className="mt-0.5"
+            disabled={practiceMode}
+          />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-900">📨 팔로워에게 알림톡 자동 발송</p>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              방송 시작 30초 후 팔로워에게 카카오톡 알림 1회 (셀러 알림톡 잔액 차감, 최대 500명)
+            </p>
+          </div>
+        </label>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={practiceMode}
+            onChange={e => setPracticeMode?.(e.target.checked)}
+            className="mt-0.5"
+          />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-900">🧪 연습 모드 (시청자 노출 X)</p>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              비공개 (private) 방송 + 알림톡 미발송 + 시청자 피드 미노출. OBS 셋업 / 카메라 각도 검증용.
+            </p>
+          </div>
+        </label>
       </div>
 
       {/* 고급 설정 접기 + 마지막 방송과 동일 힌트 */}

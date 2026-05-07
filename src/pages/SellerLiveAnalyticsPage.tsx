@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardStatCard, DashboardLoading } from '@/components/dashboard'
 import api from '@/lib/api'
+import ReplayChapterMarkers from '@/components/live/ReplayChapterMarkers'
 import {
   Eye, Users, MessageCircle, ShoppingBag, TrendingUp,
   Heart, ArrowLeft, BarChart3, Clock, DollarSign,
@@ -422,6 +423,11 @@ function StreamAnalyticsDetail({ streamId }: { streamId: string }) {
       )}
 
       {activeTab === 'products' && (
+        <div className="space-y-4">
+          {/* 🛡️ 2026-05-07: Replay Chapter Markers — 상품별 타임라인 */}
+          <div className="bg-white rounded-xl shadow-sm p-5">
+            <ReplayChapterMarkers streamId={streamId} />
+          </div>
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b">
             <h3 className="text-sm font-semibold text-gray-900">{t('seller.popularProducts')}</h3>
@@ -451,6 +457,7 @@ function StreamAnalyticsDetail({ streamId }: { streamId: string }) {
               ))}
             </div>
           )}
+        </div>
         </div>
       )}
     </div>
