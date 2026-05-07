@@ -18,6 +18,7 @@ import ChromeExtensionBanner from '@/components/streaming/ChromeExtensionBanner'
 import QuickStartWaiting from './QuickStartWaiting'
 import type { StreamMethod } from '../SellerLiveBroadcast.storage'
 import type { LiveStream, YouTubeChannel } from './types'
+import { useScreenWakeLock } from '@/hooks/useScreenWakeLock'
 
 interface StepSetupProps {
   stream: LiveStream; method: StreamMethod; channels: YouTubeChannel[]
@@ -30,6 +31,8 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
   const [showDiagnostic, setShowDiagnostic] = useState(false)
   const [autoDiagnosticShown, setAutoDiagnosticShown] = useState(false)
+  // 대기 중 화면 잠금 방지 (Prism QR 스캔 중, YouTube Studio 확인 중 화면 꺼짐 방지)
+  useScreenWakeLock(true)
 
   // 30초 경과 + 여전히 setup 상태 = 송출이 감지 안 되고 있음 → 진단 자동 제안
   useEffect(() => {

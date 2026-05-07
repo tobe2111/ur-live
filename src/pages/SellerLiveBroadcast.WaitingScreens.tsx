@@ -306,7 +306,38 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
   const linkedRef = useRef(false)
   const [phase, setPhase] = useState<'waiting' | 'linked' | 'noext'>('waiting')
   const [showManual, setShowManual] = useState(false)
+  const [manualInput, setManualInput] = useState('')
+  const [manualLinking, setManualLinking] = useState(false)
   const hasExt = hasOBSExtension()
+
+  function extractVideoId(input: string): string | null {
+    const trimmed = input.trim()
+    // YouTube Studio URL: studio.youtube.com/video/{vid}/livestreaming
+    const studioMatch = trimmed.match(/\/video\/([a-zA-Z0-9_-]{11,})/)
+    if (studioMatch) return studioMatch[1]
+    // YouTube URL: youtube.com/watch?v={vid}
+    const watchMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11,})/)
+    if (watchMatch) return watchMatch[1]
+    // Raw ID (11자 이상 알파뉴메릭)
+    if (/^[a-zA-Z0-9_-]{11,}$/.test(trimmed)) return trimmed
+    return null
+  }
+
+  async function handleManualLink() {
+    const vid = extractVideoId(manualInput)
+    if (!vid) { toast.error('올바른 YouTube 비디오 ID 또는 URL을 입력해주세요'); return }
+    setManualLinking(true)
+    try {
+      await api.patch(`/api/seller/youtube/live/${stream.id}/link-broadcast`, { youtube_video_id: vid })
+      linkedRef.current = true
+      setPhase('linked')
+      setTimeout(onGoLive, 800)
+    } catch {
+      toast.error('연결 실패. 다시 시도해주세요.')
+    } finally {
+      setManualLinking(false)
+    }
+  }
 
   const studioUrl = `https://studio.youtube.com/channel/UC/livestreaming?ur_stream_id=${stream.id}&ur_webcam=1`
 
@@ -414,12 +445,32 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
         </div>
       )}
 
-      {!hasExt && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <p className="text-[11px] text-amber-800 leading-relaxed">
-            <b>Chrome Extension</b>을 설치하면 방송 시작이 자동으로 감지됩니다.
-            미설치 시 아래 "수동 시작"을 눌러주세요.
-          </p>
+      {!hasExt && phase === 'waiting' && (
+        <div className="space-y-2">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-[11px] text-amber-800 leading-relaxed">
+              YouTube Studio에서 방송을 시작한 후, Studio URL 또는 비디오 ID를 아래에 붙여넣으세요.
+            </p>
+            <p className="text-[10px] text-amber-600 mt-1">
+              예: <code className="bg-amber-100 px-1 rounded">https://studio.youtube.com/video/<b>abc123xyz</b>/livestreaming</code>
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={manualInput}
+              onChange={e => setManualInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleManualLink()}
+              placeholder="URL 또는 비디오 ID 붙여넣기"
+              className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-red-300"
+            />
+            <button
+              onClick={handleManualLink}
+              disabled={!manualInput.trim() || manualLinking}
+              className="shrink-0 px-3 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-semibold rounded-lg">
+              {manualLinking ? '연결 중…' : '연결'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -428,7 +479,7 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
           className="flex-1 text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">
           Studio 다시 열기
         </button>
-        {(showManual || !hasExt) && (
+        {showManual && hasExt && (
           <button onClick={onGoLive}
             className="text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2">
             수동 시작

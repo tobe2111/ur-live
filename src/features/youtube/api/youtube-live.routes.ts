@@ -23,6 +23,24 @@ import { ensureYouTubeTables, getValidAccessToken } from './youtube.routes'
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
 
+// YouTube API 상태 조회 서버사이드 캐시 (25s TTL) — API quota 절감
+// 셀러 10명 방송 시: 5s polling → 최대 2 API calls/5s (캐시 미스 시) vs 기존 10 calls/5s
+const statusCache = new Map<string, { data: unknown; ts: number }>()
+const STATUS_CACHE_TTL_MS = 25_000
+function getCachedStatus(key: string) {
+  const entry = statusCache.get(key)
+  if (entry && Date.now() - entry.ts < STATUS_CACHE_TTL_MS) return entry.data
+  return null
+}
+function setCachedStatus(key: string, data: unknown) {
+  statusCache.set(key, { data, ts: Date.now() })
+  // 메모리 누수 방지: 100개 초과 시 오래된 항목 정리
+  if (statusCache.size > 100) {
+    const oldest = [...statusCache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0]
+    if (oldest) statusCache.delete(oldest[0])
+  }
+}
+
 app.post('/live/create', async (c) => {
   await ensureYouTubeTables(c.env.DB)
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -416,9 +434,17 @@ app.get('/live/:id/status', async (c) => {
       })
     }
 
-    // Check YouTube broadcast status
-    const broadcast = await youtubeService.getBroadcast(accessToken, stream.youtube_broadcast_id as string)
-    const ytStatus = broadcast.status
+    // Check YouTube broadcast status (캐시 확인 → 미스 시 API 호출)
+    const cacheKey = `status:${streamId}`
+    const cached = getCachedStatus(cacheKey) as { ytStatus: string } | null
+    let ytStatus: string
+    if (cached) {
+      ytStatus = cached.ytStatus
+    } else {
+      const broadcast = await youtubeService.getBroadcast(accessToken, stream.youtube_broadcast_id as string)
+      ytStatus = broadcast.status
+      setCachedStatus(cacheKey, { ytStatus })
+    }
 
     // Auto-sync: YouTube says live but our DB says scheduled → update DB
     if (ytStatus === 'live' && stream.status === 'scheduled') {

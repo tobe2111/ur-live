@@ -11,6 +11,8 @@ import { toast } from '@/hooks/useToast'
 
 interface Props {
   streamId: number
+  // youtube/quick: YouTube API로 시청자수+RTT / 나머지: RTT 전용 (API quota 0)
+  mode?: 'youtube' | 'quick' | 'obs' | 'prism' | 'youtube-webcam'
 }
 
 interface QualityData {
@@ -20,20 +22,24 @@ interface QualityData {
   ts: number
 }
 
-export default function ConnectionQualityGauge({ streamId }: Props) {
+export default function ConnectionQualityGauge({ streamId, mode }: Props) {
   const [data, setData] = useState<QualityData | null>(null)
   const consecutiveBadRef = useRef(0)
   const warnedRef = useRef(false)
+  // youtube/quick만 YouTube API 호출, 나머지는 경량 ping으로 RTT만 측정
+  const useYouTubeStats = mode === 'youtube' || mode === 'quick' || !mode
 
   useEffect(() => {
     let cancelled = false
     async function tick() {
       const t0 = performance.now()
       try {
-        const res = await api.get(`/api/youtube/live/${streamId}/youtube-stats`)
+        const res = useYouTubeStats
+          ? await api.get(`/api/youtube/live/${streamId}/youtube-stats`)
+          : await api.get(`/api/seller/streams/${streamId}`)  // RTT 측정용 경량 호출
         const rtt = Math.round(performance.now() - t0)
         if (cancelled) return
-        const viewers = res.data?.data?.concurrent_viewers ?? 0
+        const viewers = useYouTubeStats ? (res.data?.data?.concurrent_viewers ?? 0) : 0
         const status: QualityData['status'] = rtt < 600 ? 'good' : rtt < 1500 ? 'warn' : 'bad'
         setData({ concurrent_viewers: viewers, rtt_ms: rtt, status, ts: Date.now() })
 

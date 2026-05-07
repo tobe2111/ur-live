@@ -191,21 +191,27 @@ export default function SellerLiveBroadcastPage() {
   }, [streams, urlStreamId, loading, navigate])
 
   // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링
+  // 적응형: 초반 2분은 5s, 이후 15s (YouTube API quota 절감)
   useEffect(() => {
     if (step !== 'setup' || !currentStream || transitionCountdown !== null) return
+    const startedAt = Date.now()
     const poll = async () => {
       try {
         const res = await api.get(`/api/seller/youtube/live/${currentStream.id}/status`)
         setPollFailures(0)
         if (res.data?.success && res.data.data?.synced && res.data.data?.status === 'live') {
-          // 감지됨 → 3-2-1 카운트다운 → 전환
           setTransitionCountdown(3)
         }
       } catch { setPollFailures(c => c + 1) }
     }
-    // 🛡️ 2026-05-04 (perf): 3s → 5s — 라이브 시작 감지 지연 +2s 허용. 셀러 부담 감소.
-    const interval = setInterval(poll, 5000)
-    return () => clearInterval(interval)
+    poll() // 최초 즉시 실행
+    let interval = setInterval(poll, 5000)
+    // 2분 후 15s 간격으로 전환
+    const slowDown = setTimeout(() => {
+      clearInterval(interval)
+      interval = setInterval(poll, 15000)
+    }, 120000)
+    return () => { clearInterval(interval); clearTimeout(slowDown) }
   }, [step, currentStream, transitionCountdown])
 
   // 카운트다운 tick

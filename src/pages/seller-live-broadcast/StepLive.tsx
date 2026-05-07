@@ -19,6 +19,7 @@ import YouTubeChatSyncIndicator from '@/components/streaming/YouTubeChatSyncIndi
 import ConnectionQualityGauge from '@/components/streaming/ConnectionQualityGauge'
 import type { StreamMethod } from '../SellerLiveBroadcast.storage'
 import type { LiveStream, Product } from './types'
+import { useScreenWakeLock } from '@/hooks/useScreenWakeLock'
 
 interface StepLiveProps {
   stream: LiveStream
@@ -32,6 +33,8 @@ interface StepLiveProps {
 export default function StepLive({ stream, products, method, notifyFollowers = true, onChangeProduct, onEndStream }: StepLiveProps) {
   const { t } = useTranslation()
   const startedAtRef = useRef(Date.now())
+  // 방송 중 화면 잠금 방지 (모바일에서 화면 꺼짐 방지)
+  useScreenWakeLock(true)
   const [elapsed, setElapsed] = useState('00:00')
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [pipActive, setPipActive] = useState(false)
@@ -218,7 +221,7 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
           <p className="text-sm font-semibold text-gray-900 truncate">{stream.title}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <ConnectionQualityGauge streamId={stream.id} />
+          <ConnectionQualityGauge streamId={stream.id} mode={method} />
           <button onClick={togglePiP}
             className={`w-7 h-7 rounded-full text-xs font-bold ${pipActive ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
             title="Picture-in-Picture (PiP)">
