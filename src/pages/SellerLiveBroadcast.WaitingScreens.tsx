@@ -205,6 +205,15 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
         </p>
       </div>
 
+      {/* 🛡️ 2026-05-07: 셀러가 "데이터 없음" 화면 보고 멈춤 — RTMP 송출 필요 명시 */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
+        <p className="text-xs font-bold text-amber-900">⚠️ YouTube Studio 에 "데이터 없음" 표시 시</p>
+        <p className="text-[11px] text-amber-800 leading-relaxed">
+          이 모드는 <b>OBS / 인코더에서 RTMP 송출</b>이 필요해요. 웹캠만으로는 진행이 안 됩니다.
+          OBS 가 없다면 <b>"OBS Studio"</b> 또는 <b>"Prism Mobile"</b> 모드로 다시 시작해주세요.
+        </p>
+      </div>
+
       <button onClick={openPopup}
         className="w-full text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 py-1">
         {t('seller.liveBroadcast.reopenStudio')}

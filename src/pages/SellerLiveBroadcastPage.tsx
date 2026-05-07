@@ -83,6 +83,7 @@ export default function SellerLiveBroadcastPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [loading, setLoading] = useState(true)
+  const [channelsLoading, setChannelsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [connectingYouTube, setConnectingYouTube] = useState(false)
 
@@ -228,6 +229,9 @@ export default function SellerLiveBroadcastPage() {
       .finally(() => setLoading(false))
 
     // 백그라운드 — 도착 즉시 setState (페이지는 이미 표시 중)
+    // 🛡️ 2026-05-07: channelsLoading 플래그 — channels 가 도착하기 전에는
+    //   "YouTube 연동 필요" 화면으로 떨어지지 않도록 (UX 플리커 방지).
+    setChannelsLoading(true)
     api.get('/api/seller/youtube/channels').then(r => {
       if (r.data?.success) {
         const chs = r.data.data || []
@@ -235,6 +239,7 @@ export default function SellerLiveBroadcastPage() {
         if (chs.length > 0 && !activeChannelId) setActiveChannelId(chs[0].id)
       }
     }).catch(() => { /* silent — 채널 없어도 UI 표시 */ })
+      .finally(() => setChannelsLoading(false))
     api.get('/api/seller/products').then(r => {
       if (r.data?.success) setProducts(r.data.data || [])
     }).catch(() => { /* silent */ })
@@ -405,6 +410,18 @@ export default function SellerLiveBroadcastPage() {
         <AlertCircle className="h-10 w-10 text-red-500" />
         <p className="text-gray-700">{loadError}</p>
         <Button onClick={loadData}>{t('common.retry')}</Button>
+      </div>
+    </SellerLayout>
+  )
+
+  // ── 채널 로딩 중 ─────────────────────────────────────────────
+  // 🛡️ 2026-05-07: streams 도착 후 channels 도착 전까지 "YouTube 연동 필요"
+  //   화면이 잠깐 노출되는 플리커 방지. channelsLoading 인 동안은 스켈레톤.
+  if (channelsLoading && channels.length === 0) return (
+    <SellerLayout title={t('seller.nav.liveBroadcast')}>
+      <div className="max-w-md mx-auto py-16 text-center space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin text-red-600 mx-auto" />
+        <p className="text-sm text-gray-500">{t('seller.liveBroadcast.checkingYoutube', { defaultValue: 'YouTube 연동 상태 확인 중…' })}</p>
       </div>
     </SellerLayout>
   )
