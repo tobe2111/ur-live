@@ -341,9 +341,40 @@ sellerRegistrationRoutes.get('/my-seller-status', async (c) => {
 
     await ensureSellerColumns(db);
 
-    const seller = await db.prepare(
+    let seller = await db.prepare(
       'SELECT id, status, seller_type, business_name FROM sellers WHERE linked_user_id = ?'
     ).bind(sessionUser.userId).first<Record<string, any>>();
+
+    // 🛡️ 2026-05-07 (영구 fix): linked_user_id 없을 때 이메일 매칭으로 기존 셀러 발견 시 자동 연결.
+    //   원인: 이전에 이메일/비번으로 셀러 등록한 사용자가 카카오 로그인 시 linked_user_id 가 null
+    //   → "셀러 없음" 으로 잘못 표시 → 사용자에게 \"새로 등록하세요\" 라는 잘못된 안내.
+    //   해결: 카카오 검증된 user.email 과 sellers.email 매칭 시 자동 link (보안: 카카오는 email 검증 의무).
+    if (!seller) {
+      try {
+        const userRow = await db.prepare('SELECT email FROM users WHERE id = ?')
+          .bind(sessionUser.userId).first<{ email: string | null }>();
+        const userEmail = userRow?.email?.trim().toLowerCase();
+        if (userEmail) {
+          // 같은 이메일을 가진 셀러 — 단, 다른 user 에 이미 연결된 경우는 제외
+          const matched = await db.prepare(
+            `SELECT id, status, seller_type, business_name, linked_user_id
+             FROM sellers
+             WHERE LOWER(email) = ? AND (linked_user_id IS NULL OR linked_user_id = ?)`
+          ).bind(userEmail, sessionUser.userId).first<Record<string, any>>();
+          if (matched) {
+            // 자동 연결 — 다음 호출부터는 linked_user_id 매칭으로 빠르게 조회됨
+            if (!matched.linked_user_id) {
+              try {
+                await db.prepare(
+                  "UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?"
+                ).bind(sessionUser.userId, matched.id).run();
+              } catch { /* 동시성 race — 다음 호출에서 정상화 */ }
+            }
+            seller = matched;
+          }
+        }
+      } catch { /* 이메일 매칭 실패 — 정상 has_seller:false 흐름 */ }
+    }
 
     if (!seller) {
       // 백워드 호환: `has_seller`(구) + `linked`(신) 둘 다 제공

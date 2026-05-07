@@ -4,13 +4,33 @@ import { X } from 'lucide-react'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { toast } from '@/hooks/useToast'
 
+/**
+ * 사업자번호 자동 포맷터: 입력값을 000-00-00000 형식으로 변환.
+ * 숫자만 추출 후 3-2-5 자리로 하이픈 삽입.
+ */
+function formatBusinessNumber(input: string): string {
+  const digits = input.replace(/\D/g, '').slice(0, 10)
+  if (digits.length <= 3) return digits
+  if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`
+}
+
+/**
+ * 휴대폰번호 자동 포맷터: 010-XXXX-XXXX.
+ */
+function formatPhone(input: string): string {
+  const digits = input.replace(/\D/g, '').slice(0, 11)
+  if (digits.length <= 3) return digits
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+}
+
 export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation()
   const [form, setForm] = useState({
     business_name: '',
     business_number: '',
     phone: '',
-    seller_type: 'influencer' as 'influencer' | 'store_owner' | 'both',
     youtube_email: '',
     description: '',
   })
@@ -31,31 +51,31 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
       return
     }
     if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number)) {
-      toast.error(t('sellerApply.formatError', { defaultValue: '사업자번호 형식: XXX-XX-XXXXX' }))
+      toast.error(t('sellerApply.formatError', { defaultValue: '사업자번호 형식: 000-00-00000' }))
       return
     }
     setSubmitting(true)
     try {
       const { default: api } = await import('@/lib/api')
-      const res = await api.post('/api/seller/register-from-user', form)
+      // seller_type 은 백엔드 default 'influencer' 사용 (UI 에선 제거 — 사용자에게 무의미)
+      const res = await api.post('/api/seller/register-from-user', { ...form, seller_type: 'influencer' })
       if (res.data.success) {
         toast.success(t('sellerApply.success', { defaultValue: '셀러 전환 신청 완료! 관리자 승인을 기다려주세요.' }))
         onSuccess()
         onClose()
       }
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e?.response?.data?.error || t('sellerApply.failed', { defaultValue: '셀러 전환 신청에 실패했습니다' }))
+      // 🛡️ React #31 방지: 백엔드 error 가 객체({message, code}) 일 수 있어 강제 string 변환.
+      const e = err as { response?: { data?: { error?: string | { message?: string } } }; message?: string }
+      const rawErr = e?.response?.data?.error
+      const errMsg = typeof rawErr === 'string' ? rawErr
+        : (typeof rawErr === 'object' && rawErr?.message) ? rawErr.message
+        : (e?.message || '')
+      toast.error(errMsg || t('sellerApply.failed', { defaultValue: '셀러 전환 신청에 실패했습니다' }))
     } finally {
       setSubmitting(false)
     }
   }
-
-  const sellerTypes = [
-    { value: 'influencer', label: t('sellerApply.influencer', { defaultValue: '인플루언서' }), desc: t('sellerApply.influencerDesc', { defaultValue: '유튜브/SNS 라이브 방송' }) },
-    { value: 'store_owner', label: t('sellerApply.storeOwner', { defaultValue: '매장 사장님' }), desc: t('sellerApply.storeOwnerDesc', { defaultValue: '맛집/매장 식사권 판매' }) },
-    { value: 'both', label: t('sellerApply.both', { defaultValue: '둘 다' }), desc: t('sellerApply.bothDesc', { defaultValue: '방송 + 매장 운영' }) },
-  ] as const
 
   return (
     <div
@@ -84,27 +104,6 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{t('sellerApply.sellerType', { defaultValue: '셀러 유형' })}</label>
-            <div className="grid grid-cols-3 gap-2">
-              {sellerTypes.map(st => (
-                <button
-                  key={st.value}
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, seller_type: st.value }))}
-                  className={`py-2.5 px-2 rounded-xl text-center transition-all ${
-                    form.seller_type === st.value
-                      ? 'bg-pink-500/20 border border-pink-500/50 text-pink-400'
-                      : 'bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400'
-                  }`}
-                >
-                  <p className="text-[11px] font-bold">{st.label}</p>
-                  <p className="text-[9px] mt-0.5 opacity-70">{st.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{t('sellerApply.businessName', { defaultValue: '사업자명 (상호) *' })}</label>
             <input
               value={form.business_name}
@@ -118,9 +117,11 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{t('sellerApply.businessNumber', { defaultValue: '사업자번호 *' })}</label>
             <input
               value={form.business_number}
-              onChange={e => setForm(f => ({ ...f, business_number: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, business_number: formatBusinessNumber(e.target.value) }))}
+              inputMode="numeric"
+              maxLength={12}
               className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
-              placeholder="123-45-67890"
+              placeholder="000-00-00000"
             />
           </div>
 
@@ -128,23 +129,23 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{t('sellerApply.phone', { defaultValue: '연락처 *' })}</label>
             <input
               value={form.phone}
-              onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
+              inputMode="numeric"
+              maxLength={13}
               className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
               placeholder="010-1234-5678"
             />
           </div>
 
-          {form.seller_type !== 'store_owner' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{t('sellerApply.youtubeEmail', { defaultValue: '유튜브 구글 이메일' })}</label>
-              <input
-                value={form.youtube_email}
-                onChange={e => setForm(f => ({ ...f, youtube_email: e.target.value }))}
-                className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
-                placeholder={t('sellerApply.youtubeEmailPlaceholder', { defaultValue: '라이브 방송에 사용할 구글 계정' })}
-              />
-            </div>
-          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{t('sellerApply.youtubeEmail', { defaultValue: '유튜브 구글 이메일 (선택)' })}</label>
+            <input
+              value={form.youtube_email}
+              onChange={e => setForm(f => ({ ...f, youtube_email: e.target.value }))}
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
+              placeholder={t('sellerApply.youtubeEmailPlaceholder', { defaultValue: '라이브 방송에 사용할 구글 계정' })}
+            />
+          </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{t('sellerApply.description', { defaultValue: '소개 (선택)' })}</label>
