@@ -8,7 +8,7 @@
  *
  * 🛡️ 2026-04-28: TD-006 추가 분할.
  */
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { safeDate, safeTime } from '@/utils/safe-date'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, CheckCircle2, Youtube, Camera } from 'lucide-react'
@@ -299,31 +299,26 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
 // ─────────────────────────────────────────────────────────────────────────────
 // YouTubeWebcamWaiting — OBS 없이 YouTube Studio 웹캠으로 라이브
 //
-// 플로우: YouTube API 로 방송 생성(video_id 확보) → Studio URL 직접 오픈
-//   PC:      팝업 창으로 studio.youtube.com/video/{id}/livestreaming 열기
-//   모바일:  같은 URL 을 새 탭으로 → YouTube Studio 앱 설치 시 앱으로 딥링크됨
-//   감지:    /status API 폴링 (15s) → youtube_status === 'live' 시 자동 전환
-//   Extension 불필요 — video_id 는 생성 시점에 이미 확보됨
+// 플로우:
+//   1. /create-webcam 으로 생성 → youtube_video_id 없음 (YouTube API 호출 안 함)
+//   2. 셀러가 YouTube Studio 에서 직접 웹캠 방송 시작
+//   3. /detect-webcam (10s 폴링) → liveBroadcasts.list 로 활성 방송 자동 감지
+//   4. 감지 시 /link-broadcast PATCH → youtube_video_id DB 저장 → onGoLive()
 // ─────────────────────────────────────────────────────────────────────────────
 export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamLite; onGoLive: () => void }) {
   const popupRef = useRef<Window | null>(null)
   const openedRef = useRef(false)
-  const detectedRef = useRef(false)
-  const [detected, setDetected] = useState(false)
+  const linkingRef = useRef(false)
+  const [detected, setDetected] = useState<{ youtube_video_id: string; title?: string } | null>(null)
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)
 
-  // video_id 기반 Studio URL — 생성 시점에 이미 확보된 값
-  const vid = stream.youtube_video_id || stream.youtube_broadcast_id
-  const studioUrl = vid
-    ? `https://studio.youtube.com/video/${vid}/livestreaming`
-    : `https://studio.youtube.com/channel/UC/livestreaming`
+  // 일반 YouTube Studio URL — video_id 없이 셀러가 직접 웹캠 방송 시작
+  const studioUrl = 'https://studio.youtube.com/channel/UC/livestreaming'
 
   function openStudio() {
     if (isMobile) {
-      // 모바일: 새 탭 → YouTube Studio 앱 설치 시 앱 딥링크
       window.open(studioUrl, '_blank', 'noopener')
     } else {
-      // PC: 팝업 창
       const w = Math.min(1280, Math.floor(window.screen.availWidth * 0.85))
       const h = Math.min(820, Math.floor(window.screen.availHeight * 0.85))
       const left = Math.floor((window.screen.availWidth - w) / 2)
@@ -335,7 +330,6 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
     }
   }
 
-  // 마운트 시 자동 오픈
   useEffect(() => {
     if (openedRef.current) return
     openedRef.current = true
@@ -346,25 +340,27 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // /status 폴링 — youtube_status === 'live' 감지 시 자동 전환
+  // /detect-webcam 폴링 — 10s 간격, liveBroadcasts.list 1 unit/call
   useEffect(() => {
-    if (!vid) return
     const poll = async () => {
-      if (detectedRef.current) return
+      if (linkingRef.current) return
       try {
-        const res = await api.get(`/api/seller/youtube/live/${stream.id}/status`)
-        const status = res.data?.data?.youtube_status
-        if (status === 'live') {
-          detectedRef.current = true
-          setDetected(true)
-          setTimeout(onGoLive, 800)
+        const res = await api.get(`/api/seller/youtube/live/${stream.id}/detect-webcam`)
+        if (res.data?.success && res.data.data) {
+          linkingRef.current = true
+          const d = res.data.data as { youtube_video_id: string; title?: string }
+          await api.patch(`/api/seller/youtube/live/${stream.id}/link-broadcast`, {
+            youtube_video_id: d.youtube_video_id,
+          })
+          setDetected(d)
+          setTimeout(onGoLive, 1200)
         }
       } catch { /* 네트워크 오류 무시 */ }
     }
     poll()
-    const id = setInterval(poll, 15000)
+    const id = setInterval(poll, 10000)
     return () => clearInterval(id)
-  }, [stream.id, vid, onGoLive])
+  }, [stream.id, onGoLive])
 
   return (
     <div className="bg-red-50 border border-red-200 rounded-xl p-5 space-y-4">
@@ -379,25 +375,27 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
       </div>
 
       {detected ? (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-          <p className="text-xs font-bold text-green-800">방송 시작 감지됨! 라이브 화면으로 전환 중…</p>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2">
+          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-bold text-green-800">방송 감지됨! 라이브 화면으로 전환 중…</p>
+            {detected.title && <p className="text-[11px] text-green-700 mt-0.5 truncate">{detected.title}</p>}
+          </div>
         </div>
       ) : (
         <>
           <ol className="space-y-2">
             {(isMobile ? [
-              'YouTube Studio 앱 또는 브라우저 탭이 열립니다',
-              '방송 목록에서 방금 만든 방송 선택',
-              '"웹캠" 또는 "카메라" 탭 → Go Live',
+              'YouTube Studio 앱에서 "웹캠" 탭으로 방송 시작',
+              '방송이 시작되면 자동으로 감지됩니다',
             ] : [
-              '팝업 YouTube Studio 창에서',
-              '"웹캠" 탭 선택',
-              '"라이브 시작" 클릭',
-            ]).map((step, i) => (
+              '팝업 YouTube Studio 창에서 "웹캠" 탭 선택',
+              '카메라/마이크 설정 후 "라이브 시작" 클릭',
+              '방송이 시작되면 자동으로 감지됩니다 ✓',
+            ]).map((s, i) => (
               <li key={i} className="flex items-start gap-2.5">
                 <span className="shrink-0 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
-                <span className="text-xs text-gray-700">{step}</span>
+                <span className="text-xs text-gray-700">{s}</span>
               </li>
             ))}
           </ol>
@@ -408,7 +406,7 @@ export function YouTubeWebcamWaiting({ stream, onGoLive }: { stream: LiveStreamL
                 <span key={i} className="w-1.5 h-1.5 rounded-full bg-red-400 animate-bounce" style={{ animationDelay: `${d}s` }} />
               ))}
             </span>
-            <p className="text-xs text-red-700 flex-1">YouTube Studio 방송 시작 감지 중… (15초마다 확인)</p>
+            <p className="text-xs text-red-700 flex-1">YouTube 방송 시작 감지 중… (10초마다 확인)</p>
           </div>
 
           <div className="flex items-center gap-2">

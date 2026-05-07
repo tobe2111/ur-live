@@ -314,6 +314,68 @@ app.patch('/live/:id/link-broadcast', async (c) => {
 })
 
 /**
+ * GET /api/youtube/live/:id/detect-webcam
+ * 웹캠 모드: 셀러의 YouTube 계정에서 새로 시작된 방송 자동 감지
+ * liveBroadcasts.list = 1 unit/call (10s 폴링 × 5분 = 30 unit)
+ */
+app.get('/live/:id/detect-webcam', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const streamId = parseInt(c.req.param('id'))
+  if (!c.env.YOUTUBE_CLIENT_ID || !c.env.YOUTUBE_CLIENT_SECRET) {
+    return c.json({ success: false, error: 'YouTube API not configured' }, 500)
+  }
+  const youtubeService = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
+  const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+  if (!accessToken) return c.json({ success: false, error: 'YouTube 연동이 필요합니다' }, 401)
+
+  try {
+    // 셀러 계정의 현재 활성/대기 방송 조회 (최신 10개)
+    const res = await fetch(
+      'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status&broadcastStatus=all&mine=true&maxResults=10&order=date',
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    if (!res.ok) return c.json({ success: true, data: null })
+
+    const data = await res.json() as { items?: Array<{ id: string; snippet: { title: string; publishedAt: string }; status: { lifeCycleStatus: string } }> }
+
+    // 이미 연결된 video_id 가져오기 (중복 연결 방지)
+    const stream = await c.env.DB.prepare(
+      'SELECT youtube_video_id FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first<{ youtube_video_id: string }>()
+    const alreadyLinked = stream?.youtube_video_id
+
+    // live 또는 ready/testStarting 상태 방송 중 이미 연결된 것 제외
+    const ACTIVE = ['live', 'liveStarting', 'testStarting', 'testing', 'ready']
+    const candidates = (data.items || []).filter(item =>
+      ACTIVE.includes(item.status?.lifeCycleStatus) &&
+      item.id !== alreadyLinked
+    )
+
+    if (!candidates.length) return c.json({ success: true, data: null })
+
+    // live > testStarting > ready 우선순위, 동순위면 최신 순
+    const priority: Record<string, number> = { live: 0, liveStarting: 1, testStarting: 2, testing: 3, ready: 4 }
+    candidates.sort((a, b) =>
+      (priority[a.status.lifeCycleStatus] ?? 9) - (priority[b.status.lifeCycleStatus] ?? 9)
+    )
+
+    const best = candidates[0]
+    return c.json({
+      success: true,
+      data: {
+        youtube_video_id: best.id,
+        title: best.snippet?.title,
+        status: best.status?.lifeCycleStatus,
+      }
+    })
+  } catch {
+    return c.json({ success: true, data: null })
+  }
+})
+
+/**
  * POST /api/youtube/live/:id/start
  * Transition broadcast to live
  */

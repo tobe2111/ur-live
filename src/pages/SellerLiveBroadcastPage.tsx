@@ -333,7 +333,9 @@ export default function SellerLiveBroadcastPage() {
         scheduledStartTime = d.toISOString()
       }
 
-      const endpoint = '/api/seller/youtube/live/create'
+      const endpoint = method === 'youtube-webcam'
+        ? '/api/seller/youtube/live/create-webcam'
+        : '/api/seller/youtube/live/create'
 
       const res = await api.post(endpoint, {
         title: effectiveTitle.trim(), description: description.trim(),
