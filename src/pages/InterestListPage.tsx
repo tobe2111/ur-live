@@ -48,7 +48,7 @@ export default function InterestListPage() {
       <SEO title={t('interestList.seoTitle', { defaultValue: '관심 맛집 - 유어딜' })} description={t('interestList.seoDesc', { defaultValue: '관심 등록한 맛집과 공동구매 알림 목록' })} url="/interest-list" />
 
       {/* 헤더 */}
-      <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />

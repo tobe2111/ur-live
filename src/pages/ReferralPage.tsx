@@ -184,7 +184,7 @@ export default function ReferralPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
       <SEO title={t('referralPage.seoTitle')} description={t('referralPage.seoDesc')} url="/referral" />
       {/* v4 Header */}
-      <div className="sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />

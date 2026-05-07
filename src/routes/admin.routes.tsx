@@ -14,6 +14,7 @@ const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage'))
 const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
+const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
 const AdminCafe24Page = lazy(() => import('@/pages/admin/AdminCafe24Page'))
 const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage'))
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
@@ -89,6 +90,11 @@ export function AdminRoutes() {
       <Route path="/admin/kv-monitoring" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><KVMonitoringPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/system-monitoring" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminSystemMonitoringPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/sample-requests" element={

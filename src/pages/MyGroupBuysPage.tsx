@@ -101,7 +101,7 @@ export default function MyGroupBuysPage() {
         url="/my-group-buys"
       />
       {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-200 dark:border-[#2A2A2A]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-200 dark:border-[#2A2A2A]">
         <div className="ur-content-narrow flex items-center justify-between h-14 px-4 lg:px-8">
           <button onClick={() => navigate(-1)} className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900">
             <ChevronLeft className="w-6 h-6" />

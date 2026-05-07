@@ -114,7 +114,7 @@ export default function UserGroupBuyCreatePage() {
         url="/community-group-buy/new"
       />
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="flex items-center h-12 px-2">
           <button
             onClick={() => navigate(-1)}

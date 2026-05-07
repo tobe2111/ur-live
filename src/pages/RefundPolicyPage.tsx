@@ -12,7 +12,7 @@ export default function RefundPolicyPage() {
       <SEO title={t('refundPolicy.seoTitle', { defaultValue: '환불정책 - 유어딜' })} description={t('refundPolicy.seoDesc', { defaultValue: '유어딜 환불 및 반품 정책을 안내합니다.' })} url="/refund-policy" />
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />

@@ -160,6 +160,7 @@ import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.rou
 import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
 import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
+import { adminSystemMonitoringRoutes } from '../features/admin/api/admin-system-monitoring.routes';
 import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 import { pointsRoutes } from '../features/points/api/points.routes';
@@ -892,6 +893,8 @@ adminApp.route('/agency-creator-approvals', adminAgencyApprovalsRoutes);
 adminApp.route('/tools', adminToolsRoutes);
 // Admin real-time health metrics (active streams, orders/min, stuck orders, webhooks)
 adminApp.route('/metrics', adminMetricsRoutes);
+// 🛡️ 2026-05-07: Cron / 알림톡 실패 모니터링 (admin 가시성)
+adminApp.route('/', adminSystemMonitoringRoutes);
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
 adminApp.route('/', adminCouponsRoutes);

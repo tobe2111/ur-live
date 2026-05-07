@@ -108,7 +108,7 @@ export default function AccountDeleteWarningPage() {
 
       {/* 헤더 — AccountSettings 와 동일 스타일 */}
       <div
-        className="sticky top-0 z-50 flex items-center px-2 py-3 gap-1"
+        className="sticky top-0 md:top-14 z-40 flex items-center px-2 py-3 gap-1"
         style={{
           background: 'rgba(10,10,10,0.85)',
           backdropFilter: 'blur(20px) saturate(140%)',

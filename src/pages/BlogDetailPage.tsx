@@ -132,7 +132,7 @@ export default function BlogDetailPage() {
       />
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-6 py-3">
           <button onClick={() => navigate('/blog')} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />

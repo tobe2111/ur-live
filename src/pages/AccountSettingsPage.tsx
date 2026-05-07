@@ -192,7 +192,7 @@ export default function AccountSettingsPage() {
         noindex
       />
       {/* 🛡️ 2026-04-30 v4 Wallet sticky chrome */}
-      <div className="sticky top-0 z-50" style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(84,84,88,0.34)' }}>
+      <div className="sticky top-0 md:top-14 z-40" style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: '0.5px solid rgba(84,84,88,0.34)' }}>
         <div className="ur-content-narrow flex items-center px-2 lg:px-8 py-3 gap-1">
           <button type="button" onClick={() => navigate(-1)} aria-label={t('accountSettings.back')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06]">
             <ChevronLeft className="w-4 h-4 text-gray-900 dark:text-white" aria-hidden="true" />

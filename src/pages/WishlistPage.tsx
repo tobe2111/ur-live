@@ -148,7 +148,7 @@ const WishlistPage: React.FC = () => {
       <SEO title={t('wishlist.seoTitle', { defaultValue: '위시리스트 - 유어딜' })} description={t('wishlist.seoDesc', { defaultValue: '관심 상품을 모아보세요' })} url="/wishlist" noindex />
 
       {/* 상단 chrome — 뒤로가기 */}
-      <div className="sticky top-0 z-30 px-2 pt-3 pb-2 flex items-center"
+      <div className="sticky top-0 md:top-14 z-30 px-2 pt-3 pb-2 flex items-center"
         style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
         <button
           onClick={() => navigate(-1)}

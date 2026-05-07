@@ -11,7 +11,7 @@ export default function ReferralIndexPage() {
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
       <SEO title={t('referral.seoTitle', { defaultValue: '친구초대 - 유어딜' })} description={t('referral.seoDesc', { defaultValue: '친구와 함께 공동구매로 더 저렴하게 쇼핑하세요' })} url="/referral" />
 
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button
             onClick={() => navigate(-1)}

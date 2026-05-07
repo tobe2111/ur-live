@@ -54,7 +54,7 @@ export default function FollowingPage() {
       />
 
       {/* Sticky Header */}
-      <div className="sticky top-0 z-50 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-gray-200 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-gray-200 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button
             onClick={() => navigate(-1)}
