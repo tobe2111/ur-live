@@ -8,6 +8,42 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 📊 2026-05-07 종료 시 상태 — i18n 마무리 + 파일 분할 + 라이브 버그 fix
+
+### 이번 세션 처리
+
+**TD-014 i18n 완료** — Seller / Admin / Agency 대시보드 ~360+건 처리:
+- ✅ Seller: SellerPublicPage, SellerLiveBroadcastPage, SellerLiveBroadcast.OBSRemoteControl, SellerLiveBroadcast.WaitingScreens, SellerMealVoucherNewPage (~70건)
+- ✅ Admin/Agency 16개 페이지 — 백그라운드 에이전트 병렬 처리 (~280건 + 6언어 sync 완료)
+  - AdminSettlementPage, AdminCastingsPage, AdminPlatformSettingsPage, AdminPage, AdminReplayPage, AdminUsersPage, AdminNotificationSettingsPage, AdminOpsInsightsPage, AdminAdSlotsPage, AdminAgencyCreatorApprovalPage, AdminReviewModerationPage
+  - AgencyProfilePage, AgencyInvitesPage, AgencyCouponsPage, AgencyRegisterPage, AgencyRegisterBusinessPage
+- ✅ 검증: `tsc --noEmit` 0건 / `check-i18n-sync.mjs` 6언어 100% 동기
+
+**TD-024 라이브 영상 재생 버그 fix**:
+- 🐛 LivePageV2 의 `reelRefs` 콜백이 DOM 부착 시점 (`useEffect` 보다 먼저) 호출되어 `observerRef.current === null` → IntersectionObserver 가 reel 노드를 observe 못 함 → 영상 자동 재생 실패
+- ✅ 수정: `pendingNodesRef` 추가 — 옵저버 생성 전 등록된 노드들 큐에 저장 후 `useEffect` 에서 일괄 observe
+
+**TD-018 파일 분할** — `AdminProductsPage` 634줄 → 290줄 (54% 감소):
+- 새 sub-files: `admin-products/{ProductFormModal,SampleRequestsTab,SupplySalesTab}.tsx`
+- 기존 `admin-products/types.ts` 유지
+
+**TD-022 로그인 진단 로그**:
+- ✅ 이전 세션에서 `import.meta.env.DEV` 게이트 처리 완료
+
+### 잔여 코드 자동 작업 (다음 세션)
+
+- **TD-018 파일 분할 잔여**: `SellerPublicPage` 632줄, `SellerLiveBroadcastPage` 604줄 (이미 −54.8% 1차 처리됨), `AgencyPage` 727줄 등
+- **TD-014 i18n 잔여**: ShortsPage / LivePageV2 / MainHomePage 등 사용자 대면 페이지 i18n 보강
+- **성능**: vite 600KB+ 청크 경고 — `manualChunks` 정리, `locales-DpY_3W8g.js` 806KB 분할
+
+### 🔴 사용자 액션 필요 (코드 불가, 변경 없음)
+
+1. TD-001 — D1 권한 추가 (30분)
+2. TD-003 — 유령 CF 프로젝트 정리 (1시간)
+3. TD-008 — `INTERNAL_CRON_TOKEN` 등록 (5분)
+
+---
+
 ## 📊 2026-05-04 종료 시 상태 — 코드 자동 작업 audit 완료
 
 ### 이번 세션 처리
