@@ -28,8 +28,21 @@ interface Props {
   onMessage?: (msg: YouTubeChatItem) => void
 }
 
+// 🛡️ 2026-05-07: localStorage 로 토글 상태 영구 저장 + default ON.
+//   YouTube Studio 모드 셀러는 채팅 통합이 핵심 가치 → default ON 으로 변경.
+const STORAGE_KEY = 'ur_yt_chat_sync_enabled_v2'
+
 export default function YouTubeChatSyncIndicator({ streamId, onMessage }: Props) {
-  const [enabled, setEnabled] = useState(false)
+  const [enabled, setEnabled] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      return saved === null ? true : saved === '1' // default ON
+    } catch { return true }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, enabled ? '1' : '0') } catch { /* ignore */ }
+  }, [enabled])
   const [polling, setPolling] = useState(false)
   const [count, setCount] = useState(0)
   const [error, setError] = useState<string | null>(null)

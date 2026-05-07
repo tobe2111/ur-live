@@ -95,6 +95,30 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
     setLarixStatus(ok ? 'idle' : 'failed')
   }
 
+  // 🛡️ 2026-05-07: PC 사용자에게 OBS 모드 권장 (Prism 은 모바일 전용)
+  if (!isMobile) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 space-y-3">
+        <div className="flex items-start gap-3">
+          <Smartphone className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-amber-900">PC 에서 Prism 모드를 선택하셨네요</p>
+            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+              Prism Mobile 은 핸드폰 전용 앱이에요. PC 라면 <b>"OBS Studio"</b> 모드를 추천드립니다 (화질 + 안정성 모두 우수).
+            </p>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-3 space-y-2">
+          <p className="text-xs font-semibold text-gray-700">📱 핸드폰으로 진행하려면 — QR 스캔</p>
+          <div className="flex justify-center">
+            <QRCode value={typeof window !== 'undefined' ? window.location.href : ''} size={140} level="M" includeMargin={true} />
+          </div>
+          <p className="text-[10px] text-center text-gray-500">핸드폰으로 위 QR 스캔 → 같은 페이지를 모바일에서 진행</p>
+        </div>
+      </div>
+    )
+  }
+
   // Generate mobile-friendly auto-fill URL
   const appBaseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://live.ur-team.com'
   const autoFillUrl = `${appBaseUrl}/rtmp-setup?` +
@@ -133,38 +157,38 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
           <p>→ 복사 버튼 2번만 누르면 완료!</p>
         </div>
 
-        {/* 모바일에서 보고 있으면 앱 바로 열기 시도 (Prism + Larix 둘 다 지원) */}
+        {/* 🛡️ 2026-05-07: Larix 우선 노출 (공식 deep link 지원) — Prism 은 비공식이라 보조로 강등 */}
         {isMobile && (
           <div className="mt-4 space-y-2">
             <Button
-              onClick={openPrismDirectly}
-              disabled={deeplinkStatus === 'trying'}
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
-            >
-              {deeplinkStatus === 'trying' ? 'Prism 열기 시도 중...' : '🚀 Prism 앱 바로 열기'}
-            </Button>
-            {deeplinkStatus === 'failed' && (
-              <p className="text-[11px] text-amber-700">
-                Prism 앱을 열 수 없어요. 아래 Larix 로도 시도 가능합니다.
-              </p>
-            )}
-            {/* Larix 대체 옵션 */}
-            <Button
               onClick={openLarixDirectly}
               disabled={larixStatus === 'trying'}
-              variant="outline"
-              className="w-full border-indigo-300 text-indigo-700"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
             >
-              {larixStatus === 'trying' ? 'Larix 열기 시도 중...' : '📡 Larix 로 열기 (대체)'}
+              {larixStatus === 'trying' ? 'Larix 열기 시도 중...' : '🚀 Larix Broadcaster 로 자동 입력'}
             </Button>
             {larixStatus === 'failed' && (
-              <p className="text-[11px] text-gray-500">
-                Larix 도 설치 안 된 것 같아요. 아래 QR 또는 복사로 진행하세요.
+              <p className="text-[11px] text-amber-700">
+                Larix 가 설치 안 된 것 같아요. App Store / Play Store 에서 "Larix Broadcaster" 검색 → 설치 후 다시 시도.
               </p>
             )}
-            <p className="text-[10px] text-gray-400 leading-relaxed">
-              💡 <strong>Larix</strong> 는 Prism 이 열리지 않거나 RTMP 자동 입력이 안 될 때 대체 앱. 무료, Custom RTMP URL scheme 공식 지원.
+            <p className="text-[10px] text-gray-500 leading-relaxed">
+              💡 <strong>Larix</strong> 는 Custom RTMP URL scheme 을 공식 지원해서 자동 입력이 안정적이에요.
+              Prism 도 시도하려면 ↓
             </p>
+            <Button
+              onClick={openPrismDirectly}
+              disabled={deeplinkStatus === 'trying'}
+              variant="outline"
+              className="w-full border-green-300 text-green-700"
+            >
+              {deeplinkStatus === 'trying' ? 'Prism 열기 시도 중...' : 'Prism 앱 시도 (비공식 deep link)'}
+            </Button>
+            {deeplinkStatus === 'failed' && (
+              <p className="text-[11px] text-gray-500">
+                Prism deep link 가 동작 안 했어요. 아래 QR 또는 복사로 진행하거나 Larix 사용 권장.
+              </p>
+            )}
           </div>
         )}
       </div>

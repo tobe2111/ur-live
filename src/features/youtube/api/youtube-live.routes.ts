@@ -540,16 +540,24 @@ app.get('/live/:id/chat', async (c) => {
         authorDetails?: { displayName?: string; profileImageUrl?: string; isChatOwner?: boolean; isChatModerator?: boolean }
       }>
     }
-    const items = (data.items ?? []).map(it => ({
-      id: it.id,
-      message: it.snippet?.displayMessage || '',
-      author: it.authorDetails?.displayName || 'YouTube 사용자',
-      avatar: it.authorDetails?.profileImageUrl,
-      isOwner: !!it.authorDetails?.isChatOwner,
-      isModerator: !!it.authorDetails?.isChatModerator,
-      published_at: it.snippet?.publishedAt,
-      type: it.snippet?.type || 'textMessageEvent',
-    }))
+    const items = (data.items ?? []).map(it => {
+      const sn = it.snippet as Record<string, unknown> | undefined
+      const sc = sn?.superChatDetails as { amountMicros?: string; currency?: string; userComment?: string } | undefined
+      const memberDetails = sn?.newSponsorDetails as { memberLevelName?: string } | undefined
+      return {
+        id: it.id,
+        message: it.snippet?.displayMessage || sc?.userComment || '',
+        author: it.authorDetails?.displayName || 'YouTube 사용자',
+        avatar: it.authorDetails?.profileImageUrl,
+        isOwner: !!it.authorDetails?.isChatOwner,
+        isModerator: !!it.authorDetails?.isChatModerator,
+        published_at: it.snippet?.publishedAt,
+        type: it.snippet?.type || 'textMessageEvent',
+        super_chat_amount_micros: sc?.amountMicros ? Number(sc.amountMicros) : null,
+        super_chat_currency: sc?.currency,
+        member_level: memberDetails?.memberLevelName,
+      }
+    })
 
     // 🛡️ 2026-05-07: forward=1 시 YouTube 메시지를 우리 chat_messages 에 INSERT
     //   - text 메시지만 forward (superchat / member 이벤트 별도 처리)
@@ -568,23 +576,56 @@ app.get('/live/:id/chat', async (c) => {
       } catch { /* table 이미 존재 */ }
 
       for (const item of items) {
-        if (item.type !== 'textMessageEvent' || !item.message) continue
+        if (!item.message) continue
+        // 🛡️ 2026-05-07: textMessageEvent 외 superChatEvent / newSponsorEvent 등도 forward
+        const isSuperChat = item.type === 'superChatEvent' || item.type === 'superStickerEvent'
+        const isMember = item.type === 'newSponsorEvent' || item.type === 'memberMilestoneChatEvent'
         try {
           const existing = await c.env.DB.prepare(
             'SELECT 1 FROM youtube_chat_forwards WHERE youtube_message_id = ?'
           ).bind(item.id).first()
           if (existing) continue
 
-          const cleanName = `[YT] ${item.author}`.slice(0, 50)
+          const prefix = isSuperChat ? '[YT 슈퍼챗]' : isMember ? '[YT 멤버]' : '[YT]'
+          const cleanName = `${prefix} ${item.author}`.slice(0, 50)
           const cleanMsg = item.message.slice(0, 500)
           const result = await c.env.DB.prepare(`
             INSERT INTO chat_messages (live_stream_id, user_id, user_name, message, is_seller, is_admin)
             VALUES (?, NULL, ?, ?, ?, 0)
           `).bind(streamId, cleanName, cleanMsg, item.isOwner ? 1 : 0).run()
 
+          const insertedId = result.meta.last_row_id
+
           await c.env.DB.prepare(`
             INSERT INTO youtube_chat_forwards (youtube_message_id, chat_message_id) VALUES (?, ?)
-          `).bind(item.id, result.meta.last_row_id).run()
+          `).bind(item.id, insertedId).run()
+
+          // 🛡️ 2026-05-07: DO WebSocket broadcast — 라이브 시청자에게 실시간 노출
+          if (c.env.LIVE_STREAM) {
+            try {
+              const doId = c.env.LIVE_STREAM.idFromName(String(streamId))
+              const stub = c.env.LIVE_STREAM.get(doId)
+              await stub.fetch('https://internal/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'chat',
+                  data: {
+                    id: insertedId,
+                    user_id: null,
+                    user_name: cleanName,
+                    message: cleanMsg,
+                    is_seller: item.isOwner ? true : false,
+                    is_admin: false,
+                    is_yt_superchat: isSuperChat,
+                    is_yt_member: isMember,
+                    created_at: new Date().toISOString(),
+                  },
+                  timestamp: Date.now(),
+                }),
+              })
+            } catch { /* non-fatal */ }
+          }
 
           forwardedCount++
         } catch (err) {

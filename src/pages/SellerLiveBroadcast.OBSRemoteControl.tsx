@@ -22,6 +22,7 @@ import {
 import { downloadOBSProfile } from '@/lib/obs-profile'
 import { RtmpBlock, RecommendedPresetBlock } from './SellerLiveBroadcast.parts'
 import { formatNumber } from '@/utils/format'
+import OBSWebSocketSetupWizard from '@/components/streaming/OBSWebSocketSetupWizard'
 
 interface LiveStreamLite {
   id: number
@@ -51,6 +52,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
     loadOBSConfig() || { host: 'localhost', port: 4455, password: '' })
   const [obsStatus, setObsStatus] = useState<OBSStatus>({ outputActive: false })
   const [starting, setStarting] = useState(false)
+  const [showWizard, setShowWizard] = useState(false)
 
   // 저장된 설정 있으면 자동 연결 시도
   useEffect(() => {
@@ -159,18 +161,38 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
           </div>
         )}
 
-        {/* OBS 원격 제어 연결 — Extension 있거나 localhost dev 에서만 노출 */}
-        {(hasOBSExtension() || (typeof window !== 'undefined' && window.location.protocol !== 'https:')) && (
+        {/* 🛡️ 2026-05-07: OBS 자동 송출 셋업 마법사 — 모든 환경에서 노출 (HTTPS 차단 사전 안내 포함) */}
+        {showWizard && (
+          <OBSWebSocketSetupWizard
+            onCancel={() => setShowWizard(false)}
+            onComplete={async (cfg) => {
+              if (!clientRef.current) clientRef.current = new OBSWebSocketClient()
+              const ok = await clientRef.current.connect(cfg)
+              if (ok) {
+                setSetupForm(cfg)
+                setConnected(true)
+                setShowWizard(false)
+              }
+              return ok
+            }}
+          />
+        )}
+
+        {/* OBS 원격 제어 연결 — Wizard 추천 + 고급 manual 옵션 */}
+        {!showWizard && (hasOBSExtension() || (typeof window !== 'undefined' && window.location.protocol !== 'https:') ||
+          (typeof window !== 'undefined' && window.location.protocol === 'https:')) && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
           {!showSetup ? (
-            <button onClick={() => setShowSetup(true)}
-              className="w-full flex items-center justify-between text-left">
-              <div>
-                <p className="text-sm font-semibold text-blue-900">✨ {t('seller.liveBroadcast.obsRemoteTitle')}</p>
-                <p className="text-[11px] text-blue-700 mt-0.5">{t('seller.liveBroadcast.obsRemoteDesc')}</p>
-              </div>
-              <span className="text-xs text-blue-600 shrink-0 ml-2">{t('seller.liveBroadcast.obsSetup')} →</span>
-            </button>
+            <div className="space-y-2">
+              <button onClick={() => setShowWizard(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-bold">
+                🪄 OBS 자동 송출 셋업 마법사 (1회만, 약 1분)
+              </button>
+              <button onClick={() => setShowSetup(true)}
+                className="w-full text-[11px] text-blue-600 hover:text-blue-800 py-1.5 underline">
+                고급: 직접 host/port/password 입력
+              </button>
+            </div>
           ) : (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-blue-900">{t('seller.liveBroadcast.obsConnectTitle')}</p>
