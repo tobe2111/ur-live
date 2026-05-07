@@ -55,8 +55,7 @@ export default function AuctionTimeDealControls({ streamId, products }: { stream
       } catch { /* silent */ }
     }
     fetchActive()
-    // 🛡️ 2026-05-04 (perf): 5s → 10s. 경매/타임딜 활성 상태는 셀러 UI 만 — 10s 지연 OK.
-    const id = setInterval(fetchActive, 10000)
+    const id = setInterval(fetchActive, 5000)
     return () => { active = false; clearInterval(id) }
   }, [streamId])
 

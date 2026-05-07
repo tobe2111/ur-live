@@ -64,7 +64,8 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
       } catch { /* YouTube 채팅 비활성 */ }
     }
     poll()
-    const interval = setInterval(poll, 5000)
+    // WebSocket 이 실시간 처리하므로 YouTube polling 은 30s 로 낮춤 (quota 절약)
+    const interval = setInterval(poll, 30000)
     return () => { active = false; clearInterval(interval) }
   }, [streamId])
 

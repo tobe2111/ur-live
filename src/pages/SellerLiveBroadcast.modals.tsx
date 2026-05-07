@@ -102,7 +102,8 @@ export function PromptModal({ title, placeholder, confirmLabel, onConfirm, onCan
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onCancel}>
       <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
         <h3 className="text-base font-bold text-gray-900">{title}</h3>
-        <input autoFocus value={value} onChange={e => setValue(e.target.value)} placeholder={placeholder}
+        <input autoFocus value={value} onChange={e => setValue(e.target.value.slice(0, 200))} placeholder={placeholder}
+          maxLength={200}
           onKeyDown={e => { if (e.key === 'Enter' && value.trim()) onConfirm(value.trim()) }}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
         <div className="flex gap-2">

@@ -156,12 +156,22 @@ export class OBSWebSocketClient {
         : new DirectWSTransport(`ws://${config.host}:${config.port}`)
       this.transport = transport
 
+      // 10s 연결 타임아웃 — OBS 미실행 시 infinite wait 방지
+      const connectTimer = setTimeout(() => {
+        if (this.connectionResolver) {
+          this.connectionResolver(false)
+          this.connectionResolver = null
+          try { transport.close() } catch { /* ignore */ }
+        }
+      }, 10000)
+
       transport.onMessage(async (raw) => {
         let msg: any
         try { msg = JSON.parse(raw) } catch { return }
         await this.handleMessage(msg)
       })
       transport.onClose(() => {
+        clearTimeout(connectTimer)
         this.authenticated = false
         if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null }
         if (this.connectionResolver) { this.connectionResolver(false); this.connectionResolver = null }
@@ -169,10 +179,15 @@ export class OBSWebSocketClient {
 
       transport.waitReady().then(ready => {
         if (!ready && this.connectionResolver) {
+          clearTimeout(connectTimer)
           this.connectionResolver(false); this.connectionResolver = null
         }
         // Hello 응답은 ready 후 바로 서버가 쏴줌 → handleMessage 가 처리
       })
+
+      // Identified 수신 시 타이머 해제 (handleMessage → connectionResolver(true) 호출 전)
+      const origResolver = this.connectionResolver
+      this.connectionResolver = (ok) => { clearTimeout(connectTimer); origResolver?.(ok) }
     })
   }
 
@@ -221,7 +236,14 @@ export class OBSWebSocketClient {
     if (!this.transport || !this.authenticated) return Promise.resolve(null)
     const requestId = `req-${++this.requestSeq}`
     return new Promise(resolve => {
+      const timer = setTimeout(() => {
+        if (this.pendingRequests.has(requestId)) {
+          this.pendingRequests.delete(requestId)
+          resolve(null)
+        }
+      }, 5000)
       this.pendingRequests.set(requestId, (resp) => {
+        clearTimeout(timer)
         if (resp.requestStatus?.result) resolve(resp.responseData as T)
         else resolve(null)
       })
@@ -229,12 +251,6 @@ export class OBSWebSocketClient {
         op: OP.Request,
         d: { requestType: type, requestId, requestData: data || {} }
       }))
-      setTimeout(() => {
-        if (this.pendingRequests.has(requestId)) {
-          this.pendingRequests.delete(requestId)
-          resolve(null)
-        }
-      }, 5000)
     })
   }
 
