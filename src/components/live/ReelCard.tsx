@@ -184,7 +184,7 @@ function ReelCardImpl({
     const pollYouTubeChat = async () => {
       if (document.hidden) return
       try {
-        const url = `/api/youtube/chat/chat/${stream.id}${ytPageTokenRef.current ? `?pageToken=${ytPageTokenRef.current}` : ''}`
+        const url = `/api/youtube/chat/${stream.id}${ytPageTokenRef.current ? `?pageToken=${ytPageTokenRef.current}` : ''}`
         const res = await api.get(url)
         if (res.data.success && res.data.data?.messages) {
           const ytMsgs: ChatMessage[] = res.data.data.messages.map((m: any) => ({

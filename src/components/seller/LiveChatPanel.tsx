@@ -44,7 +44,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
     let active = true
     const poll = async () => {
       try {
-        const res = await api.get(`/api/youtube/chat/chat/${streamId}`)
+        const res = await api.get(`/api/youtube/chat/${streamId}`)
         if (res.data.success && res.data.data?.messages && active) {
           const ytMsgs: UnifiedMsg[] = res.data.data.messages
             .filter((m: { id: string }) => !seenYtIds.current.has(`yt-${m.id}`))
@@ -110,7 +110,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
     // YouTube 동시 전송 (best-effort)
     try {
       await api.post(
-        `/api/youtube/chat/chat/${streamId}`,
+        `/api/youtube/chat/${streamId}`,
         { message: text },
         { headers: { Authorization: `Bearer ${getSellerToken()}` } }
       )
