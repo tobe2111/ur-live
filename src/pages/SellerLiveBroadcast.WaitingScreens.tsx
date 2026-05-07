@@ -147,9 +147,18 @@ export function YouTubeStudioWaiting({ stream, accent }: { stream: LiveStreamLit
 
     ;(async () => {
       try {
-        const { OBSWebSocketClient, loadOBSConfig } = await import('@/lib/obs-websocket')
+        const { OBSWebSocketClient, loadOBSConfig, hasOBSExtension } = await import('@/lib/obs-websocket')
         const cfg = loadOBSConfig()
-        if (!cfg) return // 저장된 설정 없음 → 사용자가 직접 OBS 켜야 함
+        if (!cfg) return // 저장된 설정 없음 → 조용히 skip (사용자가 직접 OBS 켜야 함)
+
+        // HTTPS + ws://localhost Mixed Content 차단 사전 감지
+        const isHttps = typeof location !== 'undefined' && location.protocol === 'https:'
+        const isLocalhostTarget = !cfg.host || cfg.host === 'localhost' || cfg.host === '127.0.0.1'
+        if (isHttps && isLocalhostTarget && !hasOBSExtension()) {
+          // 익스텐션 없으면 자동 시도 자체를 안 함 (false alarm 방지)
+          return
+        }
+
         setObsAutoState('connecting')
         const client = new OBSWebSocketClient()
         await client.connect(cfg)

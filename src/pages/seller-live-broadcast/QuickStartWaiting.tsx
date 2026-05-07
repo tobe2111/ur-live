@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle2, AlertCircle, Loader2, Download, Zap } from 'lucide-react'
-import { OBSWebSocketClient, loadOBSConfig } from '@/lib/obs-websocket'
+import { OBSWebSocketClient, loadOBSConfig, hasOBSExtension } from '@/lib/obs-websocket'
 import { downloadOBSProfile } from '@/lib/obs-profile'
 
 interface Props {
@@ -34,6 +34,17 @@ export default function QuickStartWaiting({ stream }: Props) {
 
     const cfg = loadOBSConfig()
     if (!cfg || !stream.rtmp_url || !stream.rtmp_key) {
+      setPhase('manual')
+      return
+    }
+
+    // 🛡️ 2026-05-07: HTTPS + ws://localhost Mixed Content 차단 사전 감지.
+    //   Chrome Extension (proxy) 없으면 ws 연결 자체가 차단됨 → "실패" 만 노출되어 혼란.
+    //   미설치 시 manual 분기로 fast-fail + 안내.
+    const isHttps = typeof location !== 'undefined' && location.protocol === 'https:'
+    const isLocalhostTarget = !cfg.host || cfg.host === 'localhost' || cfg.host === '127.0.0.1'
+    if (isHttps && isLocalhostTarget && !hasOBSExtension()) {
+      setError('HTTPS 보안 정책으로 인해 OBS 직접 연결이 차단됨 — Chrome Extension 설치 필요')
       setPhase('manual')
       return
     }
