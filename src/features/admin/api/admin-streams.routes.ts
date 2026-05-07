@@ -142,8 +142,16 @@ adminStreamsRoutes.delete('/streams/:id', cors(), async (c) => {
     const streamId = c.req.param('id');
     const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM live_streams WHERE id=?', [streamId]);
     if (rows.length === 0) return c.json({ success: false, error: '라이브 스트림을 찾을 수 없습니다' }, 404);
-    await executeQuery(DB, 'DELETE FROM live_streams WHERE id=?', [streamId]);
-    return c.json({ success: true, data: { id: streamId } });
+    // 🛡️ 2026-05-07: HARD DELETE → SOFT DELETE.
+    //   라이브 방송은 매출/통계/시청자 이력과 연결됨. 영구 보존 필수.
+    //   status='deleted' 로 표시 + ended_at 자동 — 통계 카운트에서 제외.
+    try { await executeQuery(DB, `ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`, []); } catch { /* exists */ }
+    await executeQuery(DB,
+      `UPDATE live_streams SET status = 'deleted', ended_at = COALESCE(ended_at, datetime('now')),
+       deleted_at = datetime('now') WHERE id = ?`,
+      [streamId]
+    );
+    return c.json({ success: true, data: { id: streamId, soft_deleted: true } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

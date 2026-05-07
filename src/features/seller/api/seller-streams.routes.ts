@@ -439,8 +439,13 @@ sellerStreamsRoutes.delete('/:id', async (c) => {
       }, 404);
     }
 
-    const result = await db.prepare('DELETE FROM live_streams WHERE id = ? AND seller_id = ?')
-      .bind(streamId, sellerId).run();
+    // 🛡️ 2026-05-07: HARD DELETE → SOFT DELETE.
+    //   매출/시청자 이력 보존 필수. 셀러도 자기 방송 hard-delete 금지.
+    try { await db.prepare(`ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`).run(); } catch { /* exists */ }
+    const result = await db.prepare(
+      `UPDATE live_streams SET status = 'deleted', ended_at = COALESCE(ended_at, datetime('now')),
+       deleted_at = datetime('now') WHERE id = ? AND seller_id = ?`
+    ).bind(streamId, sellerId).run();
 
     if (!result.success) {
       throw new Error('Failed to delete stream');

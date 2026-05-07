@@ -201,10 +201,27 @@ app.patch('/:id', async (c) => {
 })
 
 // ── DELETE /agencies/:id ──────────────────────────────────────
+// 🛡️ 2026-05-07: HARD DELETE → SOFT DELETE 변경.
+//   에이전시 데이터는 정산/계약/감사 위해 영구 보존 필수. is_active=0 + status='deleted'.
+//   소속 셀러 매핑(agency_sellers)은 hard-delete 유지 (mapping 자체는 일시적 관계).
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
+  // agency 컬럼 보장
+  try { await c.env.DB.prepare(`ALTER TABLE agencies ADD COLUMN is_active INTEGER DEFAULT 1`).run() } catch { /* exists */ }
+  try { await c.env.DB.prepare(`ALTER TABLE agencies ADD COLUMN deleted_at DATETIME`).run() } catch { /* exists */ }
+  // 소속 셀러 매핑은 정리 (에이전시 비활성 후 매핑 유지 의미 없음)
   await c.env.DB.prepare('DELETE FROM agency_sellers WHERE agency_id = ?').bind(id).run()
-  await c.env.DB.prepare('DELETE FROM agencies WHERE id = ?').bind(id).run()
+  // soft-delete: status + email/username suffix (재사용 unique 충돌 방지)
+  const ts = Date.now()
+  await c.env.DB.prepare(
+    `UPDATE agencies SET is_active = 0, status = 'deleted', deleted_at = datetime('now'),
+     email = email || '_deleted_' || ?
+     WHERE id = ?`
+  ).bind(ts, id).run()
+  // agency_status_history 자동 기록 (테이블 없을 시 silent)
+  c.env.DB.prepare(
+    `INSERT INTO agency_status_history (agency_id, prev_status, new_status, reason) VALUES (?, ?, 'deleted', 'admin DELETE')`
+  ).bind(id, 'unknown').run().catch(() => { /* silent */ })
   return c.json({ success: true })
 })
 

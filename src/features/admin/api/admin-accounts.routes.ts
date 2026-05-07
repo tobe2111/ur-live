@@ -221,7 +221,26 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
       }
     }
 
-    await executeRun(DB, `DELETE FROM admins WHERE id = ?`, [adminId]);
+    // 🛡️ 2026-05-07: HARD DELETE → SOFT DELETE 변경.
+    //   영구 데이터 분실 방지. audit log / 결제 / 분쟁 대응 위해 admin row 자체는 보존.
+    //   is_active=0 + status='deleted' 로 비활성화 (재사용 시 같은 이메일 재가입 충돌 방지).
+    //   email 에 _deleted_<timestamp> 접미사로 unique constraint 회피.
+    try {
+      await executeRun(DB, `ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1`, []);
+    } catch { /* exists */ }
+    try {
+      await executeRun(DB, `ALTER TABLE admins ADD COLUMN status TEXT DEFAULT 'active'`, []);
+    } catch { /* exists */ }
+    try {
+      await executeRun(DB, `ALTER TABLE admins ADD COLUMN deleted_at DATETIME`, []);
+    } catch { /* exists */ }
+    const ts = Date.now();
+    await executeRun(DB,
+      `UPDATE admins SET is_active = 0, status = 'deleted', deleted_at = datetime('now'),
+       email = email || '_deleted_' || ?, username = username || '_deleted_' || ?
+       WHERE id = ?`,
+      [ts, ts, adminId]
+    );
 
     await writeAuditLog(c, {
       action: 'delete_admin',
