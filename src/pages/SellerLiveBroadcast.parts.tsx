@@ -176,8 +176,21 @@ export function ShareLiveLink({ streamId }: { streamId: number }) {
   const [copied, setCopied] = useState(false)
   const url = `https://live.ur-team.com/live/${streamId}`
 
-  function copy() {
-    navigator.clipboard.writeText(url)
+  // 🛡️ 2026-05-07: Web Share API — 모바일 OS 네이티브 공유 시트 (카톡/메시지/SNS 직접).
+  //   미지원 시 클립보드 복사 fallback.
+  async function share() {
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await navigator.share({
+          title: t('seller.liveBroadcast.shareLinkTitle', { defaultValue: '라이브 시청 링크' }),
+          url,
+        })
+        return
+      } catch (e: unknown) {
+        if ((e as Error)?.name === 'AbortError') return
+      }
+    }
+    try { await navigator.clipboard.writeText(url) } catch { /* ignore */ }
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -193,7 +206,7 @@ export function ShareLiveLink({ streamId }: { streamId: number }) {
           {url}
         </code>
         <button
-          onClick={copy}
+          onClick={share}
           className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
             copied
               ? 'bg-green-500 text-white'

@@ -23,7 +23,9 @@ const TEMPLATES_KEY = 'seller_live_templates'
 export function getLastUsedMethod(): StreamMethod {
   try {
     const v = localStorage.getItem(METHOD_STORAGE_KEY)
-    if (v === 'youtube' || v === 'youtube-webcam' || v === 'obs' || v === 'prism' || v === 'quick') return v
+    // 🛡️ 2026-05-07: 'quick' 옵션 메뉴에서 제거 → legacy 값은 'obs' 로 매핑 (OBS 자동 연결 = Quick 동작)
+    if (v === 'quick') return 'obs'
+    if (v === 'youtube' || v === 'youtube-webcam' || v === 'obs' || v === 'prism') return v
   } catch { /* SSR or blocked */ }
   if (typeof window !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)) return 'prism'
   return 'obs'

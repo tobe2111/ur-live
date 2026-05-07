@@ -361,6 +361,8 @@ export function YouTubeWebcamWaiting({ stream, onGoLive, channelId }: { stream: 
   }, [])
 
   // /detect-webcam 폴링 — 10s 간격, liveBroadcasts.list 1 unit/call
+  // 🛡️ 2026-05-07: Visibility API 통합 — 셀러가 우리 탭으로 복귀할 때 즉시 폴링.
+  //   YouTube Studio 에서 라이브 시작 → 우리 탭 복귀 시 10s 기다리지 않고 바로 감지.
   useEffect(() => {
     let cancelled = false
     const poll = async () => {
@@ -383,7 +385,15 @@ export function YouTubeWebcamWaiting({ stream, onGoLive, channelId }: { stream: 
     }
     poll()
     const id = setInterval(poll, 10000)
-    return () => { cancelled = true; clearInterval(id) }
+    const onVisible = () => { if (!document.hidden) poll() }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
   }, [stream.id, onGoLive])
 
   return (

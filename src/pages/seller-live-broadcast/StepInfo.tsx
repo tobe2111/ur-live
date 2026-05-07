@@ -78,8 +78,8 @@ export default function StepInfo({ title, setTitle, description, setDescription,
   const methodOptions = [
     { key: 'prism' as const, icon: Smartphone, label: t('seller.liveBroadcast.naverPrism', { defaultValue: 'Prism Mobile' }), desc: t('seller.liveBroadcast.prismDesc', { defaultValue: '핸드폰 1대로 끝 · QR 1번 스캔' }), active: 'border-green-400 bg-green-50', iconActive: 'text-green-600', hasKey: !!hasPersistentKey, recommended: true },
     { key: 'youtube-webcam' as const, icon: Youtube, label: 'YouTube Studio (웹캠)', desc: 'OBS 없이 브라우저 웹캠으로 바로 · 가장 간편', active: 'border-red-400 bg-red-50', iconActive: 'text-red-600', hasKey: false, recommended: false },
-    { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.obsDesc', { defaultValue: 'PC + 무료 OBS 설치 필요 · 화질 최고' }), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600', hasKey: !!hasPersistentKey, recommended: false },
-    ...(!isMobile ? [{ key: 'quick' as const, icon: Play, label: t('seller.liveBroadcast.quickStartV2', { defaultValue: '원클릭 (OBS 필요)' }), desc: t('seller.liveBroadcast.quickStartDescV2', { defaultValue: '제목·상품 자동 + OBS 송출' }), active: 'border-pink-400 bg-pink-50', iconActive: 'text-pink-600', hasKey: false, recommended: false }] : []),
+    // 🛡️ 2026-05-07: OBS = 자동 연결 + 수동 fallback 통합. Quick 옵션은 메뉴에서 제거 (legacy 값 'quick' 은 storage 에서 'obs' 로 매핑).
+    { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: t('seller.liveBroadcast.obsDesc', { defaultValue: 'PC + OBS · 자동 연결 시 원클릭 송출' }), active: 'border-purple-400 bg-purple-50', iconActive: 'text-purple-600', hasKey: !!hasPersistentKey, recommended: false },
     { key: 'youtube' as const, icon: Youtube, label: 'YouTube Studio (OBS 인코더)', desc: 'OBS + 다중 채널 관리 · 전문가용', active: 'border-orange-400 bg-orange-50', iconActive: 'text-orange-600', hasKey: false, recommended: false },
   ]
 
