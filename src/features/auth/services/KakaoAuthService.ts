@@ -229,11 +229,25 @@ export class KakaoAuthService {
   async upsertUser(kakaoUser: KakaoUser): Promise<User & { isNewUser?: boolean }> {
     try {
       // 기존 사용자 확인
-      const existingUser = await this.db.prepare(`
-        SELECT id, kakao_id, name, email, profile_image, created_at
-        FROM users 
-        WHERE kakao_id = ?
-      `).bind(kakaoUser.kakaoId).first<User>();
+      // 🛡️ 2026-05-06: profile_image 컬럼이 production 에 없을 수 있어 fallback 추가.
+      //   첫 시도 → 컬럼 없으면 catch → 핵심 컬럼만 SELECT.
+      let existingUser: User | null = null;
+      try {
+        existingUser = await this.db.prepare(`
+          SELECT id, kakao_id, name, email, profile_image, created_at
+          FROM users
+          WHERE kakao_id = ?
+        `).bind(kakaoUser.kakaoId).first<User>();
+      } catch (selectErr) {
+        if (import.meta.env.DEV) console.warn('[KakaoAuthService] SELECT with profile_image failed, retrying minimal:', selectErr);
+        // Fallback: 최소 컬럼만 (id, kakao_id, name, email, created_at)
+        const fallback = await this.db.prepare(`
+          SELECT id, kakao_id, name, email, created_at
+          FROM users
+          WHERE kakao_id = ?
+        `).bind(kakaoUser.kakaoId).first<Omit<User, 'profile_image'>>();
+        if (fallback) existingUser = { ...fallback, profile_image: null } as unknown as User;
+      }
       
       let userId: number;
       // 🛡️ 2026-04-30: 신규 사용자 detect — onboarding flow trigger 용
@@ -275,7 +289,13 @@ export class KakaoAuthService {
               userId
             ).run();
           } catch (e2) {
-            if (import.meta.env.DEV) console.warn('[KakaoAuthService] minimal UPDATE also failed (non-fatal — login can still proceed):', e2);
+            // 🛡️ 2026-05-06: 최소 UPDATE 도 실패 → 가장 마지막으로 updated_at 만 시도.
+            //   여전히 실패해도 login 자체는 진행 (UPDATE 는 부가적인 작업).
+            try {
+              await this.db.prepare(`UPDATE users SET updated_at = datetime('now') WHERE id = ?`).bind(userId).run();
+            } catch (e3) {
+              if (import.meta.env.DEV) console.warn('[KakaoAuthService] all UPDATE attempts failed (non-fatal):', e3);
+            }
           }
         }
 
@@ -324,14 +344,24 @@ export class KakaoAuthService {
       }
       
       // 사용자 정보 다시 조회하여 반환.
-      // 🛡️ 2026-05-01: firebase_uid 컬럼 production 에 없을 수도 있어 SELECT projection 에서 제거.
-      //   downstream 어디서도 user.firebase_uid 를 읽지 않음 (firebaseUID 는 kakao_<id> 정적 생성).
-      const user = await this.db.prepare(`
-        SELECT id, kakao_id, name, email, profile_image, created_at
-        FROM users
-        WHERE id = ?
-      `).bind(userId).first<User>();
-      
+      // 🛡️ 2026-05-06: profile_image 컬럼 production 에 없을 수도 있어 fallback 추가.
+      let user: User | null = null;
+      try {
+        user = await this.db.prepare(`
+          SELECT id, kakao_id, name, email, profile_image, created_at
+          FROM users
+          WHERE id = ?
+        `).bind(userId).first<User>();
+      } catch (selectErr) {
+        if (import.meta.env.DEV) console.warn('[KakaoAuthService] final SELECT with profile_image failed, retrying minimal:', selectErr);
+        const fallback = await this.db.prepare(`
+          SELECT id, kakao_id, name, email, created_at
+          FROM users
+          WHERE id = ?
+        `).bind(userId).first<Omit<User, 'profile_image'>>();
+        if (fallback) user = { ...fallback, profile_image: null } as unknown as User;
+      }
+
       if (!user) {
         throw new Error('Failed to retrieve user after upsert');
       }

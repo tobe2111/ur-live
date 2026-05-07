@@ -185,20 +185,33 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
  * GET /api/seller/tier (2026-05-05)
  * 셀러 등급 + score + exposure_weight + commission_rate.
  * Migration 0244 의 sellers.tier 컬럼을 노출.
+ *
+ * 🛡️ 2026-05-06: 절대 500 안 반환. TierBadge 가 홈/대시보드에서 호출하는 비핵심
+ * 엔드포인트 — DB 일시 오류 / 마이그레이션 미적용 / row 없음 등 모든 케이스에
+ * 안전 기본값(new tier) 반환. 사용자에게 에러 토스트 안 띄우고 silent skip.
  */
 sellerManagementRoutes.get('/tier', async (c) => {
+  const SAFE_DEFAULT = {
+    tier: 'new',
+    tier_score: 0,
+    exposure_weight: 1.0,
+    commission_rate: 5,
+    tier_updated_at: null,
+    history: [] as unknown[],
+  };
+
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     // 1차 시도: 0244 컬럼 (tier_score, exposure_weight, tier_updated_at) 포함
-    // 마이그레이션 0244 미적용 환경에서는 컬럼이 없어 throw → fallback 으로 처리.
     let row: {
       tier: string; tier_score: number; exposure_weight: number;
       commission_rate: number; tier_updated_at: string | null;
+      history: unknown[];
     } | null = null;
     try {
-      row = await c.env.DB.prepare(`
+      const r = await c.env.DB.prepare(`
         SELECT
           COALESCE(tier, 'new') AS tier,
           COALESCE(tier_score, 0) AS tier_score,
@@ -206,40 +219,56 @@ sellerManagementRoutes.get('/tier', async (c) => {
           COALESCE(commission_rate, 5) AS commission_rate,
           tier_updated_at
         FROM sellers WHERE id = ?
-      `).bind(sellerId).first();
+      `).bind(sellerId).first<{
+        tier: string; tier_score: number; exposure_weight: number;
+        commission_rate: number; tier_updated_at: string | null;
+      }>();
+      if (r) row = { ...r, history: [] };
     } catch {
       // fallback: 0244 컬럼 없는 구 스키마. tier 만 조회.
-      const fallback = await c.env.DB.prepare(`
-        SELECT
-          COALESCE(tier, 'new') AS tier,
-          COALESCE(commission_rate, 5) AS commission_rate
-        FROM sellers WHERE id = ?
-      `).bind(sellerId).first<{ tier: string; commission_rate: number }>();
-      if (fallback) {
-        row = {
-          tier: fallback.tier,
-          tier_score: 0,
-          exposure_weight: 1.0,
-          commission_rate: fallback.commission_rate,
-          tier_updated_at: null,
-        };
+      try {
+        const fallback = await c.env.DB.prepare(`
+          SELECT
+            COALESCE(tier, 'new') AS tier,
+            COALESCE(commission_rate, 5) AS commission_rate
+          FROM sellers WHERE id = ?
+        `).bind(sellerId).first<{ tier: string; commission_rate: number }>();
+        if (fallback) {
+          row = {
+            tier: fallback.tier,
+            tier_score: 0,
+            exposure_weight: 1.0,
+            commission_rate: fallback.commission_rate,
+            tier_updated_at: null,
+            history: [],
+          };
+        }
+      } catch {
+        // sellers 테이블 자체 접근 실패 — silent default
       }
     }
 
-    if (!row) return c.json({ success: false, error: '셀러 정보 없음' }, 404);
+    // row 없거나 DB 실패 → 안전 기본값 반환 (success: true 로 silent skip)
+    if (!row) return c.json({ success: true, data: SAFE_DEFAULT });
 
-    // 최근 등급 변경 이력 (최근 5건). 테이블 없으면 빈 배열.
-    const history = await c.env.DB.prepare(`
-      SELECT prev_tier, new_tier, prev_score, new_score, changed_at
-      FROM seller_tier_history
-      WHERE seller_id = ?
-      ORDER BY changed_at DESC LIMIT 5
-    `).bind(sellerId).all().catch(() => ({ results: [] }));
+    // 최근 등급 변경 이력 — 테이블 없으면 빈 배열.
+    try {
+      const history = await c.env.DB.prepare(`
+        SELECT prev_tier, new_tier, prev_score, new_score, changed_at
+        FROM seller_tier_history
+        WHERE seller_id = ?
+        ORDER BY changed_at DESC LIMIT 5
+      `).bind(sellerId).all();
+      row.history = history.results || [];
+    } catch {
+      row.history = [];
+    }
 
-    return c.json({ success: true, data: { ...row, history: history.results || [] } });
+    return c.json({ success: true, data: row });
   } catch (err) {
     if (import.meta.env?.DEV) console.error('[seller/tier]', err);
-    return c.json({ success: false, error: '등급 조회 실패' }, 500);
+    // 어떤 예외든 안전 기본값으로 fall-through. TierBadge 가 noisy 500 에러 안 보임.
+    return c.json({ success: true, data: SAFE_DEFAULT });
   }
 });
 
