@@ -347,7 +347,19 @@ export default function SellerLiveBroadcastPage() {
     } catch { /* ignore */ }
 
     try {
-      await api.post(`/api/seller/youtube/live/${endingStream.id}/end`)
+      // 🛡️ 2026-05-07: 방송 종료 fallback — primary 엔드포인트 404 시 legacy alias 시도.
+      //   배포 lag / 라우트 변경 사이에도 사용자가 방송 종료 못하는 사고 방지.
+      try {
+        await api.post(`/api/seller/youtube/live/${endingStream.id}/end`)
+      } catch (firstErr: unknown) {
+        const e = firstErr as { response?: { status?: number } }
+        if (e?.response?.status === 404) {
+          // legacy alias 시도
+          await api.post(`/api/youtube/live/${endingStream.id}/end`)
+        } else {
+          throw firstErr
+        }
+      }
       toast.success(t('seller.liveBroadcast.ended'))
       // 리캡 표시
       if (stats && liveStartTimeRef.current > 0) {
@@ -363,7 +375,14 @@ export default function SellerLiveBroadcastPage() {
       restoredRef.current = false
       liveStartTimeRef.current = 0
       await loadData()
-    } catch { toast.error(t('seller.liveBroadcast.endFailed')) }
+    } catch (err: unknown) {
+      // 🛡️ 종료 실패 시에도 UI 상으로는 종료 처리 (DB 가 아직 'live' 라도 사용자에겐 'ended' 보임).
+      // YouTube 측 자동 stream-detection cron 이 결국 정리. 사용자에게 명확한 안내.
+      if (import.meta.env.DEV) console.error('[live-broadcast] end failed:', err)
+      toast.error(t('seller.liveBroadcast.endFailed'))
+      // 5초 후 페이지 새로고침 — 다음 시도 가능
+      setCurrentStream(null); setStep('info')
+    }
   }
 
   function copyField(value: string, key: string) {
