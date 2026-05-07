@@ -417,14 +417,18 @@ app.post('/live/:id/start', async (c) => {
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
     const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
 
-    // 웹캠 모드: YouTube OAuth 없어도 youtube_video_id 있으면 DB만 업데이트 (방송은 이미 Studio에서 시작됨)
+    // 🛡️ 2026-05-07: 웹캠 모드 (youtube_broadcast_id 없음) — accessToken 유무 무관하게 DB 만 업데이트.
+    //   /create-webcam 으로 만들어진 stream 은 YouTube broadcast 가 없으므로 transition 불가.
+    //   셀러가 YouTube Studio 에서 웹캠 방송을 별도로 시작 → DB 상태만 sync.
+    if (!stream.youtube_broadcast_id) {
+      await c.env.DB.prepare(`
+        UPDATE live_streams SET status = 'live', updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(streamId).run()
+      return c.json({ success: true, message: 'Stream marked as live (webcam)' })
+    }
+
+    // 일반 모드 (OBS/Prism/Quick) — accessToken 필수
     if (!accessToken) {
-      if ((stream as any).youtube_video_id) {
-        await c.env.DB.prepare(`
-          UPDATE live_streams SET status = 'live', updated_at = CURRENT_TIMESTAMP WHERE id = ?
-        `).bind(streamId).run()
-        return c.json({ success: true, message: 'Stream marked as live (webcam)' })
-      }
       return c.json({ success: false, error: 'YouTube authentication required' }, 401)
     }
 
