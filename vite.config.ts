@@ -77,8 +77,13 @@ export default defineConfig({
           // 🛡️ 2026-04-27 추가 분할 — index entry 크기 줄이기
           // i18next + 6개 언어 번들 (모든 페이지에서 쓰지만 별도 lazy 가능)
           if (id.includes('i18next') || id.includes('react-i18next')) return 'i18n'
-          // locale JSON 파일 — 별도 청크로 분리 (i18n 청크와 다른 캐싱 주기)
-          if (id.includes('/public/locales/') || (id.includes('/locales/') && id.endsWith('.json'))) return 'locales'
+          // 🛡️ 2026-05-07: locale JSON 파일 — 언어별 별도 청크로 분할.
+          //   src/i18n.ts 가 dynamic import 로 로드 → 사용자 언어만 fetch.
+          //   이전: locales-*.js 949KB (6개 언어 통합) → 약 150-180KB × 6.
+          {
+            const localeMatch = id.match(/\/locales\/(ko|en|ja|zh|es|fr)\/translation\.json/)
+            if (localeMatch) return `locale-${localeMatch[1]}`
+          }
           // Radix UI components (대부분 셀러/어드민 페이지에서만 사용)
           if (id.includes('@radix-ui')) return 'radix-ui'
           // Date utility (date-fns 등)
