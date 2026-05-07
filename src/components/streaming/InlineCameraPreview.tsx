@@ -28,9 +28,21 @@ export function InlineCameraPreview() {
     // 🛡️ 2026-04-30 v2: try-first 패턴 — 일단 시도하고 실패 시 분류.
     //   PWA standalone / 라인 Android 처럼 "일부 가능" 환경에서 false positive 차단 회피.
     setErr(null)
+
+    // 🛡️ 2026-05-07: navigator.mediaDevices 미존재 사전 체크 (안전하지 않은 context / 구 브라우저).
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      const isHttps = typeof location !== 'undefined' && (location.protocol === 'https:' || location.hostname === 'localhost')
+      setErr(
+        !isHttps
+          ? t('seller.cameraHttpsRequired', { defaultValue: 'HTTPS 환경에서만 카메라를 사용할 수 있습니다.' })
+          : t('seller.cameraNotSupported', { defaultValue: '이 브라우저는 카메라를 지원하지 않아요. Chrome/Safari/Edge 최신 버전을 사용해주세요.' })
+      )
+      return
+    }
+
     try {
       const constraints: MediaStreamConstraints = {
-        video: deviceId ? { deviceId: { exact: deviceId } } : true,
+        video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' },
         audio: false, // 하울링 방지, 마이크 시각화는 별도
       }
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
@@ -38,12 +50,35 @@ export function InlineCameraPreview() {
       if (videoRef.current) videoRef.current.srcObject = stream
       setActive(true)
       // 카메라 목록 로드
-      const all = await navigator.mediaDevices.enumerateDevices()
-      setDevices(all.filter(d => d.kind === 'videoinput'))
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices()
+        setDevices(all.filter(d => d.kind === 'videoinput'))
+      } catch { /* 목록 로드 실패는 치명적이지 않음 */ }
     } catch (e: unknown) {
       const err = e as Error
-      // 권한 거부 / 미디어 장치 없음 → 인앱 webview 가능성 체크 후 분류
-      const denied = err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'NotSupportedError'
+      // 🛡️ 2026-05-07: 에러 종류 확장 (iOS Safari/Brave/Chromium 변형 대응).
+      //   NotAllowed: 사용자 거부 / 시스템 차단
+      //   NotFound:   카메라 장치 없음
+      //   NotReadable / TrackStartError: 다른 앱이 카메라 점유 중 (Zoom, Teams 등)
+      //   OverconstrainedError: deviceId 가 사라짐 → 기본 카메라로 재시도
+      //   AbortError: 사용자가 프롬프트 무시 / 사파리 PWA 일부 케이스
+      //   SecurityError: insecure context
+      //   NotSupportedError: 브라우저 미지원
+      const denied = ['NotAllowedError', 'NotFoundError', 'NotSupportedError', 'SecurityError'].includes(err.name)
+      const inUse = err.name === 'NotReadableError' || err.name === 'TrackStartError'
+      const constraintFail = err.name === 'OverconstrainedError'
+
+      if (constraintFail && deviceId) {
+        // 특정 deviceId 가 사라짐 → 기본 카메라로 재시도
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          streamRef.current = stream
+          if (videoRef.current) videoRef.current.srcObject = stream
+          setActive(true)
+          return
+        } catch { /* fall-through */ }
+      }
+
       if (denied) {
         const blocked = await isFeatureBlocked('camera', { permissionState: 'denied' })
         if (blocked) {
@@ -51,7 +86,11 @@ export function InlineCameraPreview() {
           return
         }
         // 일반 브라우저인데 사용자가 권한 거부한 케이스
-        setErr(t('seller.cameraDenied', { defaultValue: '카메라 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.' }))
+        setErr(t('seller.cameraDenied', { defaultValue: '카메라 권한이 거부되었어요. 주소창 왼쪽 자물쇠 아이콘 → 카메라 → 허용으로 변경 후 새로고침해주세요.' }))
+      } else if (inUse) {
+        setErr(t('seller.cameraInUse', { defaultValue: '카메라가 다른 앱에서 사용 중이에요. Zoom/Teams/OBS 등을 종료하고 다시 시도해주세요.' }))
+      } else if (err.name === 'AbortError') {
+        setErr(t('seller.cameraAbort', { defaultValue: '카메라 요청이 중단됐어요. 다시 시도해주세요.' }))
       } else {
         setErr(err.message || t('seller.cameraAccessFailed', { defaultValue: '카메라 접근 실패' }))
       }
@@ -84,8 +123,12 @@ export function InlineCameraPreview() {
             <p className="text-sm font-semibold text-gray-900">{t('seller.cameraPreviewOn', { defaultValue: '카메라 미리보기 켜기' })}</p>
             <p className="text-xs text-gray-500">{t('seller.cameraPreviewDesc', { defaultValue: '방송 전 내 화면 확인 (로컬 미리보기, 방송에 영향 없음)' })}</p>
           </div>
-          {err && <span className="text-[10px] text-red-500 shrink-0">{err}</span>}
         </button>
+        {err && (
+          <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-[12px] text-red-700 leading-relaxed">
+            {err}
+          </div>
+        )}
         {showBlocked && <InAppFeatureBlockedModal feature="camera" onClose={() => setShowBlocked(false)} />}
       </>
     )
