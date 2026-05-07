@@ -6,11 +6,11 @@ name: PR Verification
 # 트리거: PR open/sync, push to non-main branch
 # 작성: 2026-04-26 (N1)
 
+# 🛡️ 2026-05-07: GitHub Actions 무료 한도 (2,000분/월) 100% 소진으로 인한 임시 비활성화.
+#   자동 트리거 제거 → workflow_dispatch (수동) 전용.
+#   대체 검증: 로컬 pre-commit hook (bash scripts/install-git-hooks.sh).
+#   Actions 한도 리셋 (매월 1일) 후 재개하려면 pull_request/push 트리거 복원.
 on:
-  pull_request:
-    branches: [ main ]
-  push:
-    branches-ignore: [ main ]
   workflow_dispatch:
 
 jobs:
