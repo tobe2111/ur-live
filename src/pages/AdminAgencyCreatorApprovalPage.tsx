@@ -25,12 +25,7 @@ interface Approval {
   agency_email: string | null
 }
 
-const STATUS_TABS: { key: ApprovalStatus; label: string }[] = [
-  { key: 'pending', label: '심사 대기' },
-  { key: 'approved', label: '승인됨' },
-  { key: 'rejected', label: '반려됨' },
-  { key: 'all', label: '전체' },
-]
+// STATUS_TABS is defined inside the component to use i18n t() for labels
 
 export default function AdminAgencyCreatorApprovalPage() {
   const { t } = useTranslation()
@@ -39,6 +34,13 @@ export default function AdminAgencyCreatorApprovalPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<ApprovalStatus>('pending')
   const [acting, setActing] = useState<number | null>(null)
+
+  const STATUS_TABS: { key: ApprovalStatus; label: string }[] = [
+    { key: 'pending', label: t('admin.agencyCreatorApproval.tabPending', { defaultValue: '심사 대기' }) },
+    { key: 'approved', label: t('admin.agencyCreatorApproval.tabApproved', { defaultValue: '승인됨' }) },
+    { key: 'rejected', label: t('admin.agencyCreatorApproval.tabRejected', { defaultValue: '반려됨' }) },
+    { key: 'all', label: t('admin.agencyCreatorApproval.tabAll', { defaultValue: '전체' }) },
+  ]
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) {
@@ -102,7 +104,10 @@ export default function AdminAgencyCreatorApprovalPage() {
       all: 'bg-gray-100 text-gray-700',
     }
     const label: Record<ApprovalStatus, string> = {
-      pending: '대기', approved: '승인', rejected: '반려', all: '-',
+      pending: t('admin.agencyCreatorApproval.badgePending', { defaultValue: '대기' }),
+      approved: t('admin.agencyCreatorApproval.badgeApproved', { defaultValue: '승인' }),
+      rejected: t('admin.agencyCreatorApproval.badgeRejected', { defaultValue: '반려' }),
+      all: '-',
     }
     return <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${map[s]}`}>{label[s]}</span>
   }
@@ -112,7 +117,7 @@ export default function AdminAgencyCreatorApprovalPage() {
       <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="에이전시 셀러 심사"
-          subtitle="에이전시가 초대한 셀러의 사업자 정보를 검증하고 승인/반려 처리"
+          subtitle={t('admin.agencyCreatorApproval.subtitle', { defaultValue: '에이전시가 초대한 셀러의 사업자 정보를 검증하고 승인/반려 처리' })}
           icon={<Building2 className="h-5 w-5" />}
         />
 
@@ -138,7 +143,7 @@ export default function AdminAgencyCreatorApprovalPage() {
         ) : items.length === 0 ? (
           <DashboardEmptyState
             icon={<UserCheck className="h-7 w-7" />}
-            title={tab === 'pending' ? '심사 대기 셀러가 없습니다' : `${STATUS_TABS.find(s => s.key === tab)?.label} 항목이 없습니다`}
+            title={tab === 'pending' ? t('admin.agencyCreatorApproval.emptyPending', { defaultValue: '심사 대기 셀러가 없습니다' }) : t('admin.agencyCreatorApproval.emptyOther', { defaultValue: '{{label}} 항목이 없습니다', label: STATUS_TABS.find(s => s.key === tab)?.label })}
           />
         ) : (
           <div className="space-y-3">
@@ -167,20 +172,20 @@ export default function AdminAgencyCreatorApprovalPage() {
                     </div>
 
                     <p className="text-xs text-gray-400 mt-2">
-                      소속 에이전시: <strong className="text-gray-600">{item.agency_name || '-'}</strong>
+                      {t('admin.agencyCreatorApproval.linkedAgency', { defaultValue: '소속 에이전시' })}: <strong className="text-gray-600">{item.agency_name || '-'}</strong>
                       {item.agency_email && <span className="ml-1">({item.agency_email})</span>}
                     </p>
 
                     <p className="text-xs text-gray-400 mt-1">
-                      신청일: {new Date(item.created_at).toLocaleString('ko-KR')}
+                      {t('admin.agencyCreatorApproval.appliedAt', { defaultValue: '신청일' })}: {new Date(item.created_at).toLocaleString('ko-KR')}
                       {item.reviewed_at && (
-                        <span className="ml-2">| 처리일: {new Date(item.reviewed_at).toLocaleString('ko-KR')}</span>
+                        <span className="ml-2">| {t('admin.agencyCreatorApproval.processedAt', { defaultValue: '처리일' })}: {new Date(item.reviewed_at).toLocaleString('ko-KR')}</span>
                       )}
                     </p>
 
                     {item.reason && (
                       <p className="text-xs text-red-600 mt-2 bg-red-50 px-2 py-1 rounded">
-                        반려 사유: {item.reason}
+                        {t('admin.agencyCreatorApproval.rejectReason', { defaultValue: '반려 사유' })}: {item.reason}
                       </p>
                     )}
                   </div>
@@ -192,14 +197,14 @@ export default function AdminAgencyCreatorApprovalPage() {
                         disabled={acting === item.id}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-green-700 disabled:opacity-50"
                       >
-                        <UserCheck className="w-3.5 h-3.5" /> 승인
+                        <UserCheck className="w-3.5 h-3.5" /> {t('admin.agencyCreatorApproval.approveBtn', { defaultValue: '승인' })}
                       </button>
                       <button
                         onClick={() => reject(item.id)}
                         disabled={acting === item.id}
                         className="px-4 py-2 bg-red-100 text-red-600 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-red-200 disabled:opacity-50"
                       >
-                        <UserX className="w-3.5 h-3.5" /> 반려
+                        <UserX className="w-3.5 h-3.5" /> {t('admin.agencyCreatorApproval.rejectBtn', { defaultValue: '반려' })}
                       </button>
                     </div>
                   )}

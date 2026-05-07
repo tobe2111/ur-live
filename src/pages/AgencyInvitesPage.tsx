@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
@@ -18,6 +19,7 @@ interface InviteCode {
 }
 
 export default function AgencyInvitesPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<InviteCode[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -87,20 +89,20 @@ export default function AgencyInvitesPage() {
   }
 
   return (
-    <AgencyLayout title="셀러 영입">
+    <AgencyLayout title={t('agency.invites.layoutTitle', { defaultValue: '셀러 영입' })}>
       <div className="p-6 space-y-6">
         <DashboardPageHeader
-          title="셀러 영입 (QR / 링크)"
-          subtitle="코드를 발급해서 셀러에게 공유하세요. 7일 유효, 가입 시 자동으로 본 에이전시에 매핑됩니다."
+          title={t('agency.invites.pageTitle', { defaultValue: '셀러 영입 (QR / 링크)' })}
+          subtitle={t('agency.invites.subtitle', { defaultValue: '코드를 발급해서 셀러에게 공유하세요. 7일 유효, 가입 시 자동으로 본 에이전시에 매핑됩니다.' })}
           icon={<QrCode className="h-5 w-5" />}
         />
 
         {/* 발급 폼 */}
         <div className="bg-white rounded-xl p-5 border border-gray-100">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">새 영입 코드 발급</h3>
+          <h3 className="text-sm font-bold text-gray-900 mb-3">{t('agency.invites.newCodeTitle', { defaultValue: '새 영입 코드 발급' })}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">메모 (선택)</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('agency.invites.labelMemo', { defaultValue: '메모 (선택)' })}</label>
               <input
                 type="text"
                 value={label}
@@ -111,7 +113,7 @@ export default function AgencyInvitesPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-1">최대 사용 횟수</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('agency.invites.labelMaxUses', { defaultValue: '최대 사용 횟수' })}</label>
               <input
                 type="number"
                 value={maxUses}
@@ -127,23 +129,23 @@ export default function AgencyInvitesPage() {
                 disabled={creating}
                 className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-bold rounded-lg"
               >
-                <Plus className="w-4 h-4" /> {creating ? '생성 중...' : '코드 발급'}
+                <Plus className="w-4 h-4" /> {creating ? t('agency.invites.creating', { defaultValue: '생성 중...' }) : t('agency.invites.createBtn', { defaultValue: '코드 발급' })}
               </button>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2">⏱️ 발급된 코드는 7일간 유효합니다. 만료 후 자동 비활성화.</p>
+          <p className="text-xs text-gray-500 mt-2">⏱️ {t('agency.invites.expiryNote', { defaultValue: '발급된 코드는 7일간 유효합니다. 만료 후 자동 비활성화.' })}</p>
         </div>
 
         {/* 목록 */}
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-gray-900">발급 내역</h3>
+            <h3 className="text-sm font-bold text-gray-900">{t('agency.invites.historyTitle', { defaultValue: '발급 내역' })}</h3>
             <span className="text-xs text-gray-500">{items.length}개</span>
           </div>
           {loading ? (
-            <div className="p-8 text-center text-sm text-gray-400">불러오는 중...</div>
+            <div className="p-8 text-center text-sm text-gray-400">{t('agency.invites.loading', { defaultValue: '불러오는 중...' })}</div>
           ) : items.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-400">아직 발급된 코드가 없습니다.</div>
+            <div className="p-8 text-center text-sm text-gray-400">{t('agency.invites.empty', { defaultValue: '아직 발급된 코드가 없습니다.' })}</div>
           ) : (
             <div className="divide-y divide-gray-100">
               {items.map((it) => {
@@ -154,13 +156,13 @@ export default function AgencyInvitesPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-mono text-base font-bold text-gray-900">{it.code}</span>
                         {!it.is_active ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">비활성</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">{t('agency.invites.badgeInactive', { defaultValue: '비활성' })}</span>
                         ) : it.is_expired ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700">만료</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700">{t('agency.invites.badgeExpired', { defaultValue: '만료' })}</span>
                         ) : it.is_full ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">소진</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">{t('agency.invites.badgeFull', { defaultValue: '소진' })}</span>
                         ) : (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700">활성</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700">{t('agency.invites.badgeActive', { defaultValue: '활성' })}</span>
                         )}
                       </div>
                       <div className="text-xs text-gray-500 truncate">

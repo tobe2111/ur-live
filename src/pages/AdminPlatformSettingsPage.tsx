@@ -75,8 +75,8 @@ export default function AdminPlatformSettingsPage() {
     setSaving(true)
     try {
       await api.put('/api/admin/tools/settings', settings, h)
-      toast.success('설정이 저장되었습니다')
-    } catch { toast.error('저장 실패') }
+      toast.success(t('admin.platformSettings.saveSuccess', { defaultValue: '설정이 저장되었습니다' }))
+    } catch { toast.error(t('admin.platformSettings.saveFailed', { defaultValue: '저장 실패' })) }
     finally { setSaving(false) }
   }
 
@@ -85,13 +85,13 @@ export default function AdminPlatformSettingsPage() {
       <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('admin.pages.platformSettings')}
-          subtitle="수수료율, 정책, 기본값 등 플랫폼 파라미터"
+          subtitle={t('admin.platformSettings.subtitle', { defaultValue: '수수료율, 정책, 기본값 등 플랫폼 파라미터' })}
           icon={<Settings className="h-5 w-5" />}
           actions={
             <button onClick={save} disabled={saving}
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              저장
+              {t('admin.platformSettings.save', { defaultValue: '저장' })}
             </button>
           }
         />
@@ -101,7 +101,7 @@ export default function AdminPlatformSettingsPage() {
               <div key={f.key} className="flex items-center justify-between px-5 py-4">
                 <div>
                   <p className="text-sm font-medium text-gray-900">{f.label}</p>
-                  <p className="text-xs text-gray-400">기본값: {f.default}</p>
+                  <p className="text-xs text-gray-400">{t('admin.platformSettings.defaultLabel', { defaultValue: '기본값' })}: {f.default}</p>
                 </div>
                 <input
                   value={settings[f.key] ?? f.default}

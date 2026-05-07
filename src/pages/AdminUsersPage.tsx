@@ -120,7 +120,7 @@ export default function AdminUsersPage() {
         {/* 🛡️ 2026-04-22 배치 135: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('admin.pages.users')}
-          subtitle={!loading ? `총 ${formatNumber(totalCount)}명` : '불러오는 중...'}
+          subtitle={!loading ? `총 ${formatNumber(totalCount)}명` : t('admin.users.loading', { defaultValue: '불러오는 중...' })}
           icon={<Users className="h-5 w-5" />}
         />
 
@@ -131,7 +131,7 @@ export default function AdminUsersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="이름 또는 이메일로 검색..."
+              placeholder={t('admin.users.searchPlaceholder', { defaultValue: '이름 또는 이메일로 검색...' })}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -141,7 +141,7 @@ export default function AdminUsersPage() {
             type="submit"
             className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
           >
-            검색
+            {t('admin.users.searchBtn', { defaultValue: '검색' })}
           </button>
         </form>
       </div>
@@ -155,7 +155,7 @@ export default function AdminUsersPage() {
         ) : users.length === 0 ? (
           <div className="text-center py-20">
             <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">유저가 없습니다</p>
+            <p className="text-sm text-gray-500">{t('admin.users.noUsers', { defaultValue: '유저가 없습니다' })}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -163,12 +163,12 @@ export default function AdminUsersPage() {
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">ID</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">이름</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">이메일</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">전화번호</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">가입방법</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">가입일</th>
-                  <th className="text-center px-4 py-3 font-semibold text-gray-700">액션</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thName', { defaultValue: '이름' })}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thEmail', { defaultValue: '이메일' })}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thPhone', { defaultValue: '전화번호' })}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thProvider', { defaultValue: '가입방법' })}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thJoinDate', { defaultValue: '가입일' })}</th>
+                  <th className="text-center px-4 py-3 font-semibold text-gray-700">{t('admin.users.thAction', { defaultValue: '액션' })}</th>
                 </tr>
               </thead>
               <tbody>
@@ -193,7 +193,7 @@ export default function AdminUsersPage() {
                               onClick={() => toggleDetail(user.id)}
                               className="px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
                             >
-                              상세
+                              {t('admin.users.detailBtn', { defaultValue: '상세' })}
                               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </button>
                           </div>
@@ -211,15 +211,15 @@ export default function AdminUsersPage() {
                               <div className="space-y-3 text-sm">
                                 <div className="flex gap-8">
                                   <div>
-                                    <span className="text-gray-500">주문 수:</span>{' '}
+                                    <span className="text-gray-500">{t('admin.users.orderCount', { defaultValue: '주문 수' })}:</span>{' '}
                                     <span className="font-semibold text-gray-900">{formatNumber(detail.order_count)}건</span>
                                   </div>
                                   <div>
-                                    <span className="text-gray-500">총 결제액:</span>{' '}
+                                    <span className="text-gray-500">{t('admin.users.totalSpent', { defaultValue: '총 결제액' })}:</span>{' '}
                                     <span className="font-semibold text-gray-900">{formatNumber(detail.total_spent)}원</span>
                                   </div>
                                   <div>
-                                    <span className="text-gray-500">리뷰 수:</span>{' '}
+                                    <span className="text-gray-500">{t('admin.users.reviewCount', { defaultValue: '리뷰 수' })}:</span>{' '}
                                     <span className="font-semibold text-gray-900">{formatNumber(detail.review_count)}건</span>
                                   </div>
                                 </div>
@@ -227,7 +227,7 @@ export default function AdminUsersPage() {
                                 {/* 연결된 셀러 / 에이전시 */}
                                 {(detail.linked_seller || detail.linked_agency) && (
                                   <div className="pt-2 border-t border-gray-200 space-y-2">
-                                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">연결된 계정</p>
+                                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{t('admin.users.linkedAccounts', { defaultValue: '연결된 계정' })}</p>
                                     {detail.linked_seller && (
                                       <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-center justify-between">
                                         <div>
@@ -239,7 +239,7 @@ export default function AdminUsersPage() {
                                         </div>
                                         <button onClick={() => navigate(`/admin/sellers?id=${detail.linked_seller!.id}`)}
                                           className="text-[11px] text-red-600 font-semibold px-2 py-1 hover:bg-red-100 rounded">
-                                          관리 →
+                                          {t('admin.users.manageLink', { defaultValue: '관리 →' })}
                                         </button>
                                       </div>
                                     )}
@@ -254,7 +254,7 @@ export default function AdminUsersPage() {
                                         </div>
                                         <button onClick={() => navigate(`/admin/agencies?id=${detail.linked_agency!.id}`)}
                                           className="text-[11px] text-purple-600 font-semibold px-2 py-1 hover:bg-purple-100 rounded">
-                                          관리 →
+                                          {t('admin.users.manageLink', { defaultValue: '관리 →' })}
                                         </button>
                                       </div>
                                     )}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -41,6 +42,7 @@ const CATEGORY_LABELS: Array<{ key: string; label: string; types: string[] }> = 
 ]
 
 export default function AdminNotificationSettingsPage() {
+  const { t } = useTranslation()
   const [settings, setSettings] = useState<Setting[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
@@ -51,7 +53,7 @@ export default function AdminNotificationSettingsPage() {
       const res = await api.get('/api/admin/notification-settings')
       setSettings(res.data?.data || [])
     } catch {
-      toast.error('설정 로드 실패')
+      toast.error(t('admin.notificationSettings.loadFailed', { defaultValue: '설정 로드 실패' }))
     } finally {
       setLoading(false)
     }
@@ -65,20 +67,20 @@ export default function AdminNotificationSettingsPage() {
       setSettings(prev => prev.map(s =>
         s.notification_type === type ? { ...s, [channel]: value ? 1 : 0 } : s
       ))
-      toast.success('변경 완료')
+      toast.success(t('admin.notificationSettings.changeSuccess', { defaultValue: '변경 완료' }))
     } catch {
-      toast.error('변경 실패')
+      toast.error(t('admin.notificationSettings.changeFailed', { defaultValue: '변경 실패' }))
     } finally {
       setSaving(null)
     }
   }
 
   return (
-    <AdminLayout title="알림 채널 설정">
+    <AdminLayout title={t('admin.notificationSettings.title', { defaultValue: '알림 채널 설정' })}>
       <div className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="알림 채널 설정"
-          subtitle="알림 종류별로 어떤 채널 (대시보드/이메일/알림톡/푸시) 를 사용할지 설정합니다"
+          title={t('admin.notificationSettings.title', { defaultValue: '알림 채널 설정' })}
+          subtitle={t('admin.notificationSettings.subtitle', { defaultValue: '알림 종류별로 어떤 채널 (대시보드/이메일/알림톡/푸시) 를 사용할지 설정합니다' })}
           icon={<Bell className="h-5 w-5" />}
         />
 
@@ -176,7 +178,7 @@ export default function AdminNotificationSettingsPage() {
               return (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                   <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-200">
-                    <h3 className="text-xs font-bold text-orange-700 uppercase tracking-wider">기타 (미분류 — 코드 그룹 추가 필요)</h3>
+                    <h3 className="text-xs font-bold text-orange-700 uppercase tracking-wider">{t('admin.notificationSettings.uncategorized', { defaultValue: '기타 (미분류 — 코드 그룹 추가 필요)' })}</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">

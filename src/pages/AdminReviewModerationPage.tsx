@@ -118,29 +118,29 @@ export default function AdminReviewModerationPage() {
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('admin.pages.reviewModeration')}
-          subtitle="상품 리뷰 승인/숨김/삭제 · 부적절 리뷰 모더레이션"
+          subtitle={t('admin.reviewModeration.subtitle', { defaultValue: '상품 리뷰 승인/숨김/삭제 · 부적절 리뷰 모더레이션' })}
           icon={<MessageSquare className="h-5 w-5" />}
         />
       {/* 통계 카드 */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500 mb-1">전체 리뷰</p>
+            <p className="text-xs text-gray-500 mb-1">{t('admin.reviewModeration.cardTotal', { defaultValue: '전체 리뷰' })}</p>
             <p className="text-xl font-bold text-gray-900">{formatNumber(stats.total)}</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500 mb-1">평균 평점</p>
+            <p className="text-xs text-gray-500 mb-1">{t('admin.reviewModeration.cardAvgRating', { defaultValue: '평균 평점' })}</p>
             <div className="flex items-center gap-2">
               <p className="text-xl font-bold text-gray-900">{stats.average_rating.toFixed(1)}</p>
               <Stars rating={Math.round(stats.average_rating)} />
             </div>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500 mb-1">숨김 처리</p>
+            <p className="text-xs text-gray-500 mb-1">{t('admin.reviewModeration.cardHidden', { defaultValue: '숨김 처리' })}</p>
             <p className="text-xl font-bold text-red-500">{stats.hidden_count}</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500 mb-1">평점 분포</p>
+            <p className="text-xs text-gray-500 mb-1">{t('admin.reviewModeration.cardRatingDist', { defaultValue: '평점 분포' })}</p>
             <div className="flex items-end gap-1 h-8">
               {[stats.rating_1, stats.rating_2, stats.rating_3, stats.rating_4, stats.rating_5].map((count, i) => {
                 const max = Math.max(stats.rating_1, stats.rating_2, stats.rating_3, stats.rating_4, stats.rating_5, 1)
@@ -156,21 +156,21 @@ export default function AdminReviewModerationPage() {
         <Filter className="w-4 h-4 text-gray-400" />
         <select value={filters.status} onChange={e => { setFilters(p => ({ ...p, status: e.target.value })); setPage(1) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
-          <option value="all">전체</option>
-          <option value="visible">표시</option>
-          <option value="hidden">숨김</option>
+          <option value="all">{t('admin.reviewModeration.filterAll', { defaultValue: '전체' })}</option>
+          <option value="visible">{t('admin.reviewModeration.filterVisible', { defaultValue: '표시' })}</option>
+          <option value="hidden">{t('admin.reviewModeration.filterHidden', { defaultValue: '숨김' })}</option>
         </select>
         <select value={filters.rating} onChange={e => { setFilters(p => ({ ...p, rating: e.target.value })); setPage(1) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
-          <option value="">모든 평점</option>
+          <option value="">{t('admin.reviewModeration.allRatings', { defaultValue: '모든 평점' })}</option>
           {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r}점</option>)}
         </select>
         <select value={filters.sort} onChange={e => { setFilters(p => ({ ...p, sort: e.target.value })); setPage(1) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
-          <option value="newest">최신순</option>
-          <option value="oldest">오래된순</option>
-          <option value="rating_high">평점 높은순</option>
-          <option value="rating_low">평점 낮은순</option>
+          <option value="newest">{t('admin.reviewModeration.newestSort', { defaultValue: '최신순' })}</option>
+          <option value="oldest">{t('admin.reviewModeration.oldestSort', { defaultValue: '오래된순' })}</option>
+          <option value="rating_high">{t('admin.reviewModeration.ratingHighSort', { defaultValue: '평점 높은순' })}</option>
+          <option value="rating_low">{t('admin.reviewModeration.ratingLowSort', { defaultValue: '평점 낮은순' })}</option>
         </select>
       </div>
 
@@ -180,7 +180,7 @@ export default function AdminReviewModerationPage() {
       ) : reviews.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm p-12 text-center">
           <MessageSquare className="w-10 h-10 mx-auto text-gray-300 mb-3" />
-          <p className="text-sm text-gray-500">리뷰가 없습니다</p>
+          <p className="text-sm text-gray-500">{t('admin.reviewModeration.noReviews', { defaultValue: '리뷰가 없습니다' })}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -195,11 +195,11 @@ export default function AdminReviewModerationPage() {
                       <span className="text-xs text-gray-500">{review.user_name}</span>
                       <span className="text-xs text-gray-400">{new Date(review.created_at).toLocaleDateString('ko-KR')}</span>
                       {!review.is_visible && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full font-medium">숨김</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full font-medium">{t('admin.reviewModeration.hiddenBadge', { defaultValue: '숨김' })}</span>
                       )}
                     </div>
                     {review.product_name && (
-                      <p className="text-[11px] text-gray-400 mb-1">상품: {review.product_name}</p>
+                      <p className="text-[11px] text-gray-400 mb-1">{t('admin.reviewModeration.productLabel', { defaultValue: '상품' })}: {review.product_name}</p>
                     )}
                     <p className="text-sm text-gray-700 whitespace-pre-line">{review.content}</p>
                     {images.length > 0 && (
@@ -213,11 +213,11 @@ export default function AdminReviewModerationPage() {
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => toggleVisibility(review)}
                       className={`p-1.5 rounded-lg transition-colors ${review.is_visible ? 'hover:bg-amber-50 text-amber-500' : 'hover:bg-green-50 text-green-500'}`}
-                      title={review.is_visible ? '숨기기' : '표시하기'}>
+                      title={review.is_visible ? t('admin.reviewModeration.hideReview', { defaultValue: '숨기기' }) : t('admin.reviewModeration.showReview', { defaultValue: '표시하기' })}>
                       {review.is_visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                     <button onClick={() => deleteReview(review)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-red-400" title="삭제">
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-red-400" title={t('admin.reviewModeration.deleteBtn', { defaultValue: '삭제' })}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

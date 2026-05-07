@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -36,6 +37,7 @@ interface SellerOption {
 }
 
 export default function AgencyCouponsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [distributions, setDistributions] = useState<Distribution[]>([])
   const [sellers, setSellers] = useState<SellerOption[]>([])
@@ -118,16 +120,16 @@ export default function AgencyCouponsPage() {
   }
 
   return (
-    <AgencyLayout title="쿠폰 배포">
+    <AgencyLayout title={t('agency.coupons.layoutTitle', { defaultValue: '쿠폰 배포' })}>
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="쿠폰 캐스케이드"
-          subtitle="에이전시 → 셀러 → 시청자 3단 쿠폰 배포. 셀러별 사용율 분석 가능."
+          title={t('agency.coupons.pageTitle', { defaultValue: '쿠폰 캐스케이드' })}
+          subtitle={t('agency.coupons.subtitle', { defaultValue: '에이전시 → 셀러 → 시청자 3단 쿠폰 배포. 셀러별 사용율 분석 가능.' })}
           icon={<Ticket className="h-5 w-5" />}
           actions={
             <button onClick={() => { loadSellers(); setCreating(true) }}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">
-              <Plus className="w-4 h-4" /> 쿠폰 배포
+              <Plus className="w-4 h-4" /> {t('agency.coupons.distributeBtn', { defaultValue: '쿠폰 배포' })}
             </button>
           }
         />
@@ -135,7 +137,7 @@ export default function AgencyCouponsPage() {
         {loading ? (
           <DashboardLoading />
         ) : distributions.length === 0 ? (
-          <DashboardEmptyState icon={<Ticket className="h-7 w-7" />} title="배포 이력 없음" />
+          <DashboardEmptyState icon={<Ticket className="h-7 w-7" />} title={t('agency.coupons.noHistory', { defaultValue: '배포 이력 없음' })} />
         ) : (
           <div className="space-y-2">
             {distributions.map(d => {
@@ -177,18 +179,18 @@ export default function AgencyCouponsPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCreating(false)}>
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-lg w-full max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">쿠폰 배포</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('agency.coupons.modalTitle', { defaultValue: '쿠폰 배포' })}</h2>
               <button onClick={() => setCreating(false)}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-gray-700">쿠폰 이름 *</label>
+                <label className="text-xs font-bold text-gray-700">{t('agency.coupons.labelName', { defaultValue: '쿠폰 이름 *' })}</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-700">유형</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.coupons.labelType', { defaultValue: '유형' })}</label>
                   <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as 'percent' | 'fixed' })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900">
                     <option value="percent">% 할인</option>
@@ -196,7 +198,7 @@ export default function AgencyCouponsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700">{form.type === 'percent' ? '할인율 (%)' : '할인 금액 (원)'}</label>
+                  <label className="text-xs font-bold text-gray-700">{form.type === 'percent' ? t('agency.coupons.labelDiscountPct', { defaultValue: '할인율 (%)' }) : t('agency.coupons.labelDiscountAmt', { defaultValue: '할인 금액 (원)' })}</label>
                   <input type="number" value={form.value} min={form.type === 'percent' ? 1 : 100} max={form.type === 'percent' ? 100 : undefined}
                     onChange={e => setForm({ ...form, value: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
@@ -204,37 +206,37 @@ export default function AgencyCouponsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-700">최소 주문액 (원)</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.coupons.labelMinOrder', { defaultValue: '최소 주문액 (원)' })}</label>
                   <input type="number" value={form.min_order_amount} min={0}
                     onChange={e => setForm({ ...form, min_order_amount: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700">만료일</label>
+                  <label className="text-xs font-bold text-gray-700">{t('agency.coupons.labelExpiry', { defaultValue: '만료일' })}</label>
                   <input type="date" value={form.expires_at}
                     onChange={e => setForm({ ...form, expires_at: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-700">셀러당 발급 가능 수량 *</label>
+                <label className="text-xs font-bold text-gray-700">{t('agency.coupons.labelQuantity', { defaultValue: '셀러당 발급 가능 수량 *' })}</label>
                 <input type="number" value={form.quantity_per_seller} min={1}
                   onChange={e => setForm({ ...form, quantity_per_seller: Number(e.target.value) })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
                 <p className="text-[10px] text-gray-400 mt-1">각 셀러가 본인 시청자에게 발급할 수 있는 한도</p>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-700">받을 셀러 (1~100명) *</label>
+                <label className="text-xs font-bold text-gray-700">{t('agency.coupons.labelSellers', { defaultValue: '받을 셀러 (1~100명) *' })}</label>
                 <div className="flex items-center gap-2 mb-1">
                   <button onClick={() => setForm({ ...form, selectedSellerIds: sellers.map(s => s.id) })}
-                    className="text-xs text-blue-600 hover:underline">전체 선택</button>
+                    className="text-xs text-blue-600 hover:underline">{t('agency.coupons.selectAll', { defaultValue: '전체 선택' })}</button>
                   <button onClick={() => setForm({ ...form, selectedSellerIds: [] })}
-                    className="text-xs text-gray-500 hover:underline">전체 해제</button>
+                    className="text-xs text-gray-500 hover:underline">{t('agency.coupons.deselectAll', { defaultValue: '전체 해제' })}</button>
                   <span className="text-xs text-gray-400 ml-auto">{form.selectedSellerIds.length}명 선택</span>
                 </div>
                 <div className="border border-gray-200 rounded-lg max-h-40 overflow-y-auto p-2 space-y-1">
                   {sellers.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center py-3">소속 셀러 없음</p>
+                    <p className="text-xs text-gray-400 text-center py-3">{t('agency.coupons.noSellers', { defaultValue: '소속 셀러 없음' })}</p>
                   ) : sellers.map(s => (
                     <label key={s.id} className="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
                       <input type="checkbox"
@@ -254,11 +256,11 @@ export default function AgencyCouponsPage() {
                 💡 총 발행 예정: <strong>{form.selectedSellerIds.length * form.quantity_per_seller}장</strong> ({form.selectedSellerIds.length}명 × {form.quantity_per_seller}장)
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setCreating(false)} className="px-4 py-2 text-gray-600 text-sm font-bold">취소</button>
+                <button onClick={() => setCreating(false)} className="px-4 py-2 text-gray-600 text-sm font-bold">{t('agency.coupons.cancelBtn', { defaultValue: '취소' })}</button>
                 <button onClick={distribute}
                   disabled={!form.name || form.selectedSellerIds.length === 0}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                  배포
+                  {t('agency.coupons.distributeConfirmBtn', { defaultValue: '배포' })}
                 </button>
               </div>
             </div>
@@ -273,7 +275,7 @@ export default function AgencyCouponsPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-bold text-gray-900">셀러별 사용 현황</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('agency.coupons.statsTitle', { defaultValue: '셀러별 사용 현황' })}</h2>
               </div>
               <button onClick={() => setStatsParentId(null)}><X className="w-5 h-5 text-gray-500" /></button>
             </div>

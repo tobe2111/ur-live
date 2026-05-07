@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Megaphone, Trophy, Clock, TrendingUp, RefreshCw } from 'lucide-react'
@@ -59,6 +60,7 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 }
 
 export default function AdminAdSlotsPage() {
+  const { t } = useTranslation()
   const [slots, setSlots] = useState<AdSlot[]>([])
   const [bids, setBids] = useState<AdBid[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,7 +77,7 @@ export default function AdminAdSlotsPage() {
       setSlots(slotsRes.data?.slots ?? [])
       setBids(bidsRes.data?.bids ?? [])
     } catch {
-      toast.error('광고 슬롯 데이터를 불러오지 못했습니다.')
+      toast.error(t('admin.adSlots.loadFailed', { defaultValue: '광고 슬롯 데이터를 불러오지 못했습니다.' }))
     } finally {
       setLoading(false)
     }
@@ -87,10 +89,10 @@ export default function AdminAdSlotsPage() {
   const totalBids = bids.filter(b => b.status === 'active').length
 
   return (
-    <AdminLayout title="광고 슬롯 관리">
+    <AdminLayout title={t('admin.adSlots.title', { defaultValue: '광고 슬롯 관리' })}>
       <DashboardPageHeader
-        title="광고 슬롯 입찰 관리"
-        subtitle="매일 18시 자동 낙찰. 5개 슬롯의 현황과 입찰 이력을 확인합니다."
+        title={t('admin.adSlots.pageTitle', { defaultValue: '광고 슬롯 입찰 관리' })}
+        subtitle={t('admin.adSlots.subtitle', { defaultValue: '매일 18시 자동 낙찰. 5개 슬롯의 현황과 입찰 이력을 확인합니다.' })}
         icon={<Megaphone className="w-5 h-5" />}
         actions={
           <button
@@ -98,7 +100,7 @@ export default function AdminAdSlotsPage() {
             onClick={load}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-[12px] text-gray-700 transition-colors"
           >
-            <RefreshCw className="w-3.5 h-3.5" />새로고침
+            <RefreshCw className="w-3.5 h-3.5" />{t('admin.adSlots.refresh', { defaultValue: '새로고침' })}
           </button>
         }
       />
@@ -106,9 +108,9 @@ export default function AdminAdSlotsPage() {
       {/* 요약 */}
       <div className="grid grid-cols-3 gap-3 mt-4 mb-5">
         {[
-          { label: '전체 슬롯', value: slots.length, icon: <Megaphone className="w-4 h-4 text-gray-400" /> },
-          { label: '현재 노출 중', value: activeCount, icon: <Trophy className="w-4 h-4 text-green-500" /> },
-          { label: '활성 입찰', value: totalBids, icon: <TrendingUp className="w-4 h-4 text-blue-500" /> },
+          { label: t('admin.adSlots.cardAllSlots', { defaultValue: '전체 슬롯' }), value: slots.length, icon: <Megaphone className="w-4 h-4 text-gray-400" /> },
+          { label: t('admin.adSlots.cardCurrentlyShowing', { defaultValue: '현재 노출 중' }), value: activeCount, icon: <Trophy className="w-4 h-4 text-green-500" /> },
+          { label: t('admin.adSlots.cardActiveBids', { defaultValue: '활성 입찰' }), value: totalBids, icon: <TrendingUp className="w-4 h-4 text-blue-500" /> },
         ].map(c => (
           <div key={c.label} className="bg-white rounded-2xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 mb-1">{c.icon}<p className="text-[11px] text-gray-500">{c.label}</p></div>
@@ -119,16 +121,16 @@ export default function AdminAdSlotsPage() {
 
       {/* 탭 */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-4 w-fit">
-        {(['slots', 'bids'] as const).map(t => (
+        {(['slots', 'bids'] as const).map(tabKey => (
           <button
-            key={t}
+            key={tabKey}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => setTab(tabKey)}
             className={`px-4 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${
-              tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              tab === tabKey ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {t === 'slots' ? '슬롯 현황' : '입찰 이력'}
+            {tabKey === 'slots' ? t('admin.adSlots.tabSlots', { defaultValue: '슬롯 현황' }) : t('admin.adSlots.tabBids', { defaultValue: '입찰 이력' })}
           </button>
         ))}
       </div>
@@ -149,31 +151,31 @@ export default function AdminAdSlotsPage() {
                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                   slot.current_seller_id ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {slot.current_seller_id ? '노출 중' : '대기'}
+                  {slot.current_seller_id ? t('admin.adSlots.showing', { defaultValue: '노출 중' }) : t('admin.adSlots.waiting', { defaultValue: '대기' })}
                 </span>
               </div>
               <div className="grid grid-cols-4 gap-2 mt-3 text-center">
                 <div>
-                  <p className="text-[10px] text-gray-400">기본가</p>
+                  <p className="text-[10px] text-gray-400">{t('admin.adSlots.basePrice', { defaultValue: '기본가' })}</p>
                   <p className="text-[12px] font-semibold text-gray-900">{slot.base_price.toLocaleString('ko-KR')}원</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400">현재 최고가</p>
+                  <p className="text-[10px] text-gray-400">{t('admin.adSlots.topBid', { defaultValue: '현재 최고가' })}</p>
                   <p className="text-[12px] font-semibold text-gray-900">
                     {slot.top_bid ? `${slot.top_bid.toLocaleString('ko-KR')}원` : '-'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400">입찰 수</p>
+                  <p className="text-[10px] text-gray-400">{t('admin.adSlots.bidCount', { defaultValue: '입찰 수' })}</p>
                   <p className="text-[12px] font-semibold text-gray-900">{slot.bid_count}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 flex items-center justify-center gap-0.5"><Clock className="w-2.5 h-2.5" />마감까지</p>
-                  <p className="text-[12px] font-semibold text-gray-900">{timeLeft(slot.expires_at)}</p>
+                  <p className="text-[10px] text-gray-400 flex items-center justify-center gap-0.5"><Clock className="w-2.5 h-2.5" />{t('admin.adSlots.closingIn', { defaultValue: '마감까지' })}</p>
+                  <p className="text-[12px] font-semibold text-gray-900">{timeLeft(slot.expires_at) === '만료' ? t('admin.adSlots.expired', { defaultValue: '만료' }) : timeLeft(slot.expires_at)}</p>
                 </div>
               </div>
               {slot.current_winner_name && (
-                <p className="text-[11px] text-gray-500 mt-2">낙찰자: {slot.current_winner_name}</p>
+                <p className="text-[11px] text-gray-500 mt-2">{t('admin.adSlots.winner', { defaultValue: '낙찰자' })}: {slot.current_winner_name}</p>
               )}
             </div>
           ))}
@@ -184,17 +186,17 @@ export default function AdminAdSlotsPage() {
             <table className="w-full min-w-[560px]">
               <thead>
                 <tr className="bg-gray-50 text-left">
-                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">슬롯</th>
-                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">셀러</th>
-                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">입찰가</th>
-                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">상태</th>
-                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">결제</th>
-                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">입찰 시각</th>
+                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">{t('admin.adSlots.thSlot', { defaultValue: '슬롯' })}</th>
+                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">{t('admin.adSlots.thSeller', { defaultValue: '셀러' })}</th>
+                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">{t('admin.adSlots.thBidAmount', { defaultValue: '입찰가' })}</th>
+                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">{t('admin.adSlots.thStatus', { defaultValue: '상태' })}</th>
+                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">{t('admin.adSlots.thPayment', { defaultValue: '결제' })}</th>
+                  <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-600">{t('admin.adSlots.thBidTime', { defaultValue: '입찰 시각' })}</th>
                 </tr>
               </thead>
               <tbody>
                 {bids.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-[12px]">입찰 이력이 없습니다.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-[12px]">{t('admin.adSlots.noBids', { defaultValue: '입찰 이력이 없습니다.' })}</td></tr>
                 ) : bids.map(b => (
                   <tr key={b.id} className="border-t border-gray-100">
                     <td className="px-4 py-3 text-[12px] text-gray-700">{b.slot_name}</td>

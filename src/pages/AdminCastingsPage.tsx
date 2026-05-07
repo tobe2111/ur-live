@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
@@ -28,6 +29,7 @@ interface Casting {
 }
 
 export default function AdminCastingsPage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<'castings' | 'advertisers'>('castings')
   const [castings, setCastings] = useState<Casting[]>([])
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([])
@@ -116,24 +118,24 @@ export default function AdminCastingsPage() {
   }
 
   return (
-    <AdminLayout title="캐스팅 마켓플레이스">
+    <AdminLayout title={t('admin.castings.title', { defaultValue: '캐스팅 마켓플레이스' })}>
       <div className="p-6 space-y-6">
         <DashboardPageHeader
-          title="캐스팅 마켓플레이스"
-          subtitle="광고주 ↔ 셀러 캐스팅 매칭 + 거래 관리"
+          title={t('admin.castings.title', { defaultValue: '캐스팅 마켓플레이스' })}
+          subtitle={t('admin.castings.subtitle', { defaultValue: '광고주 ↔ 셀러 캐스팅 매칭 + 거래 관리' })}
           icon={<Megaphone className="h-5 w-5" />}
         />
 
         <div className="flex items-center gap-2 border-b border-gray-200">
-          {(['castings', 'advertisers'] as const).map(t => (
+          {(['castings', 'advertisers'] as const).map(tabKey => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
               className={`px-4 py-2 text-sm font-medium border-b-2 ${
-                tab === t ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'
+                tab === tabKey ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
-              {t === 'castings' ? '캐스팅 신청' : '광고주'}
+              {tabKey === 'castings' ? t('admin.castings.tabCastings', { defaultValue: '캐스팅 신청' }) : t('admin.castings.tabAdvertisers', { defaultValue: '광고주' })}
             </button>
           ))}
         </div>
@@ -146,7 +148,7 @@ export default function AdminCastingsPage() {
                   onClick={() => setCreatingCasting(true)}
                   className="flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-lg"
                 >
-                  <Plus className="w-4 h-4" /> 새 캐스팅 발송
+                  <Plus className="w-4 h-4" /> {t('admin.castings.newCastingBtn', { defaultValue: '새 캐스팅 발송' })}
                 </button>
               ) : (
                 <div className="space-y-3">
@@ -198,11 +200,11 @@ export default function AdminCastingsPage() {
                   <div className="flex gap-2">
                     <button onClick={createCasting}
                       className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-lg">
-                      셀러에게 발송
+                      {t('admin.castings.sendToSeller', { defaultValue: '셀러에게 발송' })}
                     </button>
                     <button onClick={() => setCreatingCasting(false)}
                       className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-lg">
-                      취소
+                      {t('admin.castings.cancel', { defaultValue: '취소' })}
                     </button>
                   </div>
                 </div>
@@ -211,9 +213,9 @@ export default function AdminCastingsPage() {
 
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               {loading ? (
-                <div className="p-8 text-center text-sm text-gray-400">로딩 중...</div>
+                <div className="p-8 text-center text-sm text-gray-400">{t('admin.castings.loading', { defaultValue: '로딩 중...' })}</div>
               ) : castings.length === 0 ? (
-                <div className="p-8 text-center text-sm text-gray-400">캐스팅 내역 없음</div>
+                <div className="p-8 text-center text-sm text-gray-400">{t('admin.castings.noCastings', { defaultValue: '캐스팅 내역 없음' })}</div>
               ) : (
                 <div className="divide-y divide-gray-100">
                   {castings.map(c => (
@@ -226,13 +228,13 @@ export default function AdminCastingsPage() {
                         {c.advertiser_name} → 셀러 #{c.seller_id} ({c.seller_name})
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        💰 {c.proposed_fee.toLocaleString()}원 · {c.proposed_live_date || '날짜 미정'}
+                        💰 {c.proposed_fee.toLocaleString()}원 · {c.proposed_live_date || t('admin.castings.noDate', { defaultValue: '날짜 미정' })}
                       </div>
                       {c.status === 'accepted' && (
                         <button
                           onClick={() => completeCasting(c.id)}
                           className="mt-2 flex items-center gap-1 px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded">
-                          <Check className="w-3 h-3" /> 완료 처리
+                          <Check className="w-3 h-3" /> {t('admin.castings.complete', { defaultValue: '완료 처리' })}
                         </button>
                       )}
                     </div>
@@ -251,7 +253,7 @@ export default function AdminCastingsPage() {
                   onClick={() => setCreatingAdvertiser(true)}
                   className="flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-lg"
                 >
-                  <Plus className="w-4 h-4" /> 광고주 등록
+                  <Plus className="w-4 h-4" /> {t('admin.castings.registerAdvertiser', { defaultValue: '광고주 등록' })}
                 </button>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -263,9 +265,9 @@ export default function AdminCastingsPage() {
                     className="text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900" />
                   <div className="md:col-span-3 flex gap-2">
                     <button onClick={createAdvertiser}
-                      className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-lg">등록</button>
+                      className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-lg">{t('admin.castings.register', { defaultValue: '등록' })}</button>
                     <button onClick={() => setCreatingAdvertiser(false)}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-lg">취소</button>
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-lg">{t('admin.castings.cancel', { defaultValue: '취소' })}</button>
                   </div>
                 </div>
               )}
@@ -273,7 +275,7 @@ export default function AdminCastingsPage() {
 
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               {advertisers.length === 0 ? (
-                <div className="p-8 text-center text-sm text-gray-400">광고주 없음</div>
+                <div className="p-8 text-center text-sm text-gray-400">{t('admin.castings.noAdvertisers', { defaultValue: '광고주 없음' })}</div>
               ) : (
                 <div className="divide-y divide-gray-100">
                   {advertisers.map(a => (

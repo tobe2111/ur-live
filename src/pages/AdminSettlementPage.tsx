@@ -154,7 +154,7 @@ export default function AdminSettlementPage() {
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">정산 데이터를 불러오는 중...</p>
+          <p className="text-sm text-gray-500">{t('admin.settlement.loadingData', { defaultValue: '정산 데이터를 불러오는 중...' })}</p>
         </div>
       </div>
     )
@@ -167,17 +167,17 @@ export default function AdminSettlementPage() {
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('admin.pages.settlement')}
-          subtitle="셀러별 정산 현황 · CSV 내보내기"
+          subtitle={t('admin.settlement.subtitle', { defaultValue: '셀러별 정산 현황 · CSV 내보내기' })}
           icon={<DollarSign className="h-5 w-5" />}
           actions={
             <button onClick={exportCSV} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">
-              <Download className="h-3.5 w-3.5" /> CSV 다운로드
+              <Download className="h-3.5 w-3.5" /> {t('admin.settlement.csvDownload', { defaultValue: 'CSV 다운로드' })}
             </button>
           }
         />
       {/* 기간 필터 */}
       <div className="flex items-center gap-2">
-        {[['today', '오늘'], ['week', '이번 주'], ['month', '이번 달'], ['all', '전체']].map(([v, l]) => (
+        {[['today', t('admin.settlement.today', { defaultValue: '오늘' })], ['week', t('admin.settlement.thisWeek', { defaultValue: '이번 주' })], ['month', t('admin.settlement.thisMonth', { defaultValue: '이번 달' })], ['all', t('admin.settlement.all', { defaultValue: '전체' })]].map(([v, l]) => (
           <button key={v} onClick={() => setPeriod(v)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${period === v ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 shadow-sm'}`}>{l}</button>
         ))}
       </div>
@@ -186,10 +186,10 @@ export default function AdminSettlementPage() {
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: '총 판매액', value: fmtCurrency(stats.total_sales), icon: <DollarSign className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: '총 수수료', value: fmtCurrency(stats.total_commission), icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: '총 정산액', value: fmtCurrency(stats.total_seller_amount), icon: <Users className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
-            { label: '주문 건수', value: `${stats.total_orders}건`, icon: <CheckCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+            { label: t('admin.settlement.totalSales', { defaultValue: '총 판매액' }), value: fmtCurrency(stats.total_sales), icon: <DollarSign className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: t('admin.settlement.totalCommission', { defaultValue: '총 수수료' }), value: fmtCurrency(stats.total_commission), icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { label: t('admin.settlement.totalSettlement', { defaultValue: '총 정산액' }), value: fmtCurrency(stats.total_seller_amount), icon: <Users className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
+            { label: t('admin.settlement.orderCount', { defaultValue: '주문 건수' }), value: `${stats.total_orders}건`, icon: <CheckCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
@@ -205,20 +205,20 @@ export default function AdminSettlementPage() {
       {/* 셀러별 정산 현황 */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">셀러별 정산 현황</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{t('admin.settlement.sellerStatusTitle', { defaultValue: '셀러별 정산 현황' })}</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px]">
             <thead>
               <tr className="bg-gray-50">
-                {['판매자', '사업자명', '주문수', '판매액', '수수료율', '수수료', '정산액', '정산대기', '정산완료', '액션'].map(h => (
+                {[t('admin.settlement.thSeller', { defaultValue: '판매자' }), t('admin.settlement.thBusiness', { defaultValue: '사업자명' }), t('admin.settlement.thOrderCount', { defaultValue: '주문수' }), t('admin.settlement.thSalesAmount', { defaultValue: '판매액' }), t('admin.settlement.thCommissionRate', { defaultValue: '수수료율' }), t('admin.settlement.thCommissionAmount', { defaultValue: '수수료' }), t('admin.settlement.thSettlementAmount', { defaultValue: '정산액' }), t('admin.settlement.thPending', { defaultValue: '정산대기' }), t('admin.settlement.thCompleted', { defaultValue: '정산완료' }), t('admin.settlement.thAction', { defaultValue: '액션' })].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sellers.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-400">정산 데이터가 없습니다</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-400">{t('admin.settlement.noData', { defaultValue: '정산 데이터가 없습니다' })}</td></tr>
               ) : sellers.map(seller => (
                 <tr
                   key={seller.seller_id}
@@ -240,7 +240,7 @@ export default function AdminSettlementPage() {
                         onClick={(e) => { e.stopPropagation(); executeSellerSettlement(seller.seller_id, seller.seller_name) }}
                         className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"
                       >
-                        정산 실행
+                        {t('admin.settlement.executeSettlement', { defaultValue: '정산 실행' })}
                       </button>
                     )}
                   </td>
@@ -254,14 +254,14 @@ export default function AdminSettlementPage() {
       {/* 정산 내역 */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">정산 내역</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{t('admin.settlement.historyTitle', { defaultValue: '정산 내역' })}</h2>
           <div className="flex items-center gap-2">
-            {[['all', '전체'], ['pending', '대기중'], ['completed', '완료']].map(([v, l]) => (
+            {[['all', t('admin.settlement.statusAll', { defaultValue: '전체' })], ['pending', t('admin.settlement.statusPending', { defaultValue: '대기중' })], ['completed', t('admin.settlement.statusCompleted', { defaultValue: '완료' })]].map(([v, l]) => (
               <button key={v} onClick={() => setStatusFilter(v)} className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${statusFilter === v ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{l}</button>
             ))}
             {pendingOrders.length > 0 && (
               <button onClick={() => batchComplete(pendingOrders.map(r => r.id))} className="ml-2 px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700">
-                일괄 완료 ({pendingOrders.length})
+                {t('admin.settlement.batchComplete', { defaultValue: '일괄 완료' })} ({pendingOrders.length})
               </button>
             )}
           </div>
@@ -270,25 +270,25 @@ export default function AdminSettlementPage() {
           <table className="w-full min-w-[900px]">
             <thead>
               <tr className="bg-gray-50">
-                {['주문번호', '판매자', '구매자', '주문금액', '수수료', '정산액', '상태', '주문일시', '액션'].map(h => (
+                {[t('admin.settlement.thOrderNumber', { defaultValue: '주문번호' }), t('admin.settlement.thSeller', { defaultValue: '판매자' }), t('admin.settlement.thBuyer', { defaultValue: '구매자' }), t('admin.settlement.thOrderAmount', { defaultValue: '주문금액' }), t('admin.settlement.thCommissionAmount', { defaultValue: '수수료' }), t('admin.settlement.thSettlementAmount', { defaultValue: '정산액' }), t('admin.settlement.thStatus', { defaultValue: '상태' }), t('admin.settlement.thOrderDate', { defaultValue: '주문일시' }), t('admin.settlement.thAction', { defaultValue: '액션' })].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {records.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">정산 내역이 없습니다</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">{t('admin.settlement.noHistory', { defaultValue: '정산 내역이 없습니다' })}</td></tr>
               ) : records.map(record => (
                 <tr key={record.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-xs font-mono text-gray-600">{record.order_number}</td>
                   <td className="px-4 py-3 text-xs text-gray-700">{record.seller_name}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600">{record.user_name || '익명'}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600">{record.user_name || t('admin.settlement.anonymous', { defaultValue: '익명' })}</td>
                   <td className="px-4 py-3 text-xs text-gray-700">{fmtCurrency(record.total_amount)}</td>
                   <td className="px-4 py-3 text-xs text-gray-500">{fmtCurrency(record.commission_amount)} <span className="text-gray-400">({record.commission_rate}%)</span></td>
                   <td className="px-4 py-3 text-xs font-semibold text-blue-700">{fmtCurrency(record.seller_amount)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${record.settlement_status === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                      {record.settlement_status === 'completed' ? <><CheckCircle className="w-3 h-3" />완료</> : <><Clock className="w-3 h-3" />대기</>}
+                      {record.settlement_status === 'completed' ? <><CheckCircle className="w-3 h-3" />{t('admin.settlement.statusCompletedLabel', { defaultValue: '완료' })}</> : <><Clock className="w-3 h-3" />{t('admin.settlement.statusPendingLabel', { defaultValue: '대기' })}</>}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">{fmtDate(record.created_at)}</td>
@@ -297,7 +297,7 @@ export default function AdminSettlementPage() {
                       onClick={() => updateSettlementStatus(record.id, record.settlement_status === 'pending' ? 'completed' : 'pending', record.settlement_status)}
                       className={`text-xs font-medium ${record.settlement_status === 'pending' ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-500 hover:text-gray-700'}`}
                     >
-                      {record.settlement_status === 'pending' ? '정산완료' : '대기로 변경'}
+                      {record.settlement_status === 'pending' ? t('admin.settlement.markCompleted', { defaultValue: '정산완료' }) : t('admin.settlement.markPending', { defaultValue: '대기로 변경' })}
                     </button>
                   </td>
                 </tr>

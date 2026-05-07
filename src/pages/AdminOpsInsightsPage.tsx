@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
@@ -24,6 +25,7 @@ interface OpsInsight {
 }
 
 export default function AdminOpsInsightsPage() {
+  const { t } = useTranslation()
   const [data, setData] = useState<OpsInsight | null>(null)
   const [summary, setSummary] = useState<OpsInsightSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -45,26 +47,26 @@ export default function AdminOpsInsightsPage() {
   useEffect(() => { fetchAll() }, [])
 
   return (
-    <AdminLayout title="운영 인사이트">
+    <AdminLayout title={t('admin.opsInsights.title', { defaultValue: '운영 인사이트' })}>
       <div className="p-6 space-y-6">
         <DashboardPageHeader
-          title="운영 인사이트"
-          subtitle="부진 에이전시 / 미접속 셀러 / 결제 이상 통합 모니터링"
+          title={t('admin.opsInsights.title', { defaultValue: '운영 인사이트' })}
+          subtitle={t('admin.opsInsights.subtitle', { defaultValue: '부진 에이전시 / 미접속 셀러 / 결제 이상 통합 모니터링' })}
           icon={<AlertTriangle className="h-5 w-5" />}
         />
 
         {/* 요약 카드 */}
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <SummaryCard label="부진 에이전시" value={summary.inactive_agencies} icon={Building2} color="amber" />
-            <SummaryCard label="미접속 신규셀러" value={summary.dormant_new_sellers} icon={UserX} color="orange" />
-            <SummaryCard label="결제 PENDING 24h+" value={summary.stuck_pending_orders} icon={Clock} color="red" />
-            <SummaryCard label="휴면 셀러 (30일)" value={summary.dormant_sellers} icon={TrendingDown} color="gray" />
+            <SummaryCard label={t('admin.opsInsights.cardInactiveAgencies', { defaultValue: '부진 에이전시' })} value={summary.inactive_agencies} icon={Building2} color="amber" />
+            <SummaryCard label={t('admin.opsInsights.cardDormantNewSellers', { defaultValue: '미접속 신규셀러' })} value={summary.dormant_new_sellers} icon={UserX} color="orange" />
+            <SummaryCard label={t('admin.opsInsights.cardStuckPending', { defaultValue: '결제 PENDING 24h+' })} value={summary.stuck_pending_orders} icon={Clock} color="red" />
+            <SummaryCard label={t('admin.opsInsights.cardDormantSellers', { defaultValue: '휴면 셀러 (30일)' })} value={summary.dormant_sellers} icon={TrendingDown} color="gray" />
           </div>
         )}
 
         {loading ? (
-          <div className="text-center text-sm text-gray-400 py-8">불러오는 중...</div>
+          <div className="text-center text-sm text-gray-400 py-8">{t('admin.opsInsights.loading', { defaultValue: '불러오는 중...' })}</div>
         ) : data ? (
           <>
             {/* 부진 에이전시 */}
@@ -100,7 +102,7 @@ export default function AdminOpsInsightsPage() {
                       <td className="py-2 px-3 text-sm">{s.business_name}</td>
                       <td className="py-2 px-3 text-xs text-gray-500">{s.email}</td>
                       <td className="py-2 px-3 text-xs text-gray-600">{s.created_at?.slice(0, 10)}</td>
-                      <td className="py-2 px-3 text-xs text-gray-500">{s.last_login_at?.slice(0, 10) || '없음'}</td>
+                      <td className="py-2 px-3 text-xs text-gray-500">{s.last_login_at?.slice(0, 10) || t('admin.opsInsights.none', { defaultValue: '없음' })}</td>
                     </tr>
                   ))}
                 </Table>
@@ -133,12 +135,12 @@ export default function AdminOpsInsightsPage() {
                   {data.dormant_sellers.slice(0, 30).map(s => (
                     <tr key={s.id} className="border-t border-gray-100">
                       <td className="py-2 px-3 text-sm">{s.business_name}</td>
-                      <td className="py-2 px-3 text-xs text-gray-500">{s.last_live?.slice(0, 10) || '없음'}</td>
-                      <td className="py-2 px-3 text-xs text-gray-500">{s.last_paid?.slice(0, 10) || '없음'}</td>
+                      <td className="py-2 px-3 text-xs text-gray-500">{s.last_live?.slice(0, 10) || t('admin.opsInsights.none', { defaultValue: '없음' })}</td>
+                      <td className="py-2 px-3 text-xs text-gray-500">{s.last_paid?.slice(0, 10) || t('admin.opsInsights.none', { defaultValue: '없음' })}</td>
                     </tr>
                   ))}
                   {data.dormant_sellers.length > 30 && (
-                    <tr><td colSpan={3} className="text-xs text-gray-400 text-center py-2">... 외 {data.dormant_sellers.length - 30}명</td></tr>
+                    <tr><td colSpan={3} className="text-xs text-gray-400 text-center py-2">... {t('admin.opsInsights.andMore', { defaultValue: '외 {{count}}명', count: data.dormant_sellers.length - 30 })}</td></tr>
                   )}
                 </Table>
               )}

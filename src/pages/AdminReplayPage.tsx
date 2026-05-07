@@ -138,7 +138,7 @@ export default function AdminReplayPage() {
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('admin.pages.replay')}
-          subtitle="YouTube 영상 + 상품을 연결하여 다시보기 콘텐츠 생성"
+          subtitle={t('admin.replay.subtitle', { defaultValue: 'YouTube 영상 + 상품을 연결하여 다시보기 콘텐츠 생성' })}
           icon={<Youtube className="h-5 w-5" />}
           actions={
             <button
@@ -146,7 +146,7 @@ export default function AdminReplayPage() {
               className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"
             >
               <Plus className="h-3.5 w-3.5" />
-              다시보기 생성
+              {t('admin.replay.createBtn', { defaultValue: '다시보기 생성' })}
             </button>
           }
         />
@@ -155,48 +155,48 @@ export default function AdminReplayPage() {
         {showForm && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">
-              {editingId ? '다시보기 수정' : '새 다시보기 생성'}
+              {editingId ? t('admin.replay.formEdit', { defaultValue: '다시보기 수정' }) : t('admin.replay.formCreate', { defaultValue: '새 다시보기 생성' })}
             </h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* 왼쪽: 기본 정보 */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">셀러 선택</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.replay.labelSeller', { defaultValue: '셀러 선택' })}</label>
                   <select
                     value={form.seller_id}
                     onChange={e => setForm(f => ({ ...f, seller_id: Number(e.target.value) }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
                     disabled={!!editingId}
                   >
-                    <option value={0}>셀러를 선택하세요</option>
+                    <option value={0}>{t('admin.replay.selectSeller', { defaultValue: '셀러를 선택하세요' })}</option>
                     {sellers.map(s => <option key={s.id} value={s.id}>{s.name} (ID: {s.id})</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.replay.labelTitle', { defaultValue: '제목' })}</label>
                   <input
                     value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                    placeholder="다시보기 제목"
+                    placeholder={t('admin.replay.titlePlaceholder', { defaultValue: '다시보기 제목' })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">설명 (선택)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.replay.labelDesc', { defaultValue: '설명 (선택)' })}</label>
                   <textarea
                     value={form.description}
                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                    placeholder="방송 설명"
+                    placeholder={t('admin.replay.descPlaceholder', { defaultValue: '방송 설명' })}
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">YouTube URL</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.replay.labelYoutubeUrl', { defaultValue: 'YouTube URL' })}</label>
                   <div className="flex gap-2">
                     <input
                       value={form.youtube_url}
@@ -207,7 +207,7 @@ export default function AdminReplayPage() {
                     {videoPreviewId && (
                       <a href={`https://youtube.com/watch?v=${videoPreviewId}`} target="_blank" rel="noopener"
                         className="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm flex items-center gap-1 shrink-0">
-                        <ExternalLink className="w-3.5 h-3.5" /> 확인
+                        <ExternalLink className="w-3.5 h-3.5" /> {t('admin.replay.verifyLink', { defaultValue: '확인' })}
                       </a>
                     )}
                   </div>
@@ -215,7 +215,7 @@ export default function AdminReplayPage() {
                     <div className="mt-2 aspect-video rounded-lg overflow-hidden bg-black max-w-sm">
                       <img
                         src={`https://img.youtube.com/vi/${videoPreviewId}/mqdefault.jpg`}
-                        alt="미리보기"
+                        alt={t('admin.replay.previewAlt', { defaultValue: '미리보기' })}
                         className="w-full h-full object-cover" loading="lazy" />
                     </div>
                   )}
@@ -224,13 +224,13 @@ export default function AdminReplayPage() {
 
               {/* 오른쪽: 상품 선택 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">연결 상품</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.replay.labelLinkedProducts', { defaultValue: '연결 상품' })}</label>
                 <div className="relative mb-2">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     value={productSearch}
                     onChange={e => setProductSearch(e.target.value)}
-                    placeholder="상품 검색..."
+                    placeholder={t('admin.replay.productSearchPlaceholder', { defaultValue: '상품 검색...' })}
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
                   />
                 </div>
@@ -283,10 +283,10 @@ export default function AdminReplayPage() {
             <div className="flex gap-2 mt-5">
               <button onClick={handleSubmit} disabled={submitting}
                 className="px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50">
-                {submitting ? '처리 중...' : editingId ? '수정' : '생성'}
+                {submitting ? t('admin.replay.processing', { defaultValue: '처리 중...' }) : editingId ? t('admin.replay.formEdit', { defaultValue: '수정' }) : t('admin.replay.formCreate', { defaultValue: '생성' })}
               </button>
               <button onClick={resetForm} className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">
-                취소
+                {t('admin.replay.cancel', { defaultValue: '취소' })}
               </button>
             </div>
           </div>
@@ -300,7 +300,7 @@ export default function AdminReplayPage() {
         ) : streams.length === 0 ? (
           <div className="text-center py-20">
             <Play className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">다시보기 영상이 없습니다</p>
+            <p className="text-gray-500">{t('admin.replay.empty', { defaultValue: '다시보기 영상이 없습니다' })}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -319,7 +319,7 @@ export default function AdminReplayPage() {
                     </div>
                   )}
                   <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-[10px] rounded-md font-medium">
-                    다시보기
+                    {t('admin.replay.badge', { defaultValue: '다시보기' })}
                   </span>
                   <span className="absolute top-2 right-2 px-2 py-0.5 bg-black/70 text-white text-[10px] rounded-md font-mono">
                     #{s.id}
@@ -339,7 +339,7 @@ export default function AdminReplayPage() {
                       target="_blank" rel="noopener noreferrer"
                       className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200"
                     >
-                      <ExternalLink className="w-3 h-3" /> 보기
+                      <ExternalLink className="w-3 h-3" /> {t('admin.replay.viewLink', { defaultValue: '보기' })}
                     </a>
                     <button
                       onClick={() => startEdit(s)}
