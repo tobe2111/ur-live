@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Copy, CheckCircle2, Smartphone, Monitor, Loader2, AlertCircle, Youtube, ExternalLink } from 'lucide-react'
+import { Copy, CheckCircle2, Smartphone, Monitor, Loader2, AlertCircle, Youtube, ExternalLink, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { QRCodeSVG as QRCode } from 'qrcode.react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -32,6 +32,9 @@ export default function SellerStreamingSetupPage() {
   const [data, setData] = useState<SetupData>({ status: 'loading' })
   const [initializing, setInitializing] = useState(false)
   const [copied, setCopied] = useState<'url' | 'key' | null>(null)
+  const [showKey, setShowKey] = useState(false)
+  const [rotating, setRotating] = useState(false)
+  const [showRotateConfirm, setShowRotateConfirm] = useState(false)
 
   // 🛡️ 2026-05-07: 디바이스 자동 감지 + 사용자 토글. 모바일/PC 별 가이드 분기.
   const detectMobile = () => typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
@@ -80,6 +83,24 @@ export default function SellerStreamingSetupPage() {
     setCopied(kind)
     setTimeout(() => setCopied(null), 2000)
     toast.success('복사됨')
+  }
+
+  async function rotateKey() {
+    setRotating(true)
+    setShowRotateConfirm(false)
+    try {
+      const res = await api.post('/api/seller/youtube/rotate-stream-key')
+      if (res.data?.success) {
+        toast.success('새 송출 키가 발급됐어요. OBS/Prism/Larix 에 다시 입력해주세요.')
+        await load()
+      } else {
+        toast.error(res.data?.error || '키 교체 실패')
+      }
+    } catch {
+      toast.error('키 교체 중 오류가 발생했어요')
+    } finally {
+      setRotating(false)
+    }
   }
 
   // Larix deep link: rtmp://server/app/KEY 형태
@@ -160,8 +181,11 @@ export default function SellerStreamingSetupPage() {
                 <div>
                   <label className="block text-[11px] font-bold text-gray-500 mb-1">Stream Key</label>
                   <div className="flex gap-2">
-                    <input type="password" value={data.rtmp_key || ''} readOnly
+                    <input type={showKey ? 'text' : 'password'} value={data.rtmp_key || ''} readOnly
                       className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 font-mono" />
+                    <Button size="sm" variant="outline" onClick={() => setShowKey(v => !v)} title={showKey ? '숨기기' : '보기'}>
+                      {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => copy(data.rtmp_key || '', 'key')}>
                       {copied === 'key' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                     </Button>
@@ -169,6 +193,23 @@ export default function SellerStreamingSetupPage() {
                   <p className="text-[10px] text-gray-400 mt-1">⚠️ 외부에 노출하지 마세요. 노출 시 다른 사람이 내 채널에 송출할 수 있어요.</p>
                 </div>
               </div>
+
+              {/* 키 교체 */}
+              {showRotateConfirm ? (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-3">
+                  <p className="text-xs text-red-800 flex-1">OBS/Prism/Larix 설정을 다시 입력해야 해요. 정말 교체할까요?</p>
+                  <Button size="sm" variant="outline" onClick={() => setShowRotateConfirm(false)} className="text-xs">취소</Button>
+                  <Button size="sm" onClick={rotateKey} disabled={rotating}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs">
+                    {rotating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}교체
+                  </Button>
+                </div>
+              ) : (
+                <button onClick={() => setShowRotateConfirm(true)}
+                  className="text-[11px] text-gray-400 hover:text-red-500 underline underline-offset-2 transition-colors">
+                  <RefreshCw className="inline w-3 h-3 mr-1" />키 교체 (유출 시)
+                </button>
+              )}
             </div>
 
             {/* 🛡️ 2026-05-07: 디바이스 토글 — 자동 감지 + 사용자 변경 가능 */}

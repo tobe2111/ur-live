@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen, Wifi
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import { toast } from '@/hooks/useToast'
@@ -37,6 +37,7 @@ const NAV_GROUPS: {
     hideFor: ['store_owner'],
     items: [
       { path: '/seller/live-broadcast', labelKey: 'seller.live', icon: Radio, highlight: true },
+      { path: '/seller/streaming-setup', labelKey: 'seller.streamingSetup', icon: Wifi },
       { path: '/seller/shorts', labelKey: 'seller.shorts', icon: Play },
       { path: '/seller/live-analytics', labelKey: 'seller.liveAnalytics', icon: Activity },
     ],
