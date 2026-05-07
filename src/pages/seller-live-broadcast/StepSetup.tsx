@@ -74,11 +74,15 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
       {method === 'prism' && (
         <div className="space-y-3">
           {hasPersistentKey ? (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-              <div>
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
                 <p className="text-sm font-semibold text-green-800">{t('seller.liveBroadcast.rtmpSetupDone')}</p>
-                <p className="text-xs text-green-700">{t('seller.liveBroadcast.prismJustStart')}</p>
+                <p className="text-xs text-green-700 mt-0.5">{t('seller.liveBroadcast.prismJustStart')}</p>
+                {/* 🛡️ 2026-05-07: 키 잊었을 때 다시 보러가는 링크 (UX 사고 — hasPersistentKey 면 키 숨김) */}
+                <a href="/seller/streaming-setup" className="inline-flex items-center gap-1 text-[11px] text-green-800 hover:text-green-900 underline underline-offset-2 mt-1.5 font-medium">
+                  RTMP 키 다시 보기 →
+                </a>
               </div>
             </div>
           ) : stream.rtmp_url && stream.rtmp_key ? (

@@ -35,6 +35,7 @@ const SellerDonationsPage = lazy(() => import('@/pages/SellerDonationsPage'))
 const SellerTransfersPage = lazy(() => import('@/pages/SellerTransfersPage'))
 const SellerShortsPage = lazy(() => import('@/pages/SellerShortsPage'))
 const SellerLiveBroadcastPage = lazy(() => import('@/pages/SellerLiveBroadcastPage'))
+const SellerStreamingSetupPage = lazy(() => import('@/pages/SellerStreamingSetupPage'))
 const SellerLiveAnalyticsPage = lazy(() => import('@/pages/SellerLiveAnalyticsPage'))
 const SellerAnalyticsPage = lazy(() => import('@/pages/SellerAnalyticsPage'))
 const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
@@ -216,6 +217,11 @@ export function SellerRoutes() {
       <Route path="/seller/meal-voucher/new" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerMealVoucherNewPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/streaming-setup" element={
+        <ProtectedRoute requireSeller>
+          <SellerStreamingSetupPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/live-broadcast" element={

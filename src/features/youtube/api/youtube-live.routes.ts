@@ -1134,4 +1134,107 @@ app.get('/live-readiness', async (c) => {
   }
 })
 
+/**
+ * GET /api/seller/youtube/streaming-setup
+ * 🛡️ 2026-05-07: 송출 키 영구 발급 + 조회 (방송 생성과 분리).
+ *
+ * 셀러는 RTMP URL/Key 를 평생 한 번만 설정하면 됨 — YouTube Studio 와 동일한 패턴.
+ *   - 키가 이미 있으면 그대로 반환
+ *   - 없으면 status='not_configured' 반환 → 클라이언트가 init 호출
+ */
+app.get('/streaming-setup', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const auth = await c.env.DB.prepare(`
+    SELECT default_stream_id, default_rtmp_url, default_rtmp_key, channel_title, channel_id
+    FROM seller_youtube_oauth
+    WHERE seller_id = ? AND is_active = 1
+    ORDER BY created_at DESC LIMIT 1
+  `).bind(sellerId).first<{ default_stream_id?: string; default_rtmp_url?: string; default_rtmp_key?: string; channel_title?: string; channel_id?: string }>()
+
+  if (!auth) {
+    return c.json({ success: true, data: { status: 'no_oauth', oauth_url: '/seller/youtube' } })
+  }
+  if (!auth.default_stream_id || !auth.default_rtmp_url || !auth.default_rtmp_key) {
+    return c.json({ success: true, data: { status: 'not_configured', channel_title: auth.channel_title } })
+  }
+  return c.json({
+    success: true,
+    data: {
+      status: 'configured',
+      rtmp_url: auth.default_rtmp_url,
+      rtmp_key: auth.default_rtmp_key,
+      stream_id: auth.default_stream_id,
+      channel_title: auth.channel_title,
+      channel_id: auth.channel_id,
+    },
+  })
+})
+
+/**
+ * POST /api/seller/youtube/streaming-setup/init
+ * RTMP 키 최초 발급 — broadcast 없이 stream 만 생성.
+ * 한 번 호출 후 영구적으로 같은 키 재사용 (YouTube 의 persistent stream).
+ */
+app.post('/streaming-setup/init', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+  if (!clientId || !clientSecret) {
+    return c.json({ success: false, error: 'YouTube API not configured' }, 500)
+  }
+
+  const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+  const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+  if (!accessToken) {
+    return c.json({ success: false, error: 'YouTube 연동이 필요합니다', error_code: 'YOUTUBE_AUTH_REQUIRED' }, 401)
+  }
+
+  try {
+    // 이미 키 있으면 재사용 (idempotent)
+    const existing = await c.env.DB.prepare(`
+      SELECT default_stream_id, default_rtmp_url, default_rtmp_key
+      FROM seller_youtube_oauth
+      WHERE seller_id = ? AND is_active = 1 LIMIT 1
+    `).bind(sellerId).first<{ default_stream_id?: string; default_rtmp_url?: string; default_rtmp_key?: string }>()
+
+    if (existing?.default_stream_id && existing?.default_rtmp_url && existing?.default_rtmp_key) {
+      return c.json({
+        success: true,
+        data: {
+          status: 'already_configured',
+          rtmp_url: existing.default_rtmp_url,
+          rtmp_key: existing.default_rtmp_key,
+          stream_id: existing.default_stream_id,
+        },
+      })
+    }
+
+    // 새 stream 생성 (broadcast 없이)
+    const stream = await youtubeService.createStream(accessToken, 'UR Live Persistent Stream', '1080p')
+
+    await c.env.DB.prepare(`
+      UPDATE seller_youtube_oauth
+      SET default_stream_id = ?, default_rtmp_url = ?, default_rtmp_key = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE seller_id = ? AND is_active = 1
+    `).bind(stream.id, stream.ingestionInfo.ingestionAddress, stream.ingestionInfo.streamName, sellerId).run()
+
+    return c.json({
+      success: true,
+      data: {
+        status: 'configured',
+        rtmp_url: stream.ingestionInfo.ingestionAddress,
+        rtmp_key: stream.ingestionInfo.streamName,
+        stream_id: stream.id,
+      },
+    })
+  } catch (err) {
+    console.error('[YouTube streaming-setup/init] Error:', err)
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
 export { app as youtubeLiveRoutes }
