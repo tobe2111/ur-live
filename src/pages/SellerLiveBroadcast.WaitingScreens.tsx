@@ -349,9 +349,8 @@ export function YouTubeWebcamWaiting({ stream, onGoLive, channelId }: { stream: 
     if (openedRef.current) return
     openedRef.current = true
     setTimeout(openStudio, 200)
-    return () => {
-      try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close() } catch {}
-    }
+    // 🛡️ 2026-05-07: 웹캠 모드는 popup = 카메라 인코더. 자동 close 시 방송 즉시 끊김.
+    //   라이브 전환 시 WaitingScreens 언마운트 되더라도 popup 유지 (셀러가 명시적으로 닫을 때까지).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

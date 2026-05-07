@@ -306,6 +306,20 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
         </div>
       )}
 
+      {/* 🛡️ 2026-05-07: YouTube Studio 웹캠 모드 — popup 유지 안내 (닫으면 방송 끊김) */}
+      {method === 'youtube-webcam' && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+          <span className="text-base shrink-0 mt-0.5">📹</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-red-800">YouTube Studio 창을 닫지 마세요</p>
+            <p className="text-[11px] text-red-700 leading-relaxed">
+              웹캠 인코더가 YouTube Studio 탭에서 동작 중입니다. 백그라운드로 두고 이 창에서 채팅·상품을 관리하세요.
+              창을 닫으면 방송이 즉시 종료됩니다.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 상태 바 */}
       <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-200">
         <div className="flex items-center gap-2 min-w-0">
