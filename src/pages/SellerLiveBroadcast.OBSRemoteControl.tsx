@@ -78,8 +78,8 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
     const tick = async () => {
       try {
         const img = await clientRef.current?.getPreviewScreenshot()
-        if (active && img) setPreviewUrl(img)
-      } catch { /* silent */ }
+        if (active) setPreviewUrl(img || null)
+      } catch { if (active) setPreviewUrl(null) }
     }
     tick()
     const id = setInterval(tick, 3000)

@@ -479,7 +479,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
                         <span>
                           {d.toLocaleString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
                           {inFuture && ` (${eta})`}
-                          {!inFuture && ' — 과거 시간이에요. 다시 선택해주세요.'}
+                          {!inFuture && ` — ${t('seller.liveBroadcast.scheduledPastInline', { defaultValue: '과거 시간이에요. 다시 선택해주세요.' })}`}
                         </span>
                       </div>
                     )

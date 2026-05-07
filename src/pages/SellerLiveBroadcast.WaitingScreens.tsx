@@ -363,24 +363,28 @@ export function YouTubeWebcamWaiting({ stream, onGoLive, channelId }: { stream: 
 
   // /detect-webcam 폴링 — 10s 간격, liveBroadcasts.list 1 unit/call
   useEffect(() => {
+    let cancelled = false
     const poll = async () => {
-      if (linkingRef.current) return
+      if (linkingRef.current || cancelled) return
       try {
         const res = await api.get(`/api/seller/youtube/live/${stream.id}/detect-webcam`)
-        if (res.data?.success && res.data.data) {
+        if (!cancelled && res.data?.success && res.data.data) {
           linkingRef.current = true
           const d = res.data.data as { youtube_video_id: string; title?: string }
-          await api.patch(`/api/seller/youtube/live/${stream.id}/link-broadcast`, {
-            youtube_video_id: d.youtube_video_id,
-          })
-          setDetected(d)
-          setTimeout(onGoLive, 1200)
+          try {
+            await api.patch(`/api/seller/youtube/live/${stream.id}/link-broadcast`, {
+              youtube_video_id: d.youtube_video_id,
+            })
+            if (!cancelled) { setDetected(d); setTimeout(onGoLive, 1200) }
+          } catch {
+            linkingRef.current = false // PATCH 실패 시 재시도 허용
+          }
         }
       } catch { /* 네트워크 오류 무시 */ }
     }
     poll()
     const id = setInterval(poll, 10000)
-    return () => clearInterval(id)
+    return () => { cancelled = true; clearInterval(id) }
   }, [stream.id, onGoLive])
 
   return (

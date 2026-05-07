@@ -3,7 +3,7 @@
  *
  * 라이브 시작 전 RTMP 설정 / OBS 가이드 / 카메라 미리보기 / 송출 진단.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,16 +31,12 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
   const [showDiagnostic, setShowDiagnostic] = useState(false)
   const [waitSeconds, setWaitSeconds] = useState(0)
-  const waitRef = useRef(0)
   // 대기 중 화면 잠금 방지 (Prism QR 스캔 중, YouTube Studio 확인 중 화면 꺼짐 방지)
   useScreenWakeLock(true)
 
   // 대기 경과 시간 카운터 (탈출 안내 표시용)
   useEffect(() => {
-    const id = setInterval(() => {
-      waitRef.current += 1
-      setWaitSeconds(waitRef.current)
-    }, 1000)
+    const id = setInterval(() => setWaitSeconds(s => s + 1), 1000)
     return () => clearInterval(id)
   }, [])
 

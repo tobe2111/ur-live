@@ -276,7 +276,7 @@ export default function SellerLiveBroadcastPage() {
         updated.forEach(p => {
           const wasInStock = (prev[p.id] ?? 1) > 0
           if (wasInStock && p.stock === 0 && p.id === currentStream.current_product_id) {
-            toast.error(`⚠️ 현재 판매 상품 "${p.name}" 품절! 다른 상품으로 전환하세요.`)
+            toast.error(t('seller.liveBroadcast.productOutOfStock', { name: p.name, defaultValue: `⚠️ 현재 판매 상품 "${p.name}" 품절! 다른 상품으로 전환하세요.` }))
           }
           prev[p.id] = p.stock
         })
@@ -326,7 +326,7 @@ export default function SellerLiveBroadcastPage() {
       if (isScheduled && scheduledDate && scheduledTime) {
         const d = new Date(`${scheduledDate}T${scheduledTime}:00`)
         if (isNaN(d.getTime()) || d.getTime() < Date.now() - 60_000) {
-          toast.error('예약 시간이 과거입니다. 미래 시간으로 설정해주세요.')
+          toast.error(t('seller.liveBroadcast.scheduledPastError', { defaultValue: '예약 시간이 과거입니다. 미래 시간으로 설정해주세요.' }))
           setCreating(false)
           return
         }
@@ -606,7 +606,7 @@ export default function SellerLiveBroadcastPage() {
 
         {/* P2-10: 네트워크 끊김 표시 */}
         {pollFailures >= 3 && step === 'setup' && (
-          <div className="fixed bottom-4 right-4 z-40 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 shadow-lg flex items-center gap-2.5 max-w-xs">
+          <div className="fixed bottom-4 right-4 z-50 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 shadow-lg flex items-center gap-2.5 max-w-xs">
             <Loader2 className="w-4 h-4 text-amber-600 animate-spin shrink-0" />
             <p className="text-xs text-amber-800">{t('seller.liveBroadcast.reconnecting')}</p>
           </div>
