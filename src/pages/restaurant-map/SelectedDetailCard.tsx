@@ -18,7 +18,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
   const navigate = useNavigate()
   const { t } = useTranslation()
   return (
-    <div className="bg-pink-50 border-2 border-pink-300 rounded-2xl p-4 mb-3 relative">
+    <div className="bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-300 dark:border-pink-700 rounded-2xl p-4 mb-3 relative">
       <button onClick={onClose} aria-label={t('map.detail.deselect', { defaultValue: '선택 해제' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/80">
         <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
       </button>
@@ -66,7 +66,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           onClick={() => onToggleFavorite(selected.id)}
           aria-label={favorites.includes(selected.id) ? t('map.detail.unfavorite', { defaultValue: '즐겨찾기 해제' }) : t('map.detail.favorite', { defaultValue: '즐겨찾기' })}
           className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
-            favorites.includes(selected.id) ? 'bg-pink-100 text-pink-500' : 'bg-white dark:bg-[#0A0A0A] text-gray-400 dark:text-gray-500'
+            favorites.includes(selected.id) ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-500' : 'bg-white dark:bg-[#0A0A0A] text-gray-400 dark:text-gray-500'
           }`}
         >
           <Heart className="w-4 h-4" fill={favorites.includes(selected.id) ? 'currentColor' : 'none'} />

@@ -37,7 +37,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
   if (filtered.length === 0) {
     return (
       <div className="text-center py-16">
-        <MapPin className="w-14 h-14 text-gray-200 mx-auto mb-4" />
+        <MapPin className="w-14 h-14 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
         <p className="text-gray-900 dark:text-white font-bold">맛집을 찾지 못했어요</p>
         <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">다른 지역이나 검색어를 시도해보세요</p>
       </div>
@@ -54,7 +54,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
             onClick={() => onSelect(r)}
             className={`w-full flex gap-3 p-3.5 rounded-2xl text-left transition-all ${
               selected?.id === r.id
-                ? 'bg-pink-50 border-2 border-pink-300 shadow-sm'
+                ? 'bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-300 dark:border-pink-700 shadow-sm'
                 : 'bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1A1A1A] hover:shadow-md'
             }`}
           >
