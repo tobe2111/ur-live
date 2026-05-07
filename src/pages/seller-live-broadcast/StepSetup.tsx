@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { safeTime } from '@/utils/safe-date'
 import { ScheduledBroadcastWaiting, YouTubeStudioWaiting } from '../SellerLiveBroadcast.WaitingScreens'
 import OBSRemoteControl from '../SellerLiveBroadcast.OBSRemoteControl'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
@@ -38,7 +39,7 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
   }, [autoDiagnosticShown])
 
   // P1-5: 예약 방송이고 시작 시간이 30분 이상 미래면 카운트다운 화면
-  const scheduledTime = stream.scheduled_at ? new Date(stream.scheduled_at).getTime() : 0
+  const scheduledTime = safeTime(stream.scheduled_at)
   const minutesUntil = scheduledTime > 0 ? (scheduledTime - Date.now()) / 60000 : -1
   if (minutesUntil > 30) {
     return <ScheduledBroadcastWaiting stream={stream} onBack={onBack} />

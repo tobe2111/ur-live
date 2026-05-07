@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { safeTime } from '@/utils/safe-date'
 import { toast } from '@/hooks/useToast'
 import { EndBroadcastModal, ConfirmModal, PromptModal, RecapModal } from './SellerLiveBroadcast.modals'
 import {
@@ -173,7 +174,7 @@ export default function SellerLiveBroadcastPage() {
     const active = streams.find(s => {
       if (s.status === 'live') return true
       if (s.status === 'scheduled' && s.scheduled_at) {
-        const minsUntil = (new Date(s.scheduled_at).getTime() - Date.now()) / 60000
+        const minsUntil = (safeTime(s.scheduled_at) - Date.now()) / 60000
         return minsUntil >= -10 && minsUntil <= 60 // -10분 ~ +60분
       }
       return false

@@ -3,6 +3,39 @@
 import { autoRedirectKakaoToExternal, detectInAppBrowser } from '@/lib/in-app-browser'
 const _kakaoRedirected = autoRedirectKakaoToExternal()
 
+// 🛡️ 2026-05-07: Safari Date 파싱 글로벌 정상화.
+//   원인: SQLite datetime() / CURRENT_TIMESTAMP 가 'YYYY-MM-DD HH:MM:SS' (공백) 반환.
+//     - Chrome/Firefox: 로컬 TZ 로 관대하게 파싱
+//     - Safari (iOS/macOS): **Invalid Date** → toLocaleString() = "Invalid Date" 표시,
+//       getTime() = NaN → 카운트다운/정렬/시간 비교 모두 깨짐.
+//   코드 95곳이 가드 없이 `new Date(백엔드_문자열)` 직접 호출 → mass migration 위험.
+//   해결: Date 생성자 wrap 으로 SQLite 형식 입력만 자동 ISO 변환 (T + Z 추가).
+//   다른 입력 (number / ISO / no args / Date) 은 변환 없이 통과 — side effect 0.
+try {
+  const _OrigDate = Date
+  function PatchedDate(this: unknown, ...args: unknown[]) {
+    if (args.length === 1 && typeof args[0] === 'string') {
+      const s = args[0]
+      // 'YYYY-MM-DD HH:MM[:SS][.sss]' (공백) → ISO 'T...Z'. 이미 T 또는 timezone 있으면 패스.
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s) && !/Z$|[+-]\d{2}:?\d{2}$/.test(s)) {
+        args[0] = s.replace(' ', 'T') + 'Z'
+      }
+    }
+    if (!(this instanceof PatchedDate)) {
+      // Date(...) called as function (without `new`) — 원본 동작 그대로
+      return (_OrigDate as unknown as (...a: unknown[]) => string)(...args)
+    }
+    // @ts-ignore — Reflect.construct preserves prototype chain
+    return Reflect.construct(_OrigDate, args, PatchedDate)
+  }
+  PatchedDate.prototype = _OrigDate.prototype
+  PatchedDate.now = _OrigDate.now
+  PatchedDate.parse = _OrigDate.parse
+  PatchedDate.UTC = _OrigDate.UTC
+  // @ts-ignore — global override
+  globalThis.Date = PatchedDate as unknown as DateConstructor
+} catch { /* Date 패치 실패해도 앱은 계속 — 기존 코드 그대로 동작 */ }
+
 // 🛡️ 2026-05-06: localStorage / sessionStorage throw-safe 글로벌 가드.
 //   원인: Safari private mode (iOS<14), 카카오/네이버 인앱 webview, sandboxed iframe,
 //   ITP 차단, quota 초과 시 setItem/getItem 이 SecurityError/QuotaExceededError throw.

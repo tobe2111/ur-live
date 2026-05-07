@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { CheckCircle2, Copy, Eye, MessageSquare, ShoppingBag, DollarSign } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+import { safeDate, safeTime } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
 
 interface ToolPreset {
@@ -218,7 +219,7 @@ export function StreamList({ streams, onManage }: StreamListProps) {
   const upcoming = streams.filter((s: LiveStreamLite) => {
     if (s.status !== 'scheduled') return false
     if (!s.scheduled_at) return true
-    return new Date(s.scheduled_at).getTime() - Date.now() > 60 * 60 * 1000
+    return safeTime(s.scheduled_at) - Date.now() > 60 * 60 * 1000
   })
   const ended = streams.filter((s: LiveStreamLite) => s.status === 'ended')
   if (upcoming.length === 0 && ended.length === 0) return null
@@ -230,7 +231,7 @@ export function StreamList({ streams, onManage }: StreamListProps) {
           {upcoming.map((s: LiveStreamLite) => (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-orange-100 text-orange-600">
-                📅 {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : t('common.scheduled')}
+                📅 {safeDate(s.scheduled_at)?.toLocaleString() ?? t('common.scheduled')}
               </span>
               <p className="text-sm font-medium text-gray-900 truncate flex-1">{s.title}</p>
               <button onClick={() => onManage(s)} className="text-xs text-blue-600 font-medium shrink-0">{t('common.manage')} →</button>

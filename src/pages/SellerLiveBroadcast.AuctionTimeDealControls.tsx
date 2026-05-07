@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { Gavel, Zap, Users } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { safeTime } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
 
 interface Product {
@@ -68,7 +69,7 @@ export default function AuctionTimeDealControls({ streamId, products }: { stream
 
   function fmtRemaining(endsAt?: string): string {
     if (!endsAt) return ''
-    const sec = Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000))
+    const sec = Math.max(0, Math.floor((safeTime(endsAt) - Date.now()) / 1000))
     void tick
     const m = Math.floor(sec / 60), s = sec % 60
     return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`

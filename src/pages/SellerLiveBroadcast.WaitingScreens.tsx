@@ -9,6 +9,7 @@
  * 🛡️ 2026-04-28: TD-006 추가 분할.
  */
 import { useState, useEffect, useRef } from 'react'
+import { safeDate, safeTime } from '@/utils/safe-date'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, CheckCircle2, Youtube } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -50,7 +51,7 @@ export function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStre
   useEffect(() => {
     const tick = () => {
       if (!stream.scheduled_at) return
-      const target = new Date(stream.scheduled_at).getTime()
+      const target = safeTime(stream.scheduled_at)
       const diff = target - Date.now()
       if (diff <= 0) { setCountdown('00:00:00') } else {
         const days = Math.floor(diff / (24 * 3600 * 1000))
@@ -81,7 +82,7 @@ export function ScheduledBroadcastWaiting({ stream, onBack }: { stream: LiveStre
     return () => clearInterval(id)
   }, [stream.scheduled_at, stream.rtmp_url, stream.rtmp_key, obsAutoStartEnabled])
 
-  const scheduledDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null
+  const scheduledDate = safeDate(stream.scheduled_at)
   const scheduledStr = scheduledDate
     ? `${scheduledDate.getFullYear()}-${String(scheduledDate.getMonth() + 1).padStart(2, '0')}-${String(scheduledDate.getDate()).padStart(2, '0')} ${String(scheduledDate.getHours()).padStart(2, '0')}:${String(scheduledDate.getMinutes()).padStart(2, '0')}`
     : ''
