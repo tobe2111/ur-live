@@ -20,6 +20,7 @@ export interface LiveStream {
   youtube_url?: string
   rtmp_url?: string
   rtmp_key?: string
+  thumbnail_url?: string
   status: 'scheduled' | 'live' | 'ended'
   viewer_count: number
   current_product_id?: number

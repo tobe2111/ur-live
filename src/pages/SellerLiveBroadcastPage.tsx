@@ -343,8 +343,27 @@ export default function SellerLiveBroadcastPage() {
     if (!currentStream) return
     try {
       await api.post(`/api/seller/youtube/live/${currentStream.id}/start`)
-      setCurrentStream(s => s ? { ...s, status: 'live' } : s)
+      // DB에서 최신 스트림 정보 새로고침 (webcam 모드에서 link-broadcast 후 youtube_video_id 반영)
+      try {
+        const refreshRes = await api.get(`/api/seller/streams/${currentStream.id}`)
+        if (refreshRes.data?.success && refreshRes.data.stream) {
+          const s = refreshRes.data.stream
+          setCurrentStream(prev => prev ? {
+            ...prev,
+            youtube_video_id: s.youtube_video_id || prev.youtube_video_id,
+            youtube_broadcast_id: s.youtube_broadcast_id || prev.youtube_broadcast_id,
+            youtube_url: s.youtube_video_id ? `https://www.youtube.com/watch?v=${s.youtube_video_id}` : prev.youtube_url,
+            thumbnail_url: s.thumbnail_url || prev.thumbnail_url,
+            status: 'live',
+          } : prev)
+        } else {
+          setCurrentStream(s => s ? { ...s, status: 'live' } : s)
+        }
+      } catch {
+        setCurrentStream(s => s ? { ...s, status: 'live' } : s)
+      }
       setStep('live')
+      liveStartTimeRef.current = Date.now()
       toast.success(t('seller.liveBroadcast.liveStarted'))
     } catch { toast.error(t('seller.liveBroadcast.startFailed')) }
   }

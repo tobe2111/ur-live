@@ -324,12 +324,16 @@ app.post('/live/:id/start', async (c) => {
 
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
     const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
-    
+
+    // 웹캠 모드: YouTube OAuth 없어도 youtube_video_id 있으면 DB만 업데이트 (방송은 이미 Studio에서 시작됨)
     if (!accessToken) {
-      return c.json({
-        success: false,
-        error: 'YouTube authentication required'
-      }, 401)
+      if ((stream as any).youtube_video_id) {
+        await c.env.DB.prepare(`
+          UPDATE live_streams SET status = 'live', updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).bind(streamId).run()
+        return c.json({ success: true, message: 'Stream marked as live (webcam)' })
+      }
+      return c.json({ success: false, error: 'YouTube authentication required' }, 401)
     }
 
     // Check if YouTube already auto-started (enableAutoStart: true)
@@ -403,8 +407,13 @@ app.get('/live/:id/status', async (c) => {
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
     const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
 
+    // 웹캠 모드: YouTube OAuth 없어도 DB 상태 반환 (polling이 조용히 실패하지 않도록)
     if (!accessToken) {
-      return c.json({ success: false, error: 'YouTube authentication required' }, 401)
+      const dbStatus = (stream as any).status as string
+      return c.json({
+        success: true,
+        data: { status: dbStatus, youtube_status: dbStatus, synced: dbStatus === 'live' }
+      })
     }
 
     // Check YouTube broadcast status
