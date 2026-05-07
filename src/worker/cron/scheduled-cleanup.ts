@@ -20,6 +20,20 @@ export async function handleScheduled(env: Env) {
     results.stale_streams_ended = meta.changes ?? 0;
   } catch (e) { console.error('[Cron] stale_streams error:', e) }
 
+  // ── 1b. dead 웹캠 방송 정리 (2026-05-07) ──
+  //   셀러가 웹캠 모드로 시작했지만 YouTube Studio 에서 방송 연결을 완료하지 않은 케이스.
+  //   status='live' 인데 youtube_video_id 가 비어있고 10분 이상 경과 → cancelled 처리.
+  try {
+    const { meta } = await DB.prepare(`
+      UPDATE live_streams
+      SET status = 'cancelled', updated_at = datetime('now')
+      WHERE status IN ('live', 'scheduled')
+        AND (youtube_video_id IS NULL OR youtube_video_id = '')
+        AND created_at < datetime('now', '-10 minutes')
+    `).run();
+    results.dead_webcam_streams_cancelled = meta.changes ?? 0;
+  } catch (e) { console.error('[Cron] dead_webcam_streams error:', e) }
+
   // ── 2. 미결제 주문: 24시간 후 자동 취소 + 재고 복구 ──
   // ✅ CONCURRENCY FIX (Cron C2): UPDATE RETURNING은 원자적으로 PENDING → CANCELLED
   // 전환된 행만 반환하므로 웹훅과의 경쟁에서도 재고 복구는 한 번만 실행됨.

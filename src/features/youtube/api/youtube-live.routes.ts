@@ -421,6 +421,16 @@ app.post('/live/:id/start', async (c) => {
     //   /create-webcam 으로 만들어진 stream 은 YouTube broadcast 가 없으므로 transition 불가.
     //   셀러가 YouTube Studio 에서 웹캠 방송을 별도로 시작 → DB 상태만 sync.
     if (!stream.youtube_broadcast_id) {
+      // 🛡️ 2026-05-07: dead stream 방지 — youtube_video_id 가 link 되지 않은 상태로
+      //   start 호출 시 거부. 셀러가 YouTube Studio 팝업에서 방송 시작을 완료하지 않은 케이스.
+      //   stream 39 처럼 youtube_video_id='' 로 status='live' 가 되는 것 차단.
+      if (!stream.youtube_video_id || String(stream.youtube_video_id).trim() === '') {
+        return c.json({
+          success: false,
+          error: 'YouTube Studio 에서 웹캠 방송을 먼저 시작해주세요. 방송이 자동 감지되면 시작됩니다.',
+          code: 'WEBCAM_NOT_LINKED',
+        }, 400)
+      }
       await c.env.DB.prepare(`
         UPDATE live_streams SET status = 'live', updated_at = CURRENT_TIMESTAMP WHERE id = ?
       `).bind(streamId).run()
