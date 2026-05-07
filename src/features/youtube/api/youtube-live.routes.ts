@@ -500,7 +500,9 @@ app.get('/live/:id/status', async (c) => {
     const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
 
     // 웹캠 모드: YouTube OAuth 없어도 DB 상태 반환 (polling이 조용히 실패하지 않도록)
-    if (!accessToken) {
+    // 🛡️ 2026-05-07: youtube_broadcast_id 가 null 인 경우 (create-webcam 으로 생성된 stream)
+    //   YouTube API 호출 시 500 에러 발생 → DB 상태로 fallback. /detect-webcam 이 별도로 폴링.
+    if (!accessToken || !stream.youtube_broadcast_id) {
       const dbStatus = (stream as any).status as string
       return c.json({
         success: true,
