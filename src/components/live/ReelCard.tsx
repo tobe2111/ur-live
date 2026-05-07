@@ -967,8 +967,22 @@ function ReelCardImpl({
         </div>
       )}
 
+      {/* 🛡️ 2026-05-07: youtube_video_id 없을 때 명확한 안내 (무한 로딩 방지).
+          셀러가 방송 생성만 하고 YouTube 송출 시작 안 한 케이스. */}
+      {stream.status !== 'scheduled' && !stream.youtube_video_id && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/70 px-6 text-center">
+          <div className="h-16 w-16 rounded-full bg-yellow-500/20 flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            </svg>
+          </div>
+          <p className="text-white text-lg font-bold mb-1">{t('live.notReady', { defaultValue: '방송 준비 중' })}</p>
+          <p className="text-white/70 text-sm">{t('live.notReadyDesc', { defaultValue: '셀러가 곧 방송을 시작해요' })}</p>
+        </div>
+      )}
+
       {/* 라이브/종료 방송: 로딩 → 자동재생 → 실패 시 탭 유도 */}
-      {stream.status !== 'scheduled' && !playerError && showPlayButton && (
+      {stream.status !== 'scheduled' && stream.youtube_video_id && !playerError && showPlayButton && (
         <button
           onClick={playerReady ? handleVideoClick : undefined}
           className={`absolute inset-0 z-10 flex flex-col items-center justify-center transition-all ${
