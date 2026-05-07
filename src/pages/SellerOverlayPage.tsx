@@ -72,7 +72,7 @@ export default function SellerOverlayPage() {
     const poll = async () => {
       if (document.hidden) return
       try {
-        const res = await api.get(`/api/youtube/chat/${streamId}`)
+        const res = await api.get(`/api/youtube/chat/chat/${streamId}`)
         if (active && res.data.success && res.data.data?.messages) {
           const newMsgs: OverlayMsg[] = res.data.data.messages
             .filter((m: { id: string }) => !seenYtIds.current.has(`yt-${m.id}`))

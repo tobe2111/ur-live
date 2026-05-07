@@ -14,6 +14,7 @@
  */
 
 import { Hono } from 'hono';
+import type { KVNamespace } from '@cloudflare/workers-types';
 import type { Env } from '../types/env';
 import { rateLimit } from '../middleware/rate-limit';
 
@@ -59,16 +60,33 @@ app.get('/kakao/place/nearby', async (c) => {
   }
 });
 
-// ── 카카오 주소 검색 ──
+// ── 카카오 주소 검색 (영구 캐시) ──
+// 🛡️ 2026-05-07: 같은 주소를 반복 변환하지 않도록 RATE_LIMIT_KV 에 30일 캐시.
+// 한 번 변환된 좌표는 거의 바뀌지 않으므로 Kakao API quota 대폭 절감.
 app.get('/kakao/place/address', async (c) => {
   const query = c.req.query('query');
   if (!query) return c.json({ success: false, error: 'query required' }, 400);
   const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY;
   if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500);
+
+  const KV = (c.env as Env & { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV;
+  const cacheKey = `geocode:kakao:${query.slice(0, 200)}`;
+
+  // 캐시 hit
+  if (KV) {
+    const cached = await KV.get(cacheKey, 'json').catch(() => null);
+    if (cached) return c.json({ success: true, data: cached, cached: true });
+  }
+
   try {
     const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
     const data = await res.json();
+
+    // 결과 있을 때만 30일 캐시 (빈 결과는 다음에 다시 시도)
+    if (KV && (data as { documents?: unknown[] })?.documents?.length) {
+      await KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 * 24 * 60 * 60 }).catch(() => { /* noop */ });
+    }
     return c.json({ success: true, data });
   } catch (e) {
     return c.json({ success: false, error: (e as Error).message }, 500);
