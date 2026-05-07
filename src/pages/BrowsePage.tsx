@@ -14,7 +14,11 @@ import type { Product, SortOption } from './browse/types'
 // 🛡️ 2026-05-02: TD-018 분할 — types/RecentlyViewedSection 을 ./browse/ 로 추출.
 //   미사용 lucide 아이콘 (Clock — RecentlyViewed 내부로 이동) 정리.
 
-export default function BrowsePage() {
+interface BrowsePageProps {
+  defaultCategory?: string
+}
+
+export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
@@ -22,7 +26,7 @@ export default function BrowsePage() {
   // ✅ UX M17 FIX: 에러 상태 + 재시도 버튼
   const [error, setError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
-  const category = searchParams.get('category') || 'all'
+  const category = defaultCategory || searchParams.get('category') || 'all'
 
   // v37 FIX: sortBy를 URL 파라미터로 양방향 동기화
   // - 뒤로가기 시 URL의 sort 값으로 자동 복원

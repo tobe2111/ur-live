@@ -445,7 +445,9 @@ export default function SellerLiveBroadcastPage() {
       if (stats && liveStartTimeRef.current > 0) {
         const sec = Math.floor((Date.now() - liveStartTimeRef.current) / 1000)
         const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60
-        const duration = h > 0 ? `${h}시간 ${m}분 ${s}초` : `${m}분 ${s}초`
+        const duration = h > 0
+          ? t('seller.liveBroadcast.durationHMS', { h, m, s, defaultValue: `${h}시간 ${m}분 ${s}초` })
+          : t('seller.liveBroadcast.durationMS', { m, s, defaultValue: `${m}분 ${s}초` })
         setRecapStream(endingStream)
         setRecapStats({ duration, viewers: stats.viewer_count, chat: stats.chat_count, orders: stats.order_count, revenue: stats.revenue })
       }
@@ -626,12 +628,12 @@ export default function SellerLiveBroadcastPage() {
             <div className="text-center space-y-4">
               <div className="inline-flex items-center gap-2 text-red-400 text-sm font-bold">
                 <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-                스트림 감지됨
+                {t('seller.liveBroadcast.streamDetected')}
               </div>
               <div className="text-white text-[140px] font-black leading-none tabular-nums">
                 {transitionCountdown === 0 ? '▶' : transitionCountdown}
               </div>
-              <p className="text-gray-300 text-base">잠시 후 라이브 대시보드로 이동합니다</p>
+              <p className="text-gray-300 text-base">{t('seller.liveBroadcast.streamDetectedDesc')}</p>
             </div>
           </div>
         )}
@@ -657,8 +659,8 @@ export default function SellerLiveBroadcastPage() {
         {/* 채널 연결 해제 확인 모달 */}
         {disconnectChannelId !== null && (
           <ConfirmModal
-            title="채널 연결을 해제하시겠습니까?"
-            description="해제하면 이 채널로는 방송할 수 없어요. 다시 연동하면 복구 가능합니다."
+            title={t('seller.liveBroadcast.disconnectChannelTitle')}
+            description={t('seller.liveBroadcast.disconnectChannelDesc')}
             confirmLabel={t('seller.liveBroadcast.disconnectChannel')}
             confirmStyle="bg-red-600 hover:bg-red-700"
             onConfirm={confirmDisconnect}

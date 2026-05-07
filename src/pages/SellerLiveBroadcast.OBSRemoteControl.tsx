@@ -140,20 +140,20 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
               <span className="text-xl shrink-0">🚀</span>
               <div>
                 <p className="text-sm font-bold text-indigo-900">Larix Broadcaster (권장)</p>
-                <p className="text-xs text-indigo-700 mt-0.5">무료 RTMP 앱 · RTMP 자동 입력 지원</p>
+                <p className="text-xs text-indigo-700 mt-0.5">{t('seller.liveBroadcast.larixDesc')}</p>
               </div>
             </div>
             <a href={larixLink}
               className="block w-full text-center py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg">
-              Larix 앱으로 자동 연결
+              {t('seller.liveBroadcast.larixConnect', { defaultValue: 'Larix 앱으로 자동 연결' })}
             </a>
-            <p className="text-[10px] text-indigo-600">앱 없으면 App Store / Play Store 에서 "Larix Broadcaster" 검색</p>
+            <p className="text-[10px] text-indigo-600">{t('seller.liveBroadcast.larixHint')}</p>
           </div>
         )}
 
         {/* RTMP 수동 복사 */}
         <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
-          <p className="text-xs font-semibold text-purple-800">또는 RTMP 직접 입력 (Streamlabs, Prism 등)</p>
+          <p className="text-xs font-semibold text-purple-800">{t('seller.liveBroadcast.rtmpManualLabel')}</p>
           {stream.rtmp_url && (
             <button onClick={() => onCopy(`URL: ${stream.rtmp_url}\nKey: ${stream.rtmp_key}`, 'all')}
               className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2">
@@ -168,9 +168,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
         {/* Prism 모드 권장 */}
         <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
           <span className="text-base shrink-0">💡</span>
-          <p className="text-xs text-green-800">
-            <b>핸드폰 카메라로 방송</b>하려면 <b>"Prism Mobile"</b> 모드가 더 편해요 — QR 1번 스캔으로 자동 연결됩니다.
-          </p>
+          <p className="text-xs text-green-800">{t('seller.liveBroadcast.prismTip')}</p>
         </div>
       </div>
     )
@@ -197,7 +195,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
               {copiedField === 'all' ? t('seller.liveBroadcast.copyDone') : 'RTMP URL + Key 복사'}
             </button>
             <details className="text-xs">
-              <summary className="cursor-pointer text-purple-700 hover:text-purple-900 select-none">개별 복사 + 권장 설정 보기</summary>
+              <summary className="cursor-pointer text-purple-700 hover:text-purple-900 select-none">{t('seller.liveBroadcast.showIndividual')}</summary>
               <div className="mt-2 space-y-2">
                 <RtmpBlock label="RTMP URL" value={stream.rtmp_url} fieldKey="rtmp_url" copiedField={copiedField} onCopy={onCopy} />
                 {stream.rtmp_key && <RtmpBlock label={t('seller.liveBroadcast.streamKey')} value={stream.rtmp_key} fieldKey="rtmp_key" copiedField={copiedField} onCopy={onCopy} />}
@@ -350,7 +348,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
             <div className="bg-white/60 rounded-md px-2 py-1.5 text-center">
               <p className="text-blue-600">{t('seller.liveBroadcast.obsNetworkHealth')}</p>
               <p className="font-bold text-gray-900">
-                {obsStatus.outputCongestion < 0.3 ? '🟢 좋음' : obsStatus.outputCongestion < 0.7 ? '🟡 보통' : '🔴 혼잡'}
+                {obsStatus.outputCongestion < 0.3 ? t('seller.liveBroadcast.networkGood') : obsStatus.outputCongestion < 0.7 ? t('seller.liveBroadcast.networkOk') : t('seller.liveBroadcast.networkBad')}
               </p>
             </div>
           )}
@@ -359,7 +357,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
             const kbps = sec > 0 ? Math.round((obsStatus.outputBytes * 8) / sec / 1000) : 0
             return (
               <div className="bg-white/60 rounded-md px-2 py-1.5 text-center">
-                <p className="text-blue-600">비트레이트</p>
+                <p className="text-blue-600">{t('seller.liveBroadcast.statsBitrate')}</p>
                 <p className="font-bold text-gray-900">{formatNumber(kbps)} kbps</p>
               </div>
             )
@@ -370,7 +368,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
             const pct = total > 0 ? (drop / total) * 100 : 0
             return (
               <div className="bg-white/60 rounded-md px-2 py-1.5 text-center">
-                <p className="text-blue-600">드롭 프레임</p>
+                <p className="text-blue-600">{t('seller.liveBroadcast.statsDroppedFrames')}</p>
                 <p className={`font-bold ${pct < 1 ? 'text-gray-900' : pct < 5 ? 'text-amber-600' : 'text-red-600'}`}>
                   {drop} ({pct.toFixed(1)}%)
                 </p>

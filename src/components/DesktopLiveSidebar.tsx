@@ -24,7 +24,7 @@ const MENU_ITEMS: NavItem[] = [
   { labelKey: 'nav.live',      labelDefault: '라이브',   icon: Radio,       path: '/live',         active: (p) => p.startsWith('/live') },
   { labelKey: 'nav.browse',    labelDefault: '둘러보기', icon: Compass,     path: '/browse',       active: (p, s) => p === '/browse' && !s.includes('category=') },
   { labelKey: 'nav.groupBuy',  labelDefault: '공동구매', icon: ShoppingBag, path: '/group-buy',    active: (p) => p.startsWith('/group-buy') },
-  { labelKey: 'nav.voucher',   labelDefault: '식사권',   icon: Ticket,      path: '/browse?category=meal_voucher', active: (p, s) => p === '/browse' && s.includes('category=meal_voucher') },
+  { labelKey: 'nav.voucher',   labelDefault: '식사권',   icon: Ticket,      path: '/meal-vouchers', active: (p) => p.startsWith('/meal-vouchers') },
 ]
 
 const CATEGORY_ITEMS = [
@@ -105,8 +105,10 @@ export default function DesktopLiveSidebar() {
           </p>
           {CATEGORY_ITEMS.map(cat => {
             const Icon = cat.icon
-            const catPath = `/browse?category=${cat.slug}`
-            const isActive = pathname === '/browse' && search.includes(`category=${cat.slug}`)
+            const catPath = cat.slug === 'meal_voucher' ? '/meal-vouchers' : `/browse?category=${cat.slug}`
+            const isActive = cat.slug === 'meal_voucher'
+              ? pathname.startsWith('/meal-vouchers')
+              : pathname === '/browse' && search.includes(`category=${cat.slug}`)
             return (
               <button
                 key={cat.labelDefault}

@@ -60,6 +60,7 @@ const MyDigitalLibraryPage = lazy(() => import('./pages/MyDigitalLibraryPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
+const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
 const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
@@ -256,7 +257,7 @@ function AppContent() {
   // 네이티브 앱 + 모바일 브라우저: 페이지에 따라 상태바 스타일 / theme-color 변경
   useEffect(() => {
     // 화이트 테마 페이지 (CLAUDE.md 정책)
-    const lightPages = ['/browse', '/checkout', '/my-orders', '/account/', '/cart',
+    const lightPages = ['/browse', '/meal-vouchers', '/checkout', '/my-orders', '/account/', '/cart',
       '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
     const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
 
@@ -324,6 +325,7 @@ function AppContent() {
             <Route path="/gift/claim/:token" element={<GiftClaimPage />} />
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/meal-vouchers" element={<MealVouchersPage />} />
             <Route path="/group-buy" element={<GroupBuyListPage />} />
             <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
