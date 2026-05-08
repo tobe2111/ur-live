@@ -1253,6 +1253,38 @@ app.post('/streaming-setup/init', async (c) => {
  */
 
 /**
+ * GET /api/seller/youtube/streaming/health
+ * OME 가용성 조회. 프론트엔드가 BrowserBroadcaster 노출 여부 결정에 사용.
+ *
+ * 단순 env 존재 + (옵션) ping 으로 즉답. 실제 OME 다운 감지는 publish 단계에서 fallback 처리.
+ */
+app.get('/streaming/health', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const omeConfigured = !!(c.env.OME_HOST && c.env.OME_WEBHOOK_SECRET && c.env.OME_API_TOKEN)
+  let omeReachable = omeConfigured
+  if (omeConfigured) {
+    try {
+      const auth = btoa(`:${c.env.OME_API_TOKEN}`)
+      const res = await fetch(`http://${c.env.OME_HOST}:8081/v1/stats/current`, {
+        method: 'GET',
+        headers: { 'Authorization': `Basic ${auth}` },
+        signal: AbortSignal.timeout(2000),
+      })
+      omeReachable = res.ok
+    } catch {
+      omeReachable = false
+    }
+  }
+
+  return c.json({
+    success: true,
+    data: { ome_available: omeReachable },
+  })
+})
+
+/**
  * POST /api/seller/youtube/streaming/whip-token
  * 브라우저가 publish 시작 전 호출. 60초 유효한 1회용 토큰 + WHIP endpoint URL 반환.
  */

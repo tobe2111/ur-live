@@ -5,16 +5,18 @@
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { safeTime } from '@/utils/safe-date'
 import { ScheduledBroadcastWaiting } from '../SellerLiveBroadcast.WaitingScreens'
 import { InlineCameraPreview } from '@/components/streaming/InlineCameraPreview'
 import { BroadcastDiagnostic } from '@/components/streaming/BroadcastDiagnostic'
 import BroadcastPreflightCheck from '@/components/streaming/BroadcastPreflightCheck'
+import BrowserBroadcaster from '@/components/streaming/BrowserBroadcaster'
 import type { StreamMethod } from '../SellerLiveBroadcast.storage'
 import type { LiveStream, YouTubeChannel } from './types'
 import { useScreenWakeLock } from '@/hooks/useScreenWakeLock'
+import api from '@/lib/api'
 
 interface StepSetupProps {
   stream: LiveStream; method: StreamMethod; channels: YouTubeChannel[]
@@ -27,8 +29,22 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
   const [showDiagnostic, setShowDiagnostic] = useState(false)
   const [waitSeconds, setWaitSeconds] = useState(0)
+  // 🛡️ 2026-05-08: 자체 미디어 서버 (OME) 가용성 — Worker 가 healthcheck 결과 반환.
+  //   가용 → BrowserBroadcaster 노출 (기본 송출 방법).
+  //   불가용 → 기존 Larix/OBS 가이드만 표시.
+  const [omeAvailable, setOmeAvailable] = useState<boolean | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   // 대기 중 화면 잠금 방지 (Prism QR 스캔 중, YouTube Studio 확인 중 화면 꺼짐 방지)
   useScreenWakeLock(true)
+
+  // OME 가용성 조회 (서버가 살아있고 OME_HOST env 가 설정되어 있으면 true)
+  useEffect(() => {
+    let cancelled = false
+    api.get('/api/seller/youtube/streaming/health')
+      .then(r => { if (!cancelled) setOmeAvailable(!!r.data?.data?.ome_available) })
+      .catch(() => { if (!cancelled) setOmeAvailable(false) })
+    return () => { cancelled = true }
+  }, [])
 
   // 대기 경과 시간 카운터 (탈출 안내 표시용)
   useEffect(() => {
@@ -51,21 +67,30 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
         <span className="text-[11px] text-amber-600 font-medium shrink-0">{t('seller.liveBroadcast.waitingConnection')}</span>
       </div>
 
-      {/* 🛡️ 2026-05-07: 통합된 단순 대기 화면 — 모드 분기 제거.
-          셀러는 사전에 /seller/streaming-setup 에서 본인 도구 설정해둔 상태.
-          여기는 "어디서든 송출 시작 버튼만 누르세요" 안내. */}
-      {hasPersistentKey ? (
+      {/* 🛡️ 2026-05-08: 기본 = 브라우저 직접 송출 (OME 가용 시).
+          OME 미가용 시 또는 셀러가 "고급" 토글 시 → 기존 Larix/OBS RTMP 가이드 노출. */}
+      {omeAvailable === true && (
+        <BrowserBroadcaster
+          streamId={stream.id}
+          onStreaming={() => { /* polling 이 알아서 라이브 감지 */ }}
+          onUnsupported={() => setOmeAvailable(false)}
+        />
+      )}
+
+      {(omeAvailable === false || showAdvanced) && hasPersistentKey && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
           <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-green-800">송출 준비 완료</p>
-            <p className="text-xs text-green-700 mt-0.5">OBS / Prism / Larix / YouTube Studio 어디서든 [방송 시작] 버튼만 누르세요.</p>
+            <p className="text-xs text-green-700 mt-0.5">OBS / Prism / Larix 어디서든 [방송 시작] 버튼만 누르세요.</p>
             <a href="/seller/streaming-setup" className="inline-flex items-center gap-1 text-[11px] text-green-800 hover:text-green-900 underline underline-offset-2 mt-1.5 font-medium">
               RTMP 키 다시 보기 →
             </a>
           </div>
         </div>
-      ) : stream.rtmp_url && stream.rtmp_key ? (
+      )}
+
+      {(omeAvailable === false || showAdvanced) && !hasPersistentKey && stream.rtmp_url && stream.rtmp_key && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
           <p className="text-sm font-bold text-amber-900">아래 RTMP 정보를 OBS/Prism/Larix 에 입력하세요</p>
           <div className="space-y-1.5 mt-2">
@@ -90,7 +115,21 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
           </div>
           <a href="/seller/streaming-setup" className="inline-block text-[11px] text-amber-700 hover:text-amber-900 underline mt-2">상세 가이드 보기 →</a>
         </div>
-      ) : null}
+      )}
+
+      {/* 고급 옵션 토글 — OME 가용 + 기본 송출 사용 중에만 노출 (외부 OBS/DSLR 셀러용) */}
+      {omeAvailable === true && !showAdvanced && (
+        <button onClick={() => setShowAdvanced(true)}
+          className="w-full text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2 inline-flex items-center justify-center gap-1">
+          <ChevronDown className="w-3 h-3" /> 외부 송출 도구 사용 (OBS / DSLR / 다중 카메라)
+        </button>
+      )}
+      {omeAvailable === true && showAdvanced && (
+        <button onClick={() => setShowAdvanced(false)}
+          className="w-full text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2 inline-flex items-center justify-center gap-1">
+          <ChevronUp className="w-3 h-3" /> 외부 송출 도구 가이드 접기
+        </button>
+      )}
 
       <div className="pt-3 border-t border-gray-100 space-y-3">
         {/* 🛡️ 2026-05-07: Pre-flight 사전 점검 — 30초 멈춤 사고 미연 방지 */}

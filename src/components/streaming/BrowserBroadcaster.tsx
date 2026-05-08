@@ -38,6 +38,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
   const [camOff, setCamOff] = useState(false)
   const [devices, setDevices] = useState<{ cams: MediaDeviceInfo[]; mics: MediaDeviceInfo[] }>({ cams: [], mics: [] })
   const [selected, setSelected] = useState<{ camId?: string; micId?: string }>({})
+  // 자동 재연결 — 의도적 종료 (사용자 클릭 stop) 가 아닌 끊김 시에만.
+  const userStoppedRef = useRef(false)
+  const reconnectAttemptsRef = useRef(0)
+  const [reconnectingIn, setReconnectingIn] = useState<number | null>(null)
 
   // 브라우저 호환성 사전 체크
   useEffect(() => {
@@ -70,10 +74,13 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
 
   async function startBroadcast() {
     setErrorMsg(null)
-    setStatus('requesting_camera')
 
-    // 1. 카메라/마이크 권한 + stream
+    // 1. 카메라/마이크 권한 + stream — 재연결 시엔 기존 stream 재사용
     let stream: MediaStream
+    if (streamRef.current && streamRef.current.getTracks().every(t => t.readyState === 'live')) {
+      stream = streamRef.current
+    } else {
+    setStatus('requesting_camera')
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -106,6 +113,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         mics: list.filter(d => d.kind === 'audioinput'),
       })
     } catch { /* noop */ }
+    }  // end "새 stream 획득" block
 
     // 2. WHIP 토큰 발급
     setStatus('fetching_token')
@@ -136,10 +144,36 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     pc.addEventListener('connectionstatechange', () => {
       if (pc.connectionState === 'connected') {
         setStatus('live')
+        reconnectAttemptsRef.current = 0
         onStreaming?.()
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-        setStatus('failed')
-        setErrorMsg('연결이 끊겼어요. 다시 시도해주세요.')
+        if (userStoppedRef.current) return
+        // exponential backoff (3s, 6s, 12s, 24s, 30s max), 최대 5회 시도
+        const attempt = reconnectAttemptsRef.current + 1
+        if (attempt > 5) {
+          setStatus('failed')
+          setErrorMsg('재연결 실패 — 다시 시도 버튼을 눌러주세요.')
+          return
+        }
+        reconnectAttemptsRef.current = attempt
+        const delaySec = Math.min(3 * Math.pow(2, attempt - 1), 30)
+        setReconnectingIn(delaySec)
+        const tick = setInterval(() => {
+          setReconnectingIn(s => {
+            if (s === null || s <= 1) {
+              clearInterval(tick)
+              return null
+            }
+            return s - 1
+          })
+        }, 1000)
+        setTimeout(() => {
+          clearInterval(tick)
+          setReconnectingIn(null)
+          // 기존 PC 정리 후 재시도 (stream 은 유지 — 재getUserMedia 불필요)
+          pc.close()
+          if (!userStoppedRef.current) void startBroadcast()
+        }, delaySec * 1000)
       }
     })
 
@@ -179,8 +213,17 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
   }
 
   function stopBroadcast() {
+    userStoppedRef.current = true
+    reconnectAttemptsRef.current = 0
+    setReconnectingIn(null)
     cleanup()
     setStatus('idle')
+  }
+
+  async function startBroadcastWrapper() {
+    userStoppedRef.current = false
+    reconnectAttemptsRef.current = 0
+    await startBroadcast()
   }
 
   function cleanup() {
@@ -227,6 +270,11 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
             {status === 'connecting' && '송출 연결 중…'}
           </div>
         )}
+        {reconnectingIn !== null && (
+          <div className="absolute top-3 right-3 bg-amber-500 text-white text-[11px] font-bold px-2 py-1 rounded">
+            재연결 {reconnectingIn}s…
+          </div>
+        )}
       </div>
 
       {/* 디바이스 선택 (송출 전에만) */}
@@ -248,7 +296,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       {/* 컨트롤 */}
       <div className="flex items-center gap-2">
         {!isRunning ? (
-          <Button onClick={startBroadcast} className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+          <Button onClick={startBroadcastWrapper} className="flex-1 bg-red-600 hover:bg-red-700 text-white">
             <span className="w-2 h-2 rounded-full bg-white mr-2" /> 방송 시작
           </Button>
         ) : (

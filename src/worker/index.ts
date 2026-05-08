@@ -421,6 +421,17 @@ app.route('/', repairSchemaRoutes);
 // MIME이 text/plain으로 나올 때 발생. 명시적 intercept로 application/manifest+json 반환.
 // /manifest.webmanifest → public-utility.routes.ts (P1, 2026-04-26)
 
+// 🛡️ 2026-05-08: 대역폭 probe — 클라이언트가 임의 사이즈 body POST → server 가 길이 응답.
+//   클라이언트가 (size / elapsed) 로 업로드 처리량 추정. 라이브 시작 전 사고 예방.
+//   인증 불필요 (간단 검증), 인입 사이즈 5MB 제한.
+app.post('/api/probe/upload', async (c) => {
+  const cl = parseInt(c.req.header('content-length') || '0')
+  if (!cl || cl > 5_000_000) return c.json({ ok: false, reason: 'invalid size' }, 400)
+  // Body 를 끝까지 읽어야 실제 업로드 시간 측정 됨
+  await c.req.arrayBuffer()
+  return c.json({ ok: true, bytes: cl })
+})
+
 app.get('/api/health', async (c) => {
   const env = c.env as Env;
   const checks: Record<string, string> = {

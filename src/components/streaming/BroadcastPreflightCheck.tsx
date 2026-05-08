@@ -72,6 +72,34 @@ export default function BroadcastPreflightCheck({ method, onAllChecked }: Props)
       items.push({ key: 'network', label: '네트워크 응답', status: 'fail', detail: '연결 끊김' })
     }
 
+    // 🛡️ 2026-05-08: 업로드 대역폭 probe — 720p 송출 ≈ 2.5 Mbps 필요.
+    //   4 Mbps 이상이면 1080p 가능, 2 Mbps 미만이면 끊김 위험 안내.
+    try {
+      const size = 1_000_000  // 1MB
+      const blob = new Uint8Array(size)
+      for (let i = 0; i < size; i++) blob[i] = (Math.random() * 256) | 0
+      const t0 = performance.now()
+      const res = await fetch('/api/probe/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: blob,
+      })
+      const elapsed = (performance.now() - t0) / 1000
+      if (res.ok && elapsed > 0) {
+        const mbps = (size * 8) / 1_000_000 / elapsed
+        items.push({
+          key: 'upload',
+          label: '업로드 속도',
+          status: mbps >= 4 ? 'pass' : mbps >= 2 ? 'warn' : 'fail',
+          detail: `${mbps.toFixed(1)} Mbps` + (mbps < 2.5 ? ' — 끊김 위험 (Wi-Fi/유선 권장)' : mbps >= 4 ? ' — 1080p 가능' : ' — 720p 가능'),
+        })
+      } else {
+        items.push({ key: 'upload', label: '업로드 속도', status: 'warn', detail: '측정 실패' })
+      }
+    } catch {
+      items.push({ key: 'upload', label: '업로드 속도', status: 'warn', detail: '측정 불가' })
+    }
+
     // 4. OBS WebSocket (Quick/OBS 모드만)
     if (method === 'quick' || method === 'obs') {
       const cfg = loadOBSConfig()
