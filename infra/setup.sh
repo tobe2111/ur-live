@@ -29,7 +29,9 @@ fail() { echo -e "\033[1;31m[fail]\033[0m $*" >&2; exit 1; }
 
 log "1/8 시스템 업데이트"
 apt-get update -qq
-apt-get install -y -qq curl gnupg ca-certificates lsb-release ufw netfilter-persistent iptables-persistent
+apt-get install -y -qq curl gnupg ca-certificates lsb-release ufw git
+# Ubuntu 24.04+ 는 ufw 가 iptables-persistent 와 충돌. iptables 직접 룰은 Oracle 만 필요해서 best-effort.
+apt-get install -y -qq netfilter-persistent iptables-persistent 2>/dev/null || warn "iptables-persistent skip (ufw 충돌 — Hetzner/Ubuntu 24.04 정상)"
 
 log "2/8 Docker 설치"
 if ! command -v docker &>/dev/null; then
@@ -53,15 +55,17 @@ ufw allow 8081/tcp comment 'OME API'
 ufw allow 10000:10100/udp comment 'WebRTC ICE'
 ufw --force enable
 
-# Oracle Cloud Ubuntu 이미지는 iptables 가 별도로 막혀있음 — ufw 위에 덮어씀
-iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT 2>/dev/null || true
-iptables -I INPUT 6 -m state --state NEW -p tcp --dport 1935 -j ACCEPT 2>/dev/null || true
-iptables -I INPUT 6 -m state --state NEW -p tcp --dport 3334 -j ACCEPT 2>/dev/null || true
-iptables -I INPUT 6 -m state --state NEW -p tcp --dport 3478 -j ACCEPT 2>/dev/null || true
-iptables -I INPUT 6 -m state --state NEW -p udp --dport 3478 -j ACCEPT 2>/dev/null || true
-iptables -I INPUT 6 -m state --state NEW -p udp --dport 10000:10100 -j ACCEPT 2>/dev/null || true
-iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8081 -j ACCEPT 2>/dev/null || true
-netfilter-persistent save 2>/dev/null || true
+# Oracle Cloud Ubuntu 이미지는 iptables 가 별도로 막혀있음 — ufw 위에 덮어씀 (Hetzner/Ubuntu24 는 자동 skip)
+if command -v netfilter-persistent &>/dev/null; then
+  iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT 2>/dev/null || true
+  iptables -I INPUT 6 -m state --state NEW -p tcp --dport 1935 -j ACCEPT 2>/dev/null || true
+  iptables -I INPUT 6 -m state --state NEW -p tcp --dport 3334 -j ACCEPT 2>/dev/null || true
+  iptables -I INPUT 6 -m state --state NEW -p tcp --dport 3478 -j ACCEPT 2>/dev/null || true
+  iptables -I INPUT 6 -m state --state NEW -p udp --dport 3478 -j ACCEPT 2>/dev/null || true
+  iptables -I INPUT 6 -m state --state NEW -p udp --dport 10000:10100 -j ACCEPT 2>/dev/null || true
+  iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8081 -j ACCEPT 2>/dev/null || true
+  netfilter-persistent save 2>/dev/null || true
+fi
 
 log "4/8 Let's Encrypt SSL 인증서 발급 ($DOMAIN)"
 apt-get install -y -qq certbot
