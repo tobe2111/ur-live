@@ -108,7 +108,7 @@ import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/
 import { donationsRoutes } from '../features/donations/api/donations.routes';
 import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
-import { youtubeLiveRoutes } from '../features/youtube/api/youtube-live.routes';
+import { youtubeLiveRoutes, omeAdmissionHandler } from '../features/youtube/api/youtube-live.routes';
 import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
 import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
@@ -1121,6 +1121,20 @@ app.route('/api/youtube', youtubeRoutes); // legacy path alias
 // 🛡️ 2026-04-28 TD-006 (split): /live/* 5개 endpoint
 app.route('/api/seller/youtube', youtubeLiveRoutes);
 app.route('/api/youtube', youtubeLiveRoutes);
+
+// 🛡️ 2026-05-08: OvenMediaEngine admission webhook (자체 미디어 서버).
+//   OME 가 publish 시도 시 호출 → token 검증 + 셀러의 YouTube RTMP key 동적 push 등록.
+app.post('/api/internal/ome/admission', async (c) => {
+  try {
+    const body = await c.req.json()
+    const sig = c.req.header('X-OME-Signature') || null
+    const result = await omeAdmissionHandler(body, sig, c.env)
+    return c.json(result)
+  } catch (e) {
+    console.error('[OME admission] handler error', e)
+    return c.json({ allowed: false, reason: 'internal error' }, 500)
+  }
+});
 app.route('/api/youtube/chat', youtubeChatRoutes);
 
 // 🛡️ 2026-04-23 배치 164: 다중 플랫폼 stub (TikTok / Naver Chzzk / SOOP)

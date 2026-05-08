@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  UR Live OvenMediaEngine 설정.
+
+  핵심:
+   - WebRTC publish (브라우저 → 우리 서버) via WHIP
+   - RTMP publish (Larix/OBS fallback)
+   - RTMPPush 로 YouTube 로 자동 릴레이 (셀러별 dynamic — REST API 로 push 추가)
+   - AdmissionWebhook 으로 모든 publish 시도가 우리 Worker 에서 인증/매핑
+
+  변경 이력:
+   - 2026-05-08: 초기 작성
+-->
+<Server version="8">
+    <Name>ur-live-ome</Name>
+    <Type>origin</Type>
+    <IP>*</IP>
+    <PrivacyProtection>false</PrivacyProtection>
+
+    <StunServer>stun.l.google.com:19302</StunServer>
+
+    <Modules>
+        <HTTP2><Enable>true</Enable></HTTP2>
+        <LLHLS><Enable>true</Enable></LLHLS>
+    </Modules>
+
+    <Bind>
+        <Managers>
+            <API>
+                <Port>8081</Port>
+                <WorkerCount>1</WorkerCount>
+            </API>
+        </Managers>
+        <Providers>
+            <RTMP><Port>1935</Port></RTMP>
+            <WebRTC>
+                <Signalling>
+                    <Port>3333</Port>
+                    <TLSPort>3334</TLSPort>
+                    <WorkerCount>1</WorkerCount>
+                </Signalling>
+                <IceCandidates>
+                    <TcpRelay>${env:OME_HOST_IP}:3478</TcpRelay>
+                    <TcpForce>false</TcpForce>
+                    <IceCandidate>${env:OME_HOST_IP}:10000-10100/udp</IceCandidate>
+                </IceCandidates>
+            </WebRTC>
+        </Providers>
+        <Publishers>
+            <WebRTC>
+                <Signalling>
+                    <Port>3333</Port>
+                    <TLSPort>3334</TLSPort>
+                </Signalling>
+            </WebRTC>
+        </Publishers>
+    </Bind>
+
+    <Managers>
+        <Host>
+            <Names><Name>*</Name></Names>
+            <TLS>
+                <CertPath>/opt/ovenmediaengine/bin/origin_conf/certs/fullchain.pem</CertPath>
+                <KeyPath>/opt/ovenmediaengine/bin/origin_conf/certs/privkey.pem</KeyPath>
+            </TLS>
+        </Host>
+        <API>
+            <AccessToken>${env:OME_API_TOKEN}</AccessToken>
+            <CrossDomains><Url>*</Url></CrossDomains>
+        </API>
+    </Managers>
+
+    <VirtualHosts>
+        <VirtualHost>
+            <Name>default</Name>
+            <Host>
+                <Names><Name>*</Name></Names>
+                <TLS>
+                    <CertPath>/opt/ovenmediaengine/bin/origin_conf/certs/fullchain.pem</CertPath>
+                    <KeyPath>/opt/ovenmediaengine/bin/origin_conf/certs/privkey.pem</KeyPath>
+                </TLS>
+            </Host>
+
+            <!--
+              모든 publish 시도가 우리 Worker 에 검증 요청.
+              Worker 가 200 응답 + new_url 미 포함 시 publish 허용.
+              실패 시 OME 가 publish 거부 (잘못된 토큰 등).
+            -->
+            <AdmissionWebhooks>
+                <ControlServerUrl>${env:OME_WEBHOOK_URL}</ControlServerUrl>
+                <SecretKey>${env:OME_WEBHOOK_SECRET}</SecretKey>
+                <Timeout>3000</Timeout>
+                <Enables>
+                    <Providers>webrtc,rtmp</Providers>
+                </Enables>
+            </AdmissionWebhooks>
+
+            <Applications>
+                <Application>
+                    <Name>app</Name>
+                    <Type>live</Type>
+
+                    <Providers>
+                        <WebRTC>
+                            <CrossDomains><Url>*</Url></CrossDomains>
+                            <!-- WHIP 표준 endpoint 활성화 -->
+                            <WebRTCProvider>
+                                <ConnectionTimeout>30000</ConnectionTimeout>
+                            </WebRTCProvider>
+                        </WebRTC>
+                        <RTMP/>
+                    </Providers>
+
+                    <OutputProfiles>
+                        <OutputProfile>
+                            <Name>passthrough</Name>
+                            <OutputStreamName>${OriginStreamName}</OutputStreamName>
+                            <Encodes>
+                                <!--
+                                  비디오: 브라우저가 H.264 송출 가능하면 패스스루 (CPU 부담 0)
+                                  오디오: Opus → AAC 트랜스코딩 (YouTube 요구사항)
+                                -->
+                                <Video>
+                                    <Bypass>true</Bypass>
+                                </Video>
+                                <Audio>
+                                    <Codec>aac</Codec>
+                                    <Bitrate>128000</Bitrate>
+                                    <Samplerate>48000</Samplerate>
+                                    <Channel>2</Channel>
+                                </Audio>
+                            </Encodes>
+                        </OutputProfile>
+                    </OutputProfiles>
+
+                    <Publishers>
+                        <!--
+                          RTMPPush 는 동적 stream map.
+                          Worker 가 admission webhook 수신 후 OME REST API
+                          (PUT /v1/vhosts/default/apps/app/streams/{stream}/push) 로
+                          셀러별 YouTube RTMP key 추가.
+                        -->
+                    </Publishers>
+                </Application>
+            </Applications>
+        </VirtualHost>
+    </VirtualHosts>
+</Server>

@@ -1,0 +1,34 @@
+# OvenMediaEngine — UR Live 미디어 서버
+#
+# 사용법:
+#   1. 이 디렉토리에서 `docker compose up -d`
+#   2. 환경변수: 같은 디렉토리에 .env 파일 (setup.sh 가 자동 생성)
+#   3. SSL 인증서: /etc/letsencrypt/live/stream.ur-team.com/ 에서 마운트
+#
+# 포트:
+#   - 3334  WebRTC Signaling (WSS, WHIP/WHEP)
+#   - 3478  TURN/STUN (TCP/UDP)
+#   - 8081  REST API (관리용 — Cloudflare Worker 만 접근)
+#   - 1935  RTMP Provider (Larix/OBS fallback ingestion)
+#   - 10000-10100/UDP  WebRTC ICE candidates
+
+services:
+  ome:
+    image: airensoft/ovenmediaengine:0.16.7
+    container_name: ome
+    restart: always
+    network_mode: host  # WebRTC ICE 가 광범위한 UDP 포트 사용 — bridge mode 비효율
+    environment:
+      OME_HOST_IP: ${OME_HOST_IP}
+      OME_API_TOKEN: ${OME_API_TOKEN}
+      OME_WEBHOOK_SECRET: ${OME_WEBHOOK_SECRET}
+      OME_WEBHOOK_URL: ${OME_WEBHOOK_URL}
+    volumes:
+      - ./Server.xml:/opt/ovenmediaengine/bin/origin_conf/Server.xml:ro
+      - ./Logger.xml:/opt/ovenmediaengine/bin/origin_conf/Logger.xml:ro
+      - /etc/letsencrypt/live/stream.ur-team.com:/opt/ovenmediaengine/bin/origin_conf/certs:ro
+      - /etc/letsencrypt/archive/stream.ur-team.com:/etc/letsencrypt/archive/stream.ur-team.com:ro
+      - ome-logs:/var/log/ovenmediaengine
+
+volumes:
+  ome-logs:

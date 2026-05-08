@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Logger version="2">
+    <Logs>
+        <Log>
+            <Name>ome</Name>
+            <Level>info</Level>
+        </Log>
+    </Logs>
+</Logger>

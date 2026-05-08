@@ -1237,4 +1237,207 @@ app.post('/streaming-setup/init', async (c) => {
   }
 })
 
+/**
+ * 🛡️ 2026-05-08: 자체 미디어 서버 (OvenMediaEngine) 통합.
+ *
+ * 셀러가 외부 앱 (Larix/OBS) 없이 브라우저에서 바로 라이브 송출.
+ *
+ * 흐름:
+ *   1. 셀러 브라우저 → POST /streaming/whip-token  (이 endpoint)
+ *   2. 백엔드 → 단기 (60s) JWT-style 토큰 발급, stream_id 와 매핑
+ *   3. 브라우저 → WHIP POST `https://stream.ur-team.com:3334/app/{stream_id}?whip=1&token=...`
+ *   4. OME → POST /api/internal/ome/admission  (admission webhook)
+ *   5. 백엔드 → 토큰 검증 + OME REST API 호출 → RTMPPush to YouTube 동적 등록
+ *   6. OME → 셀러 WebRTC 인입 → AAC 트랜스코딩 → YouTube RTMP push
+ *   7. 기존 /live/:id/status 폴링이 YouTube broadcast 상태 감지 → 라이브 화면 전환
+ */
+
+/**
+ * POST /api/seller/youtube/streaming/whip-token
+ * 브라우저가 publish 시작 전 호출. 60초 유효한 1회용 토큰 + WHIP endpoint URL 반환.
+ */
+app.post('/streaming/whip-token', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  if (!c.env.OME_HOST || !c.env.OME_WEBHOOK_SECRET) {
+    return c.json({ success: false, error: '미디어 서버 미구성', error_code: 'OME_NOT_CONFIGURED' }, 503)
+  }
+
+  const { stream_id } = await c.req.json<{ stream_id: number }>()
+  if (!stream_id || !Number.isFinite(stream_id)) {
+    return c.json({ success: false, error: 'stream_id 가 필요합니다' }, 400)
+  }
+
+  // 본인 stream + RTMP key 보유 검증
+  const stream = await c.env.DB.prepare(`
+    SELECT id, rtmp_url, rtmp_key, youtube_broadcast_id, status
+    FROM live_streams WHERE id = ? AND seller_id = ?
+  `).bind(stream_id, sellerId).first<{
+    id: number; rtmp_url: string; rtmp_key: string;
+    youtube_broadcast_id: string | null; status: string;
+  }>()
+
+  if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
+  if (!stream.rtmp_url || !stream.rtmp_key) {
+    return c.json({ success: false, error: 'RTMP 키 미발급 — /seller/streaming-setup 에서 먼저 설정' }, 400)
+  }
+
+  // 1회용 토큰: HMAC-SHA256(secret, sellerId|streamId|exp).
+  // OME admission webhook 에서 같은 secret 으로 검증.
+  const exp = Math.floor(Date.now() / 1000) + 60
+  const payload = `${sellerId}|${stream_id}|${exp}`
+  const sig = await hmacHex(c.env.OME_WEBHOOK_SECRET, payload)
+  const token = `${btoa(payload)}.${sig}`
+
+  // stream_name = 우리 stream id (OME application 안에서의 식별자)
+  const streamName = `s${stream_id}`
+  const whipUrl = `https://${c.env.OME_HOST}:3334/app/${streamName}?whip=1&token=${encodeURIComponent(token)}`
+
+  return c.json({
+    success: true,
+    data: {
+      whip_url: whipUrl,
+      stream_name: streamName,
+      expires_at: exp,
+    },
+  })
+})
+
+/**
+ * POST /api/internal/ome/admission
+ * OME 가 publish/play 시도 시 호출. token 검증 후 허용/거부.
+ *
+ * 이 endpoint 는 별도 라우터에 있어야 함 (`/api/internal/*`) — 마지막 export 후 main router 에서 등록.
+ *
+ * NOTE: 본 함수는 main app.ts 에서 직접 import 해서 별도 prefix 로 마운트.
+ */
+export async function omeAdmissionHandler(
+  body: OMEAdmissionRequest,
+  signatureHeader: string | null,
+  env: Env,
+): Promise<OMEAdmissionResponse> {
+  if (!env.OME_WEBHOOK_SECRET) {
+    return { allowed: false, reason: 'OME not configured' }
+  }
+
+  // OME 가 보낸 HMAC 서명 검증 (X-OME-Signature 헤더)
+  // 형식: SHA1=base64(HMAC-SHA1(secret, raw_body))
+  if (!signatureHeader) return { allowed: false, reason: 'missing signature' }
+  const rawBody = JSON.stringify(body)
+  const expectedSig = await hmacBase64Sha1(env.OME_WEBHOOK_SECRET, rawBody)
+  const expected = `SHA1=${expectedSig}`
+  if (signatureHeader !== expected) {
+    return { allowed: false, reason: 'invalid signature' }
+  }
+
+  // closing event 는 통과 (cleanup 알림용)
+  if (body.request.status === 'closing') {
+    return { allowed: true }
+  }
+
+  // URL 에서 token 추출
+  const url = new URL(body.request.url)
+  const token = url.searchParams.get('token')
+  if (!token) return { allowed: false, reason: 'missing token' }
+
+  // token 검증
+  const [payloadB64, sig] = token.split('.')
+  if (!payloadB64 || !sig) return { allowed: false, reason: 'malformed token' }
+  let payload: string
+  try { payload = atob(payloadB64) } catch { return { allowed: false, reason: 'token decode failed' } }
+  const [sellerIdStr, streamIdStr, expStr] = payload.split('|')
+  const sellerId = parseInt(sellerIdStr)
+  const streamId = parseInt(streamIdStr)
+  const exp = parseInt(expStr)
+  if (!sellerId || !streamId || !exp) return { allowed: false, reason: 'invalid payload' }
+  if (Date.now() / 1000 > exp) return { allowed: false, reason: 'token expired' }
+
+  const expectedTokenSig = await hmacHex(env.OME_WEBHOOK_SECRET, payload)
+  if (sig !== expectedTokenSig) return { allowed: false, reason: 'token signature mismatch' }
+
+  // stream + RTMP key 로드
+  const stream = await env.DB.prepare(`
+    SELECT id, rtmp_url, rtmp_key FROM live_streams WHERE id = ? AND seller_id = ?
+  `).bind(streamId, sellerId).first<{ id: number; rtmp_url: string; rtmp_key: string }>()
+  if (!stream || !stream.rtmp_url || !stream.rtmp_key) {
+    return { allowed: false, reason: 'stream/rtmp_key not found' }
+  }
+
+  // OME REST API 로 RTMPPush 동적 등록 (publish 가 시작되면 자동으로 YouTube 로 fan-out)
+  if (env.OME_HOST && env.OME_API_TOKEN) {
+    try {
+      const streamName = `s${streamId}`
+      const fullRtmp = stream.rtmp_url.endsWith('/') ? `${stream.rtmp_url}` : `${stream.rtmp_url}/`
+      // OME API: POST /v1/vhosts/default/apps/app/streams/{name}:startPush
+      const apiUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app/streams/${streamName}:startPush`
+      const auth = btoa(`:${env.OME_API_TOKEN}`)
+      // 짧은 지연 후 호출 — OME 가 admission 응답 처리하고 stream 인입 받기 시작한 후 push 시작.
+      // 비동기로 발사, 실패해도 publish 자체는 허용.
+      ;(async () => {
+        try {
+          await new Promise(r => setTimeout(r, 1500))
+          const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: `youtube-${streamId}`,
+              stream: { name: streamName },
+              protocol: 'rtmp',
+              url: fullRtmp,
+              streamKey: stream.rtmp_key,
+            }),
+          })
+          if (!res.ok) {
+            console.error('[OME push start] non-OK', res.status, await res.text())
+          }
+        } catch (e) {
+          console.error('[OME push start] error', e)
+        }
+      })()
+    } catch (e) {
+      console.error('[OME admission] push register error', e)
+    }
+  }
+
+  return { allowed: true }
+}
+
+interface OMEAdmissionRequest {
+  client: { address: string; port: number; user_agent?: string }
+  request: {
+    direction: 'incoming' | 'outgoing'
+    protocol: 'webrtc' | 'rtmp' | 'srt' | string
+    status: 'opening' | 'closing'
+    url: string
+    new_url?: string
+    time?: string
+  }
+}
+
+interface OMEAdmissionResponse {
+  allowed: boolean
+  new_url?: string
+  lifetime?: number
+  reason?: string
+}
+
+async function hmacHex(secret: string, message: string): Promise<string> {
+  const enc = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message))
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function hmacBase64Sha1(secret: string, message: string): Promise<string> {
+  const enc = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message))
+  return btoa(String.fromCharCode(...new Uint8Array(sig)))
+}
+
 export { app as youtubeLiveRoutes }

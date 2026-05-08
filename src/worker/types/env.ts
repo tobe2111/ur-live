@@ -63,6 +63,13 @@ export interface Env {
   YOUTUBE_REDIRECT_URI?: string;
   YOUTUBE_API_KEY?: string;  // public videos.list API (no OAuth required)
 
+  // ---- 자체 미디어 서버 (OvenMediaEngine) ----
+  // 셀러 브라우저 → 우리 OME → YouTube RTMP 릴레이용.
+  // OME 인스턴스: stream.ur-team.com (Oracle Cloud Always Free).
+  OME_HOST?: string;            // ex: 'stream.ur-team.com'
+  OME_API_TOKEN?: string;       // OME REST API access (push 동적 등록)
+  OME_WEBHOOK_SECRET?: string;  // OME → Worker admission webhook HMAC 서명
+
   // ---- TikTok (2026-04-26 T1 통합) ----
   TIKTOK_CLIENT_KEY?: string;
   TIKTOK_CLIENT_SECRET?: string;
