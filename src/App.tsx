@@ -181,12 +181,10 @@ function AppContent() {
         localStorage.removeItem('user_profile_image')
         localStorage.removeItem('session_login')
       } catch { /* ignore */ }
-      // 보호 경로에서 에러 발생 시 → /login 으로 명시 redirect (무한 ProtectedRoute 루프 차단)
-      const protectedPrefixes = ['/user/', '/checkout', '/my-orders', '/wishlist', '/account/', '/cart']
-      const onProtected = protectedPrefixes.some(p => window.location.pathname.startsWith(p))
-      if (onProtected) {
-        window.history.replaceState({}, '', '/')
-      }
+      // 🛡️ 2026-05-08: 보호 경로 + OAuth 에러 시 history 를 '/' 로 치환했던 로직 제거.
+      // 부작용으로 브라우저 뒤로가기가 이전 페이지가 아닌 메인으로 점프하는 회귀 버그 발생.
+      // localStorage 인증 상태가 이미 위에서 클리어되었으므로, 다음 render 에서 ProtectedRoute 가
+      // 자연스럽게 /login 으로 redirect 하면서 history 스택은 유지됨.
     }
 
     urlParams.delete('error'); urlParams.delete('detail')
