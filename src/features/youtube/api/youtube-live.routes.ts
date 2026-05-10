@@ -1342,6 +1342,7 @@ export async function omeAdmissionHandler(
   body: OMEAdmissionRequest,
   signatureHeader: string | null,
   env: Env,
+  rawBody?: string,
 ): Promise<OMEAdmissionResponse> {
   if (!env.OME_WEBHOOK_SECRET) {
     return { allowed: false, reason: 'OME not configured' }
@@ -1350,11 +1351,11 @@ export async function omeAdmissionHandler(
   // OME 가 보낸 HMAC 서명 검증 (X-OME-Signature 헤더)
   // 형식: SHA1=base64(HMAC-SHA1(secret, raw_body))
   if (!signatureHeader) return { allowed: false, reason: 'missing signature' }
-  const rawBody = JSON.stringify(body)
-  const expectedSig = await hmacBase64Sha1(env.OME_WEBHOOK_SECRET, rawBody)
-  const expected = `SHA1=${expectedSig}`
-  if (signatureHeader !== expected) {
-    return { allowed: false, reason: 'invalid signature' }
+  const bodyForSig = rawBody ?? JSON.stringify(body)
+  const expectedSig = await hmacBase64Sha1(env.OME_WEBHOOK_SECRET, bodyForSig)
+  // OME 0.16.7 은 prefix 없이 base64 signature 만 보냄. (이전 버전은 'SHA1=' prefix.)
+  if (signatureHeader !== expectedSig && signatureHeader !== `SHA1=${expectedSig}`) {
+    return { allowed: false, reason: `invalid signature (got=${signatureHeader.substring(0, 20)}, expected=${expectedSig.substring(0, 20)})` }
   }
 
   // closing event 는 통과 (cleanup 알림용)

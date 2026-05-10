@@ -1137,9 +1137,11 @@ app.route('/api/youtube', youtubeLiveRoutes);
 //   OME 가 publish 시도 시 호출 → token 검증 + 셀러의 YouTube RTMP key 동적 push 등록.
 app.post('/api/internal/ome/admission', async (c) => {
   try {
-    const body = await c.req.json()
+    // signature 검증을 위해 raw body 그대로 보존 (re-stringify 시 OME 의 원본 바이트와 달라질 수 있음).
+    const rawBody = await c.req.text()
+    const body = JSON.parse(rawBody)
     const sig = c.req.header('X-OME-Signature') || null
-    const result = await omeAdmissionHandler(body, sig, c.env)
+    const result = await omeAdmissionHandler(body, sig, c.env, rawBody)
     return c.json(result)
   } catch (e) {
     console.error('[OME admission] handler error', e)
