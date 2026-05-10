@@ -1435,6 +1435,45 @@ export async function omeAdmissionHandler(
     console.error('[OME admission] DB status update failed', e)
   }
 
+  // 🛡️ 2026-05-10: 영구 stream key 사용 시 YouTube 가 자동 broadcast 생성 → video_id 조회 필요.
+  // 시청자 페이지에서 embed 표시하려면 youtube_video_id 가 DB 에 있어야 함.
+  // YouTube 가 broadcast 만드는 데 5-15초 정도 걸리므로 background 에서 폴링.
+  if (waitUntil && env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET) {
+    waitUntil((async () => {
+      try {
+        const youtubeService = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID!, env.YOUTUBE_CLIENT_SECRET!)
+        const accessToken = await getValidAccessToken(env.DB, sellerId, youtubeService)
+        if (!accessToken) return
+        // 최대 6번 (5초 간격, 30초) 폴링
+        for (let i = 0; i < 6; i++) {
+          await new Promise(r => setTimeout(r, 5000))
+          const res = await fetch(
+            'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status&broadcastStatus=active&mine=true&maxResults=5',
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          )
+          if (!res.ok) continue
+          const data = await res.json() as { items?: Array<{ id: string }> }
+          const videoId = data.items?.[0]?.id
+          if (videoId) {
+            await env.DB.prepare(`
+              UPDATE live_streams
+              SET youtube_video_id = ?, embed_url = ?, thumbnail_url = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?
+            `).bind(
+              videoId,
+              `https://www.youtube.com/embed/${videoId}`,
+              `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+              streamId
+            ).run()
+            return
+          }
+        }
+      } catch (e) {
+        console.error('[OME admission] video_id fetch failed', e)
+      }
+    })())
+  }
+
   return { allowed: true }
 }
 
