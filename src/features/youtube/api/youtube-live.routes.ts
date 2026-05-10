@@ -1262,28 +1262,11 @@ app.get('/streaming/health', async (c) => {
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
+  // env 만 확인. 실제 OME 가용성은 publish 시도 시 판정 (Cloudflare Workers 가 :8081 outbound 막음).
   const omeConfigured = !!(c.env.OME_HOST && c.env.OME_WEBHOOK_SECRET && c.env.OME_API_TOKEN)
-  let omeReachable = omeConfigured
-  if (omeConfigured) {
-    try {
-      const auth = btoa(c.env.OME_API_TOKEN)
-      const res = await fetch(`http://${c.env.OME_HOST}:8081/v1/stats/current`, {
-        method: 'GET',
-        headers: { 'Authorization': `Basic ${auth}` },
-        signal: AbortSignal.timeout(8000),
-      })
-      omeReachable = res.ok
-      if (!res.ok && c.env.NODE_ENV === 'development') {
-        console.log('OME healthcheck failed:', res.status, await res.text())
-      }
-    } catch {
-      omeReachable = false
-    }
-  }
-
   return c.json({
     success: true,
-    data: { ome_available: omeReachable },
+    data: { ome_available: omeConfigured },
   })
 })
 
