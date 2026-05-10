@@ -1141,7 +1141,7 @@ app.post('/api/internal/ome/admission', async (c) => {
     const rawBody = await c.req.text()
     const body = JSON.parse(rawBody)
     const sig = c.req.header('X-OME-Signature') || null
-    const result = await omeAdmissionHandler(body, sig, c.env, rawBody)
+    const result = await omeAdmissionHandler(body, sig, c.env, rawBody, (p) => c.executionCtx.waitUntil(p))
     return c.json(result)
   } catch (e) {
     console.error('[OME admission] handler error', e)

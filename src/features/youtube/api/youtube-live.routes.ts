@@ -1351,6 +1351,7 @@ export async function omeAdmissionHandler(
   signatureHeader: string | null,
   env: Env,
   rawBody?: string,
+  waitUntil?: (p: Promise<unknown>) => void,
 ): Promise<OMEAdmissionResponse> {
   if (!env.OME_WEBHOOK_SECRET) {
     return { allowed: false, reason: 'OME not configured' }
@@ -1410,8 +1411,8 @@ export async function omeAdmissionHandler(
       const apiUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app/streams/${streamName}:startPush`
       const auth = btoa(env.OME_API_TOKEN)
       // 짧은 지연 후 호출 — OME 가 admission 응답 처리하고 stream 인입 받기 시작한 후 push 시작.
-      // 비동기로 발사, 실패해도 publish 자체는 허용.
-      ;(async () => {
+      // ⚠️ Cloudflare Workers 는 응답 후 async 작업을 즉시 취소. waitUntil 로 살려야 함.
+      const pushPromise = (async () => {
         try {
           await new Promise(r => setTimeout(r, 1500))
           const res = await fetch(apiUrl, {
@@ -1432,6 +1433,9 @@ export async function omeAdmissionHandler(
           console.error('[OME push start] error', e)
         }
       })()
+      // CF Workers 가 응답 후에도 push 등록 fetch 가 살아있도록 waitUntil 로 등록
+      if (waitUntil) waitUntil(pushPromise)
+      else await pushPromise // fallback: 동기 await (admission webhook timeout 3초 안에 끝나야)
     } catch (e) {
       console.error('[OME admission] push register error', e)
     }
