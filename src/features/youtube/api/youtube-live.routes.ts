@@ -1263,26 +1263,9 @@ app.get('/streaming/health', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const omeConfigured = !!(c.env.OME_HOST && c.env.OME_WEBHOOK_SECRET && c.env.OME_API_TOKEN)
-  let pingResult: { reachable: boolean; status?: number; error?: string; ms?: number } = { reachable: false }
-  if (omeConfigured) {
-    const start = Date.now()
-    try {
-      const auth = btoa(c.env.OME_API_TOKEN)
-      const res = await fetch(`http://${c.env.OME_HOST}:8081/v1/stats/current`, {
-        headers: { 'Authorization': `Basic ${auth}` },
-        signal: AbortSignal.timeout(8000),
-      })
-      pingResult = { reachable: res.ok, status: res.status, ms: Date.now() - start }
-    } catch (e: any) {
-      pingResult = { reachable: false, error: String(e?.message || e), ms: Date.now() - start }
-    }
-  }
   return c.json({
     success: true,
-    data: {
-      ome_available: omeConfigured,
-      _debug: { ome_ping: pingResult },
-    },
+    data: { ome_available: omeConfigured },
   })
 })
 
@@ -1366,7 +1349,7 @@ export async function omeAdmissionHandler(
   // 같은 byte 인데 인코딩만 다르니 정규화 후 비교: SHA1= prefix 제거 + URL-safe → standard.
   const norm = (s: string) => s.replace(/^SHA1=/i, '').replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '').trim()
   if (norm(signatureHeader) !== norm(expectedSig)) {
-    return { allowed: false, reason: `invalid signature (got=${signatureHeader}, expected=${expectedSig})` }
+    return { allowed: false, reason: 'invalid signature' }
   }
 
   // closing event 는 통과 (cleanup 알림용)
