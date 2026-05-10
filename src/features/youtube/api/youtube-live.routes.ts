@@ -1354,8 +1354,10 @@ export async function omeAdmissionHandler(
   const bodyForSig = rawBody ?? JSON.stringify(body)
   const expectedSig = await hmacBase64Sha1(env.OME_WEBHOOK_SECRET, bodyForSig)
   // OME 0.16.7 은 prefix 없이 base64 signature 만 보냄. (이전 버전은 'SHA1=' prefix.)
-  if (signatureHeader !== expectedSig && signatureHeader !== `SHA1=${expectedSig}`) {
-    return { allowed: false, reason: `invalid signature (got=${signatureHeader.substring(0, 20)}, expected=${expectedSig.substring(0, 20)})` }
+  // base64 패딩 (= 끝) 차이도 있을 수 있어 정규화 후 비교.
+  const norm = (s: string) => s.replace(/^SHA1=/i, '').trim()
+  if (norm(signatureHeader) !== norm(expectedSig)) {
+    return { allowed: false, reason: `invalid signature (got_full=${signatureHeader}, expected_full=${expectedSig}, body_len=${bodyForSig.length})` }
   }
 
   // closing event 는 통과 (cleanup 알림용)
