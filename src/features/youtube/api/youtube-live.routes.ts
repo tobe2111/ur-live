@@ -1447,7 +1447,8 @@ export async function omeAdmissionHandler(
   let justWentLive = false
   try {
     const updateRes = await env.DB.prepare(`
-      UPDATE live_streams SET status = 'live', updated_at = CURRENT_TIMESTAMP
+      UPDATE live_streams
+      SET status = 'live', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND status != 'ended' AND status != 'live'
     `).bind(streamId).run()
     justWentLive = (updateRes.meta?.changes ?? 0) > 0
