@@ -266,8 +266,17 @@ export default function SellerLiveBroadcastPage() {
       }
     }).catch(() => { /* silent — 채널 없어도 UI 표시 */ })
       .finally(() => setChannelsLoading(false))
+    // 🛡️ 2026-05-10: products 도 localStorage 캐싱 — 즉시 노출 + 백그라운드 갱신
+    try {
+      const cached = localStorage.getItem('seller_products_cache_v1')
+      if (cached) setProducts(JSON.parse(cached))
+    } catch { /* ignore */ }
     api.get('/api/seller/products').then(r => {
-      if (r.data?.success) setProducts(r.data.data || [])
+      if (r.data?.success) {
+        const ps = r.data.data || []
+        setProducts(ps)
+        try { localStorage.setItem('seller_products_cache_v1', JSON.stringify(ps)) } catch { /* ignore */ }
+      }
     }).catch(() => { /* silent */ })
     api.get('/api/platforms/destinations').then(r => {
       if (r.data?.success) setDestinations(r.data.data || [])
