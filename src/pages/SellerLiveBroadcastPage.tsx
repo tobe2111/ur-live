@@ -244,12 +244,25 @@ export default function SellerLiveBroadcastPage() {
     // 백그라운드 — 도착 즉시 setState (페이지는 이미 표시 중)
     // 🛡️ 2026-05-07: channelsLoading 플래그 — channels 가 도착하기 전에는
     //   "YouTube 연동 필요" 화면으로 떨어지지 않도록 (UX 플리커 방지).
-    setChannelsLoading(true)
+    // 🛡️ 2026-05-10: localStorage 캐싱 — 두 번째 진입부터 즉시 노출 (백그라운드 갱신).
+    try {
+      const cached = localStorage.getItem('yt_channels_cache_v1')
+      if (cached) {
+        const chs = JSON.parse(cached)
+        if (Array.isArray(chs) && chs.length > 0) {
+          setChannels(chs)
+          if (!activeChannelId) setActiveChannelId(chs[0].id)
+          setChannelsLoading(false)
+        }
+      }
+    } catch { /* ignore */ }
+    setChannelsLoading(prev => prev) // keep current state
     api.get('/api/seller/youtube/channels').then(r => {
       if (r.data?.success) {
         const chs = r.data.data || []
         setChannels(chs)
         if (chs.length > 0 && !activeChannelId) setActiveChannelId(chs[0].id)
+        try { localStorage.setItem('yt_channels_cache_v1', JSON.stringify(chs)) } catch { /* ignore */ }
       }
     }).catch(() => { /* silent — 채널 없어도 UI 표시 */ })
       .finally(() => setChannelsLoading(false))
