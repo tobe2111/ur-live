@@ -363,7 +363,7 @@ app.use('*', async (c, next) => {
   c.header('X-Content-Type-Options', 'nosniff');
   // ✅ X-XSS-Protection 제거: deprecated — 일부 브라우저에서 오히려 XSS를 유발 (HSTS/CSP로 대체)
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-  c.header('Permissions-Policy', 'geolocation=(self), microphone=(), camera=(self), payment=(self), usb=()');
+  c.header('Permissions-Policy', 'geolocation=(self), microphone=(self), camera=(self), payment=(self), usb=()');
   // 2026-04-22 추가: Spectre-class 공격 차단 + cross-origin 이슈 방지
   c.header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups'); // 카카오/구글 OAuth 팝업 허용
   c.header('Cross-Origin-Resource-Policy', 'same-site');
