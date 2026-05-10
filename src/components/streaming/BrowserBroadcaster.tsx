@@ -205,7 +205,14 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         throw new Error(`WHIP HTTP ${res.status}: ${text}`)
       }
       const answerSdp = await res.text()
-      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
+      // 🛡️ 2026-05-10: OME 0.16.7 SDP answer 가 ssrc-audio-level 와 transport-wide-cc 를
+      //   같은 RTP extension ID (1) 로 보내서 Chrome 이 거부.
+      //   → answer SDP 에서 transport-wide-cc extmap 줄을 제거 (없어도 송출은 동작).
+      const sanitized = answerSdp
+        .split('\n')
+        .filter(l => !/^a=extmap:\d+\s+http:\/\/www\.ietf\.org\/id\/draft-holmer-rmcat-transport-wide-cc-extensions/.test(l))
+        .join('\n')
+      await pc.setRemoteDescription({ type: 'answer', sdp: sanitized })
     } catch (e) {
       const msg = '연결 실패: ' + (e as Error).message
       setErrorMsg(msg); setStatus('failed'); onError?.(msg); cleanup()
