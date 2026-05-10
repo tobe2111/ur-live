@@ -1266,7 +1266,7 @@ app.get('/streaming/health', async (c) => {
   let omeReachable = omeConfigured
   if (omeConfigured) {
     try {
-      const auth = btoa(`:${c.env.OME_API_TOKEN}`)
+      const auth = btoa(c.env.OME_API_TOKEN)
       const res = await fetch(`http://${c.env.OME_HOST}:8081/v1/stats/current`, {
         method: 'GET',
         headers: { 'Authorization': `Basic ${auth}` },
@@ -1403,7 +1403,7 @@ export async function omeAdmissionHandler(
       const fullRtmp = stream.rtmp_url.endsWith('/') ? `${stream.rtmp_url}` : `${stream.rtmp_url}/`
       // OME API: POST /v1/vhosts/default/apps/app/streams/{name}:startPush
       const apiUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app/streams/${streamName}:startPush`
-      const auth = btoa(`:${env.OME_API_TOKEN}`)
+      const auth = btoa(env.OME_API_TOKEN)
       // 짧은 지연 후 호출 — OME 가 admission 응답 처리하고 stream 인입 받기 시작한 후 push 시작.
       // 비동기로 발사, 실패해도 publish 자체는 허용.
       ;(async () => {
