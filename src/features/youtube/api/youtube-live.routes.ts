@@ -1262,18 +1262,26 @@ app.get('/streaming/health', async (c) => {
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
-  // env 만 확인. 실제 OME 가용성은 publish 시도 시 판정 (Cloudflare Workers 가 :8081 outbound 막음).
   const omeConfigured = !!(c.env.OME_HOST && c.env.OME_WEBHOOK_SECRET && c.env.OME_API_TOKEN)
+  let pingResult: { reachable: boolean; status?: number; error?: string; ms?: number } = { reachable: false }
+  if (omeConfigured) {
+    const start = Date.now()
+    try {
+      const auth = btoa(c.env.OME_API_TOKEN)
+      const res = await fetch(`http://${c.env.OME_HOST}:8081/v1/stats/current`, {
+        headers: { 'Authorization': `Basic ${auth}` },
+        signal: AbortSignal.timeout(8000),
+      })
+      pingResult = { reachable: res.ok, status: res.status, ms: Date.now() - start }
+    } catch (e: any) {
+      pingResult = { reachable: false, error: String(e?.message || e), ms: Date.now() - start }
+    }
+  }
   return c.json({
     success: true,
     data: {
       ome_available: omeConfigured,
-      _debug: {
-        has_host: !!c.env.OME_HOST,
-        has_token: !!c.env.OME_API_TOKEN,
-        has_webhook: !!c.env.OME_WEBHOOK_SECRET,
-        host_value: c.env.OME_HOST || 'MISSING',
-      },
+      _debug: { ome_ping: pingResult },
     },
   })
 })
