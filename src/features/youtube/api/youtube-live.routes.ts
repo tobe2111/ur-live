@@ -1266,7 +1266,15 @@ app.get('/streaming/health', async (c) => {
   const omeConfigured = !!(c.env.OME_HOST && c.env.OME_WEBHOOK_SECRET && c.env.OME_API_TOKEN)
   return c.json({
     success: true,
-    data: { ome_available: omeConfigured },
+    data: {
+      ome_available: omeConfigured,
+      _debug: {
+        has_host: !!c.env.OME_HOST,
+        has_token: !!c.env.OME_API_TOKEN,
+        has_webhook: !!c.env.OME_WEBHOOK_SECRET,
+        host_value: c.env.OME_HOST || 'MISSING',
+      },
+    },
   })
 })
 
