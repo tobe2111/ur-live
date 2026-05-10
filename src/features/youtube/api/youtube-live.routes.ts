@@ -1352,8 +1352,26 @@ export async function omeAdmissionHandler(
     return { allowed: false, reason: 'invalid signature' }
   }
 
-  // closing event 는 통과 (cleanup 알림용)
+  // closing event — cleanup 알림용. DB status 도 'ended' 로 업데이트.
   if (body.request.status === 'closing') {
+    try {
+      const url = new URL(body.request.url)
+      const token = url.searchParams.get('token')
+      const payloadB64 = token?.split('.')[0]
+      if (payloadB64) {
+        const closingPayload = atob(payloadB64)
+        const [, sidStr] = closingPayload.split('|')
+        const sid = parseInt(sidStr)
+        if (sid) {
+          await env.DB.prepare(`
+            UPDATE live_streams SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND status = 'live'
+          `).bind(sid).run()
+        }
+      }
+    } catch (e) {
+      console.error('[OME admission] closing status update failed', e)
+    }
     return { allowed: true }
   }
 
@@ -1465,6 +1483,35 @@ export async function omeAdmissionHandler(
               `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
               streamId
             ).run()
+
+            // 🛡️ 2026-05-10: YouTube broadcast 제목을 우리 stream.title 로 동기화
+            try {
+              const dbStream = await env.DB.prepare('SELECT title FROM live_streams WHERE id = ?')
+                .bind(streamId).first<{ title: string }>()
+              if (dbStream?.title) {
+                const broadcastSnippet = data.items?.[0] as { snippet?: { title?: string; scheduledStartTime?: string; description?: string } }
+                await fetch(
+                  'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet',
+                  {
+                    method: 'PUT',
+                    headers: {
+                      Authorization: `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      id: videoId,
+                      snippet: {
+                        title: dbStream.title,
+                        scheduledStartTime: broadcastSnippet.snippet?.scheduledStartTime || new Date().toISOString(),
+                        description: broadcastSnippet.snippet?.description || '',
+                      },
+                    }),
+                  }
+                )
+              }
+            } catch (titleErr) {
+              console.error('[OME admission] title sync failed', titleErr)
+            }
             return
           }
         }

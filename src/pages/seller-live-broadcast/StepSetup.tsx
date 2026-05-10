@@ -138,17 +138,20 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
         {/* 인라인 카메라 미리보기 — 어느 방법이든 방송 전 확인용 */}
         <InlineCameraPreview />
 
-        <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-          <span className="flex gap-1 shrink-0">
-            {[0, 0.2, 0.4].map((d, i) => (
-              <span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce"
-                style={{ animationDelay: `${d}s` }} />
-            ))}
-          </span>
-          <p className="text-xs text-blue-700 flex-1">
-            송출 도구 (OBS/Prism/Larix/YouTube Studio) 에서 [방송 시작] 누르면 자동으로 라이브 시작됩니다.
-          </p>
-        </div>
+        {/* 외부 송출 모드일 때만 OBS/Prism 안내 노출. 브라우저 송출 시엔 숨김 */}
+        {(omeAvailable === false || showAdvanced) && (
+          <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+            <span className="flex gap-1 shrink-0">
+              {[0, 0.2, 0.4].map((d, i) => (
+                <span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce"
+                  style={{ animationDelay: `${d}s` }} />
+              ))}
+            </span>
+            <p className="text-xs text-blue-700 flex-1">
+              송출 도구 (OBS/Prism/Larix) 에서 [방송 시작] 누르면 자동으로 라이브 시작됩니다.
+            </p>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600">
             <ArrowLeft className="w-4 h-4" /> {t('common.cancel')}
