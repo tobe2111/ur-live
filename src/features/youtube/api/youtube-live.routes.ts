@@ -1353,11 +1353,11 @@ export async function omeAdmissionHandler(
   if (!signatureHeader) return { allowed: false, reason: 'missing signature' }
   const bodyForSig = rawBody ?? JSON.stringify(body)
   const expectedSig = await hmacBase64Sha1(env.OME_WEBHOOK_SECRET, bodyForSig)
-  // OME 0.16.7 은 prefix 없이 base64 signature 만 보냄. (이전 버전은 'SHA1=' prefix.)
-  // base64 패딩 (= 끝) 차이도 있을 수 있어 정규화 후 비교.
-  const norm = (s: string) => s.replace(/^SHA1=/i, '').trim()
+  // OME 0.16.7 은 URL-safe base64 (no padding) 사용. 우리는 표준 base64.
+  // 같은 byte 인데 인코딩만 다르니 정규화 후 비교: SHA1= prefix 제거 + URL-safe → standard.
+  const norm = (s: string) => s.replace(/^SHA1=/i, '').replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '').trim()
   if (norm(signatureHeader) !== norm(expectedSig)) {
-    return { allowed: false, reason: `invalid signature (got_full=${signatureHeader}, expected_full=${expectedSig}, body_len=${bodyForSig.length})` }
+    return { allowed: false, reason: `invalid signature (got=${signatureHeader}, expected=${expectedSig})` }
   }
 
   // closing event 는 통과 (cleanup 알림용)
