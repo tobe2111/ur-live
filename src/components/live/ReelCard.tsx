@@ -960,8 +960,8 @@ function ReelCardImpl({
         className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[max(100vw,177.78dvh)] [&_iframe]:!h-[max(100dvh,56.25vw)]"
       />
 
-      {/* 예약 방송 UI */}
-      {stream.status === 'scheduled' && (
+      {/* 예약 방송 + 라이브 시작 직후 (video_id 미수신) UI */}
+      {(stream.status === 'scheduled' || (stream.status === 'live' && !stream.youtube_video_id)) && (
         <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
       )}
 

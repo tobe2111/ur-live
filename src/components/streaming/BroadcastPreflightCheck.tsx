@@ -79,10 +79,12 @@ export default function BroadcastPreflightCheck({ method, onAllChecked }: Props)
       const blob = new Uint8Array(size)
       for (let i = 0; i < size; i++) blob[i] = (Math.random() * 256) | 0
       const t0 = performance.now()
+      // 8초 timeout — 1MB 가 8초 넘으면 업로드 1Mbps 미만 (송출 부적합) 으로 간주
       const res = await fetch('/api/probe/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/octet-stream' },
         body: blob,
+        signal: AbortSignal.timeout(8000),
       })
       const elapsed = (performance.now() - t0) / 1000
       if (res.ok && elapsed > 0) {

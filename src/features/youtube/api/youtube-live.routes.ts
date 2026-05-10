@@ -1302,7 +1302,9 @@ app.post('/streaming/whip-token', async (c) => {
 
   // 1회용 토큰: HMAC-SHA256(secret, sellerId|streamId|exp).
   // OME admission webhook 에서 같은 secret 으로 검증.
-  const exp = Math.floor(Date.now() / 1000) + 60
+  // 🛡️ 2026-05-10: 60s → 120s. 모바일 4G/공개 Wi-Fi 등 느린 네트워크에서 SDP 교환 + ICE
+  // gathering 이 50초 이상 걸리면 token 만료 → 무한 재연결 loop. 120s 로 여유 확보.
+  const exp = Math.floor(Date.now() / 1000) + 120
   const payload = `${sellerId}|${stream_id}|${exp}`
   const sig = await hmacHex(c.env.OME_WEBHOOK_SECRET, payload)
   const token = `${btoa(payload)}.${sig}`
@@ -1428,10 +1430,23 @@ export async function omeAdmissionHandler(
             }),
           })
           if (!res.ok) {
-            console.error('[OME push start] non-OK', res.status, await res.text())
+            const errText = await res.text()
+            console.error('[OME push start] non-OK', res.status, errText)
+            // 셀러가 진단 페이지에서 볼 수 있도록 DB 기록
+            await env.DB.prepare(`
+              UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+            `).bind(`YouTube push 등록 실패 (${res.status}): ${errText.substring(0, 200)}`, streamId).run().catch(() => {})
+          } else {
+            // 성공 시 이전 에러 클리어
+            await env.DB.prepare(`
+              UPDATE live_streams SET last_error = NULL WHERE id = ? AND last_error IS NOT NULL
+            `).bind(streamId).run().catch(() => {})
           }
         } catch (e) {
           console.error('[OME push start] error', e)
+          await env.DB.prepare(`
+            UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+          `).bind(`Push 호출 예외: ${String((e as Error)?.message || e).substring(0, 200)}`, streamId).run().catch(() => {})
         }
       })()
       // CF Workers 가 응답 후에도 push 등록 fetch 가 살아있도록 waitUntil 로 등록

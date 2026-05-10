@@ -86,7 +86,20 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
           </div>
         )}
 
-        {!stream.scheduled_at && (
+        {/* status='live' 이지만 video_id 미수신 — 방송 준비 중 표시 */}
+        {!stream.scheduled_at && stream.status === 'live' && (
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl py-6 px-5 text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
+              <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+              <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+            </div>
+            <p className="text-white text-sm font-medium">방송 준비 중…</p>
+            <p className="text-white/50 text-[11px] mt-1">잠시 후 자동으로 시작됩니다</p>
+          </div>
+        )}
+
+        {!stream.scheduled_at && stream.status !== 'live' && (
           <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl py-5 px-5 text-center">
             <p className="text-white/70 text-sm">{t('live.scheduled.notSet', { defaultValue: '방송 시작 시간이 아직 정해지지 않았습니다' })}</p>
           </div>

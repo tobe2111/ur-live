@@ -3,16 +3,17 @@
  *
  * 라이브 시작 전 RTMP 설정 / OBS 가이드 / 카메라 미리보기 / 송출 진단.
  */
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { safeTime } from '@/utils/safe-date'
 import { ScheduledBroadcastWaiting } from '../SellerLiveBroadcast.WaitingScreens'
 import { InlineCameraPreview } from '@/components/streaming/InlineCameraPreview'
 import { BroadcastDiagnostic } from '@/components/streaming/BroadcastDiagnostic'
 import BroadcastPreflightCheck from '@/components/streaming/BroadcastPreflightCheck'
-import BrowserBroadcaster from '@/components/streaming/BrowserBroadcaster'
+// 🛡️ 2026-05-10: BrowserBroadcaster 는 OME 가용 시에만 로드 (~50KB getUserMedia + WebRTC peer 코드)
+const BrowserBroadcaster = lazy(() => import('@/components/streaming/BrowserBroadcaster'))
 import type { StreamMethod } from '../SellerLiveBroadcast.storage'
 import type { LiveStream, YouTubeChannel } from './types'
 import { useScreenWakeLock } from '@/hooks/useScreenWakeLock'
@@ -70,11 +71,13 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
       {/* 🛡️ 2026-05-08: 기본 = 브라우저 직접 송출 (OME 가용 시).
           OME 미가용 시 또는 셀러가 "고급" 토글 시 → 기존 Larix/OBS RTMP 가이드 노출. */}
       {omeAvailable === true && (
-        <BrowserBroadcaster
-          streamId={stream.id}
-          onStreaming={() => { /* polling 이 알아서 라이브 감지 */ }}
-          onUnsupported={() => setOmeAvailable(false)}
-        />
+        <Suspense fallback={<div className="flex items-center justify-center py-12 bg-gray-50 rounded-2xl"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>}>
+          <BrowserBroadcaster
+            streamId={stream.id}
+            onStreaming={() => { /* polling 이 알아서 라이브 감지 */ }}
+            onUnsupported={() => setOmeAvailable(false)}
+          />
+        </Suspense>
       )}
 
       {(omeAvailable === false || showAdvanced) && hasPersistentKey && (
