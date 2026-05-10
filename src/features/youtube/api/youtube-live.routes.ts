@@ -1245,7 +1245,7 @@ app.post('/streaming-setup/init', async (c) => {
  * 흐름:
  *   1. 셀러 브라우저 → POST /streaming/whip-token  (이 endpoint)
  *   2. 백엔드 → 단기 (60s) JWT-style 토큰 발급, stream_id 와 매핑
- *   3. 브라우저 → WHIP POST `https://stream.ur-team.com:3334/app/{stream_id}?whip=1&token=...`
+ *   3. 브라우저 → WHIP POST `https://stream.ur-team.com:3334/app/{stream_id}?direction=whip&token=...`
  *   4. OME → POST /api/internal/ome/admission  (admission webhook)
  *   5. 백엔드 → 토큰 검증 + OME REST API 호출 → RTMPPush to YouTube 동적 등록
  *   6. OME → 셀러 WebRTC 인입 → AAC 트랜스코딩 → YouTube RTMP push
@@ -1318,7 +1318,7 @@ app.post('/streaming/whip-token', async (c) => {
 
   // stream_name = 우리 stream id (OME application 안에서의 식별자)
   const streamName = `s${stream_id}`
-  const whipUrl = `https://${c.env.OME_HOST}:3334/app/${streamName}?whip=1&token=${encodeURIComponent(token)}`
+  const whipUrl = `https://${c.env.OME_HOST}:3334/app/${streamName}?direction=whip&token=${encodeURIComponent(token)}`
 
   return c.json({
     success: true,
