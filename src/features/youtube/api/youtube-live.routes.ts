@@ -1407,8 +1407,8 @@ export async function omeAdmissionHandler(
     try {
       const streamName = `s${streamId}`
       const fullRtmp = stream.rtmp_url.endsWith('/') ? `${stream.rtmp_url}` : `${stream.rtmp_url}/`
-      // OME API: POST /v1/vhosts/default/apps/app/streams/{name}:startPush
-      const apiUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app/streams/${streamName}:startPush`
+      // OME API: POST /v1/vhosts/default/apps/app:startPush  (앱 단위, body 에 stream 지정)
+      const apiUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app:startPush`
       const auth = btoa(env.OME_API_TOKEN)
       // 짧은 지연 후 호출 — OME 가 admission 응답 처리하고 stream 인입 받기 시작한 후 push 시작.
       // ⚠️ Cloudflare Workers 는 응답 후 async 작업을 즉시 취소. waitUntil 로 살려야 함.
