@@ -1424,6 +1424,17 @@ export async function omeAdmissionHandler(
     }
   }
 
+  // 🛡️ 2026-05-10: OME 가 stream 받기 시작했으니 우리 DB status 도 즉시 'live' 로.
+  // (기존 polling 방식은 YouTube broadcast.status='live' 가 될 때까지 30-60초 걸림)
+  try {
+    await env.DB.prepare(`
+      UPDATE live_streams SET status = 'live', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status != 'ended' AND status != 'live'
+    `).bind(streamId).run()
+  } catch (e) {
+    console.error('[OME admission] DB status update failed', e)
+  }
+
   return { allowed: true }
 }
 
