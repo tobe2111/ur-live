@@ -1270,9 +1270,12 @@ app.get('/streaming/health', async (c) => {
       const res = await fetch(`http://${c.env.OME_HOST}:8081/v1/stats/current`, {
         method: 'GET',
         headers: { 'Authorization': `Basic ${auth}` },
-        signal: AbortSignal.timeout(2000),
+        signal: AbortSignal.timeout(8000),
       })
       omeReachable = res.ok
+      if (!res.ok && c.env.NODE_ENV === 'development') {
+        console.log('OME healthcheck failed:', res.status, await res.text())
+      }
     } catch {
       omeReachable = false
     }
