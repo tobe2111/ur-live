@@ -41,6 +41,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
   // 자동 재연결 — 의도적 종료 (사용자 클릭 stop) 가 아닌 끊김 시에만.
   const userStoppedRef = useRef(false)
   const reconnectAttemptsRef = useRef(0)
+  const wasConnectedRef = useRef(false)
   const [reconnectingIn, setReconnectingIn] = useState<number | null>(null)
 
   // 브라우저 호환성 사전 체크
@@ -145,9 +146,16 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       if (pc.connectionState === 'connected') {
         setStatus('live')
         reconnectAttemptsRef.current = 0
+        wasConnectedRef.current = true
         onStreaming?.()
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
         if (userStoppedRef.current) return
+        // 한 번도 connected 한 적 없으면 자동 재연결 안 함 (초기 연결 실패는 사용자가 재시도)
+        if (!wasConnectedRef.current) {
+          setStatus('failed')
+          setErrorMsg('연결 실패 — 다시 시도 버튼을 눌러주세요.')
+          return
+        }
         // exponential backoff (3s, 6s, 12s, 24s, 30s max), 최대 5회 시도
         const attempt = reconnectAttemptsRef.current + 1
         if (attempt > 5) {
