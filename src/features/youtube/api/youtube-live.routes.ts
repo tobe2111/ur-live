@@ -1444,13 +1444,38 @@ export async function omeAdmissionHandler(
 
   // 🛡️ 2026-05-10: OME 가 stream 받기 시작했으니 우리 DB status 도 즉시 'live' 로.
   // (기존 polling 방식은 YouTube broadcast.status='live' 가 될 때까지 30-60초 걸림)
+  let justWentLive = false
   try {
-    await env.DB.prepare(`
+    const updateRes = await env.DB.prepare(`
       UPDATE live_streams SET status = 'live', updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND status != 'ended' AND status != 'live'
     `).bind(streamId).run()
+    justWentLive = (updateRes.meta?.changes ?? 0) > 0
   } catch (e) {
     console.error('[OME admission] DB status update failed', e)
+  }
+
+  // 🛡️ 2026-05-10: 'waiting' → 'live' 전환 시 팔로워 알림 발송 (연습 모드 제외)
+  if (justWentLive && waitUntil) {
+    waitUntil((async () => {
+      try {
+        const s = await env.DB.prepare(`
+          SELECT title, seller_id FROM live_streams WHERE id = ?
+        `).bind(streamId).first<{ title: string; seller_id: number }>()
+        if (!s || s.title?.startsWith('[연습]')) return
+        const { notifyFollowers } = await import('../../../lib/notifications')
+        await notifyFollowers(
+          env.DB,
+          s.seller_id,
+          'live_started',
+          '🔴 라이브 시작!',
+          s.title,
+          `/live/${streamId}`
+        )
+      } catch (e) {
+        console.error('[OME admission] notify followers failed', e)
+      }
+    })())
   }
 
   // 🛡️ 2026-05-10: 영구 stream key 사용 시 YouTube 가 자동 broadcast 생성 → video_id 조회 필요.
@@ -1484,12 +1509,29 @@ export async function omeAdmissionHandler(
               streamId
             ).run()
 
-            // 🛡️ 2026-05-10: YouTube broadcast 제목을 우리 stream.title 로 동기화
+            // 🛡️ 2026-05-10: YouTube broadcast snippet 동기화 — 제목 + description + 카테고리.
             try {
-              const dbStream = await env.DB.prepare('SELECT title FROM live_streams WHERE id = ?')
-                .bind(streamId).first<{ title: string }>()
+              const dbStream = await env.DB.prepare(`
+                SELECT s.title, s.id, s.seller_id,
+                       sl.name AS seller_name, sl.username AS seller_username
+                FROM live_streams s
+                LEFT JOIN sellers sl ON sl.id = s.seller_id
+                WHERE s.id = ?
+              `).bind(streamId).first<{ title: string; id: number; seller_id: number; seller_name?: string; seller_username?: string }>()
               if (dbStream?.title) {
-                const broadcastSnippet = data.items?.[0] as { snippet?: { title?: string; scheduledStartTime?: string; description?: string } }
+                const broadcastSnippet = data.items?.[0] as { snippet?: { title?: string; scheduledStartTime?: string; description?: string; categoryId?: string } }
+                const sellerSlug = dbStream.seller_username || dbStream.seller_id
+                const description = [
+                  dbStream.title,
+                  '',
+                  `📺 ${dbStream.seller_name || '셀러'}의 라이브 쇼핑`,
+                  `🛍️ 셀러 페이지: https://live.ur-team.com/profile/${sellerSlug}`,
+                  `🎬 다시보기: https://live.ur-team.com/live/${dbStream.id}`,
+                  '',
+                  '함께 라이브 쇼핑을 즐겨보세요!',
+                  '',
+                  '#유어딜 #유어딜라이브 #라이브커머스',
+                ].join('\n')
                 await fetch(
                   'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet',
                   {
@@ -1503,14 +1545,16 @@ export async function omeAdmissionHandler(
                       snippet: {
                         title: dbStream.title,
                         scheduledStartTime: broadcastSnippet.snippet?.scheduledStartTime || new Date().toISOString(),
-                        description: broadcastSnippet.snippet?.description || '',
+                        description,
+                        // YouTube category 22 = People & Blogs (라이브 쇼핑 적합)
+                        categoryId: '22',
                       },
                     }),
                   }
                 )
               }
             } catch (titleErr) {
-              console.error('[OME admission] title sync failed', titleErr)
+              console.error('[OME admission] snippet sync failed', titleErr)
             }
             return
           }
